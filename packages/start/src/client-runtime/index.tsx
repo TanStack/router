@@ -1,8 +1,6 @@
-import { isMainThread } from 'node:worker_threads'
 import { fetcher } from './fetcher'
 import type { FetchFn } from '../client'
 
-console.log('hereeeee', isMainThread)
 export function getBaseUrl(base: string | undefined, id: string, name: string) {
   return `${base}/_server/?_serverFnId=${encodeURI(id)}&_serverFnName=${encodeURI(name)}`
 }

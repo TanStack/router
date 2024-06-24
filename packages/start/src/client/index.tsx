@@ -9,8 +9,10 @@ export {
   type CompiledFetcherFnOptions,
   type CompiledFetcherFn,
   type Fetcher,
-  type JsonResponseOrPayload,
+  type FetcherPayload,
+  type RscStream,
 } from './createServerFn'
+export { rscFrom } from './rscFrom'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'
 export { Meta, Html, Head, Body } from './Meta'
@@ -21,3 +23,4 @@ export {
   serverFnReturnTypeHeader,
 } from '../constants'
 export { mergeHeaders } from './headers'
+export { renderRsc } from './renderRsc'

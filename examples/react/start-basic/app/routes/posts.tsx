@@ -3,18 +3,16 @@ import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
 import { fetchPosts } from '../utils/posts'
 
 export const Route = createFileRoute('/posts')({
-  loader: () => fetchPosts(),
-  component: PostsComponent,
-})
+  loader: async () => {
+    const posts = await fetchPosts()
 
-function PostsComponent() {
-  const posts = Route.useLoaderData()
-
-  return (
-    <div className="p-2 flex gap-2">
-      <ul className="list-disc pl-4">
-        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]?.map(
-          (post) => {
+    return (
+      <div className="p-2 flex gap-2">
+        <ul className="list-disc pl-4">
+          {[
+            ...posts,
+            { id: 'i-do-not-exist', title: 'Non-existent Post' },
+          ]?.map((post) => {
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
@@ -29,11 +27,16 @@ function PostsComponent() {
                 </Link>
               </li>
             )
-          },
-        )}
-      </ul>
-      <hr />
-      <Outlet />
-    </div>
-  )
+          })}
+        </ul>
+        <hr />
+        <Outlet />
+      </div>
+    )
+  },
+  component: PostsComponent,
+})
+
+function PostsComponent() {
+  return Route.useLoaderData()
 }

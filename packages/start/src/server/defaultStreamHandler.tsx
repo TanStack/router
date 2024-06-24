@@ -3,10 +3,15 @@ import * as React from 'react'
 import { isbot } from 'isbot'
 import { renderToPipeableStream } from 'react-dom/server'
 import { StartServer } from './StartServer'
-import { type RequestHandler } from './createRequestHandler'
 import type { AnyRouter } from '@tanstack/react-router'
 
-export const defaultStreamHandler: RequestHandler<AnyRouter> = async ({
+export type StartHandler<TRouter extends AnyRouter> = (ctx: {
+  request: Request
+  router: TRouter
+  responseHeaders: Headers
+}) => Promise<Response>
+
+export const defaultStreamHandler: StartHandler<AnyRouter> = async ({
   request,
   router,
   responseHeaders,

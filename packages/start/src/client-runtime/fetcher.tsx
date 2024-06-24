@@ -4,6 +4,8 @@ import {
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
+// @ts-expect-error
+import rscClient from '@vinxi/react-server-dom/client'
 import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
@@ -70,10 +72,13 @@ export async function fetcher<TPayload>(
         : {}),
     })
 
-    // Fetch it
     const handlerResponse = await handler(request)
 
     const response = await handleResponseErrors(handlerResponse)
+
+    if (['rsc'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
+      return response.body
+    }
 
     if (['json'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
       const text = await response.text()

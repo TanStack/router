@@ -3,8 +3,7 @@ import { defaultSerializeError } from './router'
 export type DeferredPromiseState<T> = {
   uid: string
   resolve?: () => void
-  promise?: Promise<void>
-  __resolvePromise?: () => void
+  reject?: () => void
 } & (
   | {
       status: 'pending'
@@ -22,9 +21,7 @@ export type DeferredPromiseState<T> = {
     }
 )
 
-export type DeferredPromise<T> = Promise<T> & {
-  __deferredState: DeferredPromiseState<T>
-}
+export type DeferredPromise<T> = Promise<T> & DeferredPromiseState<T>
 
 export function defer<T>(
   _promise: Promise<T>,
@@ -34,23 +31,19 @@ export function defer<T>(
 ) {
   const promise = _promise as DeferredPromise<T>
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (!promise.__deferredState) {
-    promise.__deferredState = {
-      uid: Math.random().toString(36).slice(2),
+  if (!(promise as any).status) {
+    Object.assign(promise, {
       status: 'pending',
-    }
-
-    const state = promise.__deferredState
+    })
 
     promise
       .then((data) => {
-        state.status = 'success' as any
-        state.data = data
+        promise.status = 'success' as any
+        promise.data = data
       })
       .catch((error) => {
-        state.status = 'error' as any
-        state.error = {
+        promise.status = 'error' as any
+        ;(promise as any).error = {
           data: (options?.serializeError ?? defaultSerializeError)(error),
           __isServerError: true,
         }
@@ -58,14 +51,4 @@ export function defer<T>(
   }
 
   return promise
-}
-
-export function isDehydratedDeferred(obj: any): boolean {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    !(obj instanceof Promise) &&
-    !obj.then &&
-    '__deferredState' in obj
-  )
 }

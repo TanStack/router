@@ -2,86 +2,50 @@ import * as React from 'react'
 import warning from 'tiny-warning'
 import { useRouter } from './useRouter'
 import { defaultSerializeError } from './router'
-import { isDehydratedDeferred } from './defer'
+import { defer } from './defer'
 import { defaultDeserializeError, isServerSideError } from './isServerSideError'
 import type { DeferredPromise } from './defer'
 
 export type AwaitOptions<T> = {
-  promise: DeferredPromise<T>
+  promise: Promise<T>
 }
 
 export function useAwaited<T>({
-  promise,
+  promise: _promise,
 }: AwaitOptions<T>): [T, DeferredPromise<T>] {
   const router = useRouter()
-  // const rerender = React.useReducer((x) => x + 1, 0)[1]
+  const promise = _promise as DeferredPromise<T>
 
-  const state = promise.__deferredState
+  defer(promise)
 
-  // Dehydrated promises only
-  // Successful or errored deferred promises mean they
-  // were resolved on the server and no further action is needed
-  if (isDehydratedDeferred(promise) && state.status === 'pending') {
-    const streamedData = (window as any)[`__TSR__DEFERRED__${state.uid}`]
-
-    if (streamedData) {
-      Object.assign(state, router.options.transformer.parse(streamedData))
-    } else {
-      let token = router.registeredDeferredsIds.get(state.uid)
-
-      // If we haven't yet, create a promise and resolver that our streamed HTML can use
-      // when the client-side data is streamed in and ready.
-      if (!token) {
-        token = {}
-        router.registeredDeferredsIds.set(state.uid, token)
-        router.registeredDeferreds.set(token, state)
-
-        Object.assign(state, {
-          resolve: () => {
-            state.__resolvePromise?.()
-            // rerender()
-          },
-          promise: new Promise((r) => {
-            state.__resolvePromise = r as any
-          }),
-          __resolvePromise: () => {},
-        })
-      }
-    }
+  if (promise.status === 'pending') {
+    throw promise
   }
 
-  // If the promise is pending, always throw the state.promise
-  // For originating promises, this will be the original promise
-  // For dehydrated promises, this will be the placeholder promise
-  // that will be resolved when the server sends the real data
-  if (state.status === 'pending') {
-    throw isDehydratedDeferred(promise) ? state.promise : promise
-  }
-
-  if (state.status === 'error') {
+  if (promise.status === 'error') {
     if (typeof document !== 'undefined') {
-      if (isServerSideError(state.error)) {
+      if (isServerSideError(promise.error)) {
         throw (
           router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-        )(state.error.data as any)
+        )(promise.error.data as any)
       } else {
         warning(
           false,
           "Encountered a server-side error that doesn't fit the expected shape",
         )
-        throw state.error
+        throw promise.error
       }
     } else {
       throw {
         data: (
           router.options.errorSerializer?.serialize ?? defaultSerializeError
-        )(state.error),
+        )(promise.error),
         __isServerError: true,
       }
     }
   }
 
-  return [promise.__deferredState.data as any, promise]
+  return [promise.data as any, promise]
 }
 
 export function Await<T>(
@@ -103,42 +67,6 @@ function AwaitInner<T>(
     children: (result: T) => React.ReactNode
   },
 ) {
-  const router = useRouter()
-  const [data, promise] = useAwaited(props)
-  const state = promise.__deferredState
-  // If we are the originator of the promise,
-  // inject the state into the HTML stream
-  return (
-    <>
-      {!isDehydratedDeferred(promise) ? (
-        <ScriptOnce
-          children={`window.__TSR__DEFERRED__${state.uid} = ${JSON.stringify(router.options.transformer.stringify(state))}
-  if (window.__TSR__ROUTER__) {
-    let deferred = window.__TSR__ROUTER__.getDeferred('${state.uid}');
-    if (deferred) deferred.resolve(window.__TSR__DEFERRED__${state.uid});
-  }`}
-        />
-      ) : null}
-      {props.children(data)}
-    </>
-  )
-}
-
-export function ScriptOnce({
-  className,
-  children,
-  ...rest
-}: { children: string } & React.HTMLProps<HTMLScriptElement>) {
-  return (
-    <script
-      {...rest}
-      className={`tsr-script-once ${className || ''}`}
-      dangerouslySetInnerHTML={{
-        __html: [
-          children,
-          `document.querySelectorAll('.tsr-script-once').forEach((el) => el.parentElement.removeChild(el));`,
-        ].join('\n'),
-      }}
-    />
-  )
+  const [data] = useAwaited(props)
+  return props.children(data)
 }

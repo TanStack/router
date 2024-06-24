@@ -38,6 +38,7 @@ export interface RouteMatch<
 > {
   id: string
   routeId: TRouteId
+  index: number
   pathname: string
   params: TAllParams
   status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'

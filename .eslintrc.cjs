@@ -102,7 +102,6 @@ const config = {
     'no-empty': 'off',
     'no-prototype-builtins': 'off',
     'no-redeclare': 'off',
-    'no-shadow': 'error',
     'no-undef': 'off',
     'sort-imports': ['error', { ignoreDeclarationSort: true }],
   },
