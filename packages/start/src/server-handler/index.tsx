@@ -34,9 +34,11 @@ async function handleServerAction(event: H3Event) {
       console.info(`ServerFn Request: ${serverFnId} - ${serverFnName}`)
     if (process.env.NODE_ENV === 'development') console.info()
 
-    const serverFn = (
-      await getManifest('server').chunks[serverFnId]?.import()
-    )?.[serverFnName] as Function
+    const action = (await getManifest('server').chunks[serverFnId]?.import())?.[
+      serverFnName
+    ] as Function
+
+    console.log(action)
 
     const response = await (async () => {
       try {
@@ -53,7 +55,10 @@ async function handleServerAction(event: H3Event) {
             ] as const
           }
 
-          if (request.headers.get(serverFnPayloadTypeHeader) === 'formData') {
+          if (
+            request.headers.get(serverFnPayloadTypeHeader) === 'formData' ||
+            request.headers.get('Content-Type')?.includes('multipart/form-data')
+          ) {
             return [
               method.toLowerCase() === 'get'
                 ? (() => {
@@ -73,7 +78,7 @@ async function handleServerAction(event: H3Event) {
           return (await request.json()) as Array<any>
         })()
 
-        const result = await serverFn(...args)
+        const result = await action(...args)
 
         // if (isRedirect(result) || isNotFound(result)) {
         //   return redirectOrNotFoundResponse(result)
