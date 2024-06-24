@@ -5,6 +5,7 @@ import {
   cleanup,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
 } from '@testing-library/react'
@@ -26,6 +27,7 @@ import {
   useSearch,
   useRouteContext,
   useMatchRoute,
+  useRouterState,
 } from '../src'
 
 afterEach(() => {
@@ -34,6 +36,72 @@ afterEach(() => {
 })
 
 describe('Link', () => {
+
+  test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
+    /**
+     * This is the hook that will be testet.
+     * 
+     * @returns custom state
+     */
+    const useLocationFromState = () => {
+      const { location } = useRouterState();
+
+      // could return anything just to prove it will work.
+      const memoLocation = React.useMemo(() => {
+        return {
+          href: location.href, pathname: location.pathname}
+      }, [location.href, location.pathname]);
+
+      return memoLocation;
+    };
+
+    const IndexComponent = ({children}: {children: React.ReactNode}) => {
+      return (
+        <h1 data-testid="testId">
+        {children}</h1>
+      );
+    };
+    const RouterContainer = ({children}: {children: React.ReactNode}) => {
+
+      const memoedRouteTree = React.useMemo(() => {
+        const rootRoute = createRootRoute();
+  
+        const indexRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/',
+          component: () => <IndexComponent>{children}</IndexComponent>
+        });
+        return rootRoute.addChildren([indexRoute]);
+      }, []);
+  
+      const memoedRouter = React.useMemo(() => {
+        const router = createRouter({
+          routeTree: memoedRouteTree,
+          history: createMemoryHistory({ initialEntries: ['/'] }),
+        });
+  
+        return router;
+      }, [memoedRouteTree]);
+      return <RouterProvider router={memoedRouter} />;
+    };
+  
+    const { result, rerender } = renderHook(() => {
+      return useLocationFromState() 
+    }, { wrapper: RouterContainer});
+
+    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible());
+    expect(result.current).toBeTruthy();
+  
+    const original = result.current;
+
+    rerender();
+    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible());
+    const updated  = result.current;
+    
+    expect(original).toBe(updated);
+  });
+
+  
   test('when a Link is disabled', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
