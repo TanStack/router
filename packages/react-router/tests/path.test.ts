@@ -1,5 +1,48 @@
 import { describe, expect, it } from 'vitest'
-import { exactPathTest, removeTrailingSlash } from '../src/path'
+import { exactPathTest, removeBasepath, removeTrailingSlash } from '../src/path'
+
+describe('removeBasepath', () => {
+  it.each([
+    {
+      name: '`/` should leave pathname as-is',
+      basepath: '/',
+      pathname: '/path',
+      expected: '/path',
+    },
+    {
+      name: 'should return empty string if basepath is the same as pathname',
+      basepath: '/path',
+      pathname: '/path',
+      expected: '',
+    },
+    {
+      name: 'should remove basepath from the beginning of the pathname',
+      basepath: '/app',
+      pathname: '/app/path/app',
+      expected: '/path/app',
+    },
+    {
+      name: 'should remove multisegment basepath from the beginning of the pathname',
+      basepath: '/app/new',
+      pathname: '/app/new/path/app/new',
+      expected: '/path/app/new',
+    },
+    {
+      name: 'should remove basepath only in case it matches segments completely',
+      basepath: '/app',
+      pathname: '/application',
+      expected: '/application',
+    },
+    {
+      name: 'should remove multisegment basepath only in case it matches segments completely',
+      basepath: '/app/new',
+      pathname: '/app/new-application',
+      expected: '/app/new-application',
+    },
+  ])('$name', ({ basepath, pathname, expected }) => {
+    expect(removeBasepath(basepath, pathname)).toBe(expected)
+  })
+})
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
   'removeTrailingSlash with basepath $basepath',

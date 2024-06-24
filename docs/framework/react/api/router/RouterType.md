@@ -93,6 +93,7 @@ Commits a new location object to the browser history.
     location: ParsedLocation & {
       replace?: boolean
       resetScroll?: boolean
+      ignoreBlocker?: boolean
     },
   ) => Promise<void>
   ```
@@ -111,6 +112,11 @@ Commits a new location object to the browser history.
     - Optional
     - Defaults to `true` so that the scroll position will be reset to 0,0 after the location is committed to the browser history.
     - If `false`, the scroll position will not be reset to 0,0 after the location is committed to history.
+  - `ignoreBlocker`
+    - Type: `boolean`
+    - Optional
+    - Defaults to `false`.
+    - If `true`, navigation will ignore any blockers that might prevent it.
 
 ### `.navigate` method
 

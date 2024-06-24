@@ -2,14 +2,17 @@
 // This implementation attempts to be more lightweight by
 // making assumptions about the way TanStack Router works
 
+export interface NavigateOptions {
+  ignoreBlocker?: boolean
+}
 export interface RouterHistory {
   location: HistoryLocation
   subscribe: (cb: () => void) => () => void
-  push: (path: string, state?: any) => void
-  replace: (path: string, state?: any) => void
-  go: (index: number) => void
-  back: () => void
-  forward: () => void
+  push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
+  replace: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
+  go: (index: number, navigateOpts?: NavigateOptions) => void
+  back: (navigateOpts?: NavigateOptions) => void
+  forward: (navigateOpts?: NavigateOptions) => void
   createHref: (href: string) => string
   block: (blocker: BlockerFn) => () => void
   flush: () => void
@@ -75,8 +78,12 @@ export function createHistory(opts: {
     subscribers.forEach((subscriber) => subscriber())
   }
 
-  const tryNavigation = async (task: () => void) => {
-    if (typeof document !== 'undefined' && blockers.length) {
+  const tryNavigation = async (
+    task: () => void,
+    navigateOpts?: NavigateOptions,
+  ) => {
+    const ignoreBlocker = navigateOpts?.ignoreBlocker ?? false
+    if (!ignoreBlocker && typeof document !== 'undefined' && blockers.length) {
       for (const blocker of blockers) {
         const allowed = await blocker()
         if (!allowed) {
@@ -100,37 +107,37 @@ export function createHistory(opts: {
         subscribers.delete(cb)
       }
     },
-    push: (path: string, state: any) => {
+    push: (path, state, navigateOpts) => {
       state = assignKey(state)
       tryNavigation(() => {
         opts.pushState(path, state)
         notify()
-      })
+      }, navigateOpts)
     },
-    replace: (path: string, state: any) => {
+    replace: (path, state, navigateOpts) => {
       state = assignKey(state)
       tryNavigation(() => {
         opts.replaceState(path, state)
         notify()
-      })
+      }, navigateOpts)
     },
-    go: (index) => {
+    go: (index, navigateOpts) => {
       tryNavigation(() => {
         opts.go(index)
         notify()
-      })
+      }, navigateOpts)
     },
-    back: () => {
+    back: (navigateOpts) => {
       tryNavigation(() => {
         opts.back()
         notify()
-      })
+      }, navigateOpts)
     },
-    forward: () => {
+    forward: (navigateOpts) => {
       tryNavigation(() => {
         opts.forward()
         notify()
-      })
+      }, navigateOpts)
     },
     createHref: (str) => opts.createHref(str),
     block: (blocker) => {

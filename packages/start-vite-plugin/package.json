@@ -58,18 +58,18 @@
     "src/**"
   ],
   "dependencies": {
-    "@babel/core": "^7.23.7",
-    "@babel/generator": "^7.23.6",
-    "@babel/plugin-syntax-jsx": "^7.24.1",
-    "@babel/plugin-syntax-typescript": "^7.24.1",
-    "@babel/plugin-transform-react-jsx": "^7.23.4",
-    "@babel/plugin-transform-typescript": "^7.24.1",
-    "@babel/template": "^7.24.0",
-    "@babel/traverse": "^7.24.1",
-    "@babel/types": "^7.24.0",
+    "@babel/core": "^7.24.7",
+    "@babel/generator": "^7.24.7",
+    "@babel/plugin-syntax-jsx": "^7.24.7",
+    "@babel/plugin-syntax-typescript": "^7.24.7",
+    "@babel/plugin-transform-react-jsx": "^7.24.7",
+    "@babel/plugin-transform-typescript": "^7.24.7",
+    "@babel/template": "^7.24.7",
+    "@babel/traverse": "^7.24.7",
+    "@babel/types": "^7.24.7",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",
-    "@types/babel__traverse": "^7.20.5"
+    "@types/babel__traverse": "^7.20.6"
   }
 }

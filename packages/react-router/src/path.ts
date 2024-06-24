@@ -82,6 +82,7 @@ interface ResolvePathOptions {
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
 }
+
 export function resolvePath({
   basepath,
   base,
@@ -196,6 +197,7 @@ interface InterpolatePathOptions {
   leaveWildcards?: boolean
   leaveParams?: boolean
 }
+
 export function interpolatePath({
   path,
   params,
@@ -203,21 +205,33 @@ export function interpolatePath({
   leaveParams,
 }: InterpolatePathOptions) {
   const interpolatedPathSegments = parsePathname(path)
+  const encodedParams: any = {}
+
+  for (const [key, value] of Object.entries(params)) {
+    const isValueString = typeof value === 'string'
+
+    if (['*', '_splat'].includes(key)) {
+      // the splat/catch-all routes shouldn't have the '/' encoded out
+      encodedParams[key] = isValueString ? encodeURI(value) : value
+    } else {
+      encodedParams[key] = isValueString ? encodeURIComponent(value) : value
+    }
+  }
 
   return joinPaths(
     interpolatedPathSegments.map((segment) => {
       if (segment.type === 'wildcard') {
-        const value = params._splat
+        const value = encodedParams._splat
         if (leaveWildcards) return `${segment.value}${value ?? ''}`
         return value
       }
 
       if (segment.type === 'param') {
         if (leaveParams) {
-          const value = params[segment.value]
+          const value = encodedParams[segment.value]
           return `${segment.value}${value ?? ''}`
         }
-        return params![segment.value.substring(1)] ?? 'undefined'
+        return encodedParams![segment.value.substring(1)] ?? 'undefined'
       }
 
       return segment.value
@@ -241,7 +255,36 @@ export function matchPathname(
 }
 
 export function removeBasepath(basepath: string, pathname: string) {
-  return basepath != '/' ? pathname.replace(basepath, '') : pathname
+  switch (true) {
+    // default behaviour is to serve app from the root - pathname
+    // left untouched
+    case basepath === '/':
+      return pathname
+
+    // shortcut for removing the basepath from the equal pathname
+    case pathname === basepath:
+      return ''
+
+    // in case pathname is shorter than basepath - there is
+    // nothing to remove
+    case pathname.length < basepath.length:
+      return pathname
+
+    // avoid matching partial segments - strict equality handled
+    // earlier, otherwise, basepath separated from pathname with
+    // separator, therefore lack of separator means partial
+    // segment match (`/app` should not match `/application`)
+    case pathname[basepath.length] !== '/':
+      return pathname
+
+    // remove the basepath from the pathname in case there is any
+    case pathname.startsWith(basepath):
+      return pathname.slice(basepath.length)
+
+    // otherwise, return the pathname as is
+    default:
+      return pathname
+  }
 }
 
 export function matchByPath(

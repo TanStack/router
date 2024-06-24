@@ -13,7 +13,6 @@ concurrency:
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-  NX_NO_CLOUD: true
 
 jobs:
   test:
@@ -52,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         typescript-version:
-          - '5.5.1-rc'
+          - '~5.5.0'
           - '~5.4.0'
           - '~5.3.0'
           - '~5.2.0'

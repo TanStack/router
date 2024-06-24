@@ -3,14 +3,16 @@ import { generator } from '@tanstack/router-generator'
 
 import { getConfig } from './config'
 import { CONFIG_FILE_NAME } from './constants'
-import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
+import type { Config } from './config'
 
 let lock = false
 const checkLock = () => lock
 const setLock = (bool: boolean) => {
   lock = bool
 }
+
+const PLUGIN_NAME = 'unplugin:router-generator'
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config> | undefined
@@ -83,6 +85,15 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 
         await run(generate)
       },
+    },
+    async rspack(compiler) {
+      userConfig = await getConfig(options, ROOT)
+
+      await run(generate)
+
+      compiler.hooks.watchRun.tap(PLUGIN_NAME, async () => {
+        await run(generate)
+      })
     },
   }
 }
