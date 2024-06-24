@@ -1,16 +1,16 @@
 // import * as React from 'react'
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
-import { fetchPosts } from '../utils/posts'
-import { createServerFn } from '@tanstack/start'
-import { test } from '~/utils/renderPosts'
+import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn, renderRsc } from '@tanstack/start'
+import { renderPosts } from '~/utils/renderPosts'
 
-export const renderPosts = createServerFn('GET', test)
+export const serverRenderPosts = createServerFn('GET', renderPosts)
+
 export const Route = createFileRoute('/posts')({
-  loader: async () => renderPosts(),
+  loader: async () => serverRenderPosts(),
   component: PostsComponent,
 })
 
 function PostsComponent() {
-  return null
-  // return Route.useLoaderData()
+  console.log('render PostsComponent')
+  return renderRsc(Route.useLoaderData())
 }

@@ -1,5 +1,4 @@
 import type { NavigateOptions } from './link'
-import type { AnyRoute } from './route'
 import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { PickAsRequired } from './utils'

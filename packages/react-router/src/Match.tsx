@@ -1,3 +1,6 @@
+'use client'
+
+/* eslint-disable no-shadow */
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
@@ -8,11 +11,11 @@ import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
 import { type AnyRoute } from './route'
-import { Outlet } from './Outlet'
 import { matchContext } from './matchContext'
 import { defaultDeserializeError, isServerSideError } from './isServerSideError'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
+import { rootRouteId } from './root'
 
 export function Match({ matchId }: { matchId: string }) {
   const router = useRouter()
@@ -106,15 +109,21 @@ function MatchInner({ matchId }: { matchId: string }): any {
 
   const route = router.routesById[routeId]!
 
-  const match = useRouterState({
-    select: (s) =>
-      pick(s.matches.find((d) => d.id === matchId)!, [
-        'id',
-        'status',
-        'error',
-        'loadPromise',
-        'minPendingPromise',
-      ]),
+  const [match, matchIndex] = useRouterState({
+    select: (s) => {
+      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
+      const match = s.matches[matchIndex]!
+      return [
+        pick(match, [
+          'id',
+          'status',
+          'error',
+          'loadPromise',
+          'minPendingPromise',
+        ]),
+        matchIndex,
+      ] as const
+    },
   })
 
   const RouteErrorComponent =
@@ -223,11 +232,16 @@ function MatchInner({ matchId }: { matchId: string }): any {
   if (match.status === 'success') {
     const Comp = route.options.component ?? router.options.defaultComponent
 
-    if (Comp) {
-      return <Comp />
-    }
+    const out = Comp ? <Comp /> : <Outlet />
 
-    return <Outlet />
+    return (
+      <>
+        {router.AfterEachMatch ? (
+          <router.AfterEachMatch match={match} matchIndex={matchIndex} />
+        ) : null}
+        {out}
+      </>
+    )
   }
 
   invariant(
@@ -235,3 +249,57 @@ function MatchInner({ matchId }: { matchId: string }): any {
     'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
   )
 }
+
+export const Outlet = React.memo(function Outlet() {
+  const router = useRouter()
+  const matchId = React.useContext(matchContext)
+  const routeId = useRouterState({
+    select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
+  })
+
+  const route = router.routesById[routeId]!
+
+  const { parentGlobalNotFound } = useRouterState({
+    select: (s) => {
+      const matches = s.matches
+      const parentMatch = matches.find((d) => d.id === matchId)
+      invariant(
+        parentMatch,
+        `Could not find parent match for matchId "${matchId}"`,
+      )
+      return {
+        parentGlobalNotFound: parentMatch.globalNotFound,
+      }
+    },
+  })
+
+  const childMatchId = useRouterState({
+    select: (s) => {
+      const matches = s.matches
+      const index = matches.findIndex((d) => d.id === matchId)
+      return matches[index + 1]?.id
+    },
+  })
+
+  if (parentGlobalNotFound) {
+    return renderRouteNotFound(router, route, undefined)
+  }
+
+  if (!childMatchId) {
+    return null
+  }
+
+  const nextMatch = <Match matchId={childMatchId} />
+
+  const pendingElement = router.options.defaultPendingComponent ? (
+    <router.options.defaultPendingComponent />
+  ) : null
+
+  if (matchId === rootRouteId) {
+    return (
+      <React.Suspense fallback={pendingElement}>{nextMatch}</React.Suspense>
+    )
+  }
+
+  return nextMatch
+})

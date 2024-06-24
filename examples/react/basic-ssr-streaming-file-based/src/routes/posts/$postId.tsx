@@ -1,6 +1,6 @@
 import { Await, createFileRoute, defer, notFound } from '@tanstack/react-router'
 import * as React from 'react'
-import { PostType } from '../posts'
+import type { PostType } from '../posts'
 
 async function fetchPostById(postId: string) {
   console.log(`Fetching post with id ${postId}...`)
@@ -25,11 +25,11 @@ export type CommentType = {
 }
 
 async function fetchComments(postId: string) {
-  await new Promise((r) => setTimeout(r, 1000))
+  await new Promise((r) => setTimeout(r, 2000))
 
   return fetch(
     `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
-  ).then((r) => r.json() as Promise<CommentType[]>)
+  ).then((r) => r.json() as Promise<Array<CommentType>>)
 }
 
 export const Route = createFileRoute('/posts/$postId')({
@@ -39,7 +39,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
     return {
       post,
-      commentsPromise: defer(commentsPromise),
+      commentsPromise: commentsPromise,
     }
   },
   wrapInSuspense: true,
@@ -59,28 +59,30 @@ function PostComponent() {
     <div className="space-y-2">
       <h4 className="text-xl font-bold underline">{post.title}</h4>
       <div className="text-sm">{post.body}</div>
-      <React.Suspense fallback={<div>Loading comments...</div>} key={post.id}>
-        <Await promise={commentsPromise}>
-          {(comments) => {
-            return (
-              <div className="space-y-2">
-                <h5 className="text-lg font-bold underline">Comments</h5>
-                {comments?.map((comment) => {
-                  return (
-                    <div key={comment.id}>
-                      <h6 className="text-md font-bold">{comment.name}</h6>
-                      <div className="text-sm italic opacity-50">
-                        {comment.email}
-                      </div>
-                      <div className="text-sm">{comment.body}</div>
+      <Await
+        promise={commentsPromise}
+        fallback={<div>Loading comments...</div>}
+        key={post.id}
+      >
+        {(comments) => {
+          return (
+            <div className="space-y-2">
+              <h5 className="text-lg font-bold underline">Comments</h5>
+              {comments.map((comment) => {
+                return (
+                  <div key={comment.id}>
+                    <h6 className="text-md font-bold">{comment.name}</h6>
+                    <div className="text-sm italic opacity-50">
+                      {comment.email}
                     </div>
-                  )
-                })}
-              </div>
-            )
-          }}
-        </Await>
-      </React.Suspense>
+                    <div className="text-sm">{comment.body}</div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }}
+      </Await>
     </div>
   )
 }

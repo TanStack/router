@@ -1,5 +1,5 @@
-import { notFound } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/start'
+// import { notFound } from '@tanstack/react-router'
+// import { createServerFn } from '@tanstack/start'
 import axios from 'redaxios'
 
 export type PostType = {
@@ -8,7 +8,8 @@ export type PostType = {
   body: string
 }
 
-export const fetchPost = createServerFn('GET', async (postId: string) => {
+export const fetchPost = async (postId: string) => {
+  'use server'
   console.log(`Fetching post with id ${postId}...`)
   await new Promise((r) => setTimeout(r, 500))
   const post = await axios
@@ -16,18 +17,19 @@ export const fetchPost = createServerFn('GET', async (postId: string) => {
     .then((r) => r.data)
     .catch((err) => {
       if (err.status === 404) {
-        throw notFound()
+        // throw notFound()
       }
       throw err
     })
 
   return post
-})
+}
 
-export const fetchPosts = createServerFn('GET', async () => {
+export const fetchPosts = async () => {
+  'use server'
   console.log('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
-})
+}
