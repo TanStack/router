@@ -921,9 +921,12 @@ export class Router<
     const parseErrors = matchedRoutes.map((route) => {
       let parsedParamsError
 
-      if (route.options.parseParams) {
+      const parseParams =
+        route.options.params?.parse ?? route.options.parseParams
+
+      if (parseParams) {
         try {
-          const parsedParams = route.options.parseParams(routeParams)
+          const parsedParams = parseParams(routeParams)
           // Add the parsed params to the accumulated params bag
           Object.assign(routeParams, parsedParams)
         } catch (err: any) {
@@ -1179,7 +1182,12 @@ export class Router<
 
       if (Object.keys(nextParams).length > 0) {
         matches
-          ?.map((d) => this.looseRoutesById[d.routeId]!.options.stringifyParams)
+          ?.map((d) => {
+            const route = this.looseRoutesById[d.routeId]
+            return (
+              route?.options.params?.stringify ?? route!.options.stringifyParams
+            )
+          })
           .filter(Boolean)
           .forEach((fn) => {
             nextParams = { ...nextParams!, ...fn!(nextParams) }
