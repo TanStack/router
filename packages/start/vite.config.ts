@@ -6,7 +6,10 @@ import replace from '@rollup/plugin-replace'
 import react from '@vitejs/plugin-react'
 
 const config = defineConfig({
-  plugins: [react()],
+  plugins: [
+    // @ts-expect-error
+    react(),
+  ],
 })
 
 export default mergeConfig(
