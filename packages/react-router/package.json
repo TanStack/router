@@ -22,8 +22,7 @@
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js",
-        "react-server": "./src/react-server-test.js"
+        "default": "./dist/esm/index.js"
       },
       "require": {
         "types": "./dist/cjs/index.d.cts",
