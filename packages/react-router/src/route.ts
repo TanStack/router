@@ -102,30 +102,20 @@ export type StringifyParamsFn<TPath extends string, TParams> = (
 ) => Record<ParsePathParams<TPath>, string>
 
 export type ParamsOptions<TPath extends string, TParams> = {
-  parse: (
-    rawParams: Record<ParsePathParams<TPath>, string>,
-  ) => TParams extends Record<ParsePathParams<TPath>, any>
-    ? TParams
-    : Record<ParsePathParams<TPath>, any>
-  stringify: (params: TParams) => Record<ParsePathParams<TPath>, string>
-}
-
-export type ParamsOption<TPath extends string, TParams> = {
-  params?: ParamsOptions<TPath, TParams>
+  params?: {
+    parse: ParseParamsFn<TPath, TParams>
+    stringify: StringifyParamsFn<TPath, TParams>
+  }
 
   /** 
   @deprecated Use params.parse instead
   */
-  parseParams?: (
-    rawParams: Record<ParsePathParams<TPath>, string>,
-  ) => TParams extends Record<ParsePathParams<TPath>, any>
-    ? TParams
-    : Record<ParsePathParams<TPath>, any>
+  parseParams?: ParseParamsFn<TPath, TParams>
 
   /** 
   @deprecated Use params.stringify instead
   */
-  stringifyParams?: (params: TParams) => Record<ParsePathParams<TPath>, string>
+  stringifyParams?: StringifyParamsFn<TPath, TParams>
 }
 
 export interface FullSearchSchemaOption<TFullSearchSchema> {
@@ -164,7 +154,7 @@ export type FileBaseRouteOptions<
   loader?: (
     ctx: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext>,
   ) => TLoaderDataReturn | Promise<TLoaderDataReturn>
-} & ParamsOption<TPath, TParams>
+} & ParamsOptions<TPath, TParams>
 
 export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
@@ -320,7 +310,7 @@ export type RouteLoaderFn<
   TLoaderData = undefined,
 > = (
   match: LoaderFnContext<TAllParams, TLoaderDeps, TAllContext>,
-) => TLoaderData
+) => TLoaderData | Promise<TLoaderData>
 
 export interface LoaderFnContext<
   in out TAllParams = {},
