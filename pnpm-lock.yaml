@@ -2677,7 +2677,7 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.24.6
-      '@babel/helper-plugin-utils': 7.24.6
+      '@babel/helper-plugin-utils': 7.24.7
     dev: true
 
   /@babel/plugin-syntax-import-assertions@7.24.1(@babel/core@7.24.7):
@@ -3336,7 +3336,7 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.24.7
-      '@babel/helper-plugin-utils': 7.24.6
+      '@babel/helper-plugin-utils': 7.24.5
     dev: false
 
   /@babel/plugin-transform-react-jsx-source@7.23.3(@babel/core@7.24.5):
@@ -3355,7 +3355,7 @@ packages:
       '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.24.7
-      '@babel/helper-plugin-utils': 7.24.6
+      '@babel/helper-plugin-utils': 7.24.5
     dev: false
 
   /@babel/plugin-transform-react-jsx@7.24.7(@babel/core@7.24.6):
