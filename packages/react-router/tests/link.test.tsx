@@ -36,72 +36,71 @@ afterEach(() => {
 })
 
 describe('Link', () => {
-
   test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
     /**
      * This is the hook that will be testet.
-     * 
+     *
      * @returns custom state
      */
     const useLocationFromState = () => {
-      const { location } = useRouterState();
+      const { location } = useRouterState()
 
       // could return anything just to prove it will work.
       const memoLocation = React.useMemo(() => {
         return {
-          href: location.href, pathname: location.pathname}
-      }, [location.href, location.pathname]);
+          href: location.href,
+          pathname: location.pathname,
+        }
+      }, [location.href, location.pathname])
 
-      return memoLocation;
-    };
+      return memoLocation
+    }
 
-    const IndexComponent = ({children}: {children: React.ReactNode}) => {
-      return (
-        <h1 data-testid="testId">
-        {children}</h1>
-      );
-    };
-    const RouterContainer = ({children}: {children: React.ReactNode}) => {
-
+    const IndexComponent = ({ children }: { children: React.ReactNode }) => {
+      return <h1 data-testid="testId">{children}</h1>
+    }
+    const RouterContainer = ({ children }: { children: React.ReactNode }) => {
       const memoedRouteTree = React.useMemo(() => {
-        const rootRoute = createRootRoute();
-  
+        const rootRoute = createRootRoute()
+
         const indexRoute = createRoute({
           getParentRoute: () => rootRoute,
           path: '/',
-          component: () => <IndexComponent>{children}</IndexComponent>
-        });
-        return rootRoute.addChildren([indexRoute]);
-      }, []);
-  
+          component: () => <IndexComponent>{children}</IndexComponent>,
+        })
+        return rootRoute.addChildren([indexRoute])
+      }, [children])
+
       const memoedRouter = React.useMemo(() => {
         const router = createRouter({
           routeTree: memoedRouteTree,
           history: createMemoryHistory({ initialEntries: ['/'] }),
-        });
-  
-        return router;
-      }, [memoedRouteTree]);
-      return <RouterProvider router={memoedRouter} />;
-    };
-  
-    const { result, rerender } = renderHook(() => {
-      return useLocationFromState() 
-    }, { wrapper: RouterContainer});
+        })
 
-    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible());
-    expect(result.current).toBeTruthy();
-  
-    const original = result.current;
+        return router
+      }, [memoedRouteTree])
+      return <RouterProvider router={memoedRouter} />
+    }
 
-    rerender();
-    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible());
-    const updated  = result.current;
-    
-    expect(original).toBe(updated);
-  });
+    const { result, rerender } = renderHook(
+      () => {
+        return useLocationFromState()
+      },
+      { wrapper: RouterContainer },
+    )
 
-  
+    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible())
+    expect(result.current).toBeTruthy()
+
+    const original = result.current
+
+    rerender()
+    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible())
+    const updated = result.current
+
+    expect(original).toBe(updated)
+  })
+
   test('when a Link is disabled', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
