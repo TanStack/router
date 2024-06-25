@@ -204,7 +204,7 @@ export interface BeforeLoadContext<
 > extends FullSearchSchemaOption<TFullSearchSchema> {
   abortController: AbortController
   preload: boolean
-  params: TAllParams
+  params: Expand<TAllParams>
   context: TParentAllContext
   location: ParsedLocation
   /**
@@ -329,7 +329,7 @@ export interface LoaderFnContext<
 > {
   abortController: AbortController
   preload: boolean
-  params: TAllParams
+  params: Expand<TAllParams>
   deps: TLoaderDeps
   context: TAllContext
   location: ParsedLocation // Do not supply search schema here so as to demotivate people from trying to shortcut loaderDeps
