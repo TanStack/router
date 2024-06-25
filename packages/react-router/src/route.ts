@@ -410,13 +410,11 @@ export type ResolveAllContext<
   TRouteContext,
 > = Assign<InferAllContext<TParentRoute>, TRouteContext>
 
-type GetLoaderData<TLoaderDataReturn> =
-  TLoaderDataReturn extends Promise<infer TLoaderData>
-    ? TLoaderData
-    : TLoaderDataReturn
-
-export type ResolveLoaderData<TLoaderDataReturn> =
-  GetLoaderData<TLoaderDataReturn> extends never ? undefined : TLoaderDataReturn
+export type ResolveLoaderData<TLoaderDataReturn> = [TLoaderDataReturn] extends [
+  never,
+]
+  ? undefined
+  : TLoaderDataReturn
 
 export interface AnyRoute
   extends Route<

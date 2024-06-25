@@ -137,6 +137,75 @@ test('when there is one loader', () => {
   ).returns.toEqualTypeOf<number>()
 })
 
+test('when there is one loader that is async', () => {
+  const rootRoute = createRootRoute()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    loader: () => Promise.resolve({ data: ['element1', 'element2'] }),
+  })
+
+  const invoicesIndexRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '/',
+  })
+
+  const invoiceRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '$invoiceId',
+  })
+
+  const routeTree = rootRoute.addChildren([
+    invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+    indexRoute,
+  ])
+
+  const defaultRouter = createRouter({
+    routeTree,
+    context: { userId: 'userId' },
+  })
+
+  type DefaultRouter = typeof defaultRouter
+
+  expectTypeOf(
+    useLoaderData<DefaultRouter['routeTree'], '/invoices'>,
+  ).returns.toEqualTypeOf<{ data: Array<string> }>()
+
+  expectTypeOf(
+    useLoaderData<DefaultRouter['routeTree'], '/invoices'>,
+  ).returns.toEqualTypeOf<{ data: Array<string> }>()
+
+  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices'>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .returns.toEqualTypeOf<{ data: Array<string> }>()
+
+  expectTypeOf(
+    useLoaderData<DefaultRouter['routeTree'], '/invoices', false>,
+  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
+
+  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices', false>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .returns.toEqualTypeOf<{ data?: Array<string> }>()
+
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false,
+      MakeRouteMatch<DefaultRouter['routeTree'], '/invoices', false>,
+      number
+    >,
+  ).returns.toEqualTypeOf<number>()
+})
+
 test('when there are multiple loaders', () => {
   const rootRoute = createRootRoute()
 

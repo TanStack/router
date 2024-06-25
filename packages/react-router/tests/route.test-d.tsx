@@ -437,13 +437,13 @@ test('when creating a child route with context from a parent with context', () =
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    beforeLoad: () => ({ invoiceId: 'invoiceId1' }),
+    beforeLoad: async () => ({ invoiceId: 'invoiceId1' }),
   })
 
   const detailsRoute = createRoute({
     path: 'details',
     getParentRoute: () => invoicesRoute,
-    beforeLoad: () => ({ detailId: 'detailId1' }),
+    beforeLoad: async () => ({ detailId: 'detailId1' }),
   })
 
   expectTypeOf(detailsRoute.useRouteContext()).toEqualTypeOf<{
