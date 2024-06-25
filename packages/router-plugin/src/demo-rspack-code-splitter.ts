@@ -13,9 +13,9 @@ import type {
   RspackPluginInstance,
 } from 'unplugin'
 
-function capitalizeFirst(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
+// function capitalizeFirst(str: string): string {
+//   return str.charAt(0).toUpperCase() + str.slice(1)
+// }
 
 function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
   const routesDirectoryPath = isAbsolute(routesDirectory)
@@ -25,35 +25,36 @@ function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
   return filePath.startsWith(routesDirectoryPath)
 }
 
-type BannedBeforeExternalPlugin = {
-  identifier: string
-  pkg: string
-  usage: string
-  frameworks: Array<UnpluginContextMeta['framework']>
-}
+// type BannedBeforeExternalPlugin = {
+//   identifier: string
+//   pkg: string
+//   usage: string
+//   frameworks: Array<UnpluginContextMeta['framework']>
+// }
 
-const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
-  {
-    identifier: '@react-refresh',
-    pkg: '@vitejs/plugin-react',
-    usage: 'viteReact()',
-    frameworks: ['vite'],
-  },
-]
+// const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
+//   {
+//     identifier: '@react-refresh',
+//     pkg: '@vitejs/plugin-react',
+//     usage: 'viteReact()',
+//     frameworks: ['vite'],
+//   },
+// ]
 
-class FoundPluginInBeforeCode extends Error {
-  constructor(externalPlugin: BannedBeforeExternalPlugin, framework: string) {
-    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
-e.g.
-plugins: [
-  TanStackRouter${capitalizeFirst(framework)}(), // Place this before ${externalPlugin.usage}
-  ${externalPlugin.usage},
-]
-`)
-  }
-}
+// class FoundPluginInBeforeCode extends Error {
+//   constructor(externalPlugin: BannedBeforeExternalPlugin, framework: string) {
+//     super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again:
+// e.g.
+// plugins: [
+//   TanStackRouter${capitalizeFirst(framework)}(), // Place this before ${externalPlugin.usage}
+//   ${externalPlugin.usage},
+// ]
+// `)
+//   }
+// }
 
-const PLUGIN_NAME = 'unplugin:router-rspack-code-splitter'
+const PLUGIN_NAME = 'router-rspack-code-splitter'
+const JoinedSplitPrefix = splitPrefix + ':'
 
 export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
@@ -100,7 +101,7 @@ export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
   }
 
   return {
-    name: 'router-rspack-code-splitter-plugin',
+    name: PLUGIN_NAME,
     enforce: 'pre',
 
     async rspack(compiler) {
@@ -123,11 +124,9 @@ export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
         self.normalModuleFactory.hooks.beforeResolve.tap(
           PLUGIN_NAME,
           (resolveData) => {
-            if (resolveData.request.startsWith(splitPrefix + ':')) {
-              resolveData.request = resolveData.request.replace(
-                splitPrefix + ':',
-                '',
-              )
+            if (resolveData.request.startsWith(JoinedSplitPrefix)) {
+              const request = resolveData.request
+              resolveData.request = request.replace(JoinedSplitPrefix, '')
             }
           },
         )
@@ -160,9 +159,10 @@ export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
         return null
       }
 
-      if (id.startsWith(splitPrefix + ':')) {
-        return id.replace(splitPrefix + ':', '')
+      if (id.startsWith(JoinedSplitPrefix)) {
+        return id.replace(JoinedSplitPrefix, '')
       }
+
       return null
     },
   }

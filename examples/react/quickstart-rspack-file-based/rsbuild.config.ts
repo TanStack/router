@@ -7,7 +7,9 @@ import {
 
 export default defineConfig({
   plugins: [
-    // pluginReact()
+    //
+    // pluginReact(),
+    //
   ],
   html: {
     tags: [
@@ -20,7 +22,7 @@ export default defineConfig({
   tools: {
     rspack: {
       plugins: [
-        // TanStackRouterRspack(),
+        TanStackRouterRspack(),
         unstable_TanStackRouterCodeSplitterRspackTest(),
       ],
     },
