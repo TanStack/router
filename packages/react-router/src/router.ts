@@ -521,7 +521,6 @@ export class Router<
       match: AnyRouteMatch
     },
   ) => any
-  useLoaderDataTransform?: <T>(value: T) => T
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>

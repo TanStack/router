@@ -169,14 +169,6 @@ window.__TSR__ = {
       ) : null}
       {extracted
         ? extracted.map((d, i) => {
-            // if (d.type === 'promise') {
-            //   return <PromiseScript key={i} entry={d} />
-            // }
-
-            // if (d.type === 'response') {
-            //   return <ResponseScript key={i} entry={d} />
-            // }
-
             if (d.type === 'stream') {
               return <DehydrateStream key={i} entry={d} />
             }
