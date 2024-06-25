@@ -1,9 +1,14 @@
 import { defineConfig } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { TanStackRouterRspack } from '@tanstack/router-plugin/rspack'
+import {
+  TanStackRouterRspack,
+  unstable_TanStackRouterCodeSplitterRspackTest,
+} from '@tanstack/router-plugin/rspack'
 
 export default defineConfig({
-  plugins: [pluginReact()],
+  plugins: [
+    // pluginReact()
+  ],
   html: {
     tags: [
       {
@@ -14,7 +19,10 @@ export default defineConfig({
   },
   tools: {
     rspack: {
-      plugins: [TanStackRouterRspack()],
+      plugins: [
+        // TanStackRouterRspack(),
+        unstable_TanStackRouterCodeSplitterRspackTest(),
+      ],
     },
   },
 })

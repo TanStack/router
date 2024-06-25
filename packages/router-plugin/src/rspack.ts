@@ -1,9 +1,10 @@
 import { createRspackPlugin } from 'unplugin'
-import { unpluginRouterCodeSplitterFactory } from './code-splitter'
+// import { unpluginRouterCodeSplitterFactory } from './code-splitter'
 import { configSchema } from './config'
 import { unpluginRouterGeneratorFactory } from './router-generator'
 import { unpluginRouterComposedFactory } from './composed'
 import type { Config } from './config'
+import { unpluginRsPackRouterCodeSplitterFactory } from './demo-rspack-code-splitter'
 
 /**
  * @example
@@ -44,8 +45,11 @@ const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
  * })
  * ```
  */
-const unstable_TanStackRouterCodeSplitterRspack =
-  /* #__PURE__ */ createRspackPlugin(unpluginRouterCodeSplitterFactory)
+// const unstable_TanStackRouterCodeSplitterRspack =
+//   /* #__PURE__ */ createRspackPlugin(unpluginRouterCodeSplitterFactory)
+
+const unstable_TanStackRouterCodeSplitterRspackTest =
+  /* #__PURE__ */ createRspackPlugin(unpluginRsPackRouterCodeSplitterFactory)
 
 /**
  * @example
@@ -69,6 +73,7 @@ export {
   configSchema,
   TanStackRouterRspack,
   TanStackRouterGeneratorRspack,
-  unstable_TanStackRouterCodeSplitterRspack,
+  // unstable_TanStackRouterCodeSplitterRspack,
+  unstable_TanStackRouterCodeSplitterRspackTest,
 }
 export type { Config }
