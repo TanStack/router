@@ -66,7 +66,7 @@ function AwaitInner<T>(
     fallback?: React.ReactNode
     children: (result: T) => React.ReactNode
   },
-) {
+): React.JSX.Element {
   const [data] = useAwaited(props)
-  return props.children(data)
+  return props.children(data) as React.JSX.Element
 }
