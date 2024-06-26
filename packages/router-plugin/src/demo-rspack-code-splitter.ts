@@ -123,14 +123,14 @@ export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
           },
         )
       })
+      // TODO: explore replacing the above hook with https://webpack.js.org/plugins/normal-module-replacement-plugin/
     },
 
     /**
-     * This `loadInclude` method currently only gets called on the `load` method
+     * This `loadInclude` method only gets called on the `load` method and not on `transform`.
      * https://github.com/unjs/unplugin/blob/a01da85ed2f9924e8361df14a21e887e14bf0e67/src/rspack/index.ts#L65-L78
      *   -> https://github.com/unjs/unplugin/blob/a01da85ed2f9924e8361df14a21e887e14bf0e67/src/utils.ts#L38
      */
-    // in Unplugin, this is only used
     loadInclude(id) {
       return fileIsInRoutesDirectory(id, userConfig.routesDirectory)
     },
@@ -141,7 +141,6 @@ export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
      * https://github.com/unjs/unplugin/blob/a01da85ed2f9924e8361df14a21e887e14bf0e67/src/rspack/index.ts#L81-L88
      *   -> https://github.com/unjs/unplugin/blob/a01da85ed2f9924e8361df14a21e887e14bf0e67/src/utils.ts#L50-L65
      */
-    //
     // async transform(code, id) {
     //   console.log('transform.id', id)
     //   return code
