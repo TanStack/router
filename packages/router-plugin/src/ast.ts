@@ -1,49 +1,27 @@
 import * as babel from '@babel/core'
 
-export type CompileAstFn = (compileOpts: {
+export const compilePlugins: Array<babel.PluginItem> = [
+  ['@babel/plugin-syntax-jsx', {}],
+  [
+    '@babel/plugin-syntax-typescript',
+    {
+      isTSX: true,
+    },
+  ],
+]
+
+export type ParseAstOpts = {
   code: string
   filename: string
-  getBabelConfig: () => { plugins: Array<any> }
-}) => Promise<{
-  code: string
-  map: any
-}>
+  root: string
+}
 
-export function compileAst(makeOpts: { root: string }) {
-  return async (opts: {
-    code: string
-    filename: string
-    getBabelConfig: () => { plugins: Array<any> }
-  }): Promise<{
-    code: string
-    map: any
-  }> => {
-    const res = babel.transformSync(opts.code, {
-      plugins: [
-        ['@babel/plugin-syntax-jsx', {}],
-        [
-          '@babel/plugin-syntax-typescript',
-          {
-            isTSX: true,
-          },
-        ],
-        ...opts.getBabelConfig().plugins,
-      ],
-      root: makeOpts.root,
-      filename: opts.filename,
-      sourceMaps: true,
-    })
-
-    if (res?.code) {
-      return {
-        code: res.code,
-        map: res.map,
-      }
-    }
-
-    return {
-      code: opts.code,
-      map: null,
-    }
-  }
+export function parseAst(opts: ParseAstOpts): babel.ParseResult | null {
+  return babel.parse(opts.code, {
+    plugins: [...compilePlugins],
+    root: opts.root,
+    filename: opts.filename,
+    sourceMaps: true,
+    sourceType: 'module',
+  })
 }

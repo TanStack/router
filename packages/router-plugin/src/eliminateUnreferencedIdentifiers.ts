@@ -1,3 +1,5 @@
+// TODO: DELETE THIS FILE BEFORE MERGING TO MAIN
+
 // Copied from https://github.com/pcattori/vite-env-only/blob/main/src/dce.ts
 // Adapted with some minor changes for the purpose of this project
 
