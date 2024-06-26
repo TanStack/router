@@ -351,7 +351,8 @@ export async function generator(config: Config) {
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
     const nonPathRoute = node.isRoute && node.isNonPath
-    node.isVirtualParentRequired = (node.isLayout || nonPathRoute) ? !cleanedPathIsEmpty : false
+    node.isVirtualParentRequired =
+      node.isLayout || nonPathRoute ? !cleanedPathIsEmpty : false
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
