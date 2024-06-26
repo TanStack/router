@@ -26,6 +26,27 @@ interface State {
   splitModulesById: SplitModulesById
 }
 
+/**
+ * TODO: DELETE THIS BEFORE MERGING INTO MAIN
+ */
+export function exampleOfElimination(opts: ParseAstOpts) {
+  let ast = parseAst(opts)
+
+  if (!ast) {
+    throw new Error(
+      `Failed to compile ast for exampleOfElimination for the file: ${opts.filename}`,
+    )
+  }
+
+  traverse(ast, {
+    /** */
+  })
+
+  deadCodeElimination(ast)
+
+  return generate(ast)
+}
+
 export function getCodeSplitReferenceRoute(opts: ParseAstOpts) {
   let ast = parseAst(opts)
 
