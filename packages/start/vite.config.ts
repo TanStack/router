@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react'
 
 const config = defineConfig({
   plugins: [
-    // @ts-expect-error
+    // @ts-ignore
     react(),
   ],
 })
