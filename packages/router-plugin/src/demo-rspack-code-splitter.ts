@@ -1,5 +1,6 @@
 import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { readFileSync } from 'node:fs'
 
 import { compileAst } from './ast'
 import { compileFile, splitFile } from './compilers'
@@ -108,16 +109,7 @@ export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
       ROOT = process.cwd()
       userConfig = await getConfig(options, ROOT)
 
-      // I think somewhere here, I'm mean to strip out the `tsr-split:` prefix from the id
-      // compiler.options.module.rules.push({
-      //   scheme: splitPrefix,
-      //   type: 'javascript',
-      //   test: (id) => id.startsWith(splitPrefix + ':'),
-      //   parser: {
-      //     javascript: ['javascript'],
-      //   },
-      // })
-
+      // This hooks currently, successfully removes the [tsr-split:] prefix from incoming requests
       // https://www.rspack.dev/api/plugin-api/normal-module-factory-hooks
       // 🎉 this does its job
       compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
@@ -131,39 +123,53 @@ export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
           },
         )
       })
-
-      // ---
     },
 
-    async transform(code, id) {
-      const url = pathToFileURL(id)
-      url.searchParams.delete('v')
-      id = fileURLToPath(url).replace(/\\/g, '/')
-
-      if (id.includes(splitPrefix)) {
-        const splitFileCode = await handleSplittingFile(code, id)
-        return splitFileCode
-      } else if (
-        fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
-        (code.includes('createRoute(') || code.includes('createFileRoute('))
-      ) {
-        const compiledFileCode = await handleCompilingFile(code, id)
-        return compiledFileCode
-      }
-
-      return null
+    /**
+     * This `loadInclude` method currently only gets called on the `load` method
+     * https://github.com/unjs/unplugin/blob/a01da85ed2f9924e8361df14a21e887e14bf0e67/src/rspack/index.ts#L65-L78
+     *   -> https://github.com/unjs/unplugin/blob/a01da85ed2f9924e8361df14a21e887e14bf0e67/src/utils.ts#L38
+     */
+    // in Unplugin, this is only used
+    loadInclude(id) {
+      return fileIsInRoutesDirectory(id, userConfig.routesDirectory)
     },
 
-    resolveId(id) {
-      if (!userConfig.experimental?.enableCodeSplitting) {
-        return null
-      }
+    /**
+     * TODO: The issue seems to be in the transform method from unplugin.
+     * Even with the transform method doing absolute nothing, plugin still errors or with [html-rspack-plugin]
+     * https://github.com/unjs/unplugin/blob/a01da85ed2f9924e8361df14a21e887e14bf0e67/src/rspack/index.ts#L81-L88
+     *   -> https://github.com/unjs/unplugin/blob/a01da85ed2f9924e8361df14a21e887e14bf0e67/src/utils.ts#L50-L65
+     */
+    //
+    // async transform(code, id) {
+    //   console.log('transform.id', id)
+    //   return code
+    // },
 
-      if (id.startsWith(JoinedSplitPrefix)) {
-        return id.replace(JoinedSplitPrefix, '')
-      }
+    /**
+     * This is the TanStack Router specific transform implementation that so far correctly outputs.
+     * */
+    // async transform(code, id) {
+    //   // return code
+    //   const url = pathToFileURL(id)
+    //   url.searchParams.delete('v')
+    //   id = fileURLToPath(url).replace(/\\/g, '/')
 
-      return null
-    },
+    //   if (id.includes(splitPrefix)) {
+    //     const splitFileCode = await handleSplittingFile(code, id)
+    //     console.log(id, '\n', splitFileCode.code)
+    //     return splitFileCode
+    //   } else if (
+    //     fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
+    //     (code.includes('createRoute(') || code.includes('createFileRoute('))
+    //   ) {
+    //     const compiledFileCode = await handleCompilingFile(code, id)
+    //     console.log(id, '\n', compiledFileCode.code)
+    //     return compiledFileCode
+    //   }
+
+    //   return null
+    // },
   }
 }
