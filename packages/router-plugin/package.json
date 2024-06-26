@@ -101,6 +101,7 @@
     "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.20.6",
+    "babel-dead-code-elimination": "^1.0.1",
     "unplugin": "^1.10.1",
     "zod": "^3.22.4"
   }
