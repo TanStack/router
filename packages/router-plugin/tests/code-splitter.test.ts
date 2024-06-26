@@ -1,8 +1,10 @@
 import { readFile, readdir } from 'fs/promises'
 import path from 'path'
 import { describe, expect, it } from 'vitest'
-import { compileAst } from '../src/ast'
-import { compileFile, splitFile } from '../src/compilers'
+import {
+  getCodeSplitReferenceRoute,
+  getCodeSplitVirtualRoute,
+} from '../src/compilers'
 import { splitPrefix } from '../src/constants'
 
 async function getFilenames() {
@@ -20,28 +22,24 @@ describe('code-splitter works', async () => {
       )
       const code = file.toString()
 
-      const compilerResult = await compileFile({
+      const referenceRouteResult = getCodeSplitReferenceRoute({
         code,
-        compileAst: compileAst({
-          root: './code-splitter/test-files',
-        }),
+        root: './code-splitter/test-files',
         filename,
       })
 
-      await expect(compilerResult.code).toMatchFileSnapshot(
+      await expect(referenceRouteResult.code).toMatchFileSnapshot(
         `./code-splitter/snapshots/${filename}`,
-        `Compiled file for "${filename}" should match snapshot`,
+        `New Compiled file for "${filename}" should match snapshot`,
       )
 
-      const splitResult = await splitFile({
+      const splitRouteResult = getCodeSplitVirtualRoute({
         code,
-        compileAst: compileAst({
-          root: './code-splitter/test-files',
-        }),
+        root: './code-splitter/test-files',
         filename: `${filename}?${splitPrefix}`,
       })
 
-      await expect(splitResult.code).toMatchFileSnapshot(
+      await expect(splitRouteResult.code).toMatchFileSnapshot(
         `./code-splitter/snapshots/${filename.replace('.tsx', '')}@split.tsx`,
         `Split file for "${filename}" should match snapshot`,
       )
