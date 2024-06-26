@@ -31,7 +31,7 @@ export async function renderPosts() {
                 </Link> */}
               </li>
             )
-          }
+          },
         )}
       </ul>
       <hr />
