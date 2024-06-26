@@ -1117,16 +1117,7 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-      // if the router is loading the previous location is what
-      // we should use because the old matches are still around
-      // and the latest location has already been updated.
-      // If the router is not loading we should always use the
-      // latest location because resolvedLocation can lag behind
-      // and the new matches could already render
-      const currentLocation = this.state.isLoading
-        ? this.state.resolvedLocation
-        : this.latestLocation
-
+      const currentLocation = this.latestLocation
       const location = dest._fromLocation ?? currentLocation
 
       let fromPath = location.pathname
