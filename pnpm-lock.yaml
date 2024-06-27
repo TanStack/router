@@ -1065,18 +1065,6 @@ importers:
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
-      '@vinxi/react-server-dom':
-        specifier: ^0.0.3
-        version: 0.0.3(react-dom@0.0.0-experimental-035a41c4e-20230704(react@0.0.0-experimental-035a41c4e-20230704))(react@0.0.0-experimental-035a41c4e-20230704)(vite@5.2.11(@types/node@20.14.8)(terser@5.31.0))
-      isbot:
-        specifier: ^3.7.0
-        version: 3.8.0
-      react:
-        specifier: 0.0.0-experimental-035a41c4e-20230704
-        version: 0.0.0-experimental-035a41c4e-20230704
-      react-dom:
-        specifier: 0.0.0-experimental-035a41c4e-20230704
-        version: 0.0.0-experimental-035a41c4e-20230704(react@0.0.0-experimental-035a41c4e-20230704)
       redaxios:
         specifier: ^0.5.0
         version: 0.5.1
@@ -8062,11 +8050,6 @@ packages:
   rc9@2.1.1:
     resolution: {integrity: sha512-lNeOl38Ws0eNxpO3+wD1I9rkHGQyj1NU1jlzv4go2CtEnEQEUfqnIvZG7W+bC/aXdJ27n5x/yUjb6RoT9tko+Q==}
 
-  react-dom@0.0.0-experimental-035a41c4e-20230704:
-    resolution: {integrity: sha512-FKPJEfob8wpaEDAStDbpaii8shrxGjfvq4dvl3LU7LS2vJlEgG/xG3t5MZUZCDRSnPDPdbG7gW+OR7Sz8HdLzw==}
-    peerDependencies:
-      react: 0.0.0-experimental-035a41c4e-20230704
-
   react-dom@18.3.0-canary-0cdfef19b-20231211:
     resolution: {integrity: sha512-QYGE64TfLagDxz1GesLiaudvyJ6i9SDy8uup5Lx9h7rwZwoywUtzaPUY9a+MjqXhEOHbPxajrkpkhZ2xutR39Q==}
     peerDependencies:
@@ -8143,10 +8126,6 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
-
-  react@0.0.0-experimental-035a41c4e-20230704:
-    resolution: {integrity: sha512-3mSj9BVq2QS0V4dNfMFGYwLzSElDgu3CDohVcdxBlqaWYBLLS+mX5l8XMHI08lANZGIThueLe9xk7b/pT9Aj5Q==}
-    engines: {node: '>=0.10.0'}
 
   react@18.3.0-canary-0cdfef19b-20231211:
     resolution: {integrity: sha512-+Pkvj3ukUbbFqfZsuXAYlVvis3shVapv3HvX+QClpJN+O3NT71tHUw43RHyGLkuc/9e2X3R1kvhPBKSGy8p/Wg==}
@@ -8385,9 +8364,6 @@ packages:
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
-
-  scheduler@0.0.0-experimental-035a41c4e-20230704:
-    resolution: {integrity: sha512-pjlAdefJEOqgzr77WBcHGtZosp32rocRxA/z1wddibjfmHV/PTvoMMC+qZKxebQI0l6835hnFCm24hgpgHpADA==}
 
   scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
@@ -12635,13 +12611,6 @@ snapshots:
       tslib: 2.6.2
       vinxi: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.14.8)(ioredis@5.4.1)(terser@5.31.0)
 
-  '@vinxi/react-server-dom@0.0.3(react-dom@0.0.0-experimental-035a41c4e-20230704(react@0.0.0-experimental-035a41c4e-20230704))(react@0.0.0-experimental-035a41c4e-20230704)(vite@5.2.11(@types/node@20.14.8)(terser@5.31.0))':
-    dependencies:
-      acorn-loose: 8.3.0
-      react: 0.0.0-experimental-035a41c4e-20230704
-      react-dom: 0.0.0-experimental-035a41c4e-20230704(react@0.0.0-experimental-035a41c4e-20230704)
-      vite: 5.2.11(@types/node@20.14.8)(terser@5.31.0)
-
   '@vinxi/react-server-dom@0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))':
     dependencies:
       acorn-loose: 8.3.0
@@ -16398,12 +16367,6 @@ snapshots:
       destr: 2.0.3
       flat: 5.0.2
 
-  react-dom@0.0.0-experimental-035a41c4e-20230704(react@0.0.0-experimental-035a41c4e-20230704):
-    dependencies:
-      loose-envify: 1.4.0
-      react: 0.0.0-experimental-035a41c4e-20230704
-      scheduler: 0.0.0-experimental-035a41c4e-20230704
-
   react-dom@18.3.0-canary-0cdfef19b-20231211(react@18.3.0-canary-0cdfef19b-20231211):
     dependencies:
       loose-envify: 1.4.0
@@ -16476,10 +16439,6 @@ snapshots:
       tslib: 2.6.2
     optionalDependencies:
       '@types/react': 18.3.1
-
-  react@0.0.0-experimental-035a41c4e-20230704:
-    dependencies:
-      loose-envify: 1.4.0
 
   react@18.3.0-canary-0cdfef19b-20231211:
     dependencies:
@@ -16759,10 +16718,6 @@ snapshots:
   saxes@6.0.0:
     dependencies:
       xmlchars: 2.2.0
-
-  scheduler@0.0.0-experimental-035a41c4e-20230704:
-    dependencies:
-      loose-envify: 1.4.0
 
   scheduler@0.23.2:
     dependencies:
