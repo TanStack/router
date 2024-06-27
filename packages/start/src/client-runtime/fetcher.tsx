@@ -4,8 +4,6 @@ import {
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
-// @ts-expect-error
-import rscClient from '@vinxi/react-server-dom/client'
 import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,

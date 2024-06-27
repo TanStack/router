@@ -12,7 +12,6 @@
     "format": "prettier --write '**/*' --ignore-unknown"
   },
   "dependencies": {
-    "@babel/plugin-syntax-jsx": "^7.24.1",
     "@babel/plugin-syntax-typescript": "^7.24.1",
     "@tanstack/react-router": "^1.40.0",
     "@tanstack/router-devtools": "^1.40.0",
