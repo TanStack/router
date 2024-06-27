@@ -920,13 +920,6 @@ const router = createRouter({
   defaultPreloadStaleTime: 0,
 })
 
-// router.subscribe('onResolved', ({ pathChanged }) => {
-//   if (pathChanged) {
-//     console.log('invalidate')
-//     queryClient.getMutationCache().clear()
-//   }
-// })
-
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router

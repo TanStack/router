@@ -92,7 +92,7 @@ export async function fetchInvoiceById(id: number) {
 export async function postInvoice(partialInvoice: Partial<Invoice>) {
   return actionDelayFn(() => {
     if (partialInvoice.title?.includes('error')) {
-      console.log('error')
+      console.error('error')
       throw new Error('Ouch!')
     }
     const invoice = {

@@ -28,7 +28,7 @@ type PhotoType = {
 class NotFoundError extends Error {}
 
 const fetchPhotos = async () => {
-  console.log('Fetching photos...')
+  console.info('Fetching photos...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<PhotoType[]>('https://jsonplaceholder.typicode.com/photos')
@@ -36,7 +36,7 @@ const fetchPhotos = async () => {
 }
 
 const fetchPhoto = async (photoId: string) => {
-  console.log(`Fetching photo with id ${photoId}...`)
+  console.info(`Fetching photo with id ${photoId}...`)
   await new Promise((r) => setTimeout(r, 500))
   const photo = await axios
     .get<PhotoType>(`https://jsonplaceholder.typicode.com/photos/${photoId}`)

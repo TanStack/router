@@ -1,9 +1,16 @@
 // @ts-nocheck
 
+// import { getBaseUrl } from '../client-runtime/getBaseUrl'
+
 export function createServerReference<TPayload, TResponse>(
-  _fn: any,
+  fn: any,
   id: string,
   name: string,
 ) {
-  return _fn
+  // const functionUrl = getBaseUrl('http://localhost:3000', id, name)
+  const functionUrl = 'https://localhost:3000'
+
+  return Object.assign(fn, {
+    url: functionUrl,
+  })
 }

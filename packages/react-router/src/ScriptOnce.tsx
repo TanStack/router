@@ -16,7 +16,7 @@ export function ScriptOnce({
         __html: [
           children,
           (log ?? true) && process.env.NODE_ENV === 'development'
-            ? `console.log('ScriptOnce', ${JSON.stringify(children)})`
+            ? `console.info('ScriptOnce', ${JSON.stringify(children)})`
             : '',
         ]
           .filter(Boolean)

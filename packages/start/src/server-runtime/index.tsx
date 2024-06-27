@@ -7,7 +7,8 @@ import {
   handleHTTPEvent,
   setResponseHeaders,
 } from 'vinxi/http'
-import { fetcher, getBaseUrl } from '../client-runtime'
+import { fetcher } from '../client-runtime'
+import { getBaseUrl } from '../client-runtime/getBaseUrl'
 import type { WritableOptions } from 'node:stream'
 import type { FetchFn } from '../client'
 /**
@@ -89,10 +90,10 @@ export function createServerReference<TPayload, TResponse>(
   id: string,
   name: string,
 ) {
-  const base = getBaseUrl('http://localhost:3000', id, name)
+  const functionUrl = getBaseUrl('http://localhost:3000', id, name)
 
   const proxyFn = (...args: Array<any>) =>
-    fetcher(base, args, async (request) => {
+    fetcher(functionUrl, args, async (request) => {
       const event = getEvent()
 
       const ogRequestHeaders = getRequestHeaders(event)
@@ -144,6 +145,6 @@ export function createServerReference<TPayload, TResponse>(
     })
 
   return Object.assign(proxyFn, {
-    url: base,
+    url: functionUrl,
   })
 }

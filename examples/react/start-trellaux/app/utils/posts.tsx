@@ -9,7 +9,7 @@ export type PostType = {
 }
 
 export const fetchPost = createServerFn('GET', async (postId: string) => {
-  console.log(`Fetching post with id ${postId}...`)
+  console.info(`Fetching post with id ${postId}...`)
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
@@ -24,7 +24,7 @@ export const fetchPost = createServerFn('GET', async (postId: string) => {
 })
 
 export const fetchPosts = createServerFn('GET', async () => {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   return axios
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))

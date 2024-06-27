@@ -4,7 +4,7 @@ import { PostType } from '../posts'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params }) => {
-    console.log(`Fetching post with id ${params.postId}...`)
+    console.info(`Fetching post with id ${params.postId}...`)
 
     await new Promise((r) => setTimeout(r, Math.round(Math.random() * 300)))
 

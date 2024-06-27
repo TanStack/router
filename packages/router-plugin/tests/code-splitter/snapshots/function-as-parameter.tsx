@@ -4,16 +4,16 @@ import { useMemo } from 'tan-react';
 const ReactUseMemoCall1 = React.useMemo(function performAction() {
   return 'true';
 }, []);
-console.log(ReactUseMemoCall1);
+console.info(ReactUseMemoCall1);
 const ReactUseMemoCall2 = React.useMemo(() => {
   return 'true';
 }, []);
-console.log(ReactUseMemoCall2);
+console.info(ReactUseMemoCall2);
 const UseMemoCall1 = useMemo(function performAction() {
   return 'true';
 }, []);
-console.log(UseMemoCall1);
+console.info(UseMemoCall1);
 const UseMemoCall2 = useMemo(() => {
   return 'true';
 }, []);
-console.log(UseMemoCall2);
+console.info(UseMemoCall2);

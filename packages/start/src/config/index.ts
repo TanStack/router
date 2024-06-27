@@ -43,13 +43,6 @@ const routersSchema = z.object({
     })
     .optional()
     .default({}),
-  // rsc: z
-  //   .object({
-  //     entry: z.string().default('./app/rsc.tsx'),
-  //     vite: viteSchema,
-  //   })
-  //   .optional()
-  //   .default({}),
   client: z
     .object({
       entry: z.string().optional().default('./app/client.tsx'),
@@ -131,6 +124,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
             exclude: opts.react.exclude,
             include: opts.react.include,
           }),
+          // TODO: RSCS - enable this
           // serverComponents.client(),
         ],
       }),
@@ -164,15 +158,18 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
         type: 'http',
         target: 'server',
         base: serverBase,
-        worker: true,
+        // TODO: RSCS - enable this
+        // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => [
           serverFunctions.server({
             runtime: '@tanstack/start/react-server-runtime',
+            // TODO: RSCS - remove this
             resolve: {
               conditions: [],
             },
           }),
+          // TODO: RSCs - add this
           // serverComponents.serverActions({
           //   resolve: {
           //     conditions: [

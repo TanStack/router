@@ -9,7 +9,7 @@ export type PostType = {
 
 export const Route = createFileRoute('/posts')({
   loader: async () => {
-    console.log('Fetching posts...')
+    console.info('Fetching posts...')
     await new Promise((r) =>
       setTimeout(r, 300 + Math.round(Math.random() * 300)),
     )

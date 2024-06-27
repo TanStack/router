@@ -3,7 +3,7 @@ import * as React from 'react'
 import type { PostType } from '../posts'
 
 async function fetchPostById(postId: string) {
-  console.log(`Fetching post with id ${postId}...`)
+  console.info(`Fetching post with id ${postId}...`)
 
   await new Promise((r) => setTimeout(r, 100 + Math.round(Math.random() * 100)))
 
