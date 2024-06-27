@@ -38,6 +38,8 @@ const babelSchema = z
 const reactSchema = z
   .object({
     babel: babelSchema,
+    exclude: z.array(z.instanceof(RegExp)).optional(),
+    include: z.array(z.instanceof(RegExp)).optional(),
   })
   .optional()
   .default({})
@@ -171,6 +173,8 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           }),
           reactRefresh({
             babel: opts.react.babel,
+            exclude: opts.react.exclude,
+            include: opts.react.include,
           }),
           // serverComponents.client(),
         ],
