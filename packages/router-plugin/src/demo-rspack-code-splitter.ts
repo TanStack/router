@@ -123,6 +123,14 @@ export const unpluginRsPackRouterCodeSplitterFactory: UnpluginFactory<
           },
         )
       })
+      compiler.options.module.rules.push({
+        test: (id) => fileIsInRoutesDirectory(id, userConfig.routesDirectory),
+        //@ts-ignore
+        use(data) {
+          // console.log(data)
+          return 'module.exports = "your code here"'
+        },
+      })
       // TODO: explore replacing the above hook with https://webpack.js.org/plugins/normal-module-replacement-plugin/
     },
 
