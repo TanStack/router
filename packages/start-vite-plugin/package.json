@@ -62,8 +62,6 @@
     "@babel/generator": "^7.24.7",
     "@babel/plugin-syntax-jsx": "^7.24.7",
     "@babel/plugin-syntax-typescript": "^7.24.7",
-    "@babel/plugin-transform-react-jsx": "^7.24.7",
-    "@babel/plugin-transform-typescript": "^7.24.7",
     "@babel/template": "^7.24.7",
     "@babel/traverse": "^7.24.7",
     "@babel/types": "^7.24.7",

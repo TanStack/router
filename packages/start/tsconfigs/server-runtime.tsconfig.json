@@ -5,6 +5,6 @@
     "outDir": "../dist/esm/server-runtime",
     "target": "esnext",
     "noEmit": false,
-    "jsx": "react"
+    "jsx": "react-jsx"
   }
 }

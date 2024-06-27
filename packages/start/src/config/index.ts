@@ -1,6 +1,5 @@
-/* eslint-disable no-shadow */
 import path from 'node:path'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
@@ -9,8 +8,8 @@ import { TanStackStartVite } from '@tanstack/start-vite-plugin'
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
-// @ts-expect-error
-import { serverComponents } from '@vinxi/server-components/plugin'
+// // @ts-expect-error
+// import { serverComponents } from '@vinxi/server-components/plugin'
 // @ts-expect-error
 import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
@@ -133,7 +132,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
             exclude: opts.react.exclude,
             include: opts.react.include,
           }),
-          serverComponents.client(),
+          // serverComponents.client(),
         ],
       }),
       withStartPlugins(tsrConfig)({
@@ -170,23 +169,23 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
         handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => [
           serverFunctions.server({
-            resolve: {
-              conditions: ['react-server'],
-            },
             runtime: '@tanstack/start/react-server-runtime',
-          }),
-          serverComponents.serverActions({
             resolve: {
-              conditions: [
-                'react-server',
-                // 'node',
-                'import',
-                process.env.NODE_ENV,
-              ],
+              // conditions: ['react-server', 'import', process.env.NODE_ENV],
             },
-            runtime: '@vinxi/react-server-dom/runtime',
-            transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
           }),
+          // serverComponents.serverActions({
+          //   resolve: {
+          //     conditions: [
+          //       'react-server',
+          //       // 'node',
+          //       'import',
+          //       process.env.NODE_ENV,
+          //     ],
+          //   },
+          //   runtime: '@vinxi/react-server-dom/runtime',
+          //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
+          // }),
           // config('start-server', {
           //   ssr: {
           //     external: ['@vinxi/react-server-dom/client'],

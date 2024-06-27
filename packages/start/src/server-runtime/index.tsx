@@ -7,7 +7,6 @@ import {
   handleHTTPEvent,
   setResponseHeaders,
 } from 'vinxi/http'
-// import * as ReactServerDOM from '@vinxi/react-server-dom/client'
 import { fetcher, getBaseUrl } from '../client-runtime'
 import type { WritableOptions } from 'node:stream'
 import type { FetchFn } from '../client'

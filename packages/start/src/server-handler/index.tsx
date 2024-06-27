@@ -8,7 +8,6 @@ import {
   serverFnReturnTypeHeader,
 } from '../constants'
 import type { H3Event } from 'vinxi/server'
-import type { Stream } from 'stream'
 
 export default eventHandler(handleServerAction) as any
 
