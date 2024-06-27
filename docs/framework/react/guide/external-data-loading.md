@@ -166,8 +166,8 @@ export function createRouter() {
     context: {
       queryClient,
     },
-    // On the server, dehydrate the loader client and return it
-    // to the router to get injected into `<DehydrateRouter />`
+    // On the server, dehydrate the loader client so the router
+    // can serialize it and send it to the client for us
     dehydrate: () => {
       return {
         queryClientState: dehydrate(queryClient),

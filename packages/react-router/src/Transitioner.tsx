@@ -52,7 +52,7 @@ export function Transitioner() {
   // Try to load the initial location
   useLayoutEffect(() => {
     if (
-      window.__TSR_DEHYDRATED__ ||
+      window.__TSR__?.dehydrated ||
       (mountLoadForRouter.current.router === router &&
         mountLoadForRouter.current.mounted)
     ) {

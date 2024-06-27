@@ -1,14 +1,8 @@
 import { Readable, Writable } from 'node:stream'
-import {
-  H3Event,
-  getEvent,
-  getRequestHeaders,
-  getResponseHeaders,
-  handleHTTPEvent,
-  setResponseHeaders,
-} from 'vinxi/http'
+import { getEvent, getRequestHeaders } from 'vinxi/http'
 import { fetcher } from '../client-runtime'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
+import { handleServerRequest } from '../server-handler'
 import type { WritableOptions } from 'node:stream'
 import type { FetchFn } from '../client'
 /**
@@ -55,6 +49,7 @@ function createAsyncStream(options?: WritableOptions) {
   const writable = new Writable({
     ...options,
     write(chunk, encoding, callback) {
+      console.log('writing chunk', chunk.toString())
       if (!firstActivity) {
         firstActivity = true
         resolveActivity()
@@ -104,44 +99,54 @@ export function createServerReference<TPayload, TResponse>(
         }
       })
 
-      // We need to proxy this request back to the server under
-      // the /_server path and let the RSC/Server-fn router handle it
+      //   // For RSC, we need to proxy this request back to the server under
+      //   // the /_server path and let the RSC/Server-fn router handle it
+      // if (RSC) {
 
-      const incomingMessage = createIncomingMessage(
-        new URL(request.url).pathname + new URL(request.url).search,
-        request.method,
-        Object.fromEntries(request.headers.entries()),
-      )
+      //   const incomingMessage = createIncomingMessage(
+      //     new URL(request.url).pathname + new URL(request.url).search,
+      //     request.method,
+      //     Object.fromEntries(request.headers.entries()),
+      //   )
 
-      const asyncStream = createAsyncStream()
+      //   const asyncStream = createAsyncStream()
 
-      await handleHTTPEvent(
-        new H3Event(incomingMessage as any, asyncStream.writable),
-      )
+      //   const result = await handleHTTPEvent(
+      //     new H3Event(incomingMessage as any, asyncStream.writable),
+      //   )
 
-      await asyncStream.initialPromise
+      //   console.log('awaiting initial promise', result, asyncStream)
 
-      // Only augment the headers of the underlying document request
-      // if the response headers have not been sent yet
-      if (!(event as any).__tsrHeadersSent) {
-        const ogResponseHeaders = getResponseHeaders(event)
+      //   await asyncStream.initialPromise
 
-        asyncStream.headers.forEach((value, key) => {
-          if (!Object.hasOwn(ogResponseHeaders, key)) {
-            ogResponseHeaders[key] = value
-          }
-        })
+      //   // Only augment the headers of the underlying document request
+      //   // if the response headers have not been sent yet
+      //   if (!(event as any).__tsrHeadersSent) {
+      //     const ogResponseHeaders = getResponseHeaders(event)
 
-        setResponseHeaders(event, ogResponseHeaders as any)
-      }
+      //     asyncStream.headers.forEach((value, key) => {
+      //       if (!Object.hasOwn(ogResponseHeaders, key)) {
+      //         ogResponseHeaders[key] = value
+      //       }
+      //     })
 
-      // if (asyncStream.headers.get('content-type') === 'application/json') {
-      //   await asyncStream.finishPromise
+      //     setResponseHeaders(event, ogResponseHeaders as any)
+      //   }
+
+      //   console.log(asyncStream.readable)
+
+      //   // if (asyncStream.headers.get('content-type') === 'application/json') {
+      //   //   await asyncStream.finishPromise
+      //   // }
+
+      //   return new Response(Readable.toWeb(asyncStream.readable) as any, {
+      //     headers: asyncStream.headers,
+      //   })
       // }
 
-      return new Response(Readable.toWeb(asyncStream.readable) as any, {
-        headers: asyncStream.headers,
-      })
+      // For now, we're not doing RSC, so we just handle the request
+      // in the current non-worker scope
+      return handleServerRequest(request, event)
     })
 
   return Object.assign(proxyFn, {

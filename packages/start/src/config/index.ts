@@ -215,9 +215,9 @@ function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
           ssr: {
             noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
           },
-          optimizeDeps: {
-            include: ['@tanstack/start/server-runtime'],
-          },
+          // optimizeDeps: {
+          //   include: ['@tanstack/start/server-runtime'],
+          // },
         }),
         TanStackRouterVite({
           ...tsrConfig,

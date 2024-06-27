@@ -11,6 +11,5 @@ export const Route = createFileRoute('/posts')({
 })
 
 function PostsComponent() {
-  console.info('render PostsComponent')
   return renderRsc(Route.useLoaderData())
 }

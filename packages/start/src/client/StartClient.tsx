@@ -15,7 +15,7 @@ export function StartClient(props: { router: AnyRouter }) {
 
   if (!cleaned) {
     cleaned = true
-    window.__TSR__.cleanScripts()
+    window.__TSR__?.cleanScripts()
   }
 
   return <RouterProvider router={props.router} />

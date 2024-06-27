@@ -1,4 +1,3 @@
-import { type Readable } from 'stream'
 import * as React from 'react'
 import {
   ScriptOnce,
@@ -12,6 +11,7 @@ import {
 } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import invariant from 'tiny-invariant'
+import { Context } from '@tanstack/react-cross-context'
 import type {
   AnyRouteMatch,
   AnyRouter,
@@ -80,8 +80,8 @@ export function serializeLoaderData(
 
 export function afterHydrate({ router }: { router: AnyRouter }) {
   router.state.matches.forEach((match) => {
-    match.loaderData = window.__TSR__.matches[match.index]?.loaderData
-    const extracted = window.__TSR__.matches[match.index]?.extracted
+    match.loaderData = window.__TSR__?.matches[match.index]?.loaderData
+    const extracted = window.__TSR__?.matches[match.index]?.extracted
 
     if (extracted) {
       Object.entries(extracted).forEach(([_, ex]: any) => {
@@ -93,6 +93,11 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
 
 export function AfterEachMatch(props: { match: any; matchIndex: number }) {
   const router = useRouter()
+
+  const dehydratedCtx = React.useContext(
+    Context.get('TanStackRouterHydrationContext', {}),
+  )
+
   const fullMatch = router.state.matches[props.matchIndex]!
 
   if (!router.isServer) {
@@ -118,9 +123,10 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
   return (
     <>
       {fullMatch.routeId === rootRouteId ? (
-        <ScriptOnce
-          log={false}
-          children={`
+        <>
+          <ScriptOnce
+            log={false}
+            children={`
 window.__TSR__ = {
   matches: [],
   initMatch: (index) => {
@@ -142,9 +148,21 @@ window.__TSR__ = {
     document.querySelectorAll('.tsr-once').forEach((el) => {
       el.remove()
     })
-  }
+  },
 }`}
-        />
+          />
+          <ScriptOnce
+            children={`
+window.__TSR__.dehydrated = ${jsesc(
+              router.options.transformer.stringify(dehydratedCtx),
+              {
+                isScriptContext: true,
+                wrap: true,
+                json: true,
+              },
+            )}`}
+          />
+        </>
       ) : null}
       {serializedLoaderData !== undefined || extracted ? (
         <ScriptOnce

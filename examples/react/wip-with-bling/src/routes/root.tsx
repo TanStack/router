@@ -5,7 +5,6 @@ import {
   Outlet,
   createRootRouteWithContext,
 } from '@tanstack/react-router'
-import { DehydrateRouter } from '@tanstack/start'
 
 export const rootRoute = createRootRouteWithContext<{
   head: string
@@ -60,7 +59,6 @@ function Root() {
         <hr />
         <Outlet /> {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
-        <DehydrateRouter />
       </body>
     </html>
   )
