@@ -5,13 +5,13 @@
   "packageManager": "pnpm@8.10.2",
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
+    "dev": "vinxi dev --port=3001",
     "build": "vinxi build",
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
     "format": "prettier --write '**/*' --ignore-unknown",
     "test:e2e": "playwright test --project=chromium",
-    "test:e2e:replay": "playwright test --project=replay-chromium"
+    "test:e2e:replay": "REPLAY_PLAYWRIGHT_PLUGIN_SERVER_PORT=52026 playwright test --project=replay-chromium"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.48.0",
