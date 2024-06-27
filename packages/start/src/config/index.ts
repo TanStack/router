@@ -96,7 +96,6 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
   const clientEntry = opts.routers.client.entry
   const ssrEntry = opts.routers.ssr.entry
   const serverBase = opts.routers.server.base
-  // const rscEntry = opts.routers.rsc.entry
 
   return createApp({
     server: {
@@ -171,7 +170,7 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           serverFunctions.server({
             runtime: '@tanstack/start/react-server-runtime',
             resolve: {
-              // conditions: ['react-server', 'import', process.env.NODE_ENV],
+              conditions: [],
             },
           }),
           // serverComponents.serverActions({
@@ -185,14 +184,6 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           //   },
           //   runtime: '@vinxi/react-server-dom/runtime',
           //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
-          // }),
-          // config('start-server', {
-          //   ssr: {
-          //     external: ['@vinxi/react-server-dom/client'],
-          //   },
-          //   optimizeDeps: {
-          //     exclude: ['@vinxi/react-server-dom/client'],
-          //   },
           // }),
           ...(opts.vite.plugins?.() || []),
           ...(opts.routers.server.vite.plugins?.() || []),
