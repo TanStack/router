@@ -14,6 +14,7 @@ export const fetchPost = createServerFn('GET', async (postId: string) => {
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
     .catch((err) => {
+      console.log(err)
       if (err.status === 404) {
         throw notFound()
       }

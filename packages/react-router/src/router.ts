@@ -84,11 +84,11 @@ import type { ErrorInfo } from 'react'
 
 declare global {
   interface Window {
-    __TSR__: {
+    __TSR__?: {
       matches: Array<any>
       cleanScripts: () => void
+      dehydrated?: any
     }
-    __TSR_DEHYDRATED__?: { data: string }
     __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any>>
   }
 }
@@ -2356,12 +2356,12 @@ export class Router<
     let _ctx = __do_not_use_server_ctx
     // Client hydrates from window
     if (typeof document !== 'undefined') {
-      _ctx = window.__TSR_DEHYDRATED__?.data
+      _ctx = window.__TSR__?.dehydrated
     }
 
     invariant(
       _ctx,
-      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Please file an issue!',
+      'Expected to find a dehydrated data on window.__TSR__.dehydrated... but we did not. Please file an issue!',
     )
 
     const ctx = this.options.transformer.parse(_ctx) as HydrationCtx

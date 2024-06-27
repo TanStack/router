@@ -1,6 +1,5 @@
 'use client'
 
-/* eslint-disable no-shadow */
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'

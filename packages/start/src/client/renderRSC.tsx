@@ -2,6 +2,7 @@
 // // @ts-expect-error
 // import * as reactDom from '@vinxi/react-server-dom/client'
 import { isValidElement } from 'react'
+import invariant from 'tiny-invariant'
 
 export function renderRsc(input: any): JSX.Element {
   if (isValidElement(input)) {
@@ -66,7 +67,9 @@ export function renderRsc(input: any): JSX.Element {
           //   }
           // }
 
-          return element
+          // return element
+
+          invariant(false, 'renderRSC() is coming soon!')
         })
         .then((element) => {
           input.state.value = element
