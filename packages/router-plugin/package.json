@@ -52,8 +52,8 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
-    "test:unit": "vitest --typecheck",
-    "test:unit:dev": "pnpm run test:unit --watch",
+    "test:unit": "vitest --watch=false",
+    "test:unit:dev": "vitest --watch",
     "test:eslint": "eslint --ext .ts,.tsx ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
