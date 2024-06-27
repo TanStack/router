@@ -21,13 +21,13 @@ export default defineConfig({
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3001/',
+    baseURL: 'http://localhost:3000/',
   },
 
   webServer: {
     // TODO: build && start seems broken, use that if it's working
     command: 'pnpm run dev',
-    url: 'http://localhost:3001',
+    url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
   },
