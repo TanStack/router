@@ -294,10 +294,10 @@ import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/posts')({
   // Pass the fetchPosts function to the route context
   beforeLoad: () => ({
-    fetchPosts: () => console.log('foo'),
+    fetchPosts: () => console.info('foo'),
   }),
   loader: ({ context: { fetchPosts } }) => {
-    console.log(fetchPosts()) // 'foo'
+    console.info(fetchPosts()) // 'foo'
 
     // ...
   },

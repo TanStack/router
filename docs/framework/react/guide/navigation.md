@@ -469,7 +469,7 @@ function Component() {
 
   useEffect(() => {
     if (matchRoute({ to: '/users', pending: true })) {
-      console.log('The /users route is matched and pending')
+      console.info('The /users route is matched and pending')
     }
   })
 

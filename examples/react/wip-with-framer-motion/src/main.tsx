@@ -23,7 +23,7 @@ type PostType = {
 }
 
 const fetchPosts = async () => {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
@@ -31,7 +31,7 @@ const fetchPosts = async () => {
 }
 
 const fetchPost = async (postId: string) => {
-  console.log(`Fetching post with id ${postId}...`)
+  console.info(`Fetching post with id ${postId}...`)
   await new Promise((r) => setTimeout(r, 500))
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
@@ -72,9 +72,6 @@ const rootRoute = createRootRoute({
     const match = useMatch({ strict: false })
     const nextMatchIndex = matches.findIndex((d) => d.id === match.id) + 1
     const nextMatch = matches[nextMatchIndex]
-    // const routerState = useRouterState()
-
-    console.log(nextMatch.id)
 
     return (
       <>

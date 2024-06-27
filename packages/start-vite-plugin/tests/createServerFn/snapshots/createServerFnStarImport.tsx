@@ -3,14 +3,14 @@ import { z } from 'zod';
 export const withUseServer = TanStackStart.createServerFn('GET', async function () {
   "use server";
 
-  console.log('Fetching posts...');
+  console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
   return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 });
 export const withoutUseServer = TanStackStart.createServerFn('GET', async () => {
   "use server";
 
-  console.log('Fetching posts...');
+  console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
   return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 });
@@ -20,7 +20,7 @@ export const withVariable = TanStackStart.createServerFn('GET', (...args: Parame
   return abstractedFunction.apply(this, args);
 });
 async function abstractedFunction() {
-  console.log('Fetching posts...');
+  console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
   return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 }

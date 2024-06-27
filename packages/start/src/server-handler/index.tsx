@@ -37,8 +37,6 @@ async function handleServerAction(event: H3Event) {
       serverFnName
     ] as Function
 
-    console.log(action)
-
     const response = await (async () => {
       try {
         const args = await (async () => {
@@ -87,31 +85,32 @@ async function handleServerAction(event: H3Event) {
           return result
         }
 
-        if (isValidElement(result)) {
-          const { renderToPipeableStream } = await import(
-            // @ts-expect-error
-            '@vinxi/react-server-dom/server'
-          )
+        // TODO: RSCs
+        // if (isValidElement(result)) {
+        //   const { renderToPipeableStream } = await import(
+        //     // @ts-expect-error
+        //     '@vinxi/react-server-dom/server'
+        //   )
 
-          const pipeableStream = renderToPipeableStream(result)
+        //   const pipeableStream = renderToPipeableStream(result)
 
-          setHeaders(event, {
-            'Content-Type': 'text/x-component',
-            [serverFnReturnTypeHeader]: 'rsc',
-          } as any)
+        //   setHeaders(event, {
+        //     'Content-Type': 'text/x-component',
+        //     [serverFnReturnTypeHeader]: 'rsc',
+        //   } as any)
 
-          sendStream(event, pipeableStream)
+        //   sendStream(event, pipeableStream)
 
-          event._handled = true
+        //   event._handled = true
 
-          return new Response(null, {
-            status: 200,
-            headers: {
-              'Content-Type': 'text/x-component',
-              [serverFnReturnTypeHeader]: 'rsc',
-            },
-          })
-        }
+        //   return new Response(null, {
+        //     status: 200,
+        //     headers: {
+        //       'Content-Type': 'text/x-component',
+        //       [serverFnReturnTypeHeader]: 'rsc',
+        //     },
+        //   })
+        // }
 
         return new Response(
           result !== undefined ? JSON.stringify(result) : undefined,

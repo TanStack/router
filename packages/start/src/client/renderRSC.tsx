@@ -1,5 +1,6 @@
-// @ts-expect-error
-import * as reactDom from '@vinxi/react-server-dom/client'
+// TODO: RSCs
+// // @ts-expect-error
+// import * as reactDom from '@vinxi/react-server-dom/client'
 import { isValidElement } from 'react'
 
 export function renderRsc(input: any): JSX.Element {
@@ -15,54 +16,55 @@ export function renderRsc(input: any): JSX.Element {
           let element
 
           // We're in node
-          if (reactDom.createFromNodeStream) {
-            const stream = await import('node:stream')
+          // TODO: RSCs
+          // if (reactDom.createFromNodeStream) {
+          //   const stream = await import('node:stream')
 
-            let body: any = input
+          //   let body: any = input
 
-            // Unwrap the response
-            if (input instanceof Response) {
-              body = input.body
-            }
+          //   // Unwrap the response
+          //   if (input instanceof Response) {
+          //     body = input.body
+          //   }
 
-            // Convert ReadableStream to NodeJS stream.Readable
-            if (body instanceof ReadableStream) {
-              body = stream.Readable.fromWeb(body as any)
-            }
+          //   // Convert ReadableStream to NodeJS stream.Readable
+          //   if (body instanceof ReadableStream) {
+          //     body = stream.Readable.fromWeb(body as any)
+          //   }
 
-            if (stream.Readable.isReadable(body)) {
-              // body = copyStreamToRaw(body)
-            } else if (input.text) {
-              // create a readable stream by awaiting the text method
-              body = new stream.Readable({
-                async read() {
-                  input.text().then((value: any) => {
-                    this.push(value)
-                    this.push(null)
-                  })
-                },
-              })
-            } else {
-              console.error('input', input)
-              throw new Error('Unexpected rsc input type 👆')
-            }
+          //   if (stream.Readable.isReadable(body)) {
+          //     // body = copyStreamToRaw(body)
+          //   } else if (input.text) {
+          //     // create a readable stream by awaiting the text method
+          //     body = new stream.Readable({
+          //       async read() {
+          //         input.text().then((value: any) => {
+          //           this.push(value)
+          //           this.push(null)
+          //         })
+          //       },
+          //     })
+          //   } else {
+          //     console.error('input', input)
+          //     throw new Error('Unexpected rsc input type 👆')
+          //   }
 
-            element = await reactDom.createFromNodeStream(body)
-          } else {
-            // We're in the browser
-            if (input.body instanceof ReadableStream) {
-              input = input.body
-            }
+          //   element = await reactDom.createFromNodeStream(body)
+          // } else {
+          //   // We're in the browser
+          //   if (input.body instanceof ReadableStream) {
+          //     input = input.body
+          //   }
 
-            if (input instanceof ReadableStream) {
-              element = await reactDom.createFromReadableStream(input)
-            }
+          //   if (input instanceof ReadableStream) {
+          //     element = await reactDom.createFromReadableStream(input)
+          //   }
 
-            if (input instanceof Response) {
-              // copy to the response body to cache the raw data
-              element = await reactDom.createFromFetch(input)
-            }
-          }
+          //   if (input instanceof Response) {
+          //     // copy to the response body to cache the raw data
+          //     element = await reactDom.createFromFetch(input)
+          //   }
+          // }
 
           return element
         })
@@ -78,9 +80,6 @@ export function renderRsc(input: any): JSX.Element {
   }
 
   if (input.state.status === 'pending') {
-    input.state.promise.then(() => {
-      console.log('should rerender')
-    })
     throw input.state.promise
   }
 
