@@ -2309,21 +2309,6 @@ export class Router<
     return match
   }
 
-  // We use a token -> weak map to keep track of deferred promises
-  // that are registered on the server and need to be resolved
-  registeredDeferredsIds = new Map<string, {}>()
-  registeredDeferreds = new WeakMap<{}, DeferredPromiseState<any>>()
-
-  getDeferred = (uid: string) => {
-    const token = this.registeredDeferredsIds.get(uid)
-
-    if (!token) {
-      return undefined
-    }
-
-    return this.registeredDeferreds.get(token)
-  }
-
   dehydrate = (): DehydratedRouter => {
     const pickError =
       this.options.errorSerializer?.serialize ?? defaultSerializeError
