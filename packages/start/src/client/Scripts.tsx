@@ -49,6 +49,7 @@ export const Scripts = () => {
   return (
     <>
       {allScripts.map((asset, i) => (
+        // eslint-disable-next-line @eslint-react/no-array-index-key
         <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
       ))}
     </>

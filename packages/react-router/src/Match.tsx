@@ -227,25 +227,17 @@ function MatchInner({ matchId }: { matchId: string }): any {
     throw match.loadPromise
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (match.status === 'success') {
-    const Comp = route.options.component ?? router.options.defaultComponent
+  const Comp = route.options.component ?? router.options.defaultComponent
 
-    const out = Comp ? <Comp /> : <Outlet />
+  const out = Comp ? <Comp /> : <Outlet />
 
-    return (
-      <>
-        {router.AfterEachMatch ? (
-          <router.AfterEachMatch match={match} matchIndex={matchIndex} />
-        ) : null}
-        {out}
-      </>
-    )
-  }
-
-  invariant(
-    false,
-    'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
+  return (
+    <>
+      {router.AfterEachMatch ? (
+        <router.AfterEachMatch match={match} matchIndex={matchIndex} />
+      ) : null}
+      {out}
+    </>
   )
 }
 

@@ -1,6 +1,11 @@
 import { eventHandler, toWebRequest } from 'vinxi/http'
-import { type AnyRouter, createMemoryHistory } from '@tanstack/react-router'
 import {
+  type AnyRouter,
+  type Manifest,
+  createMemoryHistory,
+} from '@tanstack/react-router'
+import {
+  type EventHandler,
   type EventHandlerRequest,
   type H3Event,
   getResponseHeaders,
@@ -12,8 +17,6 @@ import {
   serverFnReturnTypeHeader,
 } from '../constants'
 import type { StartHandler } from './defaultStreamHandler'
-import type { Manifest } from '@tanstack/react-router'
-import type { EventHandler } from 'vinxi/http'
 
 export type CustomizeStartHandler<TRouter extends AnyRouter> = (
   cb: StartHandler<TRouter>,

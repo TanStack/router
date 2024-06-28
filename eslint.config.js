@@ -12,6 +12,7 @@ export default [
       'ts/require-await': 'off',
       'no-empty': 'off',
       'no-prototype-builtins': 'off',
+      'no-shadow': 'off',
     },
   },
 ]

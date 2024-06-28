@@ -1,8 +1,15 @@
-import { eventHandler, toWebRequest } from 'vinxi/http'
-import { type AnyRouter, createMemoryHistory } from '@tanstack/react-router'
-import { getRequestHeaders } from './getRequestHeaders'
-import type { Manifest } from '@tanstack/react-router'
-import type { EventHandler } from 'vinxi/http'
+import { pipeline } from 'stream/promises'
+import {
+  type AnyRouter,
+  type Manifest,
+  createMemoryHistory,
+} from '@tanstack/react-router'
+import { serializeLoaderData } from '../client/serialization'
+import {
+  mergeHeaders,
+  serverFnPayloadTypeHeader,
+  serverFnReturnTypeHeader,
+} from '../client'
 
 export type RequestHandler<TRouter extends AnyRouter> = (ctx: {
   request: Response
@@ -12,7 +19,7 @@ export type RequestHandler<TRouter extends AnyRouter> = (ctx: {
 }) => Promise<Response>
 
 export type CustomizeRequestHandler<TRouter extends AnyRouter> = (
-  cb: StartHandler<TRouter>,
+  cb: RequestHandler<TRouter>,
 ) => Promise<void>
 
 export function createRequestHandler<TRouter extends AnyRouter>({
@@ -70,7 +77,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       }),
       router,
       responseHeaders,
-    })
+    } as any)
 
     res.statusMessage = response.statusText
     res.status(response.status)

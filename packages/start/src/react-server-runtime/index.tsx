@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 // import { getBaseUrl } from '../client-runtime/getBaseUrl'
 
 export function createServerReference<TPayload, TResponse>(
