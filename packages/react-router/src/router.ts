@@ -1,7 +1,6 @@
 import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
 import { Store } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
 import { rootRouteId } from './root'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -58,21 +57,18 @@ import type {
   ControlledPromise,
   NonNullableUpdater,
   PickAsRequired,
-  Timeout,
   Updater,
 } from './utils'
 import type {
   AnyRouteMatch,
   MakeRouteMatch,
   MatchRouteOptions,
-  RouteMatch,
 } from './Matches'
 import type { ParsedLocation } from './location'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type {
   BuildLocationFn,
   CommitLocationOptions,
-  InjectedHtmlEntry,
   NavigateFn,
 } from './RouterProvider'
 
@@ -87,7 +83,11 @@ import type { DeferredPromiseState } from './defer'
 
 declare global {
   interface Window {
-    __TSR_DEHYDRATED__?: { data: string }
+    __TSR__?: {
+      matches: Array<any>
+      cleanScripts: () => void
+      dehydrated?: any
+    }
     __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any>>
   }
 }
@@ -507,6 +507,20 @@ export class Router<
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
   manifest?: Manifest
+  AfterEachMatch?: (props: {
+    match: Pick<
+      AnyRouteMatch,
+      'id' | 'status' | 'error' | 'loadPromise' | 'minPendingPromise'
+    >
+    matchIndex: number
+  }) => any
+  serializeLoaderData?: (
+    data: any,
+    ctx: {
+      router: AnyRouter
+      match: AnyRouteMatch
+    },
+  ) => any
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -1041,6 +1055,7 @@ export class Router<
 
         match = {
           id: matchId,
+          index,
           routeId: route.id,
           params: routeParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
@@ -1957,7 +1972,13 @@ export class Router<
                       )
                     }
 
-                    const loaderData = await loaderPromise
+                    let loaderData = await loaderPromise
+                    if (this.serializeLoaderData) {
+                      loaderData = this.serializeLoaderData(loaderData, {
+                        router: this,
+                        match,
+                      })
+                    }
                     checkLatest()
 
                     handleRedirectAndNotFound(match, loaderData)
@@ -2287,38 +2308,29 @@ export class Router<
     return match
   }
 
-  // We use a token -> weak map to keep track of deferred promises
-  // that are registered on the server and need to be resolved
-  registeredDeferredsIds = new Map<string, {}>()
-  registeredDeferreds = new WeakMap<{}, DeferredPromiseState<any>>()
-
-  getDeferred = (uid: string) => {
-    const token = this.registeredDeferredsIds.get(uid)
-
-    if (!token) {
-      return undefined
-    }
-
-    return this.registeredDeferreds.get(token)
-  }
-
   dehydrate = (): DehydratedRouter => {
     const pickError =
       this.options.errorSerializer?.serialize ?? defaultSerializeError
 
     return {
       state: {
-        dehydratedMatches: this.state.matches.map((d) => ({
-          ...pick(d, ['id', 'status', 'updatedAt', 'loaderData']),
-          // If an error occurs server-side during SSRing,
-          // send a small subset of the error to the client
-          error: d.error
-            ? {
-                data: pickError(d.error),
-                __isServerError: true,
-              }
-            : undefined,
-        })),
+        dehydratedMatches: this.state.matches.map((d) => {
+          return {
+            ...pick(d, ['id', 'status', 'updatedAt']),
+            // If an error occurs server-side during SSRing,
+            // send a small subset of the error to the client
+            error: d.error
+              ? {
+                  data: pickError(d.error),
+                  __isServerError: true,
+                }
+              : undefined,
+            // NOTE: We don't send the loader data here, because
+            // there is a potential that it needs to be streamed.
+            // Instead, we render it next to the route match in the HTML
+            // which gives us the potential to stream it via suspense.
+          }
+        }),
       },
       manifest: this.manifest,
     }
@@ -2328,12 +2340,12 @@ export class Router<
     let _ctx = __do_not_use_server_ctx
     // Client hydrates from window
     if (typeof document !== 'undefined') {
-      _ctx = window.__TSR_DEHYDRATED__?.data
+      _ctx = window.__TSR__?.dehydrated
     }
 
     invariant(
       _ctx,
-      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Please file an issue!',
+      'Expected to find a dehydrated data on window.__TSR__.dehydrated... but we did not. Please file an issue!',
     )
 
     const ctx = this.options.transformer.parse(_ctx) as HydrationCtx

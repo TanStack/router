@@ -1,7 +1,4 @@
-/* eslint-disable no-shadow */
 import { useRouter, useRouterState } from '@tanstack/react-router'
-import * as React from 'react'
-import { DehydrateRouter } from './DehydrateRouter'
 import { Asset } from './Asset'
 import type { RouterManagedTag } from '@tanstack/react-router'
 
@@ -51,8 +48,8 @@ export const Scripts = () => {
 
   return (
     <>
-      <DehydrateRouter />
       {allScripts.map((asset, i) => (
+        // eslint-disable-next-line @eslint-react/no-array-index-key
         <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
       ))}
     </>

@@ -152,7 +152,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
     let equalItems = 0
 
     for (let i = 0; i < nextSize; i++) {
-      const key = array ? i : nextItems[i]
+      const key = array ? i : (nextItems[i] as any)
       if (
         ((!array && prevItems.includes(key)) || array) &&
         prev[key] === undefined &&
@@ -205,7 +205,7 @@ function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
 
-export function isPlainArray(value: unknown) {
+export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
@@ -315,23 +315,25 @@ export type ControlledPromise<T> = Promise<T> & {
   resolve: (value: T) => void
   reject: (value: any) => void
   status: 'pending' | 'resolved' | 'rejected'
+  value?: T
 }
 
-export function createControlledPromise<T>(onResolve?: () => void) {
-  let resolveLoadPromise!: () => void
+export function createControlledPromise<T>(onResolve?: (value: T) => void) {
+  let resolveLoadPromise!: (value: T) => void
   let rejectLoadPromise!: (value: any) => void
 
-  const controlledPromise = new Promise<void>((resolve, reject) => {
+  const controlledPromise = new Promise<T>((resolve, reject) => {
     resolveLoadPromise = resolve
     rejectLoadPromise = reject
   }) as ControlledPromise<T>
 
   controlledPromise.status = 'pending'
 
-  controlledPromise.resolve = () => {
+  controlledPromise.resolve = (value: T) => {
     controlledPromise.status = 'resolved'
-    resolveLoadPromise()
-    onResolve?.()
+    controlledPromise.value = value
+    resolveLoadPromise(value)
+    onResolve?.(value)
   }
 
   controlledPromise.reject = (e) => {

@@ -1,6 +1,5 @@
-/* eslint-disable no-shadow */
 import path from 'node:path'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
@@ -9,73 +8,57 @@ import { TanStackStartVite } from '@tanstack/start-vite-plugin'
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
-// @ts-expect-error
-import { serverComponents } from '@vinxi/server-components/plugin'
+// // @ts-expect-error
+// import { serverComponents } from '@vinxi/server-components/plugin'
 // @ts-expect-error
 import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
+import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
-const viteSchema = z
-  .object({
-    plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
-  })
-  .optional()
-  .default({})
+const viteSchema = z.object({
+  plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
+})
 
-const babelSchema = z
-  .object({
-    plugins: z
-      .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
-      .optional(),
-  })
-  .optional()
-  .default({})
+const babelSchema = z.object({
+  plugins: z
+    .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
+    .optional(),
+})
 
-const reactSchema = z
-  .object({
-    babel: babelSchema,
-    exclude: z.array(z.instanceof(RegExp)).optional(),
-    include: z.array(z.instanceof(RegExp)).optional(),
-  })
-  .optional()
-  .default({})
+const reactSchema = z.object({
+  babel: babelSchema.optional(),
+  exclude: z.array(z.instanceof(RegExp)).optional(),
+  include: z.array(z.instanceof(RegExp)).optional(),
+})
 
-const routersSchema = z
-  .object({
-    ssr: z
-      .object({
-        entry: z.string().default('./app/ssr.tsx'),
-        vite: viteSchema,
-      })
-      .optional()
-      .default({}),
-    rsc: z
-      .object({
-        vite: viteSchema,
-      })
-      .optional()
-      .default({}),
-    client: z
-      .object({
-        entry: z.string().optional().default('./app/client.tsx'),
-        base: z.string().optional(),
-        vite: viteSchema,
-      })
-      .optional()
-      .default({}),
-    server: z
-      .object({
-        vite: viteSchema,
-      })
-      .optional()
-      .default({}),
-  })
-  .optional()
-  .default({})
+const routersSchema = z.object({
+  ssr: z
+    .object({
+      entry: z.string().default('./app/ssr.tsx'),
+      vite: viteSchema.optional().default({}),
+    })
+    .optional()
+    .default({}),
+  client: z
+    .object({
+      entry: z.string().optional().default('./app/client.tsx'),
+      base: z.string().optional(),
+      vite: viteSchema.optional().default({}),
+    })
+    .optional()
+    .default({}),
+  server: z
+    .object({
+      vite: viteSchema.optional().default({}),
+      base: z.string().optional().default('/_server'),
+    })
+    .optional()
+    .default({}),
+})
 
 const optsSchema = z
   .object({
@@ -89,9 +72,9 @@ const optsSchema = z
       })
       .optional()
       .default({}),
-    react: reactSchema,
-    vite: viteSchema,
-    routers: routersSchema,
+    react: reactSchema.optional().default({}),
+    vite: viteSchema.optional().default({}),
+    routers: routersSchema.optional().default({}),
   })
   .optional()
   .default({})
@@ -101,30 +84,11 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
 
   const tsrConfig = await getConfig(opts.tsr)
 
-  const startVite = () => {
-    return config('start-vite', {
-      ssr: {
-        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-      },
-      optimizeDeps: {
-        include: ['@tanstack/start/server-runtime'],
-      },
-      plugins: [
-        TanStackRouterVite({
-          ...tsrConfig,
-          experimental: {
-            ...opts.tsr.experimental,
-            enableCodeSplitting: true,
-          },
-        }),
-      ],
-    })
-  }
-
   const clientBase = opts.routers.client.base || '/_build'
 
   const clientEntry = opts.routers.client.entry
   const ssrEntry = opts.routers.ssr.entry
+  const serverBase = opts.routers.server.base
 
   return createApp({
     server: {
@@ -140,32 +104,16 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
         dir: './public',
         base: '/',
       },
-      // startRouterProxy({
-      //   name: 'rsc',
-      //   worker: true,
-      //   type: 'http',
-      //   base: '/_rsc',
-      //   handler: './app/react-server.tsx',
-      //   target: 'server',
-      //   plugins: () => [
-      //     startVite(),
-      //     ...(opts.vite?.plugins?.() || []),
-      //     ...(opts.routers.rsc?.vite?.plugins?.() || []),
-      //     serverComponents.server(),
-      //     reactRefresh(),
-      //   ],
-      // }),
-      startRouterProxy(tsrConfig)({
+      withStartPlugins(tsrConfig)({
         name: 'client',
         type: 'client',
-        handler: clientEntry,
         target: 'browser',
+        handler: clientEntry,
         base: clientBase,
         build: {
           sourcemap: true,
         },
         plugins: () => [
-          startVite(),
           ...(opts.vite.plugins?.() || []),
           ...(opts.routers.client.vite.plugins?.() || []),
           serverFunctions.client({
@@ -176,16 +124,16 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
             exclude: opts.react.exclude,
             include: opts.react.include,
           }),
+          // TODO: RSCS - enable this
           // serverComponents.client(),
         ],
       }),
-      startRouterProxy(tsrConfig)({
+      withStartPlugins(tsrConfig)({
         name: 'ssr',
         type: 'http',
-        handler: ssrEntry,
         target: 'server',
+        handler: ssrEntry,
         plugins: () => [
-          startVite(),
           tsrRoutesManifest({
             tsrConfig,
             clientBase,
@@ -195,35 +143,82 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
+          config('start-ssr', {
+            ssr: {
+              external: ['@vinxi/react-server-dom/client'],
+            },
+          }),
         ],
         link: {
           client: 'client',
         },
       }),
-      startRouterProxy(tsrConfig)(
-        serverFunctions.router({
-          name: 'server',
-          plugins: () => [
-            startVite(),
-            ...(opts.vite.plugins?.() || []),
-            ...(opts.routers.server.vite.plugins?.() || []),
-            // serverComponents.serverActions(),
-          ],
-          // For whatever reason, vinxi expects a path relative
-          // to the project here. This is a workaround for that.
-          handler: importToProjectRelative('@tanstack/start/server-handler'),
-          runtime: '@tanstack/start/server-runtime',
-        }),
-      ),
+      withStartPlugins(tsrConfig)({
+        name: 'server',
+        type: 'http',
+        target: 'server',
+        base: serverBase,
+        // TODO: RSCS - enable this
+        // worker: true,
+        handler: importToProjectRelative('@tanstack/start/server-handler'),
+        plugins: () => [
+          serverFunctions.server({
+            runtime: '@tanstack/start/react-server-runtime',
+            // TODO: RSCS - remove this
+            resolve: {
+              conditions: [],
+            },
+          }),
+          // TODO: RSCs - add this
+          // serverComponents.serverActions({
+          //   resolve: {
+          //     conditions: [
+          //       'react-server',
+          //       // 'node',
+          //       'import',
+          //       process.env.NODE_ENV,
+          //     ],
+          //   },
+          //   runtime: '@vinxi/react-server-dom/runtime',
+          //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
+          // }),
+          ...(opts.vite.plugins?.() || []),
+          ...(opts.routers.server.vite.plugins?.() || []),
+        ],
+      }),
     ],
   })
 }
 
-function startRouterProxy(tsrConfig: z.infer<typeof configSchema>) {
-  return (router: any) => {
+function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
+  return (
+    router: Extract<
+      RouterSchemaInput,
+      {
+        type: 'client' | 'http'
+      }
+    > & {
+      base?: string
+      link?: {
+        client: string
+      }
+      runtime?: string
+      build?: {
+        sourcemap?: boolean
+      }
+    },
+  ) => {
     return {
       ...router,
       plugins: async () => [
+        config('start-vite', {
+          ssr: {
+            noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+          },
+          // optimizeDeps: {
+          //   include: ['@tanstack/start/server-runtime'],
+          // },
+        }),
         TanStackRouterVite({
           ...tsrConfig,
           experimental: {
@@ -232,7 +227,7 @@ function startRouterProxy(tsrConfig: z.infer<typeof configSchema>) {
           },
         }),
         TanStackStartVite(),
-        ...((await router?.plugins?.()) ?? []),
+        ...((await router.plugins?.()) ?? []),
       ],
     }
   }
@@ -302,7 +297,7 @@ function tsrRoutesManifest(opts: {
         try {
           manifest = JSON.parse(await readFile(clientViteManifestPath, 'utf-8'))
         } catch (err) {
-          console.log(err)
+          console.error(err)
           throw new Error(
             `Could not find the production client vite manifest at '${path.resolve(
               config.build.outDir,
@@ -414,7 +409,7 @@ function tsrRoutesManifest(opts: {
         }
 
         if (process.env.TSR_VITE_DEBUG)
-          console.log(JSON.stringify(routesManifest, null, 2))
+          console.info(JSON.stringify(routesManifest, null, 2))
 
         return `export default () => (${JSON.stringify(routesManifest)})`
       }

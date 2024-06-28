@@ -76,7 +76,7 @@
   ],
   "peerDependencies": {
     "@rsbuild/core": ">=0.7.9",
-    "vite": ">=5"
+    "vite": ">=5.0.13"
   },
   "peerDependenciesMeta": {
     "vite": {
@@ -91,8 +91,6 @@
     "@babel/generator": "^7.24.7",
     "@babel/plugin-syntax-jsx": "^7.24.7",
     "@babel/plugin-syntax-typescript": "^7.24.7",
-    "@babel/plugin-transform-react-jsx": "^7.24.7",
-    "@babel/plugin-transform-typescript": "^7.24.7",
     "@babel/template": "^7.24.7",
     "@babel/traverse": "^7.24.7",
     "@babel/types": "^7.24.7",
@@ -103,5 +101,8 @@
     "@types/babel__traverse": "^7.20.6",
     "unplugin": "^1.10.1",
     "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "vite": "^5.3.1"
   }
 }

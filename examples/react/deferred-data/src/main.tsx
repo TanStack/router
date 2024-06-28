@@ -31,7 +31,7 @@ type CommentType = {
 }
 
 const fetchPosts = async () => {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 100))
   return axios
     .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
@@ -39,7 +39,7 @@ const fetchPosts = async () => {
 }
 
 const fetchPost = async (postId: string) => {
-  console.log(`Fetching post with id ${postId}...`)
+  console.info(`Fetching post with id ${postId}...`)
 
   const commentsPromise = new Promise((r) => setTimeout(r, 2000))
     .then(() =>

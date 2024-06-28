@@ -1,4 +1,3 @@
-/* eslint-disable no-shadow */
 import { useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import { createPortal } from 'react-dom'

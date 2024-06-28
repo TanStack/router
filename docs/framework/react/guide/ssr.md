@@ -27,9 +27,6 @@ To implement non-streaming SSR with TanStack Router, you will need the following
 - `StartClient` from `@tanstack/start`
   - e.g. `<StartClient router={router} />`
   - Rendering this component in your client entry will render your application and also automatically implement the `Wrap` component option on `Router`
-- `DehydrateRouter` from `@tanstack/start`
-  - e.g. `<DehydrateRouter />`
-  - Render this component **inside your application** to embed the router's dehydrated data into the application.
 
 ### Router Creation
 
@@ -116,29 +113,6 @@ Resolved loader data fetched by routes is automatically dehydrated and rehydrate
 ⚠️ If you are using deferred data streaming, you will also need to ensure that you have implemented the [SSR Streaming & Stream Transform](#streaming-ssr) pattern near the end of this guide.
 
 For more information on how to utilize data loading and data streaming, see the [Data Loading](../data-loading) and [Data Streaming](../data-streaming) guides.
-
-### Dehydrating the Router
-
-**SSR would be a waste of time without access to all of the precious data you just fetched on the server!** One of the last steps to prepping your app for SSR is to dehydrate your application data into the markup on the server.
-
-To do this, render the `<DehydrateRouter />` component somewhere inside your Root component. `<DehydrateRouter />` will render a `<script>` tag that contains the JSON of the router's dehydrated state that can then be rehydrated on the client.
-
-```tsx
-// src/root.tsx
-
-import * as React from 'react'
-import { DehydrateRouter } from '@tanstack/start'
-
-export function Root() {
-  return (
-    <html>
-      <body>
-        <DehydrateRouter />
-      </body>
-    </html>
-  )
-}
-```
 
 ### Rendering the Application on the Server
 

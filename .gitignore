@@ -18,7 +18,6 @@ artifacts
 .rpt2_cache
 coverage
 *.tgz
-**/*app.config.*
 
 # tests
 packages/router-generator/tests/**/*.gen.ts

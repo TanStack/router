@@ -2,7 +2,7 @@ import { createServerFn as serverFn } from '@tanstack/start'
 import { z } from 'zod'
 
 export const withUseServer = serverFn('GET', async function () {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
@@ -10,7 +10,7 @@ export const withUseServer = serverFn('GET', async function () {
 })
 
 export const withoutUseServer = serverFn('GET', async () => {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
@@ -20,7 +20,7 @@ export const withoutUseServer = serverFn('GET', async () => {
 export const withVariable = serverFn('GET', abstractedFunction)
 
 async function abstractedFunction() {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')

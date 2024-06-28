@@ -70,10 +70,13 @@ export async function fetcher<TPayload>(
         : {}),
     })
 
-    // Fetch it
     const handlerResponse = await handler(request)
 
     const response = await handleResponseErrors(handlerResponse)
+
+    if (['rsc'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
+      return response.body
+    }
 
     if (['json'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
       const text = await response.text()
