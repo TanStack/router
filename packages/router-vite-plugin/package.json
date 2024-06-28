@@ -36,7 +36,7 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
     "test:unit": "echo 'No unit tests are needed here since we do them in @tanstack/router-plugin!'",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:eslint": "eslint ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
     "build": "vite build"

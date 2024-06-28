@@ -1,7 +1,7 @@
 import { eventHandler, toWebRequest } from 'vinxi/http'
-import { type AnyRouter, createMemoryHistory } from '@tanstack/react-router'
+import { createMemoryHistory } from '@tanstack/react-router'
 import { getRequestHeaders } from './getRequestHeaders'
-import type { Manifest } from '@tanstack/react-router'
+import type { AnyRouter, Manifest } from '@tanstack/react-router'
 import type { EventHandler } from 'vinxi/http'
 
 export type RequestHandler<TRouter extends AnyRouter> = (ctx: {

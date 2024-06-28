@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 // qss has been slightly modified and inlined here for our use cases (and compression's sake). We've included it as a hard dependency for MIT license attribution.
 
 /**
@@ -13,7 +11,7 @@
  * // Expected output: "token=foo&key=value"
  * ```
  */
-export function encode(obj, pfx?: string) {
+export function encode(obj: any, pfx?: string) {
   let k,
     i,
     tmp,
@@ -44,7 +42,7 @@ export function encode(obj, pfx?: string) {
  * // Example input: toValue("123")
  * // Expected output: 123
  */
-function toValue(mix) {
+function toValue(mix: any) {
   if (!mix) return ''
   const str = decodeURIComponent(mix)
   if (str === 'false') return false
@@ -61,9 +59,9 @@ function toValue(mix) {
  * // Example input: decode("token=foo&key=value")
  * // Expected output: { "token": "foo", "key": "value" }
  */
-export function decode(str, pfx?: string) {
+export function decode(str: any, pfx?: string) {
   let tmp, k
-  const out = {},
+  const out: any = {},
     arr = (pfx ? str.substr(pfx.length) : str).split('&')
 
   while ((tmp = arr.shift())) {
@@ -72,6 +70,7 @@ export function decode(str, pfx?: string) {
       k = tmp.slice(0, equalIndex)
       const value = tmp.slice(equalIndex + 1)
       if (out[k] !== void 0) {
+        // @ts-expect-error
         out[k] = [].concat(out[k], toValue(value))
       } else {
         out[k] = toValue(value)

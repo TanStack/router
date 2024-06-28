@@ -369,7 +369,7 @@ function MatchInner({ matchId }: { matchId: string }): any {
     throw match.loadPromise
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line ts/no-unnecessary-condition
   if (match.status === 'success') {
     const Comp = route.options.component ?? router.options.defaultComponent
 

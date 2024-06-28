@@ -185,7 +185,7 @@ function getIdentifier(
     return null
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line ts/no-unnecessary-condition
   return path.node.id && path.node.id.type === 'Identifier'
     ? (path.get('id') as NodePath<BabelTypes.Identifier>)
     : null

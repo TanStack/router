@@ -44,6 +44,7 @@ import type {
   LoaderFnContext,
   NotFoundRouteComponent,
   RootRoute,
+  RouteComponent,
   RouteMask,
 } from './route'
 import type {
@@ -60,7 +61,6 @@ import type {
   Timeout,
   Updater,
 } from './utils'
-import type { RouteComponent } from './route'
 import type {
   AnyRouteMatch,
   MakeRouteMatch,
@@ -82,7 +82,6 @@ import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NoInfer } from '@tanstack/react-store'
 import type { DeferredPromiseState } from './defer'
-import type { ErrorInfo } from 'react'
 
 //
 
@@ -237,7 +236,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultoncatch-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
    */
-  defaultOnCatch?: (error: Error, errorInfo: ErrorInfo) => void
+  defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
   defaultViewTransition?: boolean
   /**
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
@@ -603,7 +602,7 @@ export class Router<
     }
 
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line ts/no-unnecessary-condition
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -622,7 +621,7 @@ export class Router<
       this.buildRouteTree()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line ts/no-unnecessary-condition
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
