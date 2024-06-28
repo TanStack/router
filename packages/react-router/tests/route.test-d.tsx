@@ -437,13 +437,13 @@ test('when creating a child route with context from a parent with context', () =
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    beforeLoad: () => ({ invoiceId: 'invoiceId1' }),
+    beforeLoad: async () => ({ invoiceId: 'invoiceId1' }),
   })
 
   const detailsRoute = createRoute({
     path: 'details',
     getParentRoute: () => invoicesRoute,
-    beforeLoad: () => ({ detailId: 'detailId1' }),
+    beforeLoad: async () => ({ detailId: 'detailId1' }),
   })
 
   expectTypeOf(detailsRoute.useRouteContext()).toEqualTypeOf<{
@@ -628,4 +628,255 @@ test('when creating a child route with context, search, params, loader, loaderDe
     onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
     onLeave: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
   })
+})
+
+test('when creating a child route with parseParams and stringify params without params in path', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    parseParams: (params) => {
+      expectTypeOf(params).toEqualTypeOf<{}>()
+      return params
+    },
+    stringifyParams: (params) => {
+      expectTypeOf(params).toEqualTypeOf<{}>()
+      return params
+    },
+    beforeLoad: (ctx) => {
+      expectTypeOf(ctx).toHaveProperty('params').toEqualTypeOf<{}>()
+    },
+    loader: (ctx) => {
+      expectTypeOf(ctx).toHaveProperty('params').toEqualTypeOf<{}>()
+    },
+  })
+
+  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{}>()
+})
+
+test('when creating a child route with params.parse and params.stringify without params in path', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    params: {
+      parse: (params) => {
+        expectTypeOf(params).toEqualTypeOf<{}>()
+        return params
+      },
+      stringify: (params) => {
+        expectTypeOf(params).toEqualTypeOf<{}>()
+        return params
+      },
+    },
+    beforeLoad: (ctx) => {
+      expectTypeOf(ctx).toHaveProperty('params').toEqualTypeOf<{}>()
+    },
+    loader: (ctx) => {
+      expectTypeOf(ctx).toHaveProperty('params').toEqualTypeOf<{}>()
+    },
+  })
+
+  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{}>()
+})
+
+test('when creating a child route with parseParams and stringifyParams with params in path', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+  })
+
+  const invoiceRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '$invoiceId',
+    parseParams: (params) => {
+      expectTypeOf(params).toEqualTypeOf<{ invoiceId: string }>()
+      return { invoiceId: Number(params.invoiceId) }
+    },
+    stringifyParams: (params) => {
+      expectTypeOf(params).toEqualTypeOf<{ invoiceId: number }>()
+      return { invoiceId: params.invoiceId.toString() }
+    },
+    beforeLoad: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number }>()
+    },
+    loader: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number }>()
+    },
+  })
+
+  expectTypeOf(invoiceRoute.useParams()).toEqualTypeOf<{ invoiceId: number }>()
+})
+
+test('when creating a child route with params.parse and params.stringify with params in path', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+  })
+
+  const invoiceRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '$invoiceId',
+    params: {
+      parse: (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ invoiceId: string }>()
+        return { invoiceId: Number(params.invoiceId) }
+      },
+      stringify: (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ invoiceId: number }>()
+        return { invoiceId: params.invoiceId.toString() }
+      },
+    },
+    beforeLoad: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number }>()
+    },
+    loader: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number }>()
+    },
+  })
+
+  expectTypeOf(invoiceRoute.useParams()).toEqualTypeOf<{ invoiceId: number }>()
+})
+
+test('when creating a child route with parseParams and stringifyParams with merged params from parent', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+  })
+
+  const invoiceRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '$invoiceId',
+    parseParams: (params) => {
+      expectTypeOf(params).toEqualTypeOf<{ invoiceId: string }>()
+      return { invoiceId: Number(params.invoiceId) }
+    },
+    stringifyParams: (params) => {
+      expectTypeOf(params).toEqualTypeOf<{ invoiceId: number }>()
+      return { invoiceId: params.invoiceId.toString() }
+    },
+    beforeLoad: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number }>()
+    },
+    loader: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number }>()
+    },
+  })
+
+  const detailRoute = createRoute({
+    getParentRoute: () => invoiceRoute,
+    path: '$detailId',
+
+    parseParams: (params) => {
+      expectTypeOf(params).toEqualTypeOf<{
+        detailId: string
+      }>()
+      return { detailId: Number(params.detailId) }
+    },
+    stringifyParams: (params) => {
+      expectTypeOf(params).toEqualTypeOf<{ detailId: number }>()
+      return { detailId: params.detailId.toString() }
+    },
+    beforeLoad: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number; detailId: number }>()
+    },
+    loader: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number; detailId: number }>()
+    },
+  })
+
+  expectTypeOf(detailRoute.useParams()).toEqualTypeOf<{
+    detailId: number
+    invoiceId: number
+  }>()
+})
+
+test('when creating a child route with params.parse and params.stringify with merged params from parent', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+  })
+
+  const invoiceRoute = createRoute({
+    getParentRoute: () => invoicesRoute,
+    path: '$invoiceId',
+    params: {
+      parse: (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ invoiceId: string }>()
+        return { invoiceId: Number(params.invoiceId) }
+      },
+      stringify: (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ invoiceId: number }>()
+        return { invoiceId: params.invoiceId.toString() }
+      },
+    },
+    beforeLoad: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number }>()
+    },
+    loader: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number }>()
+    },
+  })
+
+  const detailRoute = createRoute({
+    getParentRoute: () => invoiceRoute,
+    path: '$detailId',
+    params: {
+      parse: (params) => {
+        expectTypeOf(params).toEqualTypeOf<{
+          detailId: string
+        }>()
+        return { detailId: Number(params.detailId) }
+      },
+      stringify: (params) => {
+        expectTypeOf(params).toEqualTypeOf<{ detailId: number }>()
+        return { detailId: params.detailId.toString() }
+      },
+    },
+    beforeLoad: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number; detailId: number }>()
+    },
+    loader: (ctx) => {
+      expectTypeOf(ctx)
+        .toHaveProperty('params')
+        .toEqualTypeOf<{ invoiceId: number; detailId: number }>()
+    },
+  })
+
+  expectTypeOf(detailRoute.useParams()).toEqualTypeOf<{
+    detailId: number
+    invoiceId: number
+  }>()
 })

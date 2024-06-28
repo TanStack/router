@@ -14,7 +14,7 @@ Beyond these normal expectations of a router, TanStack Router goes above and bey
 Every time a URL/history update is detected, the router executes the following sequence:
 
 - Route Matching (Top-Down)
-  - `route.parseParams`
+  - `route.params.parse`
   - `route.validateSearch`
 - Route Pre-Loading (Serial)
   - `route.beforeLoad`

@@ -58,16 +58,27 @@ The `RouteOptions` type accepts an object with the following properties:
 - A function that will be called when this route is matched and passed the raw search params from the current location and return valid parsed search params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's search params and the return type will be inferred into the rest of the router.
 - Optionally, the parameter type can be tagged with the `SearchSchemaInput` type like this: `(searchParams: TSearchSchemaInput & SearchSchemaInput) => TSearchSchema`. If this tag is present, `TSearchSchemaInput` will be used to type the `search` property of `<Link />` and `navigate()` **instead of** `TSearchSchema`. The difference between `TSearchSchemaInput` and `TSearchSchema` can be useful, for example, to express optional search parameters.
 
-### `parseParams` method
+### `parseParams` method (⚠️ deprecated)
 
 - Type: `(rawParams: Record<string, string>) => TParams`
 - Optional
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
 
-### `stringifyParams` method
+### `stringifyParams` method (⚠️ deprecated)
 
 - Type: `(params: TParams) => Record<string, string>`
 - Required if `parseParams` is provided
+- A function that will be called when this routes parsed params are being used to build a location. This function should return a valid object of `Record<string, string>` mapping.
+
+### `params.parse` method
+
+- Type: `(rawParams: Record<string, string>) => TParams`
+- Optional
+- A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
+
+### `params.stringify` method
+
+- Type: `(params: TParams) => Record<string, string>`
 - A function that will be called when this routes parsed params are being used to build a location. This function should return a valid object of `Record<string, string>` mapping.
 
 ### `beforeLoad` method

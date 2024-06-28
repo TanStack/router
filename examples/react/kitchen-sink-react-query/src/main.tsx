@@ -398,10 +398,12 @@ function InvoicesIndexComponent() {
 const invoiceRoute = createRoute({
   getParentRoute: () => invoicesRoute,
   path: '$invoiceId',
-  parseParams: (params) => ({
-    invoiceId: z.number().int().parse(Number(params.invoiceId)),
-  }),
-  stringifyParams: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+  params: {
+    parse: (params) => ({
+      invoiceId: z.number().int().parse(Number(params.invoiceId)),
+    }),
+    stringify: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+  },
   validateSearch: (search) =>
     z
       .object({
