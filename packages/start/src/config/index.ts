@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite, configSchema } from '@tanstack/router-plugin/vite'
@@ -243,9 +244,7 @@ function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
 // }
 
 function importToProjectRelative(p: string) {
-  const toAbsolute = (file: string) => file.split('://').at(-1)!
-
-  const resolved = toAbsolute(resolve(p, import.meta.url))
+  const resolved = fileURLToPath(resolve(p, import.meta.url))
 
   const relative = path.relative(process.cwd(), resolved)
 
