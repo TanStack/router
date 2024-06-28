@@ -16,7 +16,7 @@
     "@tanstack/react-router": "^1.42.0",
     "@tanstack/router-devtools": "^1.42.0",
     "@tanstack/router-vite-plugin": "^1.41.0",
-    "@tanstack/start": "^1.42.0",
+    "@tanstack/start": "^1.42.1",
     "redaxios": "^0.5.0",
     "tailwind-merge": "^1.14.0",
     "vinxi": "^0.3.11"
