@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router",
-  "version": "1.40.0",
+  "version": "1.42.0",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -34,7 +34,7 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:eslint": "eslint ./src",
     "test:types": "tsc --noEmit",
     "test:unit": "vitest --typecheck",
     "test:unit:dev": "pnpm run test:unit --watch",
@@ -74,7 +74,7 @@
     "zod": "^3.22.4"
   },
   "peerDependencies": {
-    "react": ">=16.8",
-    "react-dom": ">=16.8"
+    "react": ">=18",
+    "react-dom": ">=18"
   }
 }

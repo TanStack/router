@@ -1,7 +1,13 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "jsx": "react"
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "../start/src/client/DehydrateRouter.tsx"
+  ]
 }

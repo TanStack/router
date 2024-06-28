@@ -1,7 +1,6 @@
 import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
 import { Store } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
 import { rootRouteId } from './root'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -44,6 +43,7 @@ import type {
   LoaderFnContext,
   NotFoundRouteComponent,
   RootRoute,
+  RouteComponent,
   RouteMask,
 } from './route'
 import type {
@@ -57,22 +57,18 @@ import type {
   ControlledPromise,
   NonNullableUpdater,
   PickAsRequired,
-  Timeout,
   Updater,
 } from './utils'
-import type { RouteComponent } from './route'
 import type {
   AnyRouteMatch,
   MakeRouteMatch,
   MatchRouteOptions,
-  RouteMatch,
 } from './Matches'
 import type { ParsedLocation } from './location'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type {
   BuildLocationFn,
   CommitLocationOptions,
-  InjectedHtmlEntry,
   NavigateFn,
 } from './RouterProvider'
 
@@ -82,13 +78,16 @@ import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NoInfer } from '@tanstack/react-store'
 import type { DeferredPromiseState } from './defer'
-import type { ErrorInfo } from 'react'
 
 //
 
 declare global {
   interface Window {
-    __TSR_DEHYDRATED__?: { data: string }
+    __TSR__?: {
+      matches: Array<any>
+      cleanScripts: () => void
+      dehydrated?: any
+    }
     __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any>>
   }
 }
@@ -237,7 +236,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultoncatch-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
    */
-  defaultOnCatch?: (error: Error, errorInfo: ErrorInfo) => void
+  defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
   defaultViewTransition?: boolean
   /**
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
@@ -508,6 +507,20 @@ export class Router<
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
   manifest?: Manifest
+  AfterEachMatch?: (props: {
+    match: Pick<
+      AnyRouteMatch,
+      'id' | 'status' | 'error' | 'loadPromise' | 'minPendingPromise'
+    >
+    matchIndex: number
+  }) => any
+  serializeLoaderData?: (
+    data: any,
+    ctx: {
+      router: AnyRouter
+      match: AnyRouteMatch
+    },
+  ) => any
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -603,7 +616,7 @@ export class Router<
     }
 
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line ts/no-unnecessary-condition
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -622,7 +635,7 @@ export class Router<
       this.buildRouteTree()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line ts/no-unnecessary-condition
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -921,9 +934,12 @@ export class Router<
     const parseErrors = matchedRoutes.map((route) => {
       let parsedParamsError
 
-      if (route.options.parseParams) {
+      const parseParams =
+        route.options.params?.parse ?? route.options.parseParams
+
+      if (parseParams) {
         try {
-          const parsedParams = route.options.parseParams(routeParams)
+          const parsedParams = parseParams(routeParams)
           // Add the parsed params to the accumulated params bag
           Object.assign(routeParams, parsedParams)
         } catch (err: any) {
@@ -1042,6 +1058,7 @@ export class Router<
 
         match = {
           id: matchId,
+          index,
           routeId: route.id,
           params: routeParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
@@ -1179,7 +1196,12 @@ export class Router<
 
       if (Object.keys(nextParams).length > 0) {
         matches
-          ?.map((d) => this.looseRoutesById[d.routeId]!.options.stringifyParams)
+          ?.map((d) => {
+            const route = this.looseRoutesById[d.routeId]
+            return (
+              route?.options.params?.stringify ?? route!.options.stringifyParams
+            )
+          })
           .filter(Boolean)
           .forEach((fn) => {
             nextParams = { ...nextParams!, ...fn!(nextParams) }
@@ -1958,7 +1980,13 @@ export class Router<
                       )
                     }
 
-                    const loaderData = await loaderPromise
+                    let loaderData = await loaderPromise
+                    if (this.serializeLoaderData) {
+                      loaderData = this.serializeLoaderData(loaderData, {
+                        router: this,
+                        match,
+                      })
+                    }
                     checkLatest()
 
                     handleRedirectAndNotFound(match, loaderData)
@@ -2288,38 +2316,29 @@ export class Router<
     return match
   }
 
-  // We use a token -> weak map to keep track of deferred promises
-  // that are registered on the server and need to be resolved
-  registeredDeferredsIds = new Map<string, {}>()
-  registeredDeferreds = new WeakMap<{}, DeferredPromiseState<any>>()
-
-  getDeferred = (uid: string) => {
-    const token = this.registeredDeferredsIds.get(uid)
-
-    if (!token) {
-      return undefined
-    }
-
-    return this.registeredDeferreds.get(token)
-  }
-
   dehydrate = (): DehydratedRouter => {
     const pickError =
       this.options.errorSerializer?.serialize ?? defaultSerializeError
 
     return {
       state: {
-        dehydratedMatches: this.state.matches.map((d) => ({
-          ...pick(d, ['id', 'status', 'updatedAt', 'loaderData']),
-          // If an error occurs server-side during SSRing,
-          // send a small subset of the error to the client
-          error: d.error
-            ? {
-                data: pickError(d.error),
-                __isServerError: true,
-              }
-            : undefined,
-        })),
+        dehydratedMatches: this.state.matches.map((d) => {
+          return {
+            ...pick(d, ['id', 'status', 'updatedAt']),
+            // If an error occurs server-side during SSRing,
+            // send a small subset of the error to the client
+            error: d.error
+              ? {
+                  data: pickError(d.error),
+                  __isServerError: true,
+                }
+              : undefined,
+            // NOTE: We don't send the loader data here, because
+            // there is a potential that it needs to be streamed.
+            // Instead, we render it next to the route match in the HTML
+            // which gives us the potential to stream it via suspense.
+          }
+        }),
       },
       manifest: this.manifest,
     }
@@ -2329,12 +2348,12 @@ export class Router<
     let _ctx = __do_not_use_server_ctx
     // Client hydrates from window
     if (typeof document !== 'undefined') {
-      _ctx = window.__TSR_DEHYDRATED__?.data
+      _ctx = window.__TSR__?.dehydrated
     }
 
     invariant(
       _ctx,
-      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Please file an issue!',
+      'Expected to find a dehydrated data on window.__TSR__.dehydrated... but we did not. Please file an issue!',
     )
 
     const ctx = this.options.transformer.parse(_ctx) as HydrationCtx

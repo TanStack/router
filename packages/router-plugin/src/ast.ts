@@ -1,4 +1,19 @@
 import * as babel from '@babel/core'
+// @ts-expect-error
+import _babelPluginJsx from '@babel/plugin-syntax-jsx'
+// @ts-expect-error
+import _babelPluginTypeScript from '@babel/plugin-syntax-typescript'
+
+let babelPluginJsx = _babelPluginJsx
+let babelPluginTypeScript = _babelPluginTypeScript
+
+if (babelPluginJsx.default) {
+  babelPluginJsx = babelPluginJsx.default
+}
+
+if (babelPluginTypeScript.default) {
+  babelPluginTypeScript = babelPluginTypeScript.default
+}
 
 export type CompileAstFn = (compileOpts: {
   code: string
@@ -20,9 +35,9 @@ export function compileAst(makeOpts: { root: string }) {
   }> => {
     const res = babel.transformSync(opts.code, {
       plugins: [
-        ['@babel/plugin-syntax-jsx', {}],
+        babelPluginJsx,
         [
-          '@babel/plugin-syntax-typescript',
+          babelPluginTypeScript,
           {
             isTSX: true,
           },

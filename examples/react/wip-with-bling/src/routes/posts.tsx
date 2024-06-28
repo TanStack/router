@@ -25,7 +25,7 @@ export type CommentType = {
 }
 
 const fetchPosts = server$(async () => {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return fetch('https://jsonplaceholder.typicode.com/posts')
     .then((d) => d.json() as Promise<PostType[]>)

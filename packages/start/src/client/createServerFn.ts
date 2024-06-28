@@ -40,16 +40,31 @@ export type Fetcher<TPayload, TResponse> =
     ? (
         payload?: TPayload,
         opts?: FetcherOptions,
-      ) => Promise<JsonResponseOrPayload<TResponse>>
+      ) => Promise<FetcherPayload<TResponse>>
     : (
         payload: TPayload,
         opts?: FetcherOptions,
-      ) => Promise<JsonResponseOrPayload<TResponse>>) & {
+      ) => Promise<FetcherPayload<TResponse>>) & {
     url: string
   }
 
-export type JsonResponseOrPayload<TResponse> =
+export type FetcherPayload<TResponse> = WrapRSCs<
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
+>
+
+type WrapRSCs<T> = T extends JSX.Element
+  ? ReadableStream
+  : T extends Record<string, any>
+    ? {
+        [K in keyof T]: WrapRSCs<T[K]>
+      }
+    : T extends Array<infer U>
+      ? Array<WrapRSCs<U>>
+      : T
+
+export type RscStream<T> = {
+  __cacheState: T
+}
 
 export function createServerFn<
   TMethod extends 'GET' | 'POST',

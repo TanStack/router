@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-vite-plugin",
-  "version": "1.39.13",
+  "version": "1.41.0",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -36,7 +36,7 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
     "test:unit": "echo 'No unit tests are needed here since we do them in @tanstack/router-plugin!'",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:eslint": "eslint ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
     "build": "vite build"
@@ -59,5 +59,8 @@
   ],
   "dependencies": {
     "@tanstack/router-plugin": "workspace:^"
+  },
+  "devDependencies": {
+    "vite": "^5.3.1"
   }
 }

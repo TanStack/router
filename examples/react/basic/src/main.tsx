@@ -21,18 +21,18 @@ type PostType = {
 }
 
 const fetchPosts = async () => {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 300))
   return (
     axios
-      /* eslint-disable-next-line @typescript-eslint/array-type */
+      /* eslint-disable-next-line ts/array-type */
       .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
       .then((r) => r.data.slice(0, 10))
   )
 }
 
 const fetchPost = async (postId: string) => {
-  console.log(`Fetching post with id ${postId}...`)
+  console.info(`Fetching post with id ${postId}...`)
   await new Promise((r) => setTimeout(r, 300))
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)

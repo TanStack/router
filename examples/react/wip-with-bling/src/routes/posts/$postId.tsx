@@ -11,7 +11,7 @@ import * as React from 'react'
 import { CommentType, postsRoute, PostType } from '../posts'
 
 const fetchPostById = server$(async (postId: string) => {
-  console.log(`Fetching post with id ${postId}...`)
+  console.info(`Fetching post with id ${postId}...`)
 
   return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`).then(
     (r) => r.json() as Promise<PostType>,
@@ -19,7 +19,7 @@ const fetchPostById = server$(async (postId: string) => {
 })
 
 const fetchComments = server$(async (postId: string) => {
-  console.log(`Fetching comments for post id ${postId}...`)
+  console.info(`Fetching comments for post id ${postId}...`)
 
   await new Promise((r) => setTimeout(r, 1000))
 
@@ -29,7 +29,7 @@ const fetchComments = server$(async (postId: string) => {
 })
 
 const test = server$(() => {
-  console.log('test')
+  console.info('test')
 })
 
 export const postIdRoute = createRoute({
