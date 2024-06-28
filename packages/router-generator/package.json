@@ -33,7 +33,7 @@
   },
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:eslint": "eslint ./src",
     "test:types": "tsc --noEmit",
     "test:unit": "vitest --watch=false",
     "test:build": "publint --strict",

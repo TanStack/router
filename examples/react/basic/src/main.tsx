@@ -25,7 +25,7 @@ const fetchPosts = async () => {
   await new Promise((r) => setTimeout(r, 300))
   return (
     axios
-      /* eslint-disable-next-line @typescript-eslint/array-type */
+      /* eslint-disable-next-line ts/array-type */
       .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
       .then((r) => r.data.slice(0, 10))
   )

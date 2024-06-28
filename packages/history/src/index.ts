@@ -47,7 +47,7 @@ const beforeUnloadEvent = 'beforeunload'
 
 const beforeUnloadListener = (event: Event) => {
   event.preventDefault()
-  // @ts-ignore
+  // @ts-expect-error
   return (event.returnValue = '')
 }
 

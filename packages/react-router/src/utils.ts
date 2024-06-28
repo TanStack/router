@@ -40,7 +40,7 @@ export type MakeDifferenceOptional<TLeft, TRight> = Omit<
 }
 
 // from https://stackoverflow.com/a/53955431
-// eslint-disable-next-line @typescript-eslint/naming-convention
+// eslint-disable-next-line ts/naming-convention
 export type IsUnion<T, U extends T = T> = (
   T extends any ? (U extends T ? false : true) : never
 ) extends false

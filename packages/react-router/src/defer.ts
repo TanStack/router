@@ -34,7 +34,7 @@ export function defer<T>(
 ) {
   const promise = _promise as DeferredPromise<T>
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line ts/no-unnecessary-condition
   if (!promise.__deferredState) {
     promise.__deferredState = {
       uid: Math.random().toString(36).slice(2),

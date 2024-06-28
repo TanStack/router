@@ -11,8 +11,7 @@ import {
   createRouter,
 } from '@tanstack/react-router'
 
-import { Meta } from '../index'
-import { Scripts } from '../index'
+import { Meta, Scripts } from '../index'
 
 describe('ssr scripts', async () => {
   test('it works', async () => {
