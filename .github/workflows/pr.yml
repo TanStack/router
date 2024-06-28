@@ -100,7 +100,7 @@ jobs:
         with:
           main-branch-name: 'main'
       - name: Build dependecies
-        run: pnpm run build
+        run: pnpm run build:all
       - name: Get Replay Chromium
         run: npx replayio install
       - name: Run Playwright tests
