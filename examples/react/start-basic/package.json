@@ -11,7 +11,7 @@
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
     "format": "prettier --write '**/*' --ignore-unknown",
     "test:e2e": "playwright test --project=chromium",
-    "test:e2e:replay": "DEBUG='*' playwright test --project=replay-chromium"
+    "test:e2e:replay": "playwright test --project=replay-chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.40.0",
