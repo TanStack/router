@@ -1,8 +1,10 @@
 import { isAbsolute, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { compileAst } from './ast'
-import { compileFile, splitFile } from './compilers'
+import {
+  compileCodeSplitReferenceRoute,
+  compileCodeSplitVirtualRoute,
+} from './compilers'
 import { getConfig } from './config'
 import { splitPrefix } from './constants'
 
@@ -60,22 +62,18 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   let userConfig = options as Config
 
   const handleSplittingFile = async (code: string, id: string) => {
-    const compiledAst = compileAst({
-      root: ROOT,
-    })
-
     if (debug) console.info('Splitting route: ', id)
 
-    const compiled = await splitFile({
+    const compiledVirtualRoute = compileCodeSplitVirtualRoute({
       code,
-      compileAst: compiledAst,
+      root: ROOT,
       filename: id,
     })
 
     if (debug) console.info('')
     if (debug) console.info('Split Output')
     if (debug) console.info('')
-    if (debug) console.info(compiled.code)
+    if (debug) console.info(compiledVirtualRoute.code)
     if (debug) console.info('')
     if (debug) console.info('')
     if (debug) console.info('')
@@ -85,26 +83,22 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     if (debug) console.info('')
     if (debug) console.info('')
 
-    return compiled
+    return compiledVirtualRoute
   }
 
   const handleCompilingFile = async (code: string, id: string) => {
-    const compiledAst = compileAst({
-      root: ROOT,
-    })
-
     if (debug) console.info('Handling createRoute: ', id)
 
-    const compiled = await compileFile({
+    const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
-      compileAst: compiledAst,
+      root: ROOT,
       filename: id,
     })
 
     if (debug) console.info('')
     if (debug) console.info('Compiled Output')
     if (debug) console.info('')
-    if (debug) console.info(compiled.code)
+    if (debug) console.info(compiledReferenceRoute.code)
     if (debug) console.info('')
     if (debug) console.info('')
     if (debug) console.info('')
@@ -116,7 +110,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     if (debug) console.info('')
     if (debug) console.info('')
 
-    return compiled
+    return compiledReferenceRoute
   }
 
   return {
