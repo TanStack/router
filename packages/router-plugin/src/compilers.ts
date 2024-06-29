@@ -234,7 +234,10 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
   deadCodeElimination(ast)
 
-  return generate(ast)
+  return generate(ast, {
+    sourceMaps: true,
+    minified: process.env.NODE_ENV === 'production',
+  })
 }
 
 const splitNodeTypes = ['component', 'loader'] as const
@@ -446,7 +449,10 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
   deadCodeElimination(ast)
 
-  return generate(ast)
+  return generate(ast, {
+    sourceMaps: true,
+    minified: process.env.NODE_ENV === 'production',
+  })
 }
 
 function getImportSpecifierAndPathFromLocalName(
