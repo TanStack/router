@@ -1706,6 +1706,9 @@ importers:
       '@babel/generator':
         specifier: ^7.24.7
         version: 7.24.7
+      '@babel/parser':
+        specifier: ^7.24.7
+        version: 7.24.7
       '@babel/plugin-syntax-jsx':
         specifier: ^7.24.7
         version: 7.24.7(@babel/core@7.24.7)
@@ -2196,16 +2199,6 @@ packages:
   '@babel/highlight@7.24.7':
     resolution: {integrity: sha512-EStJpq4OuY8xYfhGVXngigBJRWxftKX9ksiGDnmlY3o7B/V7KIAc9X4oiK87uPJSc/vs5L869bem5fhZa8caZw==}
     engines: {node: '>=6.9.0'}
-
-  '@babel/parser@7.24.5':
-    resolution: {integrity: sha512-EOv5IK8arwh3LI47dz1b0tKUb/1uhHAnHJOrjgtQMIpu1uXd9mlFrJg9IUgGUgZ41Ch0K8REPTYpO7B76b4vJg==}
-    engines: {node: '>=6.0.0'}
-    hasBin: true
-
-  '@babel/parser@7.24.6':
-    resolution: {integrity: sha512-eNZXdfU35nJC2h24RznROuOpO94h6x8sg9ju0tT9biNtLZ2vuP8SduLqqV+/8+cebSLV9SJEAN5Z3zQbJG/M+Q==}
-    engines: {node: '>=6.0.0'}
-    hasBin: true
 
   '@babel/parser@7.24.7':
     resolution: {integrity: sha512-9uUYRm6OqQrCqQdG1iCBwBPZgN8ciDBro2nIOFaiRz1/BCxaI7CNvQbDHvsArAC7Tw9Hda/B3U+6ui9u4HWXPw==}
@@ -9777,7 +9770,7 @@ snapshots:
       '@babel/helper-compilation-targets': 7.23.6
       '@babel/helper-module-transforms': 7.24.5(@babel/core@7.24.5)
       '@babel/helpers': 7.24.5
-      '@babel/parser': 7.24.5
+      '@babel/parser': 7.24.7
       '@babel/template': 7.24.0
       '@babel/traverse': 7.24.5
       '@babel/types': 7.24.5
@@ -9797,7 +9790,7 @@ snapshots:
       '@babel/helper-compilation-targets': 7.24.6
       '@babel/helper-module-transforms': 7.24.6(@babel/core@7.24.6)
       '@babel/helpers': 7.24.6
-      '@babel/parser': 7.24.6
+      '@babel/parser': 7.24.7
       '@babel/template': 7.24.7
       '@babel/traverse': 7.24.7
       '@babel/types': 7.24.7
@@ -10167,14 +10160,6 @@ snapshots:
       chalk: 2.4.2
       js-tokens: 4.0.0
       picocolors: 1.0.1
-
-  '@babel/parser@7.24.5':
-    dependencies:
-      '@babel/types': 7.24.7
-
-  '@babel/parser@7.24.6':
-    dependencies:
-      '@babel/types': 7.24.7
 
   '@babel/parser@7.24.7':
     dependencies:
@@ -10900,7 +10885,7 @@ snapshots:
   '@babel/template@7.24.0':
     dependencies:
       '@babel/code-frame': 7.24.2
-      '@babel/parser': 7.24.5
+      '@babel/parser': 7.24.7
       '@babel/types': 7.24.7
 
   '@babel/template@7.24.7':
@@ -10917,7 +10902,7 @@ snapshots:
       '@babel/helper-function-name': 7.23.0
       '@babel/helper-hoist-variables': 7.22.5
       '@babel/helper-split-export-declaration': 7.24.5
-      '@babel/parser': 7.24.5
+      '@babel/parser': 7.24.7
       '@babel/types': 7.24.7
       debug: 4.3.4
       globals: 11.12.0
@@ -12657,7 +12642,7 @@ snapshots:
 
   '@types/babel__core@7.20.5':
     dependencies:
-      '@babel/parser': 7.24.6
+      '@babel/parser': 7.24.7
       '@babel/types': 7.24.7
       '@types/babel__generator': 7.6.8
       '@types/babel__template': 7.4.4
@@ -12669,7 +12654,7 @@ snapshots:
 
   '@types/babel__template@7.4.4':
     dependencies:
-      '@babel/parser': 7.24.6
+      '@babel/parser': 7.24.7
       '@babel/types': 7.24.7
 
   '@types/babel__traverse@7.20.6':
@@ -13015,7 +13000,7 @@ snapshots:
 
   '@vinxi/plugin-directives@0.3.1(vinxi@0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.14.8)(ioredis@5.4.1)(terser@5.31.0))':
     dependencies:
-      '@babel/parser': 7.24.5
+      '@babel/parser': 7.24.7
       acorn: 8.11.3
       acorn-jsx: 5.3.2(acorn@8.11.3)
       acorn-loose: 8.3.0
@@ -13134,7 +13119,7 @@ snapshots:
 
   '@vue/compiler-core@3.4.27':
     dependencies:
-      '@babel/parser': 7.24.5
+      '@babel/parser': 7.24.7
       '@vue/shared': 3.4.27
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -16015,7 +16000,7 @@ snapshots:
 
   magicast@0.2.11:
     dependencies:
-      '@babel/parser': 7.24.5
+      '@babel/parser': 7.24.7
       '@babel/types': 7.24.7
       recast: 0.23.4
 
