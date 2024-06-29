@@ -1,4 +1,4 @@
-import type { OutgoingHttpHeaders } from 'http2'
+import type { OutgoingHttpHeaders } from 'node:http2'
 
 // A utility function to turn HeadersInit into an object
 export function headersInitToObject(

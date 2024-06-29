@@ -1,4 +1,4 @@
-import { PassThrough } from 'stream'
+import { PassThrough } from 'node:stream'
 import * as React from 'react'
 import { isbot } from 'isbot'
 import ReactDOMServer from 'react-dom/server'
