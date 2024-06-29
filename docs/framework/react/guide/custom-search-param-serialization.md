@@ -42,6 +42,8 @@ This can be achieved by providing your own serialization and deserialization fun
 
 > 🧠 An important aspect of serialization and deserialization, is that you are able to get the same object back after deserialization. This is important because if the serialization and deserialization process is not done correctly, you may lose some information. For example, if you are using a library that does not support nested objects, you may lose the nested object when deserializing the search string.
 
+![Diagram showing idempotent nature of URL search param serialization and deserialization](https://raw.githubusercontent.com/TanStack/router/main/docs/assets/search-serialization-deserialization-idempotency.jpg)
+
 Here are some examples of how you can customize the search param serialization in TanStack Router:
 
 ## Using Base64
