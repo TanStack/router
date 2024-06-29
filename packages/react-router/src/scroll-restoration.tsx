@@ -1,12 +1,11 @@
 import * as React from 'react'
-
-const useLayoutEffect =
-  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
-
 import { useRouter } from './useRouter'
 import { functionalUpdate } from './utils'
 import type { ParsedLocation } from './location'
 import type { NonNullableUpdater } from './utils'
+
+const useLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
 const windowKey = 'window'
 const delimiter = '___'
