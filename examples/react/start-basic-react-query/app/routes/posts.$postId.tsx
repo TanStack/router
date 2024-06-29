@@ -1,22 +1,27 @@
-import {
-  ErrorComponent,
-  ErrorComponentProps,
-  Link,
-  createFileRoute,
-} from '@tanstack/react-router'
-import { postQueryOptions } from '../utils/posts'
-import { NotFound } from '~/components/NotFound'
+import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { postQueryOptions } from '../utils/posts'
+import type { ErrorComponentProps } from '@tanstack/react-router'
+import { NotFound } from '~/components/NotFound'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId }, context }) => {
-    await context.queryClient.prefetchQuery(postQueryOptions(postId))
+    const data = await context.queryClient.fetchQuery(postQueryOptions(postId))
+
+    return {
+      title: data.title,
+    }
   },
+  meta: ({ loaderData }) => [
+    {
+      title: loaderData.title,
+    },
+  ],
   errorComponent: PostErrorComponent as any,
-  component: PostComponent,
   notFoundComponent: () => {
     return <NotFound>Post not found</NotFound>
   },
+  component: PostComponent,
 })
 
 export function PostErrorComponent({ error }: ErrorComponentProps) {

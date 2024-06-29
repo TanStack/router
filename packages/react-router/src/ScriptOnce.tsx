@@ -1,3 +1,4 @@
+/* eslint-disable @eslint-react/dom/no-dangerously-set-innerhtml */
 export function ScriptOnce({
   className,
   children,
@@ -16,7 +17,8 @@ export function ScriptOnce({
         __html: [
           children,
           (log ?? true) && process.env.NODE_ENV === 'development'
-            ? `console.info('ScriptOnce', ${JSON.stringify(children)})`
+            ? `console.info(\`Injected From Server:
+${children}\`)`
             : '',
         ]
           .filter(Boolean)

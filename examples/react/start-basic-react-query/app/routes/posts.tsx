@@ -1,11 +1,12 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import { postsQueryOptions } from '../utils/posts'
 
 export const Route = createFileRoute('/posts')({
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery(postsQueryOptions())
   },
+  meta: () => [{ title: 'Posts' }],
   component: PostsComponent,
 })
 
@@ -18,7 +19,7 @@ function PostsComponent() {
         {[
           ...postsQuery.data,
           { id: 'i-do-not-exist', title: 'Non-existent Post' },
-        ]?.map((post) => {
+        ].map((post) => {
           return (
             <li key={post.id} className="whitespace-nowrap">
               <Link

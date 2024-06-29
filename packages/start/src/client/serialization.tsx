@@ -80,6 +80,7 @@ export function serializeLoaderData(
 
 export function afterHydrate({ router }: { router: AnyRouter }) {
   router.state.matches.forEach((match) => {
+    const route = router.looseRoutesById[match.routeId]!
     match.loaderData = window.__TSR__?.matches[match.index]?.loaderData
     const extracted = window.__TSR__?.matches[match.index]?.extracted
 
@@ -88,6 +89,16 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
         deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
       })
     }
+
+    Object.assign(match, {
+      meta: route.options.meta?.({
+        matches: router.state.matches,
+        params: match.params,
+        loaderData: match.loaderData,
+      }),
+      links: route.options.links?.(),
+      scripts: route.options.scripts?.(),
+    })
   })
 }
 
@@ -129,6 +140,7 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
             children={`
 window.__TSR__ = {
   matches: [],
+  streamedValues: {},
   initMatch: (index) => {
     Object.entries(__TSR__.matches[index].extracted).forEach(([id, ex]) => {
       if (ex.type === 'stream') {
@@ -152,8 +164,7 @@ window.__TSR__ = {
 }`}
           />
           <ScriptOnce
-            children={`
-window.__TSR__.dehydrated = ${jsesc(
+            children={`window.__TSR__.dehydrated = ${jsesc(
               router.options.transformer.stringify(dehydratedCtx),
               {
                 isScriptContext: true,
@@ -397,4 +408,25 @@ function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {
   } else if (isPlainObject(obj)) {
     deepMutableSetByPath((obj as any)[key!], rest, value)
   }
+}
+
+export function StreamValue(props: { key: string; value: any }) {
+  const router = useRouter()
+
+  if (router.isServer) {
+    return null
+  }
+
+  return (
+    <ScriptOnce
+      children={`window.__TSR__.streamedValues[${props.key}] = ${jsesc(
+        props.value,
+        {
+          isScriptContext: true,
+          wrap: true,
+          json: true,
+        },
+      )}`}
+    />
+  )
 }

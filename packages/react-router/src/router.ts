@@ -25,15 +25,13 @@ import {
 } from './path'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import type { Manifest } from './manifest'
 import type * as React from 'react'
+import type { Manifest } from './manifest'
 import type {
   HistoryLocation,
   HistoryState,
   RouterHistory,
 } from '@tanstack/history'
-
-//
 
 import type {
   AnyContext,
@@ -85,6 +83,7 @@ declare global {
   interface Window {
     __TSR__?: {
       matches: Array<any>
+      streamedValues: Record<string, any>
       cleanScripts: () => void
       dehydrated?: any
     }
@@ -521,6 +520,7 @@ export class Router<
       match: AnyRouteMatch
     },
   ) => any
+  serializer?: (data: any) => string
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -2364,7 +2364,7 @@ export class Router<
     const matches = this.matchRoutes(
       this.state.location.pathname,
       this.state.location.search,
-    ).map((match, i, allMatches) => {
+    ).map((match) => {
       const dehydratedMatch = dehydratedState.dehydratedMatches.find(
         (d) => d.id === match.id,
       )
@@ -2374,26 +2374,9 @@ export class Router<
         `Could not find a client-side match for dehydrated match with id: ${match.id}!`,
       )
 
-      const route = this.looseRoutesById[match.routeId]!
-
-      const assets =
-        dehydratedMatch.status === 'notFound' ||
-        dehydratedMatch.status === 'redirected'
-          ? {}
-          : {
-              meta: route.options.meta?.({
-                matches: allMatches,
-                params: match.params,
-                loaderData: dehydratedMatch.loaderData,
-              }),
-              links: route.options.links?.(),
-              scripts: route.options.scripts?.(),
-            }
-
       return {
         ...match,
         ...dehydratedMatch,
-        ...assets,
       }
     })
 
@@ -2405,6 +2388,28 @@ export class Router<
     })
 
     this.manifest = ctx.router.manifest
+  }
+
+  injectedHtml: Array<string> = []
+
+  getStreamedValue = <T>(key: string): T | undefined => {
+    if (this.isServer) {
+      return undefined
+    }
+
+    return window.__TSR__?.streamedValues[key]
+  }
+
+  streamValue = (key: string, value: any) => {
+    const children = `window.__TSR__.streamedValues['${key}'] = ${this.serializer?.(value)}`
+    this.injectedHtml.push(
+      `<script class='tsr-once'>${children}${
+        process.env.NODE_ENV === 'development'
+          ? `; console.info(\`Injected From Server:
+${children}\`)`
+          : ''
+      }</script>`,
+    )
   }
 
   handleNotFound = (matches: Array<AnyRouteMatch>, err: NotFoundError) => {

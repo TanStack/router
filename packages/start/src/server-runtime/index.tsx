@@ -49,7 +49,6 @@ function createAsyncStream(options?: WritableOptions) {
   const writable = new Writable({
     ...options,
     write(chunk, encoding, callback) {
-      console.log('writing chunk', chunk.toString())
       if (!firstActivity) {
         firstActivity = true
         resolveActivity()
@@ -115,7 +114,7 @@ export function createServerReference<TPayload, TResponse>(
       //     new H3Event(incomingMessage as any, asyncStream.writable),
       //   )
 
-      //   console.log('awaiting initial promise', result, asyncStream)
+      //   console.info('awaiting initial promise', result, asyncStream)
 
       //   await asyncStream.initialPromise
 
@@ -133,7 +132,7 @@ export function createServerReference<TPayload, TResponse>(
       //     setResponseHeaders(event, ogResponseHeaders as any)
       //   }
 
-      //   console.log(asyncStream.readable)
+      //   console.info(asyncStream.readable)
 
       //   // if (asyncStream.headers.get('content-type') === 'application/json') {
       //   //   await asyncStream.finishPromise

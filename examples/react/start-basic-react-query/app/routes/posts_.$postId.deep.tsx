@@ -1,19 +1,29 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { PostErrorComponent } from './posts.$postId'
-import { postQueryOptions } from '../utils/posts'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { postQueryOptions } from '../utils/posts'
+import { PostErrorComponent } from './posts.$postId'
+import { useStreamedQuery } from '~/utils/useStreamedQuery'
 
 export const Route = createFileRoute('/posts/$postId/deep')({
   loader: async ({ params: { postId }, context }) => {
-    await context.queryClient.prefetchQuery(postQueryOptions(postId))
+    const data = await context.queryClient.fetchQuery(postQueryOptions(postId))
+
+    return {
+      title: data.title,
+    }
   },
+  meta: ({ loaderData }) => [
+    {
+      title: loaderData.title,
+    },
+  ],
   errorComponent: PostErrorComponent as any,
   component: PostDeepComponent,
 })
 
 function PostDeepComponent() {
   const { postId } = Route.useParams()
-  const postQuery = useSuspenseQuery(postQueryOptions(postId))
+  const postQuery = useStreamedQuery(postQueryOptions(postId))
 
   return (
     <div className="p-2 space-y-2">
