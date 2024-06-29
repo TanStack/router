@@ -160,7 +160,7 @@ function Component() {
   return (
     //  We need to tell the server that our data type is `multipart/form-data` by setting the `encType` attribute on the form.
     <form action={yourFn.url} method="POST" encType="multipart/form-data">
-      <input type="hidden" name="val" value="123" />
+      <input name="val" defaultValue="123" />
       <button type="submit">Click me!</button>
     </form>
   )
