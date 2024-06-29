@@ -1746,8 +1746,8 @@ importers:
         specifier: ^1.0.5
         version: 1.0.5
       unplugin:
-        specifier: ^1.10.1
-        version: 1.10.1
+        specifier: ^1.10.2
+        version: 1.10.2
       zod:
         specifier: ^3.22.4
         version: 3.23.8
@@ -9232,6 +9232,10 @@ packages:
 
   unplugin@1.10.1:
     resolution: {integrity: sha512-d6Mhq8RJeGA8UfKCu54Um4lFA0eSaRa3XxdAJg8tIdxbu1ubW0hBCZUL7yI2uGyYCRndvbK8FLHzqy2XKfeMsg==}
+    engines: {node: '>=14.0.0'}
+
+  unplugin@1.10.2:
+    resolution: {integrity: sha512-KuPqnjU4HBcrSwmQatfdc5hU4xzaQrhoKqCKylwmLnbBvqj5udXL8cHrkOuYDoI4ESCwJIiAIKMujroIUKLgow==}
     engines: {node: '>=14.0.0'}
 
   unstorage@1.10.2:
@@ -17912,6 +17916,13 @@ snapshots:
   unpipe@1.0.0: {}
 
   unplugin@1.10.1:
+    dependencies:
+      acorn: 8.11.3
+      chokidar: 3.6.0
+      webpack-sources: 3.2.3
+      webpack-virtual-modules: 0.6.1
+
+  unplugin@1.10.2:
     dependencies:
       acorn: 8.11.3
       chokidar: 3.6.0
