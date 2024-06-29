@@ -53,6 +53,7 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
     "test:unit": "vitest",
+    "test:unit:dev": "vitest --watch",
     "test:eslint": "eslint ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
@@ -89,6 +90,7 @@
   "dependencies": {
     "@babel/core": "^7.24.7",
     "@babel/generator": "^7.24.7",
+    "@babel/parser": "^7.24.7",
     "@babel/plugin-syntax-jsx": "^7.24.7",
     "@babel/plugin-syntax-typescript": "^7.24.7",
     "@babel/template": "^7.24.7",
@@ -99,7 +101,8 @@
     "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.20.6",
-    "unplugin": "^1.10.1",
+    "babel-dead-code-elimination": "^1.0.5",
+    "unplugin": "^1.10.2",
     "zod": "^3.22.4"
   },
   "devDependencies": {
