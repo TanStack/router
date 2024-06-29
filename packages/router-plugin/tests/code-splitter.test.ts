@@ -16,20 +16,20 @@ describe('code-splitter works', async () => {
   const filenames = await getFilenames()
 
   it.each(filenames)(
-    'should handle the compiling of "%s", output ',
+    'should handle the compiling of "%s"',
     async (filename) => {
       const file = await readFile(
         path.resolve(__dirname, `./code-splitter/test-files/${filename}`),
       )
       const code = file.toString()
 
-      const compilerResult = compileCodeSplitReferenceRoute({
+      const compileResult = compileCodeSplitReferenceRoute({
         code,
         root: './code-splitter/test-files',
         filename,
       })
 
-      await expect(compilerResult.code).toMatchFileSnapshot(
+      await expect(compileResult.code).toMatchFileSnapshot(
         `./code-splitter/snapshots/${filename}`,
       )
     },
