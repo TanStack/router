@@ -10,7 +10,12 @@ import type { ParseAstOptions } from './ast'
 
 // Babel is a CJS package and uses `default` as named binding (`exports.default =`).
 // https://github.com/babel/babel/issues/15269.
-const generate = (_generate as any)['default'] as typeof _generate
+let generate = (_generate as any)['default'] as typeof _generate
+
+// eslint-disable-next-line ts/no-unnecessary-condition
+if (!generate) {
+  generate = _generate
+}
 
 type SplitModulesById = Record<
   string,
