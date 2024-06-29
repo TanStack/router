@@ -3,8 +3,21 @@ id: server-functions
 title: Server Functions
 ---
 
-As [TanStack Start](./tanstack-start.md) is a full-stack framework, we need a way to write code that executes on the
-server and can be called from the client.
+As [TanStack Start](./tanstack-start.md) is a full-stack framework, we need a way to call a function on the client which then executes some code on the server.
+
+This is where Server Functions come in.
+
+## What are Server Functions?
+
+> 🧠 You can think of Server Functions like mini-portals that let your users trigger a pre-defined action on the server (like a built-in RPC solution 🤯).
+
+Server Functions are actions that can be executed on the server from the client or from other server functions.
+
+When a server function is called, it will execute the server-side code and return the result to the caller (regardless of whether the caller is a client or another server function).
+
+Server Functions as more than just a way to send and receive data. They're like a bridge that lets you connect your backend code (the behind-the-scenes magic) directly to your frontend code (what the user sees), making it easier to build a seamless user experience.
+
+## How to use Server Functions in TanStack Start
 
 While some frameworks use special pragmas to denote a function that will execute on the server, Start uses a utility to
 create an instance of a server function.
@@ -58,7 +71,7 @@ async function someServerFunction() {
 When this function is called from the client, it will make a request to the server, execute the server-side code, and
 return the serialized result to the client.
 
-# Server Function Arguments
+## Server Function Arguments
 
 Like any function, server functions can take arguments:
 
@@ -68,20 +81,20 @@ const yourFn = createServerFn('POST', async (val: number) => {
 })
 
 // Call it like this:
-yourFn(123);
+yourFn(123)
 ```
 
 Only one argument is supported, but you can pass an object if you need to pass multiple values:
 
 ```typescript
-const yourFn = createServerFn('POST', async (obj: { a: number, b: number }) => {
+const yourFn = createServerFn('POST', async (obj: { a: number; b: number }) => {
   // Server-side code lives here
 })
 ```
 
 Any serializable value can be passed as an argument to a server function.
 
-# Serialization
+## Serialization
 
 Anything that can be serialized via `JSON.stringify` and `JSON.parse` can be used as an argument to or returned from a
 server function.
@@ -101,7 +114,7 @@ In addition, we support serializing the following:
 - [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)s of other
   serializable types
 
-# No-JS Server Functions
+## No-JS Server Functions
 
 Without JavaScript enabled, there's only one way to execute server functions: by submitting a form.
 
@@ -143,7 +156,7 @@ function Component() {
 
 When the form is submitted, the server function will be executed.
 
-## No-JS Server Function Arguments
+### No-JS Server Function Arguments
 
 To pass arguments to a server function when submitting a form, you can use the `input` element with the `name` attribute
 to attach the argument to the [`FormData`](https://developer.mozilla.org/en-US/docs/Web/API/FormData) passed to your
@@ -152,7 +165,7 @@ server function:
 ```tsx
 const yourFn = createServerFn('POST', async (formData: FormData) => {
   // `val` will be '123'
-  const val = formData.get('val');
+  const val = formData.get('val')
   // ...
 })
 
@@ -169,7 +182,7 @@ function Component() {
 
 When the form is submitted, the server function will be executed with the form's data as an argument.
 
-## No-JS Server Function Return Value
+### No-JS Server Function Return Value
 
 Regardless of whether JavaScript is enabled, the server function will return a response to the HTTP request made from
 the client.
@@ -179,11 +192,11 @@ JavaScript code.
 
 ```typescript
 const yourFn = createServerFn('POST', async () => {
-  return 'Hello, world!';
+  return 'Hello, world!'
 })
 
 // `.then` is not available when JavaScript is disabled
-yourFn().then(console.log);
+yourFn().then(console.log)
 ```
 
 However, when JavaScript is disabled, there is no way to access the return value of the server function in the client's
