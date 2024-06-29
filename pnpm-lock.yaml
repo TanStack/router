@@ -1597,7 +1597,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.2.1(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))
+        version: 4.2.1(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1628,7 +1628,7 @@ importers:
         version: 15.0.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.2.1(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))
+        version: 4.2.1(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
@@ -1681,7 +1681,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.2.1(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))
+        version: 4.2.1(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1791,7 +1791,7 @@ importers:
         version: 0.2.2
       '@vinxi/react-server-dom':
         specifier: ^0.0.3
-        version: 0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))
+        version: 0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))
       '@vinxi/server-components':
         specifier: ^0.3.3
         version: 0.3.3(vinxi@0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.14.8)(ioredis@5.4.1)(terser@5.31.0))
@@ -1815,7 +1815,7 @@ importers:
         version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.14.8)(ioredis@5.4.1)(terser@5.31.0)
       vite-tsconfig-paths:
         specifier: ^4.3.1
-        version: 4.3.2(typescript@5.4.5)(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))
+        version: 4.3.2(typescript@5.4.5)(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))
       zod:
         specifier: ^3.22.4
         version: 3.23.8
@@ -1825,7 +1825,7 @@ importers:
         version: 15.0.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@vitejs/plugin-react':
         specifier: ^4.2.1
-        version: 4.2.1(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))
+        version: 4.2.1(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1840,10 +1840,10 @@ importers:
         version: 5.4.5
       vite-plugin-dts:
         specifier: ^3.9.1
-        version: 3.9.1(@types/node@20.14.8)(rollup@4.18.0)(typescript@5.4.5)(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))
+        version: 3.9.1(@types/node@20.14.8)(rollup@4.18.0)(typescript@5.4.5)(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))
       vite-plugin-externalize-deps:
         specifier: ^0.8.0
-        version: 0.8.0(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))
+        version: 0.8.0(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))
 
   packages/start-vite-plugin:
     dependencies:
@@ -1880,6 +1880,10 @@ importers:
       '@types/babel__traverse':
         specifier: ^7.20.6
         version: 7.20.6
+    devDependencies:
+      vite:
+        specifier: ^5.3.2
+        version: 5.3.2(@types/node@20.14.8)(terser@5.31.0)
 
 packages:
 
@@ -9460,6 +9464,34 @@ packages:
       terser:
         optional: true
 
+  vite@5.3.2:
+    resolution: {integrity: sha512-6lA7OBHBlXUxiJxbO5aAY2fsHHzDr1q7DvXYnyZycRs2Dz+dXBWuhpWHvmljTRTpQC2uvGmUFFkSHF2vGo90MA==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^18.0.0 || >=20.0.0
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.4.0
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+
   vitest@1.6.0:
     resolution: {integrity: sha512-H5r/dN06swuFnzNFhq/dnz37bPXnq8xB2xB5JOVk8K09rUtoeNN+LHWkoQ0A/i3hvbUKKcCei9KpbxqHMLhLLA==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -13011,12 +13043,12 @@ snapshots:
       tslib: 2.6.2
       vinxi: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.14.8)(ioredis@5.4.1)(terser@5.31.0)
 
-  '@vinxi/react-server-dom@0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0))':
+  '@vinxi/react-server-dom@0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))':
     dependencies:
       acorn-loose: 8.3.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-      vite: 5.3.1(@types/node@20.14.8)(terser@5.31.0)
+      vite: 5.3.2(@types/node@20.14.8)(terser@5.31.0)
 
   '@vinxi/react@0.2.2': {}
 
@@ -13072,6 +13104,17 @@ snapshots:
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.0
       vite: 5.3.1(@types/node@20.14.8)(terser@5.31.0)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@vitejs/plugin-react@4.2.1(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0))':
+    dependencies:
+      '@babel/core': 7.24.5
+      '@babel/plugin-transform-react-jsx-self': 7.23.3(@babel/core@7.24.5)
+      '@babel/plugin-transform-react-jsx-source': 7.23.3(@babel/core@7.24.5)
+      '@types/babel__core': 7.20.5
+      react-refresh: 0.14.0
+      vite: 5.3.2(@types/node@20.14.8)(terser@5.31.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -18090,9 +18133,30 @@ snapshots:
       - rollup
       - supports-color
 
+  vite-plugin-dts@3.9.1(@types/node@20.14.8)(rollup@4.18.0)(typescript@5.4.5)(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0)):
+    dependencies:
+      '@microsoft/api-extractor': 7.43.0(@types/node@20.14.8)
+      '@rollup/pluginutils': 5.1.0(rollup@4.18.0)
+      '@vue/language-core': 1.8.27(typescript@5.4.5)
+      debug: 4.3.4
+      kolorist: 1.8.0
+      magic-string: 0.30.10
+      typescript: 5.4.5
+      vue-tsc: 1.8.27(typescript@5.4.5)
+    optionalDependencies:
+      vite: 5.3.2(@types/node@20.14.8)(terser@5.31.0)
+    transitivePeerDependencies:
+      - '@types/node'
+      - rollup
+      - supports-color
+
   vite-plugin-externalize-deps@0.8.0(vite@5.3.1(@types/node@20.14.8)(terser@5.31.0)):
     dependencies:
       vite: 5.3.1(@types/node@20.14.8)(terser@5.31.0)
+
+  vite-plugin-externalize-deps@0.8.0(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0)):
+    dependencies:
+      vite: 5.3.2(@types/node@20.14.8)(terser@5.31.0)
 
   vite-tsconfig-paths@4.3.2(typescript@5.4.5)(vite@5.2.11(@types/node@20.14.8)(terser@5.31.0)):
     dependencies:
@@ -18116,6 +18180,17 @@ snapshots:
       - supports-color
       - typescript
 
+  vite-tsconfig-paths@4.3.2(typescript@5.4.5)(vite@5.3.2(@types/node@20.14.8)(terser@5.31.0)):
+    dependencies:
+      debug: 4.3.4
+      globrex: 0.1.2
+      tsconfck: 3.0.3(typescript@5.4.5)
+    optionalDependencies:
+      vite: 5.3.2(@types/node@20.14.8)(terser@5.31.0)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
   vite@5.2.11(@types/node@20.14.8)(terser@5.31.0):
     dependencies:
       esbuild: 0.20.2
@@ -18127,6 +18202,16 @@ snapshots:
       terser: 5.31.0
 
   vite@5.3.1(@types/node@20.14.8)(terser@5.31.0):
+    dependencies:
+      esbuild: 0.21.4
+      postcss: 8.4.38
+      rollup: 4.18.0
+    optionalDependencies:
+      '@types/node': 20.14.8
+      fsevents: 2.3.3
+      terser: 5.31.0
+
+  vite@5.3.2(@types/node@20.14.8)(terser@5.31.0):
     dependencies:
       esbuild: 0.21.4
       postcss: 8.4.38
