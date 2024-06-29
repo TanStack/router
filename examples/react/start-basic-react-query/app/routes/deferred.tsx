@@ -9,17 +9,15 @@ const deferredQueryOptions = () =>
     queryFn: async () => {
       await new Promise((r) => setTimeout(r, 3000))
       return {
-        message: `Hello deferred from ${
-          typeof document !== 'undefined' ? 'client' : 'server'
-        }`,
+        message: `Hello deferred from the server!`,
         status: 'success',
       }
     },
   })
 
 export const Route = createFileRoute('/deferred')({
-  loader: async ({ context }) => {
-    // Kick off loading on the server and client
+  loader: ({ context }) => {
+    // Kick off loading as early as possible!
     context.queryClient.prefetchQuery(deferredQueryOptions())
   },
   component: Deferred,
