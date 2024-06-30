@@ -46,6 +46,16 @@
         "default": "./dist/cjs/rspack.cjs"
       }
     },
+    "./webpack": {
+      "import": {
+        "types": "./dist/esm/webpack.d.ts",
+        "default": "./dist/esm/webpack.js"
+      },
+      "require": {
+        "types": "./dist/cjs/webpack.d.cts",
+        "default": "./dist/cjs/webpack.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
