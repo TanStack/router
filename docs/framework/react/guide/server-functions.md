@@ -15,7 +15,7 @@ Server Functions are actions that can be executed on the server from the client 
 
 When a server function is called, it will execute the server-side code and return the result to the caller (regardless of whether the caller is a client or another server function).
 
-Server Functions as more than just a way to send and receive data. They're like a bridge that lets you connect your backend code (the behind-the-scenes magic) directly to your frontend code (what the user sees), making it easier to build a seamless user experience.
+Server Functions are more than just a way to send and receive data. They're like a bridge that lets you connect your backend code (the behind-the-scenes magic) directly to your frontend code (what the user sees), making it easier to build a seamless user experience.
 
 ## How to use Server Functions in TanStack Start
 
