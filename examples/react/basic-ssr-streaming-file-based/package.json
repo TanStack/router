@@ -1,7 +1,6 @@
 {
   "name": "tanstack-router-react-example-basic-ssr-streaming-file-based",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "node server",

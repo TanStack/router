@@ -1,7 +1,7 @@
 {
   "name": "tanstack-router-react-example-kitchen-sink-react-query-file-based",
-  "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite --port=3001",
     "build": "vite build",
