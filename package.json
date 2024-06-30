@@ -5,11 +5,11 @@
     "type": "git",
     "url": "https://github.com/TanStack/router.git"
   },
-  "packageManager": "pnpm@9.3.0",
+  "packageManager": "pnpm@9.4.0",
   "type": "module",
   "scripts": {
     "clean": "pnpm --filter \"./packages/**\" run clean",
-    "preinstall": "node -e \"if(process.env.CI == 'true') {console.info('Skipping preinstall...'); process.exit(1)}\" || npx -y only-allow pnpm",
+    "preinstall": "node -e \"if(process.env.CI == 'true') {console.log('Skipping preinstall...')} else {process.exit(1)}\" || npx -y only-allow pnpm",
     "test": "pnpm run test:ci",
     "test:pr": "nx affected --targets=test:format,test:eslint,test:unit,test:build,build",
     "test:ci": "nx run-many --targets=test:eslint,test:unit,test:types,test:build,build",

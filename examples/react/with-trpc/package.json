@@ -1,7 +1,7 @@
 {
   "name": "tanstack-router-react-example-with-trpc",
-  "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently 'npm:dev:*'",
     "dev:client": "wait-port 4000 && vite --port=3001",
