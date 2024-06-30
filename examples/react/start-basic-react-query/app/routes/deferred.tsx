@@ -1,7 +1,6 @@
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
-import { useStreamedQuery } from '../utils/useStreamedQuery'
 
 const deferredQueryOptions = () =>
   queryOptions({
@@ -40,7 +39,7 @@ function Deferred() {
 }
 
 function DeferredQuery() {
-  const deferredQuery = useStreamedQuery(deferredQueryOptions())
+  const deferredQuery = useSuspenseQuery(deferredQueryOptions())
 
   return (
     <div>

@@ -233,10 +233,10 @@ function MatchInner({ matchId }: { matchId: string }): any {
 
   return (
     <>
+      {out}
       {router.AfterEachMatch ? (
         <router.AfterEachMatch match={match} matchIndex={matchIndex} />
       ) : null}
-      {out}
     </>
   )
 }

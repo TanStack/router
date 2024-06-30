@@ -14,7 +14,7 @@
     "_test:e2e:replay": "playwright test --project=replay-chromium"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.48.0",
+    "@tanstack/react-query": "^5.49.2",
     "@tanstack/react-query-devtools": "^5.48.0",
     "@tanstack/react-router": "^1.43.2",
     "@tanstack/router-devtools": "^1.43.2",
