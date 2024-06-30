@@ -14,10 +14,10 @@
   "dependencies": {
     "@tanstack/react-query": "^5.40.0",
     "@tanstack/react-query-devtools": "^5.40.0",
-    "@tanstack/react-router": "^1.43.2",
-    "@tanstack/router-devtools": "^1.43.2",
+    "@tanstack/react-router": "^1.43.3",
+    "@tanstack/router-devtools": "^1.43.3",
     "@tanstack/router-vite-plugin": "^1.43.1",
-    "@tanstack/start": "^1.43.2",
+    "@tanstack/start": "^1.43.3",
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4",
     "isbot": "^3.7.0",
