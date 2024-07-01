@@ -1657,6 +1657,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.2.1(vite@5.3.2(@types/node@20.14.9)(terser@5.31.1))
       react:
         specifier: '>=18'
         version: 18.3.1
