@@ -23,4 +23,3 @@ export {
 } from '../constants'
 export { mergeHeaders } from './headers'
 export { renderRsc } from './renderRSC'
-export { StreamValue } from './serialization'

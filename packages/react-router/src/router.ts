@@ -36,6 +36,7 @@ import type {
 import type {
   AnyContext,
   AnyRoute,
+  AnyRouteWithContext,
   AnySearchSchema,
   ErrorRouteComponent,
   LoaderFnContext,
@@ -83,7 +84,13 @@ declare global {
   interface Window {
     __TSR__?: {
       matches: Array<any>
-      streamedValues: Record<string, any>
+      streamedValues: Record<
+        string,
+        {
+          value: any
+          parsed: any
+        }
+      >
       cleanScripts: () => void
       dehydrated?: any
     }
@@ -96,6 +103,12 @@ export interface Register {
 }
 
 export type AnyRouter = Router<any, any, any, any>
+export type AnyRouterWithContext<TContext> = Router<
+  AnyRouteWithContext<TContext>,
+  any,
+  any,
+  any
+>
 
 export type RegisteredRouter = Register extends {
   router: infer TRouter extends AnyRouter
@@ -565,7 +578,6 @@ export class Router<
       ...options,
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
-      transformer: options.transformer ?? JSON,
     })
 
     if (typeof document !== 'undefined') {
@@ -2344,19 +2356,19 @@ export class Router<
     }
   }
 
-  hydrate = async (__do_not_use_server_ctx?: string) => {
-    let _ctx = __do_not_use_server_ctx
+  hydrate = async () => {
     // Client hydrates from window
+    let ctx: HydrationCtx | undefined
+
     if (typeof document !== 'undefined') {
-      _ctx = window.__TSR__?.dehydrated
+      ctx = this.options.transformer.parse(window.__TSR__?.dehydrated) as any
     }
 
     invariant(
-      _ctx,
+      ctx,
       'Expected to find a dehydrated data on window.__TSR__.dehydrated... but we did not. Please file an issue!',
     )
 
-    const ctx = this.options.transformer.parse(_ctx) as HydrationCtx
     this.dehydratedData = ctx.payload as any
     this.options.hydrate?.(ctx.payload as any)
     const dehydratedState = ctx.router.state
@@ -2397,11 +2409,21 @@ export class Router<
       return undefined
     }
 
-    return window.__TSR__?.streamedValues[key]
+    const streamedValue = window.__TSR__?.streamedValues[key]
+
+    if (!streamedValue) {
+      return
+    }
+
+    if (!streamedValue.parsed) {
+      streamedValue.parsed = this.options.transformer.parse(streamedValue.value)
+    }
+
+    return streamedValue.parsed
   }
 
   streamValue = (key: string, value: any) => {
-    const children = `window.__TSR__.streamedValues['${key}'] = ${this.serializer?.(value)}`
+    const children = `window.__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`
     this.injectedHtml.push(
       `<script class='tsr-once'>${children}${
         process.env.NODE_ENV === 'development'

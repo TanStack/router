@@ -10,6 +10,7 @@ const deferredQueryOptions = () =>
       return {
         message: `Hello deferred from the server!`,
         status: 'success',
+        time: new Date(),
       }
     },
   })
@@ -46,6 +47,7 @@ function DeferredQuery() {
       <h1>Deferred Query</h1>
       <div>Status: {deferredQuery.data.status}</div>
       <div>Message: {deferredQuery.data.message}</div>
+      <div>Time: {deferredQuery.data.time.toISOString()}</div>
     </div>
   )
 }

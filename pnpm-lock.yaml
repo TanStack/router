@@ -15,6 +15,7 @@ overrides:
   '@tanstack/router-generator': workspace:*
   '@tanstack/router-plugin': workspace:*
   '@tanstack/router-vite-plugin': workspace:*
+  '@tanstack/react-router-with-query': workspace:*
   '@tanstack/start': workspace:*
   '@tanstack/start-vite-plugin': workspace:*
   temp-react: 0.0.0-experimental-035a41c4e-20230704
@@ -1039,6 +1040,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-with-query':
+        specifier: workspace:*
+        version: link:../../../packages/react-router-with-query
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
@@ -1644,6 +1648,21 @@ importers:
       zod:
         specifier: ^3.22.4
         version: 3.23.8
+
+  packages/react-router-with-query:
+    devDependencies:
+      '@tanstack/react-query':
+        specifier: '>=5.49.2'
+        version: 5.49.2(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      react:
+        specifier: '>=18'
+        version: 18.3.1
+      react-dom:
+        specifier: '>=18'
+        version: 18.3.1(react@18.3.1)
 
   packages/router-cli:
     dependencies:
