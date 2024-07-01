@@ -11,9 +11,9 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.43.3",
-    "@tanstack/start": "^1.43.3",
-    "@tanstack/router-devtools": "^1.43.3",
+    "@tanstack/react-router": "^1.43.4",
+    "@tanstack/start": "^1.43.4",
+    "@tanstack/router-devtools": "^1.43.4",
     "@tanstack/router-vite-plugin": "^1.43.1",
     "redaxios": "^0.5.0",
     "get-port": "^7.0.0",
