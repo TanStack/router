@@ -1791,6 +1791,9 @@ importers:
       babel-dead-code-elimination:
         specifier: ^1.0.5
         version: 1.0.5
+      chokidar:
+        specifier: ^3.5.3
+        version: 3.6.0
       unplugin:
         specifier: ^1.10.2
         version: 1.10.2

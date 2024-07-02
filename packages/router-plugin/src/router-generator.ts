@@ -1,5 +1,6 @@
 import { isAbsolute, join, normalize, resolve } from 'node:path'
 import { generator } from '@tanstack/router-generator'
+import chokidar from 'chokidar'
 
 import { getConfig } from './config'
 import { CONFIG_FILE_NAME } from './constants'
@@ -19,6 +20,12 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 > = (options = {}) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config
+
+  const getRoutesDirectoryPath = () => {
+    return isAbsolute(userConfig.routesDirectory)
+      ? userConfig.routesDirectory
+      : join(ROOT, userConfig.routesDirectory)
+  }
 
   const generate = async () => {
     if (checkLock()) {
@@ -56,10 +63,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       return
     }
 
-    const routesDirectoryPath = isAbsolute(userConfig.routesDirectory)
-      ? userConfig.routesDirectory
-      : join(ROOT, userConfig.routesDirectory)
-
+    const routesDirectoryPath = getRoutesDirectoryPath()
     if (filePath.startsWith(routesDirectoryPath)) {
       await generate()
     }
@@ -99,6 +103,12 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       userConfig = await getConfig(options, ROOT)
 
       await run(generate)
+
+      // webpack watcher doesn't register newly created files
+      const routesDirectoryPath = getRoutesDirectoryPath()
+      chokidar.watch(routesDirectoryPath).on('add', async () => {
+        await run(generate)
+      })
     },
   }
 }
