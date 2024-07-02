@@ -10,7 +10,7 @@ To enable file-based routing, you'll need to be using React with a supported bun
 
 - Vite
 - Rspack/Rsbuild
-- Webpack (coming soon)
+- Webpack
 - Others (let us know if you'd like to see support for a specific bundler)
 
 If your bundler is not yet supported, you reach out to us on Discord or GitHub to let us know you'd like to see support for your bundler. Till then, fear not! You can still use the use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
@@ -76,6 +76,27 @@ export default defineConfig({
 ```
 
 > ⚠️ **Note:** The `experimental.enableCodeSplitting` option is not yet supported in Rspack/Rsbuild.
+
+### Configuration with Webpack
+
+To use file-based routing with **Webpack**, you'll need to install the `@tanstack/router-plugin` package.
+
+```sh
+npm install -D @tanstack/router-plugin
+```
+
+Once installed, you'll need to add the plugin to your configuration.
+
+```tsx
+// webpack.config.ts
+import { TanStackRouterWebpack } from '@tanstack/router-plugin/webpack'
+
+export default {
+  plugins: [TanStackRouterWebpack()],
+}
+```
+
+> ⚠️ **Note:** The `experimental.enableCodeSplitting` option is not yet supported in Webpack.
 
 ### Configuration with the TanStack Router CLI
 

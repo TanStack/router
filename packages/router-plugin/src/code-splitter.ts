@@ -166,7 +166,11 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       },
     },
 
-    async rspack(compiler) {
+    async rspack() {
+      userConfig = await getConfig(options, ROOT)
+    },
+
+    async webpack() {
       userConfig = await getConfig(options, ROOT)
     },
   }

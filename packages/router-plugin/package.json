@@ -46,6 +46,16 @@
         "default": "./dist/cjs/rspack.cjs"
       }
     },
+    "./webpack": {
+      "import": {
+        "types": "./dist/esm/webpack.d.ts",
+        "default": "./dist/esm/webpack.js"
+      },
+      "require": {
+        "types": "./dist/cjs/webpack.d.cts",
+        "default": "./dist/cjs/webpack.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -102,6 +112,7 @@
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.20.6",
     "babel-dead-code-elimination": "^1.0.6",
+    "chokidar": "^3.5.3",
     "unplugin": "^1.10.2",
     "zod": "^3.22.4"
   },
