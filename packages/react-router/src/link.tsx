@@ -545,6 +545,7 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
+  const isClicking = React.useRef(false)
   const [isTransitioning, setIsTransitioning] = React.useState(false)
 
   const {
@@ -572,6 +573,8 @@ export function useLinkProps<
     className,
     onClick,
     onFocus,
+    onMouseDown,
+    onMouseUp,
     onMouseEnter,
     onMouseLeave,
     onTouchStart,
@@ -685,12 +688,20 @@ export function useLinkProps<
     })
   }
 
-  // The click handler
+  // The focus handler
   const handleFocus = (e: MouseEvent) => {
-    if (disabled) return
+    if (disabled || isClicking.current) return
     if (preload) {
       doPreload()
     }
+  }
+
+  const handleOnMouseDown = (e: MouseEvent) => {
+    isClicking.current = true
+  }
+
+  const handleOnMouseUp = (e: MouseEvent) => {
+    isClicking.current = false
   }
 
   const handleTouchStart = handleFocus
@@ -763,6 +774,8 @@ export function useLinkProps<
       : next.maskedLocation
         ? router.history.createHref(next.maskedLocation.href)
         : router.history.createHref(next.href),
+    onMouseDown: composeHandlers([onMouseDown, handleOnMouseDown]),
+    onMouseUp: composeHandlers([onMouseUp, handleOnMouseUp]),
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
