@@ -95,5 +95,10 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         await run(generate)
       })
     },
+    async webpack() {
+      userConfig = await getConfig(options, ROOT)
+
+      await run(generate)
+    },
   }
 }
