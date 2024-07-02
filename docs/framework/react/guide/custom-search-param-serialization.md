@@ -158,12 +158,8 @@ import {
 import { stringify, parse } from 'zipson'
 
 const router = createRouter({
-  parseSearch: parseSearchWith((value) =>
-    parse(decodeURIComponent(decodeFromBinary(value))),
-  ),
-  stringifySearch: stringifySearchWith((value) =>
-    encodeToBinary(encodeURIComponent(stringify(value))),
-  ),
+  parseSearch: parseSearchWith((value) => parse(decodeFromBinary(value))),
+  stringifySearch: stringifySearchWith((value) => encodeToBinary(stringify(value))),
 })
 
 function decodeFromBinary(str: string): string {
