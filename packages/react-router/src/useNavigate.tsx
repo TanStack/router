@@ -23,15 +23,15 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const router = useRouter()
+  const { navigate } = useRouter()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return router.navigate({
+      return navigate({
         ...options,
       })
     },
-    [router],
+    [navigate],
   ) as UseNavigateResult<TDefaultFrom>
 }
 
@@ -58,14 +58,12 @@ export function Navigate<
   TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
-  const match = useMatch({ strict: false })
 
   React.useEffect(() => {
     navigate({
       ...props,
     } as any)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [navigate, props])
 
   return null
 }
