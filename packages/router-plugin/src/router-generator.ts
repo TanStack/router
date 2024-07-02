@@ -1,6 +1,5 @@
 import { isAbsolute, join, normalize, resolve } from 'node:path'
 import { generator } from '@tanstack/router-generator'
-import chokidar from 'chokidar'
 
 import { getConfig } from './config'
 import { CONFIG_FILE_NAME } from './constants'
@@ -106,6 +105,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 
       // webpack watcher doesn't register newly created files
       const routesDirectoryPath = getRoutesDirectoryPath()
+      const chokidar = await import('chokidar')
       chokidar.watch(routesDirectoryPath).on('add', async () => {
         await run(generate)
       })
