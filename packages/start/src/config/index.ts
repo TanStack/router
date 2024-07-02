@@ -254,21 +254,21 @@ function importToProjectRelative(p: string) {
 function tsrRoutesManifest(opts: {
   tsrConfig: z.infer<typeof configSchema>
   clientBase: string
-}) {
-  let config: any
+}): vite.Plugin {
+  let config: vite.ResolvedConfig
 
   return {
     name: 'tsr-routes-manifest',
-    configResolved(resolvedConfig: any) {
+    configResolved(resolvedConfig) {
       config = resolvedConfig
     },
-    resolveId(id: string) {
+    resolveId(id) {
       if (id === 'tsr:routes-manifest') {
         return id
       }
       return
     },
-    async load(id: string) {
+    async load(id) {
       if (id === 'tsr:routes-manifest') {
         // If we're in development, return a dummy manifest
 
@@ -336,8 +336,8 @@ function tsrRoutesManifest(opts: {
             }
           | undefined
 
-        const filesByRouteFilePath = Object.fromEntries(
-          Object.entries(manifest).map(([k, v]: any) => {
+        const filesByRouteFilePath: ViteManifest = Object.fromEntries(
+          Object.entries(manifest).map(([k, v]) => {
             if (v.isEntry) {
               entryFile = v
             }
@@ -345,18 +345,18 @@ function tsrRoutesManifest(opts: {
             const rPath = k.split('?')[0]
 
             return [rPath, v]
-          }, {} as any),
-        ) as ViteManifest
+          }, {}),
+        )
 
         // Add preloads to the routes from the vite manifest
-        Object.entries(routes).forEach(([k, v]: any) => {
+        Object.entries(routes).forEach(([k, v]) => {
           const file =
             filesByRouteFilePath[
-              path.join(opts.tsrConfig.routesDirectory, v.filePath)
+              path.join(opts.tsrConfig.routesDirectory, v.filePath as string)
             ]
 
           if (file) {
-            const preloads = file.imports.map((d: any) =>
+            const preloads = file.imports.map((d) =>
               path.join(opts.clientBase, manifest[d]!.file),
             )
 
@@ -372,7 +372,7 @@ function tsrRoutesManifest(opts: {
         if (entryFile) {
           routes.__root__!.preloads = [
             path.join(opts.clientBase, entryFile.file),
-            ...entryFile.imports.map((d: any) =>
+            ...entryFile.imports.map((d) =>
               path.join(opts.clientBase, manifest[d]!.file),
             ),
           ]
@@ -394,7 +394,7 @@ function tsrRoutesManifest(opts: {
           })
 
           if (route.children) {
-            route.children.forEach((child: any) => {
+            route.children.forEach((child) => {
               const childRoute = routes[child]!
               recurseRoute(childRoute, { ...seenPreloads })
             })
