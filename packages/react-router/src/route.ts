@@ -429,6 +429,28 @@ export interface AnyRoute
     any
   > {}
 
+export type AnyRouteWithContext<TContext> = Route<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  TContext,
+  any,
+  any,
+  any,
+  any
+>
+
 export type ResolveAllParamsFromParent<
   TParentRoute extends AnyRoute,
   TParams,

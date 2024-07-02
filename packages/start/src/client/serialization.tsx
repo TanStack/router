@@ -81,11 +81,19 @@ export function serializeLoaderData(
 export function afterHydrate({ router }: { router: AnyRouter }) {
   router.state.matches.forEach((match) => {
     const route = router.looseRoutesById[match.routeId]!
-    match.loaderData = window.__TSR__?.matches[match.index]?.loaderData
+    match.loaderData = router.options.transformer.parse(
+      window.__TSR__?.matches[match.index]?.loaderData,
+    )
     const extracted = window.__TSR__?.matches[match.index]?.extracted
 
     if (extracted) {
       Object.entries(extracted).forEach(([_, ex]: any) => {
+        if (ex.value instanceof Promise) {
+          const og = ex.value
+          ex.value = og.then((data: any) =>
+            router.options.transformer.parse(data),
+          )
+        }
         deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
       })
     }
@@ -133,7 +141,8 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
         <ScriptOnce
           children={`__TSR__.matches[${props.matchIndex}] = ${jsesc(
             {
-              loaderData: serializedLoaderData,
+              loaderData:
+                router.options.transformer.stringify(serializedLoaderData),
               extracted: extracted
                 ? Object.fromEntries(
                     extracted.map((entry) => {
@@ -362,25 +371,4 @@ function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {
   } else if (isPlainObject(obj)) {
     deepMutableSetByPath((obj as any)[key!], rest, value)
   }
-}
-
-export function StreamValue(props: { key: string; value: any }) {
-  const router = useRouter()
-
-  if (router.isServer) {
-    return null
-  }
-
-  return (
-    <ScriptOnce
-      children={`window.__TSR__.streamedValues[${props.key}] = ${jsesc(
-        props.value,
-        {
-          isScriptContext: true,
-          wrap: true,
-          json: true,
-        },
-      )}`}
-    />
-  )
 }
