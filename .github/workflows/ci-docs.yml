@@ -2,12 +2,16 @@ name: ci-docs
 
 on:
   pull_request:
-    paths-ignore:
-      - 'packages/**'
+    paths:
+      - 'docs/**'
+      - 'media/**'
+      - '**/*.md'
   push:
     branches: ['main', 'alpha', 'beta']
-    paths-ignore:
-      - 'packages/**'
+    paths:
+      - 'docs/**'
+      - 'media/**'
+      - '**/*.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
