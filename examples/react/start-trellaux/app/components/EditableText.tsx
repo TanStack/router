@@ -1,54 +1,44 @@
 import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { useUpdateMutation } from '../queries.js'
-import { updateSchema } from '../mocks/db.js'
 
 export function EditableText({
-  children,
   fieldName,
   value,
   inputClassName,
   inputLabel,
   buttonClassName,
   buttonLabel,
+  onChange,
+  editState,
 }: {
-  children: React.ReactNode
   fieldName: string
   value: string
   inputClassName: string
   inputLabel: string
   buttonClassName: string
   buttonLabel: string
+  onChange: (value: string) => void
+  editState?: [boolean, (value: boolean) => void]
 }) {
-  const { mutate, status, variables } = useUpdateMutation()
-  const [edit, setEdit] = useState(false)
+  const localEditState = useState(false)
+  const [edit, setEdit] = editState || localEditState
   const inputRef = useRef<HTMLInputElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
-
-  // optimistic update
-  if (status === 'pending') {
-    value = variables.name
-  }
-
-  const submit = (form: HTMLFormElement) => {
-    const formData = new FormData(form)
-    mutate(updateSchema.parse(Object.fromEntries(formData.entries())))
-  }
 
   return edit ? (
     <form
       onSubmit={(event) => {
         event.preventDefault()
 
-        submit(event.currentTarget)
+        onChange(inputRef.current!.value)
 
         flushSync(() => {
           setEdit(false)
         })
+
         buttonRef.current?.focus()
       }}
     >
-      {children}
       <input
         required
         ref={inputRef}
@@ -70,7 +60,7 @@ export function EditableText({
             inputRef.current?.value !== value &&
             inputRef.current?.value.trim() !== ''
           ) {
-            submit(event.currentTarget.form!)
+            onChange(inputRef.current!.value)
           }
           setEdit(false)
         }}

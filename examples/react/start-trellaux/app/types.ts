@@ -7,12 +7,12 @@ export interface RenderedItem {
 }
 
 export const CONTENT_TYPES = {
-  card: 'application/remix-card',
-  column: 'application/remix-column',
+  card: 'application/app-card',
+  column: 'application/app-column',
 }
 
 export const INTENTS = {
-  updateColumn: 'updateColumn' as const,
+  updateColumnName: 'updateColumnName' as const,
   updateBoardName: 'updateBoardName' as const,
 }
 

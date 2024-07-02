@@ -1,63 +1,82 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import invariant from 'tiny-invariant'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { boardQueries } from '../queries.js'
-import { EditableText } from '~/components/EditableText.js'
+import { boardQueries, useUpdateBoardMutation } from '../queries.js'
+import { type Column } from '../db/schema.js'
 import { NewColumn } from './NewColumn.js'
 import { Column as ColumnComponent } from './Column.js'
-import type { Column } from '../mocks/db.js'
-import { INTENTS } from '../types.js'
+import { EditableText } from '~/components/EditableText.js'
 
-export function Board() {
-  const { data: board } = useSuspenseQuery(boardQueries.detail(1))
+export function Board({ boardId }: { boardId: string }) {
+  const newColumnAddedRef = useRef(false)
+  const updateBoardMutation = useUpdateBoardMutation()
+  const { data: board } = useSuspenseQuery(boardQueries.detail(boardId))
 
   // scroll right when new columns are added
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const columnRef = useCallback((node: HTMLElement | null) => {
-    if (node) {
-      invariant(scrollContainerRef.current, 'no scroll container')
+  const columnRef = useCallback((_node: HTMLElement | null) => {
+    if (scrollContainerRef.current && newColumnAddedRef.current) {
+      newColumnAddedRef.current = false
       scrollContainerRef.current.scrollLeft =
         scrollContainerRef.current.scrollWidth
     }
   }, [])
 
-  const itemsById = new Map(board.items.map((item) => [item.id, item]))
-  type ColumnWithItems = Column & { items: typeof board.items }
-  const columns = new Map<string, ColumnWithItems>()
-  for (const column of [...board.columns]) {
-    columns.set(column.id, { ...column, items: [] })
-  }
+  const itemsById = useMemo(
+    () => new Map(board.items.map((item) => [item.id, item])),
+    [board.items],
+  )
 
-  // add items to their columns
-  for (const item of itemsById.values()) {
-    const columnId = item.columnId
-    const column = columns.get(columnId)
-    invariant(column, 'missing column')
-    column.items.push(item)
-  }
+  type ColumnWithItems = Column & { items: typeof board.items }
+
+  const columns = useMemo(() => {
+    const columnsMap = new Map<string, ColumnWithItems>()
+
+    for (const column of [...board.columns]) {
+      columnsMap.set(column.id, { ...column, items: [] })
+    }
+
+    // add items to their columns
+    for (const item of itemsById.values()) {
+      const columnId = item.columnId
+      const column = columnsMap.get(columnId)
+      invariant(column, 'missing column')
+      column.items.push(item)
+    }
+
+    return [...columnsMap.values()].sort((a, b) => a.order - b.order)
+  }, [board.columns, itemsById])
 
   return (
     <div
-      className="h-full min-h-0 flex flex-col overflow-x-scroll"
+      className="flex-grow min-h-0 flex flex-col overflow-x-scroll"
       ref={scrollContainerRef}
       style={{ backgroundColor: board.color }}
     >
       <h1>
         <EditableText
-          value={board.name}
+          value={
+            // optimistic update
+            updateBoardMutation.isPending && updateBoardMutation.variables.name
+              ? updateBoardMutation.variables.name
+              : board.name
+          }
           fieldName="name"
           inputClassName="mx-8 my-4 text-2xl font-medium border border-slate-400 rounded-lg py-1 px-2 text-black"
           buttonClassName="mx-8 my-4 text-2xl font-medium block rounded-lg text-left border border-transparent py-1 px-2 text-slate-800"
           buttonLabel={`Edit board "${board.name}" name`}
           inputLabel="Edit board name"
-        >
-          <input type="hidden" name="intent" value={INTENTS.updateBoardName} />
-          <input type="hidden" name="id" value={board.id} />
-        </EditableText>
+          onChange={(value) => {
+            updateBoardMutation.mutate({
+              id: board.id,
+              name: value,
+            })
+          }}
+        />
       </h1>
 
-      <div className="flex flex-grow min-h-0 h-full items-start gap-4 px-8 pb-4">
-        {[...columns.values()].map((col) => {
+      <div className="flex flex-grow min-h-0 h-full items-start px-8 pb-4 w-fit">
+        {columns.map((col, index) => {
           return (
             <ColumnComponent
               ref={columnRef}
@@ -66,12 +85,20 @@ export function Board() {
               columnId={col.id}
               boardId={board.id}
               items={col.items}
+              order={col.order}
+              previousOrder={columns[index - 1] ? columns[index - 1].order : 0}
+              nextOrder={
+                columns[index + 1] ? columns[index + 1].order : col.order + 1
+              }
             />
           )
         })}
         <NewColumn
           boardId={board.id}
           editInitially={board.columns.length === 0}
+          onNewColumnAdded={() => {
+            newColumnAddedRef.current = true
+          }}
         />
       </div>
 
