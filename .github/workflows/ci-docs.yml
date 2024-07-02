@@ -1,0 +1,28 @@
+name: ci-docs
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'packages/**'
+  push:
+    branches: ['main', 'alpha', 'beta']
+    paths-ignore:
+      - 'packages/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+      - name: Run Tests
+        run: pnpm run test:format
