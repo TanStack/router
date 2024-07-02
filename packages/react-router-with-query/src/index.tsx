@@ -18,6 +18,7 @@ export function routerWithQueryClient<
   }>,
 >(router: T, queryClient: QueryClient): T {
   const seenQueryKeys = new Set<string>()
+  const streamedQueryKeys = new Set<string>()
 
   const ogClientOptions = queryClient.getDefaultOptions()
 
@@ -61,19 +62,17 @@ export function routerWithQueryClient<
         options: UseQueryOptions,
         _result: QueryObserverResult,
       ) => {
-        // Call the original afterQuery
-        ;(ogClientOptions.queries as any)?._experimental_afterQuery?.(
-          options,
-          _result,
-        )
-
         // On the server (if we're not skipping injection)
         // send down the dehydrated query
+
         if (
           router.isServer &&
           !(options as any).__skipInjection &&
-          queryClient.getQueryData(options.queryKey) !== undefined
+          queryClient.getQueryData(options.queryKey) !== undefined &&
+          !streamedQueryKeys.has(hashKey(options.queryKey))
         ) {
+          streamedQueryKeys.add(hashKey(options.queryKey))
+
           router.streamValue(
             '__QueryClient__' + hashKey(options.queryKey),
             dehydrate(queryClient, {
@@ -83,6 +82,12 @@ export function routerWithQueryClient<
             }),
           )
         }
+
+        // Call the original afterQuery
+        ;(ogClientOptions.queries as any)?._experimental_afterQuery?.(
+          options,
+          _result,
+        )
       },
     } as any,
   })
