@@ -1,6 +1,7 @@
 import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
 import { Store } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
+import warning from 'tiny-warning'
 import { rootRouteId } from './root'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -2402,7 +2403,16 @@ export class Router<
     this.manifest = ctx.router.manifest
   }
 
-  injectedHtml: Array<string> = []
+  injectedHtml: Array<() => string> = []
+  injectHtml: (html: string) => void = (html) => {
+    const cb = () => {
+      this.injectedHtml = this.injectedHtml.filter((d) => d !== cb)
+      return html
+    }
+
+    this.injectedHtml.push(cb)
+  }
+  streamedKeys: Set<string> = new Set()
 
   getStreamedValue = <T>(key: string): T | undefined => {
     if (this.isServer) {
@@ -2423,14 +2433,21 @@ export class Router<
   }
 
   streamValue = (key: string, value: any) => {
-    const children = `window.__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`
-    this.injectedHtml.push(
+    warning(
+      !this.streamedKeys.has(key),
+      'Key has already been streamed: ' + key,
+    )
+
+    this.streamedKeys.add(key)
+    const children = `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`
+
+    this.injectHtml(
       `<script class='tsr-once'>${children}${
         process.env.NODE_ENV === 'development'
           ? `; console.info(\`Injected From Server:
-${children}\`)`
+        ${children}\`)`
           : ''
-      }</script>`,
+      }; __TSR__.cleanScripts()</script>`,
     )
   }
 
