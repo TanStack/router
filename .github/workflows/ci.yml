@@ -8,10 +8,6 @@ on:
         required: false
   push:
     branches: ['main', 'alpha', 'beta']
-    paths-ignore:
-      - 'docs/**'
-      - 'media/**'
-      - '**/*.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
