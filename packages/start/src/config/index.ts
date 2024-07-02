@@ -254,21 +254,21 @@ function importToProjectRelative(p: string) {
 function tsrRoutesManifest(opts: {
   tsrConfig: z.infer<typeof configSchema>
   clientBase: string
-}) {
-  let config: any
+}): vite.Plugin {
+  let config: vite.ResolvedConfig
 
   return {
     name: 'tsr-routes-manifest',
-    configResolved(resolvedConfig: any) {
+    configResolved(resolvedConfig) {
       config = resolvedConfig
     },
-    resolveId(id: string) {
+    resolveId(id) {
       if (id === 'tsr:routes-manifest') {
         return id
       }
       return
     },
-    async load(id: string) {
+    async load(id) {
       if (id === 'tsr:routes-manifest') {
         // If we're in development, return a dummy manifest
 
