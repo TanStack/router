@@ -8,10 +8,10 @@ import type { Config } from './config'
 /**
  * @example
  * ```ts
- * export default ({
+ * export default {
  *   // ...
  *   plugins: [TanStackRouterGeneratorWebpack()],
- * })
+ * }
  * ```
  */
 const TanStackRouterGeneratorWebpack = /* #__PURE__ */ createWebpackPlugin(
@@ -30,10 +30,10 @@ const TanStackRouterGeneratorWebpack = /* #__PURE__ */ createWebpackPlugin(
  *
  * @example
  * ```ts
- * export default ({
+ * export default {
  *   // ...
  *   plugins: [unstable_TanStackRouterCodeSplitterWebpack()],
- * })
+ * }
  * ```
  */
 const unstable_TanStackRouterCodeSplitterWebpack =
@@ -42,10 +42,10 @@ const unstable_TanStackRouterCodeSplitterWebpack =
 /**
  * @example
  * ```ts
- * export default defineConfig({
+ * export default {
  *   // ...
  *   plugins: [TanStackRouterWebpack()],
- * })
+ * }
  * ```
  */
 const TanStackRouterWebpack = /* #__PURE__ */ createWebpackPlugin(
