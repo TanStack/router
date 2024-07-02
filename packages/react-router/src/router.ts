@@ -1938,20 +1938,11 @@ export class Router<
                     if (match.isFetching === 'beforeLoad') {
                       // If the user doesn't want the route to reload, just
                       // resolve with the existing loader data
+                      // Otherwise, load the route
 
                       // if (match.fetchCount && match.status === 'success') {
                       //   resolve()
                       // }
-
-                      // Otherwise, load the route
-                      matches[index] = match = updateMatch(
-                        match.id,
-                        (prev) => ({
-                          ...prev,
-                          isFetching: 'loader',
-                          fetchCount: match.fetchCount + 1,
-                        }),
-                      )
 
                       lazyPromise =
                         route.lazyFn?.().then((lazyRoute) => {
@@ -1977,6 +1968,15 @@ export class Router<
                       // so we need to wait for it to resolve before
                       // we can use the options
                       await lazyPromise
+
+                      matches[index] = match = updateMatch(
+                        match.id,
+                        (prev) => ({
+                          ...prev,
+                          isFetching: 'loader',
+                          fetchCount: match.fetchCount + 1,
+                        }),
+                      )
 
                       checkLatest()
 
