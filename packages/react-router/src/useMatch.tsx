@@ -13,8 +13,10 @@ export type UseMatchOptions<
   TStrict extends boolean,
   TRouteMatch,
   TSelected,
+  TThrow extends boolean,
 > = StrictOrFrom<TFrom, TStrict> & {
   select?: (match: TRouteMatch) => TSelected
+  throw?: TThrow
 }
 
 export function useMatch<
@@ -23,7 +25,10 @@ export function useMatch<
   TStrict extends boolean = true,
   TRouteMatch = MakeRouteMatch<TRouteTree, TFrom, TStrict>,
   TSelected = TRouteMatch,
->(opts: UseMatchOptions<TFrom, TStrict, TRouteMatch, TSelected>): TSelected {
+  TThrow extends boolean = true,
+>(
+  opts: UseMatchOptions<TFrom, TStrict, TRouteMatch, TSelected, TThrow>,
+): TThrow extends true ? TSelected : TSelected | undefined {
   const nearestMatchId = React.useContext(matchContext)
 
   const matchSelection = useRouterState({
@@ -33,7 +38,7 @@ export function useMatch<
       )
 
       invariant(
-        match,
+        !((opts.throw ?? true) && !match),
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
       )
 
