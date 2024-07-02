@@ -2,6 +2,7 @@ export type Manifest = {
   routes: Record<
     string,
     {
+      filePath?: string
       preloads?: Array<string>
       assets?: Array<RouterManagedTag>
     }
