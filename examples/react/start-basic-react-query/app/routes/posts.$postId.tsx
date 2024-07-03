@@ -1,13 +1,15 @@
 import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { postQueryOptions } from '../utils/posts'
+import { convexQueryOptions } from 'convex-tanstack-query'
+import { api } from 'convex/_generated/api'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { NotFound } from '~/components/NotFound'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId }, context }) => {
-    const data = await context.queryClient.fetchQuery(postQueryOptions(postId))
-
+    const data = await context.queryClient.fetchQuery(
+      convexQueryOptions(api.data.getPost, { id: postId }),
+    )
     return {
       title: data.title,
     }
@@ -30,7 +32,9 @@ export function PostErrorComponent({ error }: ErrorComponentProps) {
 
 function PostComponent() {
   const { postId } = Route.useParams()
-  const postQuery = useSuspenseQuery(postQueryOptions(postId))
+  const postQuery = useSuspenseQuery(
+    convexQueryOptions(api.data.getPost, { id: postId }),
+  )
 
   return (
     <div className="space-y-2">

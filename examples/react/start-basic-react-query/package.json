@@ -5,7 +5,9 @@
   "packageManager": "pnpm@8.10.2",
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
+    "dev": "npm-run-all --parallel dev:web dev:db",
+    "dev:web": "vinxi dev",
+    "dev:db": "convex dev --run data:seed",
     "build": "vinxi build",
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
@@ -26,7 +28,6 @@
     "convex": "^1.13.0",
     "convex-tanstack-query": "github:thomasballinger/convex-react-query-draft",
     "dotenv": "^16.4.5",
-    "express": "^4.18.2",
     "isbot": "^3.7.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

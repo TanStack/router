@@ -1,11 +1,14 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { postQueryOptions } from '../utils/posts'
+import { convexQueryOptions } from 'convex-tanstack-query'
+import { api } from '../../convex/_generated/api'
 import { PostErrorComponent } from './posts.$postId'
 
 export const Route = createFileRoute('/posts/$postId/deep')({
   loader: async ({ params: { postId }, context }) => {
-    const data = await context.queryClient.fetchQuery(postQueryOptions(postId))
+    const data = await context.queryClient.fetchQuery(
+      convexQueryOptions(api.data.getPost, { id: postId }),
+    )
 
     return {
       title: data.title,
@@ -22,7 +25,9 @@ export const Route = createFileRoute('/posts/$postId/deep')({
 
 function PostDeepComponent() {
   const { postId } = Route.useParams()
-  const postQuery = useSuspenseQuery(postQueryOptions(postId))
+  const postQuery = useSuspenseQuery(
+    convexQueryOptions(api.data.getPost, { id: postId }),
+  )
 
   return (
     <div className="p-2 space-y-2">

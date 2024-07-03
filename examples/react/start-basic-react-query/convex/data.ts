@@ -9,9 +9,14 @@ export const seed = internalAction(async (ctx) => {
   const posts = await (
     await fetch('https://jsonplaceholder.typicode.com/posts')
   ).json()
-  await ctx.runMutation(internal.data.resetPosts, {
-    posts: posts.slice(0, 10),
+  const postsWithoutUserId = posts.map((post: any) => {
+    const { userId, id, ...rest } = post
+    return { id: id.toString(), ...rest }
   })
+  await ctx.runMutation(internal.data.resetPosts, {
+    posts: postsWithoutUserId.slice(0, 10),
+  })
+  console.log('Finished adding seed data.')
 })
 
 export const resetPosts = internalMutation({
@@ -36,7 +41,7 @@ export const getPosts = query({
 })
 
 export const getPost = query({
-  args: { id: v.number() },
+  args: { id: v.string() },
   handler: async (ctx, { id }) => {
     const invoice = await ctx.db
       .query('posts')

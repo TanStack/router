@@ -10,16 +10,23 @@ import { NotFound } from './components/NotFound'
 // definitely end up in a more streamlined API in the future. This is just
 // to show what's possible with the current APIs.
 
+const CONVEX_URL = import.meta.env.VITE_CONVEX_URL!
+
+if (!CONVEX_URL) {
+  throw new Error('missing envar')
+}
+
 export function createRouter() {
+  const convexQueryClient = new ConvexQueryClient(CONVEX_URL)
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         queryKeyHashFn: convexQueryKeyHashFn,
+        queryFn: convexQueryClient.queryFn,
       },
     },
   })
-  const CONVEX_URL = process.env.VITE_CONVEX_URL!
-  const liveClient = new ConvexQueryClient(CONVEX_URL, { queryClient })
+  convexQueryClient.connect(queryClient)
 
   return routerWithQueryClient(
     createTanStackRouter({

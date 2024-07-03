@@ -1,17 +1,21 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
-import { postsQueryOptions } from '../utils/posts'
+import { api } from '../../convex/_generated/api'
+import { convexQueryOptions } from 'convex-tanstack-query'
 
 export const Route = createFileRoute('/posts')({
   loader: async ({ context }) => {
-    await context.queryClient.prefetchQuery(postsQueryOptions())
+    // this isn't necessary for SSR, it's only needed for preloading
+    await context.queryClient.prefetchQuery(
+      convexQueryOptions(api.data.getPosts, {}),
+    )
   },
   meta: () => [{ title: 'Posts' }],
   component: PostsComponent,
 })
 
 function PostsComponent() {
-  const postsQuery = useSuspenseQuery(postsQueryOptions())
+  const postsQuery = useSuspenseQuery(convexQueryOptions(api.data.getPosts, {}))
 
   return (
     <div className="p-2 flex gap-2">

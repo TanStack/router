@@ -1109,7 +1109,7 @@ importers:
         version: 1.13.0(eslint@8.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       convex-tanstack-query:
         specifier: github:thomasballinger/convex-react-query-draft
-        version: https://codeload.github.com/thomasballinger/convex-react-query-draft/tar.gz/d3b20a5142e3e631f8f0f730f5e1f4d2c054984d(@tanstack/react-query@5.49.2(react@18.3.1))(convex@1.13.0(eslint@8.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+        version: https://codeload.github.com/thomasballinger/convex-react-query-draft/tar.gz/4588f32f2d19f993577dc96be010529493c9704f(@tanstack/react-query@5.49.2(react@18.3.1))(convex@1.13.0(eslint@8.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       dotenv:
         specifier: ^16.4.5
         version: 16.4.5
@@ -5925,8 +5925,8 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  convex-tanstack-query@https://codeload.github.com/thomasballinger/convex-react-query-draft/tar.gz/d3b20a5142e3e631f8f0f730f5e1f4d2c054984d:
-    resolution: {tarball: https://codeload.github.com/thomasballinger/convex-react-query-draft/tar.gz/d3b20a5142e3e631f8f0f730f5e1f4d2c054984d}
+  convex-tanstack-query@https://codeload.github.com/thomasballinger/convex-react-query-draft/tar.gz/4588f32f2d19f993577dc96be010529493c9704f:
+    resolution: {tarball: https://codeload.github.com/thomasballinger/convex-react-query-draft/tar.gz/4588f32f2d19f993577dc96be010529493c9704f}
     version: 0.0.0-alpha.0
     peerDependencies:
       '@tanstack/react-query': ^5.0
@@ -14407,7 +14407,7 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex-tanstack-query@https://codeload.github.com/thomasballinger/convex-react-query-draft/tar.gz/d3b20a5142e3e631f8f0f730f5e1f4d2c054984d(@tanstack/react-query@5.49.2(react@18.3.1))(convex@1.13.0(eslint@8.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
+  convex-tanstack-query@https://codeload.github.com/thomasballinger/convex-react-query-draft/tar.gz/4588f32f2d19f993577dc96be010529493c9704f(@tanstack/react-query@5.49.2(react@18.3.1))(convex@1.13.0(eslint@8.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
     dependencies:
       '@tanstack/react-query': 5.49.2(react@18.3.1)
       convex: 1.13.0(eslint@8.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
