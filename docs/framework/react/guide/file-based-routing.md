@@ -75,8 +75,6 @@ export default defineConfig({
 })
 ```
 
-> ⚠️ **Note:** The `experimental.enableCodeSplitting` option is not yet supported in Rspack/Rsbuild.
-
 ### Configuration with Webpack
 
 To use file-based routing with **Webpack**, you'll need to install the `@tanstack/router-plugin` package.
@@ -95,8 +93,6 @@ export default {
   plugins: [TanStackRouterWebpack()],
 }
 ```
-
-> ⚠️ **Note:** The `experimental.enableCodeSplitting` option is not yet supported in Webpack.
 
 ### Configuration with the TanStack Router CLI
 
