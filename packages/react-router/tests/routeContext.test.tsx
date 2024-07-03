@@ -381,6 +381,42 @@ describe('beforeLoad in the route definition', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
+  test("on navigate (with preload), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME) // Use a longer delay here
+        return { mock }
+      },
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        context.mock()
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    await router.load()
+
+    // Don't await, simulate user clicking before preload is done
+    router.preloadRoute(aboutRoute)
+
+    await router.navigate(aboutRoute)
+    await router.invalidate()
+
+    // Expect double call: once from preload, once from navigate
+    expect(mock).toHaveBeenCalledTimes(2)
+  })
+
   // Check if context returned by /nested/about, is the same as its parent route /nested on navigate
   test('nested destination on navigate, route context in the /nested/about route is correctly inherited from the /nested parent', async () => {
     const mock = vi.fn()
