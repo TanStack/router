@@ -20,16 +20,16 @@ import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
-const _viteSchema = z.object({
+const viteSchema = z.object({
   plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
 })
 
-const _babelSchema = z.object({
+const babelSchema = z.object({
   plugins: z.array(z.union([z.tuple([z.string(), z.any()]), z.string()])),
 })
 
 const reactSchema = z.object({
-  babel: _babelSchema.optional(),
+  babel: babelSchema.optional(),
   exclude: z.array(z.instanceof(RegExp)).optional(),
   include: z.array(z.instanceof(RegExp)).optional(),
 })
@@ -38,42 +38,42 @@ const routersSchema = z.object({
   ssr: z
     .object({
       entry: z.string().optional(),
-      vite: _viteSchema.optional(),
+      vite: viteSchema.optional(),
     })
     .optional(),
   client: z
     .object({
       entry: z.string().optional(),
       base: z.string().optional(),
-      vite: _viteSchema.optional(),
+      vite: viteSchema.optional(),
     })
     .optional(),
   server: z
     .object({
       base: z.string().optional(),
-      vite: _viteSchema.optional(),
+      vite: viteSchema.optional(),
     })
     .optional(),
 })
 
-const tsrConfig = configSchema.partial().merge(
-  z.object({
-    appDirectory: z.string(),
-  }),
-)
+const tsrConfig = configSchema.partial().extend({
+  appDirectory: z.string(),
+})
 
-export const inlineConfigSchema = z.object({
+const inlineConfigSchema = z.object({
   react: reactSchema.optional(),
-  vite: _viteSchema.optional(),
+  vite: viteSchema.optional(),
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
 })
 
-export type InlineConfig = z.infer<typeof inlineConfigSchema>
+export type TanStackStartDefineConfigOptions = z.infer<
+  typeof inlineConfigSchema
+>
 
 function setTsrDefaults(
-  config: InlineConfig['tsr'],
-): Partial<InlineConfig['tsr']> {
+  config: TanStackStartDefineConfigOptions['tsr'],
+): Partial<TanStackStartDefineConfigOptions['tsr']> {
   return {
     ...config,
     appDirectory: config?.appDirectory ?? './app',
@@ -85,7 +85,9 @@ function setTsrDefaults(
   }
 }
 
-export async function defineConfig(inlineConfig: InlineConfig = {}) {
+export async function defineConfig(
+  inlineConfig: TanStackStartDefineConfigOptions = {},
+) {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
   const tsrConfig = await getConfig(setTsrDefaults(opts.tsr))
