@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "webpack serve --port 3001",
-    "build": "webpack build"
+    "build": "NODE_ENV=production webpack build"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.43.3",

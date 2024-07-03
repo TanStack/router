@@ -98,7 +98,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         await run(generate)
       })
     },
-    async webpack() {
+    async webpack(compiler) {
       userConfig = await getConfig(options, ROOT)
 
       await run(generate)
@@ -109,6 +109,15 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       chokidar.watch(routesDirectoryPath).on('add', async () => {
         await run(generate)
       })
+
+      if (process.env.NODE_ENV === 'production') {
+        compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
+          console.log('✅ ' + PLUGIN_NAME + ': route-tree generation done')
+          setTimeout(() => {
+            process.exit(0)
+          })
+        })
+      }
     },
   }
 }

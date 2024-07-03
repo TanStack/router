@@ -20,9 +20,9 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
 
   // Rspack doesn't support the `resolveId` and `transform` hooks provided by unplugin
   // so we need to disable the code splitter for it
-  // If you're using Rspack or Webpack, and know how to implement the code splitting, please let us know
+  // If you're using Rspack and know how to implement the code splitting, please let us know
   // We'd love to support it, but we're not sure how to do it yet
-  if (meta.framework === 'rspack' || meta.framework === 'webpack') {
+  if (meta.framework === 'rspack') {
     routerCodeSplitterOptions = []
   }
 
