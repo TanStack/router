@@ -1,8 +1,7 @@
 {
   "name": "tanstack-router-react-example-waku-rsc",
-  "version": "0.1.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "waku dev --with-ssr",
     "build": "waku build --with-ssr",
@@ -10,8 +9,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.4.1",
-    "@tanstack/react-router": "^1.40.0",
-    "@tanstack/router-devtools": "^1.40.0",
+    "@tanstack/react-router": "^1.43.6",
+    "@tanstack/router-devtools": "^1.43.6",
     "hono": "^3.12.0",
     "react": "18.3.0-canary-0cdfef19b-20231211",
     "react-dom": "18.3.0-canary-0cdfef19b-20231211",

@@ -12,7 +12,7 @@ The `route.beforeLoad` option allows you to specify a function that will be call
 The `beforeLoad` function runs in relative order to these other route loading functions:
 
 - Route Matching (Top-Down)
-  - `route.parseParams`
+  - `route.params.parse`
   - `route.validateSearch`
 - Route Loading (including Preloading)
   - **`route.beforeLoad`**

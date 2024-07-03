@@ -4,7 +4,7 @@ import { z } from 'zod'
 export const withUseServer = TanStackStart.createServerFn(
   'GET',
   async function () {
-    console.log('Fetching posts...')
+    console.info('Fetching posts...')
     await new Promise((r) => setTimeout(r, 500))
     return axios
       .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
@@ -15,7 +15,7 @@ export const withUseServer = TanStackStart.createServerFn(
 export const withoutUseServer = TanStackStart.createServerFn(
   'GET',
   async () => {
-    console.log('Fetching posts...')
+    console.info('Fetching posts...')
     await new Promise((r) => setTimeout(r, 500))
     return axios
       .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
@@ -29,7 +29,7 @@ export const withVariable = TanStackStart.createServerFn(
 )
 
 async function abstractedFunction() {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')

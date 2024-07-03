@@ -252,10 +252,12 @@ const postsIndexRoute = createRoute({
 const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  parseParams: (params) => ({
-    postId: z.number().int().parse(Number(params.postId)),
-  }),
-  stringifyParams: ({ postId }) => ({ postId: `${postId}` }),
+  params: {
+    parse: (params) => ({
+      postId: z.number().int().parse(Number(params.postId)),
+    }),
+    stringify: ({ postId }) => ({ postId: `${postId}` }),
+  },
   validateSearch: z.object({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),

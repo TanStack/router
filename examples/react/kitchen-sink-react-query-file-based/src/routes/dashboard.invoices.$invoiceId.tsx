@@ -9,10 +9,12 @@ import {
 } from '../utils/queryOptions'
 
 export const Route = createFileRoute('/dashboard/invoices/$invoiceId')({
-  parseParams: (params) => ({
-    invoiceId: z.number().int().parse(Number(params.invoiceId)),
-  }),
-  stringifyParams: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+  params: {
+    parse: (params) => ({
+      invoiceId: z.number().int().parse(Number(params.invoiceId)),
+    }),
+    stringify: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+  },
   validateSearch: (search) =>
     z
       .object({

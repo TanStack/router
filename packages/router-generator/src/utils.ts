@@ -10,7 +10,7 @@ export function trimPathLeft(path: string) {
 export function logging(config: { disabled: boolean }) {
   return {
     log: (...args: Array<any>) => {
-      if (!config.disabled) console.log(...args)
+      if (!config.disabled) console['log'](...args)
     },
     debug: (...args: Array<any>) => {
       if (!config.disabled) console.debug(...args)

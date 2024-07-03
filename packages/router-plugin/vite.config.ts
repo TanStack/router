@@ -1,12 +1,25 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
-import { tanstackBuildConfig } from '@tanstack/config/build'
+import { tanstackViteConfig } from '@tanstack/config/vite'
+import packageJson from './package.json'
 
-const config = defineConfig({})
+const config = defineConfig({
+  test: {
+    name: packageJson.name,
+    dir: './tests',
+    watch: false,
+    typecheck: { enabled: true },
+  },
+})
 
 export default mergeConfig(
   config,
-  tanstackBuildConfig({
-    entry: ['./src/index.ts', './src/vite.ts', './src/rspack.ts'],
+  tanstackViteConfig({
+    entry: [
+      './src/index.ts',
+      './src/vite.ts',
+      './src/rspack.ts',
+      './src/webpack.ts',
+    ],
     srcDir: './src',
   }),
 )

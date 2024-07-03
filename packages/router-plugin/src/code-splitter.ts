@@ -1,8 +1,10 @@
 import { isAbsolute, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { compileAst } from './ast'
-import { compileFile, splitFile } from './compilers'
+import {
+  compileCodeSplitReferenceRoute,
+  compileCodeSplitVirtualRoute,
+} from './compilers'
 import { getConfig } from './config'
 import { splitPrefix } from './constants'
 
@@ -50,6 +52,7 @@ plugins: [
 }
 
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
+const JoinedSplitPrefix = splitPrefix + ':'
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
@@ -60,63 +63,43 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   let userConfig = options as Config
 
   const handleSplittingFile = async (code: string, id: string) => {
-    const compiledAst = compileAst({
-      root: ROOT,
-    })
-
     if (debug) console.info('Splitting route: ', id)
 
-    const compiled = await splitFile({
+    const compiledVirtualRoute = compileCodeSplitVirtualRoute({
       code,
-      compileAst: compiledAst,
+      root: ROOT,
       filename: id,
     })
 
     if (debug) console.info('')
     if (debug) console.info('Split Output')
     if (debug) console.info('')
-    if (debug) console.info(compiled.code)
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
+    if (debug) console.info(compiledVirtualRoute.code)
     if (debug) console.info('')
     if (debug) console.info('')
     if (debug) console.info('')
 
-    return compiled
+    return compiledVirtualRoute
   }
 
   const handleCompilingFile = async (code: string, id: string) => {
-    const compiledAst = compileAst({
-      root: ROOT,
-    })
-
     if (debug) console.info('Handling createRoute: ', id)
 
-    const compiled = await compileFile({
+    const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
-      compileAst: compiledAst,
+      root: ROOT,
       filename: id,
     })
 
     if (debug) console.info('')
     if (debug) console.info('Compiled Output')
     if (debug) console.info('')
-    if (debug) console.info(compiled.code)
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
+    if (debug) console.info(compiledReferenceRoute.code)
     if (debug) console.info('')
     if (debug) console.info('')
     if (debug) console.info('')
 
-    return compiled
+    return compiledReferenceRoute
   }
 
   return {
@@ -165,6 +148,26 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       return null
     },
 
+    transformInclude(transformId) {
+      if (!userConfig.experimental?.enableCodeSplitting) {
+        return undefined
+      }
+
+      let id = transformId
+
+      if (id.startsWith(JoinedSplitPrefix)) {
+        id = id.replace(JoinedSplitPrefix, '')
+      }
+
+      if (
+        fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
+        id.includes(splitPrefix)
+      ) {
+        return true
+      }
+      return false
+    },
+
     vite: {
       async configResolved(config) {
         ROOT = config.root
@@ -173,7 +176,55 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     },
 
     async rspack(compiler) {
+      ROOT = process.cwd()
+
+      compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
+        self.normalModuleFactory.hooks.beforeResolve.tap(
+          PLUGIN_NAME,
+          (resolveData) => {
+            if (resolveData.request.includes(JoinedSplitPrefix)) {
+              resolveData.request = resolveData.request.replace(
+                JoinedSplitPrefix,
+                '',
+              )
+            }
+          },
+        )
+      })
+
       userConfig = await getConfig(options, ROOT)
+    },
+
+    async webpack(compiler) {
+      ROOT = process.cwd()
+
+      compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
+        self.normalModuleFactory.hooks.beforeResolve.tap(
+          PLUGIN_NAME,
+          (resolveData) => {
+            if (resolveData.request.includes(JoinedSplitPrefix)) {
+              resolveData.request = resolveData.request.replace(
+                JoinedSplitPrefix,
+                '',
+              )
+            }
+          },
+        )
+      })
+
+      userConfig = await getConfig(options, ROOT)
+
+      if (
+        userConfig.experimental?.enableCodeSplitting &&
+        compiler.options.mode === 'production'
+      ) {
+        compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
+          console.log('✅ ' + PLUGIN_NAME + ': code-splitting done!')
+          setTimeout(() => {
+            process.exit(0)
+          })
+        })
+      }
     },
   }
 }

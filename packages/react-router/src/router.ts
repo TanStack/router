@@ -1,7 +1,6 @@
 import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
 import { Store } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
 import { rootRouteId } from './root'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -26,24 +25,24 @@ import {
 } from './path'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import type { Manifest } from './manifest'
 import type * as React from 'react'
+import type { Manifest } from './manifest'
 import type {
   HistoryLocation,
   HistoryState,
   RouterHistory,
 } from '@tanstack/history'
 
-//
-
 import type {
   AnyContext,
   AnyRoute,
+  AnyRouteWithContext,
   AnySearchSchema,
   ErrorRouteComponent,
   LoaderFnContext,
   NotFoundRouteComponent,
   RootRoute,
+  RouteComponent,
   RouteMask,
 } from './route'
 import type {
@@ -57,22 +56,18 @@ import type {
   ControlledPromise,
   NonNullableUpdater,
   PickAsRequired,
-  Timeout,
   Updater,
 } from './utils'
-import type { RouteComponent } from './route'
 import type {
   AnyRouteMatch,
   MakeRouteMatch,
   MatchRouteOptions,
-  RouteMatch,
 } from './Matches'
 import type { ParsedLocation } from './location'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type {
   BuildLocationFn,
   CommitLocationOptions,
-  InjectedHtmlEntry,
   NavigateFn,
 } from './RouterProvider'
 
@@ -82,13 +77,23 @@ import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NoInfer } from '@tanstack/react-store'
 import type { DeferredPromiseState } from './defer'
-import type { ErrorInfo } from 'react'
 
 //
 
 declare global {
   interface Window {
-    __TSR_DEHYDRATED__?: { data: string }
+    __TSR__?: {
+      matches: Array<any>
+      streamedValues: Record<
+        string,
+        {
+          value: any
+          parsed: any
+        }
+      >
+      cleanScripts: () => void
+      dehydrated?: any
+    }
     __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any>>
   }
 }
@@ -98,6 +103,12 @@ export interface Register {
 }
 
 export type AnyRouter = Router<any, any, any, any>
+export type AnyRouterWithContext<TContext> = Router<
+  AnyRouteWithContext<TContext>,
+  any,
+  any,
+  any
+>
 
 export type RegisteredRouter = Register extends {
   router: infer TRouter extends AnyRouter
@@ -237,7 +248,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultoncatch-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
    */
-  defaultOnCatch?: (error: Error, errorInfo: ErrorInfo) => void
+  defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
   defaultViewTransition?: boolean
   /**
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
@@ -508,6 +519,21 @@ export class Router<
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
   manifest?: Manifest
+  AfterEachMatch?: (props: {
+    match: Pick<
+      AnyRouteMatch,
+      'id' | 'status' | 'error' | 'loadPromise' | 'minPendingPromise'
+    >
+    matchIndex: number
+  }) => any
+  serializeLoaderData?: (
+    data: any,
+    ctx: {
+      router: AnyRouter
+      match: AnyRouteMatch
+    },
+  ) => any
+  serializer?: (data: any) => string
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -552,7 +578,6 @@ export class Router<
       ...options,
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
-      transformer: options.transformer ?? JSON,
     })
 
     if (typeof document !== 'undefined') {
@@ -603,7 +628,7 @@ export class Router<
     }
 
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line ts/no-unnecessary-condition
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -622,7 +647,7 @@ export class Router<
       this.buildRouteTree()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line ts/no-unnecessary-condition
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -921,9 +946,12 @@ export class Router<
     const parseErrors = matchedRoutes.map((route) => {
       let parsedParamsError
 
-      if (route.options.parseParams) {
+      const parseParams =
+        route.options.params?.parse ?? route.options.parseParams
+
+      if (parseParams) {
         try {
-          const parsedParams = route.options.parseParams(routeParams)
+          const parsedParams = parseParams(routeParams)
           // Add the parsed params to the accumulated params bag
           Object.assign(routeParams, parsedParams)
         } catch (err: any) {
@@ -1042,6 +1070,7 @@ export class Router<
 
         match = {
           id: matchId,
+          index,
           routeId: route.id,
           params: routeParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
@@ -1170,7 +1199,12 @@ export class Router<
 
       if (Object.keys(nextParams).length > 0) {
         matches
-          ?.map((d) => this.looseRoutesById[d.routeId]!.options.stringifyParams)
+          ?.map((d) => {
+            const route = this.looseRoutesById[d.routeId]
+            return (
+              route?.options.params?.stringify ?? route!.options.stringifyParams
+            )
+          })
           .filter(Boolean)
           .forEach((fn) => {
             nextParams = { ...nextParams!, ...fn!(nextParams) }
@@ -1949,7 +1983,13 @@ export class Router<
                       )
                     }
 
-                    const loaderData = await loaderPromise
+                    let loaderData = await loaderPromise
+                    if (this.serializeLoaderData) {
+                      loaderData = this.serializeLoaderData(loaderData, {
+                        router: this,
+                        match,
+                      })
+                    }
                     checkLatest()
 
                     handleRedirectAndNotFound(match, loaderData)
@@ -2279,56 +2319,47 @@ export class Router<
     return match
   }
 
-  // We use a token -> weak map to keep track of deferred promises
-  // that are registered on the server and need to be resolved
-  registeredDeferredsIds = new Map<string, {}>()
-  registeredDeferreds = new WeakMap<{}, DeferredPromiseState<any>>()
-
-  getDeferred = (uid: string) => {
-    const token = this.registeredDeferredsIds.get(uid)
-
-    if (!token) {
-      return undefined
-    }
-
-    return this.registeredDeferreds.get(token)
-  }
-
   dehydrate = (): DehydratedRouter => {
     const pickError =
       this.options.errorSerializer?.serialize ?? defaultSerializeError
 
     return {
       state: {
-        dehydratedMatches: this.state.matches.map((d) => ({
-          ...pick(d, ['id', 'status', 'updatedAt', 'loaderData']),
-          // If an error occurs server-side during SSRing,
-          // send a small subset of the error to the client
-          error: d.error
-            ? {
-                data: pickError(d.error),
-                __isServerError: true,
-              }
-            : undefined,
-        })),
+        dehydratedMatches: this.state.matches.map((d) => {
+          return {
+            ...pick(d, ['id', 'status', 'updatedAt']),
+            // If an error occurs server-side during SSRing,
+            // send a small subset of the error to the client
+            error: d.error
+              ? {
+                  data: pickError(d.error),
+                  __isServerError: true,
+                }
+              : undefined,
+            // NOTE: We don't send the loader data here, because
+            // there is a potential that it needs to be streamed.
+            // Instead, we render it next to the route match in the HTML
+            // which gives us the potential to stream it via suspense.
+          }
+        }),
       },
       manifest: this.manifest,
     }
   }
 
-  hydrate = async (__do_not_use_server_ctx?: string) => {
-    let _ctx = __do_not_use_server_ctx
+  hydrate = async () => {
     // Client hydrates from window
+    let ctx: HydrationCtx | undefined
+
     if (typeof document !== 'undefined') {
-      _ctx = window.__TSR_DEHYDRATED__?.data
+      ctx = this.options.transformer.parse(window.__TSR__?.dehydrated) as any
     }
 
     invariant(
-      _ctx,
-      'Expected to find a __TSR_DEHYDRATED__ property on window... but we did not. Please file an issue!',
+      ctx,
+      'Expected to find a dehydrated data on window.__TSR__.dehydrated... but we did not. Please file an issue!',
     )
 
-    const ctx = this.options.transformer.parse(_ctx) as HydrationCtx
     this.dehydratedData = ctx.payload as any
     this.options.hydrate?.(ctx.payload as any)
     const dehydratedState = ctx.router.state
@@ -2336,7 +2367,7 @@ export class Router<
     const matches = this.matchRoutes(
       this.state.location.pathname,
       this.state.location.search,
-    ).map((match, i, allMatches) => {
+    ).map((match) => {
       const dehydratedMatch = dehydratedState.dehydratedMatches.find(
         (d) => d.id === match.id,
       )
@@ -2346,26 +2377,9 @@ export class Router<
         `Could not find a client-side match for dehydrated match with id: ${match.id}!`,
       )
 
-      const route = this.looseRoutesById[match.routeId]!
-
-      const assets =
-        dehydratedMatch.status === 'notFound' ||
-        dehydratedMatch.status === 'redirected'
-          ? {}
-          : {
-              meta: route.options.meta?.({
-                matches: allMatches,
-                params: match.params,
-                loaderData: dehydratedMatch.loaderData,
-              }),
-              links: route.options.links?.(),
-              scripts: route.options.scripts?.(),
-            }
-
       return {
         ...match,
         ...dehydratedMatch,
-        ...assets,
       }
     })
 
@@ -2377,6 +2391,38 @@ export class Router<
     })
 
     this.manifest = ctx.router.manifest
+  }
+
+  injectedHtml: Array<string> = []
+
+  getStreamedValue = <T>(key: string): T | undefined => {
+    if (this.isServer) {
+      return undefined
+    }
+
+    const streamedValue = window.__TSR__?.streamedValues[key]
+
+    if (!streamedValue) {
+      return
+    }
+
+    if (!streamedValue.parsed) {
+      streamedValue.parsed = this.options.transformer.parse(streamedValue.value)
+    }
+
+    return streamedValue.parsed
+  }
+
+  streamValue = (key: string, value: any) => {
+    const children = `window.__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`
+    this.injectedHtml.push(
+      `<script class='tsr-once'>${children}${
+        process.env.NODE_ENV === 'development'
+          ? `; console.info(\`Injected From Server:
+${children}\`)`
+          : ''
+      }</script>`,
+    )
   }
 
   handleNotFound = (matches: Array<AnyRouteMatch>, err: NotFoundError) => {

@@ -1,7 +1,7 @@
 {
   "name": "tanstack-router-react-example-quickstart",
-  "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite --port=3001",
     "build": "vite build",
@@ -9,8 +9,8 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.40.0",
-    "@tanstack/router-devtools": "^1.40.0",
+    "@tanstack/react-router": "^1.43.6",
+    "@tanstack/router-devtools": "^1.43.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

@@ -20,6 +20,12 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
   let ROOT: string = process.cwd()
   let userConfig = options as Config
 
+  const getRoutesDirectoryPath = () => {
+    return isAbsolute(userConfig.routesDirectory)
+      ? userConfig.routesDirectory
+      : join(ROOT, userConfig.routesDirectory)
+  }
+
   const generate = async () => {
     if (checkLock()) {
       return
@@ -56,10 +62,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       return
     }
 
-    const routesDirectoryPath = isAbsolute(userConfig.routesDirectory)
-      ? userConfig.routesDirectory
-      : join(ROOT, userConfig.routesDirectory)
-
+    const routesDirectoryPath = getRoutesDirectoryPath()
     if (filePath.startsWith(routesDirectoryPath)) {
       await generate()
     }
@@ -89,11 +92,39 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     async rspack(compiler) {
       userConfig = await getConfig(options, ROOT)
 
-      await run(generate)
-
-      compiler.hooks.watchRun.tap(PLUGIN_NAME, async () => {
+      // rspack watcher doesn't register newly created files
+      if (compiler.options.mode === 'production') {
         await run(generate)
-      })
+      } else {
+        const routesDirectoryPath = getRoutesDirectoryPath()
+        const chokidar = await import('chokidar')
+        chokidar.watch(routesDirectoryPath).on('add', async () => {
+          await run(generate)
+        })
+      }
+    },
+    async webpack(compiler) {
+      userConfig = await getConfig(options, ROOT)
+
+      // webpack watcher doesn't register newly created files
+      if (compiler.options.mode === 'production') {
+        await run(generate)
+      } else {
+        const routesDirectoryPath = getRoutesDirectoryPath()
+        const chokidar = await import('chokidar')
+        chokidar.watch(routesDirectoryPath).on('add', async () => {
+          await run(generate)
+        })
+      }
+
+      if (compiler.options.mode === 'production') {
+        compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
+          console.log('✅ ' + PLUGIN_NAME + ': route-tree generation done')
+          setTimeout(() => {
+            process.exit(0)
+          })
+        })
+      }
     },
   }
 }

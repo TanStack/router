@@ -1,6 +1,6 @@
-import path from 'path'
-import * as fs from 'fs'
-import * as fsp from 'fs/promises'
+import path from 'node:path'
+import * as fs from 'node:fs'
+import * as fsp from 'node:fs/promises'
 import * as prettier from 'prettier'
 import { cleanPath, logging, trimPathLeft } from './utils'
 import type { Config } from './config'
@@ -350,7 +350,9 @@ export async function generator(config: Config) {
     }
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
-    node.isVirtualParentRequired = node.isLayout ? !cleanedPathIsEmpty : false
+    const nonPathRoute = node.isRoute && node.isNonPath
+    node.isVirtualParentRequired =
+      node.isLayout || nonPathRoute ? !cleanedPathIsEmpty : false
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)

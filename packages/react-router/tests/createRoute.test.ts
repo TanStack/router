@@ -38,7 +38,7 @@ describe('everything', () => {
     //   getParentRoute: () => rootRoute,
     //   path: 'dashboard',
     //   loader: async () => {
-    //     console.log('Fetching all invoices...')
+    //     console.info('Fetching all invoices...')
     //     return {
     //       invoices: 'await fetchInvoices()',
     //     }
@@ -64,7 +64,7 @@ describe('everything', () => {
     //     invoiceId: String(invoiceId),
     //   }),
     //   loader: async ({ params: { invoiceId } }) => {
-    //     console.log('Fetching invoice...')
+    //     console.info('Fetching invoice...')
     //     return {
     //       invoice: 'await fetchInvoiceById(invoiceId!)',
     //     }

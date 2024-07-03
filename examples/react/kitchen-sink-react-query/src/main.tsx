@@ -398,10 +398,12 @@ function InvoicesIndexComponent() {
 const invoiceRoute = createRoute({
   getParentRoute: () => invoicesRoute,
   path: '$invoiceId',
-  parseParams: (params) => ({
-    invoiceId: z.number().int().parse(Number(params.invoiceId)),
-  }),
-  stringifyParams: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+  params: {
+    parse: (params) => ({
+      invoiceId: z.number().int().parse(Number(params.invoiceId)),
+    }),
+    stringify: ({ invoiceId }) => ({ invoiceId: `${invoiceId}` }),
+  },
   validateSearch: (search) =>
     z
       .object({
@@ -919,13 +921,6 @@ const router = createRouter({
   // This will ensure that the loader is always called when the route is preloaded or visited
   defaultPreloadStaleTime: 0,
 })
-
-// router.subscribe('onResolved', ({ pathChanged }) => {
-//   if (pathChanged) {
-//     console.log('invalidate')
-//     queryClient.getMutationCache().clear()
-//   }
-// })
 
 declare module '@tanstack/react-router' {
   interface Register {

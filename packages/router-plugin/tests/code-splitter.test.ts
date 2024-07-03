@@ -1,8 +1,11 @@
 import { readFile, readdir } from 'fs/promises'
 import path from 'path'
 import { describe, expect, it } from 'vitest'
-import { compileAst } from '../src/ast'
-import { compileFile, splitFile } from '../src/compilers'
+
+import {
+  compileCodeSplitReferenceRoute,
+  compileCodeSplitVirtualRoute,
+} from '../src/compilers'
 import { splitPrefix } from '../src/constants'
 
 async function getFilenames() {
@@ -13,37 +16,41 @@ describe('code-splitter works', async () => {
   const filenames = await getFilenames()
 
   it.each(filenames)(
-    'should handle the compiling and splitting of "%s"',
+    'should handle the compiling of "%s"',
     async (filename) => {
       const file = await readFile(
         path.resolve(__dirname, `./code-splitter/test-files/${filename}`),
       )
       const code = file.toString()
 
-      const compilerResult = await compileFile({
+      const compileResult = compileCodeSplitReferenceRoute({
         code,
-        compileAst: compileAst({
-          root: './code-splitter/test-files',
-        }),
+        root: './code-splitter/test-files',
         filename,
       })
 
-      await expect(compilerResult.code).toMatchFileSnapshot(
+      await expect(compileResult.code).toMatchFileSnapshot(
         `./code-splitter/snapshots/${filename}`,
-        `Compiled file for "${filename}" should match snapshot`,
       )
+    },
+  )
 
-      const splitResult = await splitFile({
-        code,
-        compileAst: compileAst({
-          root: './code-splitter/test-files',
-        }),
+  it.each(filenames)(
+    'should handle the splitting of "%s"',
+    async (filename) => {
+      const file = await readFile(
+        path.resolve(__dirname, `./code-splitter/test-files/${filename}`),
+      )
+      const code = file.toString()
+
+      const splitResult = compileCodeSplitVirtualRoute({
+        code: code,
+        root: './code-splitter/test-files',
         filename: `${filename}?${splitPrefix}`,
       })
 
       await expect(splitResult.code).toMatchFileSnapshot(
         `./code-splitter/snapshots/${filename.replace('.tsx', '')}@split.tsx`,
-        `Split file for "${filename}" should match snapshot`,
       )
     },
   )

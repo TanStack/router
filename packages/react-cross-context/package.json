@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-cross-context",
-  "version": "1.26.10",
+  "version": "1.41.0",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -34,7 +34,7 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:eslint": "eslint ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
     "build": "vite build"

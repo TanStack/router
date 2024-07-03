@@ -2,10 +2,6 @@ name: pr
 
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - 'media/**'
-      - '**/*.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
@@ -23,22 +19,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
       - name: Start Nx Agents
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
       - name: Get base and head commits for `nx affected`
         uses: nrwl/nx-set-shas@v4
         with:
           main-branch-name: 'main'
-      - name: Run Checks
+      - name: Run Tests
         run: pnpm run test:pr --parallel=3
       - name: Stop Nx Agents
         if: ${{ always() }}
@@ -61,15 +50,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
       - name: Get base and head commits for `nx affected`
         uses: nrwl/nx-set-shas@v4
         with:
@@ -86,21 +68,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
       - name: Get base and head commits for `nx affected`
         uses: nrwl/nx-set-shas@v4
         with:
           main-branch-name: 'main'
       - name: Build dependecies
-        run: pnpm run build
+        run: pnpm run build:all
       - name: Get Replay Chromium
         run: npx replayio install
       - name: Run Playwright tests

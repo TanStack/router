@@ -3147,6 +3147,130 @@ describe('Link', () => {
     expect(selfLink).toBeInTheDocument()
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
+
+  test('when navigating to /$postId with parseParams and stringifyParams', async () => {
+    const rootRoute = createRootRoute()
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link to="/$postId" params={{ postId: 2 }}>
+          Go to post
+        </Link>
+      ),
+    })
+
+    const parseParams = vi.fn()
+    const stringifyParams = vi.fn()
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return <div>Post: {params.postId}</div>
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '$postId',
+      parseParams: (params) => {
+        parseParams(params)
+        return {
+          status: 'parsed',
+          postId: params.postId,
+        }
+      },
+      stringifyParams: (params) => {
+        stringifyParams(params)
+        return {
+          status: 'stringified',
+          postId: params.postId,
+        }
+      },
+      component: PostComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, postRoute])
+    const router = createRouter({ routeTree })
+
+    render(<RouterProvider router={router} />)
+
+    const postLink = await screen.findByRole('link', {
+      name: 'Go to post',
+    })
+
+    expect(stringifyParams).toHaveBeenCalledWith({ postId: 2 })
+
+    expect(postLink).toHaveAttribute('href', '/2')
+
+    fireEvent.click(postLink)
+
+    expect(await screen.findByText('Post: 2')).toBeInTheDocument()
+
+    expect(parseParams).toHaveBeenCalledWith({ status: 'parsed', postId: '2' })
+  })
+
+  test('when navigating to /$postId with params.parse and params.stringify', async () => {
+    const rootRoute = createRootRoute()
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link to="/$postId" params={{ postId: 2 }}>
+          Go to post
+        </Link>
+      ),
+    })
+
+    const parseParams = vi.fn()
+    const stringifyParams = vi.fn()
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return <div>Post: {params.postId}</div>
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '$postId',
+      params: {
+        parse: (params) => {
+          parseParams(params)
+          return {
+            status: 'parsed',
+            postId: params.postId,
+          }
+        },
+        stringify: (params) => {
+          stringifyParams(params)
+          return {
+            status: 'stringified',
+            postId: params.postId,
+          }
+        },
+      },
+      component: PostComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, postRoute])
+    const router = createRouter({ routeTree })
+
+    render(<RouterProvider router={router} />)
+
+    const postLink = await screen.findByRole('link', {
+      name: 'Go to post',
+    })
+
+    expect(stringifyParams).toHaveBeenCalledWith({ postId: 2 })
+
+    expect(postLink).toHaveAttribute('href', '/2')
+
+    fireEvent.click(postLink)
+
+    expect(await screen.findByText('Post: 2')).toBeInTheDocument()
+
+    expect(parseParams).toHaveBeenCalledWith({ status: 'parsed', postId: '2' })
+  })
 })
 
 describe('createLink', () => {

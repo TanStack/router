@@ -1,4 +1,4 @@
-import path from 'path'
+import path from 'node:path'
 import chokidar from 'chokidar'
 import { generator, getConfig } from '@tanstack/router-generator'
 

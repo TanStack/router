@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.39.13",
+  "version": "1.43.9",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -46,14 +46,25 @@
         "default": "./dist/cjs/rspack.cjs"
       }
     },
+    "./webpack": {
+      "import": {
+        "types": "./dist/esm/webpack.d.ts",
+        "default": "./dist/esm/webpack.js"
+      },
+      "require": {
+        "types": "./dist/cjs/webpack.d.cts",
+        "default": "./dist/cjs/webpack.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
-    "test:unit": "vitest --typecheck --watch=false",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:unit": "vitest",
+    "test:unit:dev": "vitest --watch",
+    "test:eslint": "eslint ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
     "build": "vite build"
@@ -76,7 +87,8 @@
   ],
   "peerDependencies": {
     "@rsbuild/core": ">=0.7.9",
-    "vite": ">=5"
+    "vite": ">=5.0.13",
+    "webpack": ">=5.92.0"
   },
   "peerDependenciesMeta": {
     "vite": {
@@ -84,15 +96,17 @@
     },
     "@rsbuild/core": {
       "optional": true
+    },
+    "webpack": {
+      "optional": true
     }
   },
   "dependencies": {
     "@babel/core": "^7.24.7",
     "@babel/generator": "^7.24.7",
+    "@babel/parser": "^7.24.7",
     "@babel/plugin-syntax-jsx": "^7.24.7",
     "@babel/plugin-syntax-typescript": "^7.24.7",
-    "@babel/plugin-transform-react-jsx": "^7.24.7",
-    "@babel/plugin-transform-typescript": "^7.24.7",
     "@babel/template": "^7.24.7",
     "@babel/traverse": "^7.24.7",
     "@babel/types": "^7.24.7",
@@ -101,7 +115,12 @@
     "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.20.6",
-    "unplugin": "^1.10.1",
+    "babel-dead-code-elimination": "^1.0.6",
+    "chokidar": "^3.5.3",
+    "unplugin": "^1.11.0",
     "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "vite": "^5.3.1"
   }
 }

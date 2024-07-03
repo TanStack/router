@@ -1,10 +1,10 @@
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { ServerResponse } from 'http'
-import express from 'express'
 import { StartServer } from '@tanstack/start/server'
 import { createRouter } from './router'
+import type { ServerResponse } from 'http'
+import type express from 'express'
 
 // index.js
 import './fetch-polyfill'

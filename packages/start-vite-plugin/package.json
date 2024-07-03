@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-vite-plugin",
-  "version": "1.39.1",
+  "version": "1.43.1",
   "description": "",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -35,8 +35,8 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
-    "test:unit": "vitest --typecheck --watch=false",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:unit": "vitest",
+    "test:eslint": "eslint ./src",
     "test:types": "tsc --noEmit",
     "test:build": "publint --strict",
     "build": "vite build"
@@ -62,8 +62,6 @@
     "@babel/generator": "^7.24.7",
     "@babel/plugin-syntax-jsx": "^7.24.7",
     "@babel/plugin-syntax-typescript": "^7.24.7",
-    "@babel/plugin-transform-react-jsx": "^7.24.7",
-    "@babel/plugin-transform-typescript": "^7.24.7",
     "@babel/template": "^7.24.7",
     "@babel/traverse": "^7.24.7",
     "@babel/types": "^7.24.7",
