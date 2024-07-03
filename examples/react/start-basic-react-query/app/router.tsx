@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
+import { ConvexQueryClient, convexQueryKeyHashFn } from 'convex-tanstack-query'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { routerWithQueryClient } from '@tanstack/react-router-with-query'
 import { routeTree } from './routeTree.gen'
@@ -10,7 +11,15 @@ import { NotFound } from './components/NotFound'
 // to show what's possible with the current APIs.
 
 export function createRouter() {
-  const queryClient = new QueryClient()
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        queryKeyHashFn: convexQueryKeyHashFn,
+      },
+    },
+  })
+  const CONVEX_URL = process.env.VITE_CONVEX_URL!
+  const liveClient = new ConvexQueryClient(CONVEX_URL, { queryClient })
 
   return routerWithQueryClient(
     createTanStackRouter({

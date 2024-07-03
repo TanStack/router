@@ -1,13 +1,11 @@
 import { queryOptions } from '@tanstack/react-query'
 import { notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
+import schema from 'convex/schema'
+import { Infer } from 'convex/values'
 import axios from 'redaxios'
 
-export type PostType = {
-  id: string
-  title: string
-  body: string
-}
+export type PostType = Infer<typeof schema.tables.posts.validator>
 
 export const fetchPosts = createServerFn('GET', async () => {
   console.info('Fetching posts...')
