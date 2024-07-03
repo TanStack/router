@@ -25,7 +25,9 @@ const viteSchema = z.object({
 })
 
 const babelSchema = z.object({
-  plugins: z.array(z.union([z.tuple([z.string(), z.any()]), z.string()])),
+  plugins: z
+    .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
+    .optional(),
 })
 
 const reactSchema = z.object({
@@ -76,6 +78,7 @@ function setTsrDefaults(
 ): Partial<TanStackStartDefineConfigOptions['tsr']> {
   return {
     ...config,
+    // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
     appDirectory: config?.appDirectory ?? './app',
     routesDirectory: config?.routesDirectory ?? './app/routes',
     generatedRouteTree: config?.generatedRouteTree ?? './app/routeTree.gen.ts',
