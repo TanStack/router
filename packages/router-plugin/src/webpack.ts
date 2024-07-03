@@ -19,25 +19,17 @@ const TanStackRouterGeneratorWebpack = /* #__PURE__ */ createWebpackPlugin(
 )
 
 /**
- * @experimental Do not use this plugin yet
- *
- * Unplugin's Webpack integration doesn't support the `resolveId` and `transform` hooks.
- * The code-splitter won't work with Webpack and will probably break your dev and build.
- *
- * If you're familiar with Webpack and know how to overcome our `resolveId` and `transform`
- * limitations, please let us know.
- * We'd love to support it, but we're not sure how to do it yet 😅.
- *
  * @example
  * ```ts
  * export default {
  *   // ...
- *   plugins: [unstable_TanStackRouterCodeSplitterWebpack()],
+ *   plugins: [TanStackRouterCodeSplitterWebpack()],
  * }
  * ```
  */
-const unstable_TanStackRouterCodeSplitterWebpack =
-  /* #__PURE__ */ createWebpackPlugin(unpluginRouterCodeSplitterFactory)
+const TanStackRouterCodeSplitterWebpack = /* #__PURE__ */ createWebpackPlugin(
+  unpluginRouterCodeSplitterFactory,
+)
 
 /**
  * @example
@@ -57,6 +49,6 @@ export {
   configSchema,
   TanStackRouterWebpack,
   TanStackRouterGeneratorWebpack,
-  unstable_TanStackRouterCodeSplitterWebpack,
+  TanStackRouterCodeSplitterWebpack,
 }
 export type { Config }
