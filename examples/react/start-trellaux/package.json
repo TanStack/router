@@ -17,7 +17,7 @@
     "@tanstack/react-router": "^1.43.6",
     "@tanstack/router-devtools": "^1.43.6",
     "@tanstack/router-vite-plugin": "^1.43.5",
-    "@tanstack/start": "^1.43.6",
+    "@tanstack/start": "^1.43.7",
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4",
     "isbot": "^3.7.0",

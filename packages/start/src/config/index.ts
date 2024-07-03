@@ -39,57 +39,67 @@ const reactSchema = z.object({
 const routersSchema = z.object({
   ssr: z
     .object({
-      entry: z.string().default('./app/ssr.tsx'),
-      vite: viteSchema.optional().default({}),
+      entry: z.string().optional(),
+      vite: viteSchema.optional(),
     })
-    .optional()
-    .default({}),
+    .optional(),
   client: z
     .object({
-      entry: z.string().optional().default('./app/client.tsx'),
+      entry: z.string().optional(),
       base: z.string().optional(),
-      vite: viteSchema.optional().default({}),
+      vite: viteSchema.optional(),
     })
-    .optional()
-    .default({}),
+    .optional(),
   server: z
     .object({
-      vite: viteSchema.optional().default({}),
-      base: z.string().optional().default('/_server'),
+      base: z.string().optional(),
+      vite: viteSchema.optional(),
     })
-    .optional()
-    .default({}),
+    .optional(),
 })
 
-const optsSchema = z
-  .object({
-    tsr: configSchema
-      .partial()
-      .extend({
-        appDirectory: z.string().default('./app'),
-        // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
-        routesDirectory: z.string().default('./app/routes'),
-        generatedRouteTree: z.string().default('./app/routeTree.gen.ts'),
-      })
-      .optional()
-      .default({}),
-    react: reactSchema.optional().default({}),
-    vite: viteSchema.optional().default({}),
-    routers: routersSchema.optional().default({}),
-  })
-  .optional()
-  .default({})
+const tsrConfig = configSchema.partial().extend({
+  appDirectory: z.string(),
+})
 
-export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
-  const opts = optsSchema.parse(opts_)
+const inlineConfigSchema = z.object({
+  react: reactSchema.optional(),
+  vite: viteSchema.optional(),
+  tsr: tsrConfig.optional(),
+  routers: routersSchema.optional(),
+})
 
-  const tsrConfig = await getConfig(opts.tsr)
+export type TanStackStartDefineConfigOptions = z.infer<
+  typeof inlineConfigSchema
+>
 
-  const clientBase = opts.routers.client.base || '/_build'
+function setTsrDefaults(
+  config: TanStackStartDefineConfigOptions['tsr'],
+): Partial<TanStackStartDefineConfigOptions['tsr']> {
+  return {
+    ...config,
+    // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
+    appDirectory: config?.appDirectory ?? './app',
+    routesDirectory: config?.routesDirectory ?? './app/routes',
+    generatedRouteTree: config?.generatedRouteTree ?? './app/routeTree.gen.ts',
+    experimental: {
+      ...config?.experimental,
+    },
+  }
+}
 
-  const clientEntry = opts.routers.client.entry
-  const ssrEntry = opts.routers.ssr.entry
-  const serverBase = opts.routers.server.base
+export async function defineConfig(
+  inlineConfig: TanStackStartDefineConfigOptions = {},
+) {
+  const opts = inlineConfigSchema.parse(inlineConfig)
+
+  const tsrConfig = await getConfig(setTsrDefaults(opts.tsr))
+
+  const clientBase = opts.routers?.client?.base || '/_build'
+
+  const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
+  const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
+  const serverBase = opts.routers?.server?.base || '/_server'
 
   return createApp({
     server: {
@@ -115,15 +125,15 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           sourcemap: true,
         },
         plugins: () => [
-          ...(opts.vite.plugins?.() || []),
-          ...(opts.routers.client.vite.plugins?.() || []),
+          ...(opts.vite?.plugins?.() || []),
+          ...(opts.routers?.client?.vite?.plugins?.() || []),
           serverFunctions.client({
             runtime: '@tanstack/start/client-runtime',
           }),
           reactRefresh({
-            babel: opts.react.babel,
-            exclude: opts.react.exclude,
-            include: opts.react.include,
+            babel: opts.react?.babel,
+            exclude: opts.react?.exclude,
+            include: opts.react?.include,
           }),
           // TODO: RSCS - enable this
           // serverComponents.client(),
@@ -139,8 +149,8 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
             tsrConfig,
             clientBase,
           }),
-          ...(opts.vite.plugins?.() || []),
-          ...(opts.routers.ssr.vite.plugins?.() || []),
+          ...(opts.vite?.plugins?.() || []),
+          ...(opts.routers?.ssr?.vite?.plugins?.() || []),
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
@@ -183,8 +193,8 @@ export async function defineConfig(opts_?: z.infer<typeof optsSchema>) {
           //   runtime: '@vinxi/react-server-dom/runtime',
           //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
           // }),
-          ...(opts.vite.plugins?.() || []),
-          ...(opts.routers.server.vite.plugins?.() || []),
+          ...(opts.vite?.plugins?.() || []),
+          ...(opts.routers?.server?.vite?.plugins?.() || []),
         ],
       }),
     ],
