@@ -175,11 +175,29 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       },
     },
 
-    async rspack() {
+    async rspack(compiler) {
+      ROOT = process.cwd()
+
+      compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
+        self.normalModuleFactory.hooks.beforeResolve.tap(
+          PLUGIN_NAME,
+          (resolveData) => {
+            if (resolveData.request.includes(JoinedSplitPrefix)) {
+              resolveData.request = resolveData.request.replace(
+                JoinedSplitPrefix,
+                '',
+              )
+            }
+          },
+        )
+      })
+
       userConfig = await getConfig(options, ROOT)
     },
 
     async webpack(compiler) {
+      ROOT = process.cwd()
+
       compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
         self.normalModuleFactory.hooks.beforeResolve.tap(
           PLUGIN_NAME,
