@@ -52,6 +52,7 @@ plugins: [
 }
 
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
+const JoinedSplitPrefix = splitPrefix + ':'
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
@@ -77,11 +78,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     if (debug) console.info('')
     if (debug) console.info('')
     if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
 
     return compiledVirtualRoute
   }
@@ -99,13 +95,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     if (debug) console.info('Compiled Output')
     if (debug) console.info('')
     if (debug) console.info(compiledReferenceRoute.code)
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
     if (debug) console.info('')
     if (debug) console.info('')
     if (debug) console.info('')
@@ -159,6 +148,26 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       return null
     },
 
+    transformInclude(transformId) {
+      if (!userConfig.experimental?.enableCodeSplitting) {
+        return undefined
+      }
+
+      let id = transformId
+
+      if (id.startsWith(JoinedSplitPrefix)) {
+        id = id.replace(JoinedSplitPrefix, '')
+      }
+
+      if (
+        fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
+        id.includes(splitPrefix)
+      ) {
+        return true
+      }
+      return false
+    },
+
     vite: {
       async configResolved(config) {
         ROOT = config.root
@@ -167,7 +176,55 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     },
 
     async rspack(compiler) {
+      ROOT = process.cwd()
+
+      compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
+        self.normalModuleFactory.hooks.beforeResolve.tap(
+          PLUGIN_NAME,
+          (resolveData) => {
+            if (resolveData.request.includes(JoinedSplitPrefix)) {
+              resolveData.request = resolveData.request.replace(
+                JoinedSplitPrefix,
+                '',
+              )
+            }
+          },
+        )
+      })
+
       userConfig = await getConfig(options, ROOT)
+    },
+
+    async webpack(compiler) {
+      ROOT = process.cwd()
+
+      compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
+        self.normalModuleFactory.hooks.beforeResolve.tap(
+          PLUGIN_NAME,
+          (resolveData) => {
+            if (resolveData.request.includes(JoinedSplitPrefix)) {
+              resolveData.request = resolveData.request.replace(
+                JoinedSplitPrefix,
+                '',
+              )
+            }
+          },
+        )
+      })
+
+      userConfig = await getConfig(options, ROOT)
+
+      if (
+        userConfig.experimental?.enableCodeSplitting &&
+        compiler.options.mode === 'production'
+      ) {
+        compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
+          console.log('✅ ' + PLUGIN_NAME + ': code-splitting done!')
+          setTimeout(() => {
+            process.exit(0)
+          })
+        })
+      }
     },
   }
 }
