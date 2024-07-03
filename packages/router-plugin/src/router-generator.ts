@@ -107,14 +107,14 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       userConfig = await getConfig(options, ROOT)
 
       // webpack watcher doesn't register newly created files
-      if (compiler.options.mode !== 'production') {
+      if (compiler.options.mode === 'production') {
+        await run(generate)
+      } else {
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
         chokidar.watch(routesDirectoryPath).on('add', async () => {
           await run(generate)
         })
-      } else {
-        await run(generate)
       }
 
       if (compiler.options.mode === 'production') {
