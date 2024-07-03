@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "webpack serve --port 3001",
+    "dev": "webpack serve --port 3001 --no-open",
     "build": "webpack build"
   },
   "dependencies": {
