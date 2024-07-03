@@ -156,7 +156,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       let id = transformId
 
       if (id.startsWith(JoinedSplitPrefix)) {
-        console.log('transformId', id)
         id = id.replace(JoinedSplitPrefix, '')
       }
 
