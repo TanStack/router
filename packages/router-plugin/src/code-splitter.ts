@@ -199,7 +199,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       if (
         userConfig.experimental?.enableCodeSplitting &&
-        process.env.NODE_ENV === 'production'
+        compiler.options.mode === 'production'
       ) {
         compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
           console.log('✅ ' + PLUGIN_NAME + ': code-splitting done!')
