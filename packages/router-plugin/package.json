@@ -87,13 +87,17 @@
   ],
   "peerDependencies": {
     "@rsbuild/core": ">=0.7.9",
-    "vite": ">=5.0.13"
+    "vite": ">=5.0.13",
+    "webpack": ">=5.92.0"
   },
   "peerDependenciesMeta": {
     "vite": {
       "optional": true
     },
     "@rsbuild/core": {
+      "optional": true
+    },
+    "webpack": {
       "optional": true
     }
   },
