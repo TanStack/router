@@ -48,6 +48,7 @@ export interface RouteMatch<
   searchError: unknown
   updatedAt: number
   loadPromise: ControlledPromise<void>
+  beforeLoadPromise: ControlledPromise<void>
   loaderPromise: Promise<TLoaderData>
   loaderData?: TLoaderData
   routeContext: TRouteContext

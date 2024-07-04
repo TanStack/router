@@ -1082,6 +1082,7 @@ export class Router<
           isFetching: false,
           error: undefined,
           paramsError: parseErrors[index],
+          beforeLoadPromise: createControlledPromise<void>(),
           loaderPromise: Promise.resolve(),
           loadPromise,
           routeContext: undefined!,
@@ -1785,7 +1786,9 @@ export class Router<
               matches[index] = match = updateMatch(match.id, (prev) => ({
                 ...prev,
                 isFetching: 'beforeLoad',
+                beforeLoadPromise: createControlledPromise<void>(),
                 loadPromise,
+                abortController,
               }))
 
               const handleSerialError = (err: any, routerCode: string) => {
@@ -1869,7 +1872,7 @@ export class Router<
                   ...beforeLoadContext,
                 }
 
-                matches[index] = match = {
+                matches[index] = match = updateMatch(match.id, () => ({
                   ...match,
                   routeContext: replaceEqualDeep(
                     match.routeContext,
@@ -1877,8 +1880,9 @@ export class Router<
                   ),
                   context: replaceEqualDeep(match.context, context),
                   abortController,
-                }
-                updateMatch(match.id, () => match)
+                }))
+
+                match.beforeLoadPromise.resolve()
               } catch (err) {
                 handleSerialError(err, 'BEFORE_LOAD')
                 break
@@ -1895,6 +1899,18 @@ export class Router<
                 const parentMatchPromise = matchPromises[index - 1]
                 const route = this.looseRoutesById[match.routeId]!
 
+                // In case the beforeLoad isn't done (such as multiple load routines running concurently)
+                // we need to await it, to ensure context is correctly generated
+                if (match.beforeLoadPromise.status === 'pending') {
+                  await match.beforeLoadPromise
+                  const existing = getRouteMatch(this.state, match.id)!
+                  matches[index] = match = {
+                    ...match,
+                    routeContext: existing.routeContext,
+                    context: existing.context,
+                  }
+                }
+
                 const loaderContext: LoaderFnContext = {
                   params: match.params,
                   deps: match.loaderDeps,
@@ -1910,10 +1926,8 @@ export class Router<
                 }
 
                 const fetchAndResolveInLoaderLifetime = async () => {
-                  const existing = getRouteMatch(this.state, match.id)!
                   let lazyPromise = Promise.resolve()
                   let componentsPromise = Promise.resolve() as Promise<any>
-                  let loaderPromise = existing.loaderPromise
 
                   // If the Matches component rendered
                   // the pending component and needs to show it for
@@ -1982,18 +1996,16 @@ export class Router<
                       checkLatest()
 
                       // Kick off the loader!
-                      loaderPromise = route.options.loader?.(loaderContext)
-
                       matches[index] = match = updateMatch(
                         match.id,
                         (prev) => ({
                           ...prev,
-                          loaderPromise,
+                          loaderPromise: route.options.loader?.(loaderContext),
                         }),
                       )
                     }
 
-                    let loaderData = await loaderPromise
+                    let loaderData = await match.loaderPromise
                     if (this.serializeLoaderData) {
                       loaderData = this.serializeLoaderData(loaderData, {
                         router: this,
