@@ -1147,7 +1147,7 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-       // if the router is loading the previous location is what
+      // if the router is loading the previous location is what
       // we should use because the old matches are still around
       // and the latest location has already been updated.
       // If the router is not loading we should always use the
