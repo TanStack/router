@@ -81,21 +81,24 @@ export function serializeLoaderData(
 export function afterHydrate({ router }: { router: AnyRouter }) {
   router.state.matches.forEach((match) => {
     const route = router.looseRoutesById[match.routeId]!
-    match.loaderData = router.options.transformer.parse(
-      window.__TSR__?.matches[match.index]?.loaderData,
-    )
-    const extracted = window.__TSR__?.matches[match.index]?.extracted
+    if (window.__TSR__?.matches[match.index]) {
+      match.loaderData = router.options.transformer.parse(
+        window.__TSR__.matches[match.index].loaderData,
+      )
 
-    if (extracted) {
-      Object.entries(extracted).forEach(([_, ex]: any) => {
-        if (ex.value instanceof Promise) {
-          const og = ex.value
-          ex.value = og.then((data: any) =>
-            router.options.transformer.parse(data),
-          )
-        }
-        deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
-      })
+      const extracted = window.__TSR__.matches[match.index].extracted
+
+      if (extracted) {
+        Object.entries(extracted).forEach(([_, ex]: any) => {
+          if (ex.value instanceof Promise) {
+            const og = ex.value
+            ex.value = og.then((data: any) =>
+              router.options.transformer.parse(data),
+            )
+          }
+          deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
+        })
+      }
     }
 
     Object.assign(match, {
@@ -137,7 +140,7 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
 
   return (
     <>
-      {serializedLoaderData !== undefined || extracted ? (
+      {serializedLoaderData !== undefined || extracted?.length ? (
         <ScriptOnce
           children={`__TSR__.matches[${props.matchIndex}] = ${jsesc(
             {

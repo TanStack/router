@@ -3,29 +3,32 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query'
-import ky from 'ky'
 import {
-  Board,
-  updateSchema,
-  deleteItemSchema,
-  newColumnSchema,
-  itemSchema,
-} from './mocks/db.js'
-import { z } from 'zod'
+  createColumn,
+  createItem,
+  deleteColumn,
+  deleteItem,
+  getBoard,
+  getBoards,
+  updateBoard,
+  updateColumn,
+  updateItem,
+} from './db/board.js'
 
 export const boardQueries = {
-  detail: (id: number) =>
+  list: () =>
+    queryOptions({ queryKey: ['boards', 'list'], queryFn: () => getBoards() }),
+  detail: (id: string) =>
     queryOptions({
-      queryKey: ['board', id],
-      queryFn: () => ky.get(`/board/${id}`).json<Board>(),
+      queryKey: ['boards', 'detail', id],
+      queryFn: () => getBoard(id),
     }),
 }
 
-export function useNewColumnMutation() {
+export function useCreateColumnMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (json: z.infer<typeof newColumnSchema>) =>
-      ky.post('/board/newColumn', { json }),
+    mutationFn: createColumn,
     onMutate: async (variables) => {
       await queryClient.cancelQueries()
       queryClient.setQueryData(
@@ -36,7 +39,11 @@ export function useNewColumnMutation() {
                 ...board,
                 columns: [
                   ...board.columns,
-                  { ...variables, order: board.columns.length + 1 },
+                  {
+                    ...variables,
+                    order: board.columns.length + 1,
+                    id: Math.random() + '',
+                  },
                 ],
               }
             : undefined,
@@ -45,12 +52,11 @@ export function useNewColumnMutation() {
   })
 }
 
-export function useNewCardMutation() {
+export function useCreateItemMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (json: z.infer<typeof itemSchema>) =>
-      ky.post('/board/newItem', { json }),
+    mutationFn: createItem,
     onMutate: async (variables) => {
       await queryClient.cancelQueries()
       queryClient.setQueryData(
@@ -67,12 +73,11 @@ export function useNewCardMutation() {
   })
 }
 
-export function useMoveCardMutation() {
+export function useUpdateCardMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (json: z.infer<typeof itemSchema>) =>
-      ky.post('/board/moveItem', { json }),
+    mutationFn: updateItem,
     onMutate: async (variables) => {
       await queryClient.cancelQueries()
       queryClient.setQueryData(
@@ -95,8 +100,7 @@ export function useDeleteCardMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (json: z.infer<typeof deleteItemSchema>) =>
-      ky.post('/board/deleteItem', { json }),
+    mutationFn: deleteItem,
     onMutate: async (variables) => {
       await queryClient.cancelQueries()
 
@@ -114,9 +118,64 @@ export function useDeleteCardMutation() {
   })
 }
 
-export function useUpdateMutation() {
+export function useDeleteColumnMutation() {
+  const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (json: z.infer<typeof updateSchema>) =>
-      ky.post('/board/update', { json }),
+    mutationFn: deleteColumn,
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries()
+
+      queryClient.setQueryData(
+        boardQueries.detail(variables.boardId).queryKey,
+        (board) =>
+          board
+            ? {
+                ...board,
+                columns: board.columns.filter(
+                  (column) => column.id !== variables.id,
+                ),
+                items: board.items.filter(
+                  (item) => item.columnId !== variables.id,
+                ),
+              }
+            : undefined,
+      )
+    },
+  })
+}
+
+export function useUpdateBoardMutation() {
+  return useMutation({
+    mutationFn: updateBoard,
+  })
+}
+
+export function useUpdateColumnMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: updateColumn,
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries()
+
+      queryClient.setQueryData(
+        boardQueries.detail(variables.boardId).queryKey,
+        (board) =>
+          board
+            ? {
+                ...board,
+                columns: board.columns.map((c) =>
+                  c.id === variables.id
+                    ? {
+                        ...c,
+                        ...variables,
+                      }
+                    : c,
+                ),
+              }
+            : undefined,
+      )
+    },
   })
 }

@@ -3,15 +3,15 @@ import { forwardRef, useState } from 'react'
 
 import { CONTENT_TYPES } from '../types'
 import { Icon } from '../icons/icons'
-import { useDeleteCardMutation, useMoveCardMutation } from '../queries'
-import { deleteItemSchema } from '../mocks/db'
+import { useDeleteCardMutation, useUpdateCardMutation } from '../queries'
+import { deleteItemSchema } from '../db/schema'
 
 interface CardProps {
   title: string
   content: string | null
   id: string
   columnId: string
-  boardId: number
+  boardId: string
   order: number
   nextOrder: number
   previousOrder: number
@@ -27,7 +27,7 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
     )
 
     const deleteCard = useDeleteCardMutation()
-    const moveCard = useMoveCardMutation()
+    const moveCard = useUpdateCardMutation()
 
     return (
       <li
@@ -48,8 +48,13 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
           event.stopPropagation()
 
           const transfer = JSON.parse(
-            event.dataTransfer.getData(CONTENT_TYPES.card),
+            event.dataTransfer.getData(CONTENT_TYPES.card) || 'null',
           )
+
+          if (!transfer) {
+            return
+          }
+
           invariant(transfer.id, 'missing cardId')
           invariant(transfer.title, 'missing title')
 
@@ -69,10 +74,10 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
         className={
           'border-t-2 border-b-2 -mb-[2px] last:mb-0 cursor-grab active:cursor-grabbing px-2 py-1 ' +
           (acceptDrop === 'top'
-            ? 'border-t-brand-red border-b-transparent'
+            ? 'border-t-red-500 border-b-transparent'
             : acceptDrop === 'bottom'
-              ? 'border-b-brand-red border-t-transparent'
-              : 'border-t-transparent border-b-transparent')
+            ? 'border-b-red-500 border-t-transparent'
+            : 'border-t-transparent border-b-transparent')
         }
       >
         <div
@@ -84,6 +89,7 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
               CONTENT_TYPES.card,
               JSON.stringify({ id, title }),
             )
+            event.stopPropagation()
           }}
         >
           <h3>{title}</h3>
@@ -91,22 +97,21 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
           <form
             onSubmit={(event) => {
               event.preventDefault()
-              const formData = new FormData(event.currentTarget)
+
               deleteCard.mutate(
-                deleteItemSchema.parse(Object.fromEntries(formData.entries())),
+                deleteItemSchema.parse({
+                  id,
+                  boardId,
+                }),
               )
             }}
           >
-            <input type="hidden" name="id" value={id} />
-            <input type="hidden" name="boardId" value={boardId} />
             <button
               aria-label="Delete card"
-              className="absolute top-4 right-4 hover:text-brand-red"
+              className="absolute top-4 right-4 hover:text-red-500 flex gap-2 items-center"
               type="submit"
-              onClick={(event) => {
-                event.stopPropagation()
-              }}
             >
+              <div className="opacity-50 text-xs">{order}</div>
               <Icon name="trash" />
             </button>
           </form>

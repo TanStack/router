@@ -1,24 +1,39 @@
-import { useState, useCallback, useRef, forwardRef } from 'react'
+import { forwardRef, useCallback, useMemo, useRef, useState } from 'react'
 import invariant from 'tiny-invariant'
+import { twMerge } from 'tailwind-merge'
 
-import { INTENTS, type RenderedItem, CONTENT_TYPES } from '../types'
 import { flushSync } from 'react-dom'
-import { EditableText } from './EditableText'
+import { CONTENT_TYPES, INTENTS, type RenderedItem } from '../types'
 import { Icon } from '../icons/icons'
+import {
+  useDeleteColumnMutation,
+  useUpdateCardMutation,
+  useUpdateColumnMutation,
+} from '../queries'
+import { EditableText } from './EditableText'
 import { NewCard } from './NewCard'
 import { Card } from './Card'
-import { useMoveCardMutation } from '../queries'
 
 interface ColumnProps {
   name: string
-  boardId: number
+  boardId: string
   columnId: string
-  items: RenderedItem[]
+  items: Array<RenderedItem>
+  nextOrder: number
+  previousOrder: number
+  order: number
 }
 
 export const Column = forwardRef<HTMLDivElement, ColumnProps>(
-  ({ name, columnId, boardId, items }, ref) => {
-    const [acceptDrop, setAcceptDrop] = useState(false)
+  (
+    { name, columnId, boardId, items, nextOrder, previousOrder, order },
+    ref,
+  ) => {
+    const [acceptCardDrop, setAcceptCardDrop] = useState(false)
+    const editState = useState(false)
+    const [acceptColumnDrop, setAcceptColumnDrop] = useState<
+      'none' | 'left' | 'right'
+    >('none')
     const [edit, setEdit] = useState(false)
     const itemRef = useCallback((node: HTMLElement | null) => {
       node?.scrollIntoView()
@@ -31,63 +46,140 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
       listRef.current.scrollTop = listRef.current.scrollHeight
     }
 
-    const moveCard = useMoveCardMutation()
+    const updateColumnMutation = useUpdateColumnMutation()
+    const deleteColumnMutation = useDeleteColumnMutation()
+    const updateCardMutation = useUpdateCardMutation()
+
+    const sortedItems = useMemo(
+      () => [...items].sort((a, b) => a.order - b.order),
+      [items],
+    )
+
+    const cardDndProps = {
+      onDragOver: (event: React.DragEvent) => {
+        if (event.dataTransfer.types.includes(CONTENT_TYPES.card)) {
+          event.preventDefault()
+          setAcceptCardDrop(true)
+        }
+      },
+      onDragLeave: () => {
+        setAcceptCardDrop(false)
+      },
+      onDrop: (event: React.DragEvent) => {
+        const transfer = JSON.parse(
+          event.dataTransfer.getData(CONTENT_TYPES.card) || 'null',
+        )
+
+        if (!transfer) {
+          return
+        }
+
+        invariant(transfer.id, 'missing transfer.id')
+        invariant(transfer.title, 'missing transfer.title')
+
+        updateCardMutation.mutate({
+          order: sortedItems[sortedItems.length - 1]?.order ?? 0 + 1,
+          columnId: columnId,
+          boardId,
+          id: transfer.id,
+          title: transfer.title,
+        })
+
+        setAcceptCardDrop(false)
+      },
+    }
 
     return (
       <div
         ref={ref}
-        className={
-          'flex-shrink-0 flex flex-col overflow-hidden max-h-full w-80 border-slate-400 rounded-xl shadow-sm shadow-slate-400 bg-slate-100 ' +
-          (acceptDrop ? `outline outline-2 outline-brand-red` : ``)
-        }
-        onDragOver={(event) => {
-          if (
-            items.length === 0 &&
-            event.dataTransfer.types.includes(CONTENT_TYPES.card)
-          ) {
+        onDragOver={(event: React.DragEvent) => {
+          if (event.dataTransfer.types.includes(CONTENT_TYPES.column)) {
             event.preventDefault()
-            setAcceptDrop(true)
+            event.stopPropagation()
+            const rect = event.currentTarget.getBoundingClientRect()
+            const midpoint = (rect.left + rect.right) / 2
+            setAcceptColumnDrop(event.clientX <= midpoint ? 'left' : 'right')
           }
         }}
         onDragLeave={() => {
-          setAcceptDrop(false)
+          setAcceptColumnDrop('none')
         }}
-        onDrop={(event) => {
+        onDrop={(event: React.DragEvent) => {
           const transfer = JSON.parse(
-            event.dataTransfer.getData(CONTENT_TYPES.card),
+            event.dataTransfer.getData(CONTENT_TYPES.column) || 'null',
           )
-          invariant(transfer.id, 'missing transfer.id')
-          invariant(transfer.title, 'missing transfer.title')
 
-          moveCard.mutate({
-            order: 1,
-            columnId: columnId,
+          if (!transfer) {
+            return
+          }
+
+          invariant(transfer.id, 'missing transfer.id')
+
+          const droppedOrder =
+            acceptColumnDrop === 'left' ? previousOrder : nextOrder
+          const moveOrder = (droppedOrder + order) / 2
+
+          console.log('moveOrder', moveOrder)
+
+          updateColumnMutation.mutate({
             boardId,
             id: transfer.id,
-            title: transfer.title,
+            order: moveOrder,
           })
 
-          setAcceptDrop(false)
+          setAcceptColumnDrop('none')
         }}
+        className={twMerge(
+          'border-l-transparent border-r-transparent border-l-2 border-r-2 -mr-[2px] last:mr-0 cursor-grab active:cursor-grabbing px-2 flex-shrink-0 flex flex-col  max-h-full',
+          acceptColumnDrop === 'left'
+            ? 'border-l-red-500 border-r-transparent'
+            : acceptColumnDrop === 'right'
+            ? 'border-r-red-500 border-l-transparent'
+            : '',
+        )}
       >
-        <div className="p-2">
-          <EditableText
-            fieldName="name"
-            value={name}
-            inputLabel="Edit column name"
-            buttonLabel={`Edit column "${name}" name`}
-            inputClassName="border border-slate-400 w-full rounded-lg py-1 px-2 font-medium text-black"
-            buttonClassName="block rounded-lg text-left w-full border border-transparent py-1 px-2 font-medium text-slate-600"
-          >
-            <input type="hidden" name="intent" value={INTENTS.updateColumn} />
-            <input type="hidden" name="id" value={columnId} />
-          </EditableText>
-        </div>
+        <div
+          draggable={!editState[0]}
+          onDragStart={(event: React.DragEvent) => {
+            event.dataTransfer.effectAllowed = 'move'
+            event.dataTransfer.setData(
+              CONTENT_TYPES.column,
+              JSON.stringify({ id: columnId, name }),
+            )
+          }}
+          {...(!items.length ? cardDndProps : {})}
+          className={twMerge(
+            'flex-shrink-0 flex flex-col max-h-full w-80 border-slate-400 rounded-xl shadow-sm shadow-slate-400 bg-slate-100 relative',
+            acceptCardDrop && `outline outline-2 outline-red-500`,
+          )}
+        >
+          <div className="p-2" {...(items.length ? cardDndProps : {})}>
+            <EditableText
+              fieldName="name"
+              editState={editState}
+              value={
+                // optimistic update
+                updateColumnMutation.isPending &&
+                updateColumnMutation.variables.name
+                  ? updateColumnMutation.variables.name
+                  : name
+              }
+              inputLabel="Edit column name"
+              buttonLabel={`Edit column "${name}" name`}
+              inputClassName="border border-slate-400 w-full rounded-lg py-1 px-2 font-medium text-black"
+              buttonClassName="block rounded-lg text-left w-full border border-transparent py-1 px-2 font-medium text-slate-600"
+              onChange={(value) => {
+                updateColumnMutation.mutate({
+                  boardId,
+                  id: columnId,
+                  name: value,
+                })
+              }}
+            />
+          </div>
 
-        <ul ref={listRef} className="flex-grow overflow-auto">
-          {[...items]
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-            .map((item, index, items) => (
+          <ul ref={listRef} className="flex-grow overflow-auto">
+            {sortedItems.map((item, index, items) => (
               <Card
                 ref={itemRef}
                 key={item.id}
@@ -103,32 +195,51 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
                 }
               />
             ))}
-        </ul>
-        {edit ? (
-          <NewCard
-            columnId={columnId}
-            boardId={boardId}
-            nextOrder={
-              items.length === 0 ? 1 : items[items.length - 1].order + 1
-            }
-            onComplete={() => setEdit(false)}
-          />
-        ) : (
-          <div className="p-2">
+          </ul>
+          {edit ? (
+            <NewCard
+              columnId={columnId}
+              boardId={boardId}
+              nextOrder={
+                items.length === 0 ? 1 : items[items.length - 1].order + 1
+              }
+              onComplete={() => setEdit(false)}
+            />
+          ) : (
+            <div className="p-2" {...(items.length ? cardDndProps : {})}>
+              <button
+                type="button"
+                onClick={() => {
+                  flushSync(() => {
+                    setEdit(true)
+                  })
+                  scrollList()
+                }}
+                className="flex items-center gap-2 rounded-lg text-left w-full p-2 font-medium text-slate-500 hover:bg-slate-200 focus:bg-slate-200"
+              >
+                <Icon name="plus" /> Add a card
+              </button>
+            </div>
+          )}
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+
+              deleteColumnMutation.mutate({
+                id: columnId,
+                boardId,
+              })
+            }}
+          >
             <button
-              type="button"
-              onClick={() => {
-                flushSync(() => {
-                  setEdit(true)
-                })
-                scrollList()
-              }}
-              className="flex items-center gap-2 rounded-lg text-left w-full p-2 font-medium text-slate-500 hover:bg-slate-200 focus:bg-slate-200"
+              aria-label="Delete column"
+              className="absolute top-4 right-4 hover:text-red-500 flex gap-2 items-center"
+              type="submit"
             >
-              <Icon name="plus" /> Add a card
+              <Icon name="trash" />
             </button>
-          </div>
-        )}
+          </form>
+        </div>
       </div>
     )
   },

@@ -120,7 +120,7 @@ export const useMetaElements = () => {
         <ScriptOnce
           log={false}
           children={`
-window.__TSR__ = {
+__TSR__ = {
   matches: [],
   streamedValues: {},
   initMatch: (index) => {
@@ -146,7 +146,7 @@ window.__TSR__ = {
 }`}
         />
         <ScriptOnce
-          children={`window.__TSR__.dehydrated = ${jsesc(
+          children={`__TSR__.dehydrated = ${jsesc(
             router.options.transformer.stringify(dehydratedCtx),
             {
               isScriptContext: true,
