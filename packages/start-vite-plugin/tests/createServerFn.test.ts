@@ -1,12 +1,14 @@
-import { describe, expect, test } from 'vitest'
-import { readdir, readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
+import { describe, expect, test } from 'vitest'
 
 import { compileAst } from '../src/ast'
 import { createServerFnCompiler } from '../src/compilers'
 
 async function getFilenames() {
-  return await readdir(path.resolve(__dirname, './createServerFn/test-files'))
+  return await readdir(
+    path.resolve(import.meta.dirname, './createServerFn/test-files'),
+  )
 }
 
 describe('createServerFn compiles correctly', async () => {
@@ -14,7 +16,10 @@ describe('createServerFn compiles correctly', async () => {
 
   test.each(filenames)('should handle "%s"', async (filename) => {
     const file = await readFile(
-      path.resolve(__dirname, `./createServerFn/test-files/${filename}`),
+      path.resolve(
+        import.meta.dirname,
+        `./createServerFn/test-files/${filename}`,
+      ),
     )
     const code = file.toString()
 
