@@ -76,8 +76,8 @@ export const Card = forwardRef<HTMLLIElement, CardProps>(
           (acceptDrop === 'top'
             ? 'border-t-red-500 border-b-transparent'
             : acceptDrop === 'bottom'
-            ? 'border-b-red-500 border-t-transparent'
-            : 'border-t-transparent border-b-transparent')
+              ? 'border-b-red-500 border-t-transparent'
+              : 'border-t-transparent border-b-transparent')
         }
       >
         <div

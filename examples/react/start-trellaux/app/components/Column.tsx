@@ -134,8 +134,8 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
           acceptColumnDrop === 'left'
             ? 'border-l-red-500 border-r-transparent'
             : acceptColumnDrop === 'right'
-            ? 'border-r-red-500 border-l-transparent'
-            : '',
+              ? 'border-r-red-500 border-l-transparent'
+              : '',
         )}
       >
         <div
