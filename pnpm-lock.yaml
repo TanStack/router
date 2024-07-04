@@ -91,9 +91,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -202,9 +202,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -242,9 +242,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -325,9 +325,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -365,9 +365,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -429,9 +429,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -570,9 +570,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -659,9 +659,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -702,9 +702,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -841,9 +841,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       immer:
         specifier: ^10.0.3
         version: 10.0.3
@@ -992,9 +992,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -1092,9 +1092,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -1186,9 +1186,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -1262,9 +1262,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-vite-plugin':
+      '@tanstack/router-plugin':
         specifier: workspace:*
-        version: link:../../../packages/router-vite-plugin
+        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
