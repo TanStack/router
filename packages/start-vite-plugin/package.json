@@ -60,6 +60,7 @@
   "dependencies": {
     "@babel/core": "^7.24.7",
     "@babel/generator": "^7.24.7",
+    "@babel/parser": "^7.24.7",
     "@babel/plugin-syntax-jsx": "^7.24.7",
     "@babel/plugin-syntax-typescript": "^7.24.7",
     "@babel/template": "^7.24.7",
