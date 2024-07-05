@@ -545,7 +545,7 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): React.AnchorHTMLAttributes<HTMLAnchorElement> {
   const router = useRouter()
-  const isClicking = React.useRef(false)
+  const isPointerDown = React.useRef(false)
   const [isTransitioning, setIsTransitioning] = React.useState(false)
 
   const {
@@ -573,11 +573,9 @@ export function useLinkProps<
     className,
     onClick,
     onFocus,
-    onMouseDown,
-    onMouseUp,
+    onPointerDown,
     onMouseEnter,
     onMouseLeave,
-    onTouchStart,
     ignoreBlocker,
     ...rest
   } = options
@@ -645,7 +643,7 @@ export function useLinkProps<
       ...(onFocus && { onFocus }),
       ...(onMouseEnter && { onMouseEnter }),
       ...(onMouseLeave && { onMouseLeave }),
-      ...(onTouchStart && { onTouchStart }),
+      ...(onPointerDown && { onPointerDown }),
     }
   }
 
@@ -690,21 +688,20 @@ export function useLinkProps<
 
   // The focus handler
   const handleFocus = (e: MouseEvent) => {
-    if (disabled || isClicking.current) return
+    if (disabled) return
     if (preload) {
-      doPreload()
+      // If we're clicking/touching, skip focus preload
+      if (isPointerDown.current) {
+        isPointerDown.current = false
+      } else {
+        doPreload()
+      }
     }
   }
 
-  const handleOnMouseDown = (e: MouseEvent) => {
-    isClicking.current = true
+  const handleOnPointerDown = (e: PointerEvent) => {
+    isPointerDown.current = true
   }
-
-  const handleOnMouseUp = (e: MouseEvent) => {
-    isClicking.current = false
-  }
-
-  const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
     if (disabled) return
@@ -774,13 +771,11 @@ export function useLinkProps<
       : next.maskedLocation
         ? router.history.createHref(next.maskedLocation.href)
         : router.history.createHref(next.href),
-    onMouseDown: composeHandlers([onMouseDown, handleOnMouseDown]),
-    onMouseUp: composeHandlers([onMouseUp, handleOnMouseUp]),
+    onPointerDown: composeHandlers([onPointerDown, handleOnPointerDown]),
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
-    onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
     target,
     ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
