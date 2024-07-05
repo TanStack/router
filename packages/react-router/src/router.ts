@@ -1996,11 +1996,14 @@ export class Router<
                       checkLatest()
 
                       // Kick off the loader!
+                      const loaderPromise =
+                        route.options.loader?.(loaderContext)
+
                       matches[index] = match = updateMatch(
                         match.id,
                         (prev) => ({
                           ...prev,
-                          loaderPromise: route.options.loader?.(loaderContext),
+                          loaderPromise,
                         }),
                       )
                     }
