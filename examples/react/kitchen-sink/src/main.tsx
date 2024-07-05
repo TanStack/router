@@ -501,7 +501,6 @@ function UsersComponent() {
 
   React.useEffect(() => {
     navigate({
-      to: "/dashboard/users",
       search: (old) => {
         return {
           ...old,
