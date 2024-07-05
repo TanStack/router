@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-cross-context",
-  "version": "1.41.0",
+  "version": "1.43.12",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
