@@ -68,7 +68,7 @@ function UsersComponent() {
 
   React.useEffect(() => {
     navigate({
-       search: (old) => {
+      search: (old) => {
         return {
           ...old,
           usersView: {
