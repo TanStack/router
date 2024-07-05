@@ -1,14 +1,16 @@
 import { RouterProvider } from '@tanstack/react-router'
 import * as React from 'react'
-import { AfterEachMatch, afterHydrate } from './serialization'
+import { defaultTransformer } from './defaultTransformer'
+import { afterHydrate } from './serialization'
 import type { AnyRouter } from '@tanstack/react-router'
 
 let cleaned = false
 
 export function StartClient(props: { router: AnyRouter }) {
-  props.router.AfterEachMatch = AfterEachMatch
-
   if (!props.router.state.matches.length) {
+    props.router.options.transformer =
+      (props.router.options as any).transformer || defaultTransformer
+
     props.router.hydrate()
     afterHydrate({ router: props.router })
   }

@@ -7,3 +7,6 @@
 pnpm-lock.yaml
 **/snapshots
 **/.vercel
+
+
+**/tests/generator/file-modification/routes/(test)/*

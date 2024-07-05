@@ -1,6 +1,8 @@
-import { useRouter, useRouterState } from '@tanstack/react-router'
+import { ScriptOnce, useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
+import jsesc from 'jsesc'
+import { Context } from '@tanstack/react-cross-context'
 import { Asset } from './Asset'
 import type { RouterManagedTag } from '@tanstack/react-router'
 
@@ -101,7 +103,12 @@ export const useMeta = () => {
 }
 
 export const useMetaElements = () => {
+  const router = useRouter()
   const meta = useMeta()
+
+  const dehydratedCtx = React.useContext(
+    Context.get('TanStackRouterHydrationContext', {}),
+  )
 
   return (
     <>
@@ -109,6 +116,46 @@ export const useMetaElements = () => {
       {meta.map((asset, i) => (
         <Asset {...asset} key={`tsr-meta-${JSON.stringify(asset)}`} />
       ))}
+      <>
+        <ScriptOnce
+          log={false}
+          children={`
+__TSR__ = {
+  matches: [],
+  streamedValues: {},
+  initMatch: (index) => {
+    Object.entries(__TSR__.matches[index].extracted).forEach(([id, ex]) => {
+      if (ex.type === 'stream') {
+        let controller;
+        ex.value = new ReadableStream({
+          start(c) { controller = c; }
+        })
+        ex.value.controller = controller
+      } else if (ex.type === 'promise') {
+        let r, j
+        ex.value = new Promise((r_, j_) => { r = r_, j = j_ })
+        ex.resolve = r; ex.reject = j
+      }
+    })
+  },
+  cleanScripts: () => {
+    document.querySelectorAll('.tsr-once').forEach((el) => {
+      el.remove()
+    })
+  },
+}`}
+        />
+        <ScriptOnce
+          children={`__TSR__.dehydrated = ${jsesc(
+            router.options.transformer.stringify(dehydratedCtx),
+            {
+              isScriptContext: true,
+              wrap: true,
+              json: true,
+            },
+          )}`}
+        />
+      </>
       <meta name="/tsr-meta" />
     </>
   )

@@ -241,6 +241,7 @@ const router = createRouter({
 - Type: `RouterTransformer`
 - Optional
 - The transformer that will be used when sending data between the server and the client during SSR.
+- Defaults to a very lightweight transformer that supports a few basic types. See the [SSR guide](../../guides/ssr) for more information.
 
 #### `transformer.stringify` method
 

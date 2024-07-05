@@ -59,7 +59,16 @@ nx-cloud.env
 
 gpt/db.json
 
+app.config.timestamp-*
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+app.config.js.timestamp-*
+app.config.ts.timestamp-*
+
+app.config.timestamp_*
+vite.config.js.timestamp_*
+vite.config.ts.timestamp_*
+app.config.js.timestamp_*
+app.config.ts.timestamp_*
 .idea
 *.vitest-temp.json

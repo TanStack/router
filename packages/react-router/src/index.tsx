@@ -161,6 +161,7 @@ export {
   type TrimPathLeft,
   type TrimPathRight,
   type RootRouteOptions,
+  type AnyRouteWithContext,
 } from './route'
 export {
   type ParseRoute,
@@ -201,6 +202,7 @@ export {
   type RouterEvents,
   type RouterEvent,
   type RouterListener,
+  type AnyRouterWithContext,
 } from './router'
 export {
   RouterProvider,

@@ -1,7 +1,7 @@
 {
   "name": "tanstack-router-react-example-authenticated-routes",
-  "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite --port=3001",
     "build": "vite build",
@@ -9,13 +9,13 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.43.2",
-    "@tanstack/router-devtools": "^1.43.2",
-    "@tanstack/router-vite-plugin": "^1.43.1",
-    "redaxios": "^0.5.0",
+    "@tanstack/react-router": "^1.43.12",
+    "@tanstack/router-devtools": "^1.43.12",
+    "@tanstack/router-plugin": "^1.43.12",
     "immer": "^10.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "redaxios": "^0.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

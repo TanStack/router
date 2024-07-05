@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/start",
-  "version": "1.43.2",
-  "description": "",
+  "version": "1.43.12",
+  "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -13,6 +13,27 @@
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint ./src",
+    "test:types": "tsc --noEmit",
+    "test:build": "publint --strict",
+    "build": "vite build && pnpm build:config && pnpm build:router-manifest && pnpm build:server-handler && pnpm build:server-runtime && pnpm build:react-server-runtime",
+    "build:config": "tsc --project tsconfigs/config.tsconfig.json",
+    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json",
+    "build:server-handler": "tsc --project tsconfigs/server-handler.tsconfig.json",
+    "build:server-runtime": "tsc --project tsconfigs/server-runtime.tsconfig.json",
+    "build:react-server-runtime": "tsc --project tsconfigs/react-server-runtime.tsconfig.json"
   },
   "type": "module",
   "exports": {
@@ -89,34 +110,13 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
-    "test:build": "publint --strict",
-    "build": "vite build && pnpm build:config && pnpm build:router-manifest && pnpm build:server-handler && pnpm build:server-runtime && pnpm build:react-server-runtime",
-    "build:config": "tsc --project tsconfigs/config.tsconfig.json",
-    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json",
-    "build:server-handler": "tsc --project tsconfigs/server-handler.tsconfig.json",
-    "build:server-runtime": "tsc --project tsconfigs/server-runtime.tsconfig.json",
-    "build:react-server-runtime": "tsc --project tsconfigs/react-server-runtime.tsconfig.json"
-  },
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
-  ],
-  "engines": {
-    "node": ">=12"
-  },
   "files": [
     "dist",
     "src"
   ],
+  "engines": {
+    "node": ">=12"
+  },
   "dependencies": {
     "@tanstack/react-cross-context": "workspace:^",
     "@tanstack/react-router": "workspace:^",

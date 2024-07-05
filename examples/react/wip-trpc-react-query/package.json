@@ -1,7 +1,7 @@
 {
   "name": "tanstack-router-react-example-with-trpc-react-query",
-  "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently 'npm:dev:*'",
     "dev:client": "wait-port 4000 && vite --port=3001",
@@ -13,8 +13,8 @@
   "dependencies": {
     "@tanstack/react-query": "^4.36.1",
     "@tanstack/react-query-devtools": "^4.36.1",
-    "@tanstack/react-router": "^1.43.2",
-    "@tanstack/router-devtools": "^1.43.2",
+    "@tanstack/react-router": "^1.43.12",
+    "@tanstack/router-devtools": "^1.43.12",
     "@trpc/client": "^10.45.0",
     "@trpc/react-query": "^10.45.0",
     "@trpc/server": "^10.45.0",

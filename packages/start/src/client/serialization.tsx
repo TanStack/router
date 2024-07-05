@@ -81,13 +81,24 @@ export function serializeLoaderData(
 export function afterHydrate({ router }: { router: AnyRouter }) {
   router.state.matches.forEach((match) => {
     const route = router.looseRoutesById[match.routeId]!
-    match.loaderData = window.__TSR__?.matches[match.index]?.loaderData
-    const extracted = window.__TSR__?.matches[match.index]?.extracted
+    if (window.__TSR__?.matches[match.index]) {
+      match.loaderData = router.options.transformer.parse(
+        window.__TSR__.matches[match.index].loaderData,
+      )
 
-    if (extracted) {
-      Object.entries(extracted).forEach(([_, ex]: any) => {
-        deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
-      })
+      const extracted = window.__TSR__.matches[match.index].extracted
+
+      if (extracted) {
+        Object.entries(extracted).forEach(([_, ex]: any) => {
+          if (ex.value instanceof Promise) {
+            const og = ex.value
+            ex.value = og.then((data: any) =>
+              router.options.transformer.parse(data),
+            )
+          }
+          deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
+        })
+      }
     }
 
     Object.assign(match, {
@@ -104,10 +115,6 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
 
 export function AfterEachMatch(props: { match: any; matchIndex: number }) {
   const router = useRouter()
-
-  const dehydratedCtx = React.useContext(
-    Context.get('TanStackRouterHydrationContext', {}),
-  )
 
   const fullMatch = router.state.matches[props.matchIndex]!
 
@@ -133,53 +140,12 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
 
   return (
     <>
-      {fullMatch.routeId === rootRouteId ? (
-        <>
-          <ScriptOnce
-            log={false}
-            children={`
-window.__TSR__ = {
-  matches: [],
-  streamedValues: {},
-  initMatch: (index) => {
-    Object.entries(__TSR__.matches[index].extracted).forEach(([id, ex]) => {
-      if (ex.type === 'stream') {
-        let controller;
-        ex.value = new ReadableStream({
-          start(c) { controller = c; }
-        })
-        ex.value.controller = controller
-      } else if (ex.type === 'promise') {
-        let r, j
-        ex.value = new Promise((r_, j_) => { r = r_, j = j_ })
-        ex.resolve = r; ex.reject = j
-      }
-    })
-  },
-  cleanScripts: () => {
-    document.querySelectorAll('.tsr-once').forEach((el) => {
-      el.remove()
-    })
-  },
-}`}
-          />
-          <ScriptOnce
-            children={`window.__TSR__.dehydrated = ${jsesc(
-              router.options.transformer.stringify(dehydratedCtx),
-              {
-                isScriptContext: true,
-                wrap: true,
-                json: true,
-              },
-            )}`}
-          />
-        </>
-      ) : null}
-      {serializedLoaderData !== undefined || extracted ? (
+      {serializedLoaderData !== undefined || extracted?.length ? (
         <ScriptOnce
           children={`__TSR__.matches[${props.matchIndex}] = ${jsesc(
             {
-              loaderData: serializedLoaderData,
+              loaderData:
+                router.options.transformer.stringify(serializedLoaderData),
               extracted: extracted
                 ? Object.fromEntries(
                     extracted.map((entry) => {
@@ -408,25 +374,4 @@ function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {
   } else if (isPlainObject(obj)) {
     deepMutableSetByPath((obj as any)[key!], rest, value)
   }
-}
-
-export function StreamValue(props: { key: string; value: any }) {
-  const router = useRouter()
-
-  if (router.isServer) {
-    return null
-  }
-
-  return (
-    <ScriptOnce
-      children={`window.__TSR__.streamedValues[${props.key}] = ${jsesc(
-        props.value,
-        {
-          isScriptContext: true,
-          wrap: true,
-          json: true,
-        },
-      )}`}
-    />
-  )
 }
