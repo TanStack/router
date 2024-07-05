@@ -1094,11 +1094,11 @@ importers:
         version: 18.3.1(react@18.3.1)
       vinxi:
         specifier: ^0.3.11
-        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.14.8)(ioredis@5.4.1)(terser@5.31.0)
+        version: 0.3.11(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
       '@types/node':
         specifier: ^20.12.11
-        version: 20.14.8
+        version: 20.14.9
       '@types/react':
         specifier: ^18.2.65
         version: 18.3.3
@@ -1122,7 +1122,7 @@ importers:
         version: 5.4.5
       vite:
         specifier: ^5.1.4
-        version: 5.3.2(@types/node@20.14.8)(terser@5.31.0)
+        version: 5.3.2(@types/node@20.14.9)(terser@5.31.1)
 
   examples/react/start-basic-react-query:
     dependencies:
