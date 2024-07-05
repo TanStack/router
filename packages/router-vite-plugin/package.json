@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-vite-plugin",
-  "version": "1.43.9",
-  "description": "",
+  "version": "1.43.12",
+  "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -13,6 +13,24 @@
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
+    "test:unit": "echo 'No unit tests are needed here since we do them in @tanstack/router-plugin!'",
+    "test:eslint": "eslint ./src",
+    "test:types": "tsc --noEmit",
+    "test:build": "publint --strict",
+    "build": "vite build"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
@@ -32,31 +50,13 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
-    "test:unit": "echo 'No unit tests are needed here since we do them in @tanstack/router-plugin!'",
-    "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
-    "test:build": "publint --strict",
-    "build": "vite build"
-  },
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
+  "files": [
+    "dist",
+    "src"
   ],
   "engines": {
     "node": ">=12"
   },
-  "files": [
-    "dist",
-    "src/**"
-  ],
   "dependencies": {
     "@tanstack/router-plugin": "workspace:^"
   },

@@ -1,6 +1,5 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { compileAst } from './ast'
-import { createServerFnCompiler } from './compilers'
+import { compileCreateServerFnOutput } from './compilers'
 import type { Plugin } from 'vite'
 
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
@@ -15,17 +14,13 @@ export function TanStackStartViteCreateServerFn(): Plugin {
   return {
     name: 'vite-plugin-tanstack-start-create-server-fn',
     enforce: 'pre',
-    configResolved: async (config) => {
+    configResolved: (config) => {
       ROOT = config.root
     },
-    async transform(code, id) {
+    transform(code, id) {
       const url = pathToFileURL(id)
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
-
-      const compile = compileAst({
-        root: ROOT,
-      })
 
       if (code.includes('createServerFn')) {
         if (code.includes('@react-refresh')) {
@@ -42,23 +37,17 @@ plugins: [
         }
 
         if (debug) console.info('Handling createServerFn for id: ', id)
-        const compiled = await createServerFnCompiler({
+
+        const compiled = compileCreateServerFnOutput({
           code,
-          compile,
+          root: ROOT,
           filename: id,
         })
 
         if (debug) console.info('')
-        if (debug) console.info('Compiled Output')
+        if (debug) console.info('Compiled createServerFn Output')
         if (debug) console.info('')
         if (debug) console.info(compiled.code)
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
         if (debug) console.info('')
         if (debug) console.info('')
         if (debug) console.info('')

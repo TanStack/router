@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-devtools",
-  "version": "1.43.6",
-  "description": "",
+  "version": "1.43.12",
+  "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -9,10 +9,26 @@
     "url": "https://github.com/TanStack/router.git",
     "directory": "packages/router-devtools"
   },
-  "homepage": "https://tanstack.com/router/",
+  "homepage": "https://tanstack.com/router",
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint ./src",
+    "test:types": "tsc --noEmit",
+    "test:build": "publint --strict",
+    "build": "vite build"
   },
   "type": "module",
   "types": "./dist/esm/index.d.ts",
@@ -32,29 +48,13 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
-    "test:build": "publint --strict",
-    "build": "vite build"
-  },
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
-  ],
-  "engines": {
-    "node": ">=12"
-  },
   "files": [
     "dist",
     "src"
   ],
+  "engines": {
+    "node": ">=12"
+  },
   "dependencies": {
     "clsx": "^2.1.0",
     "date-fns": "^2.29.1",

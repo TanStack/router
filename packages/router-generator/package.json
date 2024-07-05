@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-generator",
-  "version": "1.43.1",
-  "description": "",
+  "version": "1.43.12",
+  "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -13,6 +13,23 @@
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint ./src",
+    "test:types": "tsc --noEmit",
+    "test:unit": "vitest",
+    "test:build": "publint --strict",
+    "build": "vite build"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
@@ -31,31 +48,14 @@
     },
     "./package.json": "./package.json"
   },
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
-    "test:unit": "vitest",
-    "test:build": "publint --strict",
-    "build": "vite build"
-  },
   "sideEffects": false,
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
-  ],
-  "engines": {
-    "node": ">=12"
-  },
   "files": [
     "dist",
     "src"
   ],
+  "engines": {
+    "node": ">=12"
+  },
   "dependencies": {
     "prettier": "^3.1.1",
     "zod": "^3.22.4"
