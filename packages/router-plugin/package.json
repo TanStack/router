@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-plugin",
   "version": "1.43.9",
-  "description": "",
+  "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -13,6 +13,25 @@
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
+    "test:unit": "vitest",
+    "test:unit:dev": "vitest --watch",
+    "test:eslint": "eslint ./src",
+    "test:types": "tsc --noEmit",
+    "test:build": "publint --strict",
+    "build": "vite build"
   },
   "type": "module",
   "exports": {
@@ -59,47 +78,12 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
-    "test:unit": "vitest",
-    "test:unit:dev": "vitest --watch",
-    "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
-    "test:build": "publint --strict",
-    "build": "vite build"
-  },
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
+  "files": [
+    "dist",
+    "src"
   ],
   "engines": {
     "node": ">=12"
-  },
-  "files": [
-    "dist",
-    "src/**"
-  ],
-  "peerDependencies": {
-    "@rsbuild/core": ">=0.7.9",
-    "vite": ">=5.0.13",
-    "webpack": ">=5.92.0"
-  },
-  "peerDependenciesMeta": {
-    "vite": {
-      "optional": true
-    },
-    "@rsbuild/core": {
-      "optional": true
-    },
-    "webpack": {
-      "optional": true
-    }
   },
   "dependencies": {
     "@babel/core": "^7.24.7",
@@ -122,5 +106,21 @@
   },
   "devDependencies": {
     "vite": "^5.3.1"
+  },
+  "peerDependencies": {
+    "@rsbuild/core": ">=0.7.9",
+    "vite": ">=5.0.13",
+    "webpack": ">=5.92.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    },
+    "@rsbuild/core": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
   }
 }
