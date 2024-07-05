@@ -1,16 +1,20 @@
 import { useCallback, useMemo, useRef } from 'react'
 import invariant from 'tiny-invariant'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { boardQueries, useUpdateBoardMutation } from '../queries.js'
-import { type Column } from '../db/schema.js'
+import { convexQuery } from '@convex-dev/react-query'
+import { api } from '../../convex/_generated/api.js'
+import { useUpdateBoardMutation } from '../queries.js'
 import { NewColumn } from './NewColumn.js'
 import { Column as ColumnComponent } from './Column.js'
+import type { Column } from 'convex/schema.js'
 import { EditableText } from '~/components/EditableText.js'
 
 export function Board({ boardId }: { boardId: string }) {
   const newColumnAddedRef = useRef(false)
   const updateBoardMutation = useUpdateBoardMutation()
-  const { data: board } = useSuspenseQuery(boardQueries.detail(boardId))
+  const { data: board } = useSuspenseQuery(
+    convexQuery(api.board.getBoard, { id: boardId }),
+  )
 
   // scroll right when new columns are added
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -40,7 +44,10 @@ export function Board({ boardId }: { boardId: string }) {
     for (const item of itemsById.values()) {
       const columnId = item.columnId
       const column = columnsMap.get(columnId)
-      invariant(column, 'missing column')
+      invariant(
+        column,
+        `missing column: ${columnId} from ${[...columnsMap.keys()]}`,
+      )
       column.items.push(item)
     }
 

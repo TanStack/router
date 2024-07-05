@@ -6,6 +6,8 @@ import {
 } from '@tanstack/react-query'
 import { routerWithQueryClient } from '@tanstack/react-router-with-query'
 import toast from 'react-hot-toast'
+import { ConvexQueryClient } from '@convex-dev/react-query'
+import { ConvexProvider } from 'convex/react'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
@@ -15,23 +17,27 @@ export function createRouter() {
     notifyManager.setScheduler(window.requestAnimationFrame)
   }
 
+  // TODO how to access envars?
+  const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!
+  if (!CONVEX_URL) {
+    throw new Error('missing envar')
+  }
+  const convexQueryClient = new ConvexQueryClient(CONVEX_URL)
+
   const queryClient: QueryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        refetchOnReconnect: () => !queryClient.isMutating(),
+        queryKeyHashFn: convexQueryClient.hashFn(),
+        queryFn: convexQueryClient.queryFn(),
       },
     },
     mutationCache: new MutationCache({
       onError: (error) => {
         toast(error.message, { className: 'bg-red-500 text-white' })
       },
-      onSettled: () => {
-        if (queryClient.isMutating() === 1) {
-          return queryClient.invalidateQueries()
-        }
-      },
     }),
   })
+  convexQueryClient.connect(queryClient)
 
   const router = routerWithQueryClient(
     createTanStackRouter({
@@ -39,6 +45,11 @@ export function createRouter() {
       defaultPreload: 'intent',
       defaultErrorComponent: DefaultCatchBoundary,
       defaultNotFoundComponent: () => <NotFound />,
+      Wrap: ({ children }) => (
+        <ConvexProvider client={convexQueryClient.convexClient}>
+          {children}
+        </ConvexProvider>
+      ),
     }),
     queryClient,
   )

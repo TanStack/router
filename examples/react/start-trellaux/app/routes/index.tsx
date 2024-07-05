@@ -1,7 +1,8 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { convexQuery } from '@convex-dev/react-query'
+import { api } from 'convex/_generated/api'
 import { Loader } from '~/components/Loader'
-import { boardQueries } from '~/queries'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -9,7 +10,7 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const boardsQuery = useSuspenseQuery(boardQueries.list())
+  const boardsQuery = useSuspenseQuery(convexQuery(api.board.getBoards, {}))
 
   return (
     <div className="p-8 space-y-2">

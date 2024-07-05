@@ -30,13 +30,14 @@ export function routerWithQueryClient<
         // Call the original beforeQuery
         ;(ogClientOptions.queries as any)?._experimental_beforeQuery?.(options)
 
+        const hash = options.queryKeyHashFn || hashKey
         // On the server, check if we've already seen the query before
         if (router.isServer) {
-          if (seenQueryKeys.has(hashKey(options.queryKey))) {
+          if (seenQueryKeys.has(hash(options.queryKey))) {
             return
           }
 
-          seenQueryKeys.add(hashKey(options.queryKey))
+          seenQueryKeys.add(hash(options.queryKey))
 
           // If we haven't seen the query and we have data for it,
           // That means it's going to get dehydrated with critical
@@ -48,7 +49,7 @@ export function routerWithQueryClient<
         } else {
           // On the client, pick up the deferred data from the stream
           const dehydratedClient = router.getStreamedValue<any>(
-            '__QueryClient__' + hashKey(options.queryKey),
+            '__QueryClient__' + hash(options.queryKey),
           )
 
           // If we have data, hydrate it into the query client
@@ -64,21 +65,21 @@ export function routerWithQueryClient<
       ) => {
         // On the server (if we're not skipping injection)
         // send down the dehydrated query
-
+        const hash = options.queryKeyHashFn || hashKey
         if (
           router.isServer &&
           !(options as any).__skipInjection &&
           queryClient.getQueryData(options.queryKey) !== undefined &&
-          !streamedQueryKeys.has(hashKey(options.queryKey))
+          !streamedQueryKeys.has(hash(options.queryKey))
         ) {
-          streamedQueryKeys.add(hashKey(options.queryKey))
+          streamedQueryKeys.add(hash(options.queryKey))
 
           router.streamValue(
-            '__QueryClient__' + hashKey(options.queryKey),
+            '__QueryClient__' + hash(options.queryKey),
             dehydrate(queryClient, {
               shouldDehydrateMutation: () => false,
               shouldDehydrateQuery: (query) =>
-                hashKey(query.queryKey) === hashKey(options.queryKey),
+                hash(query.queryKey) === hash(options.queryKey),
             }),
           )
         }
