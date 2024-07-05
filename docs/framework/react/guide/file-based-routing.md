@@ -11,9 +11,9 @@ To enable file-based routing, you'll need to be using React with a supported bun
 - Vite
 - Rspack/Rsbuild
 - Webpack
-- Others (let us know if you'd like to see support for a specific bundler)
+- Others??? (let us know if you'd like to see support for a specific bundler)
 
-If your bundler is not yet supported, you reach out to us on Discord or GitHub to let us know you'd like to see support for your bundler. Till then, fear not! You can still use the use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
+If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
 
 ## Installation
 
