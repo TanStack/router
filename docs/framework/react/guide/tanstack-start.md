@@ -7,9 +7,17 @@ TanStack Start is a full-stack framework for building server-rendered React appl
 
 To set up a TanStack Start project, you'll need to:
 
-1) Install the dependencies
-2) Add a configuration file
-3) Create required templating
+1. Install the dependencies
+2. Add a configuration file
+3. Create required templating
+
+Follow this guide to build a basic TanStack Start web application. Together, we will use TanStack Start to:
+
+- Serve an index page...
+- Which displays a counter...
+- With a button to increment the counter persistently.
+
+[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-basic-counter)
 
 # Install Dependencies
 
@@ -18,7 +26,7 @@ TanStack Start is powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Ro
 To install them, run:
 
 ```shell
-npm i @tanstack/start @tanstack/react-router @tanstack/router-vite-plugin vinxi
+npm i @tanstack/start @tanstack/react-router vinxi
 ```
 
 # Update Configuration Files
@@ -42,17 +50,17 @@ To tell Vinxi that it should start TanStack Start's minimal behavior, we need to
 // app.config.ts
 import { defineConfig } from '@tanstack/start/config'
 
-export default defineConfig({});
+export default defineConfig({})
 ```
 
 # Add the Basic Templating
 
 There are four required files for TanStack Start usage:
 
-1) The router configuration
-2) The server entry point
-3) The client entry point
-4) The root of your application
+1. The router configuration
+2. The server entry point
+3. The client entry point
+4. The root of your application
 
 Once configuration is done, we'll have a file tree that looks like the following:
 
@@ -83,7 +91,7 @@ import { routeTree } from './routeTree.gen'
 
 export function createRouter() {
   const router = createTanStackRouter({
-    routeTree
+    routeTree,
   })
 
   return router
@@ -105,7 +113,7 @@ As TanStack Start is an [SSR](https://unicorn-utterances.com/posts/what-is-ssr-a
 information to our server entry point:
 
 ```tsx
-// app/server.tsx
+// app/ssr.tsx
 import {
   createStartHandler,
   defaultStreamHandler,
