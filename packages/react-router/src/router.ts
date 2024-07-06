@@ -1543,8 +1543,7 @@ export class Router<
           location: next,
           checkLatest: () => this.checkLatest(promise),
           onReady: async () => {
-            // eslint-disable-next-line ts/require-await
-            await this.startViewTransition(async () => {
+            this.startViewTransition(async () => {
               // this.viewTransitionPromise = createControlledPromise<true>()
 
               // Commit the pending matches. If a previous match was
