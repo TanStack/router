@@ -82,3 +82,17 @@ jobs:
         run: pnpm run test:e2e:replay
         env:
           REPLAY_API_KEY: ${{ secrets.REPLAY_API_KEY || 'rwk_4CPlqZTQ72FsoZvJ86yTeDmlk5NgvCO5nR0IqlXzlXo'}}
+  preview:
+    name: Preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+      - name: Build Packages
+        run: pnpm run build:all
+      - name: Publish Previews
+        run: pnpx pkg-pr-new publish --pnpm --compact './packages/*' --template './examples/*/*'
