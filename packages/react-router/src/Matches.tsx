@@ -47,8 +47,10 @@ export interface RouteMatch<
   paramsError: unknown
   searchError: unknown
   updatedAt: number
+  beforeLoadPromise?: ControlledPromise<Record<string, any>>
+  loaderPromise?: ControlledPromise<TLoaderData>
+  componentsPromise?: Promise<Array<void>>
   loadPromise: ControlledPromise<void>
-  loaderPromise: Promise<TLoaderData>
   loaderData?: TLoaderData
   routeContext: TRouteContext
   context: TAllContext

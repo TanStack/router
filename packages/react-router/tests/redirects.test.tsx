@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  type RouterHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
-  type RouterHistory,
 } from '../src'
 
 afterEach(() => {
@@ -402,6 +402,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
       to: '/u/$username',
       params: { username: 'tkdodo' },
     })
+
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/u/tkdodo')
@@ -437,6 +438,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
       to: '/g/$username',
       params: { username: 'tkdodo' },
     })
+
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/g/tkdodo')

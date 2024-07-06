@@ -183,6 +183,7 @@ export {
   PathParamError,
   getInitialRouterState,
   defaultSerializeError,
+  getRouteMatch,
   type Register,
   type AnyRouter,
   type RegisteredRouter,
@@ -207,7 +208,6 @@ export {
 export {
   RouterProvider,
   RouterContextProvider,
-  getRouteMatch,
   type RouterProps,
   type CommitLocationOptions,
   type MatchLocation,

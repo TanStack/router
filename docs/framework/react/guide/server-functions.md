@@ -37,7 +37,7 @@ function Component() {
     if (!el) return
     el.addEventListener('click', async () => {
       const result = await yourFn()
-      console.log(result)
+      console.info(result)
     })
   }
 
@@ -55,7 +55,7 @@ Or from another server function:
 ```typescript
 const yourFn2 = createServerFn('POST', async () => {
   const result = await yourFn()
-  console.log(result)
+  console.info(result)
 })
 ```
 
@@ -139,7 +139,7 @@ const yourFn = createServerFn('POST', async () => {
   // Server-side code lives here
 })
 
-console.log(yourFn.url)
+console.info(yourFn.url)
 ```
 
 And pass this to the `action` attribute of the form:
