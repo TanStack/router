@@ -28,7 +28,12 @@
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
     "test:unit": "vitest",
     "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
+    "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
+    "test:types:ts50": "node ../../node_modules/typescript50/lib/tsc.js",
+    "test:types:ts51": "node ../../node_modules/typescript51/lib/tsc.js",
+    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js",
+    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
+    "test:types:ts54": "tsc",
     "test:build": "publint --strict",
     "build": "vite build"
   },
