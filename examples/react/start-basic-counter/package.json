@@ -27,7 +27,7 @@
     "eslint-config-react-app": "^7.0.1",
     "eslint-plugin-unicorn": "^49.0.0",
     "prettier": "^2.8.8",
-    "typescript": "^5.3.3",
+    "typescript": "^5.5.3",
     "vite": "^5.1.4"
   }
 }

@@ -32,34 +32,6 @@ jobs:
       - name: Stop Nx Agents
         if: ${{ always() }}
         run: npx nx-cloud stop-all-agents
-  type-test-matrix:
-    name: Type Test Matrix
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        typescript-version:
-          - '~5.5.0'
-          - '~5.4.0'
-          - '~5.3.0'
-          - '~5.2.0'
-          - '~5.1.0'
-          - '~5.0.0'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
-      - name: Get base and head commits for `nx affected`
-        uses: nrwl/nx-set-shas@v4
-        with:
-          main-branch-name: 'main'
-      - name: install other ts versions
-        run: pnpm add -Dw typescript@${{ matrix.typescript-version }}
-      - name: Start Type Test
-        run: TS_VERSION=${{ matrix.typescript-version }} pnpm run test:types
   e2e-start-basic-test:
     name: Playwright e2e tests
     timeout-minutes: 60
@@ -82,3 +54,17 @@ jobs:
         run: pnpm run test:e2e:replay
         env:
           REPLAY_API_KEY: ${{ secrets.REPLAY_API_KEY || 'rwk_4CPlqZTQ72FsoZvJ86yTeDmlk5NgvCO5nR0IqlXzlXo'}}
+  preview:
+    name: Preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+      - name: Build Packages
+        run: pnpm run build:all
+      - name: Publish Previews
+        run: pnpx pkg-pr-new publish --pnpm --compact './packages/*' --template './examples/*/*'
