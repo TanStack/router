@@ -2042,6 +2042,7 @@ export class Router<
                       }
                     }
 
+                    // Actually run the loader and handle the result
                     try {
                       let loaderData = await runLoader()
                       if (this.serializeLoaderData) {
