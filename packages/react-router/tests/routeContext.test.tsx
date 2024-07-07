@@ -394,11 +394,12 @@ describe('beforeLoad in the route definition', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async () => {
-        await sleep(WAIT_TIME) // Use a longer delay here
+        await sleep(WAIT_TIME)
         return { mock }
       },
       loader: async ({ context }) => {
         await sleep(WAIT_TIME)
+        expect(context.mock).toBe(mock)
         context.mock()
       },
     })
@@ -417,8 +418,8 @@ describe('beforeLoad in the route definition', () => {
     await router.navigate(aboutRoute)
     await router.invalidate()
 
-    // Expect double call: once from preload, once from navigate
-    expect(mock).toHaveBeenCalledTimes(2)
+    // Expect only a single call as the one from preload and the one from navigate are deduped
+    expect(mock).toHaveBeenCalledOnce()
   })
 
   // TODO: Move this test to the loader section
@@ -444,11 +445,12 @@ describe('beforeLoad in the route definition', () => {
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async () => {
-        await sleep(WAIT_TIME) // Use a longer delay here
+        await sleep(WAIT_TIME)
         return { mock }
       },
       loader: async ({ context }) => {
         await sleep(WAIT_TIME)
+        expect(context.mock).toBe(mock)
         context.mock()
       },
       component: () => <div>About page</div>,
@@ -461,7 +463,7 @@ describe('beforeLoad in the route definition', () => {
       context: { foo: 'bar' },
     })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
@@ -477,8 +479,8 @@ describe('beforeLoad in the route definition', () => {
 
     expect(window.location.pathname).toBe('/about')
 
-    // Expect double call: once from preload, once from navigate
-    expect(mock).toHaveBeenCalledTimes(2)
+    // Expect only a single call as the one from preload and the one from navigate are deduped
+    expect(mock).toHaveBeenCalledOnce()
   })
 
   // Check if context returned by /nested/about, is the same as its parent route /nested on navigate
