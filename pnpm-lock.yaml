@@ -28,6 +28,9 @@ importers:
       '@eslint-react/eslint-plugin':
         specifier: ^1.5.16
         version: 1.5.17(eslint@8.57.0)(typescript@5.4.5)
+      '@playwright/test':
+        specifier: ^1.44.0
+        version: 1.44.1
       '@rollup/plugin-replace':
         specifier: ^5.0.7
         version: 5.0.7(rollup@4.18.0)
