@@ -381,7 +381,8 @@ describe('beforeLoad in the route definition', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test("on navigate (with preload), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
+  // TODO: Move this test to the loader section
+  test("on navigate (with preload using router methods), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -412,6 +413,60 @@ describe('beforeLoad in the route definition', () => {
 
     await router.navigate(aboutRoute)
     await router.invalidate()
+
+    // Expect double call: once from preload, once from navigate
+    expect(mock).toHaveBeenCalledTimes(2)
+  })
+
+  // TODO: Move this test to the loader section
+  test("on navigate (with preload), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME) // Use a longer delay here
+        return { mock }
+      },
+      loader: async ({ context }) => {
+        await sleep(WAIT_TIME)
+        context.mock()
+      },
+      component: () => <div>About page</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+    expect(linkToAbout).toBeInTheDocument()
+
+    // Don't await, simulate user clicking before preload is done
+    linkToAbout.focus()
+    linkToAbout.click()
+
+    const aboutElement = await screen.findByText('About page')
+    expect(aboutElement).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/about')
 
     // Expect double call: once from preload, once from navigate
     expect(mock).toHaveBeenCalledTimes(2)
