@@ -33,7 +33,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
-    "@replayio/playwright": "^3.0.1",
     "@types/node": "^20.12.11",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
