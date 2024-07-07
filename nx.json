@@ -30,6 +30,11 @@
       "outputs": ["{projectRoot}/coverage"],
       "cache": true
     },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^public"],
+      "cache": true
+    },
     "test:eslint": {
       "dependsOn": ["^build"],
       "inputs": ["default", "^public"],
