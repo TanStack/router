@@ -1542,7 +1542,9 @@ export class Router<
           matches: pendingMatches,
           location: next,
           checkLatest: () => this.checkLatest(promise),
+          // eslint-disable-next-line ts/require-await
           onReady: async () => {
+            // eslint-disable-next-line ts/require-await
             this.startViewTransition(async () => {
               // this.viewTransitionPromise = createControlledPromise<true>()
 
@@ -1912,6 +1914,7 @@ export class Router<
                 handleSerialError(searchError, 'VALIDATE_SEARCH')
               }
 
+              // Actually run the beforeLoad function and get the context
               try {
                 const beforeLoadContext = await runBeforeLoad()
                 checkLatest()
@@ -2041,6 +2044,7 @@ export class Router<
                       }
                     }
 
+                    // Actually run the loader and handle the result
                     try {
                       let loaderData = await runLoader()
                       if (this.serializeLoaderData) {
