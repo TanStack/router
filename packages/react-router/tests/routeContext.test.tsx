@@ -404,7 +404,10 @@ describe('beforeLoad in the route definition', () => {
     })
 
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({
+      routeTree,
+      context: { foo: 'bar' },
+    })
 
     await router.load()
 
@@ -430,7 +433,9 @@ describe('beforeLoad in the route definition', () => {
         return (
           <div>
             <h1>Index page</h1>
-            <Link to="/about">link to about</Link>
+            <Link to="/about" preload="intent">
+              link to about
+            </Link>
           </div>
         )
       },
@@ -450,7 +455,11 @@ describe('beforeLoad in the route definition', () => {
     })
 
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({
+      routeTree,
+      defaultPreload: 'intent',
+      context: { foo: 'bar' },
+    })
 
     await act(() => render(<RouterProvider router={router} />))
 
