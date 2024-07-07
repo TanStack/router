@@ -26,7 +26,12 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
+    "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
+    "test:types:ts50": "node ../../node_modules/typescript50/lib/tsc.js -p tsconfig.legacy.json",
+    "test:types:ts51": "node ../../node_modules/typescript51/lib/tsc.js -p tsconfig.legacy.json",
+    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js -p tsconfig.legacy.json",
+    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js -p tsconfig.legacy.json",
+    "test:types:ts54": "tsc",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch",
     "test:build": "publint --strict",
