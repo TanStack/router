@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup } from '@testing-library/react'
 import {
-  RouterHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
-import { cleanup } from '@testing-library/react'
+import type { RouterHistory } from '../src'
 
 afterEach(() => {
   vi.resetAllMocks()
