@@ -2157,16 +2157,18 @@ export class Router<
                     status === 'success' &&
                     (invalid || (shouldReload ?? age > staleAge))
                   ) {
-                    ;(async () => {
+                    return (async () => {
                       try {
                         await fetchWithRedirectAndNotFound()
                       } catch (err) {}
                     })()
-                    return
-                  }
-
-                  if (status !== 'success') {
+                  } else if (status !== 'success') {
                     await fetchWithRedirectAndNotFound()
+                  } else {
+                    updateMatch(matchId, (prev) => ({
+                      ...prev,
+                      isFetching: false,
+                    }))
                   }
 
                   return
@@ -2291,23 +2293,6 @@ export class Router<
         }
       })
     })
-
-    // If the preload leaf match is the same as the current or pending leaf match,
-    // do not preload as it could cause a mutation of the current route.
-    // The user should specify proper loaderDeps (which are used to uniquely identify a route)
-    // to trigger preloads for routes with the same pathname, but different deps
-
-    const leafMatch = last(matches)
-    const currentLeafMatch = last(this.state.matches)
-    const pendingLeafMatch = last(this.state.pendingMatches ?? [])
-
-    if (
-      leafMatch &&
-      (currentLeafMatch?.id === leafMatch.id ||
-        pendingLeafMatch?.id === leafMatch.id)
-    ) {
-      return undefined
-    }
 
     try {
       matches = await this.loadMatches({
