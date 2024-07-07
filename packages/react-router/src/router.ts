@@ -1912,6 +1912,7 @@ export class Router<
                 handleSerialError(searchError, 'VALIDATE_SEARCH')
               }
 
+              // Actually run the beforeLoad function and get the context
               try {
                 const beforeLoadContext = await runBeforeLoad()
                 checkLatest()
