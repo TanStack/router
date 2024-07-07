@@ -183,7 +183,6 @@ export {
   PathParamError,
   getInitialRouterState,
   defaultSerializeError,
-  getRouteMatch,
   type Register,
   type AnyRouter,
   type RegisteredRouter,

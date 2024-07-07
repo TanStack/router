@@ -2597,7 +2597,7 @@ export function defaultSerializeError(err: unknown) {
   }
 }
 
-export function getRouteMatch<TRouteTree extends AnyRoute>(
+function getRouteMatch<TRouteTree extends AnyRoute>(
   state: RouterState<TRouteTree>,
   id: string,
 ): undefined | MakeRouteMatch<TRouteTree> {
