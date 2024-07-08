@@ -254,6 +254,7 @@ export type UpdatableRouteOptions<
   onLeave?: (match: TRouteMatch) => void
   meta?: (ctx: {
     matches: Array<TRouteMatch>
+    match: TRouteMatch
     params: TAllParams
     loaderData: TLoaderData
   }) => Array<React.JSX.IntrinsicElements['meta']>
