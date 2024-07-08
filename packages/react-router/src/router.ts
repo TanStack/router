@@ -1481,10 +1481,10 @@ export class Router<
   load = async (): Promise<void> => {
     this.latestLocation = this.parseLocation(this.latestLocation)
 
-    // this.__store.setState((s) => ({
-    //   ...s,
-    //   loadedAt: Date.now(),
-    // }))
+    this.__store.setState((s) => ({
+      ...s,
+      loadedAt: Date.now(),
+    }))
 
     if (this.state.location === this.latestLocation) {
       return
