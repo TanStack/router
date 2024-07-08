@@ -1,14 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  ErrorComponent,
+  Link,
   Outlet,
   RouterProvider,
-  Link,
-  ErrorComponent,
-  createRouter,
   createRootRouteWithContext,
-  ErrorComponentProps,
   createRoute,
+  createRouter,
   useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -21,6 +20,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import axios from 'redaxios'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 type PostType = {
   id: string
@@ -32,7 +32,7 @@ const fetchPosts = async () => {
   console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
+    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
 }
 
@@ -121,7 +121,7 @@ function PostsRouteComponent() {
   return (
     <div className="p-2 flex gap-2">
       <ul className="list-disc pl-4">
-        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]?.map(
+        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
           (post) => {
             return (
               <li key={post.id} className="whitespace-nowrap">
@@ -188,7 +188,6 @@ function PostErrorComponent({ error, reset }: ErrorComponentProps) {
     <div>
       <button
         onClick={() => {
-          reset()
           router.invalidate()
         }}
       >

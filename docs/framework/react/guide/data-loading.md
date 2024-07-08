@@ -450,7 +450,7 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
-The `reset` function can be used to show a `retry` button. If you want to retry the route loading, you need to additionally call `router.invalidate()`:
+The `reset` function can be used to allow the user to retry rendering the error boundaries normal children:
 
 ```tsx
 // routes/posts.tsx
@@ -466,7 +466,31 @@ export const Route = createFileRoute('/posts')({
           onClick={() => {
             // Reset the router error boundary
             reset()
-            // Invalidate the route to reload the loader
+          }}
+        >
+          retry
+        </button>
+      </div>
+    )
+  },
+})
+```
+
+If the error was the result of a route load, you should instead call `router.invalidate()`, which will coordinate both a router reload and an error boundary reset:
+
+```tsx
+// routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  loader: () => fetchPosts(),
+  errorComponent: ({ error, reset }) => {
+    const router = useRouter()
+
+    return (
+      <div>
+        {error.message}
+        <button
+          onClick={() => {
+            // Invalidate the route to reload the loader, which will also reset the error boundary
             router.invalidate()
           }}
         >

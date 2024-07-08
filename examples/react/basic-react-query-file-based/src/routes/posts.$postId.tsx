@@ -1,17 +1,17 @@
 import * as React from 'react'
 import {
   ErrorComponent,
-  ErrorComponentProps,
   Link,
-  useRouter,
   createFileRoute,
+  useRouter,
 } from '@tanstack/react-router'
+import {
+  useQueryErrorResetBoundary,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { PostNotFoundError } from '../posts'
 import { postQueryOptions } from '../postQueryOptions'
-import {
-  useSuspenseQuery,
-  useQueryErrorResetBoundary,
-} from '@tanstack/react-query'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context: { queryClient }, params: { postId } }) => {
@@ -36,7 +36,6 @@ export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
     <div>
       <button
         onClick={() => {
-          reset()
           router.invalidate()
         }}
       >

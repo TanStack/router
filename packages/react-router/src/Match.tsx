@@ -63,7 +63,7 @@ export function Match({ matchId }: { matchId: string }) {
     : SafeFragment
 
   const resetKey = useRouterState({
-    select: (s) => s.resolvedLocation.state.key!,
+    select: (s) => s.loadedAt,
   })
 
   return (

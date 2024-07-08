@@ -122,9 +122,7 @@ export const Route = createFileRoute('/posts')({
         {error.message}
         <button
           onClick={() => {
-            // Reset the router error boundary
-            reset()
-            // Invalidate the route to reload the loader
+            // Invalidate the route to reload the loader, and reset any router error boundaries
             router.invalidate()
           }}
         >

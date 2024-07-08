@@ -378,6 +378,7 @@ export interface RouterState<
   TRouteMatch = MakeRouteMatch<TRouteTree>,
 > {
   status: 'pending' | 'idle'
+  loadedAt: number
   isLoading: boolean
   isTransitioning: boolean
   matches: Array<TRouteMatch>
@@ -1480,6 +1481,11 @@ export class Router<
   load = async (): Promise<void> => {
     this.latestLocation = this.parseLocation(this.latestLocation)
 
+    // this.__store.setState((s) => ({
+    //   ...s,
+    //   loadedAt: Date.now(),
+    // }))
+
     if (this.state.location === this.latestLocation) {
       return
     }
@@ -1793,6 +1799,7 @@ export class Router<
                   ...prev,
                   error: err,
                   status: 'error',
+                  isFetching: false,
                   updatedAt: Date.now(),
                   abortController: new AbortController(),
                 }))
@@ -2205,7 +2212,9 @@ export class Router<
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => ({
       ...d,
       invalid: true,
-      ...(d.status === 'error' ? ({ status: 'pending' } as const) : {}),
+      ...(d.status === 'error'
+        ? ({ status: 'pending', error: undefined } as const)
+        : {}),
     })
 
     this.__store.setState((s) => ({
@@ -2566,6 +2575,7 @@ export function getInitialRouterState(
   location: ParsedLocation,
 ): RouterState<any> {
   return {
+    loadedAt: 0,
     isLoading: false,
     isTransitioning: false,
     status: 'idle',
