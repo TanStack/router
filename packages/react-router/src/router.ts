@@ -1942,22 +1942,29 @@ export class Router<
                 const parentMatchPromise = matchPromises[index - 1]
                 const route = this.looseRoutesById[routeId]!
 
-                const { params, loaderDeps, abortController, context, cause } =
-                  this.getMatch(matchId)
+                const getLoaderContext = (): LoaderFnContext => {
+                  const {
+                    params,
+                    loaderDeps,
+                    abortController,
+                    context,
+                    cause,
+                  } = this.getMatch(matchId)
 
-                const getLoaderContext = (): LoaderFnContext => ({
-                  params,
-                  deps: loaderDeps,
-                  preload: !!preload,
-                  parentMatchPromise,
-                  abortController: abortController,
-                  context,
-                  location,
-                  navigate: (opts) =>
-                    this.navigate({ ...opts, _fromLocation: location }),
-                  cause: preload ? 'preload' : cause,
-                  route,
-                })
+                  return {
+                    params,
+                    deps: loaderDeps,
+                    preload: !!preload,
+                    parentMatchPromise,
+                    abortController: abortController,
+                    context,
+                    location,
+                    navigate: (opts) =>
+                      this.navigate({ ...opts, _fromLocation: location }),
+                    cause: preload ? 'preload' : cause,
+                    route,
+                  }
+                }
 
                 const runLoader = async () => {
                   let { loaderPromise } = this.getMatch(matchId)
@@ -2178,8 +2185,6 @@ export class Router<
 
                 return
               }
-
-              matchPromises.push(createValidateResolvedMatchPromise())
             })
 
             await Promise.all(matchPromises)
