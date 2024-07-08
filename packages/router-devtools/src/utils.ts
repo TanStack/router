@@ -1,12 +1,11 @@
 import React from 'react'
-import {
-  type AnyRootRoute,
-  type AnyRoute,
-  type AnyRouteMatch,
-  notFound,
-} from '@tanstack/react-router'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
+import type {
+  AnyRootRoute,
+  AnyRoute,
+  AnyRouteMatch,
+} from '@tanstack/react-router'
 
 import type { Theme } from './theme'
 
