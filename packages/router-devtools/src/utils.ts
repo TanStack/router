@@ -1,11 +1,12 @@
 import React from 'react'
+import {
+  type AnyRootRoute,
+  type AnyRoute,
+  type AnyRouteMatch,
+  notFound,
+} from '@tanstack/react-router'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
-import type {
-  AnyRootRoute,
-  AnyRoute,
-  AnyRouteMatch,
-} from '@tanstack/react-router'
 
 import type { Theme } from './theme'
 
@@ -31,15 +32,19 @@ type StyledComponent<T> = T extends 'button'
         : never
 
 export function getStatusColor(match: AnyRouteMatch) {
-  return match.status === 'success' && match.isFetching
-    ? 'blue'
-    : match.status === 'pending'
-      ? 'yellow'
-      : match.status === 'error'
-        ? 'red'
-        : match.status === 'success'
-          ? 'green'
-          : 'gray'
+  const colorMap = {
+    pending: 'yellow',
+    success: 'green',
+    error: 'red',
+    notFound: 'purple',
+    redirected: 'gray',
+  } as const
+
+  return match.isFetching && match.status === 'success'
+    ? match.isFetching === 'beforeLoad'
+      ? 'purple'
+      : 'blue'
+    : colorMap[match.status]
 }
 
 export function getRouteStatusColor(
