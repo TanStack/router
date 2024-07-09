@@ -1103,6 +1103,7 @@ export class Router<
       if (match.status === 'success') {
         match.meta = route.options.meta?.({
           matches,
+          match,
           params: match.params,
           loaderData: match.loaderData,
         })
@@ -2070,6 +2071,7 @@ export class Router<
 
                     const meta = route.options.meta?.({
                       matches,
+                      match,
                       params: this.getMatch(matchId).params,
                       loaderData,
                     })

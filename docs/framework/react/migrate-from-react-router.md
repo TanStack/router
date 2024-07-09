@@ -20,7 +20,7 @@ Here is the [example repo](https://github.com/Benanna2019/SickFitsForEveryone/tr
 - [ ] Set RouterProvider and pass it the router as the prop
 - [ ] Replace all instances of React Router `Link` component with `@tanstack/react-router` `Link` component
   - [ ] Add `to` prop with literal path
-  - [ ] Add `params` prop, where necessary with params like so `params={{ orderId: [order.id](http://order.id) }}`
+  - [ ] Add `params` prop, where necessary with params like so `params={{ orderId: order.id }}`
 - [ ] Replace all instances of React Router `useNavigate` hook with `@tanstack/react-router` `useNavigate` hook
   - [ ] Set `to` property and `params` property where needed
 - [ ] Replace any React Router `Outlet`'s with the `@tanstack/react-router` equivalent

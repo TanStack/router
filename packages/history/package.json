@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/history",
-  "version": "1.43.12",
+  "version": "1.43.14",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -29,6 +29,8 @@
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "tsc",
     "test:build": "publint --strict",
+    "test:unit": "vitest",
+    "test:unit:dev": "pnpm run test:unit --watch",
     "build": "vite build"
   },
   "type": "module",
