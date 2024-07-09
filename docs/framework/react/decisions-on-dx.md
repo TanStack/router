@@ -93,7 +93,7 @@ What we found to be the best way to define your routes is to abstract the defini
 You can read more about [code-based routing](../guide/code-based-routing) to see how to define your routes in this way.
 
 > [!TIP]
-> 🙋🏼 Finding Code-based routing to be a bit too cumbersome? See why [file-based routing](#3-why-is-file-based-routing-the-preferred-way-to-define-routes) is the preferred way to define your routes.
+> Finding Code-based routing to be a bit too cumbersome? See why [file-based routing](#3-why-is-file-based-routing-the-preferred-way-to-define-routes) is the preferred way to define your routes.
 
 ## 2. Declaring the Router instance for type inference
 
@@ -234,4 +234,4 @@ That's it! No need to worry about defining the `getParentRoute` function, stitch
 
 At no point does the TanStack Router CLI take away your control over your route configurations. It's designed to be as flexible as possible, allowing you to define your routes in a way that suits your application whilst reducing the boilerplate and complexity of the route configuration.
 
-> 🧠 Check out the guides for [file-based routing](../guide/file-based-routing) and [code-splitting](../guide/code-splitting) for a more in-depth explanation of how they work in TanStack Router.
+Check out the guides for [file-based routing](../guide/file-based-routing) and [code-splitting](../guide/code-splitting) for a more in-depth explanation of how they work in TanStack Router.
