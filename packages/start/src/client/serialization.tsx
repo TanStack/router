@@ -104,6 +104,7 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
     Object.assign(match, {
       meta: route.options.meta?.({
         matches: router.state.matches,
+        match,
         params: match.params,
         loaderData: match.loaderData,
       }),
