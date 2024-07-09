@@ -1941,7 +1941,6 @@ export class Router<
               const createValidateResolvedMatchPromise = async () => {
                 const parentMatchPromise = matchPromises[index - 1]
                 const route = this.looseRoutesById[routeId]!
-
                 const getLoaderContext = (): LoaderFnContext => {
                   const {
                     params,
@@ -2185,6 +2184,8 @@ export class Router<
 
                 return
               }
+
+              matchPromises.push(createValidateResolvedMatchPromise())
             })
 
             await Promise.all(matchPromises)
