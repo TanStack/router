@@ -2071,7 +2071,7 @@ export class Router<
 
                     const meta = route.options.meta?.({
                       matches,
-                      match,
+                      match: this.getMatch(matchId),
                       params: this.getMatch(matchId).params,
                       loaderData,
                     })
