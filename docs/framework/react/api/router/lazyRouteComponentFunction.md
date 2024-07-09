@@ -3,7 +3,8 @@ id: lazyRouteComponentFunction
 title: lazyRouteComponent function
 ---
 
-> 🧠 **If you are using file-based routing, it's recommended to use the `createLazyFileRoute` function instead.**
+> [!IMPORTANT]
+> If you are using file-based routing, it's recommended to use the `createLazyFileRoute` function instead.
 
 The `lazyRouteComponent` function can be used to create a one-off code-split route component that can be preloaded using a `component.preload()` method.
 

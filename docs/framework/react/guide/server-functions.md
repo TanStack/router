@@ -9,7 +9,8 @@ This is where Server Functions come in.
 
 ## What are Server Functions?
 
-> 🧠 You can think of Server Functions like mini-portals that let your users trigger a pre-defined action on the server (like a built-in RPC solution 🤯).
+> [!TIP]
+> You can think of Server Functions like mini-portals that let your users trigger a pre-defined action on the server (like a built-in RPC solution 🤯).
 
 Server Functions are actions that can be executed on the server from the client or from other server functions.
 

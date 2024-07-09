@@ -32,7 +32,8 @@ export default defineConfig({
 })
 ```
 
-> 🧠 If you are not using Vite, or a bundler at all, you can check out the [File-Based Routing](../guide/file-based-routing) guide for more info.
+> [!TIP]
+> If you are not using Vite, or any supported bundler, you can check out the [File-Based Routing](../guide/file-based-routing) guide for more info.
 
 Create the following files:
 
@@ -140,7 +141,8 @@ If you are working with this pattern you should change the `id` of the root `<di
 
 ## Using Code-Based Route Configuration
 
-> ⚠️ **Note:** The following example shows how to configure routes using code, and for simplicity's sake is in a single file for this demo. While code-based generation allows you to declare many routes and even the router instance in a single file, we recommend splitting your routes into separate files for better organization and performance as your application grows.
+> [!IMPORTANT]
+> The following example shows how to configure routes using code, and for simplicity's sake is in a single file for this demo. While code-based generation allows you to declare many routes and even the router instance in a single file, we recommend splitting your routes into separate files for better organization and performance as your application grows.
 
 ```tsx
 import React, { StrictMode } from 'react'

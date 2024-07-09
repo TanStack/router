@@ -40,7 +40,8 @@ const routeTree = rootRoute.addChildren([
 
 ## Router Type Safety
 
-> ⚠️ DO NOT SKIP THIS SECTION! ⚠️
+> [!IMPORTANT]
+> DO NOT SKIP THIS SECTION! ⚠️
 
 TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like bare imports straight from the library! To make this possible, you must register your router's types using TypeScripts' [Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) feature. This is done by extending the `Register` interface on `@tanstack/react-router` with a `router` property that has the type of your `router` instance:
 

@@ -46,7 +46,8 @@ const router = createRouter({
 
 The router context is passed to the router at instantiation time. You can pass the initial router context to the router via the `context` option:
 
-> 🧠 If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
+> [!TIP]
+> If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'

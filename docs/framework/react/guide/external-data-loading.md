@@ -3,7 +3,8 @@ id: external-data-loading
 title: External Data Loading
 ---
 
-> ⚠️ This guide is geared towards external state management libraries and their integration with TanStack Router for data fetching, ssr, hydration/dehydration and streaming. If you haven't read the standard [Data Loading](../data-loading) guide
+> [!IMPORTANT]
+> This guide is geared towards external state management libraries and their integration with TanStack Router for data fetching, ssr, hydration/dehydration and streaming. If you haven't read the standard [Data Loading](../data-loading) guide, please do so first.
 
 ## To **Store** or to **Coordinate**?
 
