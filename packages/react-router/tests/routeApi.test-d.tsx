@@ -36,17 +36,31 @@ const defaultRouter = createRouter({
 
 type DefaultRouter = typeof defaultRouter
 
-describe('createRouteApi', () => {
+type ExtractDefaultFrom<T> =
+  T extends UseNavigateResult<infer DefaultFrom> ? DefaultFrom : never
+
+describe('getRouteApi', () => {
   const invoiceRouteApi = getRouteApi<'/invoices/$invoiceId', DefaultRouter>(
     '/invoices/$invoiceId',
   )
   describe('useNavigate', () => {
     test('has a static `from`', () => {
       const navigate = invoiceRouteApi.useNavigate()
+      navigate
+      expectTypeOf<
+        ExtractDefaultFrom<typeof navigate>
+      >().toEqualTypeOf<'/invoices/$invoiceId'>()
+    })
+  })
+})
 
-      expectTypeOf(navigate).toEqualTypeOf<
-        UseNavigateResult<'/invoices/$invoiceId'>
-      >()
+describe('createRoute', () => {
+  describe('useNavigate', () => {
+    test('has a static `from`', () => {
+      const navigate = invoiceRoute.useNavigate()
+      expectTypeOf<
+        ExtractDefaultFrom<typeof navigate>
+      >().toEqualTypeOf<'/invoices/$invoiceId'>()
     })
   })
 })
