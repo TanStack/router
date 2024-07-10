@@ -421,8 +421,8 @@ importers:
         specifier: ^4.19.2
         version: 4.19.2
       isbot:
-        specifier: ^4.4.0
-        version: 4.4.0
+        specifier: ^5.1.12
+        version: 5.1.12
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
@@ -488,8 +488,8 @@ importers:
         specifier: ^4.19.2
         version: 4.19.2
       isbot:
-        specifier: ^4.4.0
-        version: 4.4.0
+        specifier: ^5.1.12
+        version: 5.1.12
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
@@ -1023,8 +1023,8 @@ importers:
         specifier: ^16.4.5
         version: 16.4.5
       isbot:
-        specifier: ^3.8.0
-        version: 3.8.0
+        specifier: ^5.1.12
+        version: 5.1.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1163,8 +1163,8 @@ importers:
         specifier: ^16.4.5
         version: 16.4.5
       isbot:
-        specifier: ^3.8.0
-        version: 3.8.0
+        specifier: ^5.1.12
+        version: 5.1.12
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1318,8 +1318,8 @@ importers:
         specifier: ^4.3.1
         version: 4.3.1(vite@5.3.3(@types/node@20.14.9)(terser@5.31.1))
       isbot:
-        specifier: ^3.8.0
-        version: 3.8.0
+        specifier: ^5.1.12
+        version: 5.1.12
       ky:
         specifier: ^1.4.0
         version: 1.4.0
@@ -1562,8 +1562,8 @@ importers:
         specifier: ^4.19.2
         version: 4.19.2
       isbot:
-        specifier: ^4.4.0
-        version: 4.4.0
+        specifier: ^5.1.12
+        version: 5.1.12
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
@@ -7078,14 +7078,6 @@ packages:
 
   isarray@2.0.5:
     resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
-
-  isbot@3.8.0:
-    resolution: {integrity: sha512-vne1mzQUTR+qsMLeCBL9+/tgnDXRyc2pygLGl/WsgA+EZKIiB5Ehu0CiVTHIIk30zhJ24uGz4M5Ppse37aR0Hg==}
-    engines: {node: '>=12'}
-
-  isbot@4.4.0:
-    resolution: {integrity: sha512-8ZvOWUA68kyJO4hHJdWjyreq7TYNWTS9y15IzeqVdKxR9pPr3P/3r9AHcoIv9M0Rllkao5qWz2v1lmcyKIVCzQ==}
-    engines: {node: '>=18'}
 
   isbot@5.1.12:
     resolution: {integrity: sha512-Igy8nbj3Yn/XgYboRFTixH5ccUBvNPA89ek2zx3jCcBYkDkEnuFs0RkT36EPag5OFd2nLlK7u4uzG5AXfXR46w==}
@@ -15277,10 +15269,6 @@ snapshots:
   isarray@1.0.0: {}
 
   isarray@2.0.5: {}
-
-  isbot@3.8.0: {}
-
-  isbot@4.4.0: {}
 
   isbot@5.1.12: {}
 
