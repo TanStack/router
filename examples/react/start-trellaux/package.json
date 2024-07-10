@@ -20,7 +20,7 @@
     "@tanstack/start": "^1.44.1",
     "@typescript-eslint/parser": "^7.16.0",
     "@vitejs/plugin-react": "^4.3.1",
-    "isbot": "^3.8.0",
+    "isbot": "^5.1.12",
     "ky": "^1.4.0",
     "msw": "^2.3.1",
     "react": "^18.3.1",
