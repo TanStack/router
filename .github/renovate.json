@@ -28,6 +28,8 @@
     "react",
     "react-dom",
     "react-server-dom-webpack",
+    "temp-react",
+    "temp-react-dom",
     "typescript",
     "typescript50",
     "typescript51",
