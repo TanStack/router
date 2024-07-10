@@ -106,12 +106,12 @@
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.20.6",
     "babel-dead-code-elimination": "^1.0.6",
-    "chokidar": "^3.5.3",
+    "chokidar": "^3.6.0",
     "unplugin": "^1.11.0",
-    "zod": "^3.22.4"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "vite": "^5.3.1"
+    "vite": "^5.3.3"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=0.7.9",

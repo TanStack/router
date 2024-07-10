@@ -12,16 +12,16 @@
     "@tanstack/react-router": "^1.44.0",
     "@tanstack/router-devtools": "^1.44.0",
     "@tanstack/router-plugin": "^1.43.13",
-    "immer": "^10.0.3",
+    "immer": "^10.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.0",
-    "zod": "^3.22.4"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.0.13"
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.3.3"
   }
 }
