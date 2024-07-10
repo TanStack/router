@@ -119,7 +119,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -156,7 +156,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@types/react':
@@ -190,7 +190,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -230,7 +230,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -270,7 +270,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -310,7 +310,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@types/react':
@@ -353,7 +353,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -396,7 +396,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@babel/core':
@@ -460,7 +460,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       superjson:
         specifier: ^2.2.1
@@ -521,7 +521,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -558,7 +558,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -598,7 +598,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -641,7 +641,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -687,7 +687,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -730,7 +730,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -770,7 +770,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@types/react':
@@ -804,7 +804,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@types/react':
@@ -869,7 +869,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -1032,7 +1032,7 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^1.14.0
@@ -1172,7 +1172,7 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^1.14.0
@@ -1242,7 +1242,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/start
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^1.14.0
@@ -1336,7 +1336,7 @@ importers:
         specifier: ^2.4.1
         version: 2.4.1(csstype@3.1.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^1.14.0
@@ -1421,7 +1421,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -1528,7 +1528,7 @@ importers:
         specifier: 18.3.0-canary-ab31a9ed2-20230824
         version: 18.3.0-canary-ab31a9ed2-20230824(react@18.3.0-canary-ab31a9ed2-20230824)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       resolve-from:
         specifier: ^5.0.0
@@ -1598,7 +1598,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8
@@ -1653,7 +1653,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       redaxios:
-        specifier: ^0.5.0
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^3.23.8

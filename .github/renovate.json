@@ -36,6 +36,7 @@
     "typescript52",
     "typescript53",
     "typescript54",
+    "use-sync-external-store",
     "waku"
   ]
 }
