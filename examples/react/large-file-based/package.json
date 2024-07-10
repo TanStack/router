@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.50.1",
-    "@tanstack/react-router": "^1.44.0",
-    "@tanstack/router-devtools": "^1.44.0",
-    "@tanstack/router-plugin": "^1.43.13",
+    "@tanstack/react-router": "^1.44.1",
+    "@tanstack/router-devtools": "^1.44.1",
+    "@tanstack/router-plugin": "^1.44.1",
     "immer": "^10.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
