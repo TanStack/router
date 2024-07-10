@@ -27,6 +27,7 @@
     "node",
     "react",
     "react-dom",
+    "react-server-dom-webpack",
     "typescript",
     "typescript50",
     "typescript51",

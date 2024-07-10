@@ -2,7 +2,6 @@
   "name": "tanstack-router-example-react-start-basic",
   "private": true,
   "sideEffects": false,
-  "packageManager": "pnpm@8.15.8",
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
