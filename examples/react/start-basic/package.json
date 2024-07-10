@@ -23,7 +23,7 @@
     "isbot": "^5.1.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "redaxios": "^0.5.0",
+    "redaxios": "^0.5.1",
     "tailwind-merge": "^1.14.0",
     "vinxi": "0.3.12"
   },
