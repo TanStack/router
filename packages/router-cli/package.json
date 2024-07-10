@@ -66,11 +66,11 @@
   },
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
-    "chokidar": "^3.5.3",
-    "yargs": "^17.6.2"
+    "chokidar": "^3.6.0",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@types/yargs": "^17.0.15",
-    "vite": "^5.0.13"
+    "@types/yargs": "^17.0.32",
+    "vite": "^5.3.3"
   }
 }

@@ -5,7 +5,7 @@
     "type": "git",
     "url": "https://github.com/TanStack/router.git"
   },
-  "packageManager": "pnpm@9.4.0",
+  "packageManager": "pnpm@9.5.0",
   "type": "module",
   "scripts": {
     "clean": "pnpm --filter \"./packages/**\" run clean",
@@ -36,7 +36,7 @@
     ]
   },
   "devDependencies": {
-    "@eslint-react/eslint-plugin": "^1.5.16",
+    "@eslint-react/eslint-plugin": "^1.5.23",
     "@rollup/plugin-replace": "^5.0.7",
     "@tanstack/config": "^0.9.2",
     "@types/node": "^20.14.7",
@@ -44,30 +44,30 @@
     "@types/react-dom": "^18.3.0",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.2",
-    "glob": "^10.4.2",
-    "nx": "^19.3.0",
+    "glob": "^10.4.5",
+    "nx": "^19.4.2",
     "prettier": "^3.3.2",
     "publint": "^0.2.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
-    "rimraf": "^5.0.7",
+    "rimraf": "^5.0.9",
     "typescript": "^5.5.3",
     "typescript50": "npm:typescript@5.0",
     "typescript51": "npm:typescript@5.1",
     "typescript52": "npm:typescript@5.2",
     "typescript53": "npm:typescript@5.3",
     "typescript54": "npm:typescript@5.4",
-    "vite": "^5.3.2",
+    "vite": "^5.3.3",
     "vitest": "^1.6.0"
   },
   "resolutions": {
-    "use-sync-external-store": "1.2.0"
+    "use-sync-external-store": "1.2.2"
   },
   "pnpm": {
     "overrides": {
       "eslint": "$eslint",
-      "use-sync-external-store": "1.2.0",
+      "use-sync-external-store": "1.2.2",
       "@tanstack/history": "workspace:*",
       "@tanstack/react-cross-context": "workspace:*",
       "@tanstack/react-router": "workspace:*",
