@@ -143,7 +143,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@testing-library/react": "^15.0.7",
+    "@testing-library/react": "^16.0.0",
     "@vitejs/plugin-react": "^4.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
