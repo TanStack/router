@@ -38,7 +38,7 @@
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^1.5.23",
     "@rollup/plugin-replace": "^5.0.7",
-    "@tanstack/config": "^0.9.2",
+    "@tanstack/config": "^0.9.6",
     "@types/node": "^20.14.7",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
