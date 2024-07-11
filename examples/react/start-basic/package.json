@@ -13,10 +13,10 @@
     "test:e2e:replay": "playwright test --project=replay-chromium"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.44.1",
-    "@tanstack/router-devtools": "^1.44.1",
-    "@tanstack/router-plugin": "^1.44.1",
-    "@tanstack/start": "^1.44.1",
+    "@tanstack/react-router": "^1.44.2",
+    "@tanstack/router-devtools": "^1.44.2",
+    "@tanstack/router-plugin": "^1.44.2",
+    "@tanstack/start": "^1.44.2",
     "@typescript-eslint/parser": "^7.16.0",
     "@vitejs/plugin-react": "^4.3.1",
     "dotenv": "^16.4.5",
