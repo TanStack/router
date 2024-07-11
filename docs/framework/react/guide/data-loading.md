@@ -69,15 +69,17 @@ export const Route = createFileRoute('/posts')({
 
 The `loader` function receives a single object with the following properties:
 
-- `params` - The route's path params
-- `search` - The route's search params
+- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
+- `cause` - The cause of the current route match, either `enter` or `stay`.
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
   - This route's context as provided by the `beforeLoad` option
-- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
-- `navigate` - A function that can be used to navigate to a new location
+- `deps` - The object value returned from the `Route.loaderDeps` function. If `Route.loaderDeps` is not defined, an empty object will be provided instead.
 - `location` - The current location
-- `cause` - The cause of the current route match, either `enter` or `stay`.
+- `params` - The route's path params
+- `parentMatchPromise` - `Promise<void>` or `undefined`
+- `preload` - Boolean which is `true` when the route is being preloaded instead of loaded
+- `route` - The route itself
 
 Using these parameters, we can do a lot of cool things, but first, let's take a look at how we can control if and when the `loader` function is called.
 
