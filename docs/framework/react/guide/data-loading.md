@@ -74,7 +74,7 @@ The `loader` function receives a single object with the following properties:
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
   - This route's context as provided by the `beforeLoad` option
-- `deps` - The value returned from route.loaderDeps, if you specified route.loaderDeps, otherwise it is an empty object
+- `deps` - The object value returned from the `Route.loaderDeps` function. If `Route.loaderDeps` is not defined, an empty object will be provided instead.
 - `location` - The current location
 - `params` - The route's path params
 - `parentMatchPromise` - `Promise<void>` or `undefined`
