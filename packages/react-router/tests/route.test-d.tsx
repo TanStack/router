@@ -567,6 +567,7 @@ test('when creating a child route with context, search, params and beforeLoad', 
 
   const router = createRouter({
     routeTree,
+    context: { userId: 'userId' },
   })
 
   type Router = typeof router
