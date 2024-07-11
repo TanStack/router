@@ -13,8 +13,8 @@
   "dependencies": {
     "@tanstack/react-router": "^1.44.2",
     "@tanstack/router-devtools": "^1.44.2",
-    "@tanstack/router-plugin": "^1.44.2",
-    "@tanstack/start": "^1.44.2",
+    "@tanstack/router-plugin": "^1.44.3",
+    "@tanstack/start": "^1.44.3",
     "get-port": "^7.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
