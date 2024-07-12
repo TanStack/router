@@ -47,7 +47,15 @@ export type ScrollRestorationOptions = {
   getKey?: (location: ParsedLocation) => string
 }
 
-const defaultGetKey = (location: ParsedLocation) => location.state.key!
+/**
+ * The default `getKey` function for `useScrollRestoration`.
+ * It returns the `key` from the location state or the `href` of the location.
+ *
+ * The `location.href` is used as a fallback to support the use case where the location state is not available like the initial render.
+ */
+const defaultGetKey = (location: ParsedLocation) => {
+  return location.state.key! || location.href
+}
 
 export function useScrollRestoration(options?: ScrollRestorationOptions) {
   const router = useRouter()
