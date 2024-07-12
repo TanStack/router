@@ -1707,7 +1707,6 @@ export class Router<
     matches,
     preload,
     onReady,
-    getMatch = this.getMatch,
     updateMatch = this.updateMatch,
   }: {
     location: ParsedLocation
@@ -1793,13 +1792,13 @@ export class Router<
 
               err.routerCode = routerCode
               firstBadMatchIndex = firstBadMatchIndex ?? index
-              handleRedirectAndNotFound(getMatch(matchId)!, err)
+              handleRedirectAndNotFound(this.getMatch(matchId)!, err)
 
               try {
                 route.options.onError?.(err)
               } catch (errorHandlerErr) {
                 err = errorHandlerErr
-                handleRedirectAndNotFound(getMatch(matchId)!, err)
+                handleRedirectAndNotFound(this.getMatch(matchId)!, err)
               }
 
               updateMatch(matchId, (prev) => {
@@ -1818,7 +1817,7 @@ export class Router<
             }
 
             for (const [index, { id: matchId, routeId }] of matches.entries()) {
-              const existingMatch = getMatch(matchId)!
+              const existingMatch = this.getMatch(matchId)!
 
               if (
                 // If we are in the middle of a load, either of these will be present
@@ -1882,7 +1881,7 @@ export class Router<
                     }, pendingMs)
                   }
 
-                  const { paramsError, searchError } = getMatch(matchId)!
+                  const { paramsError, searchError } = this.getMatch(matchId)!
 
                   if (paramsError) {
                     handleSerialError(index, paramsError, 'PARSE_PARAMS')
@@ -1907,7 +1906,7 @@ export class Router<
                   }))
 
                   const { search, params, routeContext, cause } =
-                    getMatch(matchId)!
+                    this.getMatch(matchId)!
 
                   const beforeLoadFnContext = {
                     search,
@@ -1972,7 +1971,7 @@ export class Router<
               validResolvedMatches.map(
                 async ({ id: matchId, routeId }, index) => {
                   const { loaderPromise: prevLoaderPromise } =
-                    getMatch(matchId)!
+                    this.getMatch(matchId)!
 
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
@@ -1987,7 +1986,7 @@ export class Router<
                         abortController,
                         context,
                         cause,
-                      } = getMatch(matchId)!
+                      } = this.getMatch(matchId)!
 
                       return {
                         params,
@@ -2005,7 +2004,7 @@ export class Router<
                     }
 
                     // This is where all of the stale-while-revalidate magic happens
-                    const age = Date.now() - getMatch(matchId)!.updatedAt
+                    const age = Date.now() - this.getMatch(matchId)!.updatedAt
 
                     const staleAge = preload
                       ? route.options.preloadStaleTime ??
@@ -2070,7 +2069,7 @@ export class Router<
                           // We'll wait for that before pre attempt to preload any
                           // components themselves.
                           const componentsPromise =
-                            getMatch(matchId)!.componentsPromise ||
+                            this.getMatch(matchId)!.componentsPromise ||
                             route._lazyPromise.then(() =>
                               Promise.all(
                                 componentTypes.map(async (type) => {
@@ -2102,12 +2101,12 @@ export class Router<
                           if (this.serializeLoaderData) {
                             loaderData = this.serializeLoaderData(loaderData, {
                               router: this,
-                              match: getMatch(matchId)!,
+                              match: this.getMatch(matchId)!,
                             })
                           }
 
                           handleRedirectAndNotFound(
-                            getMatch(matchId)!,
+                            this.getMatch(matchId)!,
                             loaderData,
                           )
 
@@ -2116,7 +2115,7 @@ export class Router<
                           const meta = route.options.meta?.({
                             matches,
                             match: this.getMatch(matchId)!,
-                            params: getMatch(matchId)!.params,
+                            params: this.getMatch(matchId)!.params,
                             loaderData,
                           })
 
@@ -2139,14 +2138,14 @@ export class Router<
 
                           await potentialPendingMinPromise()
 
-                          handleRedirectAndNotFound(getMatch(matchId)!, e)
+                          handleRedirectAndNotFound(this.getMatch(matchId)!, e)
 
                           try {
                             route.options.onError?.(e)
                           } catch (onErrorError) {
                             error = onErrorError
                             handleRedirectAndNotFound(
-                              getMatch(matchId)!,
+                              this.getMatch(matchId)!,
                               onErrorError,
                             )
                           }
@@ -2161,14 +2160,14 @@ export class Router<
 
                         // Last but not least, wait for the the component
                         // to be preloaded before we resolve the match
-                        await getMatch(matchId)!.componentsPromise
+                        await this.getMatch(matchId)!.componentsPromise
                       } catch (err) {
-                        handleRedirectAndNotFound(getMatch(matchId)!, err)
+                        handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
                     }
 
                     // If the route is successful and still fresh, just resolve
-                    const { status, invalid } = getMatch(matchId)!
+                    const { status, invalid } = this.getMatch(matchId)!
 
                     if (
                       status === 'success' &&
@@ -2183,7 +2182,8 @@ export class Router<
                       await runLoader()
                     }
 
-                    const { loaderPromise, loadPromise } = getMatch(matchId)!
+                    const { loaderPromise, loadPromise } =
+                      this.getMatch(matchId)!
 
                     loaderPromise?.resolve()
                     loadPromise?.resolve()
@@ -2319,20 +2319,13 @@ export class Router<
         matches,
         location: next,
         preload: true,
-        // getMatch: (matchId) => {
-        //   if (this.isMatchActive(matchId)) {
-        //     return matches.find((d) => d.id === matchId)!
-        //   }
-
-        //   return this.getMatch(matchId)
-        // },
-        // updateMatch: (id, updater) => {
-        //   if (this.isMatchActive(id)) {
-        //     matches = matches.map((d) => (d.id === id ? updater(d) : d))
-        //   } else {
-        //     this.updateMatch(id, updater)
-        //   }
-        // },
+        updateMatch: (id, updater) => {
+          if (this.isMatchActive(id)) {
+            matches = matches.map((d) => (d.id === id ? updater(d) : d))
+          } else {
+            this.updateMatch(id, updater)
+          }
+        },
       })
 
       return matches
