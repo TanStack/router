@@ -20,7 +20,8 @@ The `useMatch` hook accepts a single argument, an `options` object.
 ### `opts.strict` option
 
 - Type: `boolean`
-- Optional - `default: true`
+- Optional
+- `default: true`
 - If `false`, the `opts.from` must not be set and types will be loosened to `Partial<RouteMatch>` to reflect the shared types of all matches.
 
 ### `opts.select` option
@@ -29,6 +30,13 @@ The `useMatch` hook accepts a single argument, an `options` object.
 - `(match: RouteMatch) => TSelected`
 - If supplied, this function will be called with the route match and the return value will be returned from `useMatch`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
 
+### `opts.shouldThrow` option
+
+- Type: `boolean`
+- Optional
+- `default: true`
+- If `false`,`useMatch` will not throw an invariant exception in case a match was not found in the currently rendered matches; in this case, it wil return `undefined`.
+
 ## useMatch returns
 
 - If a `select` function is provided, the return value of the `select` function.
@@ -36,7 +44,7 @@ The `useMatch` hook accepts a single argument, an `options` object.
 
 ## Examples
 
-### accessing a route match
+### Accessing a route match
 
 ```tsx
 import { useMatch } from '@tanstack/react-router'
@@ -48,7 +56,7 @@ function Component() {
 }
 ```
 
-### accessing the root route's match
+### Accessing the root route's match
 
 ```tsx
 import {
@@ -60,5 +68,19 @@ function Component() {
   const match = useMatch({ from: rootRouteId })
   //     ^? strict match for RouteMatch
   // ...
+}
+```
+
+### Checking if a specific route is currently rendered
+
+```tsx
+import { useMatch } from '@tanstack/react-router'
+
+function Component() {
+  const match = useMatch({ from: '/posts', shouldThrow: false })
+  //     ^? RouteMatch | undefined
+  if (match !== undefined) {
+    // ...
+  }
 }
 ```
