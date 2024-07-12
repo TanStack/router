@@ -11,8 +11,8 @@
     "format": "prettier --write '**/*' --ignore-unknown"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.50.1",
-    "@tanstack/react-query-devtools": "^5.50.1",
+    "@tanstack/react-query": "^5.51.1",
+    "@tanstack/react-query-devtools": "^5.51.1",
     "@tanstack/react-router": "^1.44.5",
     "@tanstack/react-router-with-query": "^1.43.2",
     "@tanstack/router-devtools": "^1.44.5",

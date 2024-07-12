@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.1",
-    "@tanstack/react-query": "^5.50.1",
+    "@tanstack/react-query": "^5.51.1",
     "@tanstack/react-router": "^1.44.5",
     "@tanstack/router-devtools": "^1.44.5",
     "redaxios": "^0.5.1",
