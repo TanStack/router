@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-vite-plugin",
-  "version": "1.44.2",
+  "version": "1.45.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
