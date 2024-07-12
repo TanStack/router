@@ -556,7 +556,7 @@ import {
 //   })
 // })
 
-describe('ssr redirects', async () => {
+describe('ssr redirects', () => {
   test('via throw in beforeLoad', async () => {
     const rootRoute = createRootRoute()
 
@@ -579,14 +579,10 @@ describe('ssr redirects', async () => {
     })
 
     const router = createRouter({
-      history: createMemoryHistory({
-        initialEntries: ['/'],
-      }),
       routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      // Mock server mode
+      isServer: true,
     })
-
-    // Mock server mode
-    router.isServer = true
 
     await router.load()
 

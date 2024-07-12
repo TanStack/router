@@ -611,8 +611,8 @@ test('when creating a child route with context, search, params, loader, loaderDe
     search: TExpectedSearch
     context: TExpectedContext
     loaderDeps: { detailPage: number; invoicePage: number }
-    beforeLoadPromise?: ControlledPromise<Record<string, any>>
-    loaderPromise?: ControlledPromise<TExpectedLoaderData>
+    beforeLoadPromise?: ControlledPromise<void>
+    loaderPromise?: ControlledPromise<void>
     componentsPromise?: Promise<Array<void>>
     loaderData?: TExpectedLoaderData
     routeContext: TExpectedRouteContext
