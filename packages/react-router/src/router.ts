@@ -1967,9 +1967,9 @@ export class Router<
             const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
             const matchPromises: Array<Promise<any>> = []
 
-            await Promise.all(
-              validResolvedMatches.map(
-                async ({ id: matchId, routeId }, index) => {
+            validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
+              matchPromises.push(
+                (async () => {
                   const { loaderPromise: prevLoaderPromise } =
                     this.getMatch(matchId)!
 
@@ -2194,11 +2194,11 @@ export class Router<
                     isFetching: false,
                     loaderPromise: undefined,
                   }))
+                })(),
+              )
+            })
 
-                  return
-                },
-              ),
-            )
+            await Promise.all(matchPromises)
 
             resolveAll()
           } catch (err) {
