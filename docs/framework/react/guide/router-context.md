@@ -64,6 +64,27 @@ const router = createRouter({
 })
 ```
 
+### Invalidating the Router Context
+
+If you need to invalidate the context state you are passing into the router, you can call the `invalidate` method to tell the router to recompute the context. This is useful when you need to update the context state and have the router recompute the context for all routes.
+
+```tsx
+function useAuth() {
+  const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user)
+      router.invalidate()
+    })
+
+    return unsubscribe
+  }, [])
+
+  return user
+}
+```
+
 ## Using the Router Context
 
 Once you have defined the router context type, you can use it in your route definitions:
