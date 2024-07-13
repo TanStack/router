@@ -177,7 +177,8 @@ function PostComponent() {
 }
 ```
 
-> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](../code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
+> [!TIP]
+> If your component is code-split, you can use the [getRouteApi function](../code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
 
 ## Splat / Catch-All Routes
 

@@ -766,7 +766,7 @@ export class Route<
     this.to = fullPath as TrimPathRight<TFullPath>
   }
 
-  addChildren = <
+  addChildren<
     const TNewChildren extends
       | Record<string, AnyRoute>
       | ReadonlyArray<AnyRoute>,
@@ -792,7 +792,7 @@ export class Route<
     TLoaderDataReturn,
     TLoaderData,
     TNewChildren
-  > => {
+  > {
     this.children = (
       Array.isArray(children) ? children : Object.values(children)
     ) as any
@@ -1062,6 +1062,7 @@ export class RootRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
   in out TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
+  TChildren = unknown,
 > extends Route<
   any, // TParentRoute
   '/', // TPath
@@ -1081,7 +1082,7 @@ export class RootRoute<
   TLoaderDeps,
   TLoaderDataReturn,
   TLoaderData,
-  any // TChildren
+  TChildren // TChildren
 > {
   /**
    * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
@@ -1099,6 +1100,27 @@ export class RootRoute<
     >,
   ) {
     super(options as any)
+  }
+
+  addChildren<
+    const TNewChildren extends
+      | Record<string, AnyRoute>
+      | ReadonlyArray<AnyRoute>,
+  >(
+    children: TNewChildren,
+  ): RootRoute<
+    TSearchSchemaInput,
+    TSearchSchema,
+    TSearchSchemaUsed,
+    TRouteContextReturn,
+    TRouteContext,
+    TRouterContext,
+    TLoaderDeps,
+    TLoaderDataReturn,
+    TLoaderData,
+    TNewChildren
+  > {
+    return super.addChildren(children)
   }
 }
 

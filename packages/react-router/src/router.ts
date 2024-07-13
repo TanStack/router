@@ -103,6 +103,7 @@ export interface Register {
 }
 
 export type AnyRouter = Router<any, any, any, any>
+
 export type AnyRouterWithContext<TContext> = Router<
   AnyRouteWithContext<TContext>,
   any,
@@ -129,6 +130,7 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
     any,
     any,
     infer TRouterContext extends AnyContext,
+    any,
     any,
     any,
     any

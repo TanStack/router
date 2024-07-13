@@ -178,7 +178,8 @@ Tada! 🎉
 
 ## Using automatic code-splitting
 
-> ⚠️ **Experimental:** This feature is experimental and currently in development. It is not recommended for production use.
+> [!WARNING]
+> This feature is experimental and currently in development. It is not recommended for production use.
 
 When using the `experimental.enableCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
 
