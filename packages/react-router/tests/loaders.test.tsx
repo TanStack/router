@@ -12,11 +12,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import {
   Link,
+  Outlet,
   RouterProvider,
   createRootRoute,
   createRoute,
   createRouter,
-  redirect,
 } from '../src'
 
 import { sleep } from './utils'
@@ -113,5 +113,57 @@ describe('loaders are being called', () => {
 
     expect(nestedLoaderMock).toHaveBeenCalled()
     expect(nestedFooLoaderMock).toHaveBeenCalled()
+  })
+})
+
+describe('loaders parentMatchPromise', () => {
+  test('parentMatchPromise is defined in a child route', async () => {
+    const nestedLoaderMock = vi.fn()
+
+    const rootRoute = createRootRoute({})
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div>
+          Index page
+          <Link to="/nested/foo">link to foo</Link>
+        </div>
+      ),
+    })
+    const nestedRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/nested',
+      loader: async () => {
+        await sleep(WAIT_TIME)
+      },
+      component: () => <Outlet />,
+    })
+    const fooRoute = createRoute({
+      getParentRoute: () => nestedRoute,
+      path: '/foo',
+      loader: ({ parentMatchPromise }) => {
+        nestedLoaderMock(parentMatchPromise)
+      },
+      component: () => <div>Nested Foo page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      nestedRoute.addChildren([fooRoute]),
+      indexRoute,
+    ])
+    const router = await act(() => createRouter({ routeTree }))
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const linkToFoo = await screen.findByRole('link', { name: 'link to foo' })
+    expect(linkToFoo).toBeInTheDocument()
+
+    await act(() => fireEvent.click(linkToFoo))
+
+    const fooElement = await screen.findByText('Nested Foo page')
+    expect(fooElement).toBeInTheDocument()
+
+    expect(nestedLoaderMock).toHaveBeenCalled()
+    expect(nestedLoaderMock.mock.calls[0][0]).toBeInstanceOf(Promise)
   })
 })
