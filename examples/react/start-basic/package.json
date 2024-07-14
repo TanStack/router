@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.45.0",
-    "@tanstack/router-devtools": "^1.45.0",
+    "@tanstack/router-devtools": "^1.45.1",
     "@tanstack/router-plugin": "^1.45.0",
     "@tanstack/start": "^1.45.0",
     "@typescript-eslint/parser": "^7.16.0",
