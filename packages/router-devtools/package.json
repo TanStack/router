@@ -63,7 +63,6 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "date-fns": "^2.30.0",
     "goober": "^2.1.14"
   },
   "devDependencies": {
