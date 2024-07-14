@@ -108,20 +108,22 @@ function MatchInner({ matchId }: { matchId: string }): any {
 
   const route = router.routesById[routeId]!
 
-  const [match, matchIndex] = useRouterState({
+  const matchIndex = useRouterState({
     select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
+      return s.matches.findIndex((d) => d.id === matchId)
+    },
+  })
+
+  const match = useRouterState({
+    select: (s) => {
       const match = s.matches[matchIndex]!
-      return [
-        pick(match, [
+      return pick(match, [
           'id',
           'status',
           'error',
           'loadPromise',
           'minPendingPromise',
-        ]),
-        matchIndex,
-      ] as const
+      ])
     },
   })
 
