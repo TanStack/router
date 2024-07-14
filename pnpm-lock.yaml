@@ -1035,8 +1035,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
-        specifier: ^1.14.0
-        version: 1.14.0
+        specifier: ^2.4.0
+        version: 2.4.0
       vinxi:
         specifier: 0.3.12
         version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
@@ -1175,8 +1175,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
-        specifier: ^1.14.0
-        version: 1.14.0
+        specifier: ^2.4.0
+        version: 2.4.0
       vinxi:
         specifier: 0.3.12
         version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
@@ -1245,8 +1245,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
-        specifier: ^1.14.0
-        version: 1.14.0
+        specifier: ^2.4.0
+        version: 2.4.0
       vinxi:
         specifier: 0.3.12
         version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
@@ -1339,8 +1339,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
-        specifier: ^1.14.0
-        version: 1.14.0
+        specifier: ^2.4.0
+        version: 2.4.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -8727,8 +8727,8 @@ packages:
     resolution: {integrity: sha512-ulAk51I9UVUyJgxlv9M6lFot2WP3e7t8Kz9+IS6D4rVba1tR9kON+Ey69f+1R4Q8cd45Lod6a4IcJIxnzGc/zA==}
     engines: {node: '>=18'}
 
-  tailwind-merge@1.14.0:
-    resolution: {integrity: sha512-3mFKyCo/MBcgyOTlrY8T7odzZFx+w+qKSMAmdFzRvqBfLlSigU6TZnlFHK0lkMwj9Bj8OYU+9yW9lmGuS0QEnQ==}
+  tailwind-merge@2.4.0:
+    resolution: {integrity: sha512-49AwoOQNKdqKPd9CViyH5wJoSKsCDjUlzL8DxuGp3P1FsGY36NJDAa18jLZcaHAUUuTj+JB8IAo8zWgBNvBF7A==}
 
   tailwindcss@3.4.4:
     resolution: {integrity: sha512-ZoyXOdJjISB7/BcLTR6SEsLgKtDStYyYZVLsUtWChO4Ps20CBad7lfJKVDiejocV4ME1hLmyY0WJE3hSDcmQ2A==}
@@ -17071,7 +17071,7 @@ snapshots:
 
   system-architecture@0.1.0: {}
 
-  tailwind-merge@1.14.0: {}
+  tailwind-merge@2.4.0: {}
 
   tailwindcss@3.4.4:
     dependencies:
