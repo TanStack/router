@@ -1780,9 +1780,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      date-fns:
-        specifier: ^2.30.0
-        version: 2.30.0
       goober:
         specifier: ^2.1.14
         version: 2.1.14(csstype@3.1.3)
