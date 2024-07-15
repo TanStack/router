@@ -1846,7 +1846,8 @@ export class Router<
                 }
 
                 const beforeLoadContext = route.options.beforeLoad
-                  ? (await route.options.beforeLoad(beforeLoadFnContext)) ?? {}
+                  ? ((await route.options.beforeLoad(beforeLoadFnContext)) ??
+                    {})
                   : {}
 
                 checkLatest()
@@ -2059,12 +2060,12 @@ export class Router<
                 const age = Date.now() - match.updatedAt
 
                 const staleAge = preload
-                  ? route.options.preloadStaleTime ??
+                  ? (route.options.preloadStaleTime ??
                     this.options.defaultPreloadStaleTime ??
-                    30_000 // 30 seconds for preloads by default
-                  : route.options.staleTime ??
+                    30_000) // 30 seconds for preloads by default
+                  : (route.options.staleTime ??
                     this.options.defaultStaleTime ??
-                    0
+                    0)
 
                 const shouldReloadOption = route.options.shouldReload
 
@@ -2181,8 +2182,9 @@ export class Router<
           // otherwise, use the gcTime
           const gcTime =
             (d.preload
-              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
-              : route.options.gcTime ?? this.options.defaultGcTime) ??
+              ? (route.options.preloadGcTime ??
+                this.options.defaultPreloadGcTime)
+              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
             5 * 60 * 1000
 
           return d.status !== 'error' && Date.now() - d.updatedAt < gcTime
