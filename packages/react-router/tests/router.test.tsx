@@ -18,8 +18,11 @@ afterEach(() => {
 const mockFn1 = vi.fn()
 
 function createTestRouter(initialHistory?: RouterHistory) {
-  const history =
-    initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+  let history
+
+  if (initialHistory) {
+    history = initialHistory
+  }
 
   const rootRoute = createRootRoute({})
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
@@ -35,10 +38,16 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => rootRoute,
     path: '$',
   })
+  // This is simulates a user creating a `é.tsx` file when using file-based routing
+  const eAccentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/é',
+  })
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
+    eAccentRoute,
     topLevelSplatRoute,
   ])
 
@@ -46,7 +55,13 @@ function createTestRouter(initialHistory?: RouterHistory) {
 
   return {
     router,
-    routes: { indexRoute, postsRoute, postIdRoute, topLevelSplatRoute },
+    routes: {
+      indexRoute,
+      postsRoute,
+      postIdRoute,
+      topLevelSplatRoute,
+      eAccentRoute,
+    },
   }
 }
 
@@ -56,7 +71,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/posts/tanner')
   })
@@ -66,7 +81,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/posts/🚀')
   })
@@ -76,7 +91,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
   })
@@ -90,7 +105,7 @@ describe('encoding: path params for /posts/$slug', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe(
       '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
@@ -102,7 +117,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -120,7 +135,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -138,7 +153,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -160,7 +175,7 @@ describe('encoding: path params for /posts/$slug', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -182,7 +197,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/tanner'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/tanner')
   })
@@ -192,7 +207,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/🚀'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/🚀')
   })
@@ -202,7 +217,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
   })
@@ -216,7 +231,7 @@ describe('encoding: splat param for /$', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe(
       '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
@@ -230,7 +245,7 @@ describe('encoding: splat param for /$', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe(
       '/framework/react/guide/file-based-routing tanstack',
@@ -242,7 +257,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/tanner'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -260,7 +275,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/🚀'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -278,7 +293,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -298,7 +313,7 @@ describe('encoding: splat param for /$', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -314,17 +329,41 @@ describe('encoding: splat param for /$', () => {
   })
 })
 
+describe('encoding: URL path segments', () => {
+  it('state.location.pathname, should have the path value of "/é" when an encoded input is provided', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/%C3%A9'] }),
+    )
+
+    await act(() => router.load())
+
+    console.log('entry', router.state.location)
+    expect(router.state.location.pathname).toBe('/é')
+  })
+})
+
+it('state.location.pathname, should have the path value of "/é" when an unencoded input is provided', async () => {
+  const { router } = createTestRouter(
+    createMemoryHistory({ initialEntries: ['/é'] }),
+  )
+
+  await act(() => router.load())
+
+  expect(router.state.location.pathname).toBe('/é')
+})
+
 describe('router emits events during rendering', () => {
   it('during initial load, should emit the "onResolved" event', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/'] }),
     )
 
-    router.subscribe('onResolved', mockFn1)
-    await router.load()
-    render(<RouterProvider router={router} />)
+    const unsub = router.subscribe('onResolved', mockFn1)
+    await act(() => router.load())
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mockFn1).toBeCalled())
+    unsub()
   })
 
   it('after a navigation, should have emitted the "onResolved" event twice', async () => {
@@ -332,12 +371,13 @@ describe('router emits events during rendering', () => {
       createMemoryHistory({ initialEntries: ['/'] }),
     )
 
-    router.subscribe('onResolved', mockFn1)
-    await router.load()
-    render(<RouterProvider router={router} />)
+    const unsub = router.subscribe('onResolved', mockFn1)
+    await act(() => router.load())
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
+    unsub()
   })
 })
