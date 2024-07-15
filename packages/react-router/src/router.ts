@@ -2046,11 +2046,6 @@ export class Router<
 
                           if (latestMatch.minPendingPromise) {
                             await latestMatch.minPendingPromise
-
-                            updateMatch(latestMatch.id, (prev) => ({
-                              ...prev,
-                              minPendingPromise: undefined,
-                            }))
                           }
                         }
 

@@ -127,6 +127,25 @@ function MatchInner({ matchId }: { matchId: string }): any {
     },
   })
 
+  function useChangedDiff(value: any) {
+    const ref = React.useRef(value)
+    const changed = ref.current !== value
+    if (changed) {
+      console.log(
+        'Changed:',
+        value,
+        Object.fromEntries(
+          Object.entries(value).filter(
+            ([key, val]) => val !== ref.current[key],
+          ),
+        ),
+      )
+    }
+    ref.current = value
+  }
+
+  useChangedDiff(match)
+
   const RouteErrorComponent =
     (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
     ErrorComponent
@@ -192,36 +211,24 @@ function MatchInner({ matchId }: { matchId: string }): any {
 
     if (pendingMinMs && !match.minPendingPromise) {
       // Create a promise that will resolve after the minPendingMs
-      match.minPendingPromise = createControlledPromise()
-
       if (!router.isServer) {
+        const minPendingPromise = createControlledPromise<void>()
+
         Promise.resolve().then(() => {
-          router.__store.setState((s) => ({
-            ...s,
-            matches: s.matches.map((d) =>
-              d.id === match.id
-                ? { ...d, minPendingPromise: createControlledPromise() }
-                : d,
-            ),
+          router.updateMatch(match.id, (prev) => ({
+            ...prev,
+            minPendingPromise,
           }))
         })
 
         setTimeout(() => {
+          minPendingPromise.resolve()
+
           // We've handled the minPendingPromise, so we can delete it
-          router.__store.setState((s) => {
-            return {
-              ...s,
-              matches: s.matches.map((d) =>
-                d.id === match.id
-                  ? {
-                      ...d,
-                      minPendingPromise:
-                        (d.minPendingPromise?.resolve(), undefined),
-                    }
-                  : d,
-              ),
-            }
-          })
+          router.updateMatch(match.id, (prev) => ({
+            ...prev,
+            minPendingPromise: undefined,
+          }))
         }, pendingMinMs)
       }
     }
