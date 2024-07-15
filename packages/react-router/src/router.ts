@@ -1150,22 +1150,13 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-      // if the router is loading the previous location is what
-      // we should use because the old matches are still around
-      // and the latest location has already been updated.
-      // If the router is not loading we should always use the
-      // latest location because resolvedLocation can lag behind
-      // and the new matches could already render
-      const currentLocation = this.state.isLoading
-        ? this.state.resolvedLocation
-        : this.latestLocation
-
-      const location = dest._fromLocation ?? currentLocation
-
-      let fromPath = location.pathname
-      let fromSearch = dest.fromSearch || location.search
-
-      const fromMatches = this.matchRoutes(location.pathname, fromSearch)
+      const fromMatches =
+        dest._fromLocation != null
+          ? this.matchRoutes(
+              dest._fromLocation.pathname,
+              dest.fromSearch || dest._fromLocation.search,
+            )
+          : this.state.matches
 
       const fromMatch =
         dest.from != null
@@ -1178,14 +1169,14 @@ export class Router<
             )
           : undefined
 
-      fromPath = fromMatch?.pathname || fromPath
+      const fromPath = fromMatch?.pathname || this.latestLocation.pathname
 
       invariant(
         dest.from == null || fromMatch != null,
         'Could not find match for from: ' + dest.from,
       )
 
-      fromSearch = last(fromMatches)?.search || this.latestLocation.search
+      const fromSearch = last(fromMatches)?.search || this.latestLocation.search
 
       const stayingMatches = matches?.filter((d) =>
         fromMatches.find((e) => e.routeId === d.routeId),
@@ -1855,8 +1846,7 @@ export class Router<
                 }
 
                 const beforeLoadContext = route.options.beforeLoad
-                  ? ((await route.options.beforeLoad(beforeLoadFnContext)) ??
-                    {})
+                  ? (await route.options.beforeLoad(beforeLoadFnContext)) ?? {}
                   : {}
 
                 checkLatest()
@@ -2069,12 +2059,12 @@ export class Router<
                 const age = Date.now() - match.updatedAt
 
                 const staleAge = preload
-                  ? (route.options.preloadStaleTime ??
+                  ? route.options.preloadStaleTime ??
                     this.options.defaultPreloadStaleTime ??
-                    30_000) // 30 seconds for preloads by default
-                  : (route.options.staleTime ??
+                    30_000 // 30 seconds for preloads by default
+                  : route.options.staleTime ??
                     this.options.defaultStaleTime ??
-                    0)
+                    0
 
                 const shouldReloadOption = route.options.shouldReload
 
@@ -2191,9 +2181,8 @@ export class Router<
           // otherwise, use the gcTime
           const gcTime =
             (d.preload
-              ? (route.options.preloadGcTime ??
-                this.options.defaultPreloadGcTime)
-              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
+              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
+              : route.options.gcTime ?? this.options.defaultGcTime) ??
             5 * 60 * 1000
 
           return d.status !== 'error' && Date.now() - d.updatedAt < gcTime
