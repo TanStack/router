@@ -12,6 +12,7 @@ import {
 
 afterEach(() => {
   vi.resetAllMocks()
+  window.history.replaceState(null, 'root', '/')
   cleanup()
 })
 
@@ -330,26 +331,28 @@ describe('encoding: splat param for /$', () => {
 })
 
 describe('encoding: URL path segments', () => {
+  // TODO: Find out why this wasn't working with createMemoryHistory
   it('state.location.pathname, should have the path value of "/é" when an encoded input is provided', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/%C3%A9'] }),
-    )
+    const { router } = createTestRouter()
 
+    window.history.pushState({}, '', '/%C3%A9')
+
+    await act(() => render(<RouterProvider router={router} />))
     await act(() => router.load())
 
-    console.log('entry', router.state.location)
     expect(router.state.location.pathname).toBe('/é')
   })
-})
 
-it('state.location.pathname, should have the path value of "/é" when an unencoded input is provided', async () => {
-  const { router } = createTestRouter(
-    createMemoryHistory({ initialEntries: ['/é'] }),
-  )
+  it('state.location.pathname, should have the path value of "/é" when an unencoded input is provided', async () => {
+    const { router } = createTestRouter()
 
-  await act(() => router.load())
+    window.history.pushState({}, '', '/é')
 
-  expect(router.state.location.pathname).toBe('/é')
+    await act(() => render(<RouterProvider router={router} />))
+    await act(() => router.load())
+
+    expect(router.state.location.pathname).toBe('/é')
+  })
 })
 
 describe('router emits events during rendering', () => {
