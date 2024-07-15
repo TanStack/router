@@ -878,7 +878,7 @@ export const inferFullPath = (routeNode: RouteNode): string => {
 export const inferPath = (routeNode: RouteNode): string => {
   return routeNode.cleanedPath === '/'
     ? routeNode.cleanedPath
-    : routeNode.cleanedPath?.replace(/\/$/, '') ?? ''
+    : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
 }
 
 function getFilePathIdAndRouteIdFromPath(pathname: string) {
