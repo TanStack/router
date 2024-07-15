@@ -118,11 +118,11 @@ function MatchInner({ matchId }: { matchId: string }): any {
     select: (s) => {
       const match = s.matches[matchIndex]!
       return pick(match, [
-          'id',
-          'status',
-          'error',
-          'loadPromise',
-          'minPendingPromise',
+        'id',
+        'status',
+        'error',
+        'loadPromise',
+        'minPendingPromise',
       ])
     },
   })
