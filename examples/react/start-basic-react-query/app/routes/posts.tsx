@@ -4,7 +4,7 @@ import { postsQueryOptions } from '../utils/posts'
 
 export const Route = createFileRoute('/posts')({
   loader: async ({ context }) => {
-    await context.queryClient.prefetchQuery(postsQueryOptions())
+    await context.queryClient.ensureQueryData(postsQueryOptions())
   },
   meta: () => [{ title: 'Posts' }],
   component: PostsComponent,
