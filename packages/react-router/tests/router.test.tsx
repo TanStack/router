@@ -39,21 +39,22 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => rootRoute,
     path: '$',
   })
-  // This is simulates a user creating a `é.tsx` file when using file-based routing
-  const eAccentRoute = createRoute({
+  // This is simulates a user creating a `é.tsx` file using file-based routing
+  const pathSegmentEAccentRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/é',
+    path: '/path-segment/é',
   })
-  const rocketEmojiRoute = createRoute({
+  // This is simulates a user creating a `🚀.tsx` file using file-based routing
+  const pathSegmentRocketEmojiRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/rocket/🚀',
+    path: '/path-segment/🚀',
   })
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
-    eAccentRoute,
-    rocketEmojiRoute,
+    pathSegmentEAccentRoute,
+    pathSegmentRocketEmojiRoute,
     topLevelSplatRoute,
   ])
 
@@ -66,12 +67,13 @@ function createTestRouter(initialHistory?: RouterHistory) {
       postsRoute,
       postIdRoute,
       topLevelSplatRoute,
-      eAccentRoute,
+      pathSegmentEAccentRoute,
+      pathSegmentRocketEmojiRoute,
     },
   }
 }
 
-describe('encoding: path params for /posts/$slug', () => {
+describe('encoding: URL param segment for /posts/$slug', () => {
   it('state.location.pathname, should have the params.slug value of "tanner"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
@@ -197,7 +199,7 @@ describe('encoding: path params for /posts/$slug', () => {
   })
 })
 
-describe('encoding: splat param for /$', () => {
+describe('encoding: URL splat segment for /$', () => {
   it('state.location.pathname, should have the params._splat value of "tanner"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/tanner'] }),
@@ -335,51 +337,42 @@ describe('encoding: splat param for /$', () => {
   })
 })
 
-describe('encoding: URL path segments', () => {
+describe('encoding: URL path segment', () => {
   // TODO: Find out why this wasn't working with createMemoryHistory
-  it('state.location.pathname, should have the path value of "/é" when an encoded input is provided', async () => {
-    const { router } = createTestRouter()
+  it.each([
+    {
+      input: '/path-segment/%C3%A9',
+      output: '/path-segment/é',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/é',
+      output: '/path-segment/é',
+      type: 'not encoded',
+    },
+    {
+      input: '/path-segment/%F0%9F%9A%80',
+      output: '/path-segment/🚀',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/🚀',
+      output: '/path-segment/🚀',
+      type: 'not encoded',
+    },
+  ])(
+    'should resolve $input to $output when the path segment is $type',
+    async ({ input, output }) => {
+      const { router } = createTestRouter()
 
-    window.history.pushState({}, '', '/%C3%A9')
+      window.history.pushState({}, '', input)
 
-    await act(() => render(<RouterProvider router={router} />))
-    await act(() => router.load())
+      await act(() => render(<RouterProvider router={router} />))
+      await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/é')
-  })
-
-  it('state.location.pathname, should have the path value of "/é" when an unencoded input is provided', async () => {
-    const { router } = createTestRouter()
-
-    window.history.pushState({}, '', '/é')
-
-    await act(() => render(<RouterProvider router={router} />))
-    await act(() => router.load())
-
-    expect(router.state.location.pathname).toBe('/é')
-  })
-
-  it('state.location.pathname, should have the path value of "/rocket/🚀" when an encoded input is provided', async () => {
-    const { router } = createTestRouter()
-
-    window.history.pushState({}, '', '/rocket/%F0%9F%9A%80')
-
-    await act(() => render(<RouterProvider router={router} />))
-    await act(() => router.load())
-
-    expect(router.state.location.pathname).toBe('/rocket/🚀')
-  })
-
-  it('state.location.pathname, should have the path value of "/rocket/🚀" when an unencoded input is provided', async () => {
-    const { router } = createTestRouter()
-
-    window.history.pushState({}, '', '/rocket/🚀')
-
-    await act(() => render(<RouterProvider router={router} />))
-    await act(() => router.load())
-
-    expect(router.state.location.pathname).toBe('/rocket/🚀')
-  })
+      expect(router.state.location.pathname).toBe(output)
+    },
+  )
 })
 
 describe('router emits events during rendering', () => {
