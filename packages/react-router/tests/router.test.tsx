@@ -44,11 +44,16 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => rootRoute,
     path: '/é',
   })
+  const rocketEmojiRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/rocket/🚀',
+  })
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
     eAccentRoute,
+    rocketEmojiRoute,
     topLevelSplatRoute,
   ])
 
@@ -352,6 +357,28 @@ describe('encoding: URL path segments', () => {
     await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/é')
+  })
+
+  it('state.location.pathname, should have the path value of "/rocket/🚀" when an encoded input is provided', async () => {
+    const { router } = createTestRouter()
+
+    window.history.pushState({}, '', '/rocket/%F0%9F%9A%80')
+
+    await act(() => render(<RouterProvider router={router} />))
+    await act(() => router.load())
+
+    expect(router.state.location.pathname).toBe('/rocket/🚀')
+  })
+
+  it('state.location.pathname, should have the path value of "/rocket/🚀" when an unencoded input is provided', async () => {
+    const { router } = createTestRouter()
+
+    window.history.pushState({}, '', '/rocket/🚀')
+
+    await act(() => render(<RouterProvider router={router} />))
+    await act(() => router.load())
+
+    expect(router.state.location.pathname).toBe('/rocket/🚀')
   })
 })
 
