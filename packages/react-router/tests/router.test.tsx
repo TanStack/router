@@ -12,14 +12,18 @@ import {
 
 afterEach(() => {
   vi.resetAllMocks()
+  window.history.replaceState(null, 'root', '/')
   cleanup()
 })
 
 const mockFn1 = vi.fn()
 
 function createTestRouter(initialHistory?: RouterHistory) {
-  const history =
-    initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+  let history
+
+  if (initialHistory) {
+    history = initialHistory
+  }
 
   const rootRoute = createRootRoute({})
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
@@ -35,10 +39,22 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => rootRoute,
     path: '$',
   })
+  // This is simulates a user creating a `é.tsx` file using file-based routing
+  const pathSegmentEAccentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/path-segment/é',
+  })
+  // This is simulates a user creating a `🚀.tsx` file using file-based routing
+  const pathSegmentRocketEmojiRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/path-segment/🚀',
+  })
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
+    pathSegmentEAccentRoute,
+    pathSegmentRocketEmojiRoute,
     topLevelSplatRoute,
   ])
 
@@ -46,50 +62,24 @@ function createTestRouter(initialHistory?: RouterHistory) {
 
   return {
     router,
-    routes: { indexRoute, postsRoute, postIdRoute, topLevelSplatRoute },
+    routes: {
+      indexRoute,
+      postsRoute,
+      postIdRoute,
+      topLevelSplatRoute,
+      pathSegmentEAccentRoute,
+      pathSegmentRocketEmojiRoute,
+    },
   }
 }
 
-function createTestRouterWithObjects(initialHistory?: RouterHistory) {
-  const history =
-    initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
-
-  const rootRoute = createRootRoute({})
-  const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
-  const postsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/posts',
-  })
-  const postIdRoute = createRoute({
-    getParentRoute: () => postsRoute,
-    path: '/$slug',
-  })
-  const topLevelSplatRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '$',
-  })
-
-  const routeTree = rootRoute.addChildren({
-    indexRoute,
-    postsRoute: postsRoute.addChildren({ postIdRoute }),
-    topLevelSplatRoute,
-  })
-
-  const router = createRouter({ routeTree, history })
-
-  return {
-    router,
-    routes: { indexRoute, postsRoute, postIdRoute, topLevelSplatRoute },
-  }
-}
-
-describe('encoding: path params for /posts/$slug', () => {
+describe('encoding: URL param segment for /posts/$slug', () => {
   it('state.location.pathname, should have the params.slug value of "tanner"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/posts/tanner')
   })
@@ -99,7 +89,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/posts/🚀')
   })
@@ -109,7 +99,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
   })
@@ -123,7 +113,7 @@ describe('encoding: path params for /posts/$slug', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe(
       '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
@@ -135,7 +125,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -146,22 +136,6 @@ describe('encoding: path params for /posts/$slug', () => {
     }
 
     expect((match.params as unknown as any).slug).toBe('tanner')
-
-    const routerWithObjects = createTestRouterWithObjects(
-      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
-    )
-
-    await routerWithObjects.router.load()
-
-    const matchWithObjects = routerWithObjects.router.state.matches.find(
-      (r) => r.routeId === routes.postIdRoute.id,
-    )
-
-    if (!matchWithObjects) {
-      throw new Error('No match found')
-    }
-
-    expect((matchWithObjects.params as unknown as any).slug).toBe('tanner')
   })
 
   it('params.slug for the matched route, should be "🚀"', async () => {
@@ -169,7 +143,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -180,22 +154,6 @@ describe('encoding: path params for /posts/$slug', () => {
     }
 
     expect((match.params as unknown as any).slug).toBe('🚀')
-
-    const routerWithObjects = createTestRouterWithObjects(
-      createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
-    )
-
-    await routerWithObjects.router.load()
-
-    const matchWithObjects = routerWithObjects.router.state.matches.find(
-      (r) => r.routeId === routes.postIdRoute.id,
-    )
-
-    if (!matchWithObjects) {
-      throw new Error('No match found')
-    }
-
-    expect((matchWithObjects.params as unknown as any).slug).toBe('🚀')
   })
 
   it('params.slug for the matched route, should be "🚀" instead of it being "%F0%9F%9A%80"', async () => {
@@ -203,7 +161,7 @@ describe('encoding: path params for /posts/$slug', () => {
       createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -214,22 +172,6 @@ describe('encoding: path params for /posts/$slug', () => {
     }
 
     expect((match.params as unknown as any).slug).toBe('🚀')
-
-    const routerWithObjects = createTestRouterWithObjects(
-      createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
-    )
-
-    await routerWithObjects.router.load()
-
-    const matchWithObjects = routerWithObjects.router.state.matches.find(
-      (r) => r.routeId === routes.postIdRoute.id,
-    )
-
-    if (!matchWithObjects) {
-      throw new Error('No match found')
-    }
-
-    expect((matchWithObjects.params as unknown as any).slug).toBe('🚀')
   })
 
   it('params.slug for the matched route, should be "framework/react/guide/file-based-routing tanstack" instead of it being "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
@@ -241,7 +183,7 @@ describe('encoding: path params for /posts/$slug', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -254,38 +196,16 @@ describe('encoding: path params for /posts/$slug', () => {
     expect((match.params as unknown as any).slug).toBe(
       'framework/react/guide/file-based-routing tanstack',
     )
-
-    const routerWithObjects = createTestRouterWithObjects(
-      createMemoryHistory({
-        initialEntries: [
-          '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
-        ],
-      }),
-    )
-
-    await routerWithObjects.router.load()
-
-    const matchWithObjects = routerWithObjects.router.state.matches.find(
-      (r) => r.routeId === routes.postIdRoute.id,
-    )
-
-    if (!matchWithObjects) {
-      throw new Error('No match found')
-    }
-
-    expect((matchWithObjects.params as unknown as any).slug).toBe(
-      'framework/react/guide/file-based-routing tanstack',
-    )
   })
 })
 
-describe('encoding: splat param for /$', () => {
+describe('encoding: URL splat segment for /$', () => {
   it('state.location.pathname, should have the params._splat value of "tanner"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/tanner'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/tanner')
   })
@@ -295,7 +215,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/🚀'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/🚀')
   })
@@ -305,7 +225,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
   })
@@ -319,7 +239,7 @@ describe('encoding: splat param for /$', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe(
       '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
@@ -333,7 +253,7 @@ describe('encoding: splat param for /$', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     expect(router.state.location.pathname).toBe(
       '/framework/react/guide/file-based-routing tanstack',
@@ -345,7 +265,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/tanner'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -363,7 +283,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/🚀'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -381,7 +301,7 @@ describe('encoding: splat param for /$', () => {
       createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -401,7 +321,7 @@ describe('encoding: splat param for /$', () => {
       }),
     )
 
-    await router.load()
+    await act(() => router.load())
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -417,17 +337,56 @@ describe('encoding: splat param for /$', () => {
   })
 })
 
+describe('encoding: URL path segment', () => {
+  // TODO: Find out why this wasn't working with createMemoryHistory
+  it.each([
+    {
+      input: '/path-segment/%C3%A9',
+      output: '/path-segment/é',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/é',
+      output: '/path-segment/é',
+      type: 'not encoded',
+    },
+    {
+      input: '/path-segment/%F0%9F%9A%80',
+      output: '/path-segment/🚀',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/🚀',
+      output: '/path-segment/🚀',
+      type: 'not encoded',
+    },
+  ])(
+    'should resolve $input to $output when the path segment is $type',
+    async ({ input, output }) => {
+      const { router } = createTestRouter()
+
+      window.history.pushState({}, '', input)
+
+      await act(() => render(<RouterProvider router={router} />))
+      await act(() => router.load())
+
+      expect(router.state.location.pathname).toBe(output)
+    },
+  )
+})
+
 describe('router emits events during rendering', () => {
   it('during initial load, should emit the "onResolved" event', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/'] }),
     )
 
-    router.subscribe('onResolved', mockFn1)
-    await router.load()
-    render(<RouterProvider router={router} />)
+    const unsub = router.subscribe('onResolved', mockFn1)
+    await act(() => router.load())
+    await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => expect(mockFn1).toBeCalled())
+    unsub()
   })
 
   it('after a navigation, should have emitted the "onResolved" event twice', async () => {
@@ -435,12 +394,13 @@ describe('router emits events during rendering', () => {
       createMemoryHistory({ initialEntries: ['/'] }),
     )
 
-    router.subscribe('onResolved', mockFn1)
-    await router.load()
-    render(<RouterProvider router={router} />)
+    const unsub = router.subscribe('onResolved', mockFn1)
+    await act(() => router.load())
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
+    unsub()
   })
 })
