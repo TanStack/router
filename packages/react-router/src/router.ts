@@ -2009,12 +2009,12 @@ export class Router<
                     const age = Date.now() - this.getMatch(matchId)!.updatedAt
 
                     const staleAge = preload
-                      ? route.options.preloadStaleTime ??
+                      ? (route.options.preloadStaleTime ??
                         this.options.defaultPreloadStaleTime ??
-                        30_000 // 30 seconds for preloads by default
-                      : route.options.staleTime ??
+                        30_000) // 30 seconds for preloads by default
+                      : (route.options.staleTime ??
                         this.options.defaultStaleTime ??
-                        0
+                        0)
 
                     const shouldReloadOption = route.options.shouldReload
 
