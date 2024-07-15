@@ -2266,8 +2266,9 @@ export class Router<
           // otherwise, use the gcTime
           const gcTime =
             (d.preload
-              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
-              : route.options.gcTime ?? this.options.defaultGcTime) ??
+              ? (route.options.preloadGcTime ??
+                this.options.defaultPreloadGcTime)
+              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
             5 * 60 * 1000
 
           return d.status !== 'error' && Date.now() - d.updatedAt < gcTime
