@@ -41,8 +41,8 @@ export function Match({ matchId }: { matchId: string }) {
 
   const routeNotFoundComponent = route.isRoot
     ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
-      (route.options.notFoundComponent ??
-      router.options.notFoundRoute?.options.component)
+      route.options.notFoundComponent ??
+      router.options.notFoundRoute?.options.component
     : route.options.notFoundComponent
 
   const ResolvedSuspenseBoundary =
@@ -127,24 +127,24 @@ function MatchInner({ matchId }: { matchId: string }): any {
     },
   })
 
-  function useChangedDiff(value: any) {
-    const ref = React.useRef(value)
-    const changed = ref.current !== value
-    if (changed) {
-      console.log(
-        'Changed:',
-        value,
-        Object.fromEntries(
-          Object.entries(value).filter(
-            ([key, val]) => val !== ref.current[key],
-          ),
-        ),
-      )
-    }
-    ref.current = value
-  }
+  // function useChangedDiff(value: any) {
+  //   const ref = React.useRef(value)
+  //   const changed = ref.current !== value
+  //   if (changed) {
+  //     console.log(
+  //       'Changed:',
+  //       value,
+  //       Object.fromEntries(
+  //         Object.entries(value).filter(
+  //           ([key, val]) => val !== ref.current[key],
+  //         ),
+  //       ),
+  //     )
+  //   }
+  //   ref.current = value
+  // }
 
-  useChangedDiff(match)
+  // useChangedDiff(match)
 
   const RouteErrorComponent =
     (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
