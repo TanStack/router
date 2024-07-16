@@ -1,6 +1,6 @@
 import axios from 'redaxios'
 
-async function loaderDelayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
+async function loaderDelayFn<T>(fn: (...args: Array<any>) => Promise<T> | T) {
   const delay = Number(sessionStorage.getItem('loaderDelay') ?? 0)
   const delayPromise = new Promise((r) => setTimeout(r, delay))
 
@@ -16,9 +16,9 @@ type Invoice = {
   body: string
 }
 
-let invoices: Invoice[] = null!
+let invoices: Array<Invoice> = null!
 
-let invoicesPromise: Promise<void>
+let invoicesPromise: Promise<void> | undefined = undefined
 
 const ensureInvoices = async () => {
   if (!invoicesPromise) {
