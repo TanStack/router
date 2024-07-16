@@ -1,4 +1,5 @@
-import React from 'react'
+/* eslint-disable @eslint-react/no-useless-fragment */
+import React, { act } from 'react'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, it, test, vi } from 'vitest'
 import {
@@ -132,6 +133,129 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('href', '/posts')
     expect(postsLink).not.toHaveAttribute('aria-current', 'page')
     expect(postsLink).not.toHaveAttribute('data-status', 'active')
+  })
+
+  test('when the current route has a search fields with undefined values', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <React.Fragment>
+            <h1>Index</h1>
+            <Link
+              to="/"
+              activeOptions={{ exact: true }}
+              inactiveProps={{ className: 'inactive' }}
+            >
+              Index exact
+            </Link>
+            <Link
+              to="/"
+              search={{ foo: undefined }}
+              inactiveProps={{ className: 'inactive' }}
+            >
+              Index foo=undefined
+            </Link>
+            <Link
+              to="/"
+              search={{ foo: undefined }}
+              activeOptions={{ exact: true }}
+              inactiveProps={{ className: 'inactive' }}
+            >
+              Index foo=undefined-exact
+            </Link>
+            <Link
+              to="/"
+              search={{ foo: 'bar' }}
+              inactiveProps={{
+                className: 'inactive',
+              }}
+            >
+              Index foo=bar
+            </Link>
+          </React.Fragment>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    // round 1
+    const indexLink = await screen.findByRole('link', { name: 'Index exact' })
+    const indexFooUndefinedLink = await screen.findByRole('link', {
+      name: 'Index foo=undefined',
+    })
+    const indexFooUndefinedExactLink = await screen.findByRole('link', {
+      name: 'Index foo=undefined-exact',
+    })
+    const indexFooBarLink = await screen.findByRole('link', {
+      name: 'Index foo=bar',
+    })
+
+    expect(window.location.pathname).toBe('/')
+
+    expect(indexLink).toHaveClass('active')
+    expect(indexLink).not.toHaveClass('inactive')
+    expect(indexLink).toHaveAttribute('href', '/')
+    expect(indexLink).toHaveAttribute('aria-current', 'page')
+    expect(indexLink).toHaveAttribute('data-status', 'active')
+
+    expect(indexFooUndefinedLink).toHaveClass('active')
+    expect(indexFooUndefinedLink).not.toHaveClass('inactive')
+    expect(indexFooUndefinedLink).toHaveAttribute('href', '/')
+    expect(indexFooUndefinedLink).toHaveAttribute('aria-current', 'page')
+    expect(indexFooUndefinedLink).toHaveAttribute('data-status', 'active')
+
+    expect(indexFooUndefinedExactLink).toHaveClass('active')
+    expect(indexFooUndefinedExactLink).not.toHaveClass('inactive')
+    expect(indexFooUndefinedExactLink).toHaveAttribute('href', '/')
+    expect(indexFooUndefinedExactLink).toHaveAttribute('aria-current', 'page')
+    expect(indexFooUndefinedExactLink).toHaveAttribute('data-status', 'active')
+
+    expect(indexFooBarLink).toHaveClass('inactive')
+    expect(indexFooBarLink).not.toHaveClass('active')
+    expect(indexFooBarLink).toHaveAttribute('href', '/?foo=bar')
+    expect(indexFooBarLink).not.toHaveAttribute('aria-current', 'page')
+    expect(indexFooBarLink).not.toHaveAttribute('data-status', 'active')
+
+    // navigate to /?foo=bar
+    await act(() => fireEvent.click(indexFooBarLink))
+
+    expect(indexLink).toHaveClass('inactive')
+    expect(indexLink).not.toHaveClass('active')
+    expect(indexLink).toHaveAttribute('href', '/')
+    expect(indexLink).not.toHaveAttribute('aria-current', 'page')
+    expect(indexLink).not.toHaveAttribute('data-status', 'active')
+
+    expect(indexFooUndefinedLink).toHaveClass('active')
+    expect(indexFooUndefinedLink).not.toHaveClass('inactive')
+    expect(indexFooUndefinedLink).toHaveAttribute('href', '/')
+    expect(indexFooUndefinedLink).toHaveAttribute('aria-current', 'page')
+    expect(indexFooUndefinedLink).toHaveAttribute('data-status', 'active')
+
+    expect(indexFooUndefinedExactLink).toHaveClass('inactive')
+    expect(indexFooUndefinedExactLink).not.toHaveClass('active')
+    expect(indexFooUndefinedExactLink).toHaveAttribute('href', '/')
+    expect(indexFooUndefinedExactLink).not.toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(indexFooUndefinedExactLink).not.toHaveAttribute(
+      'data-status',
+      'active',
+    )
+
+    expect(indexFooBarLink).toHaveClass('active')
+    expect(indexFooBarLink).not.toHaveClass('inactive')
+    expect(indexFooBarLink).toHaveAttribute('href', '/?foo=bar')
+    expect(indexFooBarLink).toHaveAttribute('aria-current', 'page')
+    expect(indexFooBarLink).toHaveAttribute('data-status', 'active')
   })
 
   test('when the current route is the root with beforeLoad that throws', async () => {
