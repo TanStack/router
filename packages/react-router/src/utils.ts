@@ -209,6 +209,32 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
+/**
+ * This function will remove all undefined values from an object.
+ * It will also remove any undefined values from nested objects.
+ * It will not remove undefined values from arrays.
+ */
+export function deepRemoveUndefinedFromObject<T>(obj: T): T {
+  if (typeof obj !== 'object') {
+    return obj
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => deepRemoveUndefinedFromObject(item)) as any
+  }
+
+  const copy = { ...obj }
+  for (const key in copy) {
+    if (typeof copy[key] === 'object') {
+      copy[key] = deepRemoveUndefinedFromObject(copy[key])
+    }
+    if (copy[key] === undefined) {
+      delete copy[key]
+    }
+  }
+  return copy
+}
+
 export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   if (a === b) {
     return true
