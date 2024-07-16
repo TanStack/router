@@ -187,7 +187,9 @@ describe('Link', () => {
     render(<RouterProvider router={router} />)
 
     // round 1
-    const indexLink = await screen.findByRole('link', { name: 'Index exact' })
+    const indexExactLink = await screen.findByRole('link', {
+      name: 'Index exact',
+    })
     const indexFooUndefinedLink = await screen.findByRole('link', {
       name: 'Index foo=undefined',
     })
@@ -200,11 +202,11 @@ describe('Link', () => {
 
     expect(window.location.pathname).toBe('/')
 
-    expect(indexLink).toHaveClass('active')
-    expect(indexLink).not.toHaveClass('inactive')
-    expect(indexLink).toHaveAttribute('href', '/')
-    expect(indexLink).toHaveAttribute('aria-current', 'page')
-    expect(indexLink).toHaveAttribute('data-status', 'active')
+    expect(indexExactLink).toHaveClass('active')
+    expect(indexExactLink).not.toHaveClass('inactive')
+    expect(indexExactLink).toHaveAttribute('href', '/')
+    expect(indexExactLink).toHaveAttribute('aria-current', 'page')
+    expect(indexExactLink).toHaveAttribute('data-status', 'active')
 
     expect(indexFooUndefinedLink).toHaveClass('active')
     expect(indexFooUndefinedLink).not.toHaveClass('inactive')
@@ -227,11 +229,11 @@ describe('Link', () => {
     // navigate to /?foo=bar
     await act(() => fireEvent.click(indexFooBarLink))
 
-    expect(indexLink).toHaveClass('inactive')
-    expect(indexLink).not.toHaveClass('active')
-    expect(indexLink).toHaveAttribute('href', '/')
-    expect(indexLink).not.toHaveAttribute('aria-current', 'page')
-    expect(indexLink).not.toHaveAttribute('data-status', 'active')
+    expect(indexExactLink).toHaveClass('inactive')
+    expect(indexExactLink).not.toHaveClass('active')
+    expect(indexExactLink).toHaveAttribute('href', '/')
+    expect(indexExactLink).not.toHaveAttribute('aria-current', 'page')
+    expect(indexExactLink).not.toHaveAttribute('data-status', 'active')
 
     expect(indexFooUndefinedLink).toHaveClass('active')
     expect(indexFooUndefinedLink).not.toHaveClass('inactive')
