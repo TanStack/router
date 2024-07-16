@@ -31,12 +31,17 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
   ) => {
     const [acceptCardDrop, setAcceptCardDrop] = useState(false)
     const editState = useState(false)
+
     const [acceptColumnDrop, setAcceptColumnDrop] = useState<
       'none' | 'left' | 'right'
     >('none')
+
     const [edit, setEdit] = useState(false)
+
     const itemRef = useCallback((node: HTMLElement | null) => {
-      node?.scrollIntoView()
+      node?.scrollIntoView({
+        block: 'nearest',
+      })
     }, [])
 
     const listRef = useRef<HTMLUListElement>(null!)
@@ -132,8 +137,8 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
           acceptColumnDrop === 'left'
             ? 'border-l-red-500 border-r-transparent'
             : acceptColumnDrop === 'right'
-              ? 'border-r-red-500 border-l-transparent'
-              : '',
+            ? 'border-r-red-500 border-l-transparent'
+            : '',
         )}
       >
         <div
