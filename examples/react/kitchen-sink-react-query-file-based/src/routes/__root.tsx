@@ -6,10 +6,10 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { Auth } from '../utils/auth'
 import { Spinner } from '../components/Spinner'
+import type { QueryClient } from '@tanstack/react-query'
+import type { Auth } from '../utils/auth'
 
 function RouterSpinner() {
   const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
@@ -69,7 +69,7 @@ function RootComponent() {
               )
             })}
           </div>
-          <div className={`flex-1 border-l border-gray-200`}>
+          <div className={`flex-1 border-l`}>
             <Outlet />
           </div>
         </div>

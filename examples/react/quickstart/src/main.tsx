@@ -1,12 +1,12 @@
 import React, { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  Link,
   Outlet,
   RouterProvider,
-  Link,
-  createRouter,
-  createRoute,
   createRootRoute,
+  createRoute,
+  createRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 

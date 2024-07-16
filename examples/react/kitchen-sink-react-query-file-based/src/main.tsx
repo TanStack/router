@@ -1,15 +1,15 @@
 import * as React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
-  RouterProvider,
   ErrorComponent,
+  RouterProvider,
   createRouter,
 } from '@tanstack/react-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { auth } from './utils/auth'
 import { Spinner } from './components/Spinner'
 import { routeTree } from './routeTree.gen'
 import { useSessionStorage } from './hooks/useSessionStorage'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 //
 
@@ -47,7 +47,7 @@ function App() {
 
   return (
     <>
-      <div className="text-xs fixed w-52 shadow-md shadow-black/20 rounded bottom-2 left-2 bg-white bg-opacity-75 border-b flex flex-col gap-1 flex-wrap items-left divide-y divide-gray-500/20">
+      <div className="text-xs fixed w-52 shadow-md shadow-black/20 rounded bottom-2 left-2 bg-white dark:bg-gray-800 bg-opacity-75 border-b flex flex-col gap-1 flex-wrap items-left divide-y">
         <div className="p-2 space-y-2">
           <div className="flex gap-2">
             <button

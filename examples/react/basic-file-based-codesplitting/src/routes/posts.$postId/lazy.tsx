@@ -1,10 +1,10 @@
 import * as React from 'react'
 import {
   ErrorComponent,
-  ErrorComponentProps,
   Link,
   createLazyFileRoute,
 } from '@tanstack/react-router'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 export const Route = createLazyFileRoute('/posts/$postId')({
   component: PostComponent,
