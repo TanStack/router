@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { useAuth } from '../auth'
 import { sleep } from '../utils'
 
+// eslint-disable-next-line ts/no-unnecessary-type-assertion
 const fallback = '/dashboard' as const
 
 export const Route = createFileRoute('/login')({
@@ -79,7 +80,7 @@ function LoginComponent() {
               name="username"
               placeholder="Enter your name"
               type="text"
-              className="border border-gray-300 rounded-md p-2 w-full"
+              className="border rounded-md p-2 w-full"
               required
             />
           </div>

@@ -12,7 +12,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <>
-      <div className="p-2 flex gap-2 text-lg">
+      <div className="p-2 flex gap-2 text-lg border-b">
         <Link
           to="/"
           activeProps={{
@@ -29,15 +29,7 @@ function RootComponent() {
           }}
         >
           Posts
-        </Link>
-        <Link
-          to="/layout-a"
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          Layout
-        </Link>
+        </Link>{' '}
         <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"

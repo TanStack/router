@@ -119,7 +119,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 
       if (compiler.options.mode === 'production') {
         compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
-          console.log('✅ ' + PLUGIN_NAME + ': route-tree generation done')
+          console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done')
           setTimeout(() => {
             process.exit(0)
           })

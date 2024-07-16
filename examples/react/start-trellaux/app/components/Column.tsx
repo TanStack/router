@@ -3,7 +3,7 @@ import invariant from 'tiny-invariant'
 import { twMerge } from 'tailwind-merge'
 
 import { flushSync } from 'react-dom'
-import { CONTENT_TYPES, INTENTS, type RenderedItem } from '../types'
+import { CONTENT_TYPES, type RenderedItem } from '../types'
 import { Icon } from '../icons/icons'
 import {
   useDeleteColumnMutation,
@@ -31,12 +31,17 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
   ) => {
     const [acceptCardDrop, setAcceptCardDrop] = useState(false)
     const editState = useState(false)
+
     const [acceptColumnDrop, setAcceptColumnDrop] = useState<
       'none' | 'left' | 'right'
     >('none')
+
     const [edit, setEdit] = useState(false)
+
     const itemRef = useCallback((node: HTMLElement | null) => {
-      node?.scrollIntoView()
+      node?.scrollIntoView({
+        block: 'nearest',
+      })
     }, [])
 
     const listRef = useRef<HTMLUListElement>(null!)
@@ -119,8 +124,6 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
             acceptColumnDrop === 'left' ? previousOrder : nextOrder
           const moveOrder = (droppedOrder + order) / 2
 
-          console.log('moveOrder', moveOrder)
-
           updateColumnMutation.mutate({
             boardId,
             id: transfer.id,
@@ -134,8 +137,8 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
           acceptColumnDrop === 'left'
             ? 'border-l-red-500 border-r-transparent'
             : acceptColumnDrop === 'right'
-              ? 'border-r-red-500 border-l-transparent'
-              : '',
+            ? 'border-r-red-500 border-l-transparent'
+            : '',
         )}
       >
         <div

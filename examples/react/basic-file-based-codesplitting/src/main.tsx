@@ -7,6 +7,7 @@ import { routeTree } from './routeTree.gen'
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
+  defaultStaleTime: 5000,
 })
 
 // Register things for typesafety

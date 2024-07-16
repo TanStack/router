@@ -1,20 +1,20 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  Await,
+  ErrorComponent,
+  Link,
+  MatchRoute,
   Outlet,
   RouterProvider,
-  Link,
-  ErrorComponent,
-  createRouter,
-  Await,
-  defer,
-  MatchRoute,
-  ErrorComponentProps,
-  createRoute,
   createRootRoute,
+  createRoute,
+  createRouter,
+  defer,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'redaxios'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 type PostType = {
   id: string
@@ -34,7 +34,7 @@ const fetchPosts = async () => {
   console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 100))
   return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
+    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
 }
 
@@ -43,7 +43,7 @@ const fetchPost = async (postId: string) => {
 
   const commentsPromise = new Promise((r) => setTimeout(r, 2000))
     .then(() =>
-      axios.get<CommentType[]>(
+      axios.get<Array<CommentType>>(
         `https://jsonplaceholder.typicode.com/comments?postId=${postId}`,
       ),
     )
@@ -145,7 +145,7 @@ function PostsComponent() {
   return (
     <div className="p-2 flex gap-2">
       <ul className="list-disc pl-4">
-        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]?.map(
+        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
           (post) => {
             return (
               <li key={post.id} className="whitespace-nowrap">
@@ -154,8 +154,8 @@ function PostsComponent() {
                   params={{
                     postId: post.id,
                   }}
-                  className="flex py-1 text-blue-800 hover:text-blue-600 gap-2 items-center"
-                  activeProps={{ className: 'text-black font-bold' }}
+                  className="flex py-1 text-blue-600 hover:opacity-75 gap-2 items-center"
+                  activeProps={{ className: 'font-bold underline' }}
                 >
                   <div>{post.title.substring(0, 20)}</div>
                   <MatchRoute
@@ -220,7 +220,7 @@ function PostComponent() {
             return (
               <div className="space-y-2">
                 <h5 className="text-lg font-bold underline">Comments</h5>
-                {comments?.map((comment) => {
+                {comments.map((comment) => {
                   return (
                     <div key={comment.id}>
                       <h6 className="text-md font-bold">{comment.name}</h6>

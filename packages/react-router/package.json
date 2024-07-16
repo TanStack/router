@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router",
-  "version": "1.45.2",
+  "version": "1.45.3",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts55": "tsc",
     "test:unit": "vitest",
-    "test:unit:dev": "pnpm run test:unit --watch",
+    "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:build": "publint --strict",
     "build": "vite build"
   },

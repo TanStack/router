@@ -63,7 +63,7 @@ export function Match({ matchId }: { matchId: string }) {
     : SafeFragment
 
   const resetKey = useRouterState({
-    select: (s) => s.resolvedLocation.state.key!,
+    select: (s) => s.loadedAt,
   })
 
   return (
@@ -108,22 +108,43 @@ function MatchInner({ matchId }: { matchId: string }): any {
 
   const route = router.routesById[routeId]!
 
-  const [match, matchIndex] = useRouterState({
+  const matchIndex = useRouterState({
     select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
-      const match = s.matches[matchIndex]!
-      return [
-        pick(match, [
-          'id',
-          'status',
-          'error',
-          'loadPromise',
-          'minPendingPromise',
-        ]),
-        matchIndex,
-      ] as const
+      return s.matches.findIndex((d) => d.id === matchId)
     },
   })
+
+  const match = useRouterState({
+    select: (s) => {
+      const match = s.matches[matchIndex]!
+      return pick(match, [
+        'id',
+        'status',
+        'error',
+        'loadPromise',
+        'minPendingPromise',
+      ])
+    },
+  })
+
+  // function useChangedDiff(value: any) {
+  //   const ref = React.useRef(value)
+  //   const changed = ref.current !== value
+  //   if (changed) {
+  //     console.log(
+  //       'Changed:',
+  //       value,
+  //       Object.fromEntries(
+  //         Object.entries(value).filter(
+  //           ([key, val]) => val !== ref.current[key],
+  //         ),
+  //       ),
+  //     )
+  //   }
+  //   ref.current = value
+  // }
+
+  // useChangedDiff(match)
 
   const RouteErrorComponent =
     (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
@@ -190,36 +211,24 @@ function MatchInner({ matchId }: { matchId: string }): any {
 
     if (pendingMinMs && !match.minPendingPromise) {
       // Create a promise that will resolve after the minPendingMs
-      match.minPendingPromise = createControlledPromise()
-
       if (!router.isServer) {
+        const minPendingPromise = createControlledPromise<void>()
+
         Promise.resolve().then(() => {
-          router.__store.setState((s) => ({
-            ...s,
-            matches: s.matches.map((d) =>
-              d.id === match.id
-                ? { ...d, minPendingPromise: createControlledPromise() }
-                : d,
-            ),
+          router.updateMatch(match.id, (prev) => ({
+            ...prev,
+            minPendingPromise,
           }))
         })
 
         setTimeout(() => {
+          minPendingPromise.resolve()
+
           // We've handled the minPendingPromise, so we can delete it
-          router.__store.setState((s) => {
-            return {
-              ...s,
-              matches: s.matches.map((d) =>
-                d.id === match.id
-                  ? {
-                      ...d,
-                      minPendingPromise:
-                        (d.minPendingPromise?.resolve(), undefined),
-                    }
-                  : d,
-              ),
-            }
-          })
+          router.updateMatch(match.id, (prev) => ({
+            ...prev,
+            minPendingPromise: undefined,
+          }))
         }, pendingMinMs)
       }
     }

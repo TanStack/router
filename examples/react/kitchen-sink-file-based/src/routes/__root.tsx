@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Spinner } from '../components/Spinner'
-import { Auth } from '../utils/auth'
+import type { Auth } from '../utils/auth'
 
 function RouterSpinner() {
   const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
@@ -67,7 +67,7 @@ function RootComponent() {
               )
             })}
           </div>
-          <div className={`flex-1 border-l border-gray-200`}>
+          <div className={`flex-1 border-l`}>
             {/* Render our first route match */}
             <Outlet />
           </div>

@@ -7,6 +7,7 @@ export interface NavigateOptions {
 }
 export interface RouterHistory {
   location: HistoryLocation
+  subscribers: Set<() => void>
   subscribe: (cb: () => void) => () => void
   push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
   replace: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
@@ -100,6 +101,7 @@ export function createHistory(opts: {
     get location() {
       return location
     },
+    subscribers,
     subscribe: (cb: () => void) => {
       subscribers.add(cb)
 
@@ -269,6 +271,10 @@ export function createBrowserHistory(opts?: {
     }
 
     if (!scheduled) {
+      if (process.env.NODE_ENV === 'test') {
+        flush()
+        return
+      }
       // Schedule an update to the browser history
       scheduled = Promise.resolve().then(() => flush())
     }

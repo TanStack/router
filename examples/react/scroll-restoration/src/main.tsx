@@ -1,14 +1,14 @@
 import React, { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  Link,
   Outlet,
   RouterProvider,
-  Link,
-  createRouter,
   ScrollRestoration,
-  useElementScrollRestoration,
   createRootRoute,
   createRoute,
+  createRouter,
+  useElementScrollRestoration,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -20,7 +20,7 @@ const rootRoute = createRootRoute({
 function RootComponent() {
   return (
     <>
-      <div className="p-2 flex gap-2 sticky top-0 bg-white border-b">
+      <div className="p-2 flex gap-2 sticky top-0 border-b bg-gray-100 dark:bg-gray-900">
         <Link to="/" className="[&.active]:font-bold">
           Home
         </Link>{' '}
@@ -54,7 +54,10 @@ function IndexComponent() {
       <h3>Welcome Home!</h3>
       <div className="space-y-2">
         {Array.from({ length: 50 }).map((_, i) => (
-          <div key={i} className="h-[100px] p-2 rounded-lg bg-gray-100 border">
+          <div
+            key={i}
+            className="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border"
+          >
             Home Item {i + 1}
           </div>
         ))}
@@ -76,7 +79,10 @@ function AboutComponent() {
       <div>Hello from About!</div>
       <div className="space-y-2">
         {Array.from({ length: 50 }).map((_, i) => (
-          <div key={i} className="h-[100px] p-2 rounded-lg bg-gray-100 border">
+          <div
+            key={i}
+            className="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border"
+          >
             About Item {i + 1}
           </div>
         ))}
@@ -121,7 +127,7 @@ function ByElementComponent() {
           {Array.from({ length: 50 }).map((_, i) => (
             <div
               key={i}
-              className="h-[100px] p-2 rounded-lg bg-gray-100 border"
+              className="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border"
             >
               About Item {i + 1}
             </div>
@@ -134,7 +140,7 @@ function ByElementComponent() {
                 {Array.from({ length: 50 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-[100px] p-2 rounded-lg bg-gray-100 border"
+                    className="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border"
                   >
                     About Item {i + 1}
                   </div>
@@ -166,7 +172,7 @@ function ByElementComponent() {
                       top: item.start,
                     }}
                   >
-                    <div className="p-2 rounded-lg bg-gray-100 border h-full">
+                    <div className="p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border h-full">
                       Virtualized Item {item.index + 1}
                     </div>
                   </div>
