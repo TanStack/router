@@ -2,10 +2,9 @@ import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { InvoiceFields } from '../components/InvoiceFields'
 import { Spinner } from '../components/Spinner'
-import { Invoice } from '../utils/mockTodos'
 import { useCreateInvoiceMutation } from '../utils/queryOptions'
+import type { Invoice } from '../utils/mockTodos'
 
-// @ts-ignore
 export const Route = createFileRoute('/dashboard/invoices/')({
   component: InvoicesIndexComponent,
 })
@@ -33,9 +32,9 @@ function InvoicesIndexComponent() {
           <div>
             <button
               className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-              disabled={createInvoiceMutation?.status === 'pending'}
+              disabled={createInvoiceMutation.status === 'pending'}
             >
-              {createInvoiceMutation?.status === 'pending' ? (
+              {createInvoiceMutation.status === 'pending' ? (
                 <>
                   Creating <Spinner />
                 </>
@@ -44,11 +43,11 @@ function InvoicesIndexComponent() {
               )}
             </button>
           </div>
-          {createInvoiceMutation?.status === 'success' ? (
+          {createInvoiceMutation.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Created!
             </div>
-          ) : createInvoiceMutation?.status === 'error' ? (
+          ) : createInvoiceMutation.status === 'error' ? (
             <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to create.
             </div>

@@ -1,21 +1,21 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  ErrorComponent,
+  Link,
   Outlet,
   RouterProvider,
-  Link,
-  ErrorComponent,
-  createRouter,
-  useRouterState,
-  useNavigate,
-  createRouteMask,
-  ErrorComponentProps,
-  createRoute,
   createRootRoute,
+  createRoute,
+  createRouteMask,
+  createRouter,
+  useNavigate,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'redaxios'
 import * as Dialog from '@radix-ui/react-dialog'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 type PhotoType = {
   id: string
@@ -31,7 +31,7 @@ const fetchPhotos = async () => {
   console.info('Fetching photos...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
-    .get<PhotoType[]>('https://jsonplaceholder.typicode.com/photos')
+    .get<Array<PhotoType>>('https://jsonplaceholder.typicode.com/photos')
     .then((r) => r.data.slice(0, 10))
 }
 
@@ -147,7 +147,7 @@ function PhotosRoute() {
         {[
           ...photos,
           { id: 'i-do-not-exist', title: 'Missing Photo Test', url: '' },
-        ]?.map((photo) => {
+        ].map((photo) => {
           return (
             <li key={photo.id} className="">
               <Link
@@ -163,8 +163,7 @@ function PhotosRoute() {
                 //     photoId: photo.id,
                 //   },
                 // }}
-                className="whitespace-nowrap border rounded-lg shadow-sm flex items-center hover:shadow-lg text-blue-800 hover:scale-[1.1] overflow-hidden transition-all"
-                activeProps={{ className: 'text-black font-bold' }}
+                className="whitespace-nowrap border rounded-lg shadow-sm flex items-center hover:shadow-lg text-blue-600 hover:scale-[1.1] overflow-hidden transition-all"
               >
                 <img src={photo.url} alt={photo.title} className="max-w-full" />
               </Link>
@@ -230,7 +229,7 @@ function PhotoModalErrorComponent({ error }: ErrorComponentProps) {
         }
       }}
     >
-      <div className="bg-white p-2 rounded-lg">
+      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
         {(() => {
           if (error instanceof NotFoundError) {
             return <div>{error.message}</div>
@@ -255,7 +254,7 @@ function PhotoModalPendingComponent() {
         }
       }}
     >
-      <div className="bg-white p-2 rounded-lg">
+      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
         <Spinner />
       </div>
     </Modal>
@@ -276,8 +275,11 @@ function PhotoModalComponent() {
         }
       }}
     >
-      <div className="bg-white p-2 rounded-lg">
-        <Link target="_blank" className="underline text-blue-500" params={{}}>
+      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
+        <Link
+          target="_blank"
+          className="text-blue-600 hover:opacity-75 underline"
+        >
           Open in new tab (to test de-masking)
         </Link>
         <Photo photo={photo} />

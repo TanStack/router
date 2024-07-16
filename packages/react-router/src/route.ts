@@ -638,6 +638,7 @@ export class Route<
   router?: AnyRouter
   rank!: number
   lazyFn?: () => Promise<LazyRoute<any>>
+  _lazyPromise?: Promise<void>
 
   /**
    * @deprecated Use the `createRoute` function instead.

@@ -1097,7 +1097,9 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 
       return classes
     },
-    matchIndicator: (color: 'green' | 'red' | 'yellow' | 'gray' | 'blue') => {
+    matchIndicator: (
+      color: 'green' | 'red' | 'yellow' | 'gray' | 'blue' | 'purple',
+    ) => {
       const base = css`
         flex: 0 0 auto;
         width: ${size[3]};
