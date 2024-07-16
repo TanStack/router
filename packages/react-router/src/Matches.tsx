@@ -185,6 +185,10 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
+  useRouterState({
+    select: (s) => [s.location.href, s.resolvedLocation.href, s.status],
+  })
+
   return React.useCallback(
     <
       TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
