@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { isPlainArray, replaceEqualDeep } from '../src/utils'
+import {
+  deepRemoveUndefinedFromObject,
+  isPlainArray,
+  replaceEqualDeep,
+} from '../src/utils'
 
 describe('replaceEqualDeep', () => {
   it('should return the same object if the input objects are equal', () => {
@@ -297,5 +301,31 @@ describe('isPlainArray', () => {
 
   it('should return `false` for non plain arrays', () => {
     expect(isPlainArray(Object.assign([1, 2], { a: 'b' }))).toEqual(false)
+  })
+})
+
+describe('deepRemoveUndefinedFromObject', () => {
+  it('should remove all undefined values from an object', () => {
+    const obj = { a: 1, b: undefined, c: 2 }
+    const result = deepRemoveUndefinedFromObject(obj)
+    expect(result).toEqual({ a: 1, c: 2 })
+  })
+
+  it('should handle nested objects correctly', () => {
+    const obj = { a: 1, b: { c: 2, d: undefined } }
+    const result = deepRemoveUndefinedFromObject(obj)
+    expect(result).toEqual({ a: 1, b: { c: 2 } })
+  })
+
+  it('should handle nested arrays correctly', () => {
+    const obj = { a: 1, b: [2, { a: undefined }, 3] }
+    const result = deepRemoveUndefinedFromObject(obj)
+    expect(result).toEqual({ a: 1, b: [2, {}, 3] })
+  })
+
+  it('should not remove undefined values from arrays', () => {
+    const obj = { a: 1, b: [2, undefined, 3] }
+    const result = deepRemoveUndefinedFromObject(obj)
+    expect(result).toEqual({ a: 1, b: [2, undefined, 3] })
   })
 })
