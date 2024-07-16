@@ -1126,7 +1126,12 @@ export class Router<
   }
 
   cancelMatch = (id: string) => {
-    this.getMatch(id)?.abortController.abort()
+    const match = this.getMatch(id)
+
+    if (!match) return
+
+    match.abortController.abort()
+    clearTimeout(match.pendingTimeout)
   }
 
   cancelMatches = () => {
@@ -1865,10 +1870,12 @@ export class Router<
                       this.options.defaultPendingComponent)
                   )
 
+                  let pendingTimeout: ReturnType<typeof setTimeout>
+
                   if (shouldPending) {
                     // If we might show a pending component, we need to wait for the
                     // pending promise to resolve before we start showing that state
-                    setTimeout(() => {
+                    pendingTimeout = setTimeout(() => {
                       try {
                         // Update the match and prematurely resolve the loadMatches promise so that
                         // the pending component can start rendering
@@ -1899,6 +1906,7 @@ export class Router<
                     ),
                     context: replaceEqualDeep(prev.context, parentContext),
                     abortController,
+                    pendingTimeout,
                   }))
 
                   const { search, params, routeContext, cause } =
@@ -2003,12 +2011,12 @@ export class Router<
                     const age = Date.now() - this.getMatch(matchId)!.updatedAt
 
                     const staleAge = preload
-                      ? (route.options.preloadStaleTime ??
+                      ? route.options.preloadStaleTime ??
                         this.options.defaultPreloadStaleTime ??
-                        30_000) // 30 seconds for preloads by default
-                      : (route.options.staleTime ??
+                        30_000 // 30 seconds for preloads by default
+                      : route.options.staleTime ??
                         this.options.defaultStaleTime ??
-                        0)
+                        0
 
                     const shouldReloadOption = route.options.shouldReload
 
@@ -2255,9 +2263,8 @@ export class Router<
           // otherwise, use the gcTime
           const gcTime =
             (d.preload
-              ? (route.options.preloadGcTime ??
-                this.options.defaultPreloadGcTime)
-              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
+              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
+              : route.options.gcTime ?? this.options.defaultGcTime) ??
             5 * 60 * 1000
 
           return d.status !== 'error' && Date.now() - d.updatedAt < gcTime

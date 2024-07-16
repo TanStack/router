@@ -68,6 +68,7 @@ export interface RouteMatch<
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
   minPendingPromise?: ControlledPromise<void>
+  pendingTimeout?: ReturnType<typeof setTimeout>
 }
 
 export type MakeRouteMatch<
