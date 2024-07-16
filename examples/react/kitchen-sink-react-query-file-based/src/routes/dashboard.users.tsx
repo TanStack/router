@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-unnecessary-condition */
 import * as React from 'react'
 import {
   Link,
@@ -101,7 +102,7 @@ function UsersComponent() {
   return (
     <div className="flex-1 flex">
       <div className="divide-y">
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Sort By:</div>
           <select
             value={sortBy}
@@ -113,7 +114,7 @@ function UsersComponent() {
             })}
           </select>
         </div>
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Filter By:</div>
           <input
             value={filterDraft}
@@ -152,7 +153,7 @@ function UsersComponent() {
           )
         })}
       </div>
-      <div className="flex-initial border-l border-gray-200">
+      <div className="flex-initial border-l">
         <Outlet />
       </div>
     </div>
