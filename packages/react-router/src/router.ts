@@ -128,7 +128,6 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
     any,
     any,
     any,
-    any,
     infer TRouterContext extends AnyContext,
     any,
     any,
@@ -1698,12 +1697,6 @@ export class Router<
     ].find((d) => d.id === matchId)
   }
 
-  isMatchActive = (matchId: string) => {
-    return [...this.state.matches, ...(this.state.pendingMatches ?? [])].some(
-      (d) => d.id === matchId,
-    )
-  }
-
   loadMatches = async ({
     location,
     matches,
@@ -2312,13 +2305,19 @@ export class Router<
       })
     })
 
+    const activeMatchIds = new Set(
+      [...this.state.matches, ...(this.state.pendingMatches ?? [])].map(
+        (d) => d.id,
+      ),
+    )
+
     try {
       matches = await this.loadMatches({
         matches,
         location: next,
         preload: true,
         updateMatch: (id, updater) => {
-          if (this.isMatchActive(id)) {
+          if (activeMatchIds.has(id)) {
             matches = matches.map((d) => (d.id === id ? updater(d) : d))
           } else {
             this.updateMatch(id, updater)
