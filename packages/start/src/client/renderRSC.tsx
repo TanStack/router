@@ -13,7 +13,7 @@ export function renderRsc(input: any): JSX.Element {
     input.state = {
       status: 'pending',
       promise: Promise.resolve()
-        .then(async () => {
+        .then(() => {
           let element
 
           // We're in node

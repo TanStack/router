@@ -3,7 +3,7 @@ import invariant from 'tiny-invariant'
 import { twMerge } from 'tailwind-merge'
 
 import { flushSync } from 'react-dom'
-import { CONTENT_TYPES, INTENTS, type RenderedItem } from '../types'
+import { CONTENT_TYPES, type RenderedItem } from '../types'
 import { Icon } from '../icons/icons'
 import {
   useDeleteColumnMutation,
@@ -118,8 +118,6 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
           const droppedOrder =
             acceptColumnDrop === 'left' ? previousOrder : nextOrder
           const moveOrder = (droppedOrder + order) / 2
-
-          console.log('moveOrder', moveOrder)
 
           updateColumnMutation.mutate({
             boardId,

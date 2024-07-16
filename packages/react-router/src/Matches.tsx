@@ -47,8 +47,10 @@ export interface RouteMatch<
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  loadPromise: ControlledPromise<void>
-  loaderPromise: Promise<TLoaderData>
+  componentsPromise?: Promise<Array<void>>
+  loadPromise?: ControlledPromise<void>
+  beforeLoadPromise?: ControlledPromise<void>
+  loaderPromise?: ControlledPromise<void>
   loaderData?: TLoaderData
   routeContext: TRouteContext
   context: TAllContext
@@ -132,7 +134,7 @@ function MatchesInner() {
   })
 
   const resetKey = useRouterState({
-    select: (s) => s.resolvedLocation.state.key!,
+    select: (s) => s.loadedAt,
   })
 
   return (

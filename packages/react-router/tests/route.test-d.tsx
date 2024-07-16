@@ -5,6 +5,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
+import type { ControlledPromise } from '../src'
 
 test('when creating the root', () => {
   const rootRoute = createRootRoute()
@@ -611,7 +612,9 @@ test('when creating a child route with context, search, params, loader, loaderDe
     search: TExpectedSearch
     context: TExpectedContext
     loaderDeps: { detailPage: number; invoicePage: number }
-    loaderPromise: Promise<TExpectedLoaderData>
+    beforeLoadPromise?: ControlledPromise<void>
+    loaderPromise?: ControlledPromise<void>
+    componentsPromise?: Promise<Array<void>>
     loaderData?: TExpectedLoaderData
     routeContext: TExpectedRouteContext
   }

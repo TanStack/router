@@ -207,7 +207,6 @@ export {
 export {
   RouterProvider,
   RouterContextProvider,
-  getRouteMatch,
   type RouterProps,
   type CommitLocationOptions,
   type MatchLocation,

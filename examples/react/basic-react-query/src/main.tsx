@@ -201,7 +201,6 @@ function PostErrorComponent({ error, reset }: ErrorComponentProps) {
     <div>
       <button
         onClick={() => {
-          reset()
           router.invalidate()
         }}
       >

@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import {
   Link,
   Outlet,
@@ -15,6 +15,11 @@ import {
 import type { RouteComponent, RouterHistory } from '../src'
 
 describe('useMatch', () => {
+  afterEach(() => {
+    window.history.replaceState(null, 'root', '/')
+    cleanup()
+  })
+
   function setup({
     RootComponent,
     history,
