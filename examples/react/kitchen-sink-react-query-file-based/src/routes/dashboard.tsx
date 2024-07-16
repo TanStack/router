@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardComponent,

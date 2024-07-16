@@ -43,6 +43,7 @@ const fetchPost = async (postId: string) => {
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
 
+  // eslint-disable-next-line ts/no-unnecessary-condition
   if (!post) {
     throw new NotFoundError(`Post with id "${postId}" not found!`)
   }
@@ -54,6 +55,9 @@ const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
 }>()({
   component: RootComponent,
+  notFoundComponent: () => {
+    return <p>This is the notFoundComponent configured on root route</p>
+  },
 })
 
 function RootComponent() {
@@ -76,6 +80,15 @@ function RootComponent() {
           }}
         >
           Posts
+        </Link>{' '}
+        <Link
+          // @ts-expect-error
+          to="/this-route-does-not-exist"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          This Route Does Not Exist
         </Link>
       </div>
       <hr />
@@ -130,8 +143,8 @@ function PostsRouteComponent() {
                   params={{
                     postId: post.id,
                   }}
-                  className="block py-1 text-blue-800 hover:text-blue-600"
-                  activeProps={{ className: 'text-black font-bold' }}
+                  className="block py-1 text-blue-600 hover:opacity-75"
+                  activeProps={{ className: 'font-bold underline' }}
                 >
                   <div>{post.title.substring(0, 20)}</div>
                 </Link>

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import {
-  createFileRoute,
   Link,
+  createFileRoute,
   useNavigate,
   useRouter,
 } from '@tanstack/react-router'
@@ -67,14 +67,14 @@ function InvoiceComponent() {
     >
       <InvoiceFields
         invoice={invoice}
-        disabled={updateInvoiceMutation?.status === 'pending'}
+        disabled={updateInvoiceMutation.status === 'pending'}
       />
       <div>
         <Link
           from={Route.fullPath}
           search={(old) => ({
             ...old,
-            showNotes: old?.showNotes ? undefined : true,
+            showNotes: old.showNotes ? undefined : true,
           })}
           className="text-blue-700"
           params={true}
@@ -104,18 +104,18 @@ function InvoiceComponent() {
       <div>
         <button
           className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-          disabled={updateInvoiceMutation?.status === 'pending'}
+          disabled={updateInvoiceMutation.status === 'pending'}
         >
           Save
         </button>
       </div>
-      {updateInvoiceMutation?.variables?.id === invoice.id ? (
-        <div key={updateInvoiceMutation?.submittedAt}>
-          {updateInvoiceMutation?.status === 'success' ? (
+      {updateInvoiceMutation.variables?.id === invoice.id ? (
+        <div key={updateInvoiceMutation.submittedAt}>
+          {updateInvoiceMutation.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Saved!
             </div>
-          ) : updateInvoiceMutation?.status === 'error' ? (
+          ) : updateInvoiceMutation.status === 'error' ? (
             <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to save.
             </div>
