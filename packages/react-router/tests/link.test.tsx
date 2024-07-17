@@ -1,9 +1,9 @@
-/* eslint-disable @eslint-react/no-useless-fragment */
 import React, { act } from 'react'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, it, test, vi } from 'vitest'
 import {
   cleanup,
+  configure,
   fireEvent,
   render,
   screen,
@@ -15,7 +15,6 @@ import {
   Outlet,
   RouterProvider,
   createLink,
-  createMemoryHistory,
   createRootRoute,
   createRootRouteWithContext,
   createRoute,
@@ -30,6 +29,7 @@ import {
 } from '../src'
 
 afterEach(() => {
+  vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
@@ -53,11 +53,7 @@ describe('Link', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
-      component: () => (
-        <React.Fragment>
-          <h1>Posts</h1>
-        </React.Fragment>
-      ),
+      component: () => <h1>Posts</h1>,
     })
 
     const router = createRouter({
@@ -66,14 +62,16 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
     expect(window.location.pathname).toBe('/')
 
     expect(postsLink).not.toBeDisabled()
     expect(postsLink).toHaveAttribute('aria-disabled', 'true')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     await expect(
       screen.findByRole('header', { name: 'Posts' }),
@@ -104,11 +102,7 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/posts',
       component: () => {
-        return (
-          <React.Fragment>
-            <h1>Posts</h1>
-          </React.Fragment>
-        )
+        return <h1>Posts</h1>
       },
     })
 
@@ -118,7 +112,9 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const indexLink = await screen.findByRole('link', { name: 'Index' })
+    const indexLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Index' }),
+    )
 
     expect(window.location.pathname).toBe('/')
 
@@ -127,7 +123,9 @@ describe('Link', () => {
     expect(indexLink).toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
     expect(postsLink).toHaveClass('inactive')
     expect(postsLink).toHaveAttribute('href', '/posts')
@@ -291,11 +289,7 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/posts',
       component: () => {
-        return (
-          <React.Fragment>
-            <h1>Posts</h1>
-          </React.Fragment>
-        )
+        return <h1>Posts</h1>
       },
     })
 
@@ -305,7 +299,9 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    expect(await screen.findByText('Oops! Something went wrong!'))
+    expect(
+      await waitFor(() => screen.findByText('Oops! Something went wrong!')),
+    ).toBeInTheDocument()
     expect(onError).toHaveBeenCalledOnce()
   })
 
@@ -409,15 +405,19 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     expect(
-      await screen.findByRole('heading', { name: 'Posts' }),
+      await waitFor(() => screen.findByRole('heading', { name: 'Posts' })),
     ).toBeInTheDocument()
 
-    const indexLink = await screen.findByRole('link', { name: 'Index' })
+    const indexLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Index' }),
+    )
 
     expect(window.location.pathname).toBe('/app/posts')
     expect(indexLink).not.toHaveAttribute('aria-current', 'page')
@@ -474,20 +474,24 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts?page=0')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     expect(
-      await screen.findByRole('heading', { name: 'Posts' }),
+      await waitFor(() => screen.findByRole('heading', { name: 'Posts' })),
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts')
     expect(window.location.search).toBe('?page=0')
 
-    await screen.findByText('Page: 0')
+    expect(
+      await waitFor(() => screen.findByText('Page: 0')),
+    ).toBeInTheDocument()
   })
 
   test('when navigating to /posts with invalid search', async () => {
@@ -545,16 +549,18 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts?page=invalid')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     await waitFor(() => expect(onError).toHaveBeenCalledOnce())
 
     expect(
-      await screen.findByText('Oops, something went wrong'),
+      await waitFor(() => screen.findByText('Oops, something went wrong')),
     ).toBeInTheDocument()
   })
 
@@ -611,11 +617,13 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts?page=2')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     expect(await screen.findByText('Page: 4')).toBeInTheDocument()
 
@@ -677,13 +685,17 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts?page=2')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Something went wrong!'))
+    expect(
+      await waitFor(() => screen.findByText('Something went wrong!')),
+    ).toBeInTheDocument()
 
     expect(onError).toHaveBeenCalledOnce()
   })
@@ -706,11 +718,7 @@ describe('Link', () => {
     })
 
     const PostsComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Posts</h1>
-        </React.Fragment>
-      )
+      return <h1>Posts</h1>
     }
 
     const postsRoute = createRoute({
@@ -736,11 +744,13 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Auth!')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Auth!'))).toBeInTheDocument()
   })
 
   test('when navigating to /posts with a beforeLoad that returns context', async () => {
@@ -789,11 +799,15 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('UserId: userId')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('UserId: userId')),
+    ).toBeInTheDocument()
   })
 
   test('when navigating to /posts with a beforeLoad that throws an error', async () => {
@@ -813,11 +827,7 @@ describe('Link', () => {
     })
 
     const PostsComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Posts</h1>
-        </React.Fragment>
-      )
+      return <h1>Posts</h1>
     }
 
     const postsRoute = createRoute({
@@ -838,12 +848,14 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     expect(
-      await screen.findByText('Oops! Something went wrong!'),
+      await waitFor(() => screen.findByText('Oops! Something went wrong!')),
     ).toBeInTheDocument()
 
     expect(onError).toHaveBeenCalledOnce()
@@ -868,11 +880,7 @@ describe('Link', () => {
     })
 
     const PostsComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Posts</h1>
-        </React.Fragment>
-      )
+      return <h1>Posts</h1>
     }
 
     const postsRoute = createRoute({
@@ -891,12 +899,14 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     expect(
-      await screen.findByText('Oops! Something went wrong!'),
+      await waitFor(() => screen.findByText('Oops! Something went wrong!')),
     ).toBeInTheDocument()
   })
 
@@ -954,12 +964,14 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', { name: 'Post' })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Post' }),
+    )
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     expect(
-      await screen.findByText('Oops! Something went wrong!'),
+      await waitFor(() => screen.findByText('Oops! Something went wrong!')),
     ).toBeInTheDocument()
   })
 
@@ -998,11 +1010,7 @@ describe('Link', () => {
 
     const PostComponent = () => {
       const params = useParams({ strict: false })
-      return (
-        <React.Fragment>
-          <span>Params: {params.postId}</span>
-        </React.Fragment>
-      )
+      return <span>Params: {params.postId}</span>
     }
 
     const postRoute = createRoute({
@@ -1020,13 +1028,17 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', { name: 'To first post' })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
   })
 
   test('when navigating from /posts to ./$postId', async () => {
@@ -1104,23 +1116,29 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     expect(await screen.findByText('Posts Index')).toBeInTheDocument()
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To the first post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To the first post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts/id1')
   })
@@ -1200,23 +1218,31 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Posts' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Posts Index')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Posts Index')),
+    ).toBeInTheDocument()
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To the first post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To the first post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
   })
 
   test('when navigating from /posts/$postId to /posts/$postId/info and the current route is /posts/$postId/details', async () => {
@@ -1304,11 +1330,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -1330,29 +1352,37 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/details')
 
-    const informationLink = await screen.findByRole('link', {
-      name: 'To Information',
-    })
+    const informationLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To Information',
+      }),
+    )
 
     expect(informationLink).toHaveAttribute('href', '/posts/id1/info')
 
-    fireEvent.click(informationLink)
+    await act(() => fireEvent.click(informationLink))
 
-    expect(await screen.findByText('Information')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Information')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/info')
 
-    expect(await screen.findByText('Params: id1'))
+    expect(await waitFor(() => screen.findByText('Params: id1')))
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -1442,11 +1472,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -1468,29 +1494,37 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/details')
 
-    const informationLink = await screen.findByRole('link', {
-      name: 'To Information',
-    })
+    const informationLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To Information',
+      }),
+    )
 
     expect(informationLink).toHaveAttribute('href', '/posts/id1/info')
 
-    fireEvent.click(informationLink)
+    await act(() => fireEvent.click(informationLink))
 
-    expect(await screen.findByText('Information')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Information')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/info')
 
-    expect(await screen.findByText('Params: id1'))
+    expect(await waitFor(() => screen.findByText('Params: id1')))
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -1580,11 +1614,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -1606,29 +1636,39 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/details')
 
-    const informationLink = await screen.findByRole('link', {
-      name: 'To Information',
-    })
+    const informationLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To Information',
+      }),
+    )
 
     expect(informationLink).toHaveAttribute('href', '/posts/id1/info')
 
-    fireEvent.click(informationLink)
+    await act(() => fireEvent.click(informationLink))
 
-    expect(await screen.findByText('Information')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Information')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/info')
 
-    expect(await screen.findByText('Params: id1'))
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -1728,25 +1768,31 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/details')
 
-    const rootLink = await screen.findByRole('link', {
-      name: 'To Root',
-    })
+    const rootLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To Root',
+      }),
+    )
 
     expect(rootLink).toHaveAttribute('href', '/')
 
-    fireEvent.click(rootLink)
+    await act(() => fireEvent.click(rootLink))
 
-    expect(await screen.findByText('Index')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Index'))).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/')
 
@@ -1847,11 +1893,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -1874,32 +1916,42 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details?page=2')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/details')
 
-    const informationLink = await screen.findByRole('link', {
-      name: 'To Information',
-    })
+    const informationLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To Information',
+      }),
+    )
 
     expect(informationLink).toHaveAttribute(
       'href',
       '/posts/id1/info?page=2&more=true',
     )
 
-    fireEvent.click(informationLink)
+    await act(() => fireEvent.click(informationLink))
 
-    expect(await screen.findByText('Information')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Information')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/info')
 
-    expect(await screen.findByText('Params: id1'))
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -1989,11 +2041,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -2015,25 +2063,31 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/details')
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To Post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To Post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Posts')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Posts'))).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1')
 
@@ -2131,11 +2185,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -2161,25 +2211,31 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    expect(await screen.findByText('Params: id1')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Params: id1')),
+    ).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1/details')
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To Post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To Post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Posts')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Posts'))).toBeInTheDocument()
 
     expect(window.location.pathname).toEqual('/posts/id1')
 
@@ -2271,11 +2327,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -2297,11 +2349,7 @@ describe('Link', () => {
 
     const InvoiceComponent = () => {
       const params = useParams({ strict: false })
-      return (
-        <>
-          <span>invoiceId: {params.invoiceId}</span>
-        </>
-      )
+      return <span>invoiceId: {params.invoiceId}</span>
     }
 
     const invoiceRoute = createRoute({
@@ -2324,15 +2372,19 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'To first post' }),
+    )
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     expect(
-      await screen.findByText(
-        'Invariant failed: Could not find match for from: /invoices',
+      await waitFor(() =>
+        screen.findByText(
+          'Invariant failed: Could not find match for from: /invoices',
+        ),
       ),
     ).toBeInTheDocument()
   })
@@ -2391,11 +2443,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -2422,9 +2470,11 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const informationLink = await screen.findByRole('link', {
-      name: 'To first post',
-    })
+    const informationLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To first post',
+      }),
+    )
 
     expect(informationLink).toHaveAttribute('href', '/posts/id1')
 
@@ -2489,11 +2539,7 @@ describe('Link', () => {
     })
 
     const InformationComponent = () => {
-      return (
-        <React.Fragment>
-          <h1>Information</h1>
-        </React.Fragment>
-      )
+      return <h1>Information</h1>
     }
 
     const informationRoute = createRoute({
@@ -2513,9 +2559,11 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const informationLink = await screen.findByRole('link', {
-      name: 'To first post',
-    })
+    const informationLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To first post',
+      }),
+    )
 
     expect(informationLink).toHaveAttribute('href', '/posts/id1')
 
@@ -2635,21 +2683,23 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To first post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To first post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.mouseOver(postLink)
+    await act(() => fireEvent.mouseOver(postLink))
 
     await waitFor(() => expect(loaderFn).toHaveBeenCalled())
 
     expect(search).toHaveBeenCalledWith({ postPage: 0 })
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Login!')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Login!'))).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -2740,15 +2790,17 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To first post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To first post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Login!')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Login!'))).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -2839,15 +2891,17 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To first post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To first post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Login!')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Login!'))).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -2933,19 +2987,21 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To first post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To first post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.mouseOver(postLink)
+    await act(() => fireEvent.mouseOver(postLink))
 
     await waitFor(() => expect(search).toHaveBeenCalledWith({ postPage: 0 }))
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Login!')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Login!'))).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -3033,19 +3089,21 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To first post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To first post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.mouseOver(postLink)
+    await act(() => fireEvent.mouseOver(postLink))
 
     await waitFor(() => expect(search).toHaveBeenCalledWith({ postPage: 0 }))
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Login!')).toBeInTheDocument()
+    expect(await waitFor(() => screen.findByText('Login!'))).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -3124,33 +3182,47 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Go to posts' })
+    const postsLink = await waitFor(() =>
+      screen.findByRole('link', { name: 'Go to posts' }),
+    )
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
-    const fromPostsLink = await screen.findByRole('link', {
-      name: 'From posts',
-    })
+    const fromPostsLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'From posts',
+      }),
+    )
 
     expect(fromPostsLink).toBeInTheDocument()
 
-    const toInvoicesLink = await screen.findByRole('link', {
-      name: 'To invoices',
-    })
+    const toInvoicesLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'To invoices',
+      }),
+    )
 
-    fireEvent.click(toInvoicesLink)
+    await act(() => fireEvent.click(toInvoicesLink))
 
-    const fromInvoicesLink = await screen.findByRole('link', {
-      name: 'From invoices',
-    })
+    const fromInvoicesLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'From invoices',
+      }),
+    )
 
     expect(fromInvoicesLink).toBeInTheDocument()
 
     expect(fromPostsLink).not.toBeInTheDocument()
 
-    fireEvent.click(await screen.findByRole('link', { name: 'To posts' }))
+    await act(async () =>
+      fireEvent.click(
+        await waitFor(() => screen.findByRole('link', { name: 'To posts' })),
+      ),
+    )
 
-    expect(await screen.findByText('On Posts')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('On Posts')),
+    ).toBeInTheDocument()
 
     expect(fromInvoicesLink).not.toBeInTheDocument()
 
@@ -3189,17 +3261,21 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', {
-      name: 'Go to post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'Go to post',
+      }),
+    )
 
     expect(postLink).toHaveAttribute('href', '/id%2Fwith-slash')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    const selfLink = await screen.findByRole('link', {
-      name: 'Link to self with from prop set',
-    })
+    const selfLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'Link to self with from prop set',
+      }),
+    )
 
     expect(selfLink).toBeInTheDocument()
     expect(ErrorComponent).not.toHaveBeenCalled()
@@ -3251,17 +3327,21 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', {
-      name: 'Go to post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'Go to post',
+      }),
+    )
 
     expect(stringifyParams).toHaveBeenCalledWith({ postId: 2 })
 
     expect(postLink).toHaveAttribute('href', '/2')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Post: 2')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Post: 2')),
+    ).toBeInTheDocument()
 
     expect(parseParams).toHaveBeenCalledWith({ status: 'parsed', postId: '2' })
   })
@@ -3314,23 +3394,29 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', {
-      name: 'Go to post',
-    })
+    const postLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'Go to post',
+      }),
+    )
 
     expect(stringifyParams).toHaveBeenCalledWith({ postId: 2 })
 
     expect(postLink).toHaveAttribute('href', '/2')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    expect(await screen.findByText('Post: 2')).toBeInTheDocument()
+    expect(
+      await waitFor(() => screen.findByText('Post: 2')),
+    ).toBeInTheDocument()
 
     expect(parseParams).toHaveBeenCalledWith({ status: 'parsed', postId: '2' })
   })
 })
 
 describe('createLink', () => {
+  configure({ reactStrictMode: true })
+
   it('should pass the "disabled" prop to the rendered target element', async () => {
     const CustomLink = createLink('button')
 
@@ -3350,7 +3436,7 @@ describe('createLink', () => {
 
     render(<RouterProvider router={router} />)
 
-    const customElement = await screen.findByText('Index')
+    const customElement = await waitFor(() => screen.findByText('Index'))
 
     expect(customElement).toBeDisabled()
     expect(customElement.getAttribute('disabled')).toBe('')
@@ -3375,13 +3461,11 @@ describe('createLink', () => {
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
     })
 
-    await router.load()
+    render(<RouterProvider router={router} />)
 
-    const rendered = render(<RouterProvider router={router} />)
-    const customElement = await rendered.findByText('Index')
+    const customElement = await waitFor(() => screen.findByText('Index'))
 
     expect(customElement.hasAttribute('foo')).toBe(true)
     expect(customElement.getAttribute('foo')).toBe('bar')
