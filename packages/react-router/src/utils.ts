@@ -236,10 +236,6 @@ export function deepRemoveUndefinedFromObject<T>(obj: T): T {
 }
 
 export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
-  if (typeof a === 'undefined' && typeof b === 'undefined') {
-    return true
-  }
-
   if (a === b) {
     return true
   }
