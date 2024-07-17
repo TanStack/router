@@ -1,4 +1,4 @@
-import React, { act } from 'react'
+import { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import {
@@ -205,7 +205,7 @@ describe('encoding: URL splat segment for /$', () => {
       createMemoryHistory({ initialEntries: ['/tanner'] }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/tanner')
   })
@@ -215,7 +215,7 @@ describe('encoding: URL splat segment for /$', () => {
       createMemoryHistory({ initialEntries: ['/🚀'] }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/🚀')
   })
@@ -225,7 +225,7 @@ describe('encoding: URL splat segment for /$', () => {
       createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
   })
@@ -239,7 +239,7 @@ describe('encoding: URL splat segment for /$', () => {
       }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe(
       '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
@@ -253,7 +253,7 @@ describe('encoding: URL splat segment for /$', () => {
       }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe(
       '/framework/react/guide/file-based-routing tanstack',
@@ -265,7 +265,7 @@ describe('encoding: URL splat segment for /$', () => {
       createMemoryHistory({ initialEntries: ['/tanner'] }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -283,7 +283,7 @@ describe('encoding: URL splat segment for /$', () => {
       createMemoryHistory({ initialEntries: ['/🚀'] }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -301,7 +301,7 @@ describe('encoding: URL splat segment for /$', () => {
       createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -321,7 +321,7 @@ describe('encoding: URL splat segment for /$', () => {
       }),
     )
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.topLevelSplatRoute.id,
@@ -338,7 +338,6 @@ describe('encoding: URL splat segment for /$', () => {
 })
 
 describe('encoding: URL path segment', () => {
-  // TODO: Find out why this wasn't working with createMemoryHistory
   it.each([
     {
       input: '/path-segment/%C3%A9',
@@ -363,12 +362,12 @@ describe('encoding: URL path segment', () => {
   ])(
     'should resolve $input to $output when the path segment is $type',
     async ({ input, output }) => {
-      const { router } = createTestRouter()
+      const { router } = createTestRouter(
+        createMemoryHistory({ initialEntries: [input] }),
+      )
 
-      window.history.pushState({}, '', input)
-
-      await act(() => render(<RouterProvider router={router} />))
-      await act(() => router.load())
+      render(<RouterProvider router={router} />)
+      await waitFor(() => router.load())
 
       expect(router.state.location.pathname).toBe(output)
     },
@@ -382,8 +381,8 @@ describe('router emits events during rendering', () => {
     )
 
     const unsub = router.subscribe('onResolved', mockFn1)
-    await act(() => router.load())
-    await act(() => render(<RouterProvider router={router} />))
+    await router.load()
+    render(<RouterProvider router={router} />)
 
     await waitFor(() => expect(mockFn1).toBeCalled())
     unsub()
@@ -395,8 +394,8 @@ describe('router emits events during rendering', () => {
     )
 
     const unsub = router.subscribe('onResolved', mockFn1)
-    await act(() => router.load())
-    await act(() => render(<RouterProvider router={router} />))
+    await router.load()
+    render(<RouterProvider router={router} />)
 
     await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
 
