@@ -215,7 +215,7 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
  * It will not remove undefined values from arrays.
  */
 export function deepRemoveUndefinedFromObject<T>(obj: T): T {
-  if (typeof obj !== 'object') {
+  if (typeof obj !== 'object' || obj === null) {
     return obj
   }
 
