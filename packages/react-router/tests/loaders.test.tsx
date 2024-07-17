@@ -104,7 +104,7 @@ describe('loaders are being called', () => {
     render(<RouterProvider router={router} />)
 
     const linkToAbout = await waitFor(() => screen.findByText('link to foo'))
-    await act(() => fireEvent.click(linkToAbout))
+    act(() => fireEvent.click(linkToAbout))
 
     const fooElement = await waitFor(() => screen.findByText('Nested Foo page'))
     expect(fooElement).toBeInTheDocument()
@@ -161,7 +161,7 @@ describe('loaders parentMatchPromise', () => {
     )
     expect(linkToFoo).toBeInTheDocument()
 
-    await act(() => fireEvent.click(linkToFoo))
+    act(() => fireEvent.click(linkToFoo))
 
     const fooElement = await waitFor(() => screen.findByText('Nested Foo page'))
     expect(fooElement).toBeInTheDocument()
