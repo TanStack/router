@@ -305,27 +305,93 @@ describe('isPlainArray', () => {
 })
 
 describe('deepRemoveUndefinedFromObject', () => {
-  it('should remove all undefined values from an object', () => {
+  it('should handle an object', () => {
     const obj = { a: 1, b: undefined, c: 2 }
     const result = deepRemoveUndefinedFromObject(obj)
     expect(result).toEqual({ a: 1, c: 2 })
   })
 
-  it('should handle nested objects correctly', () => {
+  it('should handle nested objects', () => {
     const obj = { a: 1, b: { c: 2, d: undefined } }
     const result = deepRemoveUndefinedFromObject(obj)
     expect(result).toEqual({ a: 1, b: { c: 2 } })
   })
 
-  it('should handle nested arrays correctly', () => {
-    const obj = { a: 1, b: [2, { a: undefined }, 3] }
+  it('should handle objects in arrays', () => {
+    const obj = [2, { a: undefined }, 3]
     const result = deepRemoveUndefinedFromObject(obj)
-    expect(result).toEqual({ a: 1, b: [2, {}, 3] })
+    expect(result).toEqual([2, {}, 3])
   })
 
-  it('should not remove undefined values from arrays', () => {
+  it('should handle nested objects in arrays', () => {
+    const obj = [2, { a: { b: undefined } }, 3]
+    const result = deepRemoveUndefinedFromObject(obj)
+    expect(result).toEqual([2, { a: {} }, 3])
+  })
+
+  it('should not remove undefined values from arrays in an object', () => {
     const obj = { a: 1, b: [2, undefined, 3] }
     const result = deepRemoveUndefinedFromObject(obj)
     expect(result).toEqual({ a: 1, b: [2, undefined, 3] })
+  })
+
+  it('should not remove undefined values from nested arrays', () => {
+    const arr = [1, [2, undefined, 3]]
+    const result = deepRemoveUndefinedFromObject(arr)
+    expect(result).toEqual([1, [2, undefined, 3]])
+  })
+
+  it('should not remove a string value', () => {
+    const input = 'string'
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual('string')
+  })
+
+  it('should not remove a positive number value', () => {
+    const input = 1
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual(1)
+  })
+
+  it('should not remove a negative number value', () => {
+    const input = -1
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual(-1)
+  })
+
+  it('should not remove a zero value', () => {
+    const input = 0
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual(0)
+  })
+
+  it('should not remove a boolean value', () => {
+    const input = true
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual(true)
+  })
+
+  it('should not remove a null value', () => {
+    const input = null
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual(null)
+  })
+
+  it('should not remove an empty object', () => {
+    const input = {}
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual({})
+  })
+
+  it('should not remove an empty array', () => {
+    const input: Array<any> = []
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual([])
+  })
+
+  it('should not remove an empty string', () => {
+    const input = ''
+    const result = deepRemoveUndefinedFromObject(input)
+    expect(result).toEqual('')
   })
 })
