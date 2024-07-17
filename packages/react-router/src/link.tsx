@@ -4,11 +4,7 @@ import * as React from 'react'
 import { flushSync } from 'react-dom'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import {
-  deepEqual,
-  deepRemoveUndefinedFromObject,
-  functionalUpdate,
-} from './utils'
+import { deepEqual, functionalUpdate } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
 import type { AnyRouter, ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
@@ -623,14 +619,7 @@ export function useLinkProps<
         : true
       const searchTest =
         (activeOptions?.includeSearch ?? true)
-          ? // since the next search can contain values like `{ a: undefined }`
-            // we need to remove them before comparing with the current search
-            // to avoid false negatives
-            deepEqual(
-              s.location.search,
-              deepRemoveUndefinedFromObject(next.search),
-              !activeOptions?.exact,
-            )
+          ? deepEqual(s.location.search, next.search, !activeOptions?.exact)
           : true
 
       // The final "active" test

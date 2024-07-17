@@ -236,6 +236,10 @@ export function deepRemoveUndefinedFromObject<T>(obj: T): T {
 }
 
 export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
+  if (typeof a === 'undefined' && typeof b === 'undefined') {
+    return true
+  }
+
   if (a === b) {
     return true
   }
@@ -245,8 +249,8 @@ export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const aKeys = Object.keys(a)
-    const bKeys = Object.keys(b)
+    const aKeys = Object.keys(deepRemoveUndefinedFromObject(a))
+    const bKeys = Object.keys(deepRemoveUndefinedFromObject(b))
 
     if (!partial && aKeys.length !== bKeys.length) {
       return false
