@@ -185,18 +185,26 @@ describe('Link', () => {
     render(<RouterProvider router={router} />)
 
     // round 1
-    const indexExactLink = await screen.findByRole('link', {
-      name: 'Index exact',
-    })
-    const indexFooUndefinedLink = await screen.findByRole('link', {
-      name: 'Index foo=undefined',
-    })
-    const indexFooUndefinedExactLink = await screen.findByRole('link', {
-      name: 'Index foo=undefined-exact',
-    })
-    const indexFooBarLink = await screen.findByRole('link', {
-      name: 'Index foo=bar',
-    })
+    const indexExactLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'Index exact',
+      }),
+    )
+    const indexFooUndefinedLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'Index foo=undefined',
+      }),
+    )
+    const indexFooUndefinedExactLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'Index foo=undefined-exact',
+      }),
+    )
+    const indexFooBarLink = await waitFor(() =>
+      screen.findByRole('link', {
+        name: 'Index foo=bar',
+      }),
+    )
 
     expect(window.location.pathname).toBe('/')
 
