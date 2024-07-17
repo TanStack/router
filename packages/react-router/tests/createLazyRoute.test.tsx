@@ -1,7 +1,13 @@
 import React, { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import '@testing-library/jest-dom/vitest'
-import { cleanup, configure, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  configure,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import {
   Link,
   RouterProvider,
@@ -79,9 +85,9 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
   it('should render the heavy/lazy component', async () => {
     const { router } = createTestRouter(createBrowserHistory())
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
-    const linkToHeavy = await screen.findByText('Link to heavy')
+    const linkToHeavy = await waitFor(() => screen.findByText('Link to heavy'))
     expect(linkToHeavy).toBeInTheDocument()
 
     expect(router.state.location.pathname).toBe('/')
@@ -90,7 +96,9 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
     // click the link to navigate to the heavy route
     act(() => linkToHeavy.click())
 
-    const heavyElement = await screen.findByText('I am sooo heavy')
+    const heavyElement = await waitFor(() =>
+      screen.findByText('I am sooo heavy'),
+    )
     expect(heavyElement).toBeInTheDocument()
 
     expect(router.state.location.pathname).toBe('/heavy')
