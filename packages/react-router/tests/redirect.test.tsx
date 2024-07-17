@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
@@ -81,14 +82,20 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = await act(() => createRouter({ routeTree }))
+      const router = createRouter({ routeTree })
 
-      await act(() => render(<RouterProvider router={router} />))
+      render(<RouterProvider router={router} />)
 
-      const linkToAbout = await screen.findByText('link to about')
+      const linkToAbout = await waitFor(() =>
+        screen.findByText('link to about'),
+      )
+      expect(linkToAbout).toBeInTheDocument()
+
       await act(() => fireEvent.click(linkToAbout))
 
-      const fooElement = await screen.findByText('Nested Foo page')
+      const fooElement = await waitFor(() =>
+        screen.findByText('Nested Foo page'),
+      )
       expect(fooElement).toBeInTheDocument()
 
       expect(router.state.location.href).toBe('/nested/foo')
@@ -145,14 +152,20 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = await act(() => createRouter({ routeTree }))
+      const router = createRouter({ routeTree })
 
-      await act(() => render(<RouterProvider router={router} />))
+      render(<RouterProvider router={router} />)
 
-      const linkToAbout = await screen.findByText('link to about')
+      const linkToAbout = await waitFor(() =>
+        screen.findByText('link to about'),
+      )
+      expect(linkToAbout).toBeInTheDocument()
+
       await act(() => fireEvent.click(linkToAbout))
 
-      const fooElement = await screen.findByText('Nested Foo page')
+      const fooElement = await waitFor(() =>
+        screen.findByText('Nested Foo page'),
+      )
       expect(fooElement).toBeInTheDocument()
 
       expect(router.state.location.href).toBe('/nested/foo')
