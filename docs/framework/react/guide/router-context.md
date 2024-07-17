@@ -46,7 +46,8 @@ const router = createRouter({
 
 The router context is passed to the router at instantiation time. You can pass the initial router context to the router via the `context` option:
 
-> 🧠 If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
+> [!TIP]
+> If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'
@@ -61,6 +62,27 @@ const router = createRouter({
     },
   },
 })
+```
+
+### Invalidating the Router Context
+
+If you need to invalidate the context state you are passing into the router, you can call the `invalidate` method to tell the router to recompute the context. This is useful when you need to update the context state and have the router recompute the context for all routes.
+
+```tsx
+function useAuth() {
+  const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user)
+      router.invalidate()
+    })
+
+    return unsubscribe
+  }, [])
+
+  return user
+}
 ```
 
 ## Using the Router Context

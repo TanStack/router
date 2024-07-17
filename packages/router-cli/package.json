@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-cli",
-  "version": "1.43.12",
+  "version": "1.45.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -26,7 +26,13 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
+    "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
+    "test:types:ts50": "node ../../node_modules/typescript50/lib/tsc.js",
+    "test:types:ts51": "node ../../node_modules/typescript51/lib/tsc.js",
+    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js",
+    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
+    "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
+    "test:types:ts55": "tsc",
     "test:build": "publint --strict",
     "build": "vite build"
   },
@@ -60,11 +66,11 @@
   },
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
-    "chokidar": "^3.5.3",
-    "yargs": "^17.6.2"
+    "chokidar": "^3.6.0",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@types/yargs": "^17.0.15",
-    "vite": "^5.0.13"
+    "@types/yargs": "^17.0.32",
+    "vite": "^5.3.3"
   }
 }

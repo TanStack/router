@@ -619,7 +619,7 @@ export function useLinkProps<
         ? s.location.hash === next.hash
         : true
       const searchTest =
-        activeOptions?.includeSearch ?? true
+        (activeOptions?.includeSearch ?? true)
           ? deepEqual(s.location.search, next.search, !activeOptions?.exact)
           : true
 
@@ -733,7 +733,7 @@ export function useLinkProps<
 
   // Get the active props
   const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? functionalUpdate(activeProps as any, {}) ?? {}
+    ? (functionalUpdate(activeProps as any, {}) ?? {})
     : {}
 
   // Get the inactive props

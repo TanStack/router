@@ -1,20 +1,21 @@
+/* eslint-disable ts/no-unnecessary-condition */
 import * as React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  ErrorComponent,
+  Link,
+  MatchRoute,
   Outlet,
   RouterProvider,
-  lazyRouteComponent,
-  Link,
-  useNavigate,
-  useSearch,
-  createRouter,
-  redirect,
-  ErrorComponent,
   createRootRouteWithContext,
-  useRouter,
-  MatchRoute,
-  useRouterState,
   createRoute,
+  createRouter,
+  lazyRouteComponent,
+  redirect,
+  useNavigate,
+  useRouter,
+  useRouterState,
+  useSearch,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
@@ -25,16 +26,16 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import {
-  fetchInvoices,
-  fetchInvoiceById,
-  fetchUsers,
-  fetchUserById,
-  Invoice,
-  postInvoice,
-  patchInvoice,
-} from './mockTodos'
 import { z } from 'zod'
+import {
+  fetchInvoiceById,
+  fetchInvoices,
+  fetchUserById,
+  fetchUsers,
+  patchInvoice,
+  postInvoice,
+} from './mockTodos'
+import type { Invoice } from './mockTodos'
 
 //
 
@@ -152,7 +153,7 @@ function RootComponent() {
               )
             })}
           </div>
-          <div className={`flex-1 border-l border-gray-200`}>
+          <div className={`flex-1 border-l`}>
             {/* Render our first route match */}
             <Outlet />
           </div>
@@ -280,7 +281,7 @@ function InvoicesComponent() {
     <div className="flex-1 flex">
       {/* {routerTransitionIsPending ? 'pending' : 'null'} */}
       <div className="divide-y w-48">
-        {invoices?.map((invoice) => {
+        {invoices.map((invoice) => {
           // const updateSubmission = updateInvoiceMutation.submissions.find(
           //   (d) => d.variables?.id === invoice.id,
           // )
@@ -333,7 +334,7 @@ function InvoicesComponent() {
             </div>
           ))} */}
       </div>
-      <div className="flex-1 border-l border-gray-200">
+      <div className="flex-1 border-l">
         <Outlet />
       </div>
     </div>
@@ -369,9 +370,9 @@ function InvoicesIndexComponent() {
           <div>
             <button
               className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-              disabled={createInvoiceMutation?.status === 'pending'}
+              disabled={createInvoiceMutation.status === 'pending'}
             >
-              {createInvoiceMutation?.status === 'pending' ? (
+              {createInvoiceMutation.status === 'pending' ? (
                 <>
                   Creating <Spinner />
                 </>
@@ -380,11 +381,11 @@ function InvoicesIndexComponent() {
               )}
             </button>
           </div>
-          {createInvoiceMutation?.status === 'success' ? (
+          {createInvoiceMutation.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Created!
             </div>
-          ) : createInvoiceMutation?.status === 'error' ? (
+          ) : createInvoiceMutation.status === 'error' ? (
             <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to create.
             </div>
@@ -455,13 +456,13 @@ function InvoiceComponent() {
     >
       <InvoiceFields
         invoice={invoice}
-        disabled={updateInvoiceMutation?.status === 'pending'}
+        disabled={updateInvoiceMutation.status === 'pending'}
       />
       <div>
         <Link
           search={(old) => ({
             ...old,
-            showNotes: old?.showNotes ? undefined : true,
+            showNotes: old.showNotes ? undefined : true,
           })}
           className="text-blue-700"
           from={invoiceRoute.fullPath}
@@ -492,18 +493,18 @@ function InvoiceComponent() {
       <div>
         <button
           className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-          disabled={updateInvoiceMutation?.status === 'pending'}
+          disabled={updateInvoiceMutation.status === 'pending'}
         >
           Save
         </button>
       </div>
-      {updateInvoiceMutation?.variables?.id === invoice.id ? (
-        <div key={updateInvoiceMutation?.submittedAt}>
-          {updateInvoiceMutation?.status === 'success' ? (
+      {updateInvoiceMutation.variables?.id === invoice.id ? (
+        <div key={updateInvoiceMutation.submittedAt}>
+          {updateInvoiceMutation.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Saved!
             </div>
-          ) : updateInvoiceMutation?.status === 'error' ? (
+          ) : updateInvoiceMutation.status === 'error' ? (
             <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to save.
             </div>
@@ -584,7 +585,7 @@ function UsersComponent() {
         return {
           ...old,
           usersView: {
-            ...(old?.usersView ?? {}),
+            ...(old.usersView ?? {}),
             sortBy,
           },
         }
@@ -598,7 +599,7 @@ function UsersComponent() {
         return {
           ...old,
           usersView: {
-            ...old?.usersView,
+            ...old.usersView,
             filterBy: filterDraft || undefined,
           },
         }
@@ -610,7 +611,7 @@ function UsersComponent() {
   return (
     <div className="flex-1 flex">
       <div className="divide-y">
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Sort By:</div>
           <select
             value={sortBy}
@@ -622,7 +623,7 @@ function UsersComponent() {
             })}
           </select>
         </div>
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Filter By:</div>
           <input
             value={filterDraft}
@@ -631,7 +632,7 @@ function UsersComponent() {
             className="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {filteredUsers?.map((user) => {
+        {filteredUsers.map((user) => {
           return (
             <div key={user.id}>
               <Link
@@ -661,7 +662,7 @@ function UsersComponent() {
           )
         })}
       </div>
-      <div className="flex-initial border-l border-gray-200">
+      <div className="flex-initial border-l">
         <Outlet />
       </div>
     </div>
@@ -949,7 +950,7 @@ function App() {
 
   return (
     <>
-      <div className="text-xs fixed w-52 shadow-md shadow-black/20 rounded bottom-2 left-2 bg-white bg-opacity-75 border-b flex flex-col gap-1 flex-wrap items-left divide-y divide-gray-500/20">
+      <div className="text-xs fixed w-52 shadow-md shadow-black/20 rounded bottom-2 left-2 bg-white dark:bg-gray-800 bg-opacity-75 border-b flex flex-col gap-1 flex-wrap items-left divide-y">
         <div className="p-2 space-y-2">
           <div className="flex gap-2">
             <button
@@ -1055,7 +1056,7 @@ function InvoiceFields({
       <h2 className="font-bold text-lg">
         <input
           name="title"
-          defaultValue={invoice?.title}
+          defaultValue={invoice.title}
           placeholder="Invoice Title"
           className="border border-opacity-50 rounded p-2 w-full"
           disabled={disabled}
@@ -1064,7 +1065,7 @@ function InvoiceFields({
       <div>
         <textarea
           name="body"
-          defaultValue={invoice?.body}
+          defaultValue={invoice.body}
           rows={6}
           placeholder="Invoice Body..."
           className="border border-opacity-50 p-2 rounded w-full"
@@ -1086,7 +1087,7 @@ function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
   return (
     <div
       className={`inline-block animate-spin px-3 transition ${
-        show ?? true
+        (show ?? true)
           ? `opacity-1 duration-500 ${wait ?? 'delay-300'}`
           : 'duration-500 opacity-0 delay-0'
       }`}

@@ -1,14 +1,15 @@
-import fs from 'fs/promises'
-import { join } from 'path'
-import { describe, it, expect } from 'vitest'
+import fs from 'node:fs/promises'
+import { join } from 'node:path'
+import { describe, expect, it } from 'vitest'
 
-import { generator, getConfig, type Config } from '../src'
+import { generator, getConfig } from '../src'
+import type { Config } from '../src'
 
 function makeFolderDir(folder: string) {
   return join(process.cwd(), 'tests', 'generator', folder)
 }
 
-async function readDir(...paths: string[]) {
+async function readDir(...paths: Array<string>) {
   const folders = await fs.readdir(
     join(process.cwd(), 'tests', 'generator', ...paths),
   )

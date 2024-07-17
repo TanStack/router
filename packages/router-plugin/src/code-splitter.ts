@@ -219,7 +219,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         compiler.options.mode === 'production'
       ) {
         compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
-          console.log('✅ ' + PLUGIN_NAME + ': code-splitting done!')
+          console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
           setTimeout(() => {
             process.exit(0)
           })

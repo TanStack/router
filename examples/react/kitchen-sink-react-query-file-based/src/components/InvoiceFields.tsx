@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Invoice } from '../utils/mockTodos'
+import type { Invoice } from '../utils/mockTodos'
 
 export function InvoiceFields({
   invoice,
@@ -13,7 +13,7 @@ export function InvoiceFields({
       <h2 className="font-bold text-lg">
         <input
           name="title"
-          defaultValue={invoice?.title}
+          defaultValue={invoice.title}
           placeholder="Invoice Title"
           className="border border-opacity-50 rounded p-2 w-full"
           disabled={disabled}
@@ -22,7 +22,7 @@ export function InvoiceFields({
       <div>
         <textarea
           name="body"
-          defaultValue={invoice?.body}
+          defaultValue={invoice.body}
           rows={6}
           placeholder="Invoice Body..."
           className="border border-opacity-50 p-2 rounded w-full"

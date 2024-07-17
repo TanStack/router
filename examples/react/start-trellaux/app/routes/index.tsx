@@ -24,7 +24,7 @@ function Home() {
               }}
               className="font-bold text-blue-500"
             >
-              {board.boardName}
+              {board.name}
             </Link>
           </li>
         ))}

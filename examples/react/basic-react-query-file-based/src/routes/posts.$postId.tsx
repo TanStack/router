@@ -1,17 +1,16 @@
 import * as React from 'react'
 import {
   ErrorComponent,
-  ErrorComponentProps,
-  Link,
-  useRouter,
   createFileRoute,
+  useRouter,
 } from '@tanstack/react-router'
+import {
+  useQueryErrorResetBoundary,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { PostNotFoundError } from '../posts'
 import { postQueryOptions } from '../postQueryOptions'
-import {
-  useSuspenseQuery,
-  useQueryErrorResetBoundary,
-} from '@tanstack/react-query'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context: { queryClient }, params: { postId } }) => {
@@ -36,7 +35,6 @@ export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
     <div>
       <button
         onClick={() => {
-          reset()
           router.invalidate()
         }}
       >
@@ -55,16 +53,6 @@ function PostComponent() {
     <div className="space-y-2">
       <h4 className="text-xl font-bold underline">{post.title}</h4>
       <div className="text-sm">{post.body}</div>
-      <Link
-        to="/posts/$postId/deep"
-        params={{
-          postId: post.id,
-        }}
-        activeProps={{ className: 'text-black font-bold' }}
-        className="block py-1 text-blue-800 hover:text-blue-600"
-      >
-        Deep View
-      </Link>
     </div>
   )
 }

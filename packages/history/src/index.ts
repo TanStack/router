@@ -7,6 +7,7 @@ export interface NavigateOptions {
 }
 export interface RouterHistory {
   location: HistoryLocation
+  subscribers: Set<() => void>
   subscribe: (cb: () => void) => () => void
   push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
   replace: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
@@ -100,6 +101,7 @@ export function createHistory(opts: {
     get location() {
       return location
     },
+    subscribers,
     subscribe: (cb: () => void) => {
       subscribers.add(cb)
 
@@ -269,6 +271,10 @@ export function createBrowserHistory(opts?: {
     }
 
     if (!scheduled) {
+      if (process.env.NODE_ENV === 'test') {
+        flush()
+        return
+      }
       // Schedule an update to the browser history
       scheduled = Promise.resolve().then(() => flush())
     }
@@ -359,6 +365,11 @@ export function createMemoryHistory(
 
     pushState: (path, state) => {
       currentState = state
+      entries.splice
+      // Removes all subsequent entries after the current index to start a new branch
+      if (index < entries.length - 1) {
+        entries.splice(index + 1)
+      }
       entries.push(path)
       index = Math.max(entries.length - 1, 0)
     },
@@ -368,7 +379,7 @@ export function createMemoryHistory(
     },
     back: () => {
       currentState = assignKey(currentState)
-      index--
+      index = Math.max(index - 1, 0)
     },
     forward: () => {
       currentState = assignKey(currentState)

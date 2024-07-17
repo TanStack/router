@@ -9,7 +9,8 @@ This is where Server Functions come in.
 
 ## What are Server Functions?
 
-> 🧠 You can think of Server Functions like mini-portals that let your users trigger a pre-defined action on the server (like a built-in RPC solution 🤯).
+> [!TIP]
+> You can think of Server Functions like mini-portals that let your users trigger a pre-defined action on the server (like a built-in RPC solution 🤯).
 
 Server Functions are actions that can be executed on the server from the client or from other server functions.
 
@@ -37,7 +38,7 @@ function Component() {
     if (!el) return
     el.addEventListener('click', async () => {
       const result = await yourFn()
-      console.log(result)
+      console.info(result)
     })
   }
 
@@ -55,7 +56,7 @@ Or from another server function:
 ```typescript
 const yourFn2 = createServerFn('POST', async () => {
   const result = await yourFn()
-  console.log(result)
+  console.info(result)
 })
 ```
 
@@ -139,7 +140,7 @@ const yourFn = createServerFn('POST', async () => {
   // Server-side code lives here
 })
 
-console.log(yourFn.url)
+console.info(yourFn.url)
 ```
 
 And pass this to the `action` attribute of the form:

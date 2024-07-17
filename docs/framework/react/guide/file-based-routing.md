@@ -11,9 +11,9 @@ To enable file-based routing, you'll need to be using React with a supported bun
 - Vite
 - Rspack/Rsbuild
 - Webpack
-- Others (let us know if you'd like to see support for a specific bundler)
+- Others??? (let us know if you'd like to see support for a specific bundler)
 
-If your bundler is not yet supported, you reach out to us on Discord or GitHub to let us know you'd like to see support for your bundler. Till then, fear not! You can still use the use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
+If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
 
 ## Installation
 
@@ -47,7 +47,10 @@ export default defineConfig({
 })
 ```
 
-> ⚠️ If you are using the older `@tanstack/router-vite-plugin` package, you can still continue to use it, as it will be aliased to the `@tanstack/router-plugin/vite` package. However, we would recommend using the `@tanstack/router-plugin` package directly.
+Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-file-based) and get started.
+
+> [!WARNING]
+> If you are using the older `@tanstack/router-vite-plugin` package, you can still continue to use it, as it will be aliased to the `@tanstack/router-plugin/vite` package. However, we would recommend using the `@tanstack/router-plugin` package directly.
 
 ### Configuration with Rspack/Rsbuild
 
@@ -75,6 +78,8 @@ export default defineConfig({
 })
 ```
 
+Or, you can clone our [Quickstart Rspack/Rsbuild example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-rspack-file-based) and get started.
+
 ### Configuration with Webpack
 
 To use file-based routing with **Webpack**, you'll need to install the `@tanstack/router-plugin` package.
@@ -93,6 +98,8 @@ export default {
   plugins: [TanStackRouterWebpack()],
 }
 ```
+
+Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-webpack-file-based) and get started.
 
 ### Configuration with the TanStack Router CLI
 
@@ -181,7 +188,8 @@ If these defaults work for your project, you don't need to configure anything at
 
 The following options are available for configuration via the `tsr.config.json` file:
 
-> **🚨 Important:** Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the [file-naming conventions](#file-naming-conventions) section.
+> [!IMPORTANT]
+> Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the [file-naming conventions](#file-naming-conventions) section.
 
 - **`routeFilePrefix`**
   - (Optional) If set, only route files and directories that start with this string will be considered for routing.

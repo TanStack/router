@@ -1,10 +1,7 @@
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   ErrorComponent,
-  type ErrorComponentProps,
   Link,
-  NotFoundRoute,
   Outlet,
   RouterProvider,
   createRootRoute,
@@ -13,6 +10,7 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'redaxios'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 type PostType = {
   id: string
@@ -49,12 +47,15 @@ const fetchPost = async (postId: string) => {
 
 const rootRoute = createRootRoute({
   component: RootComponent,
+  notFoundComponent: () => {
+    return <p>This is the notFoundComponent configured on root route</p>
+  },
 })
 
 function RootComponent() {
   return (
-    <div className="bg-gradient-to-r from-green-700 to-lime-600 text-white">
-      <div className="p-2 flex gap-2 text-lg bg-black/40 shadow-xl">
+    <>
+      <div className="p-2 flex gap-2 text-lg border-b">
         <Link
           to="/"
           activeProps={{
@@ -64,15 +65,27 @@ function RootComponent() {
         >
           Home
         </Link>{' '}
-        <Link to={'/posts'}>
-          {({ isActive }) => (
-            <span className={isActive ? 'font-bold' : ''}>Posts</span>
-          )}
+        <Link
+          to={'/posts'}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Posts
+        </Link>{' '}
+        <Link
+          // @ts-expect-error
+          to="/this-route-does-not-exist"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          This Route Does Not Exist
         </Link>
       </div>
       <Outlet />
       <TanStackRouterDevtools position="bottom-right" />
-    </div>
+    </>
   )
 }
 const indexRoute = createRoute({
@@ -135,19 +148,6 @@ function PostComponent() {
   )
 }
 
-const notFoundRoute = new NotFoundRoute({
-  getParentRoute: () => rootRoute,
-  component: NotFound,
-})
-
-function NotFound() {
-  return (
-    <div className="p-2">
-      <h3>404 - Not Found</h3>
-    </div>
-  )
-}
-
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   indexRoute,
@@ -156,7 +156,6 @@ const routeTree = rootRoute.addChildren([
 // Set up a Router instance
 const router = createRouter({
   routeTree,
-  notFoundRoute,
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
 })
