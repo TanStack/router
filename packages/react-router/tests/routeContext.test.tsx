@@ -42,9 +42,7 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
