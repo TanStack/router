@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import { flushSync } from 'react-dom'
-import { useMatch } from './useMatch'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { deepEqual, functionalUpdate } from './utils'
