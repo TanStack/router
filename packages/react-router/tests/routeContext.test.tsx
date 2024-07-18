@@ -1,5 +1,3 @@
-import React, { act } from 'react'
-import '@testing-library/jest-dom/vitest'
 import {
   cleanup,
   configure,
@@ -286,7 +284,7 @@ describe('beforeLoad in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -351,7 +349,7 @@ describe('beforeLoad in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -518,7 +516,7 @@ describe('beforeLoad in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -592,7 +590,7 @@ describe('beforeLoad in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -665,7 +663,7 @@ describe('beforeLoad in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -769,7 +767,7 @@ describe('beforeLoad in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -843,7 +841,7 @@ describe('beforeLoad in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -916,7 +914,7 @@ describe('beforeLoad in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1187,7 +1185,7 @@ describe('loader in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1252,7 +1250,7 @@ describe('loader in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1317,7 +1315,7 @@ describe('loader in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -1391,7 +1389,7 @@ describe('loader in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1464,7 +1462,7 @@ describe('loader in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1568,7 +1566,7 @@ describe('loader in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -1642,7 +1640,7 @@ describe('loader in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1715,7 +1713,7 @@ describe('loader in the route definition', () => {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -2018,7 +2016,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
     expect(content).toBeInTheDocument()
@@ -2070,7 +2068,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
     expect(content).toBeInTheDocument()
@@ -2123,7 +2121,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'nested' }),
@@ -2188,7 +2186,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'nested' }),
@@ -2252,7 +2250,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'nested' }),
@@ -2345,7 +2343,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'layout' }),
@@ -2410,7 +2408,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'layout' }),
@@ -2474,7 +2472,7 @@ describe('useRouteContext in the component', () => {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'layout' }),
