@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  deepRemoveUndefinedFromObject,
-  isPlainArray,
-  replaceEqualDeep,
-} from '../src/utils'
+import { deepEqual, isPlainArray, replaceEqualDeep } from '../src/utils'
 
 describe('replaceEqualDeep', () => {
   it('should return the same object if the input objects are equal', () => {
@@ -304,94 +300,56 @@ describe('isPlainArray', () => {
   })
 })
 
-describe('deepRemoveUndefinedFromObject', () => {
-  it('should handle an object', () => {
-    const obj = { a: 1, b: undefined, c: 2 }
-    const result = deepRemoveUndefinedFromObject(obj)
-    expect(result).toEqual({ a: 1, c: 2 })
-  })
+describe('deepEqual', () => {
+  describe.each([false, true])('partial = %s', (partial) => {
+    it('should return `true` for equal objects', () => {
+      const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
+      const b = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
+      expect(deepEqual(a, b, partial)).toEqual(true)
+      expect(deepEqual(b, a, partial)).toEqual(true)
+    })
 
-  it('should handle nested objects', () => {
-    const obj = { a: 1, b: { c: 2, d: undefined } }
-    const result = deepRemoveUndefinedFromObject(obj)
-    expect(result).toEqual({ a: 1, b: { c: 2 } })
-  })
+    it('should return `false` for non equal objects', () => {
+      const a = { a: { b: 'b' }, c: 'c' }
+      const b = { a: { b: 'c' }, c: 'c' }
+      expect(deepEqual(a, b, partial)).toEqual(false)
+      expect(deepEqual(b, a, partial)).toEqual(false)
+    })
 
-  it('should handle objects in arrays', () => {
-    const obj = [2, { a: undefined }, 3]
-    const result = deepRemoveUndefinedFromObject(obj)
-    expect(result).toEqual([2, {}, 3])
-  })
+    it('should return `true` for equal objects and ignore `undefined` properties', () => {
+      const a = { a: 'a', b: undefined, c: 'c' }
+      const b = { a: 'a', c: 'c' }
+      expect(deepEqual(a, b, partial)).toEqual(true)
+      expect(deepEqual(b, a, partial)).toEqual(true)
+    })
 
-  it('should handle nested objects in arrays', () => {
-    const obj = [2, { a: { b: undefined } }, 3]
-    const result = deepRemoveUndefinedFromObject(obj)
-    expect(result).toEqual([2, { a: {} }, 3])
-  })
+    it('should return `true` for equal objects and ignore `undefined` nested properties', () => {
+      const a = { a: { b: 'b', x: undefined }, c: 'c' }
+      const b = { a: { b: 'b' }, c: 'c', d: undefined }
+      expect(deepEqual(a, b, partial)).toEqual(true)
+      expect(deepEqual(b, a, partial)).toEqual(true)
+    })
 
-  it('should not remove undefined values from arrays in an object', () => {
-    const obj = { a: 1, b: [2, undefined, 3] }
-    const result = deepRemoveUndefinedFromObject(obj)
-    expect(result).toEqual({ a: 1, b: [2, undefined, 3] })
+    it('should return `true` for equal arrays and ignore `undefined` object properties', () => {
+      const a = { a: { b: 'b', x: undefined }, c: 'c' }
+      const b = { a: { b: 'b' }, c: 'c' }
+      expect(deepEqual([a], [b], partial)).toEqual(true)
+      expect(deepEqual([b], [a], partial)).toEqual(true)
+    })
   })
+  describe('partial comparison', () => {
+    it('correctly compares partially equal objects', () => {
+      const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
+      const b = { a: { b: 'b' }, c: 'c' }
+      expect(deepEqual(a, b, true)).toEqual(true)
+      expect(deepEqual(b, a, true)).toEqual(false)
+    })
 
-  it('should not remove undefined values from nested arrays', () => {
-    const arr = [1, [2, undefined, 3]]
-    const result = deepRemoveUndefinedFromObject(arr)
-    expect(result).toEqual([1, [2, undefined, 3]])
-  })
-
-  it('should not remove a string value', () => {
-    const input = 'string'
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual('string')
-  })
-
-  it('should not remove a positive number value', () => {
-    const input = 1
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual(1)
-  })
-
-  it('should not remove a negative number value', () => {
-    const input = -1
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual(-1)
-  })
-
-  it('should not remove a zero value', () => {
-    const input = 0
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual(0)
-  })
-
-  it('should not remove a boolean value', () => {
-    const input = true
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual(true)
-  })
-
-  it('should not remove a null value', () => {
-    const input = null
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual(null)
-  })
-
-  it('should not remove an empty object', () => {
-    const input = {}
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual({})
-  })
-
-  it('should not remove an empty array', () => {
-    const input: Array<any> = []
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual([])
-  })
-
-  it('should not remove an empty string', () => {
-    const input = ''
-    const result = deepRemoveUndefinedFromObject(input)
-    expect(result).toEqual('')
+    it('correctly compares partially equal objects and ignores `undefined` object properties', () => {
+      const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }], e: undefined }
+      const b = { a: { b: 'b' }, c: 'c', d: undefined }
+      expect(deepEqual(a, b, true)).toEqual(true)
+      expect(deepEqual(b, a, true)).toEqual(false)
+    })
   })
 })
