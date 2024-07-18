@@ -1,12 +1,9 @@
-import React, { act } from 'react'
-import '@testing-library/jest-dom/vitest'
 import {
   cleanup,
   configure,
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
@@ -23,7 +20,6 @@ import {
 import { sleep } from './utils'
 
 afterEach(() => {
-  vi.clearAllMocks()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
@@ -48,11 +44,11 @@ describe('loaders are being called', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() => createRouter({ routeTree }))
+    const router = createRouter({ routeTree })
 
     render(<RouterProvider router={router} />)
 
-    const indexElement = await waitFor(() => screen.findByText('Index page'))
+    const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
 
     expect(router.state.location.href).toBe('/')
@@ -103,10 +99,10 @@ describe('loaders are being called', () => {
 
     render(<RouterProvider router={router} />)
 
-    const linkToAbout = await waitFor(() => screen.findByText('link to foo'))
-    act(() => fireEvent.click(linkToAbout))
+    const linkToAbout = await screen.findByText('link to foo')
+    fireEvent.click(linkToAbout)
 
-    const fooElement = await waitFor(() => screen.findByText('Nested Foo page'))
+    const fooElement = await screen.findByText('Nested Foo page')
     expect(fooElement).toBeInTheDocument()
 
     expect(router.state.location.href).toBe('/nested/foo')
@@ -156,14 +152,13 @@ describe('loaders parentMatchPromise', () => {
 
     render(<RouterProvider router={router} />)
 
-    const linkToFoo = await waitFor(() =>
-      screen.findByRole('link', { name: 'link to foo' }),
-    )
+    const linkToFoo = await screen.findByRole('link', { name: 'link to foo' })
+
     expect(linkToFoo).toBeInTheDocument()
 
-    act(() => fireEvent.click(linkToFoo))
+    fireEvent.click(linkToFoo)
 
-    const fooElement = await waitFor(() => screen.findByText('Nested Foo page'))
+    const fooElement = await screen.findByText('Nested Foo page')
     expect(fooElement).toBeInTheDocument()
 
     expect(nestedLoaderMock).toHaveBeenCalled()
