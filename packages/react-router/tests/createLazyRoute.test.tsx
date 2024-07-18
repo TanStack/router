@@ -1,12 +1,10 @@
-import React, { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import '@testing-library/jest-dom/vitest'
 import {
   cleanup,
   configure,
+  fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react'
 import {
   Link,
@@ -18,10 +16,6 @@ import {
   createRouter,
 } from '../src'
 import type { RouterHistory } from '../src'
-
-// TODO: Move this setup logic including the '@testing-library/jest-dom/vitest' into its own setup file
-// @ts-expect-error
-global.IS_REACT_ACT_ENVIRONMENT = true
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -87,18 +81,17 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
 
     render(<RouterProvider router={router} />)
 
-    const linkToHeavy = await waitFor(() => screen.findByText('Link to heavy'))
+    const linkToHeavy = await screen.findByText('Link to heavy')
     expect(linkToHeavy).toBeInTheDocument()
 
     expect(router.state.location.pathname).toBe('/')
     expect(window.location.pathname).toBe('/')
 
     // click the link to navigate to the heavy route
-    act(() => linkToHeavy.click())
+    fireEvent.click(linkToHeavy)
 
-    const heavyElement = await waitFor(() =>
-      screen.findByText('I am sooo heavy'),
-    )
+    const heavyElement = await screen.findByText('I am sooo heavy')
+
     expect(heavyElement).toBeInTheDocument()
 
     expect(router.state.location.pathname).toBe('/heavy')
