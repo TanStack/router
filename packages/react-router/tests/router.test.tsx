@@ -367,7 +367,7 @@ describe('encoding: URL path segment', () => {
       )
 
       render(<RouterProvider router={router} />)
-      await waitFor(() => router.load())
+      await act(() => router.load())
 
       expect(router.state.location.pathname).toBe(output)
     },

@@ -1,12 +1,9 @@
-import React, { act } from 'react'
-import '@testing-library/jest-dom/vitest'
 import {
   cleanup,
   configure,
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
@@ -86,16 +83,14 @@ describe('redirect', () => {
 
       render(<RouterProvider router={router} />)
 
-      const linkToAbout = await waitFor(() =>
-        screen.findByText('link to about'),
-      )
+      const linkToAbout = await screen.findByText('link to about')
+
       expect(linkToAbout).toBeInTheDocument()
 
-      await act(() => fireEvent.click(linkToAbout))
+      fireEvent.click(linkToAbout)
 
-      const fooElement = await waitFor(() =>
-        screen.findByText('Nested Foo page'),
-      )
+      const fooElement = await screen.findByText('Nested Foo page')
+
       expect(fooElement).toBeInTheDocument()
 
       expect(router.state.location.href).toBe('/nested/foo')
@@ -156,16 +151,14 @@ describe('redirect', () => {
 
       render(<RouterProvider router={router} />)
 
-      const linkToAbout = await waitFor(() =>
-        screen.findByText('link to about'),
-      )
+      const linkToAbout = await screen.findByText('link to about')
+
       expect(linkToAbout).toBeInTheDocument()
 
-      await act(() => fireEvent.click(linkToAbout))
+      fireEvent.click(linkToAbout)
 
-      const fooElement = await waitFor(() =>
-        screen.findByText('Nested Foo page'),
-      )
+      const fooElement = await screen.findByText('Nested Foo page')
+
       expect(fooElement).toBeInTheDocument()
 
       expect(router.state.location.href).toBe('/nested/foo')
