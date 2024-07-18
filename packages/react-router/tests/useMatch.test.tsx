@@ -1,5 +1,3 @@
-import '@testing-library/jest-dom/vitest'
-import React from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import {
@@ -34,10 +32,10 @@ describe('useMatch', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => (
-        <React.Fragment>
+        <>
           <h1>IndexTitle</h1>
           <Link to="/posts">Posts</Link>
-        </React.Fragment>
+        </>
       ),
     })
 
@@ -70,7 +68,8 @@ describe('useMatch', () => {
           RootComponent,
           history: createMemoryHistory({ initialEntries: ['/posts'] }),
         })
-        await waitFor(() => screen.findByText('PostsTitle'))
+        const postsTitle = await screen.findByText('PostsTitle')
+        expect(postsTitle).toBeInTheDocument()
       },
     )
   })
@@ -84,13 +83,10 @@ describe('useMatch', () => {
           return <Outlet />
         }
         setup({ RootComponent })
-        expect(
-          await waitFor(() =>
-            screen.findByText(
-              'Invariant failed: Could not find an active match from "/posts"',
-            ),
-          ),
-        ).toBeInTheDocument()
+        const postsError = await screen.findByText(
+          'Invariant failed: Could not find an active match from "/posts"',
+        )
+        expect(postsError).toBeInTheDocument()
       },
     )
 
@@ -114,9 +110,8 @@ describe('useMatch', () => {
           return <Outlet />
         }
         setup({ RootComponent })
-        expect(
-          await waitFor(() => screen.findByText('IndexTitle')),
-        ).toBeInTheDocument()
+        const indexTitle = await screen.findByText('IndexTitle')
+        expect(indexTitle).toBeInTheDocument()
         expect(select).not.toHaveBeenCalled()
       })
     })
