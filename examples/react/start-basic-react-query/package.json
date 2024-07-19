@@ -9,8 +9,7 @@
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
     "format": "prettier --write '**/*' --ignore-unknown",
-    "test:e2e": "playwright test --project=chromium",
-    "_test:e2e:replay": "playwright test --project=replay-chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.51.1",
@@ -32,7 +31,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.45.1",
-    "@replayio/playwright": "^3.1.8",
     "@types/node": "^20.12.11",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",

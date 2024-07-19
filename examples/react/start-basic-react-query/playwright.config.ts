@@ -1,9 +1,4 @@
 import { defineConfig, devices } from '@playwright/test'
-import { devices as replayDevices, replayReporter } from '@replayio/playwright'
-
-import dotenv from 'dotenv'
-
-dotenv.config()
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -11,13 +6,7 @@ dotenv.config()
 export default defineConfig({
   testDir: './tests',
 
-  reporter: [
-    replayReporter({
-      apiKey: process.env.REPLAY_API_KEY,
-      upload: true,
-    }),
-    ['line'],
-  ],
+  reporter: [['line']],
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -33,10 +22,6 @@ export default defineConfig({
   },
 
   projects: [
-    {
-      name: 'replay-chromium',
-      use: { ...replayDevices['Replay Chromium'] },
-    },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
