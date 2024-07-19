@@ -40,7 +40,7 @@
     "test:e2e": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^public"]
+      "inputs": ["default", "^production"]
     },
     "test:types": {
       "cache": true,
