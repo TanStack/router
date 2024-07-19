@@ -1,7 +1,11 @@
-import React, { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import '@testing-library/jest-dom/vitest'
-import { cleanup, configure, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  configure,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react'
 import {
   Link,
   RouterProvider,
@@ -12,10 +16,6 @@ import {
   createRouter,
 } from '../src'
 import type { RouterHistory } from '../src'
-
-// TODO: Move this setup logic including the '@testing-library/jest-dom/vitest' into its own setup file
-// @ts-expect-error
-global.IS_REACT_ACT_ENVIRONMENT = true
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -79,7 +79,7 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
   it('should render the heavy/lazy component', async () => {
     const { router } = createTestRouter(createBrowserHistory())
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToHeavy = await screen.findByText('Link to heavy')
     expect(linkToHeavy).toBeInTheDocument()
@@ -88,9 +88,10 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
     expect(window.location.pathname).toBe('/')
 
     // click the link to navigate to the heavy route
-    act(() => linkToHeavy.click())
+    fireEvent.click(linkToHeavy)
 
     const heavyElement = await screen.findByText('I am sooo heavy')
+
     expect(heavyElement).toBeInTheDocument()
 
     expect(router.state.location.pathname).toBe('/heavy')

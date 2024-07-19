@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import '@testing-library/jest-dom/vitest'
-import React from 'react'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import {
   Link,
   Outlet,
@@ -14,12 +12,12 @@ import {
 } from '../src'
 import type { RouteComponent, RouterHistory } from '../src'
 
-describe('useMatch', () => {
-  afterEach(() => {
-    window.history.replaceState(null, 'root', '/')
-    cleanup()
-  })
+afterEach(() => {
+  window.history.replaceState(null, 'root', '/')
+  cleanup()
+})
 
+describe('useMatch', () => {
   function setup({
     RootComponent,
     history,
@@ -34,10 +32,10 @@ describe('useMatch', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => (
-        <React.Fragment>
+        <>
           <h1>IndexTitle</h1>
           <Link to="/posts">Posts</Link>
-        </React.Fragment>
+        </>
       ),
     })
 
@@ -52,7 +50,7 @@ describe('useMatch', () => {
       history,
     })
 
-    render(<RouterProvider router={router} />)
+    return render(<RouterProvider router={router} />)
   }
 
   describe('when match is found', () => {
@@ -70,7 +68,8 @@ describe('useMatch', () => {
           RootComponent,
           history: createMemoryHistory({ initialEntries: ['/posts'] }),
         })
-        await screen.findByText('PostsTitle')
+        const postsTitle = await screen.findByText('PostsTitle')
+        expect(postsTitle).toBeInTheDocument()
       },
     )
   })
@@ -84,11 +83,10 @@ describe('useMatch', () => {
           return <Outlet />
         }
         setup({ RootComponent })
-        expect(
-          await screen.findByText(
-            'Invariant failed: Could not find an active match from "/posts"',
-          ),
-        ).toBeInTheDocument()
+        const postsError = await screen.findByText(
+          'Invariant failed: Could not find an active match from "/posts"',
+        )
+        expect(postsError).toBeInTheDocument()
       },
     )
 
@@ -100,7 +98,9 @@ describe('useMatch', () => {
           return <Outlet />
         }
         setup({ RootComponent })
-        expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
+        expect(
+          await waitFor(() => screen.findByText('IndexTitle')),
+        ).toBeInTheDocument()
       })
       test('with select function', async () => {
         const select = vi.fn()
@@ -110,7 +110,8 @@ describe('useMatch', () => {
           return <Outlet />
         }
         setup({ RootComponent })
-        expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
+        const indexTitle = await screen.findByText('IndexTitle')
+        expect(indexTitle).toBeInTheDocument()
         expect(select).not.toHaveBeenCalled()
       })
     })

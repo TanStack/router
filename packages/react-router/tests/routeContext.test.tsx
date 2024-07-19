@@ -1,5 +1,3 @@
-import React, { act } from 'react'
-import '@testing-library/jest-dom/vitest'
 import {
   cleanup,
   configure,
@@ -42,11 +40,9 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const rootElement = await screen.findByText('Root page')
     expect(rootElement).toBeInTheDocument()
@@ -66,11 +62,9 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const rootElement = await screen.findByText('Root page')
     expect(rootElement).toBeInTheDocument()
@@ -93,11 +87,9 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -120,11 +112,9 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -156,11 +146,9 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -192,11 +180,9 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -230,11 +216,9 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -292,17 +276,15 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -359,17 +341,15 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -528,17 +508,15 @@ describe('beforeLoad in the route definition', () => {
       nestedRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -604,17 +582,15 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -679,17 +655,15 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -726,11 +700,9 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -787,17 +759,15 @@ describe('beforeLoad in the route definition', () => {
       layoutRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -863,17 +833,15 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -938,17 +906,15 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -975,11 +941,9 @@ describe('loader in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const rootElement = await screen.findByText('Root page')
     expect(rootElement).toBeInTheDocument()
@@ -999,11 +963,9 @@ describe('loader in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const rootElement = await screen.findByText('Root page')
     expect(rootElement).toBeInTheDocument()
@@ -1026,11 +988,9 @@ describe('loader in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -1053,11 +1013,9 @@ describe('loader in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -1089,11 +1047,9 @@ describe('loader in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -1125,11 +1081,9 @@ describe('loader in the route definition', () => {
       component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -1163,11 +1117,9 @@ describe('loader in the route definition', () => {
       component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -1225,17 +1177,15 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1292,17 +1242,15 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1359,17 +1307,15 @@ describe('loader in the route definition', () => {
       nestedRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -1435,17 +1381,15 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1510,17 +1454,15 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1557,11 +1499,9 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -1618,17 +1558,15 @@ describe('loader in the route definition', () => {
       layoutRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const aboutElement = await screen.findByText('About page')
     expect(aboutElement).toBeInTheDocument()
@@ -1694,17 +1632,15 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1769,17 +1705,15 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const buttonToAbout = await screen.findByRole('button', {
       name: 'button to about',
     })
     expect(buttonToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(buttonToAbout))
+    fireEvent.click(buttonToAbout)
 
     const personElement = await screen.findByText('Person page')
     expect(personElement).toBeInTheDocument()
@@ -1804,11 +1738,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -1826,11 +1758,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -1848,11 +1778,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -1871,11 +1799,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -1896,11 +1822,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -1921,11 +1845,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -1949,11 +1871,9 @@ describe('useRouteContext in the component', () => {
     })
 
     const routeTree = rootRoute.addChildren([])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'sean' }))
 
@@ -1980,11 +1900,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'sean' }))
 
@@ -2011,11 +1929,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -2044,11 +1960,9 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
@@ -2094,17 +2008,15 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
     expect(content).toBeInTheDocument()
@@ -2148,17 +2060,15 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
     expect(content).toBeInTheDocument()
@@ -2203,17 +2113,15 @@ describe('useRouteContext in the component', () => {
       nestedRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'nested' }),
@@ -2270,17 +2178,15 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'nested' }),
@@ -2336,17 +2242,15 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'nested' }),
@@ -2381,11 +2285,9 @@ describe('useRouteContext in the component', () => {
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'layout' }),
@@ -2433,17 +2335,15 @@ describe('useRouteContext in the component', () => {
       layoutRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'layout' }),
@@ -2500,17 +2400,15 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'layout' }),
@@ -2566,17 +2464,15 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = await act(() =>
-      createRouter({ routeTree, context: { foo: 'bar' } }),
-    )
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
     expect(linkToAbout).toBeInTheDocument()
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'layout' }),

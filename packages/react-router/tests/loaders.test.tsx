@@ -1,5 +1,3 @@
-import React, { act } from 'react'
-import '@testing-library/jest-dom/vitest'
 import {
   cleanup,
   configure,
@@ -22,7 +20,6 @@ import {
 import { sleep } from './utils'
 
 afterEach(() => {
-  vi.clearAllMocks()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
@@ -47,9 +44,9 @@ describe('loaders are being called', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = await act(() => createRouter({ routeTree }))
+    const router = createRouter({ routeTree })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -98,12 +95,12 @@ describe('loaders are being called', () => {
       nestedRoute.addChildren([fooRoute]),
       indexRoute,
     ])
-    const router = await act(() => createRouter({ routeTree }))
+    const router = createRouter({ routeTree })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByText('link to foo')
-    await act(() => fireEvent.click(linkToAbout))
+    fireEvent.click(linkToAbout)
 
     const fooElement = await screen.findByText('Nested Foo page')
     expect(fooElement).toBeInTheDocument()
@@ -151,14 +148,15 @@ describe('loaders parentMatchPromise', () => {
       nestedRoute.addChildren([fooRoute]),
       indexRoute,
     ])
-    const router = await act(() => createRouter({ routeTree }))
+    const router = createRouter({ routeTree })
 
-    await act(() => render(<RouterProvider router={router} />))
+    render(<RouterProvider router={router} />)
 
     const linkToFoo = await screen.findByRole('link', { name: 'link to foo' })
+
     expect(linkToFoo).toBeInTheDocument()
 
-    await act(() => fireEvent.click(linkToFoo))
+    fireEvent.click(linkToFoo)
 
     const fooElement = await screen.findByText('Nested Foo page')
     expect(fooElement).toBeInTheDocument()
