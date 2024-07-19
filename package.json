@@ -20,7 +20,6 @@
     "test:build": "nx affected --target=test:build --exclude=examples/**",
     "test:types": "nx affected --target=test:types --exclude=examples/**",
     "test:e2e": "nx run-many --target=test:e2e",
-    "test:e2e:replay": "nx run-many --target=test:e2e:replay",
     "build": "nx affected --target=build --exclude=examples/**",
     "build:all": "nx run-many --target=build --exclude=examples/**",
     "watch": "pnpm run build:all && nx watch --all -- pnpm run build:all",
