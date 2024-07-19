@@ -48,7 +48,12 @@ const fetchPost = async (postId: string) => {
 const rootRoute = createRootRoute({
   component: RootComponent,
   notFoundComponent: () => {
-    return <p>This is the notFoundComponent configured on root route</p>
+    return (
+      <div>
+        <p>This is the notFoundComponent configured on root route</p>
+        <Link to="/">Start Over</Link>
+      </div>
+    )
   },
 })
 
