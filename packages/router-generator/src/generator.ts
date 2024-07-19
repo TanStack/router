@@ -9,6 +9,7 @@ let latestTask = 0
 export const rootPathId = '__root'
 const routeGroupPatternRegex = /\(.+\)/g
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
+const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
 
 export type RouteNode = {
   filePath: string
@@ -80,6 +81,12 @@ async function getRouteNodes(config: Config) {
 
           if (routeFilePrefix) {
             routePath = routePath.replaceAll(routeFilePrefix, '')
+          }
+
+          if (disallowedRouteGroupConfiguration.test(dirent.name)) {
+            const errorMessage = `A route configuration for a route group was found at \`${filePath}\`. This is not supported. Did you mean to use a layout/pathless route instead?`
+            logger.error(`ERROR: ${errorMessage}`)
+            throw new Error(errorMessage)
           }
 
           const variableName = routePathToVariable(routePath)
@@ -871,7 +878,7 @@ export const inferFullPath = (routeNode: RouteNode): string => {
 export const inferPath = (routeNode: RouteNode): string => {
   return routeNode.cleanedPath === '/'
     ? routeNode.cleanedPath
-    : routeNode.cleanedPath?.replace(/\/$/, '') ?? ''
+    : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
 }
 
 function getFilePathIdAndRouteIdFromPath(pathname: string) {

@@ -2,10 +2,10 @@ import { useRef } from 'react'
 import invariant from 'tiny-invariant'
 
 import { ItemMutationFields } from '../types'
+import { useCreateItemMutation } from '../queries'
+import { itemSchema } from '../db/schema'
 import { SaveButton } from '~/components/SaveButton'
 import { CancelButton } from '~/components/CancelButton'
-import { useNewCardMutation } from '../queries'
-import { itemSchema } from '../mocks/db'
 
 export function NewCard({
   columnId,
@@ -14,13 +14,13 @@ export function NewCard({
   onComplete,
 }: {
   columnId: string
-  boardId: number
+  boardId: string
   nextOrder: number
   onComplete: () => void
 }) {
   const textAreaRef = useRef<HTMLTextAreaElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const { mutate } = useNewCardMutation()
+  const { mutate } = useCreateItemMutation()
 
   return (
     <form

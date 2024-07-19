@@ -47,8 +47,10 @@ export interface RouteMatch<
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  loadPromise: ControlledPromise<void>
-  loaderPromise: Promise<TLoaderData>
+  componentsPromise?: Promise<Array<void>>
+  loadPromise?: ControlledPromise<void>
+  beforeLoadPromise?: ControlledPromise<void>
+  loaderPromise?: ControlledPromise<void>
   loaderData?: TLoaderData
   routeContext: TRouteContext
   context: TAllContext
@@ -66,6 +68,7 @@ export interface RouteMatch<
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
   minPendingPromise?: ControlledPromise<void>
+  pendingTimeout?: ReturnType<typeof setTimeout>
 }
 
 export type MakeRouteMatch<
@@ -132,7 +135,7 @@ function MatchesInner() {
   })
 
   const resetKey = useRouterState({
-    select: (s) => s.resolvedLocation.state.key!,
+    select: (s) => s.loadedAt,
   })
 
   return (
@@ -182,6 +185,10 @@ export type UseMatchRouteOptions<
 
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
+
+  useRouterState({
+    select: (s) => [s.location.href, s.resolvedLocation.href, s.status],
+  })
 
   return React.useCallback(
     <

@@ -1,9 +1,9 @@
 import * as React from 'react'
 import {
-  createFileRoute,
   Link,
   MatchRoute,
   Outlet,
+  createFileRoute,
   useNavigate,
 } from '@tanstack/react-router'
 import { z } from 'zod'
@@ -58,7 +58,7 @@ function UsersComponent() {
         return {
           ...old,
           usersView: {
-            ...(old?.usersView ?? {}),
+            ...(old.usersView ?? {}),
             sortBy,
           },
         }
@@ -72,7 +72,7 @@ function UsersComponent() {
         return {
           ...old,
           usersView: {
-            ...old?.usersView,
+            ...old.usersView,
             filterBy: filterDraft || undefined,
           },
         }
@@ -84,7 +84,7 @@ function UsersComponent() {
   return (
     <div className="flex-1 flex">
       <div className="divide-y">
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Sort By:</div>
           <select
             value={sortBy}
@@ -96,7 +96,7 @@ function UsersComponent() {
             })}
           </select>
         </div>
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Filter By:</div>
           <input
             value={filterDraft}
@@ -105,7 +105,7 @@ function UsersComponent() {
             className="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {users?.map((user) => {
+        {users.map((user) => {
           return (
             <div key={user.id}>
               <Link
@@ -135,7 +135,7 @@ function UsersComponent() {
           )
         })}
       </div>
-      <div className="flex-initial border-l border-gray-200">
+      <div className="flex-initial border-l">
         <Outlet />
       </div>
     </div>

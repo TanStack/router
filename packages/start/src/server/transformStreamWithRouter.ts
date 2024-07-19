@@ -2,7 +2,9 @@ import { Transform } from 'node:stream'
 import type { AnyRouter } from '@tanstack/react-router'
 
 export function transformStreamWithRouter(router: AnyRouter) {
-  const callbacks = transformHtmlCallbacks(() => router.injectedHtml.join(''))
+  const callbacks = transformHtmlCallbacks(() =>
+    router.injectedHtml.map((d) => d()).join(''),
+  )
   return new Transform({
     transform(chunk, _encoding, callback) {
       callbacks
@@ -20,7 +22,9 @@ export function transformStreamWithRouter(router: AnyRouter) {
 }
 
 export function transformReadableStreamWithRouter(router: AnyRouter) {
-  const callbacks = transformHtmlCallbacks(() => router.injectedHtml.join(''))
+  const callbacks = transformHtmlCallbacks(() =>
+    router.injectedHtml.map((d) => d()).join(''),
+  )
   return new TransformStream<string>({
     transform(chunk, controller) {
       return callbacks.transform(chunk, (chunkToPush) => {

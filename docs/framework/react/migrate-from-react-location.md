@@ -17,7 +17,8 @@ React Location and TanStack Router share much of same design decisions concepts,
 
 In this guide we'll go over the process of migrating the [React Location Basic example](https://github.com/TanStack/router/tree/react-location/examples/basic) over to TanStack Router using file-based routing, with the end goal of having the same functionality as the original example (styling and other non-routing related code will be omitted).
 
-> **Note:** To use a code-based approach for defining your routes, you can read the [code-based Routing](../guide/code-based-routing) guide.
+> [!TIP]
+> To use a code-based approach for defining your routes, you can read the [code-based Routing](../guide/code-based-routing) guide.
 
 ### Step 1: Swap over to TanStack Router's dependencies
 

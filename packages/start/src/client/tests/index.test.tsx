@@ -62,7 +62,7 @@ describe('ssr scripts', async () => {
 
     expect(container.innerHTML).toEqual(
       `<script id="__TSR_DEHYDRATED__">
-          window.__TSR_DEHYDRATED__ = {
+          __TSR_DEHYDRATED__ = {
             data: '{}'
           }
         </script><script src="script.js"></script><script src="script2.js"></script><script src="script3.js"></script>`,

@@ -3,7 +3,9 @@ id: FileRouteClass
 title: FileRoute class
 ---
 
-> 🚧 The `FileRoute` class is deprecated and will be removed in the next major version of TanStack Router. Please use the [`createFileRoute`](../createFileRouteFunction) function instead. The constructor and methods associated with this class will be implemented on its functional counterpart in the next major release.
+> [!CAUTION]
+> This class has been deprecated and will be removed in the next major version of TanStack Router.
+> Please use the [`createFileRoute`](../createFileRouteFunction) function instead.
 
 The `FileRoute` class is a factory that can be used to create a file-based route instance. This route instance can then be used to automatically generate a route tree with the `tsr generate` and `tsr watch` commands.
 

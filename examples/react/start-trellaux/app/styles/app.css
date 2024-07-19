@@ -11,4 +11,8 @@
   .using-mouse * {
     outline: none !important;
   }
+
+  #root {
+    @apply min-h-screen;
+  }
 }

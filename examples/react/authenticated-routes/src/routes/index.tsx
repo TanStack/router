@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
   component: HomeComponent,
@@ -9,7 +9,7 @@ function HomeComponent() {
   return (
     <div className="p-2 grid gap-2">
       <h1 className="text-xl">Welcome!</h1>
-      <p className="py-4 px-2 italic bg-slate-100">
+      <p className="py-4 px-2 italic bg-slate-100 dark:bg-slate-800">
         <strong className="text-red-500">IMPORTANT!!!</strong> This is just an
         example of how to use authenticated routes with TanStack Router.
         <br />
@@ -26,17 +26,17 @@ function HomeComponent() {
       <p>You can try going through these options.</p>
       <ol className="list-disc list-inside px-2">
         <li>
-          <Link to="/login" className="text-blue-500">
+          <Link to="/login" className="text-blue-500 hover:opacity-75">
             Go to the public login page.
           </Link>
         </li>
         <li>
-          <Link to="/dashboard" className="text-blue-500">
+          <Link to="/dashboard" className="text-blue-500 hover:opacity-75">
             Go to the auth-only dashboard page.
           </Link>
         </li>
         <li>
-          <Link to="/invoices" className="text-blue-500">
+          <Link to="/invoices" className="text-blue-500 hover:opacity-75">
             Go to the auth-only invoices page.
           </Link>
         </li>

@@ -12,11 +12,17 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexImport } from './routes/index'
+import { Route as BoardsBoardIdImport } from './routes/boards.$boardId'
 
 // Create/Update Routes
 
 const IndexRoute = IndexImport.update({
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const BoardsBoardIdRoute = BoardsBoardIdImport.update({
+  path: '/boards/$boardId',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -31,12 +37,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/boards/$boardId': {
+      id: '/boards/$boardId'
+      path: '/boards/$boardId'
+      fullPath: '/boards/$boardId'
+      preLoaderRoute: typeof BoardsBoardIdImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({ IndexRoute })
+export const routeTree = rootRoute.addChildren({
+  IndexRoute,
+  BoardsBoardIdRoute,
+})
 
 /* prettier-ignore-end */
 
@@ -46,11 +62,15 @@ export const routeTree = rootRoute.addChildren({ IndexRoute })
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/"
+        "/",
+        "/boards/$boardId"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/boards/$boardId": {
+      "filePath": "boards.$boardId.tsx"
     }
   }
 }

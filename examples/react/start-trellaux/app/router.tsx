@@ -1,16 +1,19 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import {
+  MutationCache,
+  QueryClient,
+  notifyManager,
+} from '@tanstack/react-query'
+import { routerWithQueryClient } from '@tanstack/react-router-with-query'
+import toast from 'react-hot-toast'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
-import {
-  QueryClient,
-  MutationCache,
-  notifyManager,
-  QueryClientProvider,
-} from '@tanstack/react-query'
 
 export function createRouter() {
-  notifyManager.setScheduler(window.requestAnimationFrame)
+  if (typeof document !== 'undefined') {
+    notifyManager.setScheduler(window.requestAnimationFrame)
+  }
 
   const queryClient: QueryClient = new QueryClient({
     defaultOptions: {
@@ -19,6 +22,9 @@ export function createRouter() {
       },
     },
     mutationCache: new MutationCache({
+      onError: (error) => {
+        toast(error.message, { className: 'bg-red-500 text-white' })
+      },
       onSettled: () => {
         if (queryClient.isMutating() === 1) {
           return queryClient.invalidateQueries()
@@ -27,22 +33,15 @@ export function createRouter() {
     }),
   })
 
-  const router = createTanStackRouter({
-    routeTree,
-    defaultPreload: 'intent',
-    defaultErrorComponent: DefaultCatchBoundary,
-    defaultNotFoundComponent: () => <NotFound />,
-    Wrap: ({ children }) => {
-      return (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      )
-    },
-    context: {
-      queryClient,
-    },
-  })
+  const router = routerWithQueryClient(
+    createTanStackRouter({
+      routeTree,
+      defaultPreload: 'intent',
+      defaultErrorComponent: DefaultCatchBoundary,
+      defaultNotFoundComponent: () => <NotFound />,
+    }),
+    queryClient,
+  )
 
   return router
 }

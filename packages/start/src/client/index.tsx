@@ -6,6 +6,7 @@ export {
   type FetcherOptionsBase,
   type FetcherOptions,
   type FetchFn,
+  type FetchFnCtx,
   type CompiledFetcherFnOptions,
   type CompiledFetcherFn,
   type Fetcher,

@@ -219,8 +219,8 @@ export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const aKeys = Object.keys(a)
-    const bKeys = Object.keys(b)
+    const aKeys = Object.keys(a).filter((key) => a[key] !== undefined)
+    const bKeys = Object.keys(b).filter((key) => b[key] !== undefined)
 
     if (!partial && aKeys.length !== bKeys.length) {
       return false
@@ -232,6 +232,9 @@ export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) {
+      return false
+    }
     return !a.some((item, index) => !deepEqual(item, b[index], partial))
   }
 

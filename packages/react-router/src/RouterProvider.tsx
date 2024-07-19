@@ -104,17 +104,6 @@ export function RouterProvider<
   )
 }
 
-export function getRouteMatch<TRouteTree extends AnyRoute>(
-  state: RouterState<TRouteTree>,
-  id: string,
-): undefined | MakeRouteMatch<TRouteTree> {
-  return [
-    ...state.cachedMatches,
-    ...(state.pendingMatches ?? []),
-    ...state.matches,
-  ].find((d) => d.id === id)
-}
-
 export type RouterProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,

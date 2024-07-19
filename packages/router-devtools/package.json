@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-devtools",
-  "version": "1.43.6",
-  "description": "",
+  "version": "1.45.6",
+  "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -9,10 +9,32 @@
     "url": "https://github.com/TanStack/router.git",
     "directory": "packages/router-devtools"
   },
-  "homepage": "https://tanstack.com/router/",
+  "homepage": "https://tanstack.com/router",
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint ./src",
+    "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
+    "test:types:ts50": "node ../../node_modules/typescript50/lib/tsc.js",
+    "test:types:ts51": "node ../../node_modules/typescript51/lib/tsc.js",
+    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js",
+    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
+    "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
+    "test:types:ts55": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
   },
   "type": "module",
   "types": "./dist/esm/index.d.ts",
@@ -32,36 +54,19 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src",
-    "test:types": "tsc --noEmit",
-    "test:build": "publint --strict",
-    "build": "vite build"
-  },
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
-  ],
-  "engines": {
-    "node": ">=12"
-  },
   "files": [
     "dist",
     "src"
   ],
+  "engines": {
+    "node": ">=12"
+  },
   "dependencies": {
-    "clsx": "^2.1.0",
-    "date-fns": "^2.29.1",
+    "clsx": "^2.1.1",
     "goober": "^2.1.14"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^4.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
