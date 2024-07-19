@@ -1019,9 +1019,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
         version: 4.3.1(vite@5.3.3(@types/node@20.14.9)(terser@5.31.1))
-      dotenv:
-        specifier: ^16.4.5
-        version: 16.4.5
       isbot:
         specifier: ^5.1.12
         version: 5.1.12
@@ -1156,9 +1153,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
         version: 4.3.1(vite@5.3.3(@types/node@20.14.9)(terser@5.31.1))
-      dotenv:
-        specifier: ^16.4.5
-        version: 16.4.5
       isbot:
         specifier: ^5.1.12
         version: 5.1.12
