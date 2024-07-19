@@ -37,6 +37,11 @@
       "inputs": ["default", "^production"],
       "outputs": ["{projectRoot}/coverage"]
     },
+    "test:e2e": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
+    },
     "test:types": {
       "cache": true,
       "dependsOn": ["^build"],
