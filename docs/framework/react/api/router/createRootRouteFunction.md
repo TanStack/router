@@ -23,12 +23,12 @@ Omit<
 >
 ```
 
-- [`RouteOptions`](../RouteOptionsType)
+- [`RouteOptions`](./RouteOptionsType.md)
 - Optional
 
 ## createRootRoute returns
 
-A new [`Route`](../RouteType) instance.
+A new [`Route`](./RouteType.md) instance.
 
 ## Examples
 

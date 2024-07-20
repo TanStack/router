@@ -11,7 +11,7 @@ The `Await` component accepts the following props:
 
 ### `props.promise` prop
 
-- Type: [`DeferredPromise<T>`](../DeferredPromiseType)
+- Type: [`DeferredPromise<T>`](./DeferredPromiseType.md)
 - Required
 - The deferred promise to await.
 
