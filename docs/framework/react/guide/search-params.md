@@ -178,7 +178,7 @@ Once your search params have been validated and typed, you're finally ready to s
 
 ### Using Search Params in Loaders
 
-Please read the [Search Params in Loaders](../data-loading#using-loaderdeps-to-access-search-params) section for more information about how to read search params in loaders with the `loaderDeps` option.
+Please read the [Search Params in Loaders](./data-loading.md#using-loaderdeps-to-access-search-params) section for more information about how to read search params in loaders with the `loaderDeps` option.
 
 ### Search Params are inherited from Parent Routes
 
@@ -230,7 +230,7 @@ const ProductList = () => {
 ```
 
 > [!TIP]
-> If your component is code-split, you can use the [getRouteApi function](../code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
+> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
 
 ### Search Params outside of Route Components
 

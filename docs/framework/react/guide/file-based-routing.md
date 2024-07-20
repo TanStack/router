@@ -237,11 +237,11 @@ The following options are available for configuration via the `tsr.config.json` 
 - **`experimental.enableCodeSplitting`** ⚠️
   - (Optional, **Defaults to `false`**)
   - If set to `true`, all non-critical route configuration items will be automatically code-split.
-  - See the [using automatic code-splitting](../code-splitting#using-automatic-code-splitting) guide.
+  - See the [using automatic code-splitting](./code-splitting.md#using-automatic-code-splitting) guide.
 
 ## File Naming Conventions
 
-File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](../route-trees) guide.
+File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](./route-trees.md) guide.
 
 > **💡 Remember:** The file-naming conventions for your project could be affected by what [options](#options) are configured in your `tsr.config.json`. By default, the `routeFileIgnorePrefix` option is set to `-`, as such files and directories starting with `-` will not be considered for routing.
 
