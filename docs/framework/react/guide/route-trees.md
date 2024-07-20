@@ -55,13 +55,13 @@ Consider the following route tree:
 
 Route trees are represented using a number of different ways:
 
-- [Flat Routes](../route-trees#flat-routes)
-- [Directory Routes](../route-trees#directory-routes)
-- [Mixed Flat and Directory Routes](../route-trees#mixed-flat-and-directory-routes)
-- [Code-Based Routes](../route-trees#code-based-routes)
-- [Case-Sensitivity](../route-trees#case-sensitivity)
+- [Flat Routes](./route-trees.md#flat-routes)
+- [Directory Routes](./route-trees.md#directory-routes)
+- [Mixed Flat and Directory Routes](./route-trees.md#mixed-flat-and-directory-routes)
+- [Code-Based Routes](./route-trees.md#code-based-routes)
+- [Case-Sensitivity](./route-trees.md#case-sensitivity)
 
-The route tree examples below showcase the [Routing Concepts](../routing-concepts) that are available in TanStack Router.
+The route tree examples below showcase the [Routing Concepts](./routing-concepts.md) that are available in TanStack Router.
 
 ## Flat Routes
 
@@ -117,7 +117,7 @@ Both flat and directory routes can be mixed together to create a route tree that
 
 ## Code-Based Routes
 
-Code-based routes are routes that are configured using the `RootRoute` and `Route` classes directly. You may want to do this simply for taste, or you may find a use-case where file-based routing doesn't work for you (if you do, please let us know!). For code-based routing documentation, please see the [Code-Based Routing](../code-based-routing) guide.
+Code-based routes are routes that are configured using the `RootRoute` and `Route` classes directly. You may want to do this simply for taste, or you may find a use-case where file-based routing doesn't work for you (if you do, please let us know!). For code-based routing documentation, please see the [Code-Based Routing](./code-based-routing.md) guide.
 
 ## Case-Sensitivity
 
