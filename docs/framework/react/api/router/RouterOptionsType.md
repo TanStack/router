@@ -142,7 +142,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 ### `context` property
 
 - Type: `any`
-- Optional or required if the root route was created with [`createRootRouteWithContext()`](../createRootRouteWithContextFunction).
+- Optional or required if the root route was created with [`createRootRouteWithContext()`](./createRootRouteWithContextFunction.md).
 - The root context that will be provided to all routes in the route tree. This can be used to provide a context to all routes in the tree without having to provide it to each route individually.
 
 ### `dehydrate` method
@@ -222,7 +222,7 @@ const router = createRouter({
 
 ### `errorSerializer` property
 
-- Type: [`RouterErrorSerializer`](../RouterErrorSerializerType)
+- Type: [`RouterErrorSerializer`]
 - Optional
 - The serializer object that will be used to determine how errors are serialized and deserialized between the server and the client.
 
@@ -241,7 +241,7 @@ const router = createRouter({
 - Type: `RouterTransformer`
 - Optional
 - The transformer that will be used when sending data between the server and the client during SSR.
-- Defaults to a very lightweight transformer that supports a few basic types. See the [SSR guide](../../guides/ssr) for more information.
+- Defaults to a very lightweight transformer that supports a few basic types. See the [SSR guide](../../guide/ssr.md) for more information.
 
 #### `transformer.stringify` method
 

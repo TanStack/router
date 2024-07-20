@@ -112,7 +112,7 @@ Resolved loader data fetched by routes is automatically dehydrated and rehydrate
 
 ⚠️ If you are using deferred data streaming, you will also need to ensure that you have implemented the [SSR Streaming & Stream Transform](#streaming-ssr) pattern near the end of this guide.
 
-For more information on how to utilize data loading and data streaming, see the [Data Loading](../data-loading) and [Data Streaming](../data-streaming) guides.
+For more information on how to utilize data loading and data streaming, see the [Data Loading](./data-loading.md) and [Data Streaming](../data-streaming) guides.
 
 ### Rendering the Application on the Server
 
@@ -216,7 +216,7 @@ If you are using more complex data types like `Map`, `Set`, `BigInt`, etc, you m
 
 The Data Transformer API allows the usage of a custom serializer that can allow us to transparently use these data types when communicating across the network.
 
-The following example shows usage with [SuperJSON](https://github.com/blitz-js/superjson), however, anything that implements [`Router Transformer`](../../api/router/RouterOptionsType#transformer-property) can be used.
+The following example shows usage with [SuperJSON](https://github.com/blitz-js/superjson), however, anything that implements [`Router Transformer`](../api/router/RouterOptionsType.md#transformer-property) can be used.
 
 ```tsx
 import { SuperJSON } from 'superjson'

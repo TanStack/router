@@ -3,17 +3,17 @@ id: createRouterFunction
 title: createRouter function
 ---
 
-The `createRouter` function accepts a [`RouterOptions`](../RouterOptionsType) object and creates a new [`Router`](../RouterClass) instance.
+The `createRouter` function accepts a [`RouterOptions`](./RouterOptionsType.md) object and creates a new [`Router`](./RouterClass.md) instance.
 
 ## createRouter options
 
-- Type: [`RouterOptions`](../RouterOptionsType)
+- Type: [`RouterOptions`](./RouterOptionsType.md)
 - Required
 - The options that will be used to configure the router instance.
 
 ## createRouter returns
 
-- An instance of the [`Router`](../RouterType).
+- An instance of the [`Router`](./RouterType.md).
 
 ## Examples
 

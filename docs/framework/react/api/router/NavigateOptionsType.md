@@ -13,4 +13,4 @@ type NavigateOptions = ToOptions & {
 }
 ```
 
-- [`ToOptions`](../ToOptionsType)
+- [`ToOptions`](./ToOptionsType.md)
