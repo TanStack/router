@@ -2,15 +2,15 @@ import path from 'node:path'
 import chokidar from 'chokidar'
 import { generator, getConfig } from '@tanstack/router-generator'
 
-export async function watch() {
+export function watch() {
   const configWatcher = chokidar.watch(
     path.resolve(process.cwd(), 'tsr.config.json'),
   )
 
   let watcher = new chokidar.FSWatcher({})
 
-  const generatorWatcher = async () => {
-    const config = await getConfig()
+  const generatorWatcher = () => {
+    const config = getConfig()
 
     watcher.close()
 
