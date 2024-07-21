@@ -88,12 +88,12 @@ function setTsrDefaults(
   }
 }
 
-export async function defineConfig(
+export function defineConfig(
   inlineConfig: TanStackStartDefineConfigOptions = {},
 ) {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
-  const tsrConfig = await getConfig(setTsrDefaults(opts.tsr))
+  const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
   const clientBase = opts.routers?.client?.base || '/_build'
 
