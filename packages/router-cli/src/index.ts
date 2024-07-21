@@ -11,13 +11,13 @@ export function main() {
     .scriptName('tsr')
     .usage('$0 <cmd> [args]')
     .command('generate', 'Generate the routes for a project', async () => {
-      const config = await getConfig()
+      const config = getConfig()
       await generate(config)
     })
     .command(
       'watch',
       'Continuously watch and generate the routes for a project',
-      async () => {
+      () => {
         watch()
       },
     )
