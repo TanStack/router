@@ -62,7 +62,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   let ROOT: string = process.cwd()
   let userConfig = options as Config
 
-  const handleSplittingFile = async (code: string, id: string) => {
+  const handleSplittingFile = (code: string, id: string) => {
     if (debug) console.info('Splitting route: ', id)
 
     const compiledVirtualRoute = compileCodeSplitVirtualRoute({
@@ -82,7 +82,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     return compiledVirtualRoute
   }
 
-  const handleCompilingFile = async (code: string, id: string) => {
+  const handleCompilingFile = (code: string, id: string) => {
     if (debug) console.info('Handling createRoute: ', id)
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
@@ -169,13 +169,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     },
 
     vite: {
-      async configResolved(config) {
+      configResolved(config) {
         ROOT = config.root
-        userConfig = await getConfig(options, ROOT)
+        userConfig = getConfig(options, ROOT)
       },
     },
 
-    async rspack(compiler) {
+    rspack(compiler) {
       ROOT = process.cwd()
 
       compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
@@ -192,10 +192,10 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         )
       })
 
-      userConfig = await getConfig(options, ROOT)
+      userConfig = getConfig(options, ROOT)
     },
 
-    async webpack(compiler) {
+    webpack(compiler) {
       ROOT = process.cwd()
 
       compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
@@ -212,7 +212,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         )
       })
 
-      userConfig = await getConfig(options, ROOT)
+      userConfig = getConfig(options, ROOT)
 
       if (
         userConfig.experimental?.enableCodeSplitting &&
