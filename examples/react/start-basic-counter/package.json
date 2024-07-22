@@ -13,7 +13,7 @@
   "dependencies": {
     "@tanstack/react-router": "^1.45.7",
     "@tanstack/start": "^1.45.7",
-    "@typescript-eslint/parser": "^7.16.0",
+    "@typescript-eslint/parser": "^7.16.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vinxi": "0.3.12"
@@ -26,6 +26,6 @@
     "eslint-config-react-app": "^7.0.1",
     "prettier": "^3.3.3",
     "typescript": "^5.5.3",
-    "vite": "^5.3.3"
+    "vite": "^5.3.4"
   }
 }

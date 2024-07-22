@@ -92,14 +92,14 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@babel/core": "^7.24.8",
-    "@babel/generator": "^7.24.8",
+    "@babel/core": "^7.24.9",
+    "@babel/generator": "^7.24.10",
     "@babel/parser": "^7.24.8",
     "@babel/plugin-syntax-jsx": "^7.24.7",
     "@babel/plugin-syntax-typescript": "^7.24.7",
     "@babel/template": "^7.24.7",
     "@babel/traverse": "^7.24.8",
-    "@babel/types": "^7.24.8",
+    "@babel/types": "^7.24.9",
     "@tanstack/router-generator": "workspace:^",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.6.8",
@@ -111,7 +111,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "vite": "^5.3.3"
+    "vite": "^5.3.4"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=0.7.9",
