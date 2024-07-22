@@ -138,7 +138,7 @@ export function defineConfig(
     server: {
       ...deploymentOptions,
       static: isStaticDeployment,
-      preset: 'node',
+      preset: deploymentPreset,
       experimental: {
         asyncContext: true,
       },
