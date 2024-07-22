@@ -20,6 +20,10 @@ import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
+const deploymentSchema = z.object({
+  preset: z.enum(['vercel', 'netlify']).optional(),
+})
+
 const viteSchema = z.object({
   plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
 })
@@ -67,6 +71,7 @@ const inlineConfigSchema = z.object({
   vite: viteSchema.optional(),
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
+  deployment: deploymentSchema.optional(),
 })
 
 export type TanStackStartDefineConfigOptions = z.infer<
@@ -91,19 +96,21 @@ function setTsrDefaults(
 export function defineConfig(
   inlineConfig: TanStackStartDefineConfigOptions = {},
 ) {
-  const opts = inlineConfigSchema.parse(inlineConfig)
+  const options = inlineConfigSchema.parse(inlineConfig)
+  const deploymentOptions = deploymentSchema.parse(options.deployment || {})
 
-  const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
+  const tsrConfig = getConfig(setTsrDefaults(options.tsr))
 
-  const clientBase = opts.routers?.client?.base || '/_build'
+  const clientBase = options.routers?.client?.base || '/_build'
 
-  const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
-  const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
-  const serverBase = opts.routers?.server?.base || '/_server'
+  const clientEntry = options.routers?.client?.entry || './app/client.tsx'
+  const ssrEntry = options.routers?.ssr?.entry || './app/ssr.tsx'
+  const serverBase = options.routers?.server?.base || '/_server'
 
   return createApp({
     server: {
-      preset: 'vercel',
+      ...deploymentOptions,
+      preset: deploymentOptions.preset || 'vercel',
       experimental: {
         asyncContext: true,
       },
@@ -125,15 +132,15 @@ export function defineConfig(
           sourcemap: true,
         },
         plugins: () => [
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.client?.vite?.plugins?.() || []),
+          ...(options.vite?.plugins?.() || []),
+          ...(options.routers?.client?.vite?.plugins?.() || []),
           serverFunctions.client({
             runtime: '@tanstack/start/client-runtime',
           }),
           reactRefresh({
-            babel: opts.react?.babel,
-            exclude: opts.react?.exclude,
-            include: opts.react?.include,
+            babel: options.react?.babel,
+            exclude: options.react?.exclude,
+            include: options.react?.include,
           }),
           // TODO: RSCS - enable this
           // serverComponents.client(),
@@ -149,8 +156,8 @@ export function defineConfig(
             tsrConfig,
             clientBase,
           }),
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.ssr?.vite?.plugins?.() || []),
+          ...(options.vite?.plugins?.() || []),
+          ...(options.routers?.ssr?.vite?.plugins?.() || []),
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
@@ -193,8 +200,8 @@ export function defineConfig(
           //   runtime: '@vinxi/react-server-dom/runtime',
           //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
           // }),
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.server?.vite?.plugins?.() || []),
+          ...(options.vite?.plugins?.() || []),
+          ...(options.routers?.server?.vite?.plugins?.() || []),
         ],
       }),
     ],
