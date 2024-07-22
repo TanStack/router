@@ -27,7 +27,7 @@ const deploymentSchema = z.object({
       'netlify', // working
       'cloudflare-pages', // not working
       'static', // partially working
-      'node', // working
+      'node', // partially working
     ])
     .optional(),
   static: z.boolean().optional(),
