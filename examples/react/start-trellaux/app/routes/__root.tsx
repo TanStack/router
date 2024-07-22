@@ -18,6 +18,9 @@ import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 import { Loader } from '~/components/Loader'
+import { ClerkProvider, useAuth } from '@clerk/tanstack-start'
+import { ConvexProviderWithClerk } from 'convex/react-clerk'
+import { useConvexClient } from '~/router'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -70,10 +73,15 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootComponent() {
+  const client = useConvexClient()
   return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
+    <ClerkProvider>
+      <ConvexProviderWithClerk client={client} useAuth={useAuth}>
+        <RootDocument>
+          <Outlet />
+        </RootDocument>
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
   )
 }
 
