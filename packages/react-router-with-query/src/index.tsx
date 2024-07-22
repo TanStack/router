@@ -13,13 +13,14 @@ import type {
 } from '@tanstack/react-query'
 
 export function routerWithQueryClient<TRouter extends AnyRouter>(
-  router: TRouter extends AnyRouterWithContext<infer Ctx>
+  _router: TRouter extends AnyRouterWithContext<infer Ctx>
     ? Ctx extends { queryClient: QueryClient }
       ? TRouter
-      : never
-    : never,
+      : 'Context type mismatch. Expected queryClient to be in context type.'
+    : 'Context type mismatch. Expected queryClient to be in context type.',
   queryClient: QueryClient,
 ): TRouter {
+  const router = _router as unknown as AnyRouter
   const seenQueryKeys = new Set<string>()
   const streamedQueryKeys = new Set<string>()
 
@@ -126,5 +127,5 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     },
   }
 
-  return router
+  return router as TRouter
 }
