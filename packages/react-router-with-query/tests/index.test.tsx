@@ -59,5 +59,6 @@ test('types', () => {
     })
 
     const routerWithQuery = routerWithQueryClient(router, queryClient)
+    expectTypeOf(routerWithQuery).toMatchTypeOf(router)
   }
 })
