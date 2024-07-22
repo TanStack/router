@@ -54,13 +54,10 @@ test('types', () => {
 
     const queryClient = new QueryClient()
     const router = createRouter({
+      context: { queryClient, extra: 'extra' },
       routeTree: root,
     })
 
-    const routerWithQuery = routerWithQueryClient(
-      // @ts-expect-error - QueryClient must be in context type
-      router,
-      queryClient,
-    )
+    const routerWithQuery = routerWithQueryClient(router, queryClient)
   }
 })
