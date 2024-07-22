@@ -30,6 +30,19 @@ const deploymentSchema = z.object({
     ])
     .optional(),
   static: z.boolean().optional(),
+  prerender: z
+    .object({
+      routes: z.array(z.string()),
+      ignore: z
+        .array(
+          z.custom<
+            string | RegExp | ((path: string) => undefined | null | boolean)
+          >(),
+        )
+        .optional(),
+      crawlLinks: z.boolean().optional(),
+    })
+    .optional(),
 })
 
 const viteSchema = z.object({
