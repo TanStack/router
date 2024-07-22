@@ -27,6 +27,7 @@ const deploymentSchema = z.object({
       'netlify', // working
       'cloudflare-pages', // not working
       'static', // partially working
+      'node', // working
     ])
     .optional(),
   static: z.boolean().optional(),
@@ -137,7 +138,7 @@ export function defineConfig(
     server: {
       ...deploymentOptions,
       static: isStaticDeployment,
-      preset: deploymentPreset,
+      preset: 'node',
       experimental: {
         asyncContext: true,
       },
