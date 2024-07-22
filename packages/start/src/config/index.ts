@@ -21,7 +21,7 @@ import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
 const deploymentSchema = z.object({
-  preset: z.enum(['vercel', 'netlify']).optional(),
+  preset: z.enum(['vercel', 'netlify', 'cloudflare-pages']).optional(),
 })
 
 const viteSchema = z.object({
