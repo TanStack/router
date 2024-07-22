@@ -210,7 +210,7 @@ export const Route = createFileRoute('/posts')({
 
 ```tsx
 // src/routes/posts.lazy.tsx
-import { createLaztFileRoute } from '@tanstack/react-router'
+import { createLazyFileRoute } from '@tanstack/react-router'
 
 export const Route = createLazyFileRoute('/posts')({
   component: Posts,
