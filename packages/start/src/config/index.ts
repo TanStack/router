@@ -21,7 +21,15 @@ import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
 const deploymentSchema = z.object({
-  preset: z.enum(['vercel', 'netlify', 'cloudflare-pages']).optional(),
+  preset: z
+    .enum([
+      'vercel', // working
+      'netlify', // working
+      'cloudflare-pages', // not working
+      'static', // partially working
+    ])
+    .optional(),
+  static: z.boolean().optional(),
 })
 
 const viteSchema = z.object({
@@ -97,20 +105,26 @@ export function defineConfig(
   inlineConfig: TanStackStartDefineConfigOptions = {},
 ) {
   const options = inlineConfigSchema.parse(inlineConfig)
-  const deploymentOptions = deploymentSchema.parse(options.deployment || {})
+
+  const { preset: configDeploymentPreset, ...deploymentOptions } =
+    deploymentSchema.parse(options.deployment || {})
+  const deploymentPreset = configDeploymentPreset || 'vercel'
+  const isStaticDeployment =
+    deploymentOptions.static ?? deploymentPreset === 'static'
 
   const tsrConfig = getConfig(setTsrDefaults(options.tsr))
 
   const clientBase = options.routers?.client?.base || '/_build'
-
   const clientEntry = options.routers?.client?.entry || './app/client.tsx'
-  const ssrEntry = options.routers?.ssr?.entry || './app/ssr.tsx'
+
   const serverBase = options.routers?.server?.base || '/_server'
+  const ssrEntry = options.routers?.ssr?.entry || './app/ssr.tsx'
 
   return createApp({
     server: {
       ...deploymentOptions,
-      preset: deploymentOptions.preset || 'vercel',
+      static: isStaticDeployment,
+      preset: deploymentPreset,
       experimental: {
         asyncContext: true,
       },
