@@ -20,6 +20,12 @@ import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
+/**
+ * Not all the deployment presets are fully functional.
+ * @see https://github.com/TanStack/router/pull/2002
+ */
+const problematicDeploymentPresets = ['cloudflare-pages', 'static', 'node']
+
 const deploymentSchema = z.object({
   preset: z
     .enum([
@@ -118,21 +124,27 @@ function setTsrDefaults(
 export function defineConfig(
   inlineConfig: TanStackStartDefineConfigOptions = {},
 ) {
-  const options = inlineConfigSchema.parse(inlineConfig)
+  const opts = inlineConfigSchema.parse(inlineConfig)
 
   const { preset: configDeploymentPreset, ...deploymentOptions } =
-    deploymentSchema.parse(options.deployment || {})
+    deploymentSchema.parse(opts.deployment || {})
   const deploymentPreset = configDeploymentPreset || 'vercel'
   const isStaticDeployment =
     deploymentOptions.static ?? deploymentPreset === 'static'
 
-  const tsrConfig = getConfig(setTsrDefaults(options.tsr))
+  if (problematicDeploymentPresets.includes(deploymentPreset)) {
+    console.warn(
+      `The deployment preset '${deploymentPreset}' is not fully supported yet and may not work as expected.`,
+    )
+  }
 
-  const clientBase = options.routers?.client?.base || '/_build'
-  const clientEntry = options.routers?.client?.entry || './app/client.tsx'
+  const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
-  const serverBase = options.routers?.server?.base || '/_server'
-  const ssrEntry = options.routers?.ssr?.entry || './app/ssr.tsx'
+  const clientBase = opts.routers?.client?.base || '/_build'
+  const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
+
+  const serverBase = opts.routers?.server?.base || '/_server'
+  const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
 
   return createApp({
     server: {
@@ -160,15 +172,15 @@ export function defineConfig(
           sourcemap: true,
         },
         plugins: () => [
-          ...(options.vite?.plugins?.() || []),
-          ...(options.routers?.client?.vite?.plugins?.() || []),
+          ...(opts.vite?.plugins?.() || []),
+          ...(opts.routers?.client?.vite?.plugins?.() || []),
           serverFunctions.client({
             runtime: '@tanstack/start/client-runtime',
           }),
           reactRefresh({
-            babel: options.react?.babel,
-            exclude: options.react?.exclude,
-            include: options.react?.include,
+            babel: opts.react?.babel,
+            exclude: opts.react?.exclude,
+            include: opts.react?.include,
           }),
           // TODO: RSCS - enable this
           // serverComponents.client(),
@@ -184,8 +196,8 @@ export function defineConfig(
             tsrConfig,
             clientBase,
           }),
-          ...(options.vite?.plugins?.() || []),
-          ...(options.routers?.ssr?.vite?.plugins?.() || []),
+          ...(opts.vite?.plugins?.() || []),
+          ...(opts.routers?.ssr?.vite?.plugins?.() || []),
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
@@ -228,8 +240,8 @@ export function defineConfig(
           //   runtime: '@vinxi/react-server-dom/runtime',
           //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
           // }),
-          ...(options.vite?.plugins?.() || []),
-          ...(options.routers?.server?.vite?.plugins?.() || []),
+          ...(opts.vite?.plugins?.() || []),
+          ...(opts.routers?.server?.vite?.plugins?.() || []),
         ],
       }),
     ],
