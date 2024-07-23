@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.1.7
       - name: Setup Tools
-        uses: tanstack/config/.github/setup@88963eede52047f144e25e94078f5ac3c312500c
+        uses: tanstack/config/.github/setup@main
       - name: Fix formatting
         run: pnpm prettier:write
       - name: Apply fixes
