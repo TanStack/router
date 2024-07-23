@@ -5,19 +5,20 @@
     "schedule:weekly",
     ":approveMajorUpdates",
     ":disablePeerDependencies",
+    ":semanticCommits",
     ":semanticCommitTypeAll(chore)"
   ],
   "ignorePresets": [":ignoreModulesAndTests"],
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
   "postUpdateOptions": ["pnpmDedupe"],
-  "semanticCommits": "enabled",
   "packageRules": [
     {
       "groupName": "all non-major dependencies",
       "groupSlug": "all-minor-patch",
       "matchCurrentVersion": ">=1.0.0",
-      "matchUpdateTypes": ["minor", "patch"]
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
     }
   ],
   "ignoreDeps": [
