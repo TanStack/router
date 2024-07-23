@@ -22,10 +22,6 @@
     ]
   },
   "targetDefaults": {
-    "test:format": {
-      "cache": true,
-      "inputs": ["{workspaceRoot}/**/*"]
-    },
     "test:eslint": {
       "cache": true,
       "dependsOn": ["^build"],
