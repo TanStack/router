@@ -19,15 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0
       - name: Start Nx Agents
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
       - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
+        uses: tanstack/config/.github/setup@88963eede52047f144e25e94078f5ac3c312500c
       - name: Get base and head commits for `nx affected`
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@v4.0.6
         with:
           main-branch-name: main
       - name: Run Checks
@@ -40,11 +40,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0
       - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
+        uses: tanstack/config/.github/setup@88963eede52047f144e25e94078f5ac3c312500c
       - name: Build Packages
         run: pnpm run build:all
       - name: Publish Previews
