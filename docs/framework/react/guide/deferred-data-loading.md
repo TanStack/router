@@ -34,7 +34,7 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 ```
 
-As soon as any awaited promises are resolved, the next next route will begin rendering while the deferred promises continue to resolve.
+As soon as any awaited promises are resolved, the next route will begin rendering while the deferred promises continue to resolve.
 
 In the component, deferred promises can be resolved and utilized using the `Await` component:
 

@@ -82,7 +82,7 @@ The `loader` function receives a single object with the following properties:
 - `preload` - Boolean which is `true` when the route is being preloaded instead of loaded
 - `route` - The route itself
 
-Using these parameters, we can do a lot of cool things, but first, let's take a look at how we can control if and when the `loader` function is called.
+Using these parameters, we can do a lot of cool things, but first, let's take a look at how we can control it and when the `loader` function is called.
 
 ## Dependency-based Stale-While-Revalidate Caching
 
@@ -116,8 +116,7 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 ### ⚠️ Some Important Defaults
 
 - By default, the `staleTime` is set to `0`, meaning that the route's data will always be considered stale and will always be reloaded in the background when the route is rematched.
-- By default, a previously preloaded route is considered fresh for **30 seconds**. This means
-- if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
+- By default, a previously preloaded route is considered fresh for **30 seconds**. This means if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
 - By default, the `gcTime` is set to **30 minutes**, meaning that any route data that has not been accessed in 30 minutes will be garbage collected and removed from the cache.
 - `router.invalidate()` will force all active routes to reload their loaders immediately and mark every cached route's data as stale.
 
