@@ -360,7 +360,7 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('href', '/posts')
   })
 
-  test('when navigating to /posts with a base url', async () => {
+  test('when navigating to /posts with a base url of /app', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -417,6 +417,65 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('aria-current', 'page')
     expect(postsLink).toHaveClass('active')
     expect(postsLink).toHaveAttribute('href', '/app/posts')
+  })
+
+  test('when navigating to /posts with a base url of /posts', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/">Index</Link>
+            <Link to="/posts">Posts</Link>
+          </>
+        )
+      },
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => {
+        return (
+          <>
+            <h1>Posts</h1>
+            <Link to="/">Index</Link>
+            <Link to="/posts" activeProps={{ className: 'active' }}>
+              Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      basepath: '/posts',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    fireEvent.click(postsLink)
+
+    const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
+    expect(postsHeading).toBeInTheDocument()
+
+    const indexLink = await screen.findByRole('link', { name: 'Index' })
+
+    expect(window.location.pathname).toBe('/posts/posts')
+    expect(indexLink).not.toHaveAttribute('aria-current', 'page')
+    expect(indexLink).not.toHaveAttribute('data-status', 'active')
+    expect(indexLink).toHaveAttribute('href', '/posts/')
+
+    expect(postsLink).toHaveAttribute('data-status', 'active')
+    expect(postsLink).toHaveAttribute('aria-current', 'page')
+    expect(postsLink).toHaveClass('active')
+    expect(postsLink).toHaveAttribute('href', '/posts/posts')
   })
 
   test('when navigating to /posts with search', async () => {
