@@ -1,5 +1,11 @@
+import exp from 'node:constants'
 import { describe, expect, it } from 'vitest'
-import { exactPathTest, removeBasepath, removeTrailingSlash } from '../src/path'
+import {
+  exactPathTest,
+  removeBasepath,
+  removeTrailingSlash,
+  resolvePath,
+} from '../src/path'
 
 describe('removeBasepath', () => {
   it.each([
@@ -112,3 +118,42 @@ describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
     })
   },
 )
+
+describe('resolvePath', () => {
+  it.each([
+    { base: '/a/b/c', to: './d', expected: '/a/b/c/d' },
+    { base: '/a/b/c', to: '../d', expected: '/a/b/d' },
+    { base: '/a/b/c', to: './d/', expected: '/a/b/c/d' },
+    { base: '/a/b/c', to: './', expected: '/a/b/c' },
+  ])(
+    'should resolve relative paths: $base + $to = $expected',
+    ({ base, to, expected }) => {
+      expect(resolvePath({ basepath: '/', base, to })).toBe(expected)
+    },
+  )
+
+  it.each([
+    { base: '/a/b/c', to: '/d', expected: '/d' },
+    { base: '/a/b/c', to: '/d/', expected: '/d' },
+    { base: '/a/b/c', to: '/', expected: '/' },
+  ])(
+    'should resolve absolute paths that start with `/`: $base + $to = $expected',
+    ({ base, to, expected }) => {
+      expect(resolvePath({ basepath: '/', base, to })).toBe(expected)
+    },
+  )
+
+  it.each([
+    { base: '/a/b/c', to: 'd', expected: '/a/b/c/d' },
+    { base: '/a/b/c', to: 'd/', expected: '/a/b/c/d' },
+    { base: '/a/b/c', to: 'd/e', expected: '/a/b/c/d/e' },
+  ])('should resolve non-.-prefixed paths', ({ base, to, expected }) => {
+    expect(resolvePath({ basepath: '/', base, to })).toBe(expected)
+  })
+
+  it('should correctly resolve paths when basepath is set', () => {
+    expect(
+      resolvePath({ basepath: '/products', base: '/', to: '/products-list' }),
+    ).toBe('/products/products-list')
+  })
+})
