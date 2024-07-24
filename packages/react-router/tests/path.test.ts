@@ -2,6 +2,7 @@ import exp from 'node:constants'
 import { describe, expect, it } from 'vitest'
 import {
   exactPathTest,
+  matchByPath,
   removeBasepath,
   removeTrailingSlash,
   resolvePath,
@@ -120,40 +121,107 @@ describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
 )
 
 describe('resolvePath', () => {
-  it.each([
-    { base: '/a/b/c', to: './d', expected: '/a/b/c/d' },
-    { base: '/a/b/c', to: '../d', expected: '/a/b/d' },
-    { base: '/a/b/c', to: './d/', expected: '/a/b/c/d' },
-    { base: '/a/b/c', to: './', expected: '/a/b/c' },
-  ])(
-    'should resolve relative paths: $base + $to = $expected',
-    ({ base, to, expected }) => {
-      expect(resolvePath({ basepath: '/', base, to })).toBe(expected)
-    },
-  )
-
-  it.each([
-    { base: '/a/b/c', to: '/d', expected: '/d' },
-    { base: '/a/b/c', to: '/d/', expected: '/d' },
-    { base: '/a/b/c', to: '/', expected: '/' },
-  ])(
-    'should resolve absolute paths that start with `/`: $base + $to = $expected',
-    ({ base, to, expected }) => {
-      expect(resolvePath({ basepath: '/', base, to })).toBe(expected)
-    },
-  )
-
-  it.each([
-    { base: '/a/b/c', to: 'd', expected: '/a/b/c/d' },
-    { base: '/a/b/c', to: 'd/', expected: '/a/b/c/d' },
-    { base: '/a/b/c', to: 'd/e', expected: '/a/b/c/d/e' },
-  ])('should resolve non-.-prefixed paths', ({ base, to, expected }) => {
-    expect(resolvePath({ basepath: '/', base, to })).toBe(expected)
+  describe.each([
+    ['/', '/', '/', '/'],
+    ['/', '/', '/a', '/a'],
+    ['/', '/', 'a/', '/a'],
+    ['/', '/', '/a/b', '/a/b'],
+    ['/', 'a', 'b', '/a/b'],
+    ['/a/b', 'c', '/a/b/c', '/a/b/c'],
+    ['/a/b', '/', 'c', '/a/b/c'],
+    ['/a/b', '/', './c', '/a/b/c'],
+    ['/', '/', 'a/b', '/a/b'],
+    ['/', '/', './a/b', '/a/b'],
+    ['/', '/a/b/c', 'd', '/a/b/c/d'],
+    ['/', '/a/b/c', './d', '/a/b/c/d'],
+    ['/', '/a/b/c', './../d', '/a/b/d'],
+    ['/', '/a/b/c/d', './../d', '/a/b/c/d'],
+    ['/', '/a/b/c', '../d', '/a/b/d'],
+    ['/', '/a/b/c', '../../d', '/a/d'],
+    ['/', '/a/b/c', '..', '/a/b'],
+    ['/', '/a/b/c', '../..', '/a'],
+    ['/', '/a/b/c', '../../..', '/'],
+    ['/', '/a/b/c/', '../../..', '/'],
+    ['/products', '/', '/products-list', '/products/products-list'],
+  ])('resolves correctly', (base, a, b, eq) => {
+    it(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
+      expect(resolvePath({ basepath: base, base: a, to: b })).toEqual(eq)
+    })
+    it(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
+      expect(resolvePath({ basepath: base, base: a + '/', to: b })).toEqual(eq)
+    })
+    it(`Base: ${base} - ${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
+      expect(
+        resolvePath({ basepath: base, base: a + '/', to: b + '/' }),
+      ).toEqual(eq)
+    })
   })
-
-  it('should correctly resolve paths when basepath is set', () => {
-    expect(
-      resolvePath({ basepath: '/products', base: '/', to: '/products-list' }),
-    ).toBe('/products/products-list')
+  describe('trailingSlash', () => {
+    describe(`'always'`, () => {
+      it('keeps trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'always',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+      it('adds trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'always',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+    })
+    describe(`'never'`, () => {
+      it('removes trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'never',
+          }),
+        ).toBe('/a/b/c/d')
+      })
+      it('does not add trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'never',
+          }),
+        ).toBe('/a/b/c/d')
+      })
+    })
+    describe(`'preserve'`, () => {
+      it('keeps trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'preserve',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+      it('does not add trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'preserve',
+          }),
+        ).toBe('/a/b/c/d')
+      })
+    })
   })
 })
