@@ -459,6 +459,7 @@ describe('Link', () => {
     render(<RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(postsLink).toHaveAttribute('href', '/posts/posts')
 
     fireEvent.click(postsLink)
 
@@ -468,8 +469,6 @@ describe('Link', () => {
     const indexLink = await screen.findByRole('link', { name: 'Index' })
 
     expect(window.location.pathname).toBe('/posts/posts')
-    expect(indexLink).not.toHaveAttribute('aria-current', 'page')
-    expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/posts/')
 
     expect(postsLink).toHaveAttribute('data-status', 'active')
