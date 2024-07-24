@@ -36,8 +36,8 @@ Create a `tsconfig.json` file with at least the following settings:
     "moduleResolution": "Bundler",
     "module": "Preserve",
     "target": "ES2022",
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+  },
 }
 ```
 
@@ -58,6 +58,7 @@ npm i react react-dom @vitejs/plugin-react
 ```
 
 and some TypeScript:
+
 ```shell
 npm i -D typescript @types/react @types/react-dom
 ```
