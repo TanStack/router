@@ -89,8 +89,8 @@ export function resolvePath({
   to,
   trailingSlash = 'never',
 }: ResolvePathOptions) {
-  base = base.replace(new RegExp(`^${basepath}`), '/')
-  to = to.replace(new RegExp(`^${basepath}`), '/')
+  base = removeBasepath(basepath, base)
+  to = removeBasepath(basepath, to)
 
   let baseSegments = parsePathname(base)
   const toSegments = parsePathname(to)
