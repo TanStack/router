@@ -323,12 +323,14 @@ export interface RouterOptions<
   /**
    * A component that will be used to wrap the entire router.
    * This is useful for providing a context to the entire router.
+   * Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#wrap-property)
    */
   Wrap?: (props: { children: any }) => React.JSX.Element
   /**
    * A component that will be used to wrap the inner contents of the router.
    * This is useful for providing a context to the inner contents of the router where you also need access to the router context and hooks.
+   * Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#innerwrap-property)
    */
   InnerWrap?: (props: { children: any }) => React.JSX.Element
