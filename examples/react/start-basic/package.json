@@ -12,10 +12,10 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.45.10",
-    "@tanstack/router-devtools": "^1.45.10",
+    "@tanstack/react-router": "^1.45.11",
+    "@tanstack/router-devtools": "^1.45.11",
     "@tanstack/router-plugin": "^1.45.8",
-    "@tanstack/start": "^1.45.10",
+    "@tanstack/start": "^1.45.11",
     "@typescript-eslint/parser": "^7.16.1",
     "@vitejs/plugin-react": "^4.3.1",
     "isbot": "^5.1.13",
