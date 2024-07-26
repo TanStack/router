@@ -174,9 +174,8 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 - Type: `React.Component`
 - Optional
-- A component that will be used to wrap the entire router. This is useful for providing a context to the entire router.
-
-**Example**
+- A component that will be used to wrap the entire router. This is useful for providing a context to the entire router. Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
+  **Example**
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'
@@ -193,7 +192,7 @@ const router = createRouter({
 
 - Type: `React.Component`
 - Optional
-- A component that will be used to wrap the inner contents of the router. This is useful for providing a context to the inner contents of the router where you also need access to the router context and hooks.
+- A component that will be used to wrap the inner contents of the router. This is useful for providing a context to the inner contents of the router where you also need access to the router context and hooks. Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
 
 **Example**
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { exactPathTest, removeBasepath, removeTrailingSlash } from '../src/path'
+import {
+  exactPathTest,
+  interpolatePath,
+  removeBasepath,
+  removeTrailingSlash,
+  resolvePath,
+} from '../src/path'
 
 describe('removeBasepath', () => {
   it.each([
@@ -112,3 +118,161 @@ describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
     })
   },
 )
+
+describe('resolvePath', () => {
+  describe.each([
+    ['/', '/', '/', '/'],
+    ['/', '/', '/a', '/a'],
+    ['/', '/', 'a/', '/a'],
+    ['/', '/', '/a/b', '/a/b'],
+    ['/', 'a', 'b', '/a/b'],
+    ['/a/b', 'c', '/a/b/c', '/a/b/c'],
+    ['/a/b', '/', 'c', '/a/b/c'],
+    ['/a/b', '/', './c', '/a/b/c'],
+    ['/', '/', 'a/b', '/a/b'],
+    ['/', '/', './a/b', '/a/b'],
+    ['/', '/a/b/c', 'd', '/a/b/c/d'],
+    ['/', '/a/b/c', './d', '/a/b/c/d'],
+    ['/', '/a/b/c', './../d', '/a/b/d'],
+    ['/', '/a/b/c/d', './../d', '/a/b/c/d'],
+    ['/', '/a/b/c', '../d', '/a/b/d'],
+    ['/', '/a/b/c', '../../d', '/a/d'],
+    ['/', '/a/b/c', '..', '/a/b'],
+    ['/', '/a/b/c', '../..', '/a'],
+    ['/', '/a/b/c', '../../..', '/'],
+    ['/', '/a/b/c/', '../../..', '/'],
+    ['/products', '/', '/products-list', '/products/products-list'],
+  ])('resolves correctly', (base, a, b, eq) => {
+    it(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
+      expect(resolvePath({ basepath: base, base: a, to: b })).toEqual(eq)
+    })
+    it(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
+      expect(resolvePath({ basepath: base, base: a + '/', to: b })).toEqual(eq)
+    })
+    it(`Base: ${base} - ${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
+      expect(
+        resolvePath({ basepath: base, base: a + '/', to: b + '/' }),
+      ).toEqual(eq)
+    })
+  })
+  describe('trailingSlash', () => {
+    describe(`'always'`, () => {
+      it('keeps trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'always',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+      it('adds trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'always',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+    })
+    describe(`'never'`, () => {
+      it('removes trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'never',
+          }),
+        ).toBe('/a/b/c/d')
+      })
+      it('does not add trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'never',
+          }),
+        ).toBe('/a/b/c/d')
+      })
+    })
+    describe(`'preserve'`, () => {
+      it('keeps trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd/',
+            trailingSlash: 'preserve',
+          }),
+        ).toBe('/a/b/c/d/')
+      })
+      it('does not add trailing slash', () => {
+        expect(
+          resolvePath({
+            basepath: '/',
+            base: '/a/b/c',
+            to: 'd',
+            trailingSlash: 'preserve',
+          }),
+        ).toBe('/a/b/c/d')
+      })
+    })
+  })
+})
+
+describe('interpolatePath', () => {
+  ;[
+    {
+      name: 'should interpolate the path',
+      path: '/users/$id',
+      params: { id: '123' },
+      result: '/users/123',
+    },
+    {
+      name: 'should interpolate the path with multiple params',
+      path: '/users/$id/$name',
+      params: { id: '123', name: 'tanner' },
+      result: '/users/123/tanner',
+    },
+    {
+      name: 'should interpolate the path with extra params',
+      path: '/users/$id',
+      params: { id: '123', name: 'tanner' },
+      result: '/users/123',
+    },
+    {
+      name: 'should interpolate the path with missing params',
+      path: '/users/$id/$name',
+      params: { id: '123' },
+      result: '/users/123/undefined',
+    },
+    {
+      name: 'should interpolate the path with missing params and extra params',
+      path: '/users/$id',
+      params: { name: 'john' },
+      result: '/users/undefined',
+    },
+    {
+      name: 'should interpolate the path with the param being a number',
+      path: '/users/$id',
+      params: { id: 123 },
+      result: '/users/123',
+    },
+    {
+      name: 'should interpolate the path with the param being a falsey number',
+      path: '/users/$id',
+      params: { id: 0 },
+      result: '/users/0',
+    },
+  ].forEach((exp) => {
+    it(exp.name, () => {
+      const result = interpolatePath({ path: exp.path, params: exp.params })
+      expect(result).toBe(exp.result)
+    })
+  })
+})
