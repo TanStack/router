@@ -1,8 +1,7 @@
-import exp from 'node:constants'
 import { describe, expect, it } from 'vitest'
 import {
   exactPathTest,
-  matchByPath,
+  interpolatePath,
   removeBasepath,
   removeTrailingSlash,
   resolvePath,
@@ -222,6 +221,58 @@ describe('resolvePath', () => {
           }),
         ).toBe('/a/b/c/d')
       })
+    })
+  })
+})
+
+describe('interpolatePath', () => {
+  ;[
+    {
+      name: 'should interpolate the path',
+      path: '/users/$id',
+      params: { id: '123' },
+      result: '/users/123',
+    },
+    {
+      name: 'should interpolate the path with multiple params',
+      path: '/users/$id/$name',
+      params: { id: '123', name: 'tanner' },
+      result: '/users/123/tanner',
+    },
+    {
+      name: 'should interpolate the path with extra params',
+      path: '/users/$id',
+      params: { id: '123', name: 'tanner' },
+      result: '/users/123',
+    },
+    {
+      name: 'should interpolate the path with missing params',
+      path: '/users/$id/$name',
+      params: { id: '123' },
+      result: '/users/123/undefined',
+    },
+    {
+      name: 'should interpolate the path with missing params and extra params',
+      path: '/users/$id',
+      params: { name: 'john' },
+      result: '/users/undefined',
+    },
+    {
+      name: 'should interpolate the path with the param being a number',
+      path: '/users/$id',
+      params: { id: 123 },
+      result: '/users/123',
+    },
+    {
+      name: 'should interpolate the path with the param being a falsey number',
+      path: '/users/$id',
+      params: { id: 0 },
+      result: '/users/0',
+    },
+  ].forEach((exp) => {
+    it(exp.name, () => {
+      const result = interpolatePath({ path: exp.path, params: exp.params })
+      expect(result).toBe(exp.result)
     })
   })
 })
