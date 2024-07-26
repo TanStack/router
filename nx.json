@@ -22,10 +22,6 @@
     ]
   },
   "targetDefaults": {
-    "test:format": {
-      "cache": true,
-      "inputs": ["{workspaceRoot}/**/*"]
-    },
     "test:eslint": {
       "cache": true,
       "dependsOn": ["^build"],
@@ -36,6 +32,11 @@
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"],
       "outputs": ["{projectRoot}/coverage"]
+    },
+    "test:e2e": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
     },
     "test:types": {
       "cache": true,

@@ -33,7 +33,7 @@ export default defineConfig({
 ```
 
 > [!TIP]
-> If you are not using Vite, or any supported bundler, you can check out the [File-Based Routing](../guide/file-based-routing) guide for more info.
+> If you are not using Vite, or any supported bundler, you can check out the [File-Based Routing](./guide/file-based-routing.md) guide for more info.
 
 Create the following files:
 

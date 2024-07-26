@@ -890,7 +890,7 @@ export class Route<
     return useLoaderData({ ...opts, from: this.id } as any)
   }
 
-  useNavigate = (): UseNavigateResult<string> => {
+  useNavigate = (): UseNavigateResult<TFullPath> => {
     return useNavigate({ from: this.id })
   }
 }

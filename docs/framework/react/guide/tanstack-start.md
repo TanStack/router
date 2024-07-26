@@ -19,6 +19,28 @@ Follow this guide to build a basic TanStack Start web application. Together, we 
 
 [Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-basic-counter)
 
+Create a new project if you're starting fresh.
+
+```shell
+mkdir myApp
+cd myApp
+npm init -y
+```
+
+Create a `tsconfig.json` file with at least the following settings:
+
+```jsonc
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "moduleResolution": "Bundler",
+    "module": "Preserve",
+    "target": "ES2022",
+    "skipLibCheck": true,
+  },
+}
+```
+
 # Install Dependencies
 
 TanStack Start is powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
@@ -29,13 +51,26 @@ To install them, run:
 npm i @tanstack/start @tanstack/react-router vinxi
 ```
 
+You'll also need React and the Vite React plugin, so install them too:
+
+```shell
+npm i react react-dom @vitejs/plugin-react
+```
+
+and some TypeScript:
+
+```shell
+npm i -D typescript @types/react @types/react-dom
+```
+
 # Update Configuration Files
 
-We'll then update our `package.json` to reference the new Vinxi entry point:
+We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
 
 ```json
 {
   "//": "...",
+  "type": "module"
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",

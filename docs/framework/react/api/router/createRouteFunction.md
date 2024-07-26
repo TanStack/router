@@ -3,17 +3,17 @@ id: createRouteFunction
 title: createRoute function
 ---
 
-The `createRoute` function implements returns a [`Route`](../RouteType) instance. A route instance can then be passed to a root route's children to create a route tree, which is then passed to the router.
+The `createRoute` function implements returns a [`Route`](./RouteType.md) instance. A route instance can then be passed to a root route's children to create a route tree, which is then passed to the router.
 
 ## createRoute options
 
-- Type: [`RouteOptions`](../RouteOptionsType)
+- Type: [`RouteOptions`](./RouteOptionsType.md)
 - Required
 - The options that will be used to configure the route instance
 
 ## createRoute returns
 
-A new [`Route`](../RouteType) instance.
+A new [`Route`](./RouteType.md) instance.
 
 ## Examples
 

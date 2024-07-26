@@ -20,6 +20,38 @@ import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
+/**
+ * Not all the deployment presets are fully functional.
+ * @see https://github.com/TanStack/router/pull/2002
+ */
+const problematicDeploymentPresets = ['cloudflare-pages', 'static', 'node']
+
+const deploymentSchema = z.object({
+  preset: z
+    .enum([
+      'vercel', // working
+      'netlify', // working
+      'cloudflare-pages', // not working
+      'static', // partially working
+      'node', // partially working
+    ])
+    .optional(),
+  static: z.boolean().optional(),
+  prerender: z
+    .object({
+      routes: z.array(z.string()),
+      ignore: z
+        .array(
+          z.custom<
+            string | RegExp | ((path: string) => undefined | null | boolean)
+          >(),
+        )
+        .optional(),
+      crawlLinks: z.boolean().optional(),
+    })
+    .optional(),
+})
+
 const viteSchema = z.object({
   plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
 })
@@ -67,6 +99,7 @@ const inlineConfigSchema = z.object({
   vite: viteSchema.optional(),
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
+  deployment: deploymentSchema.optional(),
 })
 
 export type TanStackStartDefineConfigOptions = z.infer<
@@ -88,22 +121,36 @@ function setTsrDefaults(
   }
 }
 
-export async function defineConfig(
+export function defineConfig(
   inlineConfig: TanStackStartDefineConfigOptions = {},
 ) {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
-  const tsrConfig = await getConfig(setTsrDefaults(opts.tsr))
+  const { preset: configDeploymentPreset, ...deploymentOptions } =
+    deploymentSchema.parse(opts.deployment || {})
+  const deploymentPreset = configDeploymentPreset || 'vercel'
+  const isStaticDeployment =
+    deploymentOptions.static ?? deploymentPreset === 'static'
+
+  if (problematicDeploymentPresets.includes(deploymentPreset)) {
+    console.warn(
+      `The deployment preset '${deploymentPreset}' is not fully supported yet and may not work as expected.`,
+    )
+  }
+
+  const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
   const clientBase = opts.routers?.client?.base || '/_build'
-
   const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
-  const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
+
   const serverBase = opts.routers?.server?.base || '/_server'
+  const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
 
   return createApp({
     server: {
-      preset: 'vercel',
+      ...deploymentOptions,
+      static: isStaticDeployment,
+      preset: deploymentPreset,
       experimental: {
         asyncContext: true,
       },

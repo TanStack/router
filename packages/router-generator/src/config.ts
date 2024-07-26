@@ -26,14 +26,19 @@ export const configSchema = z.object({
     .array(z.string())
     .optional()
     .default(['/* prettier-ignore-end */']),
+  experimental: z
+    .object({
+      enableCodeSplitting: z.boolean().optional(),
+    })
+    .optional(),
 })
 
 export type Config = z.infer<typeof configSchema>
 
-export async function getConfig(
+export function getConfig(
   inlineConfig: Partial<Config> = {},
   configDirectory?: string,
-): Promise<Config> {
+): Config {
   if (configDirectory === undefined) {
     configDirectory = process.cwd()
   }

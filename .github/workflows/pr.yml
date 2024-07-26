@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0
       - name: Start Nx Agents
@@ -27,7 +27,7 @@ jobs:
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
       - name: Get base and head commits for `nx affected`
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@v4.0.6
         with:
           main-branch-name: main
       - name: Run Checks
@@ -35,34 +35,12 @@ jobs:
       - name: Stop Nx Agents
         if: ${{ always() }}
         run: npx nx-cloud stop-all-agents
-  e2e-start-basic-test:
-    name: Playwright e2e tests
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
-      - name: Get base and head commits for `nx affected`
-        uses: nrwl/nx-set-shas@v4
-        with:
-          main-branch-name: main
-      - name: Build dependecies
-        run: pnpm run build:all
-      - name: Get Replay Chromium
-        run: npx replayio install
-      - name: Run Playwright tests
-        run: pnpm run test:e2e:replay
-        env:
-          REPLAY_API_KEY: ${{ secrets.REPLAY_API_KEY || 'rwk_4CPlqZTQ72FsoZvJ86yTeDmlk5NgvCO5nR0IqlXzlXo'}}
   preview:
     name: Preview
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0
       - name: Setup Tools

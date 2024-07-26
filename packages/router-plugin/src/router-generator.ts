@@ -50,7 +50,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     const filePath = normalize(file)
 
     if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
-      userConfig = await getConfig(options, ROOT)
+      userConfig = getConfig(options, ROOT)
       return
     }
 
@@ -84,13 +84,13 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     vite: {
       async configResolved(config) {
         ROOT = config.root
-        userConfig = await getConfig(options, ROOT)
+        userConfig = getConfig(options, ROOT)
 
         await run(generate)
       },
     },
     async rspack(compiler) {
-      userConfig = await getConfig(options, ROOT)
+      userConfig = getConfig(options, ROOT)
 
       // rspack watcher doesn't register newly created files
       if (compiler.options.mode === 'production') {
@@ -104,7 +104,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       }
     },
     async webpack(compiler) {
-      userConfig = await getConfig(options, ROOT)
+      userConfig = getConfig(options, ROOT)
 
       // webpack watcher doesn't register newly created files
       if (compiler.options.mode === 'production') {

@@ -52,7 +52,7 @@ function MyComponent() {
 }
 ```
 
-You can find more information about the `useBlocker` hook in the [API reference](../../api/router/useBlockerHook).
+You can find more information about the `useBlocker` hook in the [API reference](../api/router/useBlockerHook.md).
 
 ## Component-based blocking
 
