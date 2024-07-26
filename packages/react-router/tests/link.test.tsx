@@ -3293,6 +3293,73 @@ describe('Link', () => {
 
     expect(parseParams).toHaveBeenCalledWith({ status: 'parsed', postId: '2' })
   })
+
+  test('when navigating to /$postId with params.parse and params.stringify handles falsey inputs', async () => {
+    const rootRoute = createRootRoute()
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/$postId" params={{ postId: 2 }}>
+            Go to post 2
+          </Link>
+          <Link to="/$postId" params={{ postId: 0 }}>
+            Go to post 0
+          </Link>
+        </>
+      ),
+    })
+
+    const stringifyParamsMock = vi.fn()
+
+    const parseParams = ({ postId }: { postId: string }) => {
+      return {
+        postId: parseInt(postId),
+      }
+    }
+
+    const stringifyParams = ({ postId }: { postId: number }) => {
+      stringifyParamsMock({ postId })
+      return {
+        postId: postId.toString(),
+      }
+    }
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return <div>Post: {params.postId}</div>
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '$postId',
+      params: {
+        parse: parseParams,
+        stringify: stringifyParams,
+      },
+      component: PostComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, postRoute])
+    const router = createRouter({ routeTree })
+
+    render(<RouterProvider router={router} />)
+
+    const postLink2 = await screen.findByRole('link', {
+      name: 'Go to post 2',
+    })
+    const postLink0 = await screen.findByRole('link', {
+      name: 'Go to post 0',
+    })
+
+    expect(postLink2).toHaveAttribute('href', '/2')
+    expect(postLink0).toHaveAttribute('href', '/0')
+
+    expect(stringifyParamsMock).toHaveBeenCalledWith({ postId: 2 })
+    expect(stringifyParamsMock).toHaveBeenCalledWith({ postId: 0 })
+  })
 })
 
 describe('createLink', () => {
