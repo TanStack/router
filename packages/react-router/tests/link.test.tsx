@@ -3312,6 +3312,8 @@ describe('Link', () => {
       ),
     })
 
+    const stringifyParamsMock = vi.fn()
+
     const parseParams = ({ postId }: { postId: string }) => {
       return {
         postId: parseInt(postId),
@@ -3319,6 +3321,7 @@ describe('Link', () => {
     }
 
     const stringifyParams = ({ postId }: { postId: number }) => {
+      stringifyParamsMock({ postId })
       return {
         postId: postId.toString(),
       }
@@ -3353,6 +3356,9 @@ describe('Link', () => {
 
     expect(postLink2).toHaveAttribute('href', '/2')
     expect(postLink0).toHaveAttribute('href', '/0')
+
+    expect(stringifyParamsMock).toHaveBeenCalledWith({ postId: 2 })
+    expect(stringifyParamsMock).toHaveBeenCalledWith({ postId: 0 })
   })
 })
 
