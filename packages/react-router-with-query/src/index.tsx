@@ -1,22 +1,23 @@
+import { Fragment } from 'react'
 import {
   QueryClientProvider,
   dehydrate,
   hashKey,
   hydrate,
 } from '@tanstack/react-query'
-import { type AnyRouterWithContext } from '@tanstack/react-router'
-import { Fragment } from 'react'
+import type { AnyRouter } from '@tanstack/react-router'
 import type {
   QueryClient,
   QueryObserverResult,
   UseQueryOptions,
 } from '@tanstack/react-query'
 
-export function routerWithQueryClient<
-  T extends AnyRouterWithContext<{
-    queryClient: QueryClient
-  }>,
->(router: T, queryClient: QueryClient): T {
+export function routerWithQueryClient<TRouter extends AnyRouter>(
+  router: TRouter['options']['context'] extends { queryClient: QueryClient }
+    ? TRouter
+    : never,
+  queryClient: QueryClient,
+): TRouter {
   const seenQueryKeys = new Set<string>()
   const streamedQueryKeys = new Set<string>()
 
