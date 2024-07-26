@@ -4,8 +4,8 @@ import {
   hashKey,
   hydrate,
 } from '@tanstack/react-query'
+import type { AnyRouter } from '@tanstack/react-router'
 import { Fragment } from 'react'
-import type { AnyRouter, AnyRouterWithContext } from '@tanstack/react-router'
 import type {
   QueryClient,
   QueryObserverResult,
