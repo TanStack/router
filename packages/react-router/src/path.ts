@@ -8,7 +8,13 @@ export interface Segment {
 }
 
 export function joinPaths(paths: Array<string | undefined>) {
-  return cleanPath(paths.filter(Boolean).join('/'))
+  return cleanPath(
+    paths
+      .filter((val) => {
+        return val !== undefined
+      })
+      .join('/'),
+  )
 }
 
 export function cleanPath(path: string) {
@@ -193,7 +199,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
 interface InterpolatePathOptions {
   path?: string
-  params: any
+  params: Record<string, unknown>
   leaveWildcards?: boolean
   leaveParams?: boolean
 }
