@@ -8,6 +8,7 @@ import {
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
+import { z } from 'zod'
 import {
   Link,
   Outlet,
@@ -164,4 +165,35 @@ describe('loaders parentMatchPromise', () => {
     expect(nestedLoaderMock).toHaveBeenCalled()
     expect(nestedLoaderMock.mock.calls[0][0]).toBeInstanceOf(Promise)
   })
+})
+
+test('reproducer for #2031', async () => {
+  const rootRoute = createRootRoute({
+    // remove beforeLoad to see the test pass
+    beforeLoad: () => {
+      console.log('beforeload called')
+    },
+  })
+
+  const searchSchema = z.object({
+    data: z.string().array().default([]),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Index page</div>,
+
+    validateSearch: searchSchema,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree })
+
+  // when using act, the test passes, otherwise it hangs indefinitely
+  render(<RouterProvider router={router} />)
+  // await act(() => render(<RouterProvider router={router} />))
+
+  const indexElement = await screen.findByText('Index page')
+  expect(indexElement).toBeInTheDocument()
 })
