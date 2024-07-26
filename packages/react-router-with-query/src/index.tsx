@@ -13,10 +13,8 @@ import type {
 } from '@tanstack/react-query'
 
 export function routerWithQueryClient<TRouter extends AnyRouter>(
-  router: TRouter extends AnyRouterWithContext<infer Ctx>
-    ? Ctx extends { queryClient: QueryClient }
-      ? TRouter
-      : never
+  router: TRouter['options']['context'] extends { queryClient: QueryClient }
+    ? TRouter
     : never,
   queryClient: QueryClient,
 ): TRouter {
