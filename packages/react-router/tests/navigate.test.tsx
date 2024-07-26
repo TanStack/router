@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  RouterConstructorOptions,
   type RouterHistory,
+  RouterOptions,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -12,7 +14,10 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-function createTestRouter(initialHistory?: RouterHistory) {
+function createTestRouter(
+  initialHistory?: RouterHistory,
+  routerOptions?: RouterConstructorOptions<any, any, any, any>,
+) {
   const history =
     initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
 
@@ -84,7 +89,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
     uTree,
     gTree,
   ])
-  const router = createRouter({ routeTree, history })
+  const router = createRouter({ routeTree, history, ...routerOptions })
 
   return {
     router,
@@ -459,5 +464,58 @@ describe('router.navigate navigation using layout routes resolves correctly', as
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/g/tkdodo')
+  })
+})
+
+describe('julius reproductions', () => {
+  it('trailingSlash: "never"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/u/tanner'] }),
+      { trailingSlash: 'never' },
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/u/tanner')
+
+    await router.navigate({ to: '/u/tanner/' })
+    expect(router.state.location.pathname).toBe('/u/tanner')
+
+    await router.navigate({ params: { username: 'tkdodo' } })
+    expect(router.state.location.pathname).toBe('/u/tkdodo')
+  })
+
+  it('trailingSlash: "preserve"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/u/tanner'] }),
+      { trailingSlash: 'preserve' },
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/u/tanner')
+
+    await router.navigate({ to: '/u/tanner/' })
+    expect(router.state.location.pathname).toBe('/u/tanner/')
+
+    await router.navigate({ params: { username: 'tkdodo' } })
+    expect(router.state.location.pathname).toBe('/u/tkdodo')
+  })
+
+  it('trailingSlash: "always"', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/u/tanner'] }),
+      { trailingSlash: 'always' },
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/u/tanner')
+
+    await router.navigate({ to: '/u/tanner' })
+    expect(router.state.location.pathname).toBe('/u/tanner/')
+
+    await router.navigate({ params: { username: 'tkdodo' } })
+    expect(router.state.location.pathname).toBe('/u/tkdodo/')
   })
 })
