@@ -76,7 +76,6 @@ describe('Link', () => {
       const memoedRouter = React.useMemo(() => {
         const router = createRouter({
           routeTree: memoedRouteTree,
-          history: createMemoryHistory({ initialEntries: ['/'] }),
         })
 
         return router
