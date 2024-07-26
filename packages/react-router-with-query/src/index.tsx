@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import {
   QueryClientProvider,
   dehydrate,
@@ -5,7 +6,6 @@ import {
   hydrate,
 } from '@tanstack/react-query'
 import type { AnyRouter } from '@tanstack/react-router'
-import { Fragment } from 'react'
 import type {
   QueryClient,
   QueryObserverResult,
