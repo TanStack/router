@@ -467,7 +467,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
   })
 })
 
-describe('julius reproductions', () => {
+describe('router.navigate navigation with trailing slash options', () => {
   it('trailingSlash: "never"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/u/tanner'] }),
