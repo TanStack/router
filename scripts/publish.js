@@ -17,6 +17,10 @@ await publish({
       packageDir: 'packages/react-router',
     },
     {
+      name: '@tanstack/react-router-with-query',
+      packageDir: 'packages/react-router-with-query',
+    },
+    {
       name: '@tanstack/router-devtools',
       packageDir: 'packages/router-devtools',
     },
