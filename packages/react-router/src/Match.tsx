@@ -294,12 +294,13 @@ export const Outlet = React.memo(function OutletImpl() {
   if (matchId === rootRouteId) {
     const PendingComponent =
       route.options.pendingComponent ?? router.options.defaultPendingComponent
-
-    const pendingElement = PendingComponent ? <PendingComponent /> : null
-
-    return (
-      <React.Suspense fallback={pendingElement}>{nextMatch}</React.Suspense>
-    )
+    if (PendingComponent !== undefined) {
+      return (
+        <React.Suspense fallback={<PendingComponent />}>
+          {nextMatch}
+        </React.Suspense>
+      )
+    }
   }
 
   return nextMatch
