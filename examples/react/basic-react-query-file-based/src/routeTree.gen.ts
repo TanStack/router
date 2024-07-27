@@ -12,14 +12,23 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as PostsImport } from './routes/posts'
+import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
+import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
+import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 
 // Create/Update Routes
 
 const PostsRoute = PostsImport.update({
   path: '/posts',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LayoutRoute = LayoutImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -38,6 +47,21 @@ const PostsPostIdRoute = PostsPostIdImport.update({
   getParentRoute: () => PostsRoute,
 } as any)
 
+const LayoutLayout2Route = LayoutLayout2Import.update({
+  id: '/_layout-2',
+  getParentRoute: () => LayoutRoute,
+} as any)
+
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+  path: '/layout-b',
+  getParentRoute: () => LayoutLayout2Route,
+} as any)
+
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+  path: '/layout-a',
+  getParentRoute: () => LayoutLayout2Route,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -49,12 +73,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutImport
+      parentRoute: typeof rootRoute
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsImport
       parentRoute: typeof rootRoute
+    }
+    '/_layout/_layout-2': {
+      id: '/_layout/_layout-2'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutLayout2Import
+      parentRoute: typeof LayoutImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
@@ -70,6 +108,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
     }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof LayoutLayout2LayoutAImport
+      parentRoute: typeof LayoutLayout2Import
+    }
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: typeof LayoutLayout2LayoutBImport
+      parentRoute: typeof LayoutLayout2Import
+    }
   }
 }
 
@@ -77,6 +129,12 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren({
   IndexRoute,
+  LayoutRoute: LayoutRoute.addChildren({
+    LayoutLayout2Route: LayoutLayout2Route.addChildren({
+      LayoutLayout2LayoutARoute,
+      LayoutLayout2LayoutBRoute,
+    }),
+  }),
   PostsRoute: PostsRoute.addChildren({ PostsPostIdRoute, PostsIndexRoute }),
 })
 
@@ -89,17 +147,32 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/_layout",
         "/posts"
       ]
     },
     "/": {
       "filePath": "index.tsx"
     },
+    "/_layout": {
+      "filePath": "_layout.tsx",
+      "children": [
+        "/_layout/_layout-2"
+      ]
+    },
     "/posts": {
       "filePath": "posts.tsx",
       "children": [
         "/posts/$postId",
         "/posts/"
+      ]
+    },
+    "/_layout/_layout-2": {
+      "filePath": "_layout/_layout-2.tsx",
+      "parent": "/_layout",
+      "children": [
+        "/_layout/_layout-2/layout-a",
+        "/_layout/_layout-2/layout-b"
       ]
     },
     "/posts/$postId": {
@@ -109,6 +182,14 @@ export const routeTree = rootRoute.addChildren({
     "/posts/": {
       "filePath": "posts.index.tsx",
       "parent": "/posts"
+    },
+    "/_layout/_layout-2/layout-a": {
+      "filePath": "_layout/_layout-2/layout-a.tsx",
+      "parent": "/_layout/_layout-2"
+    },
+    "/_layout/_layout-2/layout-b": {
+      "filePath": "_layout/_layout-2/layout-b.tsx",
+      "parent": "/_layout/_layout-2"
     }
   }
 }
