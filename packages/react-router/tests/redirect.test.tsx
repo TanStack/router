@@ -11,6 +11,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   Link,
   RouterProvider,
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -29,9 +30,8 @@ afterEach(() => {
 const WAIT_TIME = 100
 
 describe('redirect', () => {
-  configure({ reactStrictMode: true })
-
-  describe('`beforeLoad` and `loader` are called when redirecting', () => {
+  describe('SPA', () => {
+    configure({ reactStrictMode: true })
     test('when `redirect` is thrown in `beforeLoad`', async () => {
       const nestedLoaderMock = vi.fn()
       const nestedFooLoaderMock = vi.fn()
@@ -166,6 +166,105 @@ describe('redirect', () => {
 
       expect(nestedLoaderMock).toHaveBeenCalled()
       expect(nestedFooLoaderMock).toHaveBeenCalled()
+    })
+  })
+
+  describe('SSR', () => {
+    test('when `redirect` is thrown in `beforeLoad`', async () => {
+      const rootRoute = createRootRoute()
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        beforeLoad: () => {
+          throw redirect({
+            to: '/about',
+          })
+        },
+      })
+
+      const aboutRoute = createRoute({
+        path: '/about',
+        getParentRoute: () => rootRoute,
+        component: () => {
+          return 'About'
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+        // Mock server mode
+        isServer: true,
+      })
+
+      await router.load()
+
+      expect(router.state.redirect).toEqual({
+        _fromLocation: expect.objectContaining({
+          hash: '',
+          href: '/',
+          pathname: '/',
+          search: {},
+          searchStr: '',
+        }),
+        to: '/about',
+        headers: {},
+        href: '/about',
+        isRedirect: true,
+        routeId: '/',
+        routerCode: 'BEFORE_LOAD',
+        statusCode: 301,
+      })
+    })
+
+    test('when `redirect` is thrown in `loader`', async () => {
+      const rootRoute = createRootRoute()
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        loader: () => {
+          throw redirect({
+            to: '/about',
+          })
+        },
+      })
+
+      const aboutRoute = createRoute({
+        path: '/about',
+        getParentRoute: () => rootRoute,
+        component: () => {
+          return 'About'
+        },
+      })
+
+      const router = createRouter({
+        history: createMemoryHistory({
+          initialEntries: ['/'],
+        }),
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      })
+
+      // Mock server mode
+      router.isServer = true
+
+      await router.load()
+
+      expect(router.state.redirect).toEqual({
+        _fromLocation: expect.objectContaining({
+          hash: '',
+          href: '/',
+          pathname: '/',
+          search: {},
+          searchStr: '',
+        }),
+        to: '/about',
+        headers: {},
+        href: '/about',
+        isRedirect: true,
+        routeId: '/',
+        statusCode: 301,
+      })
     })
   })
 })
