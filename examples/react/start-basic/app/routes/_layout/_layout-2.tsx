@@ -8,7 +8,7 @@ function LayoutComponent() {
   return (
     <div>
       <div>I'm a nested layout</div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 border-b">
         <Link
           to="/layout-a"
           activeProps={{

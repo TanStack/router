@@ -143,9 +143,6 @@ importers:
 
   examples/react/basic:
     dependencies:
-      '@tanstack/react-query':
-        specifier: ^5.51.11
-        version: 5.51.11(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
