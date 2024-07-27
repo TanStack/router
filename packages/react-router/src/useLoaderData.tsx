@@ -1,6 +1,6 @@
-import { type RegisteredRouter } from './router'
-import { type AnyRoute } from './route'
 import { useMatch } from './useMatch'
+import type { RegisteredRouter } from './router'
+import type { AnyRoute } from './route'
 import type { MakeRouteMatch } from './Matches'
 import type { RouteIds } from './routeInfo'
 import type { StrictOrFrom } from './utils'

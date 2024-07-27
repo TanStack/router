@@ -1,6 +1,6 @@
 import type { AnyRoute } from './route'
 import type { AnyRouter, TrailingSlashOption } from './router'
-import type { Expand, MergeUnion } from './utils'
+import type { MergeUnion } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
