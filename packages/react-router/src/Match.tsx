@@ -9,12 +9,12 @@ import { useRouter } from './useRouter'
 import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
-import { type AnyRoute } from './route'
 import { matchContext } from './matchContext'
 import { defaultDeserializeError, isServerSideError } from './isServerSideError'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
+import type { AnyRoute } from './route'
 
 export function Match({ matchId }: { matchId: string }) {
   const router = useRouter()

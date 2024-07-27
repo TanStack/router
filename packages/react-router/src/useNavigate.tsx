@@ -1,7 +1,5 @@
 import * as React from 'react'
-import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
-
 import type { FromPathOption, NavigateOptions } from './link'
 import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
@@ -58,7 +56,6 @@ export function Navigate<
   TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
-  const match = useMatch({ strict: false })
 
   React.useEffect(() => {
     navigate({

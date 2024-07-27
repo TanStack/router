@@ -26,13 +26,13 @@ import {
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
 import type * as React from 'react'
-import type { Manifest } from './manifest'
 import type {
   HistoryLocation,
   HistoryState,
   RouterHistory,
 } from '@tanstack/history'
-
+import type { NoInfer } from '@tanstack/react-store'
+import type { Manifest } from './manifest'
 import type {
   AnyContext,
   AnyRoute,
@@ -70,13 +70,9 @@ import type {
   CommitLocationOptions,
   NavigateFn,
 } from './RouterProvider'
-
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
-
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
-import type { NoInfer } from '@tanstack/react-store'
-import type { DeferredPromiseState } from './defer'
 
 //
 

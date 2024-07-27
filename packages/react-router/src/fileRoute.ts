@@ -6,6 +6,7 @@ import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
+import type { NoInfer } from '@tanstack/react-store'
 import type { ParsePathParams } from './link'
 import type {
   AnyContext,
@@ -25,16 +26,11 @@ import type {
   RouteConstraints,
   RouteContext,
   RouteLoaderFn,
-  SearchSchemaInput,
-  TrimPathLeft,
   UpdatableRouteOptions,
 } from './route'
-import type { Assign, IsAny } from './utils'
 import type { MakeRouteMatch } from './Matches'
-import type { NoInfer } from '@tanstack/react-store'
 import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
-import type { RootRouteId } from './root'
 
 export interface FileRoutesByPath {
   // '/': {
