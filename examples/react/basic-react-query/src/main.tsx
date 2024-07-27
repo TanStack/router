@@ -219,7 +219,7 @@ const layoutARoute = createRoute({
 })
 
 function LayoutAComponent() {
-  return <div>I'm layout A</div>
+  return <div>I'm layout A!</div>
 }
 
 const layoutBRoute = createRoute({
@@ -229,7 +229,7 @@ const layoutBRoute = createRoute({
 })
 
 function LayoutBComponent() {
-  return <div>I'm layout B</div>
+  return <div>I'm layout B!</div>
 }
 
 const routeTree = rootRoute.addChildren([
