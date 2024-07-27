@@ -1,31 +1,13 @@
-import React from 'react'
-import { afterEach, describe, expect, it, test, vi } from 'vitest'
-import {
-  cleanup,
-  configure,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   type ErrorComponentProps,
   Link,
-  Outlet,
   RouterProvider,
-  createLink,
   createRootRoute,
-  createRootRouteWithContext,
   createRoute,
-  createRouteMask,
   createRouter,
-  redirect,
-  useLoaderData,
-  useMatchRoute,
-  useParams,
-  useRouteContext,
-  useSearch,
 } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
