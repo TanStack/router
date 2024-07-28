@@ -9,41 +9,55 @@ export interface ZodTypeLike {
 
 export type InputOutputOption = 'input' | 'output'
 
-export interface ZodSearchValidatorOptions<
-  T extends ZodTypeLike,
-  TInput extends InputOutputOption,
-  TOutput extends InputOutputOption,
-> {
-  readonly schema: T
-  readonly input?: TInput
-  readonly output?: TOutput
+export interface ZodSearchValidatorOptions {
+  readonly schema: ZodTypeLike
+  readonly input?: InputOutputOption
+  readonly output?: InputOutputOption
 }
 
+export type ZodSearchValidatorInput<
+  TOptions extends ZodTypeLike | ZodSearchValidatorOptions,
+> = TOptions extends ZodSearchValidatorOptions
+  ? 'input' extends TOptions['input']
+    ? TOptions['schema']['_input']
+    : TOptions['schema']['_output']
+  : TOptions extends ZodTypeLike
+    ? TOptions['_input']
+    : never
+
+export type ZodSearchValidatorOutput<
+  TOptions extends ZodTypeLike | ZodSearchValidatorOptions,
+> = TOptions extends ZodSearchValidatorOptions
+  ? 'output' extends TOptions['output']
+    ? TOptions['schema']['_output']
+    : TOptions['schema']['_input']
+  : TOptions extends ZodTypeLike
+    ? TOptions['_output']
+    : never
+
 export type ZodSearchValidatorAdapter<
-  T extends ZodTypeLike,
-  TInput extends InputOutputOption,
-  TOutput extends InputOutputOption,
+  TOptions extends ZodTypeLike | ZodSearchValidatorOptions,
 > = SearchValidatorAdapter<
-  'input' extends TInput ? T['_input'] : T['_output'],
-  'output' extends TOutput ? T['_output'] : T['_input']
+  ZodSearchValidatorInput<TOptions>,
+  ZodSearchValidatorOutput<TOptions>
 >
 
 export const zodSearchValidator = <
-  T extends ZodTypeLike,
-  TInput extends InputOutputOption,
-  TOutput extends InputOutputOption,
+  TOptions extends ZodTypeLike | ZodSearchValidatorOptions,
 >(
-  options: T | ZodSearchValidatorOptions<T, TInput, TOutput>,
-): ZodSearchValidatorAdapter<T, TInput, TOutput> => {
+  options: TOptions,
+): ZodSearchValidatorAdapter<TOptions> => {
   const input = 'input' in options ? options.input : 'input'
   const output = 'output' in options ? options.output : 'output'
-  const schema = 'schema' in options ? options.schema : options
+  const _input = 'schema' in options ? options.schema._input : options._input
+  const _output = 'schema' in options ? options.schema._output : options._output
   return {
     types: {
-      input: input === 'output' ? schema._output : schema._input,
-      output: output === 'input' ? schema._input : schema._output,
+      input: input === 'output' ? _output : _input,
+      output: output === 'input' ? _input : _output,
     },
-    parse: (input) => schema.parse(input),
+    parse: (input) =>
+      'schema' in options ? options.schema.parse(input) : options.parse(input),
   }
 }
 
