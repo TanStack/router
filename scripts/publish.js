@@ -25,6 +25,10 @@ await publish({
       packageDir: 'packages/router-zod-adapter',
     },
     {
+      name: '@tanstack/router-valibot-adapter',
+      packageDir: 'packages/router-valibot-adapter',
+    },
+    {
       name: '@tanstack/router-devtools',
       packageDir: 'packages/router-devtools',
     },
