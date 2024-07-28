@@ -16,6 +16,7 @@ overrides:
   '@tanstack/router-plugin': workspace:*
   '@tanstack/router-vite-plugin': workspace:*
   '@tanstack/react-router-with-query': workspace:*
+  '@tanstack/react-router-with-zod': workspace:*
   '@tanstack/start': workspace:*
   '@tanstack/start-vite-plugin': workspace:*
   temp-react: 0.0.0-experimental-035a41c4e-20230704
