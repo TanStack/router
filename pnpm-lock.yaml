@@ -1852,6 +1852,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@testing-library/jest-dom':
+        specifier: ^6.4.6
+        version: 6.4.6(vitest@1.6.0(@types/node@20.14.9)(jsdom@24.1.1)(terser@5.31.1))
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.0.0(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
