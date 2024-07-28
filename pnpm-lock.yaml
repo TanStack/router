@@ -777,9 +777,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      '@tanstack/router-valibot-adapter':
-        specifier: workspace:*
-        version: link:../../../packages/router-valibot-adapter
       immer:
         specifier: ^10.1.1
         version: 10.1.1
@@ -792,9 +789,9 @@ importers:
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
-      valibot:
-        specifier: ^0.36.0
-        version: 0.36.0
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
     devDependencies:
       '@types/react':
         specifier: ^18.2.47
