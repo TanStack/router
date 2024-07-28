@@ -1,14 +1,14 @@
-import { afterEach, expect, test, vi } from 'vitest'
-import { valibotSearchValidator } from '../src'
 import * as v from 'valibot'
 import {
+  Link,
+  RouterProvider,
   createRootRoute,
   createRoute,
   createRouter,
-  Link,
-  RouterProvider,
 } from '@tanstack/react-router'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, expect, test, vi } from 'vitest'
+import { valibotSearchValidator } from '../src'
 import '@testing-library/jest-dom/vitest'
 
 afterEach(() => {

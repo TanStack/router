@@ -1,12 +1,12 @@
 import {
+  Link,
   createRootRoute,
   createRoute,
   createRouter,
-  Link,
 } from '@tanstack/react-router'
-import { test, expectTypeOf } from 'vitest'
-import { valibotSearchValidator } from '../src'
+import { expectTypeOf, test } from 'vitest'
 import * as v from 'valibot'
+import { valibotSearchValidator } from '../src'
 
 test('when creating a route with valibot validation', () => {
   const rootRoute = createRootRoute({

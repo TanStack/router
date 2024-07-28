@@ -1,5 +1,5 @@
 import { type SearchValidatorAdapter } from '@tanstack/react-router'
-import { GenericSchema, parse } from 'valibot'
+import { type GenericSchema, parse } from 'valibot'
 
 export type ValibotSearchValidatorAdapter<TOptions extends GenericSchema> =
   SearchValidatorAdapter<
