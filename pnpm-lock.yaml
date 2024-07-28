@@ -217,6 +217,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-with-zod':
+        specifier: workspace:*
+        version: link:../../../packages/react-router-with-zod
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
@@ -726,6 +729,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-with-zod':
+        specifier: workspace:*
+        version: link:../../../packages/react-router-with-zod
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
@@ -1721,6 +1727,15 @@ importers:
       react-dom:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
+
+  packages/react-router-with-zod:
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
 
   packages/router-cli:
     dependencies:

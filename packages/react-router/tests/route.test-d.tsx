@@ -884,3 +884,42 @@ test('when creating a child route with params.parse and params.stringify with me
     invoiceId: number
   }>()
 })
+
+test('when creating a child route with no explicit search input', () => {
+  const rootRoute = createRootRoute({
+    validateSearch: (input) => {
+      expectTypeOf(input).toEqualTypeOf<Record<string, unknown>>()
+      return {
+        page: 0,
+      }
+    },
+  })
+
+  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
+
+  const rootRouteWithContext = createRootRouteWithContext()({
+    validateSearch: (input) => {
+      expectTypeOf(input).toEqualTypeOf<Record<string, unknown>>()
+      return {
+        page: 0,
+      }
+    },
+  })
+
+  expectTypeOf(rootRouteWithContext.useSearch()).toEqualTypeOf<{
+    page: number
+  }>()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: (input) => {
+      expectTypeOf(input).toEqualTypeOf<Record<string, unknown>>()
+      return {
+        page: 0,
+      }
+    },
+  })
+
+  expectTypeOf(indexRoute.useSearch()).toEqualTypeOf<{ page: number }>()
+})
