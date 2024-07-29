@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",
-    "@tanstack/react-router": "^1.45.11",
-    "@tanstack/router-devtools": "^1.45.11",
+    "@tanstack/react-router": "^1.45.13",
+    "@tanstack/router-devtools": "^1.45.13",
     "hono": "^4.5.2",
     "react": "18.3.0-canary-0cdfef19b-20231211",
     "react-dom": "18.3.0-canary-0cdfef19b-20231211",

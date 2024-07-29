@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "@babel/plugin-syntax-typescript": "^7.24.7",
-    "@tanstack/react-router": "^1.45.11",
-    "@tanstack/router-devtools": "^1.45.11",
-    "@tanstack/router-plugin": "^1.45.8",
-    "@tanstack/start": "^1.45.11",
+    "@tanstack/react-router": "^1.45.13",
+    "@tanstack/router-devtools": "^1.45.13",
+    "@tanstack/router-plugin": "^1.45.13",
+    "@tanstack/start": "^1.45.13",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.4.0",
     "vinxi": "0.4.1"
