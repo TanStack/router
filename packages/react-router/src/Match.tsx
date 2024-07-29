@@ -16,7 +16,11 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
 import type { AnyRoute } from './route'
 
-export function Match({ matchId }: { matchId: string }) {
+export const Match = React.memo(function MatchImpl({
+  matchId,
+}: {
+  matchId: string
+}) {
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
@@ -99,8 +103,13 @@ export function Match({ matchId }: { matchId: string }) {
       </ResolvedSuspenseBoundary>
     </matchContext.Provider>
   )
-}
-function MatchInner({ matchId }: { matchId: string }): any {
+})
+
+export const MatchInner = React.memo(function MatchInnerImpl({
+  matchId,
+}: {
+  matchId: string
+}): any {
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
@@ -126,6 +135,11 @@ function MatchInner({ matchId }: { matchId: string }): any {
       ])
     },
   })
+
+  const out = React.useMemo(() => {
+    const Comp = route.options.component ?? router.options.defaultComponent
+    return Comp ? <Comp key={matchId} /> : <Outlet />
+  }, [matchId, route.options.component, router.options.defaultComponent])
 
   // function useChangedDiff(value: any) {
   //   const ref = React.useRef(value)
@@ -236,10 +250,6 @@ function MatchInner({ matchId }: { matchId: string }): any {
     throw match.loadPromise
   }
 
-  const Comp = route.options.component ?? router.options.defaultComponent
-
-  const out = Comp ? <Comp /> : <Outlet />
-
   return (
     <>
       {out}
@@ -248,9 +258,9 @@ function MatchInner({ matchId }: { matchId: string }): any {
       ) : null}
     </>
   )
-}
+})
 
-export const Outlet = React.memo(function Outlet() {
+export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
   const routeId = useRouterState({
