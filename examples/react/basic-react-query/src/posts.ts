@@ -24,7 +24,7 @@ const fetchPost = async (postId: string) => {
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
 
-  // eslint-disable-next-line ts/no-unnecessary-condition
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!post) {
     throw new NotFoundError(`Post with id "${postId}" not found!`)
   }

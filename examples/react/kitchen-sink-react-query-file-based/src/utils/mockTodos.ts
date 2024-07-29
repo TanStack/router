@@ -123,7 +123,7 @@ export async function patchInvoice({
       if (!invoice) {
         throw new Error('Invoice not found.')
       }
-      // eslint-disable-next-line ts/no-unnecessary-condition
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (updatedInvoice.title?.toLocaleLowerCase()?.includes('error')) {
         throw new Error('Ouch!')
       }
