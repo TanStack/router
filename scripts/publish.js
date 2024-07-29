@@ -29,6 +29,10 @@ await publish({
       packageDir: 'packages/router-valibot-adapter',
     },
     {
+      name: '@tanstack/router-arktype-adapter',
+      packageDir: 'packages/router-arktype-adapter',
+    },
+    {
       name: '@tanstack/router-devtools',
       packageDir: 'packages/router-devtools',
     },

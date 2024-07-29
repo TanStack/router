@@ -74,6 +74,7 @@
       "@tanstack/react-router-with-query": "workspace:*",
       "@tanstack/router-zod-adapter": "workspace:*",
       "@tanstack/router-valibot-adapter": "workspace:*",
+      "@tanstack/router-arktype-adapter": "workspace:*",
       "@tanstack/start": "workspace:*",
       "@tanstack/start-vite-plugin": "workspace:*",
       "temp-react": "0.0.0-experimental-035a41c4e-20230704",
