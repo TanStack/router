@@ -35,8 +35,8 @@ importers:
         specifier: ^5.0.7
         version: 5.0.7(rollup@4.18.0)
       '@tanstack/config':
-        specifier: ^0.10.0
-        version: 0.10.0(@types/node@20.14.9)(esbuild@0.21.5)(eslint@8.57.0)(rollup@4.18.0)(typescript@5.5.3)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
+        specifier: ^0.11.1
+        version: 0.11.1(@types/node@20.14.9)(esbuild@0.21.5)(eslint@8.57.0)(rollup@4.18.0)(typescript@5.5.3)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
       '@types/node':
         specifier: ^20.14.7
         version: 20.14.9
@@ -1047,8 +1047,8 @@ importers:
         specifier: ^2.4.0
         version: 2.4.0
       vinxi:
-        specifier: 0.3.12
-        version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
       '@playwright/test':
         specifier: ^1.45.3
@@ -1108,8 +1108,8 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       vinxi:
-        specifier: 0.3.12
-        version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
       '@types/node':
         specifier: ^20.12.11
@@ -1181,8 +1181,8 @@ importers:
         specifier: ^2.4.0
         version: 2.4.0
       vinxi:
-        specifier: 0.3.12
-        version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
       '@playwright/test':
         specifier: ^1.45.3
@@ -1248,8 +1248,8 @@ importers:
         specifier: ^2.4.0
         version: 2.4.0
       vinxi:
-        specifier: 0.3.12
-        version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
       '@types/react':
         specifier: ^18.2.65
@@ -1345,8 +1345,8 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
       vinxi:
-        specifier: 0.3.12
-        version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -1904,11 +1904,11 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
       '@vinxi/server-components':
-        specifier: ^0.3.3
-        version: 0.3.3(vinxi@0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))
+        specifier: ^0.4.1
+        version: 0.4.1(vinxi@0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))
       '@vinxi/server-functions':
-        specifier: ^0.3.3
-        version: 0.3.3(vinxi@0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))
+        specifier: ^0.4.1
+        version: 0.4.1(vinxi@0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))
       import-meta-resolve:
         specifier: ^4.1.0
         version: 4.1.0
@@ -1922,8 +1922,8 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
       vinxi:
-        specifier: 0.3.12
-        version: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^4.3.2
         version: 4.3.2(typescript@5.5.3)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
@@ -4099,6 +4099,12 @@ packages:
     resolution: {integrity: sha512-LtoMMhxAlorcGhmFYI+LhPgbPZCkgP6ra1YL604EeF6U98pLlQ3iWIGMdWSC+vWmPBWBNgmDBAhnAobLROJmwg==}
     engines: {node: '>=18'}
 
+  '@stylistic/eslint-plugin-js@2.4.0':
+    resolution: {integrity: sha512-ScIYDFAwNz+ELr3KfAZMuYMCUq7Q6TdEEIq4RBRR77EHucpDrwi5Kx2d0VdYxb4s4o6nOtSkJmY9MCZupDYJow==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    peerDependencies:
+      eslint: ^8.57.0
+
   '@swc/core-darwin-arm64@1.7.3':
     resolution: {integrity: sha512-CTkHa6MJdov9t41vuV2kmQIMu+Q19LrEHGIR/UiJYH06SC/sOu35ZZH8DyfLp9ZoaCn21gwgWd61ixOGQlwzTw==}
     engines: {node: '>=10'}
@@ -4180,8 +4186,8 @@ packages:
   '@tanstack/bling@0.5.0':
     resolution: {integrity: sha512-IPSFm7jtZiJcQsNuFFrZ15V10gp/CYbqnTyAEMaTFNV97SqnB2hbM8tildppVeM7BHu7pIp7+nsbYPCGjeG7FA==}
 
-  '@tanstack/config@0.10.0':
-    resolution: {integrity: sha512-Yz+7cWxuDo8onU2nm4+kwA9B2GSp+l1k8oSrqiERNkmRu6dKtiiW8ENFqLuXi0p5fi0sBdLeUcEhfMxTifzmtA==}
+  '@tanstack/config@0.11.1':
+    resolution: {integrity: sha512-P/U2ANQZMGpd6uBiVarY+SEVzCM50BOBV+C9c2pUZbMm3gtZN0a2LzX0fT0DutkeX3TsR5ogCw0ohxGzE4GcWw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -4331,8 +4337,8 @@ packages:
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
 
-  '@types/eslint@8.56.10':
-    resolution: {integrity: sha512-Shavhk87gCtY2fhXDctcfS3e6FdxWkCx1iUZ9eEUbh7rTqlZT0/IzOkCOVt0fCjcFuZ9FPYfuezTBImfHCDBGQ==}
+  '@types/eslint@9.6.0':
+    resolution: {integrity: sha512-gi6WQJ7cHRgZxtkQEoyHMppPjq9Kxo5Tjn2prSKDSmZrCz8TZ3jSRCeTJm+WoM+oB0WG37bRqLzaaU3q7JypGg==}
 
   '@types/estree@1.0.5':
     resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
@@ -4576,10 +4582,10 @@ packages:
     resolution: {integrity: sha512-WSN1z931BtasZJlgPp704zJFnQFRg7yzSjkm3MzAWQYe4uXFXlFr1hc5Ac2zae5/HDOz5x1/zDM5Cb54vTCnWw==}
     hasBin: true
 
-  '@vinxi/plugin-directives@0.3.1':
-    resolution: {integrity: sha512-4qz5WifjmJ864VS8Ik9nUG0wAkt/xIcxFpP29RXogGLgccRnceBpWQi+ghw5rm0F6LP/YMAhhO5iFORXclWd0Q==}
+  '@vinxi/plugin-directives@0.4.1':
+    resolution: {integrity: sha512-NsHCDyqU00i4RKGBoNNcBuONEirg/XfGgPCLFK1CZw3AYBE19haFSgvuo21Bx+BFGcwdRU3BRtaBMvwjLrUCnw==}
     peerDependencies:
-      vinxi: ^0.3.10
+      vinxi: ^0.4.0
 
   '@vinxi/react-server-dom@0.0.3':
     resolution: {integrity: sha512-ZJJZtuw1TbGFOBuDZBHmM3w40yzFpNFWoPCoC2QtZBkYEQXYF9sOHHxkjTfNvk4rSn/zaUAs6KNUbVRvebq/1Q==}
@@ -4592,15 +4598,15 @@ packages:
   '@vinxi/react@0.2.3':
     resolution: {integrity: sha512-/JMHdzGzmoBTrXtW95E7DAvsF5bMrstz/2hphkL47Yb5iRaBNKs2Si4yTyHPmRHSh4teNRm/2YmvClRHtvQi4Q==}
 
-  '@vinxi/server-components@0.3.3':
-    resolution: {integrity: sha512-xaW92nj9HUMLyswPcCmsIXOsS3TJll0m9u3WEjWjLrtZWheHggina6+kTCSeltp/Qe8WlUfNU5G02Xy8L4xQxA==}
+  '@vinxi/server-components@0.4.1':
+    resolution: {integrity: sha512-rMS+RCGr1tujO1xWgILMLpOWIyw2OwDO46EtkuhTfqaVgLLt/w7+hxzOnh4s3O9sXoKKuUswtj9/MpQQkFoMOQ==}
     peerDependencies:
-      vinxi: ^0.3.10
+      vinxi: ^0.4.0
 
-  '@vinxi/server-functions@0.3.3':
-    resolution: {integrity: sha512-yUrHov1gc+NM/YCEOekM1DCdu2tNSH1/j0mZPyIOhPZH/yAZKWA+t3dP79Q3g4QLDHchf6xf8z9u1INEADTlXw==}
+  '@vinxi/server-functions@0.4.1':
+    resolution: {integrity: sha512-dj5v9V+DurXK8w/nBDgJof+UsK3bkcgk6K/xBUg+WVmn7sUrLTurDTGRkCaknC6tQCyadNzj4FWGGc+qlrWf9g==}
     peerDependencies:
-      vinxi: ^0.3.12
+      vinxi: ^0.4.0
 
   '@vitejs/plugin-react@3.1.0':
     resolution: {integrity: sha512-AfgcRL8ZBhAlc3BFdigClmTUMISmmzHn7sB2h9U1odvc5U/MjWXsAaz18b/WoppUTDBzxOJwo2VdClfUcItu9g==}
@@ -4783,8 +4789,8 @@ packages:
     resolution: {integrity: sha512-cjkyv4OtNCIeqhHrfS81QWXoCBPExR/J62oyEqepVw8WaQeSqpW2uhuLPh1m9eWhDuOo/jUXVTlifvesOWp/4A==}
     engines: {node: '>=0.4.0'}
 
-  acorn@8.12.0:
-    resolution: {integrity: sha512-RTvkC4w+KNXrM39/lWCUaG0IbRkWdCv7W/IOW9oU6SawyxulvkQy5HQPVTKxEjczcUvapcrw3cFx/60VN/NRNw==}
+  acorn@8.12.1:
+    resolution: {integrity: sha512-tcpGyI9zbizT9JbV6oYE477V6mTlXvvi0T0G3SNIYE2apm/G5huBa1+K89VGeovbg+jycCrfhl3ADxErOuO6Jg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -5973,10 +5979,18 @@ packages:
     resolution: {integrity: sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
+  eslint-visitor-keys@4.0.0:
+    resolution: {integrity: sha512-OtIRv/2GyiF6o/d8K7MYKKbXrOUBIK6SfkIRM4Z0dY3w+LiQ0vy3F57m0Z71bjbyeiWFiHJ8brqnmE6H6/jEuw==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
   eslint@8.57.0:
     resolution: {integrity: sha512-dZ6+mexnaTIbSBZWgou51U6OmzIhYM2VcNdtiTtI7qPNZm35Akpr0f6vtw3w1Kmn5PYo+tZVfh13WrhpS6oLqQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     hasBin: true
+
+  espree@10.1.0:
+    resolution: {integrity: sha512-M1M6CpiE6ffoigIOWYO9UDP8TMUw9kqb21tf+08IgDYjCsOvCuDt4jQcZmoYxx+w7zlKw9/N0KXfto+I8/FrXA==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   espree@9.6.1:
     resolution: {integrity: sha512-oruZaFkjorTpF32kDSI5/75ViwGeZginGGy2NoOSg3Q9bnwlnmDm4HLnkl0RE3n+njDXR037aY1+x58Z/zFdwQ==}
@@ -9018,8 +9032,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  vinxi@0.3.12:
-    resolution: {integrity: sha512-YU/Scild/Rdy6qwgdILYRlO99Wp8ti2CmlMlYioEg7lRtxAST5iCFjviDya+BYQDgc3Pugh4KzOypVwjZknF2A==}
+  vinxi@0.4.1:
+    resolution: {integrity: sha512-WGEYqIuJ2/P3sBoSVKsGvp/UKpW4wVSaAFdA18gthyMCEExN6nVteoA+Rv1wQFLKXTVL9JRpeGJjcLzcRRgGCA==}
     hasBin: true
 
   vite-node@1.6.0:
@@ -11537,6 +11551,14 @@ snapshots:
 
   '@sindresorhus/merge-streams@2.3.0': {}
 
+  '@stylistic/eslint-plugin-js@2.4.0(eslint@8.57.0)':
+    dependencies:
+      '@types/eslint': 9.6.0
+      acorn: 8.12.1
+      eslint: 8.57.0
+      eslint-visitor-keys: 4.0.0
+      espree: 10.1.0
+
   '@swc/core-darwin-arm64@1.7.3':
     optional: true
 
@@ -11607,10 +11629,11 @@ snapshots:
       - supports-color
       - vite
 
-  '@tanstack/config@0.10.0(@types/node@20.14.9)(esbuild@0.21.5)(eslint@8.57.0)(rollup@4.18.0)(typescript@5.5.3)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))':
+  '@tanstack/config@0.11.1(@types/node@20.14.9)(esbuild@0.21.5)(eslint@8.57.0)(rollup@4.18.0)(typescript@5.5.3)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))':
     dependencies:
       '@commitlint/parse': 19.0.3
       '@eslint/js': 8.57.0
+      '@stylistic/eslint-plugin-js': 2.4.0(eslint@8.57.0)
       commander: 12.1.0
       current-git-branch: 1.1.0
       esbuild-register: 3.5.0(esbuild@0.21.5)
@@ -11806,10 +11829,10 @@ snapshots:
 
   '@types/eslint-scope@3.7.7':
     dependencies:
-      '@types/eslint': 8.56.10
+      '@types/eslint': 9.6.0
       '@types/estree': 1.0.5
 
-  '@types/eslint@8.56.10':
+  '@types/eslint@9.6.0':
     dependencies:
       '@types/estree': 1.0.5
       '@types/json-schema': 7.0.15
@@ -12107,8 +12130,8 @@ snapshots:
     dependencies:
       '@mapbox/node-pre-gyp': 1.0.11
       '@rollup/pluginutils': 4.2.1
-      acorn: 8.12.0
-      acorn-import-attributes: 1.9.5(acorn@8.12.0)
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
       async-sema: 3.1.1
       bindings: 1.5.0
       estree-walker: 2.0.2
@@ -12143,18 +12166,18 @@ snapshots:
     transitivePeerDependencies:
       - uWebSockets.js
 
-  '@vinxi/plugin-directives@0.3.1(vinxi@0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))':
+  '@vinxi/plugin-directives@0.4.1(vinxi@0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))':
     dependencies:
       '@babel/parser': 7.25.0
-      acorn: 8.12.0
-      acorn-jsx: 5.3.2(acorn@8.12.0)
+      acorn: 8.12.1
+      acorn-jsx: 5.3.2(acorn@8.12.1)
       acorn-loose: 8.3.0
-      acorn-typescript: 1.4.13(acorn@8.12.0)
+      acorn-typescript: 1.4.13(acorn@8.12.1)
       astring: 1.8.6
       magicast: 0.2.11
       recast: 0.23.4
       tslib: 2.6.2
-      vinxi: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+      vinxi: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
 
   '@vinxi/react-server-dom@0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))':
     dependencies:
@@ -12165,27 +12188,27 @@ snapshots:
 
   '@vinxi/react@0.2.3': {}
 
-  '@vinxi/server-components@0.3.3(vinxi@0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))':
+  '@vinxi/server-components@0.4.1(vinxi@0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))':
     dependencies:
-      '@vinxi/plugin-directives': 0.3.1(vinxi@0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))
-      acorn: 8.12.0
+      '@vinxi/plugin-directives': 0.4.1(vinxi@0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))
+      acorn: 8.12.1
       acorn-loose: 8.3.0
-      acorn-typescript: 1.4.13(acorn@8.12.0)
+      acorn-typescript: 1.4.13(acorn@8.12.1)
       astring: 1.8.6
       magicast: 0.2.11
       recast: 0.23.4
-      vinxi: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+      vinxi: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
 
-  '@vinxi/server-functions@0.3.3(vinxi@0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))':
+  '@vinxi/server-functions@0.4.1(vinxi@0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))':
     dependencies:
-      '@vinxi/plugin-directives': 0.3.1(vinxi@0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))
-      acorn: 8.12.0
+      '@vinxi/plugin-directives': 0.4.1(vinxi@0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1))
+      acorn: 8.12.1
       acorn-loose: 8.3.0
-      acorn-typescript: 1.4.13(acorn@8.12.0)
+      acorn-typescript: 1.4.13(acorn@8.12.1)
       astring: 1.8.6
       magicast: 0.2.11
       recast: 0.23.4
-      vinxi: 0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
+      vinxi: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
 
   '@vitejs/plugin-react@3.1.0(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))':
     dependencies:
@@ -12406,25 +12429,25 @@ snapshots:
       mime-types: 2.1.35
       negotiator: 0.6.3
 
-  acorn-import-attributes@1.9.5(acorn@8.12.0):
+  acorn-import-attributes@1.9.5(acorn@8.12.1):
     dependencies:
-      acorn: 8.12.0
+      acorn: 8.12.1
 
-  acorn-jsx@5.3.2(acorn@8.12.0):
+  acorn-jsx@5.3.2(acorn@8.12.1):
     dependencies:
-      acorn: 8.12.0
+      acorn: 8.12.1
 
   acorn-loose@8.3.0:
     dependencies:
-      acorn: 8.12.0
+      acorn: 8.12.1
 
-  acorn-typescript@1.4.13(acorn@8.12.0):
+  acorn-typescript@1.4.13(acorn@8.12.1):
     dependencies:
-      acorn: 8.12.0
+      acorn: 8.12.1
 
   acorn-walk@8.3.2: {}
 
-  acorn@8.12.0: {}
+  acorn@8.12.1: {}
 
   agent-base@6.0.2:
     dependencies:
@@ -13879,6 +13902,8 @@ snapshots:
 
   eslint-visitor-keys@3.4.3: {}
 
+  eslint-visitor-keys@4.0.0: {}
+
   eslint@8.57.0:
     dependencies:
       '@eslint-community/eslint-utils': 4.4.0(eslint@8.57.0)
@@ -13922,10 +13947,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  espree@10.1.0:
+    dependencies:
+      acorn: 8.12.1
+      acorn-jsx: 5.3.2(acorn@8.12.1)
+      eslint-visitor-keys: 4.0.0
+
   espree@9.6.1:
     dependencies:
-      acorn: 8.12.0
-      acorn-jsx: 5.3.2(acorn@8.12.0)
+      acorn: 8.12.1
+      acorn-jsx: 5.3.2(acorn@8.12.1)
       eslint-visitor-keys: 3.4.3
 
   esprima@4.0.1: {}
@@ -15269,7 +15300,7 @@ snapshots:
 
   mlly@1.7.0:
     dependencies:
-      acorn: 8.12.0
+      acorn: 8.12.1
       pathe: 1.1.2
       pkg-types: 1.1.1
       ufo: 1.5.3
@@ -16645,7 +16676,7 @@ snapshots:
 
   strip-literal@1.3.0:
     dependencies:
-      acorn: 8.12.0
+      acorn: 8.12.1
 
   strip-literal@2.1.0:
     dependencies:
@@ -16794,7 +16825,7 @@ snapshots:
   terser@5.31.1:
     dependencies:
       '@jridgewell/source-map': 0.3.6
-      acorn: 8.12.0
+      acorn: 8.12.1
       commander: 2.20.3
       source-map-support: 0.5.21
 
@@ -17022,7 +17053,7 @@ snapshots:
 
   unctx@2.3.1:
     dependencies:
-      acorn: 8.12.0
+      acorn: 8.12.1
       estree-walker: 3.0.3
       magic-string: 0.30.10
       unplugin: 1.11.0
@@ -17059,7 +17090,7 @@ snapshots:
   unimport@3.7.1(rollup@4.18.0):
     dependencies:
       '@rollup/pluginutils': 5.1.0(rollup@4.18.0)
-      acorn: 8.12.0
+      acorn: 8.12.1
       escape-string-regexp: 5.0.0
       estree-walker: 3.0.3
       fast-glob: 3.3.2
@@ -17084,7 +17115,7 @@ snapshots:
 
   unplugin@1.11.0:
     dependencies:
-      acorn: 8.12.0
+      acorn: 8.12.1
       chokidar: 3.6.0
       webpack-sources: 3.2.3
       webpack-virtual-modules: 0.6.1
@@ -17185,7 +17216,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vinxi@0.3.12(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1):
+  vinxi@0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1):
     dependencies:
       '@babel/core': 7.24.9
       '@babel/plugin-syntax-jsx': 7.24.7(@babel/core@7.24.9)
@@ -17492,8 +17523,8 @@ snapshots:
       '@webassemblyjs/ast': 1.12.1
       '@webassemblyjs/wasm-edit': 1.12.1
       '@webassemblyjs/wasm-parser': 1.12.1
-      acorn: 8.12.0
-      acorn-import-attributes: 1.9.5(acorn@8.12.0)
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
       browserslist: 4.23.1
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.17.0
@@ -17523,8 +17554,8 @@ snapshots:
       '@webassemblyjs/ast': 1.12.1
       '@webassemblyjs/wasm-edit': 1.12.1
       '@webassemblyjs/wasm-parser': 1.12.1
-      acorn: 8.12.0
-      acorn-import-attributes: 1.9.5(acorn@8.12.0)
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
       browserslist: 4.23.1
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.17.0
@@ -17556,8 +17587,8 @@ snapshots:
       '@webassemblyjs/ast': 1.12.1
       '@webassemblyjs/wasm-edit': 1.12.1
       '@webassemblyjs/wasm-parser': 1.12.1
-      acorn: 8.12.0
-      acorn-import-attributes: 1.9.5(acorn@8.12.0)
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
       browserslist: 4.23.1
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.17.0
