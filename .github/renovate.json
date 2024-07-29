@@ -1,10 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "configMigration": true,
   "extends": [
     "config:recommended",
+    "group:allNonMajor",
     "schedule:weekly",
     ":approveMajorUpdates",
+    ":automergeMinor",
     ":disablePeerDependencies",
+    ":maintainLockFilesMonthly",
     ":semanticCommits",
     ":semanticCommitTypeAll(chore)"
   ],
@@ -12,15 +16,6 @@
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
   "postUpdateOptions": ["pnpmDedupe"],
-  "packageRules": [
-    {
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch",
-      "matchCurrentVersion": ">=1.0.0",
-      "matchUpdateTypes": ["minor", "patch"],
-      "automerge": true
-    }
-  ],
   "ignoreDeps": [
     "@types/node",
     "@types/react",
@@ -37,6 +32,7 @@
     "typescript52",
     "typescript53",
     "typescript54",
+    "unplugin",
     "use-sync-external-store",
     "waku"
   ]

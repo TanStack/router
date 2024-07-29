@@ -70,7 +70,7 @@
     "tiny-warning": "^1.0.3"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.4.6",
+    "@testing-library/jest-dom": "^6.4.8",
     "@testing-library/react": "^16.0.0",
     "@vitejs/plugin-react": "^4.3.1",
     "combinate": "^1.1.11",
