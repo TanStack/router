@@ -16,7 +16,7 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
 import type { AnyRoute } from './route'
 
-export const Match = React.memo(function Match({
+export const Match = React.memo(function MatchImpl({
   matchId,
 }: {
   matchId: string
@@ -105,7 +105,7 @@ export const Match = React.memo(function Match({
   )
 })
 
-export const MatchInner = React.memo(function MatchInner({
+export const MatchInner = React.memo(function MatchInnerImpl({
   matchId,
 }: {
   matchId: string
@@ -138,7 +138,7 @@ export const MatchInner = React.memo(function MatchInner({
 
   const out = React.useMemo(() => {
     const Comp = route.options.component ?? router.options.defaultComponent
-    return (Comp ? <Comp /> : <Outlet />)
+    return Comp ? <Comp /> : <Outlet />
   }, [route.options.component, router.options.defaultComponent])
 
   // function useChangedDiff(value: any) {
@@ -260,7 +260,7 @@ export const MatchInner = React.memo(function MatchInner({
   )
 })
 
-export const Outlet = React.memo(function Outlet() {
+export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
   const routeId = useRouterState({
