@@ -12,7 +12,7 @@ import type { ParseAstOptions } from './ast'
 // https://github.com/babel/babel/issues/15269.
 let generate = (_generate as any)['default'] as typeof _generate
 
-// eslint-disable-next-line ts/no-unnecessary-condition
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 if (!generate) {
   generate = _generate
 }

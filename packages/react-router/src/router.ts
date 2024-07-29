@@ -635,7 +635,7 @@ export class Router<
     }
 
     if (
-      // eslint-disable-next-line ts/no-unnecessary-condition
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -654,7 +654,7 @@ export class Router<
       this.buildRouteTree()
     }
 
-    // eslint-disable-next-line ts/no-unnecessary-condition
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -1542,9 +1542,9 @@ export class Router<
           await this.loadMatches({
             matches: pendingMatches,
             location: next,
-            // eslint-disable-next-line ts/require-await
+            // eslint-disable-next-line @typescript-eslint/require-await
             onReady: async () => {
-              // eslint-disable-next-line ts/require-await
+              // eslint-disable-next-line @typescript-eslint/require-await
               this.startViewTransition(async () => {
                 // this.viewTransitionPromise = createControlledPromise<true>()
 
