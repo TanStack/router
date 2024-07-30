@@ -460,15 +460,32 @@ export type LinkOptions<
 > = NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & LinkOptionsProps
 
 export interface LinkOptionsProps {
-  // The standard anchor tag target attribute
+  /**
+   * The standard anchor tag target attribute
+   */
   target?: HTMLAnchorElement['target']
-  // Defaults to `{ exact: false, includeHash: false }`
+  /**
+   * Configurable options to determine if the link should be considered active or not
+   * @default {exact:true,includeHash:true}
+   */
   activeOptions?: ActiveOptions
-  // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
-  preload?: false | 'intent'
-  // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
+  /**
+   * The preloading strategy for this link
+   * - `false` - No preloading
+   * - `'intent'` - Preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
+   * - `'viewport'` - Preload the linked route when it enters the viewport
+   */
+  preload?: false | 'intent' | 'viewport'
+  /**
+   * When a preload strategy is set, this delays the preload by this many milliseconds.
+   * If the user exits the link before this delay, the preload will be cancelled.
+   */
   preloadDelay?: number
-  // If true, will render the link without the href attribute
+  /**
+   * Control whether the link should be disabled or not
+   * If set to `true`, the link will be rendered without an `href` attribute
+   * @default false
+   */
   disabled?: boolean
 }
 
