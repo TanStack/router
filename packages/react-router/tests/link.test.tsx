@@ -705,9 +705,9 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: 'posts',
       beforeLoad: () => {
-         throw redirect({
-           to: '/login',
-          })
+        throw redirect({
+          to: '/login',
+        })
       },
       component: PostsComponent,
     })
@@ -770,9 +770,9 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: 'posts',
       beforeLoad: async () => {
-        if(await asyncCheck()) {
-         throw redirect({
-           to: '/login',
+        if (await asyncCheck()) {
+          throw redirect({
+            to: '/login',
           })
         }
       },
@@ -795,88 +795,91 @@ describe('Link', () => {
 
     fireEvent.click(postsLink)
 
-    await waitFor(() => expect(screen.getByText('Auth!')).toBeVisible(), {timeout: 10000})
+    await waitFor(() => expect(screen.getByText('Auth!')).toBeVisible(), {
+      timeout: 10000,
+    })
   })
 
   test('when rerender it should not create a new PostsComponent', async () => {
     const useIsFirstRender = () => {
-      const renderRef = React.useRef(true);
-    
+      const renderRef = React.useRef(true)
+
       if (renderRef.current === true) {
-        renderRef.current = false;
-        return true;
+        renderRef.current = false
+        return true
       }
-    
-      return renderRef.current;
-    };
+
+      return renderRef.current
+    }
 
     const PostsComponent = () => {
-      const isFirstRender = useIsFirstRender();
+      const isFirstRender = useIsFirstRender()
 
       return (
-        <h1 data-testid="testId">{isFirstRender ? "IS FIRST RENDER": "IS RERENDER"}</h1>
-      );
-    };
-  
+        <h1 data-testid="testId">
+          {isFirstRender ? 'IS FIRST RENDER' : 'IS RERENDER'}
+        </h1>
+      )
+    }
+
     const RouterContainer = () => {
-  
       type AccessContext = {
-        hasAccessTo: (check: string) => Promise<boolean>;
-      };
-  
+        hasAccessTo: (check: string) => Promise<boolean>
+      }
+
       const memoedContext = React.useMemo(() => {
         return {
           hasAccessTo: async (check: string) => {
-            return true;
+            return true
           },
-        } as AccessContext;
-      }, []);
-  
+        } as AccessContext
+      }, [])
+
       const memoedRouteTree = React.useMemo(() => {
-        const rootRoute = createRootRouteWithContext<AccessContext>()();
-  
+        const rootRoute = createRootRouteWithContext<AccessContext>()()
+
         const indexRoute = createRoute({
           getParentRoute: () => rootRoute,
           path: '/',
-          beforeLoad: async ({context}) => {
-            await context.hasAccessTo('posts');
+          beforeLoad: async ({ context }) => {
+            await context.hasAccessTo('posts')
           },
-          component: () => <PostsComponent></PostsComponent>
-        });
-        return rootRoute.addChildren([indexRoute]);
-      }, []);
-  
-      const memoedContextRef = React.useRef(memoedContext);
+          component: () => <PostsComponent></PostsComponent>,
+        })
+        return rootRoute.addChildren([indexRoute])
+      }, [])
+
+      const memoedContextRef = React.useRef(memoedContext)
       React.useEffect(() => {
-        memoedContextRef.current = memoedContext;
-      }, [memoedContext]);
-   
+        memoedContextRef.current = memoedContext
+      }, [memoedContext])
+
       const memoedRouter = React.useMemo(() => {
         const router = createRouter({
           routeTree: memoedRouteTree,
           history: createMemoryHistory({ initialEntries: ['/#'] }), // change this to "/" and it will not fail?!?
           context: memoedContextRef.current,
-        });
-  
-        return router;
-      }, [memoedRouteTree]);
-  
-      return <RouterProvider router={memoedRouter} />;
-    };
-  
-    const { rerender } = render(<RouterContainer />);
-  
-    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible());
-    
-    expect(screen.getByTestId('testId').innerHTML).toBe("IS FIRST RENDER");
+        })
 
-    rerender(<RouterContainer />);
-  
-    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible());
-  
+        return router
+      }, [memoedRouteTree])
+
+      return <RouterProvider router={memoedRouter} />
+    }
+
+    const { rerender } = render(<RouterContainer />)
+
+    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible())
+
+    expect(screen.getByTestId('testId').innerHTML).toBe('IS FIRST RENDER')
+
+    rerender(<RouterContainer />)
+
+    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible())
+
     // Check that the router instance has not been recreated
-    expect(screen.getByTestId('testId').innerHTML).toBe("IS RERENDER");
-  });
+    expect(screen.getByTestId('testId').innerHTML).toBe('IS RERENDER')
+  })
 
   test('when navigating to /posts with a beforeLoad that returns context', async () => {
     const rootRoute = createRootRouteWithContext<{
