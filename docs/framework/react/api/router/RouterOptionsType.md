@@ -37,7 +37,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultPreload` property
 
-- Type: `undefined | false | 'intent' | 'viewport`
+- Type: `undefined | false | 'intent' | 'viewport'`
 - Optional
 - Defaults to `false`
 - If `false`, routes will not be preloaded by default in any way.
