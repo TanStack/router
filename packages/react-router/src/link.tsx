@@ -952,8 +952,6 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
       delete linkProps.disabled
     }
 
-    console.log('link')
-
     return React.createElement(
       _asChild ? _asChild : 'a',
       {
