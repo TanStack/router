@@ -565,7 +565,7 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   forwardedRef?: React.ForwardedRef<Element>,
-): React.AnchorHTMLAttributes<HTMLAnchorElement> {
+): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const innerRef = useForwardedRef(forwardedRef)
@@ -688,7 +688,7 @@ export function useLinkProps<
   if (type === 'external') {
     return {
       ...rest,
-      ref: innerRef,
+      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       type,
       href: to,
       ...(children && { children }),
@@ -814,7 +814,7 @@ export function useLinkProps<
       : next.maskedLocation
         ? router.history.createHref(next.maskedLocation.href)
         : router.history.createHref(next.href),
-    ref: innerRef,
+    ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
@@ -932,12 +932,7 @@ export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    const {
-      type,
-      // @ts-expect-error
-      ref: innerRef,
-      ...linkProps
-    } = useLinkProps(rest, ref)
+    const { type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
 
     const children =
       typeof rest.children === 'function'
