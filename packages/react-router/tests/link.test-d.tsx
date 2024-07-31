@@ -484,6 +484,91 @@ test('when navigating from a route with no params and no search to the current r
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<'./$postId/' | './$postId' | undefined | './'>()
+
+  expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
+
+  expectTypeOf(Link<DefaultRouterObjects, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function>()
+    .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
+
+  expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<DefaultRouterObjects, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<DefaultRouterObjects, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{ rootPage?: number }>()
 })
 
 test('when navigating from a route with no params and no search to the parent route', () => {

@@ -115,7 +115,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 <option value="2000">2000</option>
               </select> */}
               <IconLink
-                href="https://github.com/tkdodo/trellix-query"
+                href="https://github.com/TanStack/router/tree/main/examples/react/start-trellaux"
                 label="Source"
                 icon="/github-mark-white.png"
               />
