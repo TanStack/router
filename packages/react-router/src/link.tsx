@@ -258,7 +258,7 @@ export type ResolveRoute<
   TTo,
   TPath = ResolveRelativePath<TFrom, TTo>,
 > = TPath extends string
-  ? string extends TTo
+  ? TFrom extends TPath
     ? RouteByPath<TRouter['routeTree'], TPath>
     : RouteByToPath<TRouter, TPath>
   : never
