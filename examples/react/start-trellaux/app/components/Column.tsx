@@ -83,7 +83,7 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
         invariant(transfer.title, 'missing transfer.title')
 
         updateCardMutation.mutate({
-          order: sortedItems[sortedItems.length - 1]?.order ?? 0 + 1,
+          order: (sortedItems[sortedItems.length - 1]?.order ?? 0) + 1,
           columnId: columnId,
           boardId,
           id: transfer.id,
