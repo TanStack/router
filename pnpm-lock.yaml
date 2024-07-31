@@ -1577,7 +1577,7 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0(@babel/core@7.24.9)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
 
-  examples/react/wip-with-framer-motion:
+  examples/react/with-framer-motion:
     dependencies:
       '@tanstack/react-router':
         specifier: workspace:*
