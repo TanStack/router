@@ -1,5 +1,5 @@
 import React from 'react'
-import { afterEach, describe, expect, it, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 import {
   cleanup,
   configure,
@@ -26,6 +26,18 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { getIntersectionObserverMock } from './utils'
+
+const ioObserveMock = vi.fn()
+const ioDisconnectMock = vi.fn()
+
+beforeEach(() => {
+  const io = getIntersectionObserverMock({
+    observe: ioObserveMock,
+    disconnect: ioDisconnectMock,
+  })
+  vi.stubGlobal('IntersectionObserver', io)
+})
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -3359,6 +3371,94 @@ describe('Link', () => {
 
     expect(stringifyParamsMock).toHaveBeenCalledWith({ postId: 2 })
     expect(stringifyParamsMock).toHaveBeenCalledWith({ postId: 0 })
+  })
+
+  test.each([false, 'intent'] as const)(
+    'Router.preload="%s", should not trigger the IntersectionObserver\'s observe and disconnect methods',
+    async (preload) => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <>
+            <h1>Index Heading</h1>
+            <Link to="/">Index Link</Link>
+          </>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        defaultPreload: preload,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+      expect(indexLink).toBeInTheDocument()
+
+      expect(ioObserveMock).not.toBeCalled()
+      expect(ioDisconnectMock).not.toBeCalled()
+    },
+  )
+
+  test('Router.preload="viewport", should trigger the IntersectionObserver\'s observe and disconnect methods', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/">Index Link</Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'viewport',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    expect(indexLink).toBeInTheDocument()
+
+    expect(ioObserveMock).toBeCalled()
+    expect(ioObserveMock).toBeCalledTimes(2) // since React.StrictMode is enabled it double renders
+
+    expect(ioDisconnectMock).toBeCalled()
+    expect(ioDisconnectMock).toBeCalledTimes(1) // since React.StrictMode is enabled it should have disconnected
+  })
+
+  test('Router.preload="viewport" with Link.preload="false", should not trigger the IntersectionObserver\'s observe method', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/" preload={false}>
+            Index Link
+          </Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'viewport',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    expect(indexLink).toBeInTheDocument()
+
+    expect(ioObserveMock).not.toBeCalled()
   })
 })
 

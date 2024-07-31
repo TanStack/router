@@ -4,7 +4,12 @@ import * as React from 'react'
 import { flushSync } from 'react-dom'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { deepEqual, functionalUpdate } from './utils'
+import {
+  deepEqual,
+  functionalUpdate,
+  useForwardedRef,
+  useIntersectionObserver,
+} from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
 import type { AnyRouter, ParsedLocation } from '.'
 import type { HistoryState } from '@tanstack/history'
@@ -460,15 +465,32 @@ export type LinkOptions<
 > = NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & LinkOptionsProps
 
 export interface LinkOptionsProps {
-  // The standard anchor tag target attribute
+  /**
+   * The standard anchor tag target attribute
+   */
   target?: HTMLAnchorElement['target']
-  // Defaults to `{ exact: false, includeHash: false }`
+  /**
+   * Configurable options to determine if the link should be considered active or not
+   * @default {exact:true,includeHash:true}
+   */
   activeOptions?: ActiveOptions
-  // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
-  preload?: false | 'intent'
-  // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
+  /**
+   * The preloading strategy for this link
+   * - `false` - No preloading
+   * - `'intent'` - Preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
+   * - `'viewport'` - Preload the linked route when it enters the viewport
+   */
+  preload?: false | 'intent' | 'viewport'
+  /**
+   * When a preload strategy is set, this delays the preload by this many milliseconds.
+   * If the user exits the link before this delay, the preload will be cancelled.
+   */
   preloadDelay?: number
-  // If true, will render the link without the href attribute
+  /**
+   * Control whether the link should be disabled or not
+   * If set to `true`, the link will be rendered without an `href` attribute
+   * @default false
+   */
   disabled?: boolean
 }
 
@@ -542,9 +564,11 @@ export function useLinkProps<
   TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-): React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  forwardedRef?: React.ForwardedRef<Element>,
+): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
+  const innerRef = useForwardedRef(forwardedRef)
 
   const {
     // custom props
@@ -584,15 +608,22 @@ export function useLinkProps<
   // If this `to` is a valid external URL, return
   // null for LinkUtils
 
-  let type: 'internal' | 'external' = 'internal'
+  const type: 'internal' | 'external' = React.useMemo(() => {
+    try {
+      new URL(`${to}`)
+      return 'external'
+    } catch {}
+    return 'internal'
+  }, [to])
 
-  try {
-    new URL(`${to}`)
-    type = 'external'
-  } catch {}
-
-  const next = router.buildLocation(options as any)
-  const preload = userPreload ?? router.options.defaultPreload
+  const next = React.useMemo(
+    () => router.buildLocation(options as any),
+    [router, options],
+  )
+  const preload = React.useMemo(
+    () => userPreload ?? router.options.defaultPreload,
+    [router.options.defaultPreload, userPreload],
+  )
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -627,9 +658,37 @@ export function useLinkProps<
     },
   })
 
+  const doPreload = React.useCallback(() => {
+    router.preloadRoute(options as any).catch((err) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
+  }, [options, router])
+
+  const viewportIntersectionCallback = React.useCallback(
+    (entry: IntersectionObserverEntry | undefined) => {
+      if (entry?.isIntersecting) {
+        doPreload()
+      }
+    },
+    [doPreload],
+  )
+
+  useIntersectionObserver(
+    innerRef,
+    {
+      rootMargin: '100px',
+    },
+    {
+      disabled: !!disabled || preload !== 'viewport',
+    },
+    viewportIntersectionCallback,
+  )
+
   if (type === 'external') {
     return {
       ...rest,
+      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       type,
       href: to,
       ...(children && { children }),
@@ -677,15 +736,8 @@ export function useLinkProps<
     }
   }
 
-  const doPreload = () => {
-    router.preloadRoute(options as any).catch((err) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
-  }
-
   // The click handler
-  const handleFocus = (e: MouseEvent) => {
+  const handleFocus = (_: MouseEvent) => {
     if (disabled) return
     if (preload) {
       doPreload()
@@ -762,6 +814,7 @@ export function useLinkProps<
       : next.maskedLocation
         ? router.history.createHref(next.maskedLocation.href)
         : router.history.createHref(next.href),
+    ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
@@ -876,32 +929,34 @@ export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
   }) as any
 }
 
-export const Link: LinkComponent<'a'> = React.forwardRef((props: any, ref) => {
-  const { _asChild, ...rest } = props
-  const { type, ...linkProps } = useLinkProps(rest)
+export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
+  (props, ref) => {
+    const { _asChild, ...rest } = props
+    const { type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
 
-  const children =
-    typeof rest.children === 'function'
-      ? rest.children({
-          isActive: (linkProps as any)['data-status'] === 'active',
-        })
-      : rest.children
+    const children =
+      typeof rest.children === 'function'
+        ? rest.children({
+            isActive: (linkProps as any)['data-status'] === 'active',
+          })
+        : rest.children
 
-  if (typeof _asChild === 'undefined') {
-    // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a delete prop
-    // @ts-expect-error
-    delete linkProps.disabled
-  }
+    if (typeof _asChild === 'undefined') {
+      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a delete prop
+      // @ts-expect-error
+      delete linkProps.disabled
+    }
 
-  return React.createElement(
-    _asChild ? _asChild : 'a',
-    {
-      ...linkProps,
-      ref,
-    },
-    children,
-  )
-}) as any
+    return React.createElement(
+      _asChild ? _asChild : 'a',
+      {
+        ...linkProps,
+        ref: innerRef,
+      },
+      children,
+    )
+  },
+) as any
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
