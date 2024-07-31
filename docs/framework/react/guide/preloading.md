@@ -7,10 +7,12 @@ Preloading in TanStack Router is a way to load a route before the user actually 
 ## Supported Preloading Strategies
 
 - Intent
-  - **Preloading by "intent" works by using hover and touch start events on `<Link>` components to preload the dependencies for the destination route.**
-- Render
-  - **Coming soon!**
+  - Preloading by **"intent"** works by using hover and touch start events on `<Link>` components to preload the dependencies for the destination route.
+  - This strategy is useful for preloading routes that the user is likely to visit next.
 - Viewport Visibility
+  - Preloading by **"viewport**" works by using the Intersection Observer API to preload the dependencies for the destination route when the `<Link>` component is in the viewport.
+  - This strategy is useful for preloading routes that are below the fold or off-screen.
+- Render
   - **Coming soon!**
 
 ## How long does preloaded data stay in memory?
