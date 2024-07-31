@@ -26,23 +26,17 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { getIntersectionObserverMock } from './utils'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
 
 beforeEach(() => {
-  const mockIntersectionObserver = class IO {
-    constructor() {}
-
-    observe() {
-      ioObserveMock()
-    }
-
-    disconnect() {
-      ioDisconnectMock()
-    }
-  }
-  vi.stubGlobal('IntersectionObserver', mockIntersectionObserver)
+  const io = getIntersectionObserverMock({
+    observe: ioObserveMock,
+    disconnect: ioDisconnectMock,
+  })
+  vi.stubGlobal('IntersectionObserver', io)
 })
 
 afterEach(() => {
