@@ -243,10 +243,6 @@
               "to": "framework/react/examples/kitchen-sink-react-query-file-based"
             },
             {
-              "label": "Kitchen Sink + React Query (code-based)",
-              "to": "framework/react/examples/kitchen-sink-react-query"
-            },
-            {
               "label": "Location Masking",
               "to": "framework/react/examples/location-masking"
             },
