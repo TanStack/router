@@ -97,6 +97,7 @@ export class FileRoute<
       UpdatableRouteOptions<
         TParentRoute,
         TId,
+        TFullPath,
         TAllParams,
         TSearchValidator,
         TLoaderData,
@@ -171,6 +172,7 @@ export function FileRouteLoader<
 export type LazyRouteOptions = Pick<
   UpdatableRouteOptions<
     AnyRoute,
+    string,
     string,
     AnyPathParams,
     AnySearchValidator,
