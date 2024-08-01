@@ -8,7 +8,7 @@ import { expectTypeOf, test } from 'vitest'
 import { type } from 'arktype'
 import { arkTypeSearchValidator } from '../src'
 
-test('when creating a route with valibot validation', () => {
+test('when creating a route with arktype validation', () => {
   const rootRoute = createRootRoute({
     validateSearch: arkTypeSearchValidator(
       type({
@@ -52,7 +52,7 @@ test('when creating a route with valibot validation', () => {
   expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>
 })
 
-test('when using valibot schema with function', () => {
+test('when using arktype schema with function', () => {
   const rootRoute = createRootRoute({
     validateSearch: (input) =>
       type({

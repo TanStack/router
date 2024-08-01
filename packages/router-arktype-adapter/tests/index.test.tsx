@@ -1,4 +1,3 @@
-import * as v from 'valibot'
 import {
   Link,
   RouterProvider,
