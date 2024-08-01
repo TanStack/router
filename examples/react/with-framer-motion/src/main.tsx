@@ -1,5 +1,5 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import * as React from 'react'
+import * as ReactDOM from 'react-dom/client'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ErrorComponent,
@@ -7,7 +7,6 @@ import {
   Outlet,
   RouterProvider,
   createRootRoute,
-  createRootRouteWithContext,
   createRoute,
   createRouter,
   useMatch,
@@ -36,7 +35,9 @@ const fetchPost = async (postId: string) => {
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
+    .catch(console.log)
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!post) {
     throw new NotFoundError(`Post with id "${postId}" not found!`)
   }
@@ -121,8 +122,8 @@ const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: () => fetchPosts(),
-  component: ({ useLoaderData }) => {
-    const posts = useLoaderData()
+  component: () => {
+    const posts = postsRoute.useLoaderData()
     return (
       <motion.div className="p-2 flex gap-2" {...mainTransitionProps}>
         <ul className="list-disc pl-4">
@@ -166,15 +167,9 @@ const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
   loader: ({ params: { postId } }) => fetchPost(postId),
-  errorComponent: ({ error }) => {
-    if (error instanceof NotFoundError) {
-      return <div>{error.message}</div>
-    }
-
-    return <ErrorComponent error={error} />
-  },
-  component: ({ useLoaderData }) => {
-    const post = useLoaderData()
+  errorComponent: ErrorComponent,
+  component: () => {
+    const post = postRoute.useLoaderData()
     return (
       <motion.div className="space-y-2" {...postTransitionProps}>
         <h4 className="text-xl font-bold underline">{post.title}</h4>
@@ -210,5 +205,9 @@ const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
 
-  root.render(<RouterProvider router={router} />)
+  root.render(
+    <React.StrictMode>
+      <RouterProvider router={router} />
+    </React.StrictMode>,
+  )
 }

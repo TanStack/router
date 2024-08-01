@@ -1,22 +1,20 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
-  Outlet,
-  RouterProvider,
-  createRouter,
   Link,
   MatchRoute,
-  useSearch,
-  useNavigate,
-  useRouterState,
-  createRoute,
+  Outlet,
+  RouterProvider,
   createRootRoute,
+  createRoute,
+  createRouter,
+  useRouterState,
 } from '@tanstack/react-router'
-import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 
 import { z } from 'zod'
+import type { AppRouter } from '../server/server'
 
 export const trpc = createTRPCProxyClient<AppRouter>({
   links: [
@@ -176,8 +174,8 @@ const dashboardIndexRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/',
   loader: () => trpc.posts.query(),
-  component: ({ useLoaderData }) => {
-    const posts = useLoaderData()
+  component: () => {
+    const posts = dashboardIndexRoute.useLoaderData()
 
     return (
       <div className="p-2">
@@ -200,7 +198,7 @@ const postsRoute = createRoute({
     return (
       <div className="flex-1 flex">
         <div className="divide-y w-48">
-          {posts?.map((post) => {
+          {posts.map((post) => {
             return (
               <div key={post.id}>
                 <Link
@@ -263,10 +261,10 @@ const postRoute = createRoute({
     notes: z.string().optional(),
   }),
   loader: async ({ params: { postId } }) => trpc.post.query(postId),
-  component: ({ useLoaderData }) => {
-    const post = useLoaderData()
-    const search = useSearch({ from: postRoute.fullPath })
-    const navigate = useNavigate({ from: postRoute.fullPath })
+  component: () => {
+    const post = postRoute.useLoaderData()
+    const search = postRoute.useSearch()
+    const navigate = postRoute.useNavigate()
 
     const [notes, setNotes] = React.useState(search.notes ?? ``)
 
@@ -278,19 +276,23 @@ const postRoute = createRoute({
       })
     }, [notes])
 
+    if (!post) {
+      return <div>Post not found</div>
+    }
+
     return (
       <div className="p-2 space-y-2" key={post.id}>
         <div className="space-y-2">
           <h2 className="font-bold text-lg">
             <input
-              defaultValue={post?.id}
+              defaultValue={post.id}
               className="border border-opacity-50 rounded p-2 w-full"
               disabled
             />
           </h2>
           <div>
             <textarea
-              defaultValue={post?.title}
+              defaultValue={post.title}
               rows={6}
               className="border border-opacity-50 p-2 rounded w-full"
               disabled
@@ -302,7 +304,7 @@ const postRoute = createRoute({
             from={postRoute.fullPath}
             search={(old) => ({
               ...old,
-              showNotes: old?.showNotes ? undefined : true,
+              showNotes: old.showNotes ? undefined : true,
             })}
             params={true}
             className="text-blue-700"
@@ -360,5 +362,9 @@ declare module '@tanstack/react-router' {
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(<RouterProvider router={router} defaultPreload="intent" />)
+  root.render(
+    <React.StrictMode>
+      <RouterProvider router={router} defaultPreload="intent" />
+    </React.StrictMode>,
+  )
 }
