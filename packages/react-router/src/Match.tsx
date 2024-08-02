@@ -141,6 +141,45 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return Comp ? <Comp key={matchId} /> : <Outlet />
   }, [matchId, route.options.component, router.options.defaultComponent])
 
+  React.useEffect(() => {
+    if (match.status === 'pending') {
+      // We're pending, and if we have a minPendingMs, we need to wait for it
+      const pendingMinMs =
+        route.options.pendingMinMs ?? router.options.defaultPendingMinMs
+
+      if (pendingMinMs && !match.minPendingPromise) {
+        // Create a promise that will resolve after the minPendingMs
+        if (!router.isServer) {
+          const minPendingPromise = createControlledPromise<void>()
+
+          router.updateMatch(match.id, (prev) => ({
+            ...prev,
+            minPendingPromise,
+          }))
+
+          const id = setTimeout(() => {
+            minPendingPromise.resolve()
+
+            // We've handled the minPendingPromise, so we can delete it
+            router.updateMatch(match.id, (prev) => ({
+              ...prev,
+              minPendingPromise: undefined,
+            }))
+          }, pendingMinMs)
+          return () => clearTimeout(id)
+        }
+      }
+    }
+    return undefined
+  }, [
+    match.id,
+    match.loadPromise,
+    match.minPendingPromise,
+    match.status,
+    route.options.pendingMinMs,
+    router,
+  ])
+
   // function useChangedDiff(value: any) {
   //   const ref = React.useRef(value)
   //   const changed = ref.current !== value
@@ -219,34 +258,6 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   if (match.status === 'pending') {
-    // We're pending, and if we have a minPendingMs, we need to wait for it
-    const pendingMinMs =
-      route.options.pendingMinMs ?? router.options.defaultPendingMinMs
-
-    if (pendingMinMs && !match.minPendingPromise) {
-      // Create a promise that will resolve after the minPendingMs
-      if (!router.isServer) {
-        const minPendingPromise = createControlledPromise<void>()
-
-        Promise.resolve().then(() => {
-          router.updateMatch(match.id, (prev) => ({
-            ...prev,
-            minPendingPromise,
-          }))
-        })
-
-        setTimeout(() => {
-          minPendingPromise.resolve()
-
-          // We've handled the minPendingPromise, so we can delete it
-          router.updateMatch(match.id, (prev) => ({
-            ...prev,
-            minPendingPromise: undefined,
-          }))
-        }, pendingMinMs)
-      }
-    }
-
     throw match.loadPromise
   }
 
