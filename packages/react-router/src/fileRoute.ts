@@ -45,7 +45,9 @@ export function createFileRoute<
   TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
   TFullPath extends
     RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
->(path: TFilePath) {
+>(
+  path: TFilePath,
+): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
   }).createRoute
