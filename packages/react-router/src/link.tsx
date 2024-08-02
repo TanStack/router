@@ -665,7 +665,7 @@ export function useLinkProps<
     })
   }, [options, router])
 
-  const viewportIntersectionCallback = React.useCallback(
+  const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
       if (entry?.isIntersecting) {
         doPreload()
@@ -676,13 +676,9 @@ export function useLinkProps<
 
   useIntersectionObserver(
     innerRef,
-    {
-      rootMargin: '100px',
-    },
-    {
-      disabled: !!disabled || preload !== 'viewport',
-    },
-    viewportIntersectionCallback,
+    preloadViewportIoCallback,
+    { rootMargin: '100px' },
+    { disabled: !!disabled || preload !== 'viewport' },
   )
 
   if (type === 'external') {
