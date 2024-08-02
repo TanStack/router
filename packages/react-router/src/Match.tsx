@@ -146,12 +146,12 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       // We're pending, and if we have a minPendingMs, we need to wait for it
       const pendingMinMs =
         route.options.pendingMinMs ?? router.options.defaultPendingMinMs
-  
+
       if (pendingMinMs && !match.minPendingPromise) {
         // Create a promise that will resolve after the minPendingMs
         if (!router.isServer) {
           const minPendingPromise = createControlledPromise<void>()
-  
+
           router.updateMatch(match.id, (prev) => ({
             ...prev,
             minPendingPromise,
@@ -159,7 +159,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
           const id = setTimeout(() => {
             minPendingPromise.resolve()
-  
+
             // We've handled the minPendingPromise, so we can delete it
             router.updateMatch(match.id, (prev) => ({
               ...prev,
@@ -171,7 +171,14 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       }
     }
     return undefined
-  }, [match.id, match.loadPromise, match.minPendingPromise, match.status, route.options.pendingMinMs, router])
+  }, [
+    match.id,
+    match.loadPromise,
+    match.minPendingPromise,
+    match.status,
+    route.options.pendingMinMs,
+    router,
+  ])
 
   // function useChangedDiff(value: any) {
   //   const ref = React.useRef(value)

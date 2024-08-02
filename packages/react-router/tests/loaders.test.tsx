@@ -214,7 +214,7 @@ test('reproducer for #2053', async () => {
   window.history.replaceState(null, 'root', '/foo/3ΚΑΠΠΑ')
 
   const routeTree = rootRoute.addChildren([fooRoute])
- 
+
   const router = createRouter({
     routeTree,
   })
