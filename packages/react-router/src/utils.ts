@@ -389,16 +389,20 @@ export function usePrevious<T>(value: T): T | null {
  * ```tsx
  * const MyComponent = () => {
  * const ref = React.useRef<HTMLDivElement>(null)
- * useIntersectionObserver(ref, { rootMargin: '10px' }, {}, (entry) => {
+ * useIntersectionObserver(
+ *  ref,
+ *  (entry) => { doSomething(entry) },
+ *  { rootMargin: '10px' },
+ *  { disabled: false }
+ * )
  * return <div ref={ref} />
- * })
  * ```
  */
 export function useIntersectionObserver<T extends Element>(
   ref: React.RefObject<T>,
+  callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},
-  callback: (entry: IntersectionObserverEntry | undefined) => void,
 ): IntersectionObserver | null {
   const isIntersectionObserverAvailable = React.useRef(
     typeof IntersectionObserver === 'function',
@@ -424,7 +428,7 @@ export function useIntersectionObserver<T extends Element>(
     return () => {
       observerRef.current?.disconnect()
     }
-  }, [intersectionObserverOptions, options, ref, callback])
+  }, [callback, intersectionObserverOptions, options.disabled, ref])
 
   return observerRef.current
 }
