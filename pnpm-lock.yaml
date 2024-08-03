@@ -1011,82 +1011,6 @@ importers:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
 
-  examples/react/ssr-fastify-trpc:
-    dependencies:
-      '@fastify/vite':
-        specifier: ^6.0.7
-        version: 6.0.7(@types/node@20.14.9)(terser@5.31.1)
-      '@tanstack/react-query':
-        specifier: ^5.51.21
-        version: 5.51.21(react@18.3.1)
-      '@tanstack/react-query-devtools':
-        specifier: 5.51.21
-        version: 5.51.21(@tanstack/react-query@5.51.21(react@18.3.1))(react@18.3.1)
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:1.46.3
-        version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: workspace:*
-        version: link:../../../packages/start
-      '@trpc/client':
-        specifier: 11.0.0-rc.467
-        version: 11.0.0-rc.467(@trpc/server@11.0.0-rc.467)
-      '@trpc/react-query':
-        specifier: 11.0.0-rc.467
-        version: 11.0.0-rc.467(@tanstack/react-query@5.51.21(react@18.3.1))(@trpc/client@11.0.0-rc.467(@trpc/server@11.0.0-rc.467))(@trpc/server@11.0.0-rc.467)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@trpc/server':
-        specifier: 11.0.0-rc.467
-        version: 11.0.0-rc.467
-      fastify:
-        specifier: ^4.28.1
-        version: 4.28.1
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      superjson:
-        specifier: ^2.2.1
-        version: 2.2.1
-      zod:
-        specifier: ^3.23.8
-        version: 3.23.8
-    devDependencies:
-      '@tanstack/router-cli':
-        specifier: workspace:*
-        version: link:../../../packages/router-cli
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
-      '@types/node':
-        specifier: ^20.13.0
-        version: 20.14.9
-      '@types/react':
-        specifier: ^18.3.1
-        version: 18.3.3
-      '@types/react-dom':
-        specifier: ^18.3.0
-        version: 18.3.0
-      '@vitejs/plugin-react':
-        specifier: ^4.3.1
-        version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
-      nodemon:
-        specifier: ^3.1.4
-        version: 3.1.4
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@swc/core@1.7.3)(@types/node@20.14.9)(typescript@5.5.4)
-      typescript:
-        specifier: ^5.5.4
-        version: 5.5.4
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
-
   examples/react/start-basic:
     dependencies:
       '@tanstack/react-router':
@@ -1667,6 +1591,82 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
         version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
+
+  examples/react/with-ssr-trpc-react-query:
+    dependencies:
+      '@fastify/vite':
+        specifier: ^6.0.7
+        version: 6.0.7(@types/node@20.14.9)(terser@5.31.1)
+      '@tanstack/react-query':
+        specifier: ^5.51.21
+        version: 5.51.21(react@18.3.1)
+      '@tanstack/react-query-devtools':
+        specifier: 5.51.21
+        version: 5.51.21(@tanstack/react-query@5.51.21(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      '@trpc/client':
+        specifier: 11.0.0-rc.467
+        version: 11.0.0-rc.467(@trpc/server@11.0.0-rc.467)
+      '@trpc/react-query':
+        specifier: 11.0.0-rc.467
+        version: 11.0.0-rc.467(@tanstack/react-query@5.51.21(react@18.3.1))(@trpc/client@11.0.0-rc.467(@trpc/server@11.0.0-rc.467))(@trpc/server@11.0.0-rc.467)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@trpc/server':
+        specifier: 11.0.0-rc.467
+        version: 11.0.0-rc.467
+      fastify:
+        specifier: ^4.28.1
+        version: 4.28.1
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      superjson:
+        specifier: ^2.2.1
+        version: 2.2.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@tanstack/router-cli':
+        specifier: workspace:*
+        version: link:../../../packages/router-cli
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@types/node':
+        specifier: ^20.13.0
+        version: 20.14.9
+      '@types/react':
+        specifier: ^18.3.1
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
+      nodemon:
+        specifier: ^3.1.4
+        version: 3.1.4
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@swc/core@1.7.3)(@types/node@20.14.9)(typescript@5.5.4)
+      typescript:
+        specifier: ^5.5.4
+        version: 5.5.4
       vite:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
@@ -3331,6 +3331,7 @@ packages:
 
   '@fastify/vite@6.0.7':
     resolution: {integrity: sha512-+dRo9KUkvmbqdmBskG02SwigWl06Mwkw8SBDK1zTNH6vd4DyXbRvI7RmJEmBkLouSU81KTzy1+OzwHSffqSD6w==}
+    bundledDependencies: []
 
   '@humanwhocodes/config-array@0.11.14':
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}

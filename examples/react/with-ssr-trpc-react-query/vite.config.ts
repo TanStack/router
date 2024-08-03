@@ -1,7 +1,7 @@
-import { dirname, join } from 'path'
+import { dirname, join } from 'node:path'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { defineConfig } from 'vite'
-import { fileURLToPath } from 'url'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/

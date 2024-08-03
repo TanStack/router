@@ -1,6 +1,5 @@
 {
-  "author": "Casey Johnson (https://github.com/theMostCuriousHomunculus)",
-  "name": "tanstack-router-react-example-ssr-fastify-trpc",
+  "name": "tanstack-router-react-example-with-ssr-trpc-react-query",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -18,7 +17,7 @@
     "@tanstack/react-query": "^5.51.21",
     "@tanstack/react-query-devtools": "5.51.21",
     "@tanstack/react-router": "^1.46.3",
-    "@tanstack/router-devtools": "workspace:1.46.3",
+    "@tanstack/router-devtools": "^1.46.3",
     "@tanstack/start": "^1.46.3",
     "@trpc/client": "11.0.0-rc.467",
     "@trpc/react-query": "11.0.0-rc.467",
@@ -30,8 +29,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@tanstack/router-cli": "workspace:*",
-    "@tanstack/router-plugin": "workspace:*",
+    "@tanstack/router-cli": "^1.45.13",
+    "@tanstack/router-plugin": "^1.45.13",
     "@types/node": "^20.13.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
