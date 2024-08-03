@@ -12,9 +12,5 @@ export default defineConfig({
     TanStackRouterVite(tsrOptions as Parameters<typeof TanStackRouterVite>[0]),
     react(),
   ],
-  root: join(
-    dirname(fileURLToPath(import.meta.url)),
-    'src',
-    'client',
-  ),
+  root: join(dirname(fileURLToPath(import.meta.url)), 'src', 'client'),
 })

@@ -8,10 +8,7 @@ import {
 import type { createTRPCQueryUtils, createTRPCReact } from '@trpc/react-query'
 import { QueryClient } from '@tanstack/react-query'
 
-import type {
-  AppRouter,
-  Caller,
-} from '../trpc.d.ts'
+import type { AppRouter, Caller } from '../trpc.d.ts'
 
 export const Route = createRootRouteWithContext<{
   // caller will only exist on the server
