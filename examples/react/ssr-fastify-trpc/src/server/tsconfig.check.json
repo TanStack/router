@@ -4,8 +4,8 @@
     "moduleDetection": "force",
     "moduleResolution": "Bundler",
     "noEmit": true,
-    "types": ["vite/client"],
+    "types": ["vite/client"]
   },
   "extends": "../../tsconfig.base.json",
-  "include": ["**/*", "../client/**/*"],
+  "include": ["**/*", "../client/**/*"]
 }

@@ -1,10 +1,10 @@
-import getAllPosts from './get-all-posts.ts';
-import getPostByID from './get-post-by-id.ts';
-import { router } from '../../trpc.ts';
+import getAllPosts from './get-all-posts.ts'
+import getPostByID from './get-post-by-id.ts'
+import { router } from '../../trpc.ts'
 
 export const blogRouter = router({
-	getAllPosts,
-	getPostByID,
-});
+  getAllPosts,
+  getPostByID,
+})
 
-export default blogRouter;
+export default blogRouter

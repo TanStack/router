@@ -9,11 +9,7 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2022",
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "moduleDetection": "force",
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
@@ -26,6 +22,6 @@
     "strict": true,
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "verbatimModuleSyntax": true,
-  },
+    "verbatimModuleSyntax": true
+  }
 }

@@ -1,3 +1,3 @@
-import { createRouter } from './base.tsx';
+import { createRouter } from './base.tsx'
 
-export default { createApp: createRouter };
+export default { createApp: createRouter }

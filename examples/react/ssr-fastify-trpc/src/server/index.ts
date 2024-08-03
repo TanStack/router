@@ -1,43 +1,31 @@
-import {
-	dirname,
-	resolve,
-} from 'path';
-import fastify from 'fastify';
-import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
-import fastifyVite from '@fastify/vite';
-import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path'
+import fastify from 'fastify'
+import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify'
+import fastifyVite from '@fastify/vite'
+import { fileURLToPath } from 'url'
 
-import renderer from './renderer.tsx';
-import { appRouter } from './routers/index.ts';
+import renderer from './renderer.tsx'
+import { appRouter } from './routers/index.ts'
 
-process.on(
-	'uncaughtException',
-	(error) => {
-		console.error('Uncaught Exception:', error);
-	},
-);
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error)
+})
 
-const server = fastify();
+const server = fastify()
 
-await server.register(
-	fastifyTRPCPlugin,
-	{
-		prefix: '/trpc',
-		trpcOptions: { router: appRouter },
-	},
-);
+await server.register(fastifyTRPCPlugin, {
+  prefix: '/trpc',
+  trpcOptions: { router: appRouter },
+})
 
-await server.register(
-	fastifyVite,
-	{
-		// this is the default
-		dev: process.argv.includes('--dev'),
-		renderer,
-		root: resolve(dirname(fileURLToPath(import.meta.url)), '../..'),
-		spa: false,
-	},
-);
+await server.register(fastifyVite, {
+  // this is the default
+  dev: process.argv.includes('--dev'),
+  renderer,
+  root: resolve(dirname(fileURLToPath(import.meta.url)), '../..'),
+  spa: false,
+})
 
-await server.vite.ready();
+await server.vite.ready()
 
-await server.listen({ port: 3000 });
+await server.listen({ port: 3000 })

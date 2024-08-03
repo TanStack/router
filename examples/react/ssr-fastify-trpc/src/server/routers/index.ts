@@ -1,11 +1,8 @@
-import {
-	createCallerFactory,
-	router,
-} from '../trpc.ts';
-import blogRouter from './blog/index.ts';
+import { createCallerFactory, router } from '../trpc.ts'
+import blogRouter from './blog/index.ts'
 
 export const appRouter = router({
-	blog: blogRouter,
-});
+  blog: blogRouter,
+})
 
-export const createCaller = createCallerFactory(appRouter);
+export const createCaller = createCallerFactory(appRouter)

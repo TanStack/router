@@ -4,11 +4,11 @@
   "compilerOptions": {
     "module": "Preserve",
     "moduleResolution": "Bundler",
-    "noEmit": true,
+    "noEmit": true
   },
   "extends": "./tsconfig.base.json",
   "include": ["src/**/*"],
   "ts-node": {
-    "transpileOnly": true,
-  },
+    "transpileOnly": true
+  }
 }

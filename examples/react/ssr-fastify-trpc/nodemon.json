@@ -1,9 +1,9 @@
 {
-	"$schema": "https://json.schemastore.org/nodemon.json",
-	"execMap": {
-		"ts": "node --no-warnings --trace-deprecation --abort-on-uncaught-exception --loader ts-node/esm"
-	},
-	"verbose": false,
-	"watch": ["src/server/**/*.*"],
-	"ext": "*"
+  "$schema": "https://json.schemastore.org/nodemon.json",
+  "execMap": {
+    "ts": "node --no-warnings --trace-deprecation --abort-on-uncaught-exception --loader ts-node/esm"
+  },
+  "verbose": false,
+  "watch": ["src/server/**/*.*"],
+  "ext": "*"
 }
