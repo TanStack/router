@@ -7,8 +7,10 @@ import {
 } from '@tanstack/react-router'
 import type { createTRPCQueryUtils, createTRPCReact } from '@trpc/react-query'
 import { QueryClient } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
-import type { AppRouter, Caller } from '../trpc.d.ts'
+import type { AppRouter, Caller } from '../trpc'
 
 export const Route = createRootRouteWithContext<{
   // caller will only exist on the server
@@ -42,6 +44,8 @@ export const Route = createRootRouteWithContext<{
             </Link>
           </div>
           <Outlet />
+          <ReactQueryDevtools buttonPosition="bottom-left" />
+          <TanStackRouterDevtools position="bottom-right" />
           <Scripts />
         </Body>
       </Html>

@@ -1017,11 +1017,17 @@ importers:
         specifier: ^6.0.7
         version: 6.0.7(@types/node@20.14.9)(terser@5.31.1)
       '@tanstack/react-query':
-        specifier: ^5.51.16
+        specifier: ^5.51.21
         version: 5.51.21(react@18.3.1)
+      '@tanstack/react-query-devtools':
+        specifier: 5.51.21
+        version: 5.51.21(@tanstack/react-query@5.51.21(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:1.46.3
+        version: link:../../../packages/router-devtools
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -4281,6 +4287,9 @@ packages:
   '@tanstack/query-devtools@5.51.15':
     resolution: {integrity: sha512-1oSCl+PsCa/aBCGVM2ZdcQLuQ0QYmKXJJB264twEMVM1M0n5CI40trtywORPF+wLGuZNIZzkKL7j/98mOLAIag==}
 
+  '@tanstack/query-devtools@5.51.16':
+    resolution: {integrity: sha512-ajwuq4WnkNCMj/Hy3KR8d3RtZ6PSKc1dD2vs2T408MdjgKzQ3klVoL6zDgVO7X+5jlb5zfgcO3thh4ojPhfIaw==}
+
   '@tanstack/react-query-devtools@4.36.1':
     resolution: {integrity: sha512-WYku83CKP3OevnYSG8Y/QO9g0rT75v1om5IvcWUwiUZJ4LanYGLVCZ8TdFG5jfsq4Ej/lu2wwDAULEUnRIMBSw==}
     peerDependencies:
@@ -4292,6 +4301,12 @@ packages:
     resolution: {integrity: sha512-bvGvJoncjZ3irEofoFevptj5BPkDpQrp2+dZhtFqPUZXRT6MAKPmOqtSmZPfacLR5jQLpqw/7d3Zxr173z7WDA==}
     peerDependencies:
       '@tanstack/react-query': ^5.51.15
+      react: ^18 || ^19
+
+  '@tanstack/react-query-devtools@5.51.21':
+    resolution: {integrity: sha512-mi5ef8dvsS48GsG6/8M60O2EgrzPK1kNPngOcHBTlIUrB5dGkxP9fuHf05GQRxtSp5W5GlyeUpzOmtkKNpf9dQ==}
+    peerDependencies:
+      '@tanstack/react-query': ^5.51.21
       react: ^18 || ^19
 
   '@tanstack/react-query@4.36.1':
@@ -11859,6 +11874,8 @@ snapshots:
 
   '@tanstack/query-devtools@5.51.15': {}
 
+  '@tanstack/query-devtools@5.51.16': {}
+
   '@tanstack/react-query-devtools@4.36.1(@tanstack/react-query@4.36.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/match-sorter-utils': 8.11.3
@@ -11872,6 +11889,12 @@ snapshots:
     dependencies:
       '@tanstack/query-devtools': 5.51.15
       '@tanstack/react-query': 5.51.15(react@18.3.1)
+      react: 18.3.1
+
+  '@tanstack/react-query-devtools@5.51.21(@tanstack/react-query@5.51.21(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-devtools': 5.51.16
+      '@tanstack/react-query': 5.51.21(react@18.3.1)
       react: 18.3.1
 
   '@tanstack/react-query@4.36.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':

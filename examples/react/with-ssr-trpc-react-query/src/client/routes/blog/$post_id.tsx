@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { TRPCClientError } from '@trpc/client'
 
-import type { AppRouter } from '../../trpc.d.ts'
+import type { AppRouter } from '../../trpc'
 import { TRPCError } from '@trpc/server'
 
 export const Route = createFileRoute('/blog/$post_id')({

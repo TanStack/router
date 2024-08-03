@@ -15,7 +15,7 @@ import {
 } from '@tanstack/react-router'
 import { SuperJSON } from 'superjson'
 
-import type { AppRouter } from './trpc.d.ts'
+import type { AppRouter } from './trpc'
 import { routeTree } from './routeTree.gen.ts'
 
 /** @see https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration */
