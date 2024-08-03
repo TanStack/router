@@ -1,0 +1,7 @@
+{
+  "addExtensions": true,
+  "generatedRouteTree": "./src/client/routeTree.gen.ts",
+  "quoteStyle": "single",
+  "routeFileIgnorePrefix": "-",
+  "routesDirectory": "./src/client/routes"
+}

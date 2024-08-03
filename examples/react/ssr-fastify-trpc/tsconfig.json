@@ -1,0 +1,14 @@
+/** @file typescript configuration settings for ts-node */
+/** @see https://typestrong.org/ts-node/docs/configuration#via-tsconfigjson-recommended */
+{
+  "compilerOptions": {
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+  },
+  "extends": "./tsconfig.base.json",
+  "include": ["src/**/*"],
+  "ts-node": {
+    "transpileOnly": true,
+  },
+}

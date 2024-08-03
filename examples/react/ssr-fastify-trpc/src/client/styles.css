@@ -1,0 +1,14 @@
+.top-nav {
+  column-gap: 16px;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.active-route {
+  font-weight: bold;
+}
+
+a:visited {
+  color: blue;
+}

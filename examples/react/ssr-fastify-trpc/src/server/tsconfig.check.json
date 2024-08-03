@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "types": ["vite/client"],
+  },
+  "extends": "../../tsconfig.base.json",
+  "include": ["**/*", "../client/**/*"],
+}
