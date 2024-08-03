@@ -1,8 +1,8 @@
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import fastify from 'fastify'
 import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify'
 import fastifyVite from '@fastify/vite'
-import { fileURLToPath } from 'node:url'
 
 import renderer from './renderer.tsx'
 import { appRouter } from './routers/index.ts'
