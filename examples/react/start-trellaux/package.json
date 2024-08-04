@@ -15,7 +15,7 @@
     "@tanstack/react-query-devtools": "^5.51.15",
     "@tanstack/react-router": "^1.46.4",
     "@tanstack/react-router-with-query": "^1.46.4",
-    "@tanstack/router-devtools": "^1.46.4",
+    "@tanstack/router-devtools": "^1.46.5",
     "@tanstack/router-plugin": "^1.45.13",
     "@tanstack/start": "^1.46.4",
     "@typescript-eslint/parser": "^7.17.0",
