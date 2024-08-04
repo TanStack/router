@@ -27,62 +27,84 @@ import type {
 } from './routeInfo'
 import type { ControlledPromise, DeepPartial, NoInfer } from './utils'
 
-export type MatchSuggestions<
-  TValue,
+export type AnyMatchAndValue = { match: any; value: any }
+
+export type FindValueByKey<TKey, TValue> = TValue extends any
+  ? TValue[TKey & keyof TValue]
+  : never
+
+export type CreateMatchAndValue<TMatch, TValue> = TValue extends any
+  ? {
+      match: TMatch
+      value: TValue
+    }
+  : never
+
+export type NextMatchAndValue<
+  TKey,
+  TMatchAndValue extends AnyMatchAndValue,
+> = TMatchAndValue extends any
+  ? CreateMatchAndValue<
+      TMatchAndValue['match'],
+      FindValueByKey<TKey, TMatchAndValue['value']>
+    >
+  : never
+
+export type IsMatchKeyOf<TValue> =
+  TValue extends ReadonlyArray<any>
+    ? keyof TValue & `${number}`
+    : TValue extends object
+      ? keyof TValue & string
+      : never
+
+export type IsMatchPath<
   TParentPath extends string,
-> = TValue extends string | number | bigint | boolean | symbol
-  ? never
-  : TValue extends ReadonlyArray<any>
-    ? `${TParentPath}${keyof TValue & `${number}`}`
-    : `${TParentPath}${keyof TValue & string}`
+  TMatchAndValue extends AnyMatchAndValue,
+> = `${TParentPath}${IsMatchKeyOf<TMatchAndValue['value']>}`
 
-export type FindMatchByKey<TMatch, TKey, TValue> = TValue extends any
-  ? TKey extends keyof TValue
-    ? TMatch
+export type IsMatchResult<
+  TKey,
+  TMatchAndValue extends AnyMatchAndValue,
+> = TMatchAndValue extends any
+  ? TKey extends keyof TMatchAndValue['value']
+    ? TMatchAndValue['match']
     : never
   : never
 
-export type ValueOf<TKey, TValue> = TValue extends any
-  ? TKey extends keyof TValue
-    ? TValue[TKey]
-    : never
-  : never
-
-export type SuggestMatchByPath<
+export type IsMatchParse<
   TPath,
-  TMatch,
-  TValue = TMatch,
+  TMatchAndValue extends AnyMatchAndValue,
   TParentPath extends string = '',
 > = TPath extends `${string}.${string}`
   ? TPath extends `${infer TFirst}.${infer TRest}`
-    ? SuggestMatchByPath<
+    ? IsMatchParse<
         TRest,
-        TMatch,
-        ValueOf<TFirst, TValue>,
+        NextMatchAndValue<TFirst, TMatchAndValue>,
         `${TParentPath}${TFirst}.`
       >
     : never
   : {
-      suggestions: MatchSuggestions<TValue, TParentPath>
-      match: FindMatchByKey<TMatch, TPath, TValue>
+      path: IsMatchPath<TParentPath, TMatchAndValue>
+      result: IsMatchResult<TPath, TMatchAndValue>
     }
 
-export type SuggestMatchesByPath<TPath, TMatch> = TMatch extends any
-  ? SuggestMatchByPath<TPath, TMatch>
-  : never
+export type IsMatch<TMatch, TPath> = IsMatchParse<
+  TPath,
+  TMatch extends any ? { match: TMatch; value: TMatch } : never
+>
 
-export type ValidateMatchSuggestions<
-  TMatch extends AnyRouteMatch,
+export type ValidateIsMatchPath<
+  TMatch,
   TPath extends string,
-> = TPath extends SuggestMatchesByPath<TPath, TMatch>['suggestions']
+> = TPath extends IsMatch<TMatch, TPath>['path']
   ? TPath
-  : SuggestMatchesByPath<TPath, TMatch>['suggestions']
+  : IsMatch<TMatch, TPath>['path']
 
-export const isMatch = <TMatch extends AnyRouteMatch, TPath extends string>(
+export const isMatch = <TMatch, TPath extends string>(
   match: TMatch,
-  path: ValidateMatchSuggestions<TMatch, TPath>,
-): match is SuggestMatchesByPath<TPath, TMatch>['match'] => {
-  const parts = path.split('.')
+  path: ValidateIsMatchPath<TMatch, TPath>,
+): match is IsMatch<TMatch, TPath>['result'] => {
+  const parts = (path as string).split('.')
   let part
   let value: any = match
 
