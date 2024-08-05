@@ -7,13 +7,13 @@
     "build": "webpack build"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.46.3",
-    "@tanstack/router-devtools": "^1.46.3",
+    "@tanstack/react-router": "^1.46.4",
+    "@tanstack/router-devtools": "^1.46.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@swc/core": "^1.7.3",
+    "@swc/core": "^1.7.6",
     "@tanstack/router-plugin": "^1.45.13",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
