@@ -16,6 +16,9 @@ overrides:
   '@tanstack/router-plugin': workspace:*
   '@tanstack/router-vite-plugin': workspace:*
   '@tanstack/react-router-with-query': workspace:*
+  '@tanstack/router-zod-adapter': workspace:*
+  '@tanstack/router-valibot-adapter': workspace:*
+  '@tanstack/router-arktype-adapter': workspace:*
   '@tanstack/start': workspace:*
   '@tanstack/start-vite-plugin': workspace:*
   temp-react: 0.0.0-experimental-035a41c4e-20230704
@@ -1731,6 +1734,21 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
 
+  packages/router-arktype-adapter:
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@testing-library/jest-dom':
+        specifier: ^6.4.6
+        version: 6.4.8
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.0.0(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      arktype:
+        specifier: ^2.0.0-beta.2
+        version: 2.0.0-beta.2
+
   packages/router-cli:
     dependencies:
       '@tanstack/router-generator':
@@ -1845,6 +1863,21 @@ importers:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
 
+  packages/router-valibot-adapter:
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@testing-library/jest-dom':
+        specifier: ^6.4.6
+        version: 6.4.8
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.0.0(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      valibot:
+        specifier: ^0.36.0
+        version: 0.36.0
+
   packages/router-vite-plugin:
     dependencies:
       '@tanstack/router-plugin':
@@ -1854,6 +1887,21 @@ importers:
       vite:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
+
+  packages/router-zod-adapter:
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@testing-library/jest-dom':
+        specifier: ^6.4.6
+        version: 6.4.8
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.0.0(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
 
   packages/start:
     dependencies:
@@ -1989,6 +2037,12 @@ packages:
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
+
+  '@ark/schema@0.2.2':
+    resolution: {integrity: sha512-3GyWVptFzmUZTBAwobiuk2Xa1wXeWNOOaHWcYl3pYTTdl5QNuB/53JnHXL0NrFW4Yvv7cgTcRsZQby7pNAeeJA==}
+
+  '@ark/util@0.1.2':
+    resolution: {integrity: sha512-JhcPZhF8T8Eb9UxJqh3X8tOwZpnuW89azKlPnRhFXymhy/wBFPRC9+J+Vu+iUc/kplW3uloZb9n5R3EVVWUBgw==}
 
   '@babel/code-frame@7.24.7':
     resolution: {integrity: sha512-BcYH1CVJBO9tvyIZ2jVeXgSIMvGZ2FDRvDdOIVQyuklNKSsx+eppDEBq/g47Ayw+RqNFE+URvOShmf+f/qwAlA==}
@@ -4927,6 +4981,9 @@ packages:
 
   aria-query@5.3.0:
     resolution: {integrity: sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A==}
+
+  arktype@2.0.0-beta.2:
+    resolution: {integrity: sha512-WLxtViYiR8T+COYzZgHGnl3eVGwAJJXHRPfGMqRCoMeNpVb1EE+9kMhiEOq0yzEoP6Y91yTPTuhINt3WbBCYxA==}
 
   array-buffer-byte-length@1.0.1:
     resolution: {integrity: sha512-ahC5W1xgou+KTXix4sAO8Ki12Q+jf4i0+tmk3sC+zgcynshkHxzpXdImBehiUYKKKDwvfFiJl1tZt6ewscS1Mg==}
@@ -8932,6 +8989,9 @@ packages:
     resolution: {integrity: sha512-fcRLaS4H/hrZk9hYwbdRM35D0U8IYMfEClhXxCivOojl+yTRAZH3Zy2sSy6qVCiGbV9YAtPssP6jaChqC9vPCg==}
     engines: {node: '>= 10.13.0'}
 
+  valibot@0.36.0:
+    resolution: {integrity: sha512-CjF1XN4sUce8sBK9TixrDqFM7RwNkuXdJu174/AwmQUB62QbCQADg5lLe8ldBalFgtj1uKj+pKwDJiNo4Mn+eQ==}
+
   validator@13.12.0:
     resolution: {integrity: sha512-c1Q0mCiPlgdTVVVIJIrBuxNicYE+t/7oKeI9MWLj3fh/uq2Pxh/3eeWbVZ4OcGW1TUf53At0njHw5SMdA3tmMg==}
     engines: {node: '>= 0.10'}
@@ -9293,6 +9353,12 @@ snapshots:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
+
+  '@ark/schema@0.2.2':
+    dependencies:
+      '@ark/util': 0.1.2
+
+  '@ark/util@0.1.2': {}
 
   '@babel/code-frame@7.24.7':
     dependencies:
@@ -12500,6 +12566,11 @@ snapshots:
   aria-query@5.3.0:
     dependencies:
       dequal: 2.0.3
+
+  arktype@2.0.0-beta.2:
+    dependencies:
+      '@ark/schema': 0.2.2
+      '@ark/util': 0.1.2
 
   array-buffer-byte-length@1.0.1:
     dependencies:
@@ -16987,6 +17058,8 @@ snapshots:
   uuid@8.3.2: {}
 
   v8flags@4.0.1: {}
+
+  valibot@0.36.0: {}
 
   validator@13.12.0: {}
 
