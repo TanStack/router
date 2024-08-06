@@ -203,7 +203,7 @@ Streaming dehydration/hydration is an advanced pattern that goes beyond markup a
 
 ## Data Transformers
 
-When using SSR, data passed between the server and the client must be serialized before it is sent accross network-boundaries. By default, TanStack Router will serialize data using a very lightweight serializer that supports a few basic types beyond JSON.stringify/JSON.parse.
+When using SSR, data passed between the server and the client must be serialized before it is sent across network-boundaries. By default, TanStack Router will serialize data using a very lightweight serializer that supports a few basic types beyond JSON.stringify/JSON.parse.
 
 Out of the box, the following types are supported:
 

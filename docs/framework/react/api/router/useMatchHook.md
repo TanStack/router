@@ -35,7 +35,7 @@ The `useMatch` hook accepts a single argument, an `options` object.
 - Type: `boolean`
 - Optional
 - `default: true`
-- If `false`,`useMatch` will not throw an invariant exception in case a match was not found in the currently rendered matches; in this case, it wil return `undefined`.
+- If `false`,`useMatch` will not throw an invariant exception in case a match was not found in the currently rendered matches; in this case, it will return `undefined`.
 
 ## useMatch returns
 

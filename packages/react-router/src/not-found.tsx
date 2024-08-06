@@ -1,10 +1,9 @@
-// eslint-disable-next-line ts/consistent-type-imports
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
+import type { ErrorInfo } from 'react'
 import type { RegisteredRouter } from './router'
 import type { RouteIds } from './routeInfo'
-import type { ErrorInfo } from 'react'
 
 export type NotFoundError = {
   /**

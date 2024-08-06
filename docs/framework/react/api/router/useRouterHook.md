@@ -9,6 +9,8 @@ The `useRouter` method is a hook that returns the current instance of [`Router`]
 
 - The current [`Router`](./RouterType.md) instance.
 
+> ⚠️⚠️⚠️ **`router.state` is always up to date, but NOT REACTIVE. If you use `router.state` in a component, the component will not re-render when the router state changes. To get a reactive version of the router state, use the [`useRouterState`](./useRouterStateHook.md) hook.**
+
 ## Examples
 
 ```tsx

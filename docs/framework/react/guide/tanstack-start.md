@@ -67,15 +67,15 @@ npm i -D typescript @types/react @types/react-dom
 
 We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
 
-```json
+```jsonc
 {
-  "//": "...",
-  "type": "module"
+  // ...
+  "type": "module",
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start"
-  }
+    "start": "vinxi start",
+  },
 }
 ```
 

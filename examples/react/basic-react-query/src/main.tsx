@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   ErrorComponent,
+  type ErrorComponentProps,
   Link,
   Outlet,
   RouterProvider,
@@ -15,41 +16,10 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import {
   QueryClient,
   QueryClientProvider,
-  queryOptions,
   useQueryErrorResetBoundary,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import axios from 'redaxios'
-import type { ErrorComponentProps } from '@tanstack/react-router'
-
-type PostType = {
-  id: string
-  title: string
-  body: string
-}
-
-const fetchPosts = async () => {
-  console.info('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 500))
-  return axios
-    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
-}
-
-const fetchPost = async (postId: string) => {
-  console.info(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 500))
-  const post = await axios
-    .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-    .then((r) => r.data)
-
-  // eslint-disable-next-line ts/no-unnecessary-condition
-  if (!post) {
-    throw new NotFoundError(`Post with id "${postId}" not found!`)
-  }
-
-  return post
-}
+import { NotFoundError, postQueryOptions, postsQueryOptions } from './posts'
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -87,6 +57,14 @@ function RootComponent() {
           Posts
         </Link>{' '}
         <Link
+          to="/layout-a"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Layout
+        </Link>{' '}
+        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
@@ -118,51 +96,12 @@ function IndexRouteComponent() {
   )
 }
 
-const postsQueryOptions = queryOptions({
-  queryKey: ['posts'],
-  queryFn: () => fetchPosts(),
-})
-
 const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: ({ context: { queryClient } }) =>
     queryClient.ensureQueryData(postsQueryOptions),
-  component: PostsRouteComponent,
-})
-
-function PostsRouteComponent() {
-  const postsQuery = useSuspenseQuery(postsQueryOptions)
-
-  const posts = postsQuery.data
-
-  return (
-    <div className="p-2 flex gap-2">
-      <ul className="list-disc pl-4">
-        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
-          (post) => {
-            return (
-              <li key={post.id} className="whitespace-nowrap">
-                <Link
-                  to={postRoute.to}
-                  params={{
-                    postId: post.id,
-                  }}
-                  className="block py-1 text-blue-600 hover:opacity-75"
-                  activeProps={{ className: 'font-bold underline' }}
-                >
-                  <div>{post.title.substring(0, 20)}</div>
-                </Link>
-              </li>
-            )
-          },
-        )}
-      </ul>
-      <hr />
-      <Outlet />
-    </div>
-  )
-}
+}).lazy(() => import('./posts.lazy').then((d) => d.Route))
 
 const postsIndexRoute = createRoute({
   getParentRoute: () => postsRoute,
@@ -173,14 +112,6 @@ const postsIndexRoute = createRoute({
 function PostsIndexRouteComponent() {
   return <div>Select a post.</div>
 }
-
-class NotFoundError extends Error {}
-
-const postQueryOptions = (postId: string) =>
-  queryOptions({
-    queryKey: ['posts', { postId }],
-    queryFn: () => fetchPost(postId),
-  })
 
 const postRoute = createRoute({
   getParentRoute: () => postsRoute,
@@ -229,8 +160,83 @@ function PostRouteComponent() {
   )
 }
 
+const layoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_layout',
+  component: LayoutComponent,
+})
+
+function LayoutComponent() {
+  return (
+    <div className="p-2">
+      <div className="border-b">I'm a layout</div>
+      <div>
+        <Outlet />
+      </div>
+    </div>
+  )
+}
+
+const layout2Route = createRoute({
+  getParentRoute: () => layoutRoute,
+  id: '_layout-2',
+  component: Layout2Component,
+})
+
+function Layout2Component() {
+  return (
+    <div>
+      <div>I'm a nested layout</div>
+      <div className="flex gap-2 border-b">
+        <Link
+          to="/layout-a"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Layout A
+        </Link>
+        <Link
+          to="/layout-b"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Layout B
+        </Link>
+      </div>
+      <div>
+        <Outlet />
+      </div>
+    </div>
+  )
+}
+
+const layoutARoute = createRoute({
+  getParentRoute: () => layout2Route,
+  path: '/layout-a',
+  component: LayoutAComponent,
+})
+
+function LayoutAComponent() {
+  return <div>I'm layout A!</div>
+}
+
+const layoutBRoute = createRoute({
+  getParentRoute: () => layout2Route,
+  path: '/layout-b',
+  component: LayoutBComponent,
+})
+
+function LayoutBComponent() {
+  return <div>I'm layout B!</div>
+}
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
+  layoutRoute.addChildren([
+    layout2Route.addChildren([layoutARoute, layoutBRoute]),
+  ]),
   indexRoute,
 ])
 

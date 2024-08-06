@@ -9,14 +9,18 @@ import { useRouter } from './useRouter'
 import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
-import { type AnyRoute } from './route'
 import { matchContext } from './matchContext'
 import { defaultDeserializeError, isServerSideError } from './isServerSideError'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
+import type { AnyRoute } from './route'
 
-export function Match({ matchId }: { matchId: string }) {
+export const Match = React.memo(function MatchImpl({
+  matchId,
+}: {
+  matchId: string
+}) {
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
@@ -99,8 +103,13 @@ export function Match({ matchId }: { matchId: string }) {
       </ResolvedSuspenseBoundary>
     </matchContext.Provider>
   )
-}
-function MatchInner({ matchId }: { matchId: string }): any {
+})
+
+export const MatchInner = React.memo(function MatchInnerImpl({
+  matchId,
+}: {
+  matchId: string
+}): any {
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
@@ -126,6 +135,50 @@ function MatchInner({ matchId }: { matchId: string }): any {
       ])
     },
   })
+
+  const out = React.useMemo(() => {
+    const Comp = route.options.component ?? router.options.defaultComponent
+    return Comp ? <Comp key={matchId} /> : <Outlet />
+  }, [matchId, route.options.component, router.options.defaultComponent])
+
+  React.useEffect(() => {
+    if (match.status === 'pending') {
+      // We're pending, and if we have a minPendingMs, we need to wait for it
+      const pendingMinMs =
+        route.options.pendingMinMs ?? router.options.defaultPendingMinMs
+
+      if (pendingMinMs && !match.minPendingPromise) {
+        // Create a promise that will resolve after the minPendingMs
+        if (!router.isServer) {
+          const minPendingPromise = createControlledPromise<void>()
+
+          router.updateMatch(match.id, (prev) => ({
+            ...prev,
+            minPendingPromise,
+          }))
+
+          const id = setTimeout(() => {
+            minPendingPromise.resolve()
+
+            // We've handled the minPendingPromise, so we can delete it
+            router.updateMatch(match.id, (prev) => ({
+              ...prev,
+              minPendingPromise: undefined,
+            }))
+          }, pendingMinMs)
+          return () => clearTimeout(id)
+        }
+      }
+    }
+    return undefined
+  }, [
+    match.id,
+    match.loadPromise,
+    match.minPendingPromise,
+    match.status,
+    route.options.pendingMinMs,
+    router,
+  ])
 
   // function useChangedDiff(value: any) {
   //   const ref = React.useRef(value)
@@ -205,40 +258,8 @@ function MatchInner({ matchId }: { matchId: string }): any {
   }
 
   if (match.status === 'pending') {
-    // We're pending, and if we have a minPendingMs, we need to wait for it
-    const pendingMinMs =
-      route.options.pendingMinMs ?? router.options.defaultPendingMinMs
-
-    if (pendingMinMs && !match.minPendingPromise) {
-      // Create a promise that will resolve after the minPendingMs
-      if (!router.isServer) {
-        const minPendingPromise = createControlledPromise<void>()
-
-        Promise.resolve().then(() => {
-          router.updateMatch(match.id, (prev) => ({
-            ...prev,
-            minPendingPromise,
-          }))
-        })
-
-        setTimeout(() => {
-          minPendingPromise.resolve()
-
-          // We've handled the minPendingPromise, so we can delete it
-          router.updateMatch(match.id, (prev) => ({
-            ...prev,
-            minPendingPromise: undefined,
-          }))
-        }, pendingMinMs)
-      }
-    }
-
     throw match.loadPromise
   }
-
-  const Comp = route.options.component ?? router.options.defaultComponent
-
-  const out = Comp ? <Comp /> : <Outlet />
 
   return (
     <>
@@ -248,9 +269,9 @@ function MatchInner({ matchId }: { matchId: string }): any {
       ) : null}
     </>
   )
-}
+})
 
-export const Outlet = React.memo(function Outlet() {
+export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
   const routeId = useRouterState({

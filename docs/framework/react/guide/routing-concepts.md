@@ -104,7 +104,7 @@ In this example, the `posts.index.tsx` file is nested under the `posts` director
 
 ## Dynamic Route Segments
 
-Route path segments that start with a `$` followed by a label are dynamic and capture that section of the URL into the `params` object for use in your application. For example, a pathame of `/posts/123` would match the `/posts/$postId` route, and the `params` object would be `{ postId: '123' }`.
+Route path segments that start with a `$` followed by a label are dynamic and capture that section of the URL into the `params` object for use in your application. For example, a pathname of `/posts/123` would match the `/posts/$postId` route, and the `params` object would be `{ postId: '123' }`.
 
 These params are then usable in your route's configuration and components! Let's look at the `posts.$postId.tsx` route from our example route tree above:
 

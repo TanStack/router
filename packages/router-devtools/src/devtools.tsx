@@ -1023,6 +1023,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       padding: ${tokens.size[1.5]} ${tokens.size[2]};
       display: flex;
       align-items: center;
+      justify-content: space-between;
       font-size: ${font.size.xs};
     `,
     routeMatchesToggle: css`

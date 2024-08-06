@@ -5,9 +5,9 @@ title: useLoaderDeps hook
 
 The `useLoaderDeps` hook is a hook that returns an object with the dependencies that are used to trigger the `loader` for a given route.
 
-## useParams options
+## useLoaderDepsHook options
 
-The `useParams` hook accepts an `options` object.
+The `useLoaderDepsHook` hook accepts an `options` object.
 
 ### `opts.from` option
 

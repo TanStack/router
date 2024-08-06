@@ -8,6 +8,7 @@ import {
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
+import { z } from 'zod'
 import {
   Link,
   Outlet,
@@ -164,4 +165,62 @@ describe('loaders parentMatchPromise', () => {
     expect(nestedLoaderMock).toHaveBeenCalled()
     expect(nestedLoaderMock.mock.calls[0][0]).toBeInstanceOf(Promise)
   })
+})
+
+test('reproducer for #2031', async () => {
+  const rootRoute = createRootRoute({
+    beforeLoad: () => {
+      console.log('beforeload called')
+    },
+  })
+
+  const searchSchema = z.object({
+    data: z.string().array().default([]),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Index page</div>,
+
+    validateSearch: searchSchema,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree })
+
+  render(<RouterProvider router={router} />)
+
+  const indexElement = await screen.findByText('Index page')
+  expect(indexElement).toBeInTheDocument()
+})
+
+test('reproducer for #2053', async () => {
+  const rootRoute = createRootRoute({
+    beforeLoad: () => {
+      console.log('beforeload called')
+    },
+  })
+
+  const fooRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo/$fooId',
+    component: () => {
+      const { fooId } = fooRoute.useParams()
+      return <div>fooId: {fooId}</div>
+    },
+  })
+
+  window.history.replaceState(null, 'root', '/foo/3ΚΑΠΠΑ')
+
+  const routeTree = rootRoute.addChildren([fooRoute])
+
+  const router = createRouter({
+    routeTree,
+  })
+
+  render(<RouterProvider router={router} />)
+
+  const fooElement = await screen.findByText('fooId: 3ΚΑΠΠΑ')
+  expect(fooElement).toBeInTheDocument()
 })

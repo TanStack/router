@@ -7,7 +7,7 @@ The `useLoaderData` hook returns the loader data from the closest [`RouteMatch`]
 
 ## useLoaderData options
 
-The `useLoaderData` hook accepts a single _optional_ argument, an `options` object.
+The `useLoaderData` hook accepts an `options` object.
 
 ### `opts.from` option
 
