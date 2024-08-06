@@ -846,21 +846,24 @@ export type ActiveLinkOptions<
   TMaskTo extends string = '',
 > = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & ActiveLinkOptionProps
 
+type ActiveLinkAnchorProps = Omit<
+  React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    [key: `data-${string}`]: unknown
+  },
+  'children'
+>
+
 export interface ActiveLinkOptionProps {
   /**
    * A function that returns additional props for the `active` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  activeProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+  activeProps?: ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
   /**
    * A function that returns additional props for the `inactive` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  inactiveProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+  inactiveProps?: ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
 }
 
 export type LinkProps<
