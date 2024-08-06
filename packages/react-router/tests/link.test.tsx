@@ -3518,4 +3518,93 @@ describe('createLink', () => {
     expect(customElement.hasAttribute('foo')).toBe(true)
     expect(customElement.getAttribute('foo')).toBe('bar')
   })
+
+  it('should pass activeProps and inactiveProps to the custom link', async () => {
+    const Button: React.FC<
+      React.PropsWithChildren<{
+        active?: boolean
+        foo?: boolean
+        overrideMeIfYouWant: string
+      }>
+    > = ({ active, foo, children, ...props }) => (
+      <button {...props}>
+        active: {active ? 'yes' : 'no'} - foo: {foo ? 'yes' : 'no'} - {children}
+      </button>
+    )
+
+    const ButtonLink = createLink(Button)
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <ButtonLink
+            to="/"
+            overrideMeIfYouWant="Button1"
+            activeProps={{
+              active: true,
+              'data-hello': 'world',
+              overrideMeIfYouWant: 'overridden-by-activeProps',
+            }}
+            inactiveProps={{ foo: true }}
+          >
+            Button1
+          </ButtonLink>
+          <ButtonLink
+            to="/posts"
+            overrideMeIfYouWant="Button2"
+            activeProps={{
+              active: false,
+              'data-hello': 'world',
+            }}
+            inactiveProps={{
+              foo: true,
+              'data-hello': 'void',
+              overrideMeIfYouWant: 'overridden-by-inactiveProps',
+            }}
+          >
+            Button2
+          </ButtonLink>
+          <ButtonLink
+            to="/posts"
+            overrideMeIfYouWant="Button3"
+            activeProps={{
+              active: false,
+            }}
+            inactiveProps={{
+              active: false,
+            }}
+          >
+            Button3
+          </ButtonLink>
+        </>
+      ),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const button1 = await screen.findByText('active: yes - foo: no - Button1')
+    expect(button1.getAttribute('data-hello')).toBe('world')
+    expect(button1.getAttribute('overrideMeIfYouWant')).toBe(
+      'overridden-by-activeProps',
+    )
+
+    const button2 = await screen.findByText('active: no - foo: yes - Button2')
+    expect(button2.getAttribute('data-hello')).toBe('void')
+    expect(button2.getAttribute('overrideMeIfYouWant')).toBe(
+      'overridden-by-inactiveProps',
+    )
+
+    const button3 = await screen.findByText('active: no - foo: no - Button3')
+    expect(button3.getAttribute('overrideMeIfYouWant')).toBe('Button3')
+  })
 })

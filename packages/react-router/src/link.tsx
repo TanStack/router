@@ -557,15 +557,16 @@ type LinkCurrentTargetElement = {
 const preloadWarning = 'Error preloading route! ☝️'
 
 export function useLinkProps<
+  TComp extends React.ElementType = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(
-  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  forwardedRef?: React.ForwardedRef<Element>,
-): React.ComponentPropsWithRef<'a'> {
+  options: UseLinkPropsOptions<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  forwardedRef?: React.ForwardedRef<TComp>,
+): React.ComponentPropsWithRef<TComp> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const innerRef = useForwardedRef(forwardedRef)
@@ -573,7 +574,7 @@ export function useLinkProps<
   const {
     // custom props
     activeProps = () => ({ className: 'active' }),
-    inactiveProps = () => ({}),
+    inactiveProps,
     activeOptions,
     hash,
     search,
@@ -587,6 +588,7 @@ export function useLinkProps<
     startTransition,
     resetScroll,
     viewTransition,
+    ignoreBlocker,
     // element props
     children,
     target,
@@ -598,12 +600,8 @@ export function useLinkProps<
     onMouseEnter,
     onMouseLeave,
     onTouchStart,
-    ignoreBlocker,
     ...rest
   } = options
-
-  // If this link simply reloads the current route,
-  // make sure it has a new key so it will trigger a data refresh
 
   // If this `to` is a valid external URL, return
   // null for LinkUtils
@@ -684,7 +682,7 @@ export function useLinkProps<
   if (type === 'external') {
     return {
       ...rest,
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+      ref: innerRef,
       type,
       href: to,
       ...(children && { children }),
@@ -779,18 +777,17 @@ export function useLinkProps<
     }
 
   // Get the active props
-  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? (functionalUpdate(activeProps as any, {}) ?? {})
-    : {}
+  const resolvedActiveProps = isActive ? functionalUpdate(activeProps, {}) : {}
 
   // Get the inactive props
-  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive ? {} : functionalUpdate(inactiveProps, {})
+  const resolvedInactiveProps = isActive
+    ? {}
+    : functionalUpdate(inactiveProps, {})
 
   const resolvedClassName = [
     className,
     resolvedActiveProps.className,
-    resolvedInactiveProps.className,
+    (resolvedInactiveProps as any).className,
   ]
     .filter(Boolean)
     .join(' ')
@@ -798,19 +795,19 @@ export function useLinkProps<
   const resolvedStyle = {
     ...style,
     ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style,
+    ...(resolvedInactiveProps as any).style,
   }
 
   return {
-    ...resolvedActiveProps,
-    ...resolvedInactiveProps,
     ...rest,
+    ...resolvedInactiveProps,
+    ...resolvedActiveProps,
     href: disabled
       ? undefined
       : next.maskedLocation
         ? router.history.createHref(next.maskedLocation.href)
         : router.history.createHref(next.href),
-    ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+    ref: innerRef,
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
@@ -830,49 +827,53 @@ export function useLinkProps<
 }
 
 export type UseLinkPropsOptions<
+  TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
-> = ActiveLinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
-  React.AnchorHTMLAttributes<HTMLAnchorElement>
+> = ActiveLinkOptions<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+  LinkComponentReactProps<TComp>
 
 export type ActiveLinkOptions<
+  TComp,
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string = '',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & ActiveLinkOptionProps
+> = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+  ActiveLinkOptionProps<TComp>
 
-type ActiveLinkAnchorProps = Omit<
-  React.AnchorHTMLAttributes<HTMLAnchorElement> & {
-    [key: `data-${string}`]: unknown
-  },
-  'children'
->
-
-export interface ActiveLinkOptionProps {
+type DataAttribute = {
+  [key: `data-${string}`]: unknown
+}
+export interface ActiveLinkOptionProps<
+  TComp,
+  TProps = Partial<Omit<LinkComponentReactProps<TComp>, 'children'>> &
+    DataAttribute,
+> {
   /**
    * A function that returns additional props for the `active` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  activeProps?: ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
+  activeProps?: TProps | (() => TProps)
   /**
    * A function that returns additional props for the `inactive` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  inactiveProps?: ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
+  inactiveProps?: TProps | (() => TProps)
 }
 
 export type LinkProps<
+  TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string = '',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = ActiveLinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ActiveLinkOptions<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
   LinkPropsChildren
 
 export interface LinkPropsChildren {
@@ -910,7 +911,7 @@ export type LinkComponentProps<
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 > = LinkComponentReactProps<TComp> &
-  LinkProps<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type LinkComponent<TComp> = <
   TRouter extends RegisteredRouter = RegisteredRouter,
@@ -936,13 +937,11 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     const children =
       typeof rest.children === 'function'
         ? rest.children({
-            isActive: (linkProps as any)['data-status'] === 'active',
+            isActive: linkProps['data-status'] === 'active',
           })
         : rest.children
 
     if (typeof _asChild === 'undefined') {
-      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a delete prop
-      // @ts-expect-error
       delete linkProps.disabled
     }
 
