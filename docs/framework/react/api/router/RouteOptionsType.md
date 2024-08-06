@@ -143,18 +143,13 @@ type loader = (
 - Type:
 
 ```tsx
-type loaderDeps = (opts: {
-  search: TFullSearchSchema
-  location: ParsedLocation
-  context: TAllContext
-}) => Record<string, any>
+type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 ```
 
 - Optional
-- [`ParsedLocation`](./ParsedLocationType.md)
 - A function that will be called before this route is matched to provide additional unique identification to the route match and serve as a dependency tracker for when the match should be reloaded. It should return any serializable value that can uniquely identify the route match from navigation to navigation.
 - By default, path params are already used to uniquely identify a route match, so it's unnecessary to return these here.
-- If your route match relies on search params or context values for unique identification, it's required that you return them here so they can be made available in the `loader`'s `deps` argument.
+- If your route match relies on search params for unique identification, it's required that you return them here so they can be made available in the `loader`'s `deps` argument.
 
 ### `staleTime` property
 
