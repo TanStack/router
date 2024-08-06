@@ -640,32 +640,33 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
               />
             ) : (
               <div>
-                {(routerState.pendingMatches || routerState.matches).map(
-                  (match, i) => {
-                    return (
+                {(routerState.pendingMatches?.length
+                  ? routerState.pendingMatches
+                  : routerState.matches
+                ).map((match, i) => {
+                  return (
+                    <div
+                      key={match.id || i}
+                      role="button"
+                      aria-label={`Open match details for ${match.id}`}
+                      onClick={() =>
+                        setActiveId(activeId === match.id ? '' : match.id)
+                      }
+                      className={cx(styles.matchRow(match === activeMatch))}
+                    >
                       <div
-                        key={match.id || i}
-                        role="button"
-                        aria-label={`Open match details for ${match.id}`}
-                        onClick={() =>
-                          setActiveId(activeId === match.id ? '' : match.id)
-                        }
-                        className={cx(styles.matchRow(match === activeMatch))}
-                      >
-                        <div
-                          className={cx(
-                            styles.matchIndicator(getStatusColor(match)),
-                          )}
-                        />
+                        className={cx(
+                          styles.matchIndicator(getStatusColor(match)),
+                        )}
+                      />
 
-                        <code
-                          className={styles.matchID}
-                        >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                        <AgeTicker match={match} router={router} />
-                      </div>
-                    )
-                  },
-                )}
+                      <code
+                        className={styles.matchID}
+                      >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
+                      <AgeTicker match={match} router={router} />
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -1332,12 +1333,16 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       const base = css`
         ${position === 'top-left' ? `top: ${size[2]}; left: ${size[2]};` : ''}
         ${position === 'top-right' ? `top: ${size[2]}; right: ${size[2]};` : ''}
-        ${position === 'bottom-left'
-          ? `bottom: ${size[2]}; left: ${size[2]};`
-          : ''}
-        ${position === 'bottom-right'
-          ? `bottom: ${size[2]}; right: ${size[2]};`
-          : ''}
+        ${
+          position === 'bottom-left'
+            ? `bottom: ${size[2]}; left: ${size[2]};`
+            : ''
+        }
+        ${
+          position === 'bottom-right'
+            ? `bottom: ${size[2]}; right: ${size[2]};`
+            : ''
+        }
       `
       return base
     },
