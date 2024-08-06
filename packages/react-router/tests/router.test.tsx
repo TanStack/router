@@ -1,7 +1,15 @@
-import { act } from 'react'
+import { act, useEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, waitFor } from '@testing-library/react'
 import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import {
+  Link,
+  Outlet,
   type RouterHistory,
   RouterProvider,
   createMemoryHistory,
@@ -401,5 +409,76 @@ describe('router emits events during rendering', () => {
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
     unsub()
+  })
+})
+
+describe('router rendering stability', () => {
+  it('should not remount the page component when navigating to the same route', async () => {
+    const callerMock = vi.fn()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <div>
+            <p>Root</p>
+            <div>
+              <Link to="/foo/$id" params={{ id: '1' }}>
+                Foo1
+              </Link>
+              <Link to="/foo/$id" params={{ id: '2' }}>
+                Foo2
+              </Link>
+            </div>
+            <Outlet />
+          </div>
+        )
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return ''
+      },
+    })
+    const fooIdRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo/$id',
+      component: FooIdRouteComponent,
+    })
+    function FooIdRouteComponent() {
+      const id = fooIdRoute.useParams({ select: (s) => s.id })
+
+      useEffect(() => {
+        callerMock()
+      }, [])
+
+      return <div>Foo page {id}</div>
+    }
+
+    const routeTree = rootRoute.addChildren([fooIdRoute, indexRoute])
+    const router = createRouter({ routeTree })
+
+    render(<RouterProvider router={router} />)
+
+    const foo1Link = await screen.findByRole('link', { name: 'Foo1' })
+    const foo2Link = await screen.findByRole('link', { name: 'Foo2' })
+
+    expect(foo1Link).toBeInTheDocument()
+    expect(foo2Link).toBeInTheDocument()
+
+    fireEvent.click(foo1Link)
+
+    const fooPage1 = await screen.findByText('Foo page 1')
+    expect(fooPage1).toBeInTheDocument()
+
+    expect(callerMock).toBeCalledTimes(1)
+
+    fireEvent.click(foo2Link)
+
+    const fooPage2 = await screen.findByText('Foo page 2')
+    expect(fooPage2).toBeInTheDocument()
+
+    expect(callerMock).toBeCalledTimes(1)
   })
 })
