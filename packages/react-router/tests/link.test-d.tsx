@@ -1,6 +1,6 @@
-import { expectTypeOf, test } from 'vitest'
-import { Link, createRoute, createRouter } from '../src'
-import { createRootRoute } from '../src'
+import { expect, expectTypeOf, test } from 'vitest'
+
+import { Link, createRootRoute, createRoute, createRouter } from '../src'
 
 const rootRoute = createRootRoute({
   validateSearch: (): { rootPage?: number } => ({ rootPage: 0 }),
