@@ -10,13 +10,13 @@ import {
 import {
   Link,
   Outlet,
-  type RouterHistory,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
+import type { RouterHistory } from '../src'
 
 afterEach(() => {
   vi.resetAllMocks()
