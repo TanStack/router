@@ -214,16 +214,16 @@ export function createHistory(opts: {
         if (defaultBehavior) {
           e.preventDefault()
           // @ts-expect-error
-          e.returnValue = ''
-        } else {
-          const result = disableBeforeUnload()
-          if (result) {
-            e.preventDefault()
-            // @ts-expect-error
-            e.returnValue = ''
-          }
-          e.returnValue = ''
+          return (e.returnValue = '')
         }
+        const result = disableBeforeUnload()
+        if (!result) {
+          e.preventDefault()
+          // @ts-expect-error
+          return (e.returnValue = '')
+        }
+
+        return
       }
 
       addEventListener(beforeUnloadEvent, beforeUnloadListener, {

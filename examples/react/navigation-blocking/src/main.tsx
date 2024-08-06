@@ -103,7 +103,7 @@ function Editor1Component() {
   const { proceed, reset, status } = useBlocker({
     to: '/editor-1/editor-2',
     blockerFn: () => value !== '',
-    disableBeforeUnload: () => value !== '',
+    disableBeforeUnload: () => value === '',
   })
 
   return (

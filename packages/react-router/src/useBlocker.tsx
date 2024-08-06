@@ -81,7 +81,7 @@ export function useBlocker<
     return disabled
       ? undefined
       : history.block(blockerFnComposed, disableBeforeUnload)
-  }, [blockerFn, disableBeforeUnload, disabled, history])
+  }, [blockerFn, disableBeforeUnload, disabled, history, from, to])
 
   return resolver
 }
