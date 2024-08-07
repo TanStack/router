@@ -664,7 +664,7 @@ export async function generator(config: Config) {
     )
 
   const routeConfigFileContent = await prettier.format(
-    config.disableGeneratingManifest
+    config.disableManifestGeneration
       ? routeImports
       : [
           routeImports,
