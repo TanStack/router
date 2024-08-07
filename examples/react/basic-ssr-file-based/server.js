@@ -1,3 +1,4 @@
+import path from 'node:path'
 import express from 'express'
 import getPort, { portNumbers } from 'get-port'
 
@@ -44,14 +45,14 @@ export async function createServer(
     try {
       const url = req.originalUrl
 
-      if (url.includes('.')) {
+      if (path.extname(url) !== '') {
         console.warn(`${url} is not valid router path`)
         res.status(404)
         res.end(`${url} is not valid router path`)
         return
       }
 
-      // Extract the head from vite's index transformation hook
+      // Best effort extraction of the head from vite's index transformation hook
       let viteHead = !isProd
         ? await vite.transformIndexHtml(
             url,
@@ -73,7 +74,7 @@ export async function createServer(
       })()
 
       console.info('Rendering: ', url, '...')
-      entry.render({ req, res, url, head: viteHead })
+      entry.render({ req, res, head: viteHead })
     } catch (e) {
       !isProd && vite.ssrFixStacktrace(e)
       console.info(e.stack)

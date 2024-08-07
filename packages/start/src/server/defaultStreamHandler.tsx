@@ -6,13 +6,13 @@ import { StartServer } from './StartServer'
 import { transformStreamWithRouter } from './transformStreamWithRouter'
 import type { AnyRouter } from '@tanstack/react-router'
 
-export type StartHandler<TRouter extends AnyRouter> = (ctx: {
+export type HandlerCallback<TRouter extends AnyRouter> = (ctx: {
   request: Request
   router: TRouter
   responseHeaders: Headers
 }) => Promise<Response>
 
-export const defaultStreamHandler: StartHandler<AnyRouter> = async ({
+export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
   request,
   router,
   responseHeaders,
