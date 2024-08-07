@@ -91,6 +91,7 @@ To live up to that responsibility, search parameters are a first-class citizen i
 **It's like having `useState` right in the URL!**
 
 Search parameters are:
+
 - Automatically parsed and serialized as JSON
 - Validated and typed
 - Inherited from parent routes
@@ -116,6 +117,7 @@ TanStack Router solves these problems with a two-prong approach to caching and d
 TanStack Router provides a light-weight built-in caching layer that works seamlessly with the Router. This caching layer is loosely based on TanStack Query, but with fewer features and a much smaller API surface area. Like TanStack Query, sane but powerful defaults guaranty that your data is cached for reuse, invalidated when necessary, and garbage collected when not in use. It also provides a simple API for invalidating the cache manually when needed.
 
 ### Flexible & Powerful Data Lifecycle APIs
+
 TanStack Router is designed with a flexible and powerful data loading API that more easily integrates with existing data fetching libraries like TanStack Query, SWR, Apollo, Relay, or even your own custom data fetching solution. Configurable APIs like `routeContext`, `beforeLoad`, `loaderDeps` and `loader` work in unison to make it easy to define declarative data dependencies, prefetch data, and manage the lifecycle of an external data source with ease.
 
 ## Inherited Route Context
