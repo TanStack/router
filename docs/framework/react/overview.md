@@ -23,7 +23,7 @@ To get started quickly, head to the next page. For a more lengthy explanation, b
 
 ## "A Fork in the Route"
 
-Using a router to build applications is widely regarded as a must-have and is usually one of the first choices you’ll make in your tech stack. 
+Using a router to build applications is widely regarded as a must-have and is usually one of the first choices you’ll make in your tech stack.
 
 **So, why should to choose TanStack Router over another router?**
 
