@@ -1,12 +1,14 @@
-import { createLazyFileRoute, type RouteComponent } from '@tanstack/react-router'
+import {
+  createLazyFileRoute,
+  type RouteComponent,
+} from '@tanstack/react-router'
 
-import trpc from '../../utils/trpc';
+import trpc from '../../utils/trpc'
 
 export const Component: RouteComponent = () => {
-  const { post_id } = Route.useParams();
-  const [
-    { content, last_updated, published_time, subtitle, title },
-  ] = trpc.blog.getPostByID.useSuspenseQuery(post_id);
+  const { post_id } = Route.useParams()
+  const [{ content, last_updated, published_time, subtitle, title }] =
+    trpc.blog.getPostByID.useSuspenseQuery(post_id)
 
   return (
     <main>
@@ -19,4 +21,6 @@ export const Component: RouteComponent = () => {
   )
 }
 
-export const Route = createLazyFileRoute('/blog/$post_id')({ component: Component })
+export const Route = createLazyFileRoute('/blog/$post_id')({
+  component: Component,
+})
