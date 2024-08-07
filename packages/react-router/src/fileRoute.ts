@@ -15,16 +15,15 @@ import type {
   AnySearchSchema,
   FileBaseRouteOptions,
   InferAllContext,
-  ResolveAllContext,
   ResolveAllParamsFromParent,
   ResolveFullSearchSchema,
   ResolveFullSearchSchemaInput,
   ResolveLoaderData,
-  ResolveRouteContext,
   ResolveSearchSchemaUsed,
   Route,
   RouteConstraints,
   RouteContext,
+  RouteContextFn,
   RouteLoaderFn,
   UpdatableRouteOptions,
 } from './route'
@@ -88,9 +87,8 @@ export class FileRoute<
     TFullSearchSchema = ResolveFullSearchSchema<TParentRoute, TSearchSchema>,
     TParams = Record<ParsePathParams<TPath>, string>,
     TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
-    TRouteContextReturn = RouteContext,
-    TRouteContext = ResolveRouteContext<TRouteContextReturn>,
-    TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
+    TRouteContextFn = AnyContext,
+    TBeforeLoadFn = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderDataReturn = {},
     TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
@@ -103,20 +101,21 @@ export class FileRoute<
       TFullSearchSchema,
       TParams,
       TAllParams,
-      TRouteContextReturn,
-      InferAllContext<TParentRoute>,
-      TAllContext,
       TLoaderDeps,
-      TLoaderDataReturn
+      TLoaderDataReturn,
+      InferAllContext<TParentRoute>,
+      TRouteContextFn,
+      TBeforeLoadFn
     > &
       UpdatableRouteOptions<
         TId,
         TAllParams,
         TFullSearchSchema,
         TLoaderData,
-        TAllContext,
-        TRouteContext,
-        TLoaderDeps
+        TLoaderDeps,
+        InferAllContext<TParentRoute>,
+        TRouteContextFn,
+        TBeforeLoadFn
       >,
   ): Route<
     TParentRoute,
@@ -131,9 +130,8 @@ export class FileRoute<
     TFullSearchSchema,
     TParams,
     TAllParams,
-    TRouteContextReturn,
-    TRouteContext,
-    TAllContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
     TLoaderDeps,
     TLoaderDataReturn,
     TLoaderData,
@@ -187,7 +185,8 @@ export type LazyRouteOptions = Pick<
     {},
     AnyContext,
     AnyContext,
-    {}
+    AnyContext,
+    AnyContext
   >,
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
