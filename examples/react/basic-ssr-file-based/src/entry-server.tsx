@@ -1,42 +1,61 @@
-import * as React from 'react'
-import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory } from '@tanstack/react-router'
-import { StartServer } from '@tanstack/start/server'
+import { pipeline } from 'node:stream/promises'
+import {
+  createRequestHandler,
+  defaultStreamHandler,
+} from '@tanstack/start/server'
 import { createRouter } from './router'
-import type { ServerResponse } from 'http'
 import type express from 'express'
-
-// index.js
 import './fetch-polyfill'
 
-export async function render(opts: {
-  url: string
+export async function render({
+  req,
+  res,
+  head,
+}: {
   head: string
   req: express.Request
-  res: ServerResponse
+  res: express.Response
 }) {
-  const router = createRouter()
-
-  const memoryHistory = createMemoryHistory({
-    initialEntries: [opts.url],
+  // Convert the express request to a fetch request
+  const url = new URL(req.originalUrl || req.url, 'https://localhost:3000').href
+  const request = new Request(url, {
+    method: req.method,
+    headers: (() => {
+      const headers = new Headers()
+      for (const [key, value] of Object.entries(req.headers)) {
+        headers.set(key, value as any)
+      }
+      return headers
+    })(),
   })
 
-  // Update the history and context
-  router.update({
-    history: memoryHistory,
-    context: {
-      ...router.options.context,
-      head: opts.head,
+  // Create a request handler
+  const handler = createRequestHandler({
+    request,
+    createRouter: () => {
+      const router = createRouter()
+
+      // Update each router instance with the head info from vite
+      router.update({
+        context: {
+          ...router.options.context,
+          head: head,
+        },
+      })
+      return router
     },
   })
 
-  // Since we're using renderToString, Wait for the router to finish loading
-  await router.load()
+  // Let's use the default stream handler to create the response
+  const response = await handler(defaultStreamHandler)
 
-  // Render the app
-  const appHtml = ReactDOMServer.renderToString(<StartServer router={router} />)
+  // Convert the fetch response back to an express response
+  res.statusMessage = response.statusText
+  res.status(response.status)
+  response.headers.forEach((value, name) => {
+    res.setHeader(name, value)
+  })
 
-  opts.res.statusCode = 200
-  opts.res.setHeader('Content-Type', 'text/html')
-  opts.res.end(`<!DOCTYPE html>${appHtml}`)
+  // Stream the response body
+  return pipeline(response.body as any, res)
 }

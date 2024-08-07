@@ -17,10 +17,10 @@ import {
   serverFnReturnTypeHeader,
 } from '../constants'
 import { defaultTransformer } from '../client/defaultTransformer'
-import type { StartHandler } from './defaultStreamHandler'
+import type { HandlerCallback } from './defaultStreamHandler'
 
 export type CustomizeStartHandler<TRouter extends AnyRouter> = (
-  cb: StartHandler<TRouter>,
+  cb: HandlerCallback<TRouter>,
 ) => EventHandler
 
 export function createStartHandler<TRouter extends AnyRouter>({
