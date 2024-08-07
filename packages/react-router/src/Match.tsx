@@ -138,8 +138,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
   const out = React.useMemo(() => {
     const Comp = route.options.component ?? router.options.defaultComponent
-    return Comp ? <Comp key={matchId} /> : <Outlet />
-  }, [matchId, route.options.component, router.options.defaultComponent])
+    return Comp ? <Comp key={routeId} /> : <Outlet />
+  }, [routeId, route.options.component, router.options.defaultComponent])
 
   React.useEffect(() => {
     if (match.status === 'pending') {
