@@ -6,22 +6,21 @@ import {
   hydrate,
   useQueryErrorResetBoundary,
 } from '@tanstack/react-query'
-import { createTRPCReact, createTRPCQueryUtils } from '@trpc/react-query'
-import { httpBatchLink, loggerLink } from '@trpc/client'
 import {
   createRouter as createTanstackRouter,
   useLocation,
   useRouter,
 } from '@tanstack/react-router'
+import { httpBatchLink, loggerLink } from '@trpc/client'
 import { SuperJSON } from 'superjson'
+import { createTRPCQueryUtils } from '@trpc/react-query'
 
-import type { AppRouter } from './trpc'
 import { routeTree } from './routeTree.gen.ts'
+import trpc from './utils/trpc.ts'
 
 /** @see https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration */
 export function createRouter() {
   const queryClient = new QueryClient()
-  const trpc = createTRPCReact<AppRouter>()
   const trpcClient = trpc.createClient({
     links: [
       loggerLink({
@@ -42,8 +41,6 @@ export function createRouter() {
 
   const router = createTanstackRouter({
     context: {
-      queryClient,
-      trpc,
       trpcQueryUtils,
     },
     defaultPreload: 'intent',

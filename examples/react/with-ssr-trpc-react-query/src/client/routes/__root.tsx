@@ -4,22 +4,21 @@ import {
   Outlet,
   ScrollRestoration,
   createRootRouteWithContext,
+  useRouterState,
 } from '@tanstack/react-router'
-import type { createTRPCQueryUtils, createTRPCReact } from '@trpc/react-query'
-import { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import type { createTRPCQueryUtils } from '@trpc/react-query'
 
 import type { AppRouter, Caller } from '../trpc'
 
 export const Route = createRootRouteWithContext<{
   // caller will only exist on the server
   caller?: Caller
-  queryClient: QueryClient
-  trpc: ReturnType<typeof createTRPCReact<AppRouter>>
   trpcQueryUtils: ReturnType<typeof createTRPCQueryUtils<AppRouter>>
 }>()({
   component: () => {
+    const { status } = useRouterState();
     return (
       <Html lang="en">
         <Head>
@@ -43,7 +42,12 @@ export const Route = createRootRouteWithContext<{
               Blog
             </Link>
           </div>
-          <Outlet />
+          {(
+            !import.meta.env.SSR
+            && status === 'pending'
+          )
+            ? <div>Pending...</div>
+            : <Outlet />}
           <ReactQueryDevtools buttonPosition="bottom-left" />
           <TanStackRouterDevtools position="bottom-right" />
           <Scripts />
