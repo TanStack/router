@@ -483,7 +483,7 @@ describe('router rendering stability', () => {
   })
 })
 
-describe.only('transformer functions are defined', () => {
+describe('transformer functions are defined', () => {
   it('should have default transformer functions', () => {
     const rootRoute = createRootRoute({})
     const routeTree = rootRoute.addChildren([])
