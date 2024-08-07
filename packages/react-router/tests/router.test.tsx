@@ -482,3 +482,14 @@ describe('router rendering stability', () => {
     expect(callerMock).toBeCalledTimes(1)
   })
 })
+
+describe.only('transformer functions are defined', () => {
+  it('should have default transformer functions', () => {
+    const rootRoute = createRootRoute({})
+    const routeTree = rootRoute.addChildren([])
+    const router = createRouter({ routeTree })
+
+    expect(router.options.transformer.parse).toBeInstanceOf(Function)
+    expect(router.options.transformer.stringify).toBeInstanceOf(Function)
+  })
+})
