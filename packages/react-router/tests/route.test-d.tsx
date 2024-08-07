@@ -338,12 +338,13 @@ test('when creating a child route with params, search with beforeLoad from the r
     path: 'invoices/$invoiceId',
     getParentRoute: () => rootRoute,
     validateSearch: () => ({ page: 0 }),
-    beforeLoad: (opts) =>
+    beforeLoad: (opts) => {
       expectTypeOf(opts).toMatchTypeOf<{
         params: { invoiceId: string }
         context: { userId: string }
         search: { page: number }
-      }>(),
+      }>()
+    },
   })
 })
 
