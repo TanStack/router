@@ -4,11 +4,13 @@ title: Installation
 
 You can install TanStack Router with any [NPM](https://npmjs.com) package manager.
 
-```sh
-npm install @tanstack/react-router
-```
-
-```sh
+```bash
+npm i @tanstack/react-router
+# or
+pnpm add @tanstack/react-router
+#or
+yarn add @tanstack/react-router
+#or
 bun add @tanstack/react-router
 ```
 
