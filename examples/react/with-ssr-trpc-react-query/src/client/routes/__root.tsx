@@ -4,7 +4,6 @@ import {
   Outlet,
   ScrollRestoration,
   createRootRouteWithContext,
-  useRouterState,
 } from '@tanstack/react-router'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -18,7 +17,6 @@ export const Route = createRootRouteWithContext<{
   trpcQueryUtils: ReturnType<typeof createTRPCQueryUtils<AppRouter>>
 }>()({
   component: () => {
-    const { status } = useRouterState()
     return (
       <Html lang="en">
         <Head>
@@ -42,11 +40,7 @@ export const Route = createRootRouteWithContext<{
               Blog
             </Link>
           </div>
-          {!import.meta.env.SSR && status === 'pending' ? (
-            <div>Pending...</div>
-          ) : (
-            <Outlet />
-          )}
+          <Outlet />
           <ReactQueryDevtools buttonPosition="bottom-left" />
           <TanStackRouterDevtools position="bottom-right" />
           <Scripts />

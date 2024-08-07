@@ -30,9 +30,7 @@ const BlogIndexRoute = BlogIndexImport.update({
 const BlogPostidRoute = BlogPostidImport.update({
   path: '/blog/$post_id',
   getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import('./routes/blog/$post_id.lazy.tsx').then((d) => d.Route),
-)
+} as any)
 
 // Populate the FileRoutesByPath interface
 
