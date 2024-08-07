@@ -14,7 +14,6 @@ import type {
   AnyRoute,
   AnySearchSchema,
   FileBaseRouteOptions,
-  InferAllContext,
   ResolveAllParamsFromParent,
   ResolveFullSearchSchema,
   ResolveFullSearchSchemaInput,
@@ -95,25 +94,25 @@ export class FileRoute<
     TChildren = unknown,
   >(
     options?: FileBaseRouteOptions<
+      TParentRoute,
       TPath,
       TSearchSchemaInput,
       TSearchSchema,
-      TFullSearchSchema,
       TParams,
-      TAllParams,
       TLoaderDeps,
       TLoaderDataReturn,
-      InferAllContext<TParentRoute>,
+      AnyContext,
       TRouteContextFn,
       TBeforeLoadFn
     > &
       UpdatableRouteOptions<
+        TParentRoute,
         TId,
         TAllParams,
         TFullSearchSchema,
         TLoaderData,
         TLoaderDeps,
-        InferAllContext<TParentRoute>,
+        AnyContext,
         TRouteContextFn,
         TBeforeLoadFn
       >,
@@ -130,6 +129,7 @@ export class FileRoute<
     TFullSearchSchema,
     TParams,
     TAllParams,
+    AnyContext,
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
@@ -159,15 +159,21 @@ export function FileRouteLoader<
   _path: TFilePath,
 ): <TLoaderData>(
   loaderFn: RouteLoaderFn<
-    TRoute['types']['allParams'],
+    TRoute['parentRoute'],
+    TRoute['types']['params'],
     TRoute['types']['loaderDeps'],
-    TRoute['types']['allContext'],
+    TRoute['types']['routerContext'],
+    TRoute['types']['routeContextFn'],
+    TRoute['types']['beforeLoadFn'],
     TLoaderData
   >,
 ) => RouteLoaderFn<
-  TRoute['types']['allParams'],
+  TRoute['parentRoute'],
+  TRoute['types']['params'],
   TRoute['types']['loaderDeps'],
-  TRoute['types']['allContext'],
+  TRoute['types']['routerContext'],
+  TRoute['types']['routeContextFn'],
+  TRoute['types']['beforeLoadFn'],
   NoInfer<TLoaderData>
 > {
   warning(
@@ -179,6 +185,7 @@ export function FileRouteLoader<
 
 export type LazyRouteOptions = Pick<
   UpdatableRouteOptions<
+    any,
     string,
     AnyPathParams,
     AnySearchSchema,
