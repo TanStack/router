@@ -1,5 +1,4 @@
 import { RouterProvider } from '@tanstack/react-router'
-import * as React from 'react'
 import { defaultTransformer } from './defaultTransformer'
 import { afterHydrate } from './serialization'
 import type { AnyRouter } from '@tanstack/react-router'

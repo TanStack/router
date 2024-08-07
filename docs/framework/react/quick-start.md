@@ -11,7 +11,13 @@ File based route generation (through Vite, and other supported bundlers) is the 
 ### Install the Vite Plugin and the Router Devtools
 
 ```bash
-npm install --save-dev @tanstack/router-plugin @tanstack/router-devtools
+npm i -D @tanstack/router-plugin @tanstack/router-devtools
+# or
+pnpm add -D @tanstack/router-plugin @tanstack/router-devtools
+# or
+yarn add -D @tanstack/router-plugin @tanstack/router-devtools
+# or
+bun add -D @tanstack/router-plugin @tanstack/router-devtools
 ```
 
 ### Configure the Vite Plugin
