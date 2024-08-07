@@ -664,15 +664,15 @@ export async function generator(config: Config) {
     )
 
   const routeConfigFileContent = await prettier.format(
-    config.generateManifest
-      ? [
+    config.disableGeneratingManifest
+      ? routeImports
+      : [
           routeImports,
           '\n',
           '/* ROUTE_MANIFEST_START',
           createRouteManifest(),
           'ROUTE_MANIFEST_END */',
-        ].join('\n')
-      : routeImports,
+        ].join('\n'),
     {
       semi: config.semicolons,
       singleQuote: config.quoteStyle === 'single',

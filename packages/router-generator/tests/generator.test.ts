@@ -45,7 +45,7 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.routeTreeFileFooter = ['// append1', '// append2']
       break
     case 'no-manifest':
-      config.generateManifest = false
+      config.disableGeneratingManifest = true
       break
     default:
       break

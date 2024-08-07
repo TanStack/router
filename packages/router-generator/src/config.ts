@@ -13,7 +13,7 @@ export const configSchema = z.object({
   disableTypes: z.boolean().optional().default(false),
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
-  generateManifest: z.boolean().optional().default(true),
+  disableGeneratingManifest: z.boolean().optional().default(false),
   routeTreeFileHeader: z
     .array(z.string())
     .optional()
