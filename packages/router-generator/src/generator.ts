@@ -626,50 +626,53 @@ export async function generator(config: Config) {
     .filter(Boolean)
     .join('\n\n')
 
-  const routeManifest = JSON.stringify(
-    {
-      routes: {
-        __root__: {
-          filePath: rootRouteNode?.filePath,
-          children: routeTree.map(
-            (d) => getFilePathIdAndRouteIdFromPath(d.routePath!)[1],
+  const createRouteManifest = () =>
+    JSON.stringify(
+      {
+        routes: {
+          __root__: {
+            filePath: rootRouteNode?.filePath,
+            children: routeTree.map(
+              (d) => getFilePathIdAndRouteIdFromPath(d.routePath!)[1],
+            ),
+          },
+          ...Object.fromEntries(
+            routeNodes.map((d) => {
+              const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
+                d.routePath!,
+              )
+
+              return [
+                routeId,
+                {
+                  filePath: d.filePath,
+                  parent: d.parent?.routePath
+                    ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
+                    : undefined,
+                  children: d.children?.map(
+                    (childRoute) =>
+                      getFilePathIdAndRouteIdFromPath(childRoute.routePath!)[1],
+                  ),
+                },
+              ]
+            }),
           ),
         },
-        ...Object.fromEntries(
-          routeNodes.map((d) => {
-            const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
-              d.routePath!,
-            )
-
-            return [
-              routeId,
-              {
-                filePath: d.filePath,
-                parent: d.parent?.routePath
-                  ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
-                  : undefined,
-                children: d.children?.map(
-                  (childRoute) =>
-                    getFilePathIdAndRouteIdFromPath(childRoute.routePath!)[1],
-                ),
-              },
-            ]
-          }),
-        ),
       },
-    },
-    null,
-    2,
-  )
+      null,
+      2,
+    )
 
   const routeConfigFileContent = await prettier.format(
-    [
-      routeImports,
-      '\n',
-      '/* ROUTE_MANIFEST_START',
-      routeManifest,
-      'ROUTE_MANIFEST_END */',
-    ].join('\n'),
+    config.disableManifestGeneration
+      ? routeImports
+      : [
+          routeImports,
+          '\n',
+          '/* ROUTE_MANIFEST_START',
+          createRouteManifest(),
+          'ROUTE_MANIFEST_END */',
+        ].join('\n'),
     {
       semi: config.semicolons,
       singleQuote: config.quoteStyle === 'single',

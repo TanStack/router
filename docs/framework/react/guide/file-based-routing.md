@@ -213,6 +213,8 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Optional, **Defaults to `false`**) add file extensions to the route names in the generated route tree
 - **`disableLogging`**
   - (Optional, **Defaults to `false`**) disables logging for the route generation process
+- **`disableManifestGeneration**
+  - (Optional, **Defaults to `false`**) disables generating the route tree manifest
 - **`routeTreeFileHeader`**
 
   - (Optional) An array of strings to prepend to the generated route tree file content.
