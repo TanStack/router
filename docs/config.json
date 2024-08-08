@@ -265,6 +265,14 @@
             {
               "label": "Navigation Blocking",
               "to": "framework/react/examples/navigation-blocking"
+            },
+            {
+              "label": "With tRPC",
+              "to": "framework/react/examples/with-trpc"
+            },
+            {
+              "label": "With tRPC + React Query",
+              "to": "framework/react/examples/with-trpc-react-query"
             }
           ]
         }
