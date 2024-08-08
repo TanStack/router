@@ -27,8 +27,97 @@ import type {
 } from './routeInfo'
 import type { ControlledPromise, DeepPartial, NoInfer } from './utils'
 
+export type AnyMatchAndValue = { match: any; value: any }
+
+export type FindValueByKey<TKey, TValue> = TValue extends any
+  ? TValue[TKey & keyof TValue]
+  : never
+
+export type CreateMatchAndValue<TMatch, TValue> = TValue extends any
+  ? {
+      match: TMatch
+      value: TValue
+    }
+  : never
+
+export type NextMatchAndValue<
+  TKey,
+  TMatchAndValue extends AnyMatchAndValue,
+> = TMatchAndValue extends any
+  ? CreateMatchAndValue<
+      TMatchAndValue['match'],
+      FindValueByKey<TKey, TMatchAndValue['value']>
+    >
+  : never
+
+export type IsMatchKeyOf<TValue> =
+  TValue extends ReadonlyArray<any>
+    ? keyof TValue & `${number}`
+    : TValue extends object
+      ? keyof TValue & string
+      : never
+
+export type IsMatchPath<
+  TParentPath extends string,
+  TMatchAndValue extends AnyMatchAndValue,
+> = `${TParentPath}${IsMatchKeyOf<TMatchAndValue['value']>}`
+
+export type IsMatchResult<
+  TKey,
+  TMatchAndValue extends AnyMatchAndValue,
+> = TMatchAndValue extends any
+  ? TKey extends keyof TMatchAndValue['value']
+    ? TMatchAndValue['match']
+    : never
+  : never
+
+export type IsMatchParse<
+  TPath,
+  TMatchAndValue extends AnyMatchAndValue,
+  TParentPath extends string = '',
+> = TPath extends `${string}.${string}`
+  ? TPath extends `${infer TFirst}.${infer TRest}`
+    ? IsMatchParse<
+        TRest,
+        NextMatchAndValue<TFirst, TMatchAndValue>,
+        `${TParentPath}${TFirst}.`
+      >
+    : never
+  : {
+      path: IsMatchPath<TParentPath, TMatchAndValue>
+      result: IsMatchResult<TPath, TMatchAndValue>
+    }
+
+export type IsMatch<TMatch, TPath> = IsMatchParse<
+  TPath,
+  TMatch extends any ? { match: TMatch; value: TMatch } : never
+>
+
+export type ValidateIsMatchPath<
+  TMatch,
+  TPath extends string,
+> = TPath extends IsMatch<TMatch, TPath>['path']
+  ? TPath
+  : IsMatch<TMatch, TPath>['path']
+
+export const isMatch = <TMatch, TPath extends string>(
+  match: TMatch,
+  path: ValidateIsMatchPath<TMatch, TPath>,
+): match is IsMatch<TMatch, TPath>['result'] => {
+  const parts = (path as string).split('.')
+  let part
+  let value: any = match
+
+  while ((part = parts.shift()) != null && value != null) {
+    value = value[part]
+  }
+
+  return value != null
+}
+
 export interface RouteMatch<
   TRouteId,
+  TFullPath,
   TAllParams,
   TFullSearchSchema,
   TLoaderData,
@@ -38,6 +127,7 @@ export interface RouteMatch<
 > {
   id: string
   routeId: TRouteId
+  fullPath: TFullPath
   index: number
   pathname: string
   params: TAllParams
@@ -76,6 +166,7 @@ export type MakeRouteMatch<
   TRouteId = ParseRoute<TRouteTree>['id'],
   TStrict extends boolean = true,
   TTypes extends AnyRoute['types'] = RouteById<TRouteTree, TRouteId>['types'],
+  TFullPath = TTypes['fullPath'],
   TAllParams = TStrict extends false
     ? AllParams<TRouteTree>
     : TTypes['allParams'],
@@ -92,6 +183,7 @@ export type MakeRouteMatch<
   TLoaderDeps = TTypes['loaderDeps'],
 > = RouteMatch<
   TRouteId,
+  TFullPath,
   TAllParams,
   TFullSearchSchema,
   TLoaderData,
@@ -100,7 +192,7 @@ export type MakeRouteMatch<
   TLoaderDeps
 >
 
-export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any, any>
 
 export function Matches() {
   const router = useRouter()
@@ -254,10 +346,25 @@ export function MatchRoute<
   return params ? props.children : null
 }
 
+export type MakeRouteMatches<
+  TRouter extends AnyRouter = AnyRouter,
+  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+> = TRoute extends any
+  ? RouteMatch<
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema'],
+      TRoute['types']['loaderData'],
+      TRoute['types']['allContext'],
+      TRoute['types']['routeContext'],
+      TRoute['types']['loaderDeps']
+    >
+  : never
+
 export function useMatches<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId>,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRouteMatch = MakeRouteMatches<TRouter>,
   T = Array<TRouteMatch>,
 >(opts?: { select?: (matches: Array<TRouteMatch>) => T }): T {
   return useRouterState({

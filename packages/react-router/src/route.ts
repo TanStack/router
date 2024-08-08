@@ -53,6 +53,7 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
+  TFullPath extends string = string,
   TPath extends string = string,
   TSearchSchemaInput = Record<string, unknown>,
   TSearchSchema = {},
@@ -83,6 +84,7 @@ export type RouteOptions<
 > &
   UpdatableRouteOptions<
     NoInfer<TCustomId>,
+    NoInfer<TFullPath>,
     NoInfer<TAllParams>,
     NoInfer<TFullSearchSchema>,
     NoInfer<TLoaderData>,
@@ -207,6 +209,7 @@ export interface BeforeLoadContext<
 
 export type UpdatableRouteOptions<
   TRouteId,
+  TFullPath,
   TAllParams,
   TFullSearchSchema,
   TLoaderData,
@@ -215,6 +218,7 @@ export type UpdatableRouteOptions<
   TLoaderDeps,
   TRouteMatch = RouteMatch<
     TRouteId,
+    TFullPath,
     TAllParams,
     TFullSearchSchema,
     TLoaderData,
@@ -609,6 +613,7 @@ export class Route<
   options: RouteOptions<
     TParentRoute,
     TCustomId,
+    TFullPath,
     TPath,
     TSearchSchemaInput,
     TSearchSchema,
@@ -647,6 +652,7 @@ export class Route<
     options?: RouteOptions<
       TParentRoute,
       TCustomId,
+      TFullPath,
       TPath,
       TSearchSchemaInput,
       TSearchSchema,
@@ -700,6 +706,7 @@ export class Route<
       | (RouteOptions<
           TParentRoute,
           TCustomId,
+          TFullPath,
           TPath,
           TSearchSchemaInput,
           TSearchSchema,
@@ -828,6 +835,7 @@ export class Route<
   update = (
     options: UpdatableRouteOptions<
       TCustomId,
+      TFullPath,
       TAllParams,
       TFullSearchSchema,
       TLoaderData,
@@ -932,6 +940,7 @@ export function createRoute<
   options: RouteOptions<
     TParentRoute,
     TCustomId,
+    TFullPath,
     TPath,
     TSearchSchemaInput,
     TSearchSchema,
@@ -985,7 +994,8 @@ export type RootRouteOptions<
   RouteOptions<
     any, // TParentRoute
     RootRouteId, // TCustomId
-    '', // TPath
+    '/',
+    '/', // TPath
     TSearchSchemaInput, // TSearchSchemaInput
     TSearchSchema, // TSearchSchema
     TSearchSchema, // TFullSearchSchema
@@ -1142,7 +1152,8 @@ export function createRootRoute<
     RouteOptions<
       any, // TParentRoute
       RootRouteId, // TCustomId
-      '', // TPath
+      '/',
+      '/', // TPath
       TSearchSchemaInput, // TSearchSchemaInput
       TSearchSchema, // TSearchSchema
       TSearchSchema,
@@ -1316,6 +1327,7 @@ export class NotFoundRoute<
     options: Omit<
       RouteOptions<
         TParentRoute,
+        string,
         string,
         string,
         TSearchSchemaInput,

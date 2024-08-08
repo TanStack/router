@@ -35,14 +35,17 @@ export const Route = createFileRoute('/dashboard/users')({
     filterBy: search.usersView?.filterBy,
     sortBy: search.usersView?.sortBy,
   }),
-  loader: ({ deps }) => fetchUsers(deps),
+  loader: async ({ deps }) => {
+    const users = await fetchUsers(deps)
+    return { users, crumb: 'Users' }
+  },
   component: UsersComponent,
 })
 
 function UsersComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
   const { usersView } = Route.useSearch()
-  const users = Route.useLoaderData()
+  const { users } = Route.useLoaderData()
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
 
