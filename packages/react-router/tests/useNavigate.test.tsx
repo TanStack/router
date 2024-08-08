@@ -3,15 +3,16 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
+import { z } from 'zod'
 import {
+  Outlet,
+  RouterProvider,
   createRootRoute,
   createRoute,
-  createRouter,
-  useParams,
-  Outlet,
-  useNavigate,
-  RouterProvider,
   createRouteMask,
+  createRouter,
+  useNavigate,
+  useParams,
 } from '../src'
 
 afterEach(() => {
@@ -1230,4 +1231,58 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
   expect(await screen.findByText('Information')).toBeInTheDocument()
 
   expect(window.location.pathname).toEqual('/posts/id1')
+})
+
+test('when setting search params with 2 parallel navigate calls', async () => {
+  const rootRoute = createRootRoute()
+
+  const IndexComponent = () => {
+    const navigate = useNavigate()
+    return (
+      <React.Fragment>
+        <h1>Index</h1>
+        <button
+          onClick={() => {
+            navigate({
+              to: '/',
+              search: (prev: any) => ({ ...prev, param1: 'foo' }),
+            })
+
+            navigate({
+              to: '/',
+              search: (prev: any) => ({ ...prev, param2: 'bar' }),
+            })
+          }}
+        >
+          search
+        </button>
+      </React.Fragment>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: IndexComponent,
+    validateSearch: z.object({
+      param1: z.string().default('param1-default'),
+      param2: z.string().default('param2-default'),
+    }),
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(router.state.location.search).toEqual({
+    param1: 'param1-default',
+    param2: 'param2-default',
+  })
+
+  const postsButton = await screen.findByRole('button', { name: 'search' })
+
+  fireEvent.click(postsButton)
+
+  expect(router.state.location.search).toEqual({ param1: 'foo', param2: 'bar' })
 })
