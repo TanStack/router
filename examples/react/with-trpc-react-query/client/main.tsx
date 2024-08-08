@@ -38,12 +38,8 @@ const trpcClient = trpc.createClient({
 
 const trpcQueryUtils = createTRPCQueryUtils({ queryClient, client: trpcClient })
 
-export function Spinner() {
-  return (
-    <div className="animate-spin px-3 text-2xl inline-flex items-center justify-center">
-      ⍥
-    </div>
-  )
+function Spinner() {
+  return <div className="inline-block animate-spin px-3">⍥</div>
 }
 
 const rootRoute = createRootRouteWithContext<{
