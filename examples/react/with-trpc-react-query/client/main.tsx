@@ -11,18 +11,32 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
-
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { httpBatchLink } from '@trpc/client'
+import { createTRPCQueryUtils, createTRPCReact } from '@trpc/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { z } from 'zod'
 import type { AppRouter } from '../server/server'
 
-export const trpc = createTRPCProxyClient<AppRouter>({
+const queryClient = new QueryClient()
+
+export const trpc = createTRPCReact<AppRouter>({})
+
+const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: 'http://localhost:4000',
+      // optional
+      headers() {
+        return {
+          // authorization: getAuthCookie(),
+        }
+      },
     }),
   ],
 })
+
+const trpcQueryUtils = createTRPCQueryUtils({ queryClient, client: trpcClient })
 
 function Spinner() {
   return <div className="inline-block animate-spin px-3">⍥</div>
@@ -30,6 +44,8 @@ function Spinner() {
 
 const rootRoute = createRootRouteWithContext<{
   trpc: typeof trpc
+  trpcQueryUtils: ReturnType<typeof createTRPCQueryUtils<AppRouter>>
+  queryClient: typeof queryClient
 }>()({
   component: () => {
     const isFetching = useRouterState({ select: (s) => s.isLoading })
@@ -38,7 +54,7 @@ const rootRoute = createRootRouteWithContext<{
       <>
         <div className={`min-h-screen flex flex-col`}>
           <div className={`flex items-center border-b gap-2`}>
-            <h1 className={`text-3xl p-2`}>With tRPC</h1>
+            <h1 className={`text-3xl p-2`}>With tRPC + TanStack Query</h1>
             {/* Show a global spinner when the router is transitioning */}
             <div
               className={`text-3xl duration-300 delay-0 opacity-0 ${
@@ -175,9 +191,12 @@ const dashboardRoute = createRoute({
 const dashboardIndexRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/',
-  loader: ({ context: { trpc } }) => trpc.posts.query(),
+  loader: ({ context: { trpcQueryUtils } }) =>
+    trpcQueryUtils.posts.ensureData(),
   component: () => {
-    const posts = dashboardIndexRoute.useLoaderData()
+    const postsQuery = trpc.posts.useQuery()
+
+    const posts = postsQuery.data || []
 
     return (
       <div className="p-2">
@@ -193,9 +212,16 @@ const dashboardIndexRoute = createRoute({
 const postsRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: 'posts',
-  loader: ({ context: { trpc } }) => trpc.posts.query(),
+  errorComponent: () => 'Oh crap!',
+  loader: async ({ context: { trpcQueryUtils } }) => {
+    await trpcQueryUtils.posts.ensureData()
+    return
+  },
+  pendingComponent: Spinner,
   component: () => {
-    const posts = postsRoute.useLoaderData()
+    const postsQuery = trpc.posts.useQuery()
+
+    const posts = postsQuery.data || []
 
     return (
       <div className="flex-1 flex">
@@ -256,10 +282,16 @@ const postRoute = createRoute({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  loader: async ({ context: { trpc }, params: { postId } }) =>
-    trpc.post.query(postId),
+  loader: async ({ context: { trpcQueryUtils }, params: { postId } }) => {
+    await trpcQueryUtils.post.ensureData(postId)
+  },
+  pendingComponent: Spinner,
   component: () => {
-    const post = postRoute.useLoaderData()
+    const postId = postRoute.useParams({ select: (d) => d.postId })
+
+    const postQuery = trpc.post.useQuery(postId)
+    const post = postQuery.data
+
     const search = postRoute.useSearch()
     const navigate = postRoute.useNavigate()
 
@@ -340,16 +372,14 @@ const routeTree = rootRoute.addChildren([
   ]),
 ])
 
+// Set up a Router instance
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
-  defaultPendingComponent: () => (
-    <div className={`p-2 text-2xl`}>
-      <Spinner />
-    </div>
-  ),
   context: {
     trpc,
+    trpcQueryUtils,
+    queryClient,
   },
 })
 
@@ -359,12 +389,30 @@ declare module '@tanstack/react-router' {
   }
 }
 
+function App() {
+  return (
+    // Build our routes and render our router
+    <>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+          <ReactQueryDevtools
+            initialIsOpen
+            position="bottom"
+            buttonPosition="bottom-right"
+          />
+        </QueryClientProvider>
+      </trpc.Provider>
+    </>
+  )
+}
+
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <React.StrictMode>
-      <RouterProvider router={router} defaultPreload="intent" />
+      <App />
     </React.StrictMode>,
   )
 }
