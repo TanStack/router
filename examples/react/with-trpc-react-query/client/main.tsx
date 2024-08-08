@@ -100,7 +100,7 @@ const rootRoute = createRootRouteWithContext<{
             </div>
           </div>
         </div>
-        <TanStackRouterDevtools position="bottom-right" />
+        <TanStackRouterDevtools position="bottom-left" />
       </>
     )
   },
@@ -396,11 +396,7 @@ function App() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />
-          <ReactQueryDevtools
-            initialIsOpen
-            position="bottom"
-            buttonPosition="bottom-right"
-          />
+          <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
         </QueryClientProvider>
       </trpc.Provider>
     </>
