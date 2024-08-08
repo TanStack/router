@@ -1491,7 +1491,47 @@ importers:
         specifier: ^4.3.2
         version: 4.3.2(typescript@5.5.3)(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
 
-  examples/react/wip-trpc-react-query:
+  examples/react/with-framer-motion:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      framer-motion:
+        specifier: ^11.3.21
+        version: 11.3.21(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      immer:
+        specifier: ^10.1.1
+        version: 10.1.1
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
+
+  examples/react/with-trpc:
     dependencies:
       '@tanstack/react-query':
         specifier: ^4.36.1
@@ -1555,47 +1595,7 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0
 
-  examples/react/with-framer-motion:
-    dependencies:
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
-      framer-motion:
-        specifier: ^11.3.21
-        version: 11.3.21(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
-      redaxios:
-        specifier: ^0.5.1
-        version: 0.5.1
-      zod:
-        specifier: ^3.23.8
-        version: 3.23.8
-    devDependencies:
-      '@types/react':
-        specifier: ^18.2.47
-        version: 18.3.3
-      '@types/react-dom':
-        specifier: ^18.2.18
-        version: 18.3.0
-      '@vitejs/plugin-react':
-        specifier: ^4.3.1
-        version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
-
-  examples/react/with-trpc:
+  examples/react/with-trpc-react-query:
     dependencies:
       '@tanstack/react-query':
         specifier: ^4.36.1
