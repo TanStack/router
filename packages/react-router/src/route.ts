@@ -121,7 +121,7 @@ export interface FullSearchSchemaOption<
   in out TParentRoute extends AnyRoute,
   in out TSearchSchema,
 > {
-  search: ResolveFullSearchSchema<TParentRoute, TSearchSchema>
+  search: Expand<ResolveFullSearchSchema<TParentRoute, TSearchSchema>>
 }
 
 export type RouteContextFn<
@@ -269,7 +269,7 @@ export interface RouteContextOptions<
   in out TParams,
   in out TRouterContext,
 > extends ContextOptions<TParentRoute, TSearchSchema, TParams> {
-  context: RouteContextParameter<TParentRoute, TRouterContext>
+  context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
 
 export interface BeforeLoadContextOptions<
@@ -279,10 +279,8 @@ export interface BeforeLoadContextOptions<
   in out TRouterContext,
   in out TRouteContextFn,
 > extends ContextOptions<TParentRoute, TSearchSchema, TParams> {
-  context: BeforeLoadContextParameter<
-    TParentRoute,
-    TRouterContext,
-    TRouteContextFn
+  context: Expand<
+    BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
   >
 }
 
@@ -482,11 +480,13 @@ export interface LoaderFnContext<
   preload: boolean
   params: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
   deps: TLoaderDeps
-  context: ResolveAllContext<
-    TParentRoute,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn
+  context: Expand<
+    ResolveAllContext<
+      TParentRoute,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >
   >
   location: ParsedLocation // Do not supply search schema here so as to demotivate people from trying to shortcut loaderDeps
   /**
@@ -574,13 +574,13 @@ export type LooseAsyncReturnType<T> = T extends (
 export type ContextReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
   : LooseReturnType<TContextFn> extends never
-    ? TContextFn
+    ? AnyContext
     : LooseReturnType<TContextFn>
 
 export type ContextAsyncReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
   : LooseAsyncReturnType<TContextFn> extends never
-    ? TContextFn
+    ? AnyContext
     : LooseAsyncReturnType<TContextFn>
 
 export type RouteContextParameter<
@@ -1212,8 +1212,8 @@ export type RootRouteOptions<
   TSearchSchemaInput = {},
   TSearchSchema = {},
   TRouterContext = {},
-  TRouteContextFn = TRouterContext,
-  TBeforeLoadFn = undefined,
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
   TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
@@ -1251,7 +1251,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TSearchSchemaInput,
       TSearchSchema
     >,
-    TRouteContextFn = TRouterContext,
+    TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderDataReturn = {},
@@ -1291,8 +1291,8 @@ export class RootRoute<
   in out TSearchSchema = {},
   in out TSearchSchemaUsed = {},
   in out TRouterContext = {},
-  in out TRouteContextFn = TRouterContext,
-  in out TBeforeLoadFn = undefined,
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
   in out TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
@@ -1366,7 +1366,7 @@ export function createRootRoute<
     TSearchSchema
   >,
   TRouterContext = {},
-  TRouteContextFn = TRouterContext,
+  TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderDataReturn = {},
