@@ -1,19 +1,19 @@
-import { StrictMode } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  Link,
   Outlet,
   RouterProvider,
-  createRouter,
-  Link,
   createRootRouteWithContext,
   createRoute,
+  createRouter,
 } from '@tanstack/react-router'
-import { AppRouter } from '../server/server'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
-import { createTRPCReact } from '@trpc/react-query'
+import { createTRPCQueryUtils, createTRPCReact } from '@trpc/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import type { AppRouter } from '../server/server'
 
 const queryClient = new QueryClient()
 
@@ -33,6 +33,8 @@ const trpcClient = trpc.createClient({
   ],
 })
 
+const trpcQueryUtils = createTRPCQueryUtils({ queryClient, client: trpcClient })
+
 export function Spinner() {
   return (
     <div className="animate-spin px-3 text-2xl inline-flex items-center justify-center">
@@ -43,6 +45,7 @@ export function Spinner() {
 
 const rootRoute = createRootRouteWithContext<{
   trpc: typeof trpc
+  trpcQueryUtils: ReturnType<typeof createTRPCQueryUtils<AppRouter>>
   queryClient: typeof queryClient
 }>()({
   component: () => {
@@ -78,12 +81,12 @@ const rootRoute = createRootRouteWithContext<{
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  loader: () => {
-    // TODO: Prefetch hello using TRPC
+  loader: async ({ context: { trpcQueryUtils } }) => {
+    await trpcQueryUtils.hello.ensureData()
   },
+  pendingComponent: Spinner,
   component: () => {
     const helloQuery = trpc.hello.useQuery()
-    if (!helloQuery.data) return <Spinner />
     return <div className="p-2 text-xl">{helloQuery.data}</div>
   },
 })
@@ -92,20 +95,20 @@ const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   errorComponent: () => 'Oh crap!',
-  loader: async () => {
-    // TODO: Prefetch posts using TRPC
+  loader: async ({ context: { trpcQueryUtils } }) => {
+    await trpcQueryUtils.posts.ensureData()
+    return
   },
-  component: ({ useLoaderData }) => {
+  pendingComponent: Spinner,
+  component: () => {
     const postsQuery = trpc.posts.useQuery()
 
-    if (postsQuery.isLoading) {
-      return <Spinner />
-    }
+    const posts = postsQuery.data || []
 
     return (
       <div className="p-2 flex gap-2">
         <ul className="list-disc pl-4">
-          {postsQuery.data?.map((post) => {
+          {posts.map((post) => {
             return (
               <li key={post.id} className="whitespace-nowrap">
                 <Link
@@ -144,16 +147,13 @@ const postsIndexRoute = createRoute({
 const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
-  loader: async ({ params: { postId } }) => {
-    // TODO: Prefetch post using TRPC
+  loader: async ({ context: { trpcQueryUtils }, params: { postId } }) => {
+    await trpcQueryUtils.post.ensureData(postId)
   },
-  component: ({ useParams }) => {
-    const postId = useParams({ select: (d) => d.postId })
+  pendingComponent: Spinner,
+  component: () => {
+    const postId = postRoute.useParams({ select: (d) => d.postId })
     const postQuery = trpc.post.useQuery(postId)
-
-    if (postQuery.isLoading) {
-      return <Spinner />
-    }
 
     return (
       <div className="space-y-2">
@@ -174,6 +174,7 @@ const router = createRouter({
   defaultPreload: 'intent',
   context: {
     trpc,
+    trpcQueryUtils,
     queryClient,
   },
 })
@@ -193,14 +194,8 @@ function App() {
           <RouterProvider router={router} />
           <ReactQueryDevtools
             initialIsOpen
-            position="bottom-left"
-            toggleButtonProps={{
-              style: {
-                marginLeft: '5.5rem',
-                transform: `scale(.7)`,
-                transformOrigin: 'bottom left',
-              },
-            }}
+            position="bottom"
+            buttonPosition="bottom-right"
           />
         </QueryClientProvider>
       </trpc.Provider>
@@ -212,8 +207,8 @@ const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
-    <StrictMode>
+    <React.StrictMode>
       <App />
-    </StrictMode>,
+    </React.StrictMode>,
   )
 }
