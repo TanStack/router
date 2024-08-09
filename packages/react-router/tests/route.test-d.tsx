@@ -26,7 +26,7 @@ test('when creating the root', () => {
 
 test('when creating the root with routeContext', () => {
   const rootRoute = createRootRoute({
-    routeContext: (opts) => {
+    context: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -95,7 +95,7 @@ test('when creating the root route with context and routeContext', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
 
   const rootRoute = createRouteResult({
-    routeContext: (opts) => {
+    context: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -198,7 +198,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
 
   const rootRoute = createRouteResult({
-    routeContext: (opt) => {
+    context: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -307,7 +307,7 @@ test('when creating a child route with routeContext from the root route with con
   createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    routeContext: (opts) => {
+    context: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -566,7 +566,7 @@ test('when creating a child route with params, search with routeContext from the
     path: 'invoices/$invoiceId',
     getParentRoute: () => rootRoute,
     validateSearch: () => ({ page: 0 }),
-    routeContext: (opts) => {
+    context: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -612,7 +612,7 @@ test('when creating a child route with params, search with routeContext, beforeL
     path: 'invoices/$invoiceId',
     getParentRoute: () => rootRoute,
     validateSearch: () => ({ page: 0 }),
-    routeContext: (opts) => {
+    context: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -726,7 +726,7 @@ test('when creating a child route with routeContext from a parent with routeCont
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    routeContext: (opt) => {
+    context: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -746,7 +746,7 @@ test('when creating a child route with routeContext from a parent with routeCont
   const detailsRoute = createRoute({
     path: 'details',
     getParentRoute: () => invoicesRoute,
-    routeContext: (opt) => {
+    context: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -851,7 +851,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
     path: 'invoices',
     getParentRoute: () => rootRoute,
     validateSearch: () => ({ page: 0 }),
-    routeContext: (opt) => {
+    context: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -890,7 +890,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
     path: 'details',
     getParentRoute: () => invoiceRoute,
     validateSearch: () => ({ detailPage: 0 }),
-    routeContext: (opt) => {
+    context: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -1336,7 +1336,7 @@ test('when routeContext throws', () => {
   const invoicesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'invoices',
-    routeContext: () => {
+    context: () => {
       throw redirect({ to: '/somewhere' })
     },
   })
