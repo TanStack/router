@@ -297,7 +297,7 @@ export const Route = createFileRoute('/todos')({
 
 ## Processing Accumulated Route Context
 
-Context, especially the isolated `routeContext` objects, make it trivial to accumulate and process the route context objects for all matched routes. Here's an example where we use all of the matched route contexts to generate a breadcrumb trail:
+Context, especially the isolated route `context` objects, make it trivial to accumulate and process the route context objects for all matched routes. Here's an example where we use all of the matched route contexts to generate a breadcrumb trail:
 
 ```tsx
 // src/routes/__root.tsx
@@ -306,9 +306,9 @@ export const Route = createRootRoute({
     const router = useRouter()
 
     const breadcrumbs = router.state.matches.map((match) => {
-      const { routeContext } = match
+      const { context } = match
       return {
-        title: routeContext.getTitle(),
+        title: context.getTitle(),
         path: match.path,
       }
     })
@@ -328,9 +328,9 @@ export const Route = createRootRoute({
 
     const matchWithTitle = [...router.state.matches]
       .reverse()
-      .find((d) => d.routeContext.getTitle)
+      .find((d) => d.context.getTitle)
 
-    const title = matchWithTitle?.routeContext.getTitle() || 'My App'
+    const title = matchWithTitle?.context.getTitle() || 'My App'
 
     return (
       <html>
