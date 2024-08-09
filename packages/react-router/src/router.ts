@@ -1176,8 +1176,8 @@ export class Router<
       const parentMatchId = parentMatch?.id
 
       const parentContext = !parentMatchId
-        ? (this.options.context as any) ?? {}
-        : parentMatch.context ?? this.options.context ?? {}
+        ? ((this.options.context as any) ?? {})
+        : (parentMatch.context ?? this.options.context ?? {})
 
       // Ingest the new parent context
       match.context = {
@@ -2058,12 +2058,12 @@ export class Router<
                     const age = Date.now() - this.getMatch(matchId)!.updatedAt
 
                     const staleAge = preload
-                      ? route.options.preloadStaleTime ??
+                      ? (route.options.preloadStaleTime ??
                         this.options.defaultPreloadStaleTime ??
-                        30_000 // 30 seconds for preloads by default
-                      : route.options.staleTime ??
+                        30_000) // 30 seconds for preloads by default
+                      : (route.options.staleTime ??
                         this.options.defaultStaleTime ??
-                        0
+                        0)
 
                     const shouldReloadOption = route.options.shouldReload
 
@@ -2310,8 +2310,9 @@ export class Router<
           // otherwise, use the gcTime
           const gcTime =
             (d.preload
-              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
-              : route.options.gcTime ?? this.options.defaultGcTime) ??
+              ? (route.options.preloadGcTime ??
+                this.options.defaultPreloadGcTime)
+              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
             5 * 60 * 1000
 
           return d.status !== 'error' && Date.now() - d.updatedAt < gcTime
