@@ -913,8 +913,8 @@ export class Route<
 
     const isRoot = !options?.path && !options?.id
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    this.parentRoute = this.options.getParentRoute()
+    // eslint-disable-next-line ts/no-unnecessary-condition
+    this.parentRoute = this.options.getParentRoute?.()
 
     if (isRoot) {
       this.path = rootRouteId as TPath

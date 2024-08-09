@@ -692,7 +692,7 @@ export class Router<
     }
 
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line ts/no-unnecessary-condition
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -711,7 +711,7 @@ export class Router<
       this.buildRouteTree()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line ts/no-unnecessary-condition
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -1132,7 +1132,9 @@ export class Router<
           isFetching: false,
           error: undefined,
           paramsError: parseErrors[index],
-          context: undefined!,
+          __routeContext: {},
+          __beforeLoadContext: {},
+          context: {},
           abortController: new AbortController(),
           fetchCount: 0,
           cause,
@@ -1176,13 +1178,13 @@ export class Router<
       const parentMatchId = parentMatch?.id
 
       const parentContext = !parentMatchId
-        ? ((this.options.context as any) ?? {})
-        : (parentMatch.context ?? this.options.context ?? {})
+        ? (this.options.context as any) ?? {}
+        : parentMatch.context ?? this.options.context ?? {}
 
-      // Ingest the new parent context
       match.context = {
-        ...match.context,
         ...parentContext,
+        ...match.__routeContext,
+        ...match.__beforeLoadContext,
       }
 
       // Update the match's context
@@ -1197,10 +1199,13 @@ export class Router<
       }
 
       // Get the route context
-      const context = route.options.context?.(contextFnContext) ?? {}
+      match.__routeContext = route.options.context?.(contextFnContext) ?? {}
 
-      // Ingest the new route context
-      match.context = { ...match.context, ...context }
+      match.context = {
+        ...parentContext,
+        ...match.__routeContext,
+        ...match.__beforeLoadContext,
+      }
 
       matches.push(match)
     })
@@ -1574,7 +1579,10 @@ export class Router<
     let redirect: ResolvedRedirect | undefined
     let notFound: NotFoundError | undefined
 
-    const loadPromise = new Promise<void>((resolve) => {
+    let loadPromise: Promise<void>
+
+    // eslint-disable-next-line prefer-const
+    loadPromise = new Promise<void>((resolve) => {
       this.startReactTransition(async () => {
         try {
           const next = this.latestLocation
@@ -1627,9 +1635,9 @@ export class Router<
           await this.loadMatches({
             matches: pendingMatches,
             location: next,
-            // eslint-disable-next-line @typescript-eslint/require-await
+            // eslint-disable-next-line ts/require-await
             onReady: async () => {
-              // eslint-disable-next-line @typescript-eslint/require-await
+              // eslint-disable-next-line ts/require-await
               this.startViewTransition(async () => {
                 // this.viewTransitionPromise = createControlledPromise<true>()
 
@@ -1893,6 +1901,7 @@ export class Router<
 
             for (const [index, { id: matchId, routeId }] of matches.entries()) {
               const existingMatch = this.getMatch(matchId)!
+              const parentMatchId = matches[index - 1]?.id
 
               if (
                 // If we are in the middle of a load, either of these will be present
@@ -1954,12 +1963,22 @@ export class Router<
                     handleSerialError(index, searchError, 'VALIDATE_SEARCH')
                   }
 
+                  const getParentMatchContext = () =>
+                    parentMatchId
+                      ? this.getMatch(parentMatchId)!.context
+                      : this.options.context ?? {}
+
                   updateMatch(matchId, (prev) => ({
                     ...prev,
                     isFetching: 'beforeLoad',
                     fetchCount: prev.fetchCount + 1,
                     abortController,
                     pendingTimeout,
+                    context: {
+                      ...getParentMatchContext(),
+                      ...prev.__routeContext,
+                      ...prev.__beforeLoadContext,
+                    },
                   }))
 
                   const { search, params, context, cause } =
@@ -1993,8 +2012,9 @@ export class Router<
                     return {
                       ...prev,
                       context: {
-                        ...prev.context,
-                        beforeLoadContext,
+                        ...getParentMatchContext(),
+                        ...prev.__routeContext,
+                        ...beforeLoadContext,
                       },
                       abortController,
                     }
@@ -2058,12 +2078,12 @@ export class Router<
                     const age = Date.now() - this.getMatch(matchId)!.updatedAt
 
                     const staleAge = preload
-                      ? (route.options.preloadStaleTime ??
+                      ? route.options.preloadStaleTime ??
                         this.options.defaultPreloadStaleTime ??
-                        30_000) // 30 seconds for preloads by default
-                      : (route.options.staleTime ??
+                        30_000 // 30 seconds for preloads by default
+                      : route.options.staleTime ??
                         this.options.defaultStaleTime ??
-                        0)
+                        0
 
                     const shouldReloadOption = route.options.shouldReload
 
@@ -2310,9 +2330,8 @@ export class Router<
           // otherwise, use the gcTime
           const gcTime =
             (d.preload
-              ? (route.options.preloadGcTime ??
-                this.options.defaultPreloadGcTime)
-              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
+              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
+              : route.options.gcTime ?? this.options.defaultGcTime) ??
             5 * 60 * 1000
 
           return d.status !== 'error' && Date.now() - d.updatedAt < gcTime

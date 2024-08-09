@@ -52,6 +52,8 @@ export interface RouteMatch<
   beforeLoadData?: unknown
   loaderPromise?: ControlledPromise<void>
   loaderData?: TLoaderData
+  __routeContext: Record<string, unknown>
+  __beforeLoadContext: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
   fetchCount: number
