@@ -1051,8 +1051,6 @@ test('when creating a child route with context, search, params, loader, loaderDe
     userId: string
     detailsPermissions: readonly ['view']
     invoicePermissions: readonly ['view']
-  }
-  type TExpectedRouteContext = {
     detailPermission: boolean
   }
   type TExpectedLoaderData = { detailLoader: 'detailResult' }
@@ -1065,7 +1063,6 @@ test('when creating a child route with context, search, params, loader, loaderDe
     loaderPromise?: ControlledPromise<void>
     componentsPromise?: Promise<Array<void>>
     loaderData?: TExpectedLoaderData
-    routeContext: TExpectedRouteContext
   }
 
   createRoute({

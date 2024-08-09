@@ -183,7 +183,7 @@ export type FileBaseRouteOptions<
         >,
       ) => any)
 
-  routeContext?: Constrain<
+  context?: Constrain<
     TRouteContextFn,
     RouteContextFn<TParentRoute, TSearchSchema, TParams, TRouterContext>
   >
@@ -333,7 +333,6 @@ export type UpdatableRouteOptions<
         TRouteContextFn,
         TBeforeLoadFn
       >,
-      ResolveRouteContext<TRouteContextFn, TBeforeLoadFn>,
       TLoaderDeps
     >,
   ) => void
@@ -349,7 +348,6 @@ export type UpdatableRouteOptions<
         TRouteContextFn,
         TBeforeLoadFn
       >,
-      ResolveRouteContext<TRouteContextFn, TBeforeLoadFn>,
       TLoaderDeps
     >,
   ) => void
@@ -365,7 +363,6 @@ export type UpdatableRouteOptions<
         TRouteContextFn,
         TBeforeLoadFn
       >,
-      ResolveRouteContext<TRouteContextFn, TBeforeLoadFn>,
       TLoaderDeps
     >,
   ) => void
@@ -382,7 +379,6 @@ export type UpdatableRouteOptions<
           TRouteContextFn,
           TBeforeLoadFn
         >,
-        ResolveRouteContext<TRouteContextFn, TBeforeLoadFn>,
         TLoaderDeps
       >
     >
@@ -397,7 +393,6 @@ export type UpdatableRouteOptions<
         TRouteContextFn,
         TBeforeLoadFn
       >,
-      ResolveRouteContext<TRouteContextFn, TBeforeLoadFn>,
       TLoaderDeps
     >
     params: TAllParams
@@ -919,7 +914,7 @@ export class Route<
     const isRoot = !options?.path && !options?.id
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    this.parentRoute = this.options?.getParentRoute?.()
+    this.parentRoute = this.options.getParentRoute()
 
     if (isRoot) {
       this.path = rootRouteId as TPath

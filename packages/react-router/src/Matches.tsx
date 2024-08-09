@@ -33,7 +33,6 @@ export interface RouteMatch<
   TFullSearchSchema,
   TLoaderData,
   TAllContext,
-  TRouteContext,
   TLoaderDeps,
 > {
   id: string
@@ -50,9 +49,9 @@ export interface RouteMatch<
   componentsPromise?: Promise<Array<void>>
   loadPromise?: ControlledPromise<void>
   beforeLoadPromise?: ControlledPromise<void>
+  beforeLoadData?: unknown
   loaderPromise?: ControlledPromise<void>
   loaderData?: TLoaderData
-  routeContext: TRouteContext
   context: TAllContext
   search: TFullSearchSchema
   fetchCount: number
@@ -88,7 +87,6 @@ export type MakeRouteMatch<
   TAllContext = TStrict extends false
     ? AllContext<TRouteTree>
     : TTypes['allContext'],
-  TRouteContext = TTypes['routeContext'],
   TLoaderDeps = TTypes['loaderDeps'],
 > = RouteMatch<
   TRouteId,
@@ -96,11 +94,10 @@ export type MakeRouteMatch<
   TFullSearchSchema,
   TLoaderData,
   TAllContext,
-  TRouteContext,
   TLoaderDeps
 >
 
-export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any>
 
 export function Matches() {
   const router = useRouter()

@@ -1132,7 +1132,6 @@ export class Router<
           isFetching: false,
           error: undefined,
           paramsError: parseErrors[index],
-          routeContext: undefined!,
           context: undefined!,
           abortController: new AbortController(),
           fetchCount: 0,
@@ -1173,6 +1172,35 @@ export class Router<
       match.search = replaceEqualDeep(match.search, preMatchSearch)
       // And also update the searchError if there is one
       match.searchError = searchError
+
+      const parentMatchId = parentMatch?.id
+
+      const parentContext = !parentMatchId
+        ? (this.options.context as any) ?? {}
+        : parentMatch.context ?? this.options.context ?? {}
+
+      // Ingest the new parent context
+      match.context = {
+        ...match.context,
+        ...parentContext,
+      }
+
+      // Update the match's context
+      const contextFnContext = {
+        search: match.search,
+        params: match.params,
+        context: match.context,
+        location,
+        navigate: (opts: any) =>
+          this.navigate({ ...opts, _fromLocation: location }),
+        buildLocation: this.buildLocation,
+      }
+
+      // Get the route context
+      const context = route.options.context?.(contextFnContext) ?? {}
+
+      // Ingest the new route context
+      match.context = { ...match.context, ...context }
 
       matches.push(match)
     })
@@ -1888,20 +1916,6 @@ export class Router<
                   const route = this.looseRoutesById[routeId]!
                   const abortController = new AbortController()
 
-                  const parentMatchId = matches[index - 1]?.id
-
-                  const getParentContext = () => {
-                    if (!parentMatchId) {
-                      return (this.options.context as any) ?? {}
-                    }
-
-                    return (
-                      this.getMatch(parentMatchId)!.context ??
-                      this.options.context ??
-                      {}
-                    )
-                  }
-
                   const pendingMs =
                     route.options.pendingMs ?? this.options.defaultPendingMs
 
@@ -1940,22 +1954,15 @@ export class Router<
                     handleSerialError(index, searchError, 'VALIDATE_SEARCH')
                   }
 
-                  const parentContext = getParentContext()
-
                   updateMatch(matchId, (prev) => ({
                     ...prev,
                     isFetching: 'beforeLoad',
                     fetchCount: prev.fetchCount + 1,
-                    routeContext: replaceEqualDeep(
-                      prev.routeContext,
-                      parentContext,
-                    ),
-                    context: replaceEqualDeep(prev.context, parentContext),
                     abortController,
                     pendingTimeout,
                   }))
 
-                  const { search, params, routeContext, cause } =
+                  const { search, params, context, cause } =
                     this.getMatch(matchId)!
 
                   const beforeLoadFnContext = {
@@ -1963,7 +1970,7 @@ export class Router<
                     abortController,
                     params,
                     preload: !!preload,
-                    context: routeContext,
+                    context,
                     location,
                     navigate: (opts: any) =>
                       this.navigate({ ...opts, _fromLocation: location }),
@@ -1983,18 +1990,12 @@ export class Router<
                   }
 
                   updateMatch(matchId, (prev) => {
-                    const routeContext = {
-                      ...prev.routeContext,
-                      ...beforeLoadContext,
-                    }
-
                     return {
                       ...prev,
-                      routeContext: replaceEqualDeep(
-                        prev.routeContext,
-                        routeContext,
-                      ),
-                      context: replaceEqualDeep(prev.context, routeContext),
+                      context: {
+                        ...prev.context,
+                        beforeLoadContext,
+                      },
                       abortController,
                     }
                   })
@@ -2057,12 +2058,12 @@ export class Router<
                     const age = Date.now() - this.getMatch(matchId)!.updatedAt
 
                     const staleAge = preload
-                      ? (route.options.preloadStaleTime ??
+                      ? route.options.preloadStaleTime ??
                         this.options.defaultPreloadStaleTime ??
-                        30_000) // 30 seconds for preloads by default
-                      : (route.options.staleTime ??
+                        30_000 // 30 seconds for preloads by default
+                      : route.options.staleTime ??
                         this.options.defaultStaleTime ??
-                        0)
+                        0
 
                     const shouldReloadOption = route.options.shouldReload
 
@@ -2309,9 +2310,8 @@ export class Router<
           // otherwise, use the gcTime
           const gcTime =
             (d.preload
-              ? (route.options.preloadGcTime ??
-                this.options.defaultPreloadGcTime)
-              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
+              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
+              : route.options.gcTime ?? this.options.defaultGcTime) ??
             5 * 60 * 1000
 
           return d.status !== 'error' && Date.now() - d.updatedAt < gcTime

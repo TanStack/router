@@ -82,6 +82,10 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
   router.state.matches.forEach((match) => {
     const route = router.looseRoutesById[match.routeId]!
     if (window.__TSR__?.matches[match.index]) {
+      match.beforeLoadData = router.options.transformer.parse(
+        window.__TSR__.matches[match.index].beforeLoadData,
+      )
+
       match.loaderData = router.options.transformer.parse(
         window.__TSR__.matches[match.index].loaderData,
       )
@@ -126,6 +130,20 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
   const extracted = (fullMatch as any).extracted as undefined | Array<Entry>
 
   // Remove the extracted values from the loaderData
+  const serializedBeforeLoadData = extracted
+    ? extracted.reduce(
+        (acc: any, entry: Entry) => {
+          return deepImmutableSetByPath(
+            acc,
+            ['beforeLoadData', ...entry.path],
+            undefined,
+          )
+        },
+        { beforeLoadData: fullMatch.beforeLoadData },
+      ).beforeLoadData
+    : fullMatch.beforeLoadData
+
+  // Remove the extracted values from the loaderData
   const serializedLoaderData = extracted
     ? extracted.reduce(
         (acc: any, entry: Entry) => {
@@ -141,10 +159,15 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
 
   return (
     <>
-      {serializedLoaderData !== undefined || extracted?.length ? (
+      {serializedBeforeLoadData !== undefined ||
+      serializedLoaderData !== undefined ||
+      extracted?.length ? (
         <ScriptOnce
           children={`__TSR__.matches[${props.matchIndex}] = ${jsesc(
             {
+              beforeLoadData: router.options.transformer.stringify(
+                serializedBeforeLoadData,
+              ),
               loaderData:
                 router.options.transformer.stringify(serializedLoaderData),
               extracted: extracted
