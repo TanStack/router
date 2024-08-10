@@ -1,4 +1,4 @@
-import { Transform } from 'node:stream'
+import { Transform } from 'unenv/runtime/node/stream/transform'
 import type { AnyRouter } from '@tanstack/react-router'
 
 export function transformStreamWithRouter(router: AnyRouter) {

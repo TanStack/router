@@ -1,6 +1,7 @@
 import '../node-polyfill'
 
-import { Readable, Writable } from 'node:stream'
+import { Readable } from 'unenv/runtime/node/stream/readable'
+import { Writable } from 'unenv/runtime/node/stream/writable'
 import { getEvent, getRequestHeaders } from 'vinxi/http'
 import { fetcher } from '../client-runtime'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
@@ -16,7 +17,7 @@ export function createIncomingMessage(
   url: string,
   method: string,
   headers: HeadersInit,
-): Readable {
+): typeof Readable {
   const readable = new Readable({ objectMode: true }) as any
   readable._read = () => {}
 
