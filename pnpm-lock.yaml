@@ -1654,9 +1654,6 @@ importers:
       tiny-warning:
         specifier: ^1.0.3
         version: 1.0.3
-      vitest:
-        specifier: ^1.6.0
-        version: 1.6.0(@types/node@20.14.9)(jsdom@24.1.1)(terser@5.31.1)
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.4.8
