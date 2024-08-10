@@ -15,11 +15,6 @@ export function createIncomingMessage(
   method: string,
   headers: HeadersInit,
 ): typeof Readable {
-  console.log(
-    '🚀 ~ file: createIncomingMessage.ts ~ line 33 ~ headers',
-    typeof Readable,
-    Readable,
-  )
   const readable = new Readable({ objectMode: true }) as any
   readable._read = () => {}
 
