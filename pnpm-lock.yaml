@@ -1890,6 +1890,9 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
+      unenv:
+        specifier: ^1.10.0
+        version: 1.10.0
       vinxi:
         specifier: 0.4.1
         version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
@@ -8729,8 +8732,8 @@ packages:
     resolution: {integrity: sha512-72RFADWFqKmUb2hmmvNODKL3p9hcB6Gt2DOQMis1SEBaV6a4MH8soBvzg+95CYhCKPFedut2JY9bMfrDl9D23g==}
     engines: {node: '>=14.0'}
 
-  unenv@1.9.0:
-    resolution: {integrity: sha512-QKnFNznRxmbOF1hDgzpqrlIf6NC5sbZ2OJ+5Wl3OX8uM+LUJXbj4TXvLJCtwbPTmbMHCLIz6JLKNinNsMShK9g==}
+  unenv@1.10.0:
+    resolution: {integrity: sha512-wY5bskBQFL9n3Eca5XnhH6KbUo/tfvkwm9OpcdCvLaeA7piBNbavbOKJySEwQ1V0RH6HvNlSAFRTpvTqgKRQXQ==}
 
   unicode-canonical-property-names-ecmascript@2.0.0:
     resolution: {integrity: sha512-yY5PpDlfVIU5+y/BSCxAJRBIS1Zc2dDG3Ujq+sR0U+JjUevW2JhocOF+soROYDSaAezOzOKuyyixhD6mBknSmQ==}
@@ -14296,7 +14299,7 @@ snapshots:
       radix3: 1.1.2
       ufo: 1.5.3
       uncrypto: 0.1.3
-      unenv: 1.9.0
+      unenv: 1.10.0
     transitivePeerDependencies:
       - uWebSockets.js
 
@@ -15244,7 +15247,7 @@ snapshots:
       ufo: 1.5.3
       uncrypto: 0.1.3
       unctx: 2.3.1
-      unenv: 1.9.0
+      unenv: 1.10.0
       unimport: 3.7.1(rollup@4.18.0)
       unstorage: 1.10.2(ioredis@5.4.1)
       unwasm: 0.3.9
@@ -16775,7 +16778,7 @@ snapshots:
     dependencies:
       '@fastify/busboy': 2.1.0
 
-  unenv@1.9.0:
+  unenv@1.10.0:
     dependencies:
       consola: 3.2.3
       defu: 6.1.4
@@ -16953,7 +16956,7 @@ snapshots:
       serve-static: 1.15.0
       ufo: 1.5.3
       unctx: 2.3.1
-      unenv: 1.9.0
+      unenv: 1.10.0
       unstorage: 1.10.2(ioredis@5.4.1)
       vite: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
       zod: 3.23.8

@@ -1,3 +1,5 @@
+import './pollyfill'
+
 import { Readable, Writable } from 'node:stream'
 import { getEvent, getRequestHeaders } from 'vinxi/http'
 import { fetcher } from '../client-runtime'
@@ -5,6 +7,7 @@ import { getBaseUrl } from '../client-runtime/getBaseUrl'
 import { handleServerRequest } from '../server-handler'
 import type { WritableOptions } from 'node:stream'
 import type { FetchFn } from '../client'
+
 /**
  *
  * @returns {import('node:http').IncomingMessage}
