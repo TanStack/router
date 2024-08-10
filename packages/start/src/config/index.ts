@@ -21,19 +21,67 @@ import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
 /**
- * Not all the deployment presets are fully functional.
+ * Not all the deployment presets are fully functional or tested.
  * @see https://github.com/TanStack/router/pull/2002
  */
-const problematicDeploymentPresets = ['cloudflare-pages', 'static', 'node']
+const testedDeploymentPresets = ['bun', 'netlify', 'vercel']
+const staticDeploymentPresets = [
+  'cloudflare-pages-static',
+  'netlify-static',
+  'static',
+  'vercel-static',
+  'zeabur-static',
+]
 
 const deploymentSchema = z.object({
   preset: z
     .enum([
-      'vercel', // working
-      'netlify', // working
+      'alwaysdata', // untested
+      'aws-amplify', // untested
+      'aws-lambda', // untested
+      'azure', // untested
+      'azure-functions', // untested
+      'base-worker', // untested
+      'bun', // working
+      'cleavr', // untested
+      'cli', // untested
+      'cloudflare', // untested
+      'cloudflare-module', // untested
       'cloudflare-pages', // not working
-      'static', // partially working
+      'cloudflare-pages-static', // untested
+      'deno', // untested
+      'deno-deploy', // untested
+      'deno-server', // untested
+      'digital-ocean', // untested
+      'edgio', // untested
+      'firebase', // untested
+      'flight-control', // untested
+      'github-pages', // untested
+      'heroku', // untested
+      'iis', // untested
+      'iis-handler', // untested
+      'iis-node', // untested
+      'koyeb', // untested
+      'layer0', // untested
+      'netlify', // working
+      'netlify-builder', // untested
+      'netlify-edge', // untested
+      'netlify-static', // untested
+      'nitro-dev', // untested
+      'nitro-prerender', // untested
       'node', // partially working
+      'node-cluster', // untested
+      'node-server', // untested
+      'platform-sh', // untested
+      'service-worker', // untested
+      'static', // partially working
+      'stormkit', // untested
+      'vercel', // working
+      'vercel-edge', // untested
+      'vercel-static', // untested
+      'winterjs', // untested
+      'zeabur', // untested
+      'zeabur-static', // untested
     ])
     .optional(),
   static: z.boolean().optional(),
@@ -130,9 +178,10 @@ export function defineConfig(
     deploymentSchema.parse(opts.deployment || {})
   const deploymentPreset = configDeploymentPreset || 'vercel'
   const isStaticDeployment =
-    deploymentOptions.static ?? deploymentPreset === 'static'
+    deploymentOptions.static ??
+    staticDeploymentPresets.includes(deploymentPreset)
 
-  if (problematicDeploymentPresets.includes(deploymentPreset)) {
+  if (!testedDeploymentPresets.includes(deploymentPreset)) {
     console.warn(
       `The deployment preset '${deploymentPreset}' is not fully supported yet and may not work as expected.`,
     )
