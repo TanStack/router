@@ -108,11 +108,17 @@ export function Matches() {
     <router.options.defaultPendingComponent />
   ) : null
 
+  // Do not render a root Suspense during SSR or hydrating from SSR
+  const ResolvedSuspense =
+    router.isServer || (typeof document !== 'undefined' && window.__TSR__)
+      ? SafeFragment
+      : React.Suspense
+
   const inner = (
-    <React.Suspense fallback={pendingElement}>
+    <ResolvedSuspense fallback={pendingElement}>
       <Transitioner />
       <MatchesInner />
-    </React.Suspense>
+    </ResolvedSuspense>
   )
 
   return router.options.InnerWrap ? (

@@ -926,8 +926,7 @@ export class Router<
   }
 
   matchRoutes = (
-    pathname: string,
-    locationSearch: AnySearchSchema,
+    next: ParsedLocation,
     opts?: { preload?: boolean; throwOnError?: boolean },
   ): Array<AnyRouteMatch> => {
     let routeParams: Record<string, string> = {}
@@ -935,7 +934,7 @@ export class Router<
     const foundRoute = this.flatRoutes.find((route) => {
       const matchedParams = matchPathname(
         this.basepath,
-        trimPathRight(pathname),
+        trimPathRight(next.pathname),
         {
           to: route.fullPath,
           caseSensitive:
@@ -965,7 +964,7 @@ export class Router<
       foundRoute
         ? foundRoute.path !== '/' && routeParams['**']
         : // Or if we didn't find a route and we have left over path
-          trimPathRight(pathname)
+          trimPathRight(next.pathname)
     ) {
       // If the user has defined an (old) 404 route, use it
       if (this.options.notFoundRoute) {
@@ -1042,7 +1041,7 @@ export class Router<
 
       const [preMatchSearch, searchError]: [Record<string, any>, any] = (() => {
         // Validate the search params and stabilize them
-        const parentSearch = parentMatch?.search ?? locationSearch
+        const parentSearch = parentMatch?.search ?? next.search
 
         try {
           const validator =
@@ -1192,9 +1191,9 @@ export class Router<
         search: match.search,
         params: match.params,
         context: match.context,
-        location,
+        location: next,
         navigate: (opts: any) =>
-          this.navigate({ ...opts, _fromLocation: location }),
+          this.navigate({ ...opts, _fromLocation: next }),
         buildLocation: this.buildLocation,
       }
 
@@ -1237,10 +1236,10 @@ export class Router<
     ): ParsedLocation => {
       const fromMatches =
         dest._fromLocation != null
-          ? this.matchRoutes(
-              dest._fromLocation.pathname,
-              dest.fromSearch || dest._fromLocation.search,
-            )
+          ? this.matchRoutes({
+              ...dest._fromLocation,
+              search: dest.fromSearch || dest._fromLocation.search,
+            })
           : this.state.matches
 
       const fromMatch =
@@ -1416,9 +1415,9 @@ export class Router<
         }
       }
 
-      const nextMatches = this.matchRoutes(next.pathname, next.search)
+      const nextMatches = this.matchRoutes(next)
       const maskedMatches = maskedNext
-        ? this.matchRoutes(maskedNext.pathname, maskedNext.search)
+        ? this.matchRoutes(maskedNext)
         : undefined
       const maskedFinal = maskedNext
         ? build(maskedDest, maskedMatches)
@@ -1600,7 +1599,7 @@ export class Router<
             // this.cleanCache()
 
             // Match the routes
-            pendingMatches = this.matchRoutes(next.pathname, next.search)
+            pendingMatches = this.matchRoutes(next)
 
             // Ingest the new matches
             this.__store.setState((s) => ({
@@ -2357,7 +2356,7 @@ export class Router<
   ): Promise<Array<AnyRouteMatch> | undefined> => {
     const next = this.buildLocation(opts as any)
 
-    let matches = this.matchRoutes(next.pathname, next.search, {
+    let matches = this.matchRoutes(next, {
       throwOnError: true,
       preload: true,
     })
@@ -2514,10 +2513,7 @@ export class Router<
     this.options.hydrate?.(ctx.payload as any)
     const dehydratedState = ctx.router.state
 
-    const matches = this.matchRoutes(
-      this.state.location.pathname,
-      this.state.location.search,
-    ).map((match) => {
+    const matches = this.matchRoutes(this.state.location).map((match) => {
       const dehydratedMatch = dehydratedState.dehydratedMatches.find(
         (d) => d.id === match.id,
       )
