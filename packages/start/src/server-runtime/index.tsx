@@ -1,7 +1,6 @@
 import '../node-polyfill'
 
-import { Readable } from 'unenv/runtime/node/stream/readable'
-import { Writable } from 'unenv/runtime/node/stream/writable'
+import { Readable, Writable } from 'node:stream'
 import { getEvent, getRequestHeaders } from 'vinxi/http'
 import { fetcher } from '../client-runtime'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'

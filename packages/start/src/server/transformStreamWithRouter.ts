@@ -1,9 +1,18 @@
-import { Transform } from 'unenv/runtime/node/stream/transform'
+import { Transform } from 'node:stream'
 import type { AnyRouter } from '@tanstack/react-router'
 
 export function transformStreamWithRouter(router: AnyRouter) {
   const callbacks = transformHtmlCallbacks(() =>
     router.injectedHtml.map((d) => d()).join(''),
+  )
+  console.log(
+    '🚀 ~ file: transformStreamWithRouter.ts ~ line 6 ~ transformStreamWithRouter ~ callbacks',
+    callbacks,
+  )
+  console.log(
+    '🚀 ~ file: transformStreamWithRouter.ts ~ line 6 ~ transformStreamWithRouter ~ Transform',
+    typeof Transform,
+    Transform,
   )
   return new Transform({
     transform(chunk, _encoding, callback) {
