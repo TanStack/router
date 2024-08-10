@@ -62,6 +62,7 @@ function transformHtmlCallbacks(getHtml: () => string) {
   let leftoverHtml = ''
 
   return {
+    // eslint-disable-next-line @typescript-eslint/require-await
     async transform(chunk: any, push: (chunkToPush: string) => boolean) {
       const chunkString = leftover + textDecoder.decode(chunk)
 
@@ -126,6 +127,7 @@ function transformHtmlCallbacks(getHtml: () => string) {
         throw err
       }
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
     async flush(push: (chunkToPush: string) => boolean) {
       if (leftover) {
         push(leftover)
