@@ -19,34 +19,32 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
   router,
   responseHeaders,
 }) => {
-  // if (typeof ReactDOMServer.renderToReadableStream === 'function') {
-  //   console.log('ReactDOMServer.renderToReadableStream')
-  //   const stream = await ReactDOMServer.renderToReadableStream(
-  //     <StartServer router={router} />,
-  //     {
-  //       signal: request.signal,
-  //     },
-  //   )
+  if (typeof ReactDOMServer.renderToReadableStream === 'function') {
+    const stream = await ReactDOMServer.renderToReadableStream(
+      <StartServer router={router} />,
+      {
+        signal: request.signal,
+      },
+    )
 
-  //   if (isbot(request.headers.get('User-Agent'))) {
-  //     await stream.allReady
-  //   }
+    if (isbot(request.headers.get('User-Agent'))) {
+      await stream.allReady
+    }
 
-  //   const transforms = [transformReadableStreamWithRouter(router)]
+    const transforms = [transformReadableStreamWithRouter(router)]
 
-  //   const transformedStream = transforms.reduce(
-  //     (stream, transform) => stream.pipeThrough(transform),
-  //     stream as ReadableStream,
-  //   )
+    const transformedStream = transforms.reduce(
+      (stream, transform) => stream.pipeThrough(transform),
+      stream as ReadableStream,
+    )
 
-  //   return new Response(transformedStream, {
-  //     status: router.state.statusCode,
-  //     headers: responseHeaders,
-  //   })
-  // }
+    return new Response(transformedStream, {
+      status: router.state.statusCode,
+      headers: responseHeaders,
+    })
+  }
 
   if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
-    console.log('ReactDOMServer.renderToPipeableStream')
     const passthrough = new PassThrough()
 
     const pipeable = ReactDOMServer.renderToPipeableStream(
