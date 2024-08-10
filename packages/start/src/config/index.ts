@@ -2,6 +2,12 @@ import path from 'node:path'
 import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import {
+  cloudflare as _unenv_cloudflare,
+  env as _unenv_env,
+  node as _unenv_node,
+  nodeless as _unenv_nodeless,
+} from 'unenv'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite, configSchema } from '@tanstack/router-plugin/vite'
@@ -19,6 +25,17 @@ import { z } from 'zod'
 import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
+
+function getEnv() {
+  const envConfig = _unenv_env(
+    _unenv_node,
+    _unenv_nodeless,
+    _unenv_cloudflare,
+    {},
+  )
+
+  return envConfig
+}
 
 /**
  * Not all the deployment presets are fully functional.
@@ -138,6 +155,8 @@ export function defineConfig(
     )
   }
 
+  const deployEnv = getEnv()
+
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
   const clientBase = opts.routers?.client?.base || '/_build'
@@ -154,6 +173,7 @@ export function defineConfig(
       experimental: {
         asyncContext: true,
       },
+      alias: deployEnv.alias,
     },
     routers: [
       {
