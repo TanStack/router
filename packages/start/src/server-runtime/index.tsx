@@ -1,4 +1,4 @@
-import './node-polyfill'
+import '../node-polyfill'
 
 import { Readable, Writable } from 'node:stream'
 import { getEvent, getRequestHeaders } from 'vinxi/http'
