@@ -66,6 +66,20 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
   const transforms = [transformStreamWithRouter(router)]
 
   if (stream) {
+    console.log(
+      '🚀 ~ file: defaultStreamHandler.tsx ~ line 68 ~ defaultStreamHandler ~ stream',
+      stream,
+    )
+    console.log(
+      '🚀 ~ file: defaultStreamHandler.tsx ~ line 68 ~ defaultStreamHandler ~ transforms',
+      transforms,
+    )
+    transforms.forEach((transform) =>
+      console.log(
+        '🚀 ~ file: defaultStreamHandler.tsx ~ line 68 ~ defaultStreamHandler ~ transform each',
+        transform,
+      ),
+    )
     const transformedStream = transforms.reduce(
       (stream, transform) => (stream as any).pipe(transform),
       stream,
