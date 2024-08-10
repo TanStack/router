@@ -25,10 +25,13 @@ export function transformReadableStreamWithRouter(router: AnyRouter) {
   const callbacks = transformHtmlCallbacks(() =>
     router.injectedHtml.map((d) => d()).join(''),
   )
+
+  const encoder = new TextEncoder()
+
   return new TransformStream<string>({
     transform(chunk, controller) {
       return callbacks.transform(chunk, (chunkToPush) => {
-        controller.enqueue(chunkToPush)
+        controller.enqueue(encoder.encode(chunkToPush))
         return true
       })
     },
