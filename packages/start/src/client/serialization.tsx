@@ -274,6 +274,7 @@ function createStreamState({
   }
 
   const reader = stream.getReader()
+  const decoder = new TextDecoder()
 
   const read = (index: number): any => {
     streamState.promises[index] = createControlledPromise()
@@ -285,7 +286,8 @@ function createStreamState({
         return
       }
 
-      streamState.promises[index]!.resolve(value)
+      const chunk = decoder.decode(value, { stream: true })
+      streamState.promises[index]!.resolve(chunk)
 
       return read(index + 1)
     })
