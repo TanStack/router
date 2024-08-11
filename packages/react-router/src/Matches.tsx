@@ -109,15 +109,11 @@ export function Matches() {
     <router.options.defaultPendingComponent />
   ) : null
 
-  const ResolvedSuspense = !router.state.matches.length
-    ? React.Suspense
-    : SafeFragment
-
   const inner = (
-    <ResolvedSuspense fallback={pendingElement}>
+    <React.Suspense fallback={pendingElement}>
       <Transitioner />
       <MatchesInner />
-    </ResolvedSuspense>
+    </React.Suspense>
   )
 
   return router.options.InnerWrap ? (

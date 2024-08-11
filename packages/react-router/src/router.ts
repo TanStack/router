@@ -638,6 +638,10 @@ export class Router<
       ...options,
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
+      transformer: options.transformer ?? {
+        parse: JSON.parse,
+        stringify: JSON.stringify,
+      },
     })
 
     if (typeof document !== 'undefined') {

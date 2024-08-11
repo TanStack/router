@@ -21,15 +21,15 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const router = useRouter()
+  const { navigate } = useRouter()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return router.navigate({
+      return navigate({
         ...options,
       })
     },
-    [router],
+    [navigate],
   ) as UseNavigateResult<TDefaultFrom>
 }
 

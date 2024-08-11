@@ -640,32 +640,33 @@ const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
               />
             ) : (
               <div>
-                {(routerState.pendingMatches || routerState.matches).map(
-                  (match, i) => {
-                    return (
+                {(routerState.pendingMatches?.length
+                  ? routerState.pendingMatches
+                  : routerState.matches
+                ).map((match, i) => {
+                  return (
+                    <div
+                      key={match.id || i}
+                      role="button"
+                      aria-label={`Open match details for ${match.id}`}
+                      onClick={() =>
+                        setActiveId(activeId === match.id ? '' : match.id)
+                      }
+                      className={cx(styles.matchRow(match === activeMatch))}
+                    >
                       <div
-                        key={match.id || i}
-                        role="button"
-                        aria-label={`Open match details for ${match.id}`}
-                        onClick={() =>
-                          setActiveId(activeId === match.id ? '' : match.id)
-                        }
-                        className={cx(styles.matchRow(match === activeMatch))}
-                      >
-                        <div
-                          className={cx(
-                            styles.matchIndicator(getStatusColor(match)),
-                          )}
-                        />
+                        className={cx(
+                          styles.matchIndicator(getStatusColor(match)),
+                        )}
+                      />
 
-                        <code
-                          className={styles.matchID}
-                        >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                        <AgeTicker match={match} router={router} />
-                      </div>
-                    )
-                  },
-                )}
+                      <code
+                        className={styles.matchID}
+                      >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
+                      <AgeTicker match={match} router={router} />
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
