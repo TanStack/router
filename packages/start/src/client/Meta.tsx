@@ -118,7 +118,6 @@ export const useMetaElements = () => {
       ))}
       <>
         <ScriptOnce
-          log={false}
           children={`
 __TSR__ = {
   matches: [],

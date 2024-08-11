@@ -2,9 +2,8 @@
 export function ScriptOnce({
   className,
   children,
-  log,
   ...rest
-}: { children: string; log?: boolean } & React.HTMLProps<HTMLScriptElement>) {
+}: { children: string } & React.HTMLProps<HTMLScriptElement>) {
   if (typeof document !== 'undefined') {
     return null
   }
@@ -12,17 +11,9 @@ export function ScriptOnce({
   return (
     <script
       {...rest}
-      className={`tsr-once ${className || ''}`}
+      className={['tsr-once', className].filter(Boolean).join(' ')}
       dangerouslySetInnerHTML={{
-        __html: [
-          children,
-          (log ?? true) && process.env.NODE_ENV === 'development'
-            ? `console.info(\`Injected From Server:
-${children}\`)`
-            : '',
-        ]
-          .filter(Boolean)
-          .join('\n'),
+        __html: [children].filter(Boolean).join('\n'),
       }}
     />
   )
