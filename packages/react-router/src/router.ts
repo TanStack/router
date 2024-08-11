@@ -79,7 +79,11 @@ import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 declare global {
   interface Window {
     __TSR__?: {
-      matches: Array<any>
+      matches: Array<{
+        __beforeLoadContext?: string
+        loaderData?: string
+        extracted?: Array<ExtractedEntry>
+      }>
       streamedValues: Record<
         string,
         {
@@ -133,6 +137,20 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
   >
     ? TRouterContext
     : AnyContext
+
+export type ExtractedEntry = {
+  dataType: '__beforeLoadContext' | 'loaderData'
+  type: 'promise' | 'stream'
+  path: Array<string>
+  value: any
+  id: number
+  streamState?: StreamState
+  matchIndex: number
+}
+
+export type StreamState = {
+  promises: Array<ControlledPromise<string | null>>
+}
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends InferRouterContext<TRouteTree>
@@ -586,7 +604,8 @@ export class Router<
     matchIndex: number
   }) => any
   serializeLoaderData?: (
-    data: any,
+    type: '__beforeLoadContext' | 'loaderData',
+    loaderData: any,
     ctx: {
       router: AnyRouter
       match: AnyRouteMatch
@@ -1177,8 +1196,8 @@ export class Router<
       const parentMatchId = parentMatch?.id
 
       const parentContext = !parentMatchId
-        ? ((this.options.context as any) ?? {})
-        : (parentMatch.context ?? this.options.context ?? {})
+        ? (this.options.context as any) ?? {}
+        : parentMatch.context ?? this.options.context ?? {}
 
       match.context = {
         ...parentContext,
@@ -1965,7 +1984,7 @@ export class Router<
                   const getParentMatchContext = () =>
                     parentMatchId
                       ? this.getMatch(parentMatchId)!.context
-                      : (this.options.context ?? {})
+                      : this.options.context ?? {}
 
                   updateMatch(matchId, (prev) => ({
                     ...prev,
@@ -1996,9 +2015,20 @@ export class Router<
                     cause: preload ? 'preload' : cause,
                   }
 
-                  const beforeLoadContext =
+                  let beforeLoadContext =
                     (await route.options.beforeLoad?.(beforeLoadFnContext)) ??
                     {}
+
+                  if (this.serializeLoaderData) {
+                    beforeLoadContext = this.serializeLoaderData(
+                      '__beforeLoadContext',
+                      beforeLoadContext,
+                      {
+                        router: this,
+                        match: this.getMatch(matchId)!,
+                      },
+                    )
+                  }
 
                   if (
                     isRedirect(beforeLoadContext) ||
@@ -2010,6 +2040,7 @@ export class Router<
                   updateMatch(matchId, (prev) => {
                     return {
                       ...prev,
+                      __beforeLoadContext: beforeLoadContext,
                       context: {
                         ...getParentMatchContext(),
                         ...prev.__routeContext,
@@ -2077,12 +2108,12 @@ export class Router<
                     const age = Date.now() - this.getMatch(matchId)!.updatedAt
 
                     const staleAge = preload
-                      ? (route.options.preloadStaleTime ??
+                      ? route.options.preloadStaleTime ??
                         this.options.defaultPreloadStaleTime ??
-                        30_000) // 30 seconds for preloads by default
-                      : (route.options.staleTime ??
+                        30_000 // 30 seconds for preloads by default
+                      : route.options.staleTime ??
                         this.options.defaultStaleTime ??
-                        0)
+                        0
 
                     const shouldReloadOption = route.options.shouldReload
 
@@ -2164,10 +2195,14 @@ export class Router<
                             await route.options.loader?.(getLoaderContext())
 
                           if (this.serializeLoaderData) {
-                            loaderData = this.serializeLoaderData(loaderData, {
-                              router: this,
-                              match: this.getMatch(matchId)!,
-                            })
+                            loaderData = this.serializeLoaderData(
+                              'loaderData',
+                              loaderData,
+                              {
+                                router: this,
+                                match: this.getMatch(matchId)!,
+                              },
+                            )
                           }
 
                           handleRedirectAndNotFound(
@@ -2329,9 +2364,8 @@ export class Router<
           // otherwise, use the gcTime
           const gcTime =
             (d.preload
-              ? (route.options.preloadGcTime ??
-                this.options.defaultPreloadGcTime)
-              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
+              ? route.options.preloadGcTime ?? this.options.defaultPreloadGcTime
+              : route.options.gcTime ?? this.options.defaultGcTime) ??
             5 * 60 * 1000
 
           return d.status !== 'error' && Date.now() - d.updatedAt < gcTime

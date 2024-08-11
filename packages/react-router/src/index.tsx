@@ -229,6 +229,8 @@ export type {
   RouterEvent,
   RouterListener,
   AnyRouterWithContext,
+  ExtractedEntry,
+  StreamState,
 } from './router'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'

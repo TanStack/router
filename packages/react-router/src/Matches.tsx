@@ -49,7 +49,6 @@ export interface RouteMatch<
   componentsPromise?: Promise<Array<void>>
   loadPromise?: ControlledPromise<void>
   beforeLoadPromise?: ControlledPromise<void>
-  beforeLoadData?: unknown
   loaderPromise?: ControlledPromise<void>
   loaderData?: TLoaderData
   __routeContext: Record<string, unknown>
