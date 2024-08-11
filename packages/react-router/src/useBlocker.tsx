@@ -57,13 +57,13 @@ export function useBlocker<
       if (!matchesFrom || !matchesTo) return true
 
       const shouldBlock = await blockerFn(blockerFnArgs)
-      if (!shouldBlock) return true
+      if (!shouldBlock) return false
 
       const promise = new Promise<boolean>((resolve) => {
         setResolver({
           status: 'blocked',
-          proceed: () => resolve(true),
-          reset: () => resolve(false),
+          proceed: () => resolve(false),
+          reset: () => resolve(true),
         })
       })
 
@@ -80,7 +80,7 @@ export function useBlocker<
 
     return disabled
       ? undefined
-      : history.block(blockerFnComposed, disableBeforeUnload)
+      : history.block({ blockerFn: blockerFnComposed, disableBeforeUnload })
   }, [blockerFn, disableBeforeUnload, disabled, history, from, to])
 
   return resolver

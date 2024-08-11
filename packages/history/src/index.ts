@@ -16,10 +16,7 @@ export interface RouterHistory {
   back: (navigateOpts?: NavigateOptions) => void
   forward: (navigateOpts?: NavigateOptions) => void
   createHref: (href: string) => string
-  block: (
-    blocker: BlockerFn,
-    disableBeforeUnload?: (() => boolean) | boolean,
-  ) => () => void
+  block: (blocker: NavigationBlocker) => () => void
   flush: () => void
   destroy: () => void
   notify: () => void
@@ -53,6 +50,11 @@ export type BlockerFn = (
   args: BlockerFnArgs,
 ) => Promise<ShouldAllowNavigation> | ShouldAllowNavigation
 
+export type NavigationBlocker = {
+  blockerFn: BlockerFn
+  disableBeforeUnload?: (() => boolean) | boolean
+}
+
 type TryNavigateArgs = {
   task: () => void
   type: HistoryAction
@@ -68,6 +70,8 @@ type TryNavigateArgs = {
     }
 )
 
+type WinType = typeof window & { blockers?: Array<NavigationBlocker> }
+
 const pushStateEvent = 'pushstate'
 const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
@@ -77,15 +81,14 @@ export function createHistory(opts: {
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
   go: (n: number) => void
-  back: () => void
-  forward: () => void
+  back: (ignoreBlocker: boolean) => void
+  forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
   flush?: () => void
   destroy?: () => void
   onBlocked?: (onUpdate: () => void) => void
-  blockers?: Array<BlockerFn>
+  win?: WinType
 }): RouterHistory {
-  let { blockers = [] } = opts
   let location = opts.getLocation()
   const subscribers = new Set<() => void>()
 
@@ -104,6 +107,8 @@ export function createHistory(opts: {
       task()
       return
     }
+
+    const blockers = opts.win?.blockers ?? []
     if (
       typeof document !== 'undefined' &&
       blockers.length &&
@@ -111,12 +116,12 @@ export function createHistory(opts: {
     ) {
       for (const blocker of blockers) {
         const nextLocation = parseHref(actionInfo.path, actionInfo.state)
-        const allowed = await blocker({
+        const isBlocked = await blocker.blockerFn({
           currentLocation: location,
           nextLocation,
           action: actionInfo.type,
         })
-        if (!allowed) {
+        if (isBlocked) {
           opts.onBlocked?.(notify)
           return
         }
@@ -177,7 +182,7 @@ export function createHistory(opts: {
     back: (navigateOpts) => {
       tryNavigation({
         task: () => {
-          opts.back()
+          opts.back(navigateOpts?.ignoreBlocker ?? false)
           notify()
         },
         navigateOpts,
@@ -187,7 +192,7 @@ export function createHistory(opts: {
     forward: (navigateOpts) => {
       tryNavigation({
         task: () => {
-          opts.forward()
+          opts.forward(navigateOpts?.ignoreBlocker ?? false)
           notify()
         },
         navigateOpts,
@@ -195,47 +200,14 @@ export function createHistory(opts: {
       })
     },
     createHref: (str) => opts.createHref(str),
-    block: (blocker, disableBeforeUnload) => {
-      blockers.push(blocker)
-
-      const shouldNotApplyBeforeUnload = disableBeforeUnload === true
-
-      if (shouldNotApplyBeforeUnload) {
-        return () => {
-          blockers = blockers.filter((b) => b !== blocker)
-        }
-      }
-
-      const beforeUnloadListener = (e: Event) => {
-        const defaultBehavior =
-          typeof disableBeforeUnload === 'boolean' ||
-          disableBeforeUnload === undefined
-
-        if (defaultBehavior) {
-          e.preventDefault()
-          // @ts-expect-error
-          return (e.returnValue = '')
-        }
-        const result = disableBeforeUnload()
-        if (!result) {
-          e.preventDefault()
-          // @ts-expect-error
-          return (e.returnValue = '')
-        }
-
-        return
-      }
-
-      addEventListener(beforeUnloadEvent, beforeUnloadListener, {
-        capture: true,
-      })
+    block: (blocker) => {
+      if (!opts.win) return () => {}
+      if (!opts.win.blockers) opts.win.blockers = []
+      opts.win.blockers.push(blocker)
 
       return () => {
-        removeEventListener(beforeUnloadEvent, beforeUnloadListener, {
-          capture: true,
-        })
-
-        blockers = blockers.filter((b) => b !== blocker)
+        if (!opts.win) return
+        opts.win.blockers = opts.win.blockers?.filter((b) => b !== blocker)
       }
     },
     flush: () => opts.flush?.(),
@@ -275,9 +247,9 @@ export function createBrowserHistory(opts?: {
   createHref?: (path: string) => string
   window?: any
 }): RouterHistory {
-  const win =
-    opts?.window ??
-    (typeof document !== 'undefined' ? window : (undefined as any))
+  const win: WinType =
+    opts?.window ?? (typeof document !== 'undefined' ? window : ({} as WinType))
+  win.blockers = []
 
   const originalPushState = win.history.pushState
   const originalReplaceState = win.history.replaceState
@@ -295,7 +267,8 @@ export function createBrowserHistory(opts?: {
   let rollbackLocation: HistoryLocation | undefined
 
   let ignoreNextPop = false
-  const blockers: Array<BlockerFn> = []
+  let skipBlockerNextPop = false
+  let ignoreNextBeforeUnload = false
 
   const getLocation = () => currentLocation
 
@@ -373,19 +346,27 @@ export function createBrowserHistory(opts?: {
       return
     }
 
-    if (typeof document !== 'undefined' && blockers.length) {
-      for (const blocker of blockers) {
-        const nextLocation = parseLocation()
-        const allowed = await blocker({
-          currentLocation,
-          nextLocation,
-          action: 'POP',
-        })
-        if (!allowed) {
-          ignoreNextPop = true
-          win.history.go(1)
-          history.notify()
-          return
+    if (skipBlockerNextPop) {
+      skipBlockerNextPop = false
+    } else {
+      if (
+        typeof document !== 'undefined' &&
+        win.blockers &&
+        win.blockers.length
+      ) {
+        for (const blocker of win.blockers) {
+          const nextLocation = parseLocation()
+          const isBlocked = await blocker.blockerFn({
+            currentLocation,
+            nextLocation,
+            action: 'POP',
+          })
+          if (isBlocked) {
+            ignoreNextPop = true
+            win.history.go(1)
+            history.notify()
+            return
+          }
         }
       }
     }
@@ -394,18 +375,61 @@ export function createBrowserHistory(opts?: {
     history.notify()
   }
 
+  const onBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (ignoreNextBeforeUnload) {
+      ignoreNextBeforeUnload = false
+      return
+    }
+
+    let shouldBlock = false
+
+    // If one blocker has a non-disabled beforeUnload, we should block
+    const blockers = win.blockers ?? []
+    if (typeof document !== 'undefined' && blockers.length) {
+      for (const blocker of blockers) {
+        const disable = blocker.disableBeforeUnload ?? false
+        if (disable === false) {
+          shouldBlock = true
+          break
+        }
+
+        if (typeof disable === 'function' && disable() === false) {
+          shouldBlock = true
+          break
+        }
+      }
+    }
+
+    if (shouldBlock) {
+      e.preventDefault()
+      return (e.returnValue = '')
+    }
+    return
+  }
+
   const history = createHistory({
     getLocation,
     pushState: (href, state) => queueHistoryAction('push', href, state),
     replaceState: (href, state) => queueHistoryAction('replace', href, state),
-    back: () => win.history.back(),
-    forward: () => win.history.forward(),
+    back: (ignoreBlocker) => {
+      if (ignoreBlocker) skipBlockerNextPop = true
+      ignoreNextBeforeUnload = true
+      return win.history.back()
+    },
+    forward: (ignoreBlocker) => {
+      if (ignoreBlocker) skipBlockerNextPop = true
+      ignoreNextBeforeUnload = true
+      win.history.forward()
+    },
     go: (n) => win.history.go(n),
     createHref: (href) => createHref(href),
     flush,
     destroy: () => {
       win.history.pushState = originalPushState
       win.history.replaceState = originalReplaceState
+      win.removeEventListener(beforeUnloadEvent, onBeforeUnload, {
+        capture: true,
+      })
       win.removeEventListener(pushStateEvent, onPushPopEvent)
       win.removeEventListener(popStateEvent, onPushPopEvent)
     },
@@ -418,20 +442,21 @@ export function createBrowserHistory(opts?: {
         onUpdate()
       }
     },
-    blockers,
+    win,
   })
 
+  win.addEventListener(beforeUnloadEvent, onBeforeUnload, { capture: true })
   win.addEventListener(pushStateEvent, onPushPopEvent)
   win.addEventListener(popStateEvent, onPushPopEvent)
 
   win.history.pushState = function (...args: Array<any>) {
-    const res = originalPushState.apply(win.history, args)
+    const res = originalPushState.apply(win.history, args as any)
     onPushPop()
     return res
   }
 
   win.history.replaceState = function (...args: Array<any>) {
-    const res = originalReplaceState.apply(win.history, args)
+    const res = originalReplaceState.apply(win.history, args as any)
     onPushPop()
     return res
   }

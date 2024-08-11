@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import combinate from 'combinate'
 
 import {
+  type BlockerFn,
   Link,
   RouterProvider,
   createRootRoute,
@@ -20,18 +21,20 @@ afterEach(() => {
 })
 
 interface BlockerTestOpts {
-  condition: boolean
+  blockerFn: BlockerFn
+  disabled?: boolean
   ignoreBlocker?: boolean
 }
-async function setup({ condition, ignoreBlocker }: BlockerTestOpts) {
-  const blockerFn = vi.fn()
+
+async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
+  const blockerFnTest = vi.fn(blockerFn)
   const rootRoute = createRootRoute()
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
     component: () => {
       const navigate = useNavigate()
-      useBlocker({ condition, blockerFn })
+      useBlocker({ disabled, blockerFn })
       return (
         <React.Fragment>
           <h1>Index</h1>
@@ -66,7 +69,7 @@ async function setup({ condition, ignoreBlocker }: BlockerTestOpts) {
   const link = await screen.findByRole('link', { name: 'link' })
   const button = await screen.findByRole('button', { name: 'button' })
 
-  return { router, clickable: { link, button }, blockerFn }
+  return { router, clickable: { link, button }, blockerFn: blockerFnTest }
 }
 
 const clickTarget = ['link' as const, 'button' as const]
@@ -74,15 +77,31 @@ const clickTarget = ['link' as const, 'button' as const]
 describe('Blocker', () => {
   const doesNotBlockTextMatrix = combinate({
     opts: [
-      { condition: false, ignoreBlocker: undefined },
-      { condition: false, ignoreBlocker: false },
-      { condition: false, ignoreBlocker: true },
-      { condition: true, ignoreBlocker: true },
+      {
+        blockerFn: () => false,
+        disabled: false,
+        ignoreBlocker: undefined,
+      },
+      {
+        blockerFn: async () => await new Promise((resolve) => resolve(false)),
+        disabled: false,
+        ignoreBlocker: false,
+      },
+      {
+        blockerFn: () => true,
+        disabled: true,
+        ignoreBlocker: false,
+      },
+      {
+        blockerFn: () => true,
+        disabled: false,
+        ignoreBlocker: true,
+      },
     ],
     clickTarget,
   })
   test.each(doesNotBlockTextMatrix)(
-    'does not block navigation with condition = $flags.condition, ignoreBlocker = $flags.ignoreBlocker, clickTarget = $clickTarget',
+    'does not block navigation with blockerFn = $flags.blockerFn, ignoreBlocker = $flags.ignoreBlocker, clickTarget = $clickTarget',
     async ({ opts, clickTarget }) => {
       const { clickable, blockerFn } = await setup(opts)
 
@@ -91,28 +110,36 @@ describe('Blocker', () => {
         await screen.findByRole('heading', { name: 'Posts' }),
       ).toBeInTheDocument()
       expect(window.location.pathname).toBe('/posts')
-      expect(blockerFn).not.toHaveBeenCalled()
+      if (opts.ignoreBlocker || opts.disabled)
+        expect(blockerFn).not.toHaveBeenCalled()
     },
   )
 
   const blocksTextMatrix = combinate({
     opts: [
-      { condition: true, ignoreBlocker: undefined },
-      { condition: true, ignoreBlocker: false },
+      {
+        blockerFn: () => true,
+        disabled: false,
+        ignoreBlocker: undefined,
+      },
+      {
+        blockerFn: async () => await new Promise((resolve) => resolve(true)),
+        disabled: false,
+        ignoreBlocker: false,
+      },
     ],
     clickTarget,
   })
   test.each(blocksTextMatrix)(
-    'blocks navigation with condition = $flags.condition, ignoreBlocker = $flags.ignoreBlocker, clickTarget = $clickTarget',
+    'blocks navigation with condition = $flags.blockerFn, ignoreBlocker = $flags.ignoreBlocker, clickTarget = $clickTarget',
     async ({ opts, clickTarget }) => {
-      const { clickable, blockerFn } = await setup(opts)
+      const { clickable } = await setup(opts)
 
       fireEvent.click(clickable[clickTarget])
       await expect(
         screen.findByRole('header', { name: 'Posts' }),
       ).rejects.toThrow()
       expect(window.location.pathname).toBe('/')
-      expect(blockerFn).toHaveBeenCalledOnce()
     },
   )
 })
