@@ -139,6 +139,7 @@ export {
 export type {
   AnyPathParams,
   SearchSchemaInput,
+  SearchValidatorAdapter,
   AnySearchSchema,
   AnyContext,
   RouteContext,
