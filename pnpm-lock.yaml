@@ -1790,7 +1790,7 @@ importers:
         version: 16.0.0(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       arktype:
         specifier: ^2.0.0-beta.2
-        version: 2.0.0-beta.2
+        version: 2.0.0-beta.5
 
   packages/router-cli:
     dependencies:
@@ -2081,14 +2081,8 @@ packages:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
 
-  '@ark/schema@0.2.2':
-    resolution: {integrity: sha512-3GyWVptFzmUZTBAwobiuk2Xa1wXeWNOOaHWcYl3pYTTdl5QNuB/53JnHXL0NrFW4Yvv7cgTcRsZQby7pNAeeJA==}
-
   '@ark/schema@0.3.2':
     resolution: {integrity: sha512-StWlBec++TxgDgpEUAkOxB7rqCZmOJr1dsW0P44vcgoitGtlQN13eCW1MlHlzScTUWA5iOtyHD+TsA0gKm4X0w==}
-
-  '@ark/util@0.1.2':
-    resolution: {integrity: sha512-JhcPZhF8T8Eb9UxJqh3X8tOwZpnuW89azKlPnRhFXymhy/wBFPRC9+J+Vu+iUc/kplW3uloZb9n5R3EVVWUBgw==}
 
   '@ark/util@0.2.1':
     resolution: {integrity: sha512-V+h43ZoXCT79K0OiwRE7oebcIeVHZ8YL/Xf0mCUCoIEuWnAJOS8zPwQzwGJGwys7MFHgn3YQYWL/nETuEvgcpQ==}
@@ -5004,9 +4998,6 @@ packages:
 
   aria-query@5.3.0:
     resolution: {integrity: sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A==}
-
-  arktype@2.0.0-beta.2:
-    resolution: {integrity: sha512-WLxtViYiR8T+COYzZgHGnl3eVGwAJJXHRPfGMqRCoMeNpVb1EE+9kMhiEOq0yzEoP6Y91yTPTuhINt3WbBCYxA==}
 
   arktype@2.0.0-beta.5:
     resolution: {integrity: sha512-3bNUyiA2iuvyV/rfiErLli9HrrvC6W4XT8Ja6SAEihljM60PRQhYJEr5jM4MGGtj1k/oFxgOkHd++VjQrm6SoA==}
@@ -9381,15 +9372,9 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
 
-  '@ark/schema@0.2.2':
-    dependencies:
-      '@ark/util': 0.1.2
-
   '@ark/schema@0.3.2':
     dependencies:
       '@ark/util': 0.2.1
-
-  '@ark/util@0.1.2': {}
 
   '@ark/util@0.2.1': {}
 
@@ -12576,11 +12561,6 @@ snapshots:
   aria-query@5.3.0:
     dependencies:
       dequal: 2.0.3
-
-  arktype@2.0.0-beta.2:
-    dependencies:
-      '@ark/schema': 0.2.2
-      '@ark/util': 0.1.2
 
   arktype@2.0.0-beta.5:
     dependencies:
