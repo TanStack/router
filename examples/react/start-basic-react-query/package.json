@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-example-react-start-basic-react-query",
+  "name": "tanstack-router-example-react-start-basic",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -12,10 +12,7 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.51.23",
-    "@tanstack/react-query-devtools": "^5.51.23",
     "@tanstack/react-router": "^1.47.1",
-    "@tanstack/react-router-with-query": "^1.47.1",
     "@tanstack/router-devtools": "^1.47.1",
     "@tanstack/router-plugin": "^1.47.0",
     "@tanstack/start": "^1.47.3",
@@ -42,6 +39,6 @@
     "tailwindcss": "^3.4.9",
     "typescript": "^5.5.3",
     "vite": "^5.4.0",
-    "vite-tsconfig-paths": "^4.3.2"
+    "vite-tsconfig-paths": "^5.0.1"
   }
 }

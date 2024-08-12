@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-example-react-start-basic-rsc",
+  "name": "tanstack-router-example-react-start-basic",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -8,19 +8,26 @@
     "build": "vinxi build",
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
-    "format": "prettier --write '**/*' --ignore-unknown"
+    "format": "prettier --write '**/*' --ignore-unknown",
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@babel/plugin-syntax-typescript": "^7.24.7",
     "@tanstack/react-router": "^1.47.1",
     "@tanstack/router-devtools": "^1.47.1",
     "@tanstack/router-plugin": "^1.47.0",
     "@tanstack/start": "^1.47.3",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "isbot": "^5.1.14",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.0",
     "vinxi": "0.4.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.46.0",
+    "@types/node": "^20.12.11",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.3.1",
@@ -32,10 +39,6 @@
     "tailwindcss": "^3.4.9",
     "typescript": "^5.5.3",
     "vite": "^5.4.0",
-    "vite-tsconfig-paths": "^4.3.2"
-  },
-  "overrides": {
-    "react": "0.0.0-experimental-035a41c4e-20230704",
-    "react-dom": "0.0.0-experimental-035a41c4e-20230704"
+    "vite-tsconfig-paths": "^5.0.1"
   }
 }
