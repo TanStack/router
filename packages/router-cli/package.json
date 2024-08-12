@@ -70,7 +70,7 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@types/yargs": "^17.0.32",
-    "vite": "^5.3.5"
+    "@types/yargs": "^17.0.33",
+    "vite": "^5.4.0"
   }
 }
