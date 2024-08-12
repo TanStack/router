@@ -24,6 +24,9 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
       <StartServer router={router} />,
       {
         signal: request.signal,
+        onError(error, errorInfo) {
+          console.error(error, errorInfo)
+        },
       },
     )
 
