@@ -6,6 +6,7 @@ import { createTRPCQueryUtils, createTRPCReact } from '@trpc/react-query'
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
 
+import { Spinner } from './routes/-components/spinner'
 import type { AppRouter } from '../trpc-server.handler'
 
 export const queryClient = new QueryClient()
@@ -35,6 +36,11 @@ export function createRouter() {
     context: {
       trpcQueryUtils,
     },
+    defaultPendingComponent: () => (
+      <div className={`p-2 text-2xl`}>
+        <Spinner />
+      </div>
+    ),
     Wrap: function WrapComponent({ children }) {
       return (
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
