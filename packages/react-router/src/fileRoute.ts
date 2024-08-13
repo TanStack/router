@@ -268,13 +268,6 @@ export function createLazyRoute<
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
->(path: TFilePath) {
-  const id = removeGroups(path)
+>(id: TFilePath) {
   return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
-}
-
-const routeGroupPatternRegex = /\(.+\)/g
-
-function removeGroups(s: string) {
-  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
 }
