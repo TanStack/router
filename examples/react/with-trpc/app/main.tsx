@@ -6,8 +6,11 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { trpc } from './trpc'
 
 import { Spinner } from './routes/-components/spinner'
+
+// Import the generated route tree
 import { routeTree } from './routeTree.gen'
 
+// Create a router instance
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
@@ -21,13 +24,14 @@ const router = createRouter({
   },
 })
 
+// Register the router instance for type safety
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }
 }
 
-const rootElement = document.getElementById('app')!
+const rootElement = document.getElementById('root')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
