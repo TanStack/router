@@ -176,7 +176,7 @@ The underlying mechanics why this works relies on the `validateSearch` function 
 
 When using a library like [Zod](https://zod.dev/) to validate search params you might want to `transform` search params before committing the search params to the URL. A common `zod` `transform` is `default` for example.
 
-```typescript
+```tsx
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
@@ -203,7 +203,7 @@ For validation libraries we recommend using adapters which infer the correct `in
 
 An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type
 
-```typescript
+```tsx
 import { createFileRoute } from '@tanstack/react-router'
 import { zodSearchValidator } from '@tanstack/router-zod-adapter'
 import { z } from 'zod'
@@ -227,7 +227,7 @@ The important part here is the following use of `Link` no longer requires `searc
 
 However the use of `catch` here overrides the types and makes `page`, `filter` and `sort` `unknown` causing type loss. We have handled this case by providing a `fallback` generic function which retains the types but provides a `fallback` value when validation fails
 
-```typescript
+```tsx
 import { createFileRoute } from '@tanstack/react-router'
 import { fallback, zodSearchValidator } from '@tanstack/router-zod-adapter'
 import { z } from 'zod'
@@ -249,7 +249,7 @@ Therefore when navigating to this route, `search` is optional and retains the co
 
 While not recommended, it is also possible to configure `input` and `output` type in case the `output` type is more accurate than the `input` type
 
-```typescript
+```tsx
 const productSearchSchema = z.object({
   page: fallback(z.number(), 1).default(1),
   filter: fallback(z.string(), '').default(''),
@@ -273,7 +273,7 @@ This provides flexibility in which type you want to infer for navigation and whi
 
 When using [Valibot](https://valibot.dev/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
 
-```typescript
+```tsx
 import { valibotSearchValidator } from '@tanstack/router-valibot-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import * as v from 'valibot'
@@ -294,9 +294,12 @@ export const Route = createFileRoute('/shop/products/')({
 
 ### Arktype Adapter
 
+[!WARNING]
+This adapter expects the arktype beta
+
 When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
 
-```typescript
+```tsx
 import { arkTypeSearchValidator } from '@tanstack/router-arktype-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import * as v from 'valibot'
