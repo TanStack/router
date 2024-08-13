@@ -201,7 +201,7 @@ For validation libraries we recommend using adapters which infer the correct `in
 
 ### Zod Adapter
 
-An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `ouput` type
+An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type
 
 ```typescript
 import { createFileRoute } from '@tanstack/react-router'
