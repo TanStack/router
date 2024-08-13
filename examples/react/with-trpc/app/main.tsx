@@ -1,3 +1,5 @@
+/// <reference types="vinxi/types/client" />
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
@@ -11,15 +13,15 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
+import { createTRPCClient, httpBatchLink } from '@trpc/client'
 
 import { z } from 'zod'
-import type { AppRouter } from '../server/server'
+import type { AppRouter } from '../trpc-server.handler'
 
-export const trpc = createTRPCProxyClient<AppRouter>({
+export const trpc = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: 'http://localhost:4000',
+      url: 'http://localhost:3000/trpc', // since we using Vinxi, the server is running on the same port
     }),
   ],
 })

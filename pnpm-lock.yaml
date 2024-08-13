@@ -1539,18 +1539,15 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
       '@trpc/client':
         specifier: 11.0.0-rc.477
         version: 11.0.0-rc.477(@trpc/server@11.0.0-rc.477)
       '@trpc/server':
         specifier: 11.0.0-rc.477
         version: 11.0.0-rc.477
-      express:
-        specifier: ^4.19.2
-        version: 4.19.2
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1560,6 +1557,9 @@ importers:
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
+      vinxi:
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -1573,18 +1573,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
         version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
-      tsx:
-        specifier: ^4.16.5
-        version: 4.16.5
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
-      wait-port:
-        specifier: ^1.1.0
-        version: 1.1.0
 
   examples/react/with-trpc-react-query:
     dependencies:

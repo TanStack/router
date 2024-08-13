@@ -1,5 +1,6 @@
+import { defineEventHandler, toWebRequest } from 'vinxi/http'
 import { initTRPC } from '@trpc/server'
-import { createHTTPServer } from '@trpc/server/adapters/standalone'
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
 
 const t = initTRPC.create()
 
@@ -30,19 +31,15 @@ const appRouter = t.router({
 
 export type AppRouter = typeof appRouter
 
-const server = createHTTPServer({
-  router: appRouter,
-  responseMeta() {
-    return {
-      headers: {
-        'Access-Control-Allow-Origin': `*`,
-        'Access-Control-Request-Method': '*',
-        'Access-Control-Allow-Methods': 'OPTIONS, GET',
-        'Access-Control-Allow-Headers': '*',
-      },
-      status: 200,
-    }
-  },
-})
+export default defineEventHandler((event) => {
+  const request = toWebRequest(event)
 
-server.listen(4000)
+  return fetchRequestHandler({
+    endpoint: '/trpc',
+    req: request,
+    router: appRouter,
+    createContext() {
+      return {}
+    },
+  })
+})
