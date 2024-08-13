@@ -1539,18 +1539,15 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
       '@trpc/client':
         specifier: 11.0.0-rc.477
         version: 11.0.0-rc.477(@trpc/server@11.0.0-rc.477)
       '@trpc/server':
         specifier: 11.0.0-rc.477
         version: 11.0.0-rc.477
-      express:
-        specifier: ^4.19.2
-        version: 4.19.2
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1560,6 +1557,9 @@ importers:
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
+      vinxi:
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -1573,18 +1573,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
         version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
-      tsx:
-        specifier: ^4.16.5
-        version: 4.16.5
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
-      wait-port:
-        specifier: ^1.1.0
-        version: 1.1.0
 
   examples/react/with-trpc-react-query:
     dependencies:
@@ -1600,6 +1588,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
       '@trpc/client':
         specifier: 11.0.0-rc.477
         version: 11.0.0-rc.477(@trpc/server@11.0.0-rc.477)
@@ -1609,12 +1600,6 @@ importers:
       '@trpc/server':
         specifier: 11.0.0-rc.477
         version: 11.0.0-rc.477
-      express:
-        specifier: ^4.19.2
-        version: 4.19.2
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1624,6 +1609,9 @@ importers:
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
+      vinxi:
+        specifier: 0.4.1
+        version: 0.4.1(@opentelemetry/api@1.8.0)(@types/node@20.14.9)(ioredis@5.4.1)(terser@5.31.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -1637,18 +1625,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
         version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
-      concurrently:
-        specifier: ^8.2.2
-        version: 8.2.2
-      tsx:
-        specifier: ^4.16.5
-        version: 4.16.5
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
-      wait-port:
-        specifier: ^1.1.0
-        version: 1.1.0
 
   packages/history: {}
 
@@ -8584,11 +8560,6 @@ packages:
     peerDependencies:
       typescript: '>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta'
 
-  tsx@4.16.5:
-    resolution: {integrity: sha512-ArsiAQHEW2iGaqZ8fTA1nX0a+lN5mNTyuGRRO6OW3H/Yno1y9/t1f9YOI1Cfoqz63VAthn++ZYcbDP7jPflc+A==}
-    engines: {node: '>=18.0.0'}
-    hasBin: true
-
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
@@ -9001,11 +8972,6 @@ packages:
   w3c-xmlserializer@5.0.0:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
-
-  wait-port@1.1.0:
-    resolution: {integrity: sha512-3e04qkoN3LxTMLakdqeWth8nih8usyg+sf1Bgdf9wwUkp05iuK1eSY/QpLvscT/+F/gA89+LpUmmgBtesbqI2Q==}
-    engines: {node: '>=10'}
-    hasBin: true
 
   watchpack@2.4.1:
     resolution: {integrity: sha512-8wrBCMtVhqcXP2Sup1ctSkga6uc2Bx0IIvKyT7yTFier5AXHooSI+QyQQAtTb7+E0IUCCKyTFmXqdqgum2XWGg==}
@@ -12901,7 +12867,8 @@ snapshots:
 
   commander@8.3.0: {}
 
-  commander@9.5.0: {}
+  commander@9.5.0:
+    optional: true
 
   commondir@1.0.1: {}
 
@@ -16642,13 +16609,6 @@ snapshots:
       tslib: 1.14.1
       typescript: 5.5.3
 
-  tsx@4.16.5:
-    dependencies:
-      esbuild: 0.21.5
-      get-tsconfig: 4.7.5
-    optionalDependencies:
-      fsevents: 2.3.3
-
   type-check@0.4.0:
     dependencies:
       prelude-ls: 1.2.1
@@ -17101,14 +17061,6 @@ snapshots:
   w3c-xmlserializer@5.0.0:
     dependencies:
       xml-name-validator: 5.0.0
-
-  wait-port@1.1.0:
-    dependencies:
-      chalk: 4.1.2
-      commander: 9.5.0
-      debug: 4.3.5
-    transitivePeerDependencies:
-      - supports-color
 
   watchpack@2.4.1:
     dependencies:
