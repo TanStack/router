@@ -309,6 +309,7 @@ export type UpdatableRouteOptions<
   pendingMinMs?: number
   staleTime?: number
   gcTime?: number
+  preload?: boolean
   preloadStaleTime?: number
   preloadGcTime?: number
   // Filter functions that can manipulate search params *before* they are passed to links and navigate

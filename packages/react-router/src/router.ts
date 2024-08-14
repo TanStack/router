@@ -2269,7 +2269,9 @@ export class Router<
                     // If the route is successful and still fresh, just resolve
                     const { status, invalid } = this.getMatch(matchId)!
 
-                    if (
+                    if (preload && route.options.preload === false) {
+                      // Do nothing
+                    } else if (
                       status === 'success' &&
                       (invalid || (shouldReload ?? age > staleAge))
                     ) {
