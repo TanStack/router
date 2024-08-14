@@ -1,4 +1,8 @@
-import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
+import {
+  createBrowserHistory,
+  createMemoryHistory,
+  parseHref,
+} from '@tanstack/history'
 import { Store } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
@@ -1546,6 +1550,14 @@ export class Router<
     ignoreBlocker,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
+    const href = (rest as any).href
+    if (href) {
+      const parsed = parseHref(href, {})
+      rest.to = parsed.pathname
+      rest.search = this.options.parseSearch(parsed.search)
+      rest.hash = parsed.hash
+    }
+
     const location = this.buildLocation(rest as any)
     return this.commitLocation({
       ...location,
@@ -1556,14 +1568,13 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn = ({ from, to, __isRedirect, ...rest }) => {
+  navigate: NavigateFn = ({ to, __isRedirect, ...rest }) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
     // If this `to` is a valid external URL, return
     // null for LinkUtils
     const toString = String(to)
-    // const fromString = from !== undefined ? String(from) : from
     let isExternal
 
     try {
@@ -1578,7 +1589,6 @@ export class Router<
 
     return this.buildAndCommitLocation({
       ...rest,
-      from,
       to,
       // to: toString,
     })
