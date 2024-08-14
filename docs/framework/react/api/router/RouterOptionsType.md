@@ -126,6 +126,14 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Optional
 - The default `onCatch` handler for errors caught by the Router ErrorBoundary
 
+### `defaultViewTransition` property
+
+- Type: `boolean`
+- Optional
+- If `true`, route navigations will called using `document.startViewTransition()`.
+- If the browser does not support this api, this option will be ignored.
+- See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
+
 ### `caseSensitive` property
 
 - Type: `boolean`
@@ -176,7 +184,8 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Type: `React.Component`
 - Optional
 - A component that will be used to wrap the entire router. This is useful for providing a context to the entire router. Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
-  **Example**
+
+**Example**
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'
@@ -214,8 +223,16 @@ const router = createRouter({
 })
 ```
 
+### `notFoundMode` property
+
+- Type: `'root' | 'fuzzy'`
+- Optional
+- Defaults to `'fuzzy'`
+- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../guide/not-found-errors.md) for more information.
+
 ### `notFoundRoute` property
 
+- **Deprecated**
 - Type: `NotFoundRoute`
 - Optional
 - A route that will be used as the default not found route for every branch of the route tree. This can be overridden on a per-branch basis by providing a not found route to the `NotFoundRoute` option on the root route of the branch.
