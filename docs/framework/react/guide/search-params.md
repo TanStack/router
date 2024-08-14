@@ -172,6 +172,150 @@ In the above example, we used Zod's `.catch()` modifier instead of `.default()` 
 
 The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onError` option will be triggered (and `error.routerCode` will be set to `VALIDATE_SEARCH` and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
 
+#### Adapters
+
+When using a library like [Zod](https://zod.dev/) to validate search params you might want to `transform` search params before committing the search params to the URL. A common `zod` `transform` is `default` for example.
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: z.number().default(1),
+  filter: z.string().default(''),
+  sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: productSearchSchema,
+})
+```
+
+It might be surprising that when you try to navigate to this route, `search` is required. The following `Link` will type error as `search` is missing.
+
+```tsx
+<Link to="/shop/products" />
+```
+
+For validation libraries we recommend using adapters which infer the correct `input` and `output` types.
+
+### Zod Adapter
+
+An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: z.number().default(1),
+  filter: z.string().default(''),
+  sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: zodSearchValidator(productSearchSchema),
+})
+```
+
+The important part here is the following use of `Link` no longer requires `search` params
+
+```tsx
+<Link to="/shop/products" />
+```
+
+However the use of `catch` here overrides the types and makes `page`, `filter` and `sort` `unknown` causing type loss. We have handled this case by providing a `fallback` generic function which retains the types but provides a `fallback` value when validation fails
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { fallback, zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: fallback(z.number(), 1).default(1),
+  filter: fallback(z.string(), '').default(''),
+  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
+    'newest',
+  ),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: zodSearchValidator(productSearchSchema),
+})
+```
+
+Therefore when navigating to this route, `search` is optional and retains the correct types.
+
+While not recommended, it is also possible to configure `input` and `output` type in case the `output` type is more accurate than the `input` type
+
+```tsx
+const productSearchSchema = z.object({
+  page: fallback(z.number(), 1).default(1),
+  filter: fallback(z.string(), '').default(''),
+  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
+    'newest',
+  ),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: zodSearchValidator({
+    schema: productSearchSchema,
+    input: 'output',
+    output: 'input',
+  }),
+})
+```
+
+This provides flexibility in which type you want to infer for navigation and which types you want to infer for reading search params.
+
+### Valibot Adapter
+
+When using [Valibot](https://valibot.dev/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
+
+```tsx
+import { valibotSearchValidator } from '@tanstack/router-valibot-adapter'
+import { createFileRoute } from '@tanstack/react-router'
+import * as v from 'valibot'
+
+const productSearchSchema = v.object({
+  page: v.optional(v.fallback(v.number(), 1), 1),
+  filter: v.optional(v.fallback(v.string(), ''), ''),
+  sort: v.optional(
+    v.fallback(v.picklist(['newest', 'oldest', 'price']), 'newest'),
+    'newest',
+  ),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: valibotSearchValidator(productSearchSchema),
+})
+```
+
+### Arktype Adapter
+
+[!WARNING]
+This adapter expects the arktype beta
+
+When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
+
+```tsx
+import { arkTypeSearchValidator } from '@tanstack/router-arktype-adapter'
+import { createFileRoute } from '@tanstack/react-router'
+import * as v from 'valibot'
+import { type } from 'arktype'
+
+const productSearchSchema = type({
+  page: 'number = 1',
+  filter: 'string = ""',
+  sort: '"newest" | "oldest" | "price" = "newest"',
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: arkTypeSearchValidator(productSearchSchema),
+})
+```
+
 ## Reading Search Params
 
 Once your search params have been validated and typed, you're finally ready to start reading and writing to them. There are a few ways to do this in TanStack Router, so let's check them out.

@@ -16,6 +16,9 @@ overrides:
   '@tanstack/router-plugin': workspace:*
   '@tanstack/router-vite-plugin': workspace:*
   '@tanstack/react-router-with-query': workspace:*
+  '@tanstack/router-zod-adapter': workspace:*
+  '@tanstack/router-valibot-adapter': workspace:*
+  '@tanstack/router-arktype-adapter': workspace:*
   '@tanstack/start': workspace:*
   '@tanstack/start-vite-plugin': workspace:*
   temp-react: 0.0.0-experimental-035a41c4e-20230704
@@ -57,7 +60,7 @@ importers:
         version: 10.4.5
       nx:
         specifier: ^19.5.6
-        version: 19.5.6(@swc/core@1.7.6)
+        version: 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3))
       prettier:
         specifier: ^3.3.3
         version: 3.3.3
@@ -1011,6 +1014,58 @@ importers:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
 
+  examples/react/search-validator-adapters:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.51.21
+        version: 5.51.21(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-arktype-adapter':
+        specifier: workspace:*
+        version: link:../../../packages/router-arktype-adapter
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/router-valibot-adapter':
+        specifier: workspace:*
+        version: link:../../../packages/router-valibot-adapter
+      '@tanstack/router-zod-adapter':
+        specifier: workspace:*
+        version: link:../../../packages/router-zod-adapter
+      arktype:
+        specifier: ^2.0.0-beta.5
+        version: 2.0.0-beta.5
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      valibot:
+        specifier: ^0.37.0
+        version: 0.37.0(typescript@5.5.3)
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.3.5(@types/node@20.14.9)(terser@5.31.1))
+      vite:
+        specifier: ^5.3.5
+        version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
+
   examples/react/start-basic:
     dependencies:
       '@tanstack/react-router':
@@ -1798,6 +1853,21 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
 
+  packages/router-arktype-adapter:
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@testing-library/jest-dom':
+        specifier: ^6.4.6
+        version: 6.4.8
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.0.0(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      arktype:
+        specifier: ^2.0.0-beta.2
+        version: 2.0.0-beta.5
+
   packages/router-cli:
     dependencies:
       '@tanstack/router-generator':
@@ -1903,7 +1973,7 @@ importers:
         version: 1.11.0
       webpack:
         specifier: '>=5.92.0'
-        version: 5.93.0(@swc/core@1.7.6)(esbuild@0.21.5)
+        version: 5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -1911,6 +1981,21 @@ importers:
       vite:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
+
+  packages/router-valibot-adapter:
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@testing-library/jest-dom':
+        specifier: ^6.4.6
+        version: 6.4.8
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.0.0(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      valibot:
+        specifier: ^0.36.0
+        version: 0.36.0
 
   packages/router-vite-plugin:
     dependencies:
@@ -1921,6 +2006,21 @@ importers:
       vite:
         specifier: ^5.3.5
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
+
+  packages/router-zod-adapter:
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@testing-library/jest-dom':
+        specifier: ^6.4.6
+        version: 6.4.8
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.0.0(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
 
   packages/start:
     dependencies:
@@ -2056,6 +2156,12 @@ packages:
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
+
+  '@ark/schema@0.3.2':
+    resolution: {integrity: sha512-StWlBec++TxgDgpEUAkOxB7rqCZmOJr1dsW0P44vcgoitGtlQN13eCW1MlHlzScTUWA5iOtyHD+TsA0gKm4X0w==}
+
+  '@ark/util@0.2.1':
+    resolution: {integrity: sha512-V+h43ZoXCT79K0OiwRE7oebcIeVHZ8YL/Xf0mCUCoIEuWnAJOS8zPwQzwGJGwys7MFHgn3YQYWL/nETuEvgcpQ==}
 
   '@babel/code-frame@7.24.7':
     resolution: {integrity: sha512-BcYH1CVJBO9tvyIZ2jVeXgSIMvGZ2FDRvDdOIVQyuklNKSsx+eppDEBq/g47Ayw+RqNFE+URvOShmf+f/qwAlA==}
@@ -5174,6 +5280,9 @@ packages:
 
   aria-query@5.3.0:
     resolution: {integrity: sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A==}
+
+  arktype@2.0.0-beta.5:
+    resolution: {integrity: sha512-3bNUyiA2iuvyV/rfiErLli9HrrvC6W4XT8Ja6SAEihljM60PRQhYJEr5jM4MGGtj1k/oFxgOkHd++VjQrm6SoA==}
 
   array-buffer-byte-length@1.0.1:
     resolution: {integrity: sha512-ahC5W1xgou+KTXix4sAO8Ki12Q+jf4i0+tmk3sC+zgcynshkHxzpXdImBehiUYKKKDwvfFiJl1tZt6ewscS1Mg==}
@@ -9352,6 +9461,17 @@ packages:
     resolution: {integrity: sha512-fcRLaS4H/hrZk9hYwbdRM35D0U8IYMfEClhXxCivOojl+yTRAZH3Zy2sSy6qVCiGbV9YAtPssP6jaChqC9vPCg==}
     engines: {node: '>= 10.13.0'}
 
+  valibot@0.36.0:
+    resolution: {integrity: sha512-CjF1XN4sUce8sBK9TixrDqFM7RwNkuXdJu174/AwmQUB62QbCQADg5lLe8ldBalFgtj1uKj+pKwDJiNo4Mn+eQ==}
+
+  valibot@0.37.0:
+    resolution: {integrity: sha512-FQz52I8RXgFgOHym3XHYSREbNtkgSjF9prvMFH1nBsRyfL6SfCzoT1GuSDTlbsuPubM7/6Kbw0ZMQb8A+V+VsQ==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   validator@13.12.0:
     resolution: {integrity: sha512-c1Q0mCiPlgdTVVVIJIrBuxNicYE+t/7oKeI9MWLj3fh/uq2Pxh/3eeWbVZ4OcGW1TUf53At0njHw5SMdA3tmMg==}
     engines: {node: '>= 0.10'}
@@ -9729,6 +9849,12 @@ snapshots:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
+
+  '@ark/schema@0.3.2':
+    dependencies:
+      '@ark/util': 0.2.1
+
+  '@ark/util@0.2.1': {}
 
   '@babel/code-frame@7.24.7':
     dependencies:
@@ -11331,9 +11457,9 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
 
-  '@nrwl/tao@19.5.6(@swc/core@1.7.6)':
+  '@nrwl/tao@19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3))':
     dependencies:
-      nx: 19.5.6(@swc/core@1.7.6)
+      nx: 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3))
       tslib: 2.6.2
     transitivePeerDependencies:
       - '@swc-node/register'
@@ -13112,6 +13238,11 @@ snapshots:
   aria-query@5.3.0:
     dependencies:
       dequal: 2.0.3
+
+  arktype@2.0.0-beta.5:
+    dependencies:
+      '@ark/schema': 0.3.2
+      '@ark/util': 0.2.1
 
   array-buffer-byte-length@1.0.1:
     dependencies:
@@ -16109,10 +16240,10 @@ snapshots:
 
   nwsapi@2.2.12: {}
 
-  nx@19.5.6(@swc/core@1.7.6):
+  nx@19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3)):
     dependencies:
       '@napi-rs/wasm-runtime': 0.2.4
-      '@nrwl/tao': 19.5.6(@swc/core@1.7.6)
+      '@nrwl/tao': 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3))
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.7
@@ -17379,14 +17510,14 @@ snapshots:
       '@swc/core': 1.7.6(@swc/helpers@0.5.3)
       esbuild: 0.21.5
 
-  terser-webpack-plugin@5.3.10(@swc/core@1.7.6)(esbuild@0.21.5)(webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.21.5)):
+  terser-webpack-plugin@5.3.10(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5)(webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 3.3.0
       serialize-javascript: 6.0.2
       terser: 5.31.1
-      webpack: 5.93.0(@swc/core@1.7.6)(esbuild@0.21.5)
+      webpack: 5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5)
     optionalDependencies:
       '@swc/core': 1.7.6(@swc/helpers@0.5.3)
       esbuild: 0.21.5
@@ -17774,6 +17905,12 @@ snapshots:
 
   v8flags@4.0.1: {}
 
+  valibot@0.36.0: {}
+
+  valibot@0.37.0(typescript@5.5.3):
+    optionalDependencies:
+      typescript: 5.5.3
+
   validator@13.12.0: {}
 
   vary@1.1.2: {}
@@ -18132,6 +18269,37 @@ snapshots:
 
   webpack-virtual-modules@0.6.1: {}
 
+  webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5):
+    dependencies:
+      '@types/eslint-scope': 3.7.7
+      '@types/estree': 1.0.5
+      '@webassemblyjs/ast': 1.12.1
+      '@webassemblyjs/wasm-edit': 1.12.1
+      '@webassemblyjs/wasm-parser': 1.12.1
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
+      browserslist: 4.23.3
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.17.0
+      es-module-lexer: 1.5.4
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 3.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.10(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5)(webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5))
+      watchpack: 2.4.1
+      webpack-sources: 3.2.3
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
+
   webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5)(webpack-cli@5.1.4):
     dependencies:
       '@types/eslint-scope': 3.7.7
@@ -18160,37 +18328,6 @@ snapshots:
       webpack-sources: 3.2.3
     optionalDependencies:
       webpack-cli: 5.1.4(webpack-dev-server@5.0.4)(webpack@5.93.0)
-    transitivePeerDependencies:
-      - '@swc/core'
-      - esbuild
-      - uglify-js
-
-  webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.21.5):
-    dependencies:
-      '@types/eslint-scope': 3.7.7
-      '@types/estree': 1.0.5
-      '@webassemblyjs/ast': 1.12.1
-      '@webassemblyjs/wasm-edit': 1.12.1
-      '@webassemblyjs/wasm-parser': 1.12.1
-      acorn: 8.12.1
-      acorn-import-attributes: 1.9.5(acorn@8.12.1)
-      browserslist: 4.23.3
-      chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.17.0
-      es-module-lexer: 1.5.4
-      eslint-scope: 5.1.1
-      events: 3.3.0
-      glob-to-regexp: 0.4.1
-      graceful-fs: 4.2.11
-      json-parse-even-better-errors: 2.3.1
-      loader-runner: 4.3.0
-      mime-types: 2.1.35
-      neo-async: 2.6.2
-      schema-utils: 3.3.0
-      tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(@swc/core@1.7.6)(esbuild@0.21.5)(webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.21.5))
-      watchpack: 2.4.1
-      webpack-sources: 3.2.3
     transitivePeerDependencies:
       - '@swc/core'
       - esbuild

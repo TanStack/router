@@ -14,6 +14,7 @@ import type {
   NavigateOptions,
   ParsedLocation,
   Route,
+  SearchSchemaInput,
 } from '../src'
 
 test('when creating the root', () => {
@@ -1355,4 +1356,125 @@ test('when beforeLoad throws', () => {
   })
 
   expectTypeOf(invoicesRoute.useRouteContext()).toEqualTypeOf<{}>()
+})
+
+test('when creating a child route with no explicit search input', () => {
+  const rootRoute = createRootRoute({
+    validateSearch: (input) => {
+      expectTypeOf(input).toEqualTypeOf<Record<string, unknown>>()
+      return {
+        page: 0,
+      }
+    },
+  })
+
+  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
+
+  const rootRouteWithContext = createRootRouteWithContext()({
+    validateSearch: (input) => {
+      expectTypeOf(input).toEqualTypeOf<Record<string, unknown>>()
+      return {
+        page: 0,
+      }
+    },
+  })
+
+  expectTypeOf(rootRouteWithContext.useSearch()).toEqualTypeOf<{
+    page: number
+  }>()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: (input) => {
+      expectTypeOf(input).toEqualTypeOf<Record<string, unknown>>()
+      return {
+        page: 0,
+      }
+    },
+  })
+
+  expectTypeOf(indexRoute.useSearch()).toEqualTypeOf<{ page: number }>()
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+
+  const router = createRouter({ routeTree })
+
+  const navigate = indexRoute.useNavigate()
+
+  expectTypeOf(navigate<'/', typeof router, '/'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ page: number }>()
+
+  expectTypeOf(navigate<'/', typeof router, '/'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ page: number }>()
+
+  expectTypeOf(navigate<'/', typeof router, '/'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{ page: number }>()
+})
+
+test('when creating a child route with an explicit search input', () => {
+  const rootRoute = createRootRoute({
+    validateSearch: (input: SearchSchemaInput & { input: string }) => {
+      return {
+        page: input.input,
+      }
+    },
+  })
+
+  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: string }>()
+
+  const rootRouteWithContext = createRootRouteWithContext()({
+    validateSearch: (input: SearchSchemaInput & { input: string }) => {
+      return {
+        page: input.input,
+      }
+    },
+  })
+
+  expectTypeOf(rootRouteWithContext.useSearch()).toEqualTypeOf<{
+    page: string
+  }>()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: (input: SearchSchemaInput & { input: string }) => {
+      return {
+        page: input.input,
+      }
+    },
+  })
+
+  expectTypeOf(indexRoute.useSearch()).toEqualTypeOf<{ page: string }>()
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+
+  const router = createRouter({ routeTree })
+
+  const navigate = indexRoute.useNavigate()
+
+  expectTypeOf(navigate<'/', typeof router, '/'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ input: string }>()
+
+  expectTypeOf(navigate<'/', typeof router, '/'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ input: string }>()
+
+  expectTypeOf(navigate<'/', typeof router, '/'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{ page: string }>()
 })

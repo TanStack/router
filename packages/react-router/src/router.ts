@@ -129,8 +129,6 @@ export type HydrationCtx = {
 export type InferRouterContext<TRouteTree extends AnyRoute> =
   TRouteTree extends RootRoute<
     any,
-    any,
-    any,
     infer TRouterContext extends AnyContext,
     any,
     any,

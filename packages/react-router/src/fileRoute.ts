@@ -12,13 +12,12 @@ import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
-  AnySearchSchema,
+  AnySearchValidator,
+  DefaultSearchValidator,
   FileBaseRouteOptions,
   ResolveAllParamsFromParent,
-  ResolveFullSearchSchema,
-  ResolveFullSearchSchemaInput,
   ResolveLoaderData,
-  ResolveSearchSchemaUsed,
+  ResolveRouteContext,
   Route,
   RouteConstraints,
   RouteContext,
@@ -73,17 +72,7 @@ export class FileRoute<
   }
 
   createRoute = <
-    TSearchSchemaInput = Record<string, unknown>,
-    TSearchSchema = {},
-    TSearchSchemaUsed = ResolveSearchSchemaUsed<
-      TSearchSchemaInput,
-      TSearchSchema
-    >,
-    TFullSearchSchemaInput = ResolveFullSearchSchemaInput<
-      TParentRoute,
-      TSearchSchemaUsed
-    >,
-    TFullSearchSchema = ResolveFullSearchSchema<TParentRoute, TSearchSchema>,
+    TSearchValidator extends AnySearchValidator = DefaultSearchValidator,
     TParams = Record<ParsePathParams<TPath>, string>,
     TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
     TRouteContextFn = AnyContext,
@@ -96,8 +85,7 @@ export class FileRoute<
     options?: FileBaseRouteOptions<
       TParentRoute,
       TPath,
-      TSearchSchemaInput,
-      TSearchSchema,
+      TSearchValidator,
       TParams,
       TLoaderDeps,
       TLoaderDataReturn,
@@ -109,7 +97,7 @@ export class FileRoute<
         TParentRoute,
         TId,
         TAllParams,
-        TFullSearchSchema,
+        TSearchValidator,
         TLoaderData,
         TLoaderDeps,
         AnyContext,
@@ -122,11 +110,7 @@ export class FileRoute<
     TFullPath,
     TFilePath,
     TId,
-    TSearchSchemaInput,
-    TSearchSchema,
-    TSearchSchemaUsed,
-    TFullSearchSchemaInput,
-    TFullSearchSchema,
+    TSearchValidator,
     TParams,
     TAllParams,
     AnyContext,
@@ -185,10 +169,10 @@ export function FileRouteLoader<
 
 export type LazyRouteOptions = Pick<
   UpdatableRouteOptions<
-    any,
+    AnyRoute,
     string,
     AnyPathParams,
-    AnySearchSchema,
+    AnySearchValidator,
     {},
     AnyContext,
     AnyContext,
