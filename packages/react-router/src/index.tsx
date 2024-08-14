@@ -139,6 +139,7 @@ export {
 export type {
   AnyPathParams,
   SearchSchemaInput,
+  SearchValidatorAdapter,
   AnySearchSchema,
   AnyContext,
   RouteContext,
@@ -154,9 +155,6 @@ export type {
   MetaDescriptor,
   RouteLinkEntry,
   ParseParamsFn,
-  SearchSchemaValidator,
-  SearchSchemaValidatorObj,
-  SearchSchemaValidatorFn,
   RouteLoaderFn,
   LoaderFnContext,
   SearchFilter,
