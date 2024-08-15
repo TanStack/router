@@ -12,7 +12,7 @@ export function Auth({
   return (
     <div className="fixed inset-0 bg-white dark:bg-black flex items-start justify-center p-8">
       <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
-        <h1 className="text-2xl font-bold mb-4">Login</h1>
+        <h1 className="text-2xl font-bold mb-4">{actionText}</h1>
         <form
           onSubmit={(e) => {
             e.preventDefault()

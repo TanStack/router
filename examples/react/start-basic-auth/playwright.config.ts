@@ -12,12 +12,14 @@ export default defineConfig({
   testDir: './tests',
 
   reporter: [
-    replayReporter({
-      apiKey: process.env.REPLAY_API_KEY,
-      upload: true,
-    }),
+    process.env.CI
+      ? replayReporter({
+          apiKey: process.env.REPLAY_API_KEY,
+          upload: true,
+        })
+      : undefined,
     ['line'],
-  ],
+  ].filter(Boolean) as any,
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -26,20 +28,27 @@ export default defineConfig({
 
   webServer: {
     // TODO: build && start seems broken, use that if it's working
-    command: 'pnpm run dev',
+    command: 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
+    stderr: 'pipe',
   },
 
   projects: [
     {
-      name: 'replay-chromium',
-      use: { ...replayDevices['Replay Chromium'] },
+      name: 'mock-db-setup',
+      testMatch: 'tests/mock-db-setup.test.ts',
+      teardown: 'cleanup-mock-db',
+    },
+    {
+      name: 'cleanup-mock-db',
+      testMatch: 'tests/mock-db-teardown.test.ts',
     },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['mock-db-setup'],
     },
   ],
 })

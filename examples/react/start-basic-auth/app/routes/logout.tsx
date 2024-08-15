@@ -1,9 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { createServerFn, useServerFn } from '@tanstack/start'
-import { useEffect } from 'react'
+import { createServerFn } from '@tanstack/start'
 import { sessionStorage } from '~/utils/session'
 
-const logout = createServerFn('POST', async (_: void, { request }) => {
+const logoutFn = createServerFn('POST', async (_: void, { request }) => {
   const session = await sessionStorage.getSession(request.headers.get('cookie'))
 
   throw redirect({
@@ -15,9 +14,6 @@ const logout = createServerFn('POST', async (_: void, { request }) => {
 })
 
 export const Route = createFileRoute('/logout')({
-  component: () => {
-    useEffect(() => {
-      useServerFn(logout)()
-    }, [])
-  },
+  preload: false,
+  loader: () => logoutFn(),
 })

@@ -21,8 +21,8 @@ import { seo } from '~/utils/seo.js'
 import { sessionStorage } from '~/utils/session.js'
 
 const fetchUser = createServerFn('GET', async (_, { request }) => {
-  const session = await sessionStorage.getSession(request.headers.get('cookie'))
-
+  const cookie = request.headers.get('cookie')
+  const session = await sessionStorage.getSession(cookie)
   const userEmail = session.get('userEmail')
 
   if (!userEmail) {
