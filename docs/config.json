@@ -203,6 +203,10 @@
               "to": "framework/react/examples/start-basic"
             },
             {
+              "label": "Start Basic + React Query",
+              "to": "framework/react/examples/start-basic-react-query"
+            },
+            {
               "label": "Basic (file-based)",
               "to": "framework/react/examples/basic-file-based"
             },
