@@ -231,10 +231,10 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 ### `onError` property
 
-- Type: `(error: unknown) => void`
+- Type: `(error: any) => void`
 - Optional
 - A function that will be called when an error is thrown during a navigation or preload event.
-- If this function returns a `redirect` object, the redirect will be applied immediately.
+- If this function throws a [`redirect`](./redirectFunction.md), then the router will process and apply the redirect immediately.
 
 ### `onEnter` property
 
