@@ -203,10 +203,6 @@
               "to": "framework/react/examples/start-basic"
             },
             {
-              "label": "Start Basic (RSC)",
-              "to": "framework/react/examples/start-basic-rsc"
-            },
-            {
               "label": "Basic (file-based)",
               "to": "framework/react/examples/basic-file-based"
             },
