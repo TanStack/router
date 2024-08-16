@@ -4,14 +4,13 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "generate": "pnpx prisma generate",
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
     "format": "prettier --write '**/*' --ignore-unknown",
     "prisma-generate": "prisma generate",
-    "test:e2e": "pnpx run prisma-generate && playwright test --project=chromium"
+    "test:e2e": "pnpm run prisma-generate && playwright test --project=chromium"
   },
   "dependencies": {
     "@prisma/client": "5.17.0",
