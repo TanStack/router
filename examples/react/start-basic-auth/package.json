@@ -10,8 +10,8 @@
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
     "format": "prettier --write '**/*' --ignore-unknown",
-    "test:e2e": "playwright test --project=chromium",
-    "test:e2e:replay": "playwright test --project=replay-chromium"
+    "prisma-generate": "prisma generate",
+    "test:e2e": "pnpx run prisma-generate && playwright test --project=chromium"
   },
   "dependencies": {
     "@prisma/client": "5.17.0",
