@@ -271,10 +271,9 @@ export interface RouterOptions<
    */
   defaultPreloadStaleTime?: number
   /**
-   * Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
-   *
    * The default `defaultPreloadGcTime` a route should use if no preloadGcTime is provided.
    *
+   * @default 1_800_000 `(30 minutes)`
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloadgctime-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
    */
@@ -287,10 +286,18 @@ export interface RouterOptions<
    */
   defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
   /**
-   * If set to `true`, all navigation actions will wrapped in `document.startViewTransition()`.
+   * If `true`, route navigations will called using `document.startViewTransition()`.
+   *
+   * If the browser does not support this api, this option will be ignored.
+   *
+   * See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultviewtransition-property)
    */
   defaultViewTransition?: boolean
   /**
+   * @default 'fuzzy'
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundmode-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
    */
   notFoundMode?: 'root' | 'fuzzy'
@@ -657,6 +664,7 @@ export class Router<
       defaultPendingMinMs: 500,
       context: undefined!,
       ...options,
+      notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
       transformer: options.transformer ?? {
