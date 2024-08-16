@@ -1,5 +1,4 @@
 import { defineConfig, devices } from '@playwright/test'
-import { devices as replayDevices, replayReporter } from '@replayio/playwright'
 
 import dotenv from 'dotenv'
 
@@ -11,15 +10,7 @@ dotenv.config()
 export default defineConfig({
   testDir: './tests',
 
-  reporter: [
-    process.env.CI
-      ? replayReporter({
-          apiKey: process.env.REPLAY_API_KEY,
-          upload: true,
-        })
-      : undefined,
-    ['line'],
-  ].filter(Boolean) as any,
+  reporter: [['line']],
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -32,7 +23,6 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
-    stderr: 'pipe',
   },
 
   projects: [
