@@ -29,6 +29,7 @@ import {
 } from './path'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
+import { defaultTransformer } from './transformer'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -41,12 +42,13 @@ import type {
   AnyContext,
   AnyRoute,
   AnyRouteWithContext,
-  AnySearchSchema,
+  BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
   NotFoundRouteComponent,
   RootRoute,
   RouteComponent,
+  RouteContextOptions,
   RouteMask,
 } from './route'
 import type {
@@ -77,6 +79,7 @@ import type {
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
+import type { RouterTransformer } from './transformer'
 
 //
 
@@ -450,10 +453,6 @@ export interface RouterOptions<
   isServer?: boolean
 }
 
-export interface RouterTransformer {
-  stringify: (obj: unknown) => string
-  parse: (str: string) => unknown
-}
 export interface RouterErrorSerializer<TSerializedError> {
   serialize: (err: unknown) => TSerializedError
   deserialize: (err: TSerializedError) => unknown
@@ -667,10 +666,7 @@ export class Router<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
-      transformer: options.transformer ?? {
-        parse: JSON.parse,
-        stringify: JSON.stringify,
-      },
+      transformer: options.transformer ?? defaultTransformer,
     })
 
     if (typeof document !== 'undefined') {
@@ -1216,7 +1212,7 @@ export class Router<
       }
 
       // Update the match's context
-      const contextFnContext = {
+      const contextFnContext: RouteContextOptions<any, any, any, any> = {
         search: match.search,
         params: match.params,
         context: match.context,
@@ -1224,6 +1220,9 @@ export class Router<
         navigate: (opts: any) =>
           this.navigate({ ...opts, _fromLocation: next }),
         buildLocation: this.buildLocation,
+        cause: match.cause,
+        abortController: match.abortController,
+        preload: !!match.preload,
       }
 
       // Get the route context
@@ -2018,7 +2017,13 @@ export class Router<
                   const { search, params, context, cause } =
                     this.getMatch(matchId)!
 
-                  const beforeLoadFnContext = {
+                  const beforeLoadFnContext: BeforeLoadContextOptions<
+                    any,
+                    any,
+                    any,
+                    any,
+                    any
+                  > = {
                     search,
                     abortController,
                     params,
