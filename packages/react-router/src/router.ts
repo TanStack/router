@@ -41,12 +41,13 @@ import type {
   AnyContext,
   AnyRoute,
   AnyRouteWithContext,
-  AnySearchSchema,
+  BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
   NotFoundRouteComponent,
   RootRoute,
   RouteComponent,
+  RouteContextOptions,
   RouteMask,
 } from './route'
 import type {
@@ -1216,7 +1217,7 @@ export class Router<
       }
 
       // Update the match's context
-      const contextFnContext = {
+      const contextFnContext: RouteContextOptions<any, any, any, any> = {
         search: match.search,
         params: match.params,
         context: match.context,
@@ -1224,6 +1225,9 @@ export class Router<
         navigate: (opts: any) =>
           this.navigate({ ...opts, _fromLocation: next }),
         buildLocation: this.buildLocation,
+        cause: match.cause,
+        abortController: match.abortController,
+        preload: !!match.preload,
       }
 
       // Get the route context
@@ -2018,7 +2022,13 @@ export class Router<
                   const { search, params, context, cause } =
                     this.getMatch(matchId)!
 
-                  const beforeLoadFnContext = {
+                  const beforeLoadFnContext: BeforeLoadContextOptions<
+                    any,
+                    any,
+                    any,
+                    any,
+                    any
+                  > = {
                     search,
                     abortController,
                     params,
