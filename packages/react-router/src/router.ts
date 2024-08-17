@@ -29,6 +29,7 @@ import {
 } from './path'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
+import { defaultTransformer } from './transformer'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -78,6 +79,7 @@ import type {
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
+import type { RouterTransformer } from './transformer'
 
 //
 
@@ -451,10 +453,6 @@ export interface RouterOptions<
   isServer?: boolean
 }
 
-export interface RouterTransformer {
-  stringify: (obj: unknown) => string
-  parse: (str: string) => unknown
-}
 export interface RouterErrorSerializer<TSerializedError> {
   serialize: (err: unknown) => TSerializedError
   deserialize: (err: TSerializedError) => unknown
@@ -668,10 +666,7 @@ export class Router<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
-      transformer: options.transformer ?? {
-        parse: JSON.parse,
-        stringify: JSON.stringify,
-      },
+      transformer: options.transformer ?? defaultTransformer,
     })
 
     if (typeof document !== 'undefined') {

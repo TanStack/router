@@ -214,7 +214,6 @@ export type {
   RouterContextOptions,
   TrailingSlashOption,
   RouterOptions,
-  RouterTransformer,
   RouterErrorSerializer,
   RouterState,
   ListenerFn,
@@ -255,6 +254,9 @@ export {
   stringifySearchWith,
 } from './searchParams'
 export type { SearchSerializer, SearchParser } from './searchParams'
+
+export { defaultTransformer } from './transformer'
+export type { RouterTransformer } from './transformer'
 
 export { useBlocker, Block } from './useBlocker'
 
