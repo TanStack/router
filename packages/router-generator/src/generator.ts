@@ -198,6 +198,13 @@ export async function generator(config: Config) {
   }
 
   const start = Date.now()
+
+  const prettierOptions: prettier.Options = {
+    semi: config.semicolons,
+    singleQuote: config.quoteStyle === 'single',
+    parser: 'typescript',
+  }
+
   const routePathIdPrefix = config.routeFilePrefix ?? ''
   const beforeRouteNodes = await getRouteNodes(config)
   const rootRouteNode = beforeRouteNodes.find(
@@ -229,7 +236,7 @@ export async function generator(config: Config) {
   // the handleRootNode function is not being collapsed into the handleNode function
   // because it requires only a subset of the logic that the handleNode function requires
   // and it's easier to read and maintain this way
-  const handleRootNode = (node?: RouteNode) => {
+  const handleRootNode = async (node?: RouteNode) => {
     if (!node) {
       // currently this is not being handled, but it could be in the future
       // for example to handle a virtual root route
@@ -240,26 +247,29 @@ export async function generator(config: Config) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const replaced = [
-        `import * as React from 'react'`,
-        `import { Outlet, createRootRoute } from '@tanstack/react-router'`,
-        `export const Route = createRootRoute({
+      const replaced = `import * as React from 'react';
+import { Outlet, createRootRoute } from '@tanstack/react-router';
+
+export const Route = createRootRoute({
   component: () => (
     <React.Fragment>
-      <div>Hello World!</div>
+      <div>Hello "${rootPathId}"!</div>
       <Outlet />
     </React.Fragment>
   ),
-})`,
-      ].join('\n\n')
+})
+
+`
 
       logger.log(`🟡 Creating ${node.fullPath}`)
-
-      fs.writeFileSync(node.fullPath, replaced)
+      fs.writeFileSync(
+        node.fullPath,
+        await prettier.format(replaced, prettierOptions),
+      )
     }
   }
 
-  handleRootNode(rootRouteNode)
+  await handleRootNode(rootRouteNode)
 
   const handleNode = async (node: RouteNode) => {
     let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
@@ -708,11 +718,7 @@ export async function generator(config: Config) {
           createRouteManifest(),
           'ROUTE_MANIFEST_END */',
         ].join('\n'),
-    {
-      semi: config.semicolons,
-      singleQuote: config.quoteStyle === 'single',
-      parser: 'typescript',
-    },
+    prettierOptions,
   )
 
   if (!checkLatest()) return
