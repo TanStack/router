@@ -413,6 +413,33 @@ export async function generator(config: Config) {
     routeNodes.push(node)
   }
 
+  const handleRootNode = (node: RouteNode) => {
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
+    if (!routeCode) {
+      const replaced = [
+        `import * as React from 'react'`,
+        `import { Outlet, createRootRoute } from '@tanstack/react-router'`,
+        `export const Route = createRootRoute({
+  component: () => (
+    <React.Fragment>
+      <div>Hello World!</div>
+      <Outlet />
+    </React.Fragment>
+  ),
+})`,
+      ].join('\n\n')
+
+      logger.log(`🟡 Creating ${node.fullPath}`)
+
+      fs.writeFileSync(node.fullPath, replaced)
+    }
+  }
+
+  if (rootRouteNode) {
+    handleRootNode(rootRouteNode)
+  }
+
   for (const node of preRouteNodes) {
     await handleNode(node)
   }
