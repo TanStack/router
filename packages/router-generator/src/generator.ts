@@ -226,6 +226,38 @@ export async function generator(config: Config) {
   // build up a tree based on the routeNodes' routePath
   const routeNodes: Array<RouteNode> = []
 
+  const handleRootNode = (node?: RouteNode) => {
+    if (!node) {
+      // currently this is not being handled, but it could be in the future
+      // for example to handle a virtual root route
+      return
+    }
+
+    // from here on, we are only handling the root node that's present in the file system
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
+    if (!routeCode) {
+      const replaced = [
+        `import * as React from 'react'`,
+        `import { Outlet, createRootRoute } from '@tanstack/react-router'`,
+        `export const Route = createRootRoute({
+  component: () => (
+    <React.Fragment>
+      <div>Hello World!</div>
+      <Outlet />
+    </React.Fragment>
+  ),
+})`,
+      ].join('\n\n')
+
+      logger.log(`🟡 Creating ${node.fullPath}`)
+
+      fs.writeFileSync(node.fullPath, replaced)
+    }
+  }
+
+  handleRootNode(rootRouteNode)
+
   const handleNode = async (node: RouteNode) => {
     let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
 
@@ -411,33 +443,6 @@ export async function generator(config: Config) {
     }
 
     routeNodes.push(node)
-  }
-
-  const handleRootNode = (node: RouteNode) => {
-    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
-
-    if (!routeCode) {
-      const replaced = [
-        `import * as React from 'react'`,
-        `import { Outlet, createRootRoute } from '@tanstack/react-router'`,
-        `export const Route = createRootRoute({
-  component: () => (
-    <React.Fragment>
-      <div>Hello World!</div>
-      <Outlet />
-    </React.Fragment>
-  ),
-})`,
-      ].join('\n\n')
-
-      logger.log(`🟡 Creating ${node.fullPath}`)
-
-      fs.writeFileSync(node.fullPath, replaced)
-    }
-  }
-
-  if (rootRouteNode) {
-    handleRootNode(rootRouteNode)
   }
 
   for (const node of preRouteNodes) {
