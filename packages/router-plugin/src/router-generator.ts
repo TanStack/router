@@ -34,7 +34,10 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     setLock(true)
 
     try {
-      await generator(userConfig)
+      await generator({
+        ...userConfig,
+        routesDirectory: getRoutesDirectoryPath(),
+      })
     } catch (err) {
       console.error(err)
       console.info()
