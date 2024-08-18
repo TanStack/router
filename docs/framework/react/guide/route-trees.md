@@ -121,4 +121,4 @@ Code-based routes are routes that are configured using the `RootRoute` and `Rout
 
 ## Case-Sensitivity
 
-Route paths by default are **not case-sensitive** by default. This means that `about.tsx` and `AbOuT.tsx` are considered the same path out-of-the box. This is a good thing, since this is the way most of the web works anyway! That said, if you truly want to be weird and match a path with a different case, you can set a route's `caseSensitive` option to `true`.
+Route paths are **not case-sensitive** _by default_. This means that `about.tsx` and `AbOuT.tsx` are considered the same path out-of-the box. This is a good thing, since this is the way most of the web works anyway! That said, if you truly want to be weird and match a path with a different case, you can set a route's `caseSensitive` option to `true`.
