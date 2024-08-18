@@ -85,7 +85,6 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       async configResolved(config) {
         ROOT = config.root
         userConfig = getConfig(options, ROOT)
-        console.log('userConfig', userConfig)
 
         await run(generate)
       },
