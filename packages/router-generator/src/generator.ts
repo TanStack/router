@@ -226,6 +226,9 @@ export async function generator(config: Config) {
   // build up a tree based on the routeNodes' routePath
   const routeNodes: Array<RouteNode> = []
 
+  // the handleRootNode function is not being collapsed into the handleNode function
+  // because it requires only a subset of the logic that the handleNode function requires
+  // and it's easier to read and maintain this way
   const handleRootNode = (node?: RouteNode) => {
     if (!node) {
       // currently this is not being handled, but it could be in the future
