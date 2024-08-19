@@ -112,7 +112,7 @@ export function Transitioner() {
       }))
 
       if (!router.isServer) {
-        if ((document as any).querySelector) {
+        if (tyepof document !== 'undefined' && (document as any).querySelector) {
           if (router.state.location.hash !== '') {
             const el = document.getElementById(router.state.location.hash)
             if (el) {
