@@ -111,13 +111,11 @@ export function Transitioner() {
         resolvedLocation: s.location,
       }))
 
-      if (!router.isServer) {
-        if (tyepof document !== 'undefined' && (document as any).querySelector) {
-          if (router.state.location.hash !== '') {
-            const el = document.getElementById(router.state.location.hash)
-            if (el) {
-              el.scrollIntoView()
-            }
+      if (typeof document !== 'undefined' && (document as any).querySelector) {
+        if (router.state.location.hash !== '') {
+          const el = document.getElementById(router.state.location.hash)
+          if (el) {
+            el.scrollIntoView()
           }
         }
       }
