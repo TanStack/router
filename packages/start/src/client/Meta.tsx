@@ -173,7 +173,7 @@ export const Meta = ({ children }: { children?: React.ReactNode }) => {
   React[
     typeof document !== 'undefined' ? 'useLayoutEffect' : 'useEffect'
   ](() => {
-    if (typeof document !== 'undefined') {
+    if (typeof document === 'undefined') {
       return
     }
 
