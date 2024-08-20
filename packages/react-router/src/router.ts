@@ -137,7 +137,6 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
     any,
     any,
     any,
-    any,
     any
   >
     ? TRouterContext
