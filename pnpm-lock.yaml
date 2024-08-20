@@ -60,7 +60,7 @@ importers:
         version: 10.4.5
       nx:
         specifier: ^19.5.6
-        version: 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3))
+        version: 19.5.6(@swc/core@1.7.6)
       prettier:
         specifier: ^3.3.3
         version: 3.3.3
@@ -1869,8 +1869,8 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0
       unplugin:
-        specifier: ^1.11.0
-        version: 1.11.0
+        specifier: ^1.12.2
+        version: 1.12.2
       webpack:
         specifier: '>=5.92.0'
         version: 5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5)
@@ -8855,6 +8855,10 @@ packages:
     resolution: {integrity: sha512-3r7VWZ/webh0SGgJScpWl2/MRCZK5d3ZYFcNaeci/GQ7Teop7zf0Nl2pUuz7G21BwPd9pcUPOC5KmJ2L3WgC5g==}
     engines: {node: '>=14.0.0'}
 
+  unplugin@1.12.2:
+    resolution: {integrity: sha512-bEqQxeC7rxtxPZ3M5V4Djcc4lQqKPgGe3mAWZvxcSmX5jhGxll19NliaRzQSQPrk4xJZSGniK3puLWpRuZN7VQ==}
+    engines: {node: '>=14.0.0'}
+
   unstorage@1.10.2:
     resolution: {integrity: sha512-cULBcwDqrS8UhlIysUJs2Dk0Mmt8h7B0E6mtR+relW9nZvsf/u4SkAYyNliPiPW7XtFNb5u3IUMkxGxFTTRTgQ==}
     peerDependencies:
@@ -9163,6 +9167,9 @@ packages:
 
   webpack-virtual-modules@0.6.1:
     resolution: {integrity: sha512-poXpCylU7ExuvZK8z+On3kX+S8o/2dQ/SVYueKA0D4WEMXROXgY8Ez50/bQEUmvoSMMrWcrJqCHuhAbsiwg7Dg==}
+
+  webpack-virtual-modules@0.6.2:
+    resolution: {integrity: sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ==}
 
   webpack@5.93.0:
     resolution: {integrity: sha512-Y0m5oEY1LRuwly578VqluorkXbvXKh7U3rLoQCEO04M97ScRr44afGVkI0FQFsXzysk5OgFAxjZAb9rsGQVihA==}
@@ -10898,9 +10905,9 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
 
-  '@nrwl/tao@19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3))':
+  '@nrwl/tao@19.5.6(@swc/core@1.7.6)':
     dependencies:
-      nx: 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3))
+      nx: 19.5.6(@swc/core@1.7.6)
       tslib: 2.6.2
     transitivePeerDependencies:
       - '@swc-node/register'
@@ -15442,10 +15449,10 @@ snapshots:
 
   nwsapi@2.2.12: {}
 
-  nx@19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3)):
+  nx@19.5.6(@swc/core@1.7.6):
     dependencies:
       '@napi-rs/wasm-runtime': 0.2.4
-      '@nrwl/tao': 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.3))
+      '@nrwl/tao': 19.5.6(@swc/core@1.7.6)
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.7
@@ -16920,6 +16927,13 @@ snapshots:
       webpack-sources: 3.2.3
       webpack-virtual-modules: 0.6.1
 
+  unplugin@1.12.2:
+    dependencies:
+      acorn: 8.12.1
+      chokidar: 3.6.0
+      webpack-sources: 3.2.3
+      webpack-virtual-modules: 0.6.2
+
   unstorage@1.10.2(ioredis@5.4.1):
     dependencies:
       anymatch: 3.1.3
@@ -17298,6 +17312,8 @@ snapshots:
   webpack-sources@3.2.3: {}
 
   webpack-virtual-modules@0.6.1: {}
+
+  webpack-virtual-modules@0.6.2: {}
 
   webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.3))(esbuild@0.21.5):
     dependencies:
