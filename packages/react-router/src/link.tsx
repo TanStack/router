@@ -67,12 +67,16 @@ export type Split<TValue, TIncludeTrailingSlash = true> = TValue extends unknown
 export type ParsePathParams<
   T extends string,
   TAcc = never,
-> = T extends `${string}$${infer TPossiblyParam}`
-  ? TPossiblyParam extends `${infer TParam}/${infer TRest}`
-    ? ParsePathParams<TRest, TParam extends '' ? '_splat' : TParam | TAcc>
-    : TPossiblyParam extends ''
-      ? '_splat'
-      : TPossiblyParam | TAcc
+> = T extends `${string}$${string}`
+  ? T extends `${string}$${infer TPossiblyParam}`
+    ? TPossiblyParam extends `${string}/${string}`
+      ? TPossiblyParam extends `${infer TParam}/${infer TRest}`
+        ? ParsePathParams<TRest, TParam extends '' ? TAcc : TParam | TAcc>
+        : never
+      : TPossiblyParam extends ''
+        ? TAcc
+        : TPossiblyParam | TAcc
+    : TAcc
   : TAcc
 
 export type Join<T, TDelimiter extends string = '/'> = T extends []

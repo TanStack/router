@@ -87,15 +87,30 @@ export type RouteOptions<
     NoInfer<TBeforeLoadFn>
   >
 
+export type ParseSplatParams<TPath extends string> = TPath extends `${string}$`
+  ? '_splat'
+  : TPath extends `${string}$/${string}`
+    ? '_splat'
+    : never
+
+export interface SplatParams {
+  _splat?: string
+}
+
+export type ResolveParams<TPath extends string> =
+  ParseSplatParams<TPath> extends never
+    ? Record<ParsePathParams<TPath>, string>
+    : Record<ParsePathParams<TPath>, string> & SplatParams
+
 export type ParseParamsFn<TPath extends string, TParams> = (
-  rawParams: Record<ParsePathParams<TPath>, string>,
+  rawParams: ResolveParams<TPath>,
 ) => TParams extends Record<ParsePathParams<TPath>, any>
   ? TParams
   : Record<ParsePathParams<TPath>, any>
 
 export type StringifyParamsFn<TPath extends string, TParams> = (
   params: TParams,
-) => Record<ParsePathParams<TPath>, string>
+) => ResolveParams<TPath>
 
 export type ParamsOptions<TPath extends string, TParams> = {
   params?: {
@@ -817,7 +832,7 @@ export class Route<
     TPath
   >,
   in out TSearchValidator extends AnySearchValidator = DefaultSearchValidator,
-  in out TParams = Record<ParsePathParams<TPath>, string>,
+  in out TParams = ResolveParams<TPath>,
   in out TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
   in out TRouterContext = AnyContext,
   in out TRouteContextFn = AnyContext,
@@ -1157,7 +1172,7 @@ export function createRoute<
     TPath
   >,
   TSearchValidator extends AnySearchValidator = DefaultSearchValidator,
-  TParams = Record<ParsePathParams<TPath>, string>,
+  TParams = ResolveParams<TPath>,
   TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
