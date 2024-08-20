@@ -181,7 +181,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
         self.normalModuleFactory.hooks.beforeResolve.tap(
           PLUGIN_NAME,
-          (resolveData) => {
+          (resolveData: { request: string }) => {
             if (resolveData.request.includes(JoinedSplitPrefix)) {
               resolveData.request = resolveData.request.replace(
                 JoinedSplitPrefix,
@@ -201,7 +201,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
         self.normalModuleFactory.hooks.beforeResolve.tap(
           PLUGIN_NAME,
-          (resolveData) => {
+          (resolveData: { request: string }) => {
             if (resolveData.request.includes(JoinedSplitPrefix)) {
               resolveData.request = resolveData.request.replace(
                 JoinedSplitPrefix,
