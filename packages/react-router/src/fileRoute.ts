@@ -17,6 +17,7 @@ import type {
   FileBaseRouteOptions,
   ResolveAllParamsFromParent,
   ResolveLoaderData,
+  ResolveParams,
   ResolveRouteContext,
   Route,
   RouteConstraints,
@@ -73,7 +74,7 @@ export class FileRoute<
 
   createRoute = <
     TSearchValidator extends AnySearchValidator = DefaultSearchValidator,
-    TParams = Record<ParsePathParams<TPath>, string>,
+    TParams = ResolveParams<TPath>,
     TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,

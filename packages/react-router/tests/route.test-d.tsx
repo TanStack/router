@@ -488,6 +488,42 @@ test('when creating a child route with params from the root route', () => {
     >()
 })
 
+test('when creating a child route with a splat param from the root route', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    path: 'invoices/$',
+    getParentRoute: () => rootRoute,
+  })
+
+  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{ _splat?: string }>()
+  expectTypeOf(invoicesRoute.useParams<string>)
+    .parameter(0)
+    .toEqualTypeOf<
+      { select?: (search: { _splat?: string }) => string } | undefined
+    >()
+})
+
+test('when creating a child route with a param and splat param from the root route', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    path: 'invoices/$invoiceId/$',
+    getParentRoute: () => rootRoute,
+  })
+
+  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{
+    invoiceId: string
+    _splat?: string
+  }>()
+  expectTypeOf(invoicesRoute.useParams<string>)
+    .parameter(0)
+    .toEqualTypeOf<
+      | { select?: (search: { invoiceId: string; _splat?: string }) => string }
+      | undefined
+    >()
+})
+
 test('when creating a child route with params, search and loader from the root route', () => {
   const rootRoute = createRootRoute()
 
