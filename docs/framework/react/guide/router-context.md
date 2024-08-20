@@ -303,16 +303,19 @@ Context, especially the isolated route `context` objects, make it trivial to acc
 // src/routes/__root.tsx
 export const Route = createRootRoute({
   component: () => {
-    const router = useRouter()
+    const matches = useRouterState({ select: (s) => s.matches })
 
-    const breadcrumbs = router.state.matches.map((match) => {
-      const { context } = match
-      return {
-        title: context.getTitle(),
-        path: match.path,
-      }
-    })
+    const breadcrumbs = matches.map(({ pathname, routeContext }) => {
+        if (!routeContext) return null
+        if (!('getTitle' in routeContext)) return null
+        if (!routeContext.getTitle) return null
 
+        return {
+          title: routeContext.getTitle(),
+          path: pathname,
+        }
+      })
+      .filter((item) => item !== null)
     // ...
   },
 })
@@ -324,9 +327,9 @@ Using that same route context, we could also generate a title tag for our page's
 // src/routes/__root.tsx
 export const Route = createRootRoute({
   component: () => {
-    const router = useRouter()
+    const matches = useRouterState({ select: (s) => s.matches })
 
-    const matchWithTitle = [...router.state.matches]
+    const matchWithTitle = [...matches]
       .reverse()
       .find((d) => d.context.getTitle)
 
