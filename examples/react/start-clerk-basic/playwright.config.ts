@@ -27,15 +27,6 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'mock-db-setup',
-      testMatch: 'tests/mock-db-setup.test.ts',
-      teardown: 'cleanup-mock-db',
-    },
-    {
-      name: 'cleanup-mock-db',
-      testMatch: 'tests/mock-db-teardown.test.ts',
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['mock-db-setup'],
