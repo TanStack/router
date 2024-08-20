@@ -20,7 +20,6 @@ interface RouteMatch {
   updatedAt: number
   loadPromise?: Promise<void>
   loaderData?: Route['loaderData']
-  routeContext: Route['routeContext']
   context: Route['allContext']
   search: Route['fullSearchSchema']
   fetchedAt: number

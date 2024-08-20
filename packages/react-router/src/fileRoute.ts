@@ -15,14 +15,13 @@ import type {
   AnySearchValidator,
   DefaultSearchValidator,
   FileBaseRouteOptions,
-  InferAllContext,
-  ResolveAllContext,
   ResolveAllParamsFromParent,
   ResolveLoaderData,
   ResolveRouteContext,
   Route,
   RouteConstraints,
   RouteContext,
+  RouteContextFn,
   RouteLoaderFn,
   UpdatableRouteOptions,
 } from './route'
@@ -76,9 +75,8 @@ export class FileRoute<
     TSearchValidator extends AnySearchValidator = DefaultSearchValidator,
     TParams = Record<ParsePathParams<TPath>, string>,
     TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
-    TRouteContextReturn = RouteContext,
-    TRouteContext = ResolveRouteContext<TRouteContextReturn>,
-    TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
+    TRouteContextFn = AnyContext,
+    TBeforeLoadFn = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderDataReturn = {},
     TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
@@ -89,12 +87,11 @@ export class FileRoute<
       TPath,
       TSearchValidator,
       TParams,
-      TAllParams,
-      TRouteContextReturn,
-      InferAllContext<TParentRoute>,
-      TAllContext,
       TLoaderDeps,
-      TLoaderDataReturn
+      TLoaderDataReturn,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -102,9 +99,10 @@ export class FileRoute<
         TAllParams,
         TSearchValidator,
         TLoaderData,
-        TAllContext,
-        TRouteContext,
-        TLoaderDeps
+        TLoaderDeps,
+        AnyContext,
+        TRouteContextFn,
+        TBeforeLoadFn
       >,
   ): Route<
     TParentRoute,
@@ -115,9 +113,9 @@ export class FileRoute<
     TSearchValidator,
     TParams,
     TAllParams,
-    TRouteContextReturn,
-    TRouteContext,
-    TAllContext,
+    AnyContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
     TLoaderDeps,
     TLoaderDataReturn,
     TLoaderData,
@@ -145,15 +143,21 @@ export function FileRouteLoader<
   _path: TFilePath,
 ): <TLoaderData>(
   loaderFn: RouteLoaderFn<
-    TRoute['types']['allParams'],
+    TRoute['parentRoute'],
+    TRoute['types']['params'],
     TRoute['types']['loaderDeps'],
-    TRoute['types']['allContext'],
+    TRoute['types']['routerContext'],
+    TRoute['types']['routeContextFn'],
+    TRoute['types']['beforeLoadFn'],
     TLoaderData
   >,
 ) => RouteLoaderFn<
-  TRoute['types']['allParams'],
+  TRoute['parentRoute'],
+  TRoute['types']['params'],
   TRoute['types']['loaderDeps'],
-  TRoute['types']['allContext'],
+  TRoute['types']['routerContext'],
+  TRoute['types']['routeContextFn'],
+  TRoute['types']['beforeLoadFn'],
   NoInfer<TLoaderData>
 > {
   warning(
@@ -172,7 +176,8 @@ export type LazyRouteOptions = Pick<
     {},
     AnyContext,
     AnyContext,
-    {}
+    AnyContext,
+    AnyContext
   >,
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >

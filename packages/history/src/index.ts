@@ -393,7 +393,7 @@ export function createMemoryHistory(
   })
 }
 
-function parseHref(
+export function parseHref(
   href: string,
   state: HistoryState | undefined,
 ): HistoryLocation {

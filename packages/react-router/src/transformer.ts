@@ -1,6 +1,11 @@
-import { isPlainObject } from '@tanstack/react-router'
+import { isPlainObject } from './utils'
 
-export const defaultTransformer = {
+export interface RouterTransformer {
+  stringify: (obj: unknown) => string
+  parse: (str: string) => unknown
+}
+
+export const defaultTransformer: RouterTransformer = {
   stringify: (value: any) =>
     JSON.stringify(value, function replacer(key, value) {
       const keyVal = this[key]

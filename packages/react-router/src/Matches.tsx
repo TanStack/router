@@ -33,7 +33,6 @@ export interface RouteMatch<
   TFullSearchSchema,
   TLoaderData,
   TAllContext,
-  TRouteContext,
   TLoaderDeps,
 > {
   id: string
@@ -52,7 +51,8 @@ export interface RouteMatch<
   beforeLoadPromise?: ControlledPromise<void>
   loaderPromise?: ControlledPromise<void>
   loaderData?: TLoaderData
-  routeContext: TRouteContext
+  __routeContext: Record<string, unknown>
+  __beforeLoadContext: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
   fetchCount: number
@@ -88,7 +88,6 @@ export type MakeRouteMatch<
   TAllContext = TStrict extends false
     ? AllContext<TRouteTree>
     : TTypes['allContext'],
-  TRouteContext = TTypes['routeContext'],
   TLoaderDeps = TTypes['loaderDeps'],
 > = RouteMatch<
   TRouteId,
@@ -96,11 +95,10 @@ export type MakeRouteMatch<
   TFullSearchSchema,
   TLoaderData,
   TAllContext,
-  TRouteContext,
   TLoaderDeps
 >
 
-export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any>
 
 export function Matches() {
   const router = useRouter()
@@ -109,11 +107,17 @@ export function Matches() {
     <router.options.defaultPendingComponent />
   ) : null
 
+  // Do not render a root Suspense during SSR or hydrating from SSR
+  const ResolvedSuspense =
+    router.isServer || (typeof document !== 'undefined' && window.__TSR__)
+      ? SafeFragment
+      : React.Suspense
+
   const inner = (
-    <React.Suspense fallback={pendingElement}>
+    <ResolvedSuspense fallback={pendingElement}>
       <Transitioner />
       <MatchesInner />
-    </React.Suspense>
+    </ResolvedSuspense>
   )
 
   return router.options.InnerWrap ? (
