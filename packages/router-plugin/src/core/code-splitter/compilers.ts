@@ -4,7 +4,7 @@ import _generate from '@babel/generator'
 import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 
-import { splitPrefix } from './constants'
+import { splitPrefix } from '../constants'
 import { parseAst } from './ast'
 import type { ParseAstOptions } from './ast'
 

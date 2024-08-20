@@ -1,5 +1,5 @@
-import { unpluginRouterGeneratorFactory } from './router-generator'
-import { unpluginRouterCodeSplitterFactory } from './code-splitter'
+import { unpluginRouterGeneratorFactory } from './router-generator-plugin'
+import { unpluginRouterCodeSplitterFactory } from './router-code-splitter-plugin'
 
 import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
