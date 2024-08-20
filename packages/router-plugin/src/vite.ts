@@ -1,5 +1,5 @@
 import { createVitePlugin } from 'unplugin'
-import { unpluginRouterCodeSplitterFactory } from './code-splitter'
+import { unpluginRouterCodeSplitterFactory } from './router-code-splitter'
 import { configSchema } from './config'
 import { unpluginRouterGeneratorFactory } from './router-generator'
 import { unpluginRouterComposedFactory } from './composed'
