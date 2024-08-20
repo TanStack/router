@@ -107,22 +107,19 @@
     "@types/babel__traverse": "^7.20.6",
     "babel-dead-code-elimination": "^1.0.6",
     "chokidar": "^3.6.0",
-    "unplugin": "^1.11.0",
+    "unplugin": "^1.12.2",
     "zod": "^3.23.8"
   },
-  "devDependencies": {
-    "vite": "^5.3.5"
-  },
   "peerDependencies": {
-    "@rsbuild/core": ">=0.7.9",
-    "vite": ">=5.0.13",
+    "@rsbuild/core": ">=1.0.0",
+    "vite": ">=5.0.0",
     "webpack": ">=5.92.0"
   },
   "peerDependenciesMeta": {
-    "vite": {
+    "@rsbuild/core": {
       "optional": true
     },
-    "@rsbuild/core": {
+    "vite": {
       "optional": true
     },
     "webpack": {

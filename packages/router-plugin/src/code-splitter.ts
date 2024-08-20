@@ -117,7 +117,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       return null
     },
 
-    async transform(code, id) {
+    transform(code, id) {
       if (!userConfig.experimental?.enableCodeSplitting) {
         return null
       }
@@ -127,7 +127,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       id = fileURLToPath(url).replace(/\\/g, '/')
 
       if (id.includes(splitPrefix)) {
-        return await handleSplittingFile(code, id)
+        return handleSplittingFile(code, id)
       } else if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
         (code.includes('createRoute(') || code.includes('createFileRoute('))
@@ -142,7 +142,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           }
         }
 
-        return await handleCompilingFile(code, id)
+        return handleCompilingFile(code, id)
       }
 
       return null
@@ -181,7 +181,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
         self.normalModuleFactory.hooks.beforeResolve.tap(
           PLUGIN_NAME,
-          (resolveData) => {
+          (resolveData: { request: string }) => {
             if (resolveData.request.includes(JoinedSplitPrefix)) {
               resolveData.request = resolveData.request.replace(
                 JoinedSplitPrefix,
@@ -201,7 +201,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
         self.normalModuleFactory.hooks.beforeResolve.tap(
           PLUGIN_NAME,
-          (resolveData) => {
+          (resolveData: { request: string }) => {
             if (resolveData.request.includes(JoinedSplitPrefix)) {
               resolveData.request = resolveData.request.replace(
                 JoinedSplitPrefix,
