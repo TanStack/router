@@ -1448,9 +1448,6 @@ importers:
       '@clerk/tanstack-start':
         specifier: 0.3.0-snapshot.vdf04997
         version: 0.3.0-snapshot.vdf04997(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@prisma/client':
-        specifier: 5.17.0
-        version: 5.17.0(prisma@5.18.0)
       '@remix-run/node':
         specifier: ^2.10.3
         version: 2.11.1(typescript@5.5.3)
@@ -1481,9 +1478,6 @@ importers:
       isbot:
         specifier: ^5.1.12
         version: 5.1.14
-      prisma:
-        specifier: ^5.17.0
-        version: 5.18.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -12653,7 +12647,7 @@ snapshots:
     dependencies:
       '@module-federation/runtime-tools': 0.1.6
       '@rspack/binding': 0.7.5
-      caniuse-lite: 1.0.30001647
+      caniuse-lite: 1.0.30001651
       tapable: 2.2.1
       webpack-sources: 3.2.3
     optionalDependencies:
