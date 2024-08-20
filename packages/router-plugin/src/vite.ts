@@ -1,10 +1,11 @@
 import { createVitePlugin } from 'unplugin'
-import { unpluginRouterCodeSplitterFactory } from './code-splitter'
-import { configSchema } from './config'
-import { unpluginRouterGeneratorFactory } from './router-generator'
-import { unpluginRouterComposedFactory } from './composed'
 
-import type { Config } from './config'
+import { configSchema } from './core/config'
+import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
+import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
+import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
+
+import type { Config } from './core/config'
 
 /**
  * @example

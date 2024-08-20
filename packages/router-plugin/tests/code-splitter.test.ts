@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
-} from '../src/compilers'
-import { splitPrefix } from '../src/constants'
+} from '../src/core/code-splitter/compilers'
+import { splitPrefix } from '../src/core/constants'
 
 async function getFilenames() {
   return await readdir(path.resolve(__dirname, './code-splitter/test-files'))

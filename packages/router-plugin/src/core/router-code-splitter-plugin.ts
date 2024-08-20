@@ -1,11 +1,11 @@
 import { isAbsolute, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { getConfig } from './config'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
-} from './compilers'
-import { getConfig } from './config'
+} from './code-splitter/compilers'
 import { splitPrefix } from './constants'
 
 import type { Config } from './config'
