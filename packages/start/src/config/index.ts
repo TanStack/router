@@ -328,9 +328,9 @@ function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
         }),
         TanStackRouterVite({
           ...tsrConfig,
+          autoCodeSplitting: true,
           experimental: {
             ...tsrConfig.experimental,
-            enableCodeSplitting: true,
           },
         }),
         TanStackStartVite(),
