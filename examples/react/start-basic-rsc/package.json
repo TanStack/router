@@ -12,26 +12,26 @@
   },
   "dependencies": {
     "@babel/plugin-syntax-typescript": "^7.24.7",
-    "@tanstack/react-router": "^1.45.11",
-    "@tanstack/router-devtools": "^1.45.11",
-    "@tanstack/router-plugin": "^1.45.8",
-    "@tanstack/start": "^1.45.11",
+    "@tanstack/react-router": "^1.49.2",
+    "@tanstack/router-devtools": "^1.49.2",
+    "@tanstack/router-plugin": "^1.49.3",
+    "@tanstack/start": "^1.49.3",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.4.0",
-    "vinxi": "0.3.12"
+    "vinxi": "0.4.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
+    "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-react-app": "^7.0.1",
-    "postcss": "^8.4.39",
+    "postcss": "^8.4.40",
     "prettier": "^3.3.3",
-    "tailwindcss": "^3.4.6",
+    "tailwindcss": "^3.4.7",
     "typescript": "^5.5.3",
-    "vite": "^5.3.4",
+    "vite": "^5.3.5",
     "vite-tsconfig-paths": "^4.3.2"
   },
   "overrides": {

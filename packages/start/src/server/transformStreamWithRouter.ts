@@ -25,10 +25,13 @@ export function transformReadableStreamWithRouter(router: AnyRouter) {
   const callbacks = transformHtmlCallbacks(() =>
     router.injectedHtml.map((d) => d()).join(''),
   )
+
+  const encoder = new TextEncoder()
+
   return new TransformStream<string>({
     transform(chunk, controller) {
       return callbacks.transform(chunk, (chunkToPush) => {
-        controller.enqueue(chunkToPush)
+        controller.enqueue(encoder.encode(chunkToPush))
         return true
       })
     },
@@ -59,6 +62,7 @@ function transformHtmlCallbacks(getHtml: () => string) {
   let leftoverHtml = ''
 
   return {
+    // eslint-disable-next-line @typescript-eslint/require-await
     async transform(chunk: any, push: (chunkToPush: string) => boolean) {
       const chunkString = leftover + textDecoder.decode(chunk)
 
@@ -123,6 +127,7 @@ function transformHtmlCallbacks(getHtml: () => string) {
         throw err
       }
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
     async flush(push: (chunkToPush: string) => boolean) {
       if (leftover) {
         push(leftover)

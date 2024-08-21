@@ -11,10 +11,15 @@ test('Navigating to post', async ({ page }) => {
 test('Navigating nested layouts', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
+
+  await expect(page.locator('#root')).toContainText("I'm a layout")
+  await expect(page.locator('#root')).toContainText("I'm a nested layout")
+
   await page.getByRole('link', { name: 'Layout A' }).click()
-  await expect(page.locator('#root')).toContainText("I'm A!")
+  await expect(page.locator('#root')).toContainText("I'm layout A!")
+
   await page.getByRole('link', { name: 'Layout B' }).click()
-  await expect(page.locator('#root')).toContainText("I'm B!")
+  await expect(page.locator('#root')).toContainText("I'm layout B!")
 })
 
 test('Navigating to a not-found route', async ({ page }) => {

@@ -1,4 +1,3 @@
-import { pipeline } from 'node:stream/promises'
 import {
   type AnyRouter,
   type Manifest,
@@ -10,44 +9,39 @@ import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../client'
+import type { HandlerCallback } from './defaultStreamHandler'
 
-export type RequestHandler<TRouter extends AnyRouter> = (ctx: {
-  request: Response
-  response: Response
-  router: TRouter
-  responseHeaders: Headers
-}) => Promise<Response>
-
-export type CustomizeRequestHandler<TRouter extends AnyRouter> = (
-  cb: RequestHandler<TRouter>,
-) => Promise<void>
+export type RequestHandler<TRouter extends AnyRouter> = (
+  cb: HandlerCallback<TRouter>,
+) => Promise<Response>
 
 export function createRequestHandler<TRouter extends AnyRouter>({
   createRouter,
-  req,
-  res,
+  request,
   getRouterManifest,
 }: {
   createRouter: () => TRouter
-  req: any
-  res: any
+  request: Request
   getRouterManifest?: () => Manifest
-}): CustomizeRequestHandler<TRouter> {
+}): RequestHandler<TRouter> {
   return async (cb) => {
-    const href = req.originalUrl
-
-    // Create a history for the router
-    const history = createMemoryHistory({
-      initialEntries: [href],
-    })
-
     const router = createRouter()
 
+    // Inject a few of the SSR helpers and defaults
     router.serializeLoaderData = serializeLoaderData as any
 
     if (getRouterManifest) {
       router.manifest = getRouterManifest()
     }
+
+    const url = new URL(request.url, 'http://localhost')
+
+    const href = url.href.replace(url.origin, '')
+
+    // Create a history for the router
+    const history = createMemoryHistory({
+      initialEntries: [href],
+    })
 
     // Update the router with the history and context
     router.update({
@@ -60,35 +54,11 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       router,
     })
 
-    const requestUrl = new URL(req.originalUrl, 'http://localhost').href
-
-    const response = await cb({
-      request: new Request(requestUrl, {
-        method: req.method,
-        headers: (() => {
-          const headers = new Headers()
-          for (const [key, value] of Object.entries(req.headers)) {
-            headers.append(key, value as any)
-          }
-          return headers
-        })(),
-        body: req.body,
-        redirect: 'manual',
-      }),
+    return cb({
+      request,
       router,
       responseHeaders,
     } as any)
-
-    res.statusMessage = response.statusText
-    res.status(response.status)
-    // Set the response headers
-    response.headers.forEach((value, name) => {
-      res.setHeader(name, value)
-    })
-
-    // Pipe the web response body to the express response
-
-    await pipeline(response.body as any, res)
   }
 }
 

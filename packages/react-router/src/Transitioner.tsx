@@ -2,7 +2,7 @@ import * as React from 'react'
 import { pick, useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
-import { trimPathRight } from '.'
+import { trimPathRight } from './path'
 
 export function Transitioner() {
   const router = useRouter()
@@ -56,7 +56,7 @@ export function Transitioner() {
   // Try to load the initial location
   useLayoutEffect(() => {
     if (
-      window.__TSR__?.dehydrated ||
+      (typeof window !== 'undefined' && window.__TSR__?.dehydrated) ||
       (mountLoadForRouter.current.router === router &&
         mountLoadForRouter.current.mounted)
     ) {
@@ -111,7 +111,7 @@ export function Transitioner() {
         resolvedLocation: s.location,
       }))
 
-      if ((document as any).querySelector) {
+      if (typeof document !== 'undefined' && (document as any).querySelector) {
         if (router.state.location.hash !== '') {
           const el = document.getElementById(router.state.location.hash)
           if (el) {

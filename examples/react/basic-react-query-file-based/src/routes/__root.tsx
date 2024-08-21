@@ -44,6 +44,14 @@ function RootComponent() {
           Posts
         </Link>{' '}
         <Link
+          to="/layout-a"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Layout
+        </Link>{' '}
+        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{

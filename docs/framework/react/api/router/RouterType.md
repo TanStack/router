@@ -19,7 +19,7 @@ An instance of the `Router` has the following properties and methods:
 - Type: [`RouterState`](./RouterStateType.md)
 - The current state of the router.
 
-> ⚠️⚠️⚠️ **`router.state` is always up to date, but NOT REACTIVE. If you use `router.state` in a component, the component will not re-render when the router state changes. To get a reactive version of the router state, use the `useRouterState` hook.**
+> ⚠️⚠️⚠️ **`router.state` is always up to date, but NOT REACTIVE. If you use `router.state` in a component, the component will not re-render when the router state changes. To get a reactive version of the router state, use the [`useRouterState`](./useRouterStateHook.md) hook.**
 
 ### `.subscribe` method
 

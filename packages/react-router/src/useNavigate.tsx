@@ -1,7 +1,5 @@
 import * as React from 'react'
-import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
-
 import type { FromPathOption, NavigateOptions } from './link'
 import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
@@ -23,15 +21,15 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const router = useRouter()
+  const { navigate } = useRouter()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return router.navigate({
+      return navigate({
         ...options,
       })
     },
-    [router],
+    [navigate],
   ) as UseNavigateResult<TDefaultFrom>
 }
 
@@ -58,7 +56,6 @@ export function Navigate<
   TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
-  const match = useMatch({ strict: false })
 
   React.useEffect(() => {
     navigate({

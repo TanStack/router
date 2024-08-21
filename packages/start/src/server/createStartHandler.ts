@@ -16,11 +16,10 @@ import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../constants'
-import { defaultTransformer } from '../client/defaultTransformer'
-import type { StartHandler } from './defaultStreamHandler'
+import type { HandlerCallback } from './defaultStreamHandler'
 
 export type CustomizeStartHandler<TRouter extends AnyRouter> = (
-  cb: StartHandler<TRouter>,
+  cb: HandlerCallback<TRouter>,
 ) => EventHandler
 
 export function createStartHandler<TRouter extends AnyRouter>({
@@ -46,8 +45,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
       // Inject a few of the SSR helpers and defaults
       router.serializeLoaderData = serializeLoaderData as any
-      router.options.transformer =
-        (router.options as any).transformer || defaultTransformer
 
       if (getRouterManifest) {
         router.manifest = getRouterManifest()

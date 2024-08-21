@@ -10,7 +10,7 @@ import { z } from 'zod'
 import { useAuth } from '../auth'
 import { sleep } from '../utils'
 
-// eslint-disable-next-line ts/no-unnecessary-type-assertion
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 const fallback = '/dashboard' as const
 
 export const Route = createFileRoute('/login')({

@@ -9,14 +9,18 @@ import { useRouter } from './useRouter'
 import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
-import { type AnyRoute } from './route'
 import { matchContext } from './matchContext'
 import { defaultDeserializeError, isServerSideError } from './isServerSideError'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
+import type { AnyRoute } from './route'
 
-export function Match({ matchId }: { matchId: string }) {
+export const Match = React.memo(function MatchImpl({
+  matchId,
+}: {
+  matchId: string
+}) {
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
@@ -99,33 +103,34 @@ export function Match({ matchId }: { matchId: string }) {
       </ResolvedSuspenseBoundary>
     </matchContext.Provider>
   )
-}
-function MatchInner({ matchId }: { matchId: string }): any {
+})
+
+export const MatchInner = React.memo(function MatchInnerImpl({
+  matchId,
+}: {
+  matchId: string
+}): any {
   const router = useRouter()
-  const routeId = useRouterState({
-    select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
+
+  const { match, matchIndex, routeId } = useRouterState({
+    select: (s) => {
+      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
+      const match = s.matches[matchIndex]!
+      const routeId = match.routeId as string
+      return {
+        routeId,
+        matchIndex,
+        match: pick(match, ['id', 'status', 'error', 'loadPromise']),
+      }
+    },
   })
 
   const route = router.routesById[routeId]!
 
-  const matchIndex = useRouterState({
-    select: (s) => {
-      return s.matches.findIndex((d) => d.id === matchId)
-    },
-  })
-
-  const match = useRouterState({
-    select: (s) => {
-      const match = s.matches[matchIndex]!
-      return pick(match, [
-        'id',
-        'status',
-        'error',
-        'loadPromise',
-        'minPendingPromise',
-      ])
-    },
-  })
+  const out = React.useMemo(() => {
+    const Comp = route.options.component ?? router.options.defaultComponent
+    return Comp ? <Comp key={routeId} /> : <Outlet />
+  }, [routeId, route.options.component, router.options.defaultComponent])
 
   // function useChangedDiff(value: any) {
   //   const ref = React.useRef(value)
@@ -209,7 +214,7 @@ function MatchInner({ matchId }: { matchId: string }): any {
     const pendingMinMs =
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs
 
-    if (pendingMinMs && !match.minPendingPromise) {
+    if (pendingMinMs && !router.getMatch(match.id)?.minPendingPromise) {
       // Create a promise that will resolve after the minPendingMs
       if (!router.isServer) {
         const minPendingPromise = createControlledPromise<void>()
@@ -232,13 +237,8 @@ function MatchInner({ matchId }: { matchId: string }): any {
         }, pendingMinMs)
       }
     }
-
     throw match.loadPromise
   }
-
-  const Comp = route.options.component ?? router.options.defaultComponent
-
-  const out = Comp ? <Comp /> : <Outlet />
 
   return (
     <>
@@ -248,9 +248,9 @@ function MatchInner({ matchId }: { matchId: string }): any {
       ) : null}
     </>
   )
-}
+})
 
-export const Outlet = React.memo(function Outlet() {
+export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
   const routeId = useRouterState({

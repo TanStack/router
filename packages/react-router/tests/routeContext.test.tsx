@@ -22,9 +22,339 @@ import { sleep } from './utils'
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
   cleanup()
+  vi.clearAllMocks()
+  vi.resetAllMocks()
 })
 
 const WAIT_TIME = 150
+
+describe('context function', () => {
+  configure({ reactStrictMode: true })
+
+  describe('accessing values in the context function', () => {
+    test('receives an empty object', async () => {
+      const mockIndexContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ context }) => {
+          mockIndexContextFn(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Index page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mockIndexContextFn).toHaveBeenCalledWith({})
+    })
+
+    test('receives an empty object - with an empty object when creating the router', async () => {
+      const mockIndexContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ context }) => {
+          mockIndexContextFn(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, context: {} })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Index page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mockIndexContextFn).toHaveBeenCalledWith({})
+    })
+
+    test('receives valid values - with values added when creating the router', async () => {
+      const mockIndexContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ context }) => {
+          mockIndexContextFn(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, context: { project: 'Router' } })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Index page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mockIndexContextFn).toHaveBeenCalledWith({ project: 'Router' })
+    })
+
+    test('receives valid values when updating the values in the parent route to be read in the child route', async () => {
+      const mockIndexContextFn = vi.fn()
+
+      const rootRoute = createRootRoute({
+        context: () => ({
+          project: 'Router',
+        }),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ context }) => {
+          mockIndexContextFn(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Index page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mockIndexContextFn).toHaveBeenCalledWith({ project: 'Router' })
+    })
+  })
+
+  describe('return values being available in beforeLoad', () => {
+    test('when returning an empty object in a regular route', async () => {
+      const mockIndexBeforeLoad = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: () => ({}),
+        beforeLoad: ({ context }) => {
+          mockIndexBeforeLoad(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, context: { project: 'foo' } })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Index page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mockIndexBeforeLoad).toHaveBeenCalledWith({ project: 'foo' })
+      expect(mockIndexBeforeLoad).toHaveBeenCalledTimes(1)
+    })
+
+    test('when updating the initial router context value in a regular route', async () => {
+      const mockIndexBeforeLoad = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ context }) => ({ ...context, project: 'Query' }),
+        beforeLoad: ({ context }) => {
+          mockIndexBeforeLoad(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, context: { project: 'foo' } })
+
+      render(<RouterProvider router={router} />)
+
+      const indexElement = await screen.findByText('Index page')
+      expect(indexElement).toBeInTheDocument()
+
+      expect(mockIndexBeforeLoad).toHaveBeenCalledWith({ project: 'Query' })
+      expect(mockIndexBeforeLoad).toHaveBeenCalledTimes(1)
+    })
+
+    test('when returning an empty object in the root route', async () => {
+      const mock = vi.fn()
+
+      const rootRoute = createRootRoute({
+        context: () => ({}),
+        beforeLoad: ({ context }) => {
+          mock(context)
+        },
+        component: () => <div>Root page</div>,
+      })
+      const routeTree = rootRoute.addChildren([])
+      const router = createRouter({ routeTree, context: { project: 'foo' } })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Root page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mock).toHaveBeenCalledWith({ project: 'foo' })
+      expect(mock).toHaveBeenCalledTimes(1)
+    })
+
+    test('when updating the initial router context value in the parent route and in the child route', async () => {
+      const mockRootBeforeLoad = vi.fn()
+      const mockIndexBeforeLoad = vi.fn()
+
+      const rootRoute = createRootRoute({
+        context: ({ context }) => ({ ...context, project: 'Router' }),
+        beforeLoad: ({ context }) => {
+          mockRootBeforeLoad(context)
+        },
+        component: () => (
+          <div>
+            Root page <Outlet />
+          </div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ context }) => ({ ...context, project: 'Query' }),
+        beforeLoad: ({ context }) => {
+          mockIndexBeforeLoad(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, context: { project: 'bar' } })
+
+      render(<RouterProvider router={router} />)
+
+      const indexElement = await screen.findByText('Index page')
+      expect(indexElement).toBeInTheDocument()
+
+      expect(mockRootBeforeLoad).toHaveBeenCalledWith({ project: 'Router' })
+      expect(mockRootBeforeLoad).toHaveBeenCalledTimes(1)
+
+      expect(mockIndexBeforeLoad).toHaveBeenCalledWith({ project: 'Query' })
+      expect(mockIndexBeforeLoad).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('return values being available in loader', () => {
+    test('when returning an empty object in a regular route', async () => {
+      const mockIndexLoader = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: () => ({}),
+        loader: ({ context }) => {
+          mockIndexLoader(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, context: { project: 'foo' } })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Index page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mockIndexLoader).toHaveBeenCalledWith({ project: 'foo' })
+      expect(mockIndexLoader).toHaveBeenCalledTimes(1)
+    })
+
+    test('when updating the initial router context value in a regular route', async () => {
+      const mockIndexLoader = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ context }) => ({ ...context, project: 'Query' }),
+        loader: ({ context }) => {
+          mockIndexLoader(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, context: { project: 'foo' } })
+
+      render(<RouterProvider router={router} />)
+
+      const indexElement = await screen.findByText('Index page')
+      expect(indexElement).toBeInTheDocument()
+
+      expect(mockIndexLoader).toHaveBeenCalledWith({ project: 'Query' })
+      expect(mockIndexLoader).toHaveBeenCalledTimes(1)
+    })
+
+    test('when returning an empty object in the root route', async () => {
+      const mockRootLoader = vi.fn()
+
+      const rootRoute = createRootRoute({
+        context: () => ({}),
+        loader: ({ context }) => {
+          mockRootLoader(context)
+        },
+        component: () => <div>Root page</div>,
+      })
+      const routeTree = rootRoute.addChildren([])
+      const router = createRouter({ routeTree, context: { project: 'foo' } })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Root page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mockRootLoader).toHaveBeenCalledWith({ project: 'foo' })
+      expect(mockRootLoader).toHaveBeenCalledTimes(1)
+    })
+
+    test('when updating the initial router context value in the root route and in the child route', async () => {
+      const mockRootLoader = vi.fn()
+      const mockIndexLoader = vi.fn()
+
+      const rootRoute = createRootRoute({
+        context: ({ context }) => ({ ...context, project: 'Router' }),
+        loader: ({ context }) => {
+          mockRootLoader(context)
+        },
+        component: () => (
+          <div>
+            Root page <Outlet />
+          </div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ context }) => ({ ...context, project: 'Query' }),
+        loader: ({ context }) => {
+          mockIndexLoader(context)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, context: { project: 'bar' } })
+
+      render(<RouterProvider router={router} />)
+
+      const indexElement = await screen.findByText('Index page')
+      expect(indexElement).toBeInTheDocument()
+
+      expect(mockRootLoader).toHaveBeenCalledWith({ project: 'Router' })
+      expect(mockRootLoader).toHaveBeenCalledTimes(1)
+
+      expect(mockIndexLoader).toHaveBeenCalledWith({ project: 'Query' })
+      expect(mockIndexLoader).toHaveBeenCalledTimes(1)
+    })
+  })
+})
 
 describe('beforeLoad in the route definition', () => {
   configure({ reactStrictMode: true })
@@ -1793,6 +2123,10 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
+        // eslint-disable-next-line ts/no-unnecessary-condition
+        if (context === undefined) {
+          throw new Error('context is undefined')
+        }
         return <div>{JSON.stringify(context)}</div>
       },
     })

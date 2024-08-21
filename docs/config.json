@@ -203,8 +203,8 @@
               "to": "framework/react/examples/start-basic"
             },
             {
-              "label": "Start Basic (RSC)",
-              "to": "framework/react/examples/start-basic-rsc"
+              "label": "Start Basic + React Query",
+              "to": "framework/react/examples/start-basic-react-query"
             },
             {
               "label": "Basic (file-based)",
@@ -265,6 +265,14 @@
             {
               "label": "Navigation Blocking",
               "to": "framework/react/examples/navigation-blocking"
+            },
+            {
+              "label": "With tRPC",
+              "to": "framework/react/examples/with-trpc"
+            },
+            {
+              "label": "With tRPC + React Query",
+              "to": "framework/react/examples/with-trpc-react-query"
             }
           ]
         }

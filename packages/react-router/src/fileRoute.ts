@@ -6,35 +6,29 @@ import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
+import type { NoInfer } from '@tanstack/react-store'
 import type { ParsePathParams } from './link'
 import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
-  AnySearchSchema,
+  AnySearchValidator,
+  DefaultSearchValidator,
   FileBaseRouteOptions,
-  InferAllContext,
-  ResolveAllContext,
   ResolveAllParamsFromParent,
-  ResolveFullSearchSchema,
-  ResolveFullSearchSchemaInput,
   ResolveLoaderData,
+  ResolveParams,
   ResolveRouteContext,
-  ResolveSearchSchemaUsed,
   Route,
   RouteConstraints,
   RouteContext,
+  RouteContextFn,
   RouteLoaderFn,
-  SearchSchemaInput,
-  TrimPathLeft,
   UpdatableRouteOptions,
 } from './route'
-import type { Assign, IsAny } from './utils'
 import type { MakeRouteMatch } from './Matches'
-import type { NoInfer } from '@tanstack/react-store'
 import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
-import type { RootRouteId } from './root'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -49,7 +43,9 @@ export function createFileRoute<
   TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
   TFullPath extends
     RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
->(path: TFilePath) {
+>(
+  path: TFilePath,
+): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
   }).createRoute
@@ -77,48 +73,37 @@ export class FileRoute<
   }
 
   createRoute = <
-    TSearchSchemaInput = Record<string, unknown>,
-    TSearchSchema = {},
-    TSearchSchemaUsed = ResolveSearchSchemaUsed<
-      TSearchSchemaInput,
-      TSearchSchema
-    >,
-    TFullSearchSchemaInput = ResolveFullSearchSchemaInput<
-      TParentRoute,
-      TSearchSchemaUsed
-    >,
-    TFullSearchSchema = ResolveFullSearchSchema<TParentRoute, TSearchSchema>,
-    TParams = Record<ParsePathParams<TPath>, string>,
+    TSearchValidator extends AnySearchValidator = DefaultSearchValidator,
+    TParams = ResolveParams<TPath>,
     TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
-    TRouteContextReturn = RouteContext,
-    TRouteContext = ResolveRouteContext<TRouteContextReturn>,
-    TAllContext = ResolveAllContext<TParentRoute, TRouteContext>,
+    TRouteContextFn = AnyContext,
+    TBeforeLoadFn = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderDataReturn = {},
     TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
     TChildren = unknown,
   >(
     options?: FileBaseRouteOptions<
+      TParentRoute,
       TPath,
-      TSearchSchemaInput,
-      TSearchSchema,
-      TFullSearchSchema,
+      TSearchValidator,
       TParams,
-      TAllParams,
-      TRouteContextReturn,
-      InferAllContext<TParentRoute>,
-      TAllContext,
       TLoaderDeps,
-      TLoaderDataReturn
+      TLoaderDataReturn,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn
     > &
       UpdatableRouteOptions<
+        TParentRoute,
         TId,
         TAllParams,
-        TFullSearchSchema,
+        TSearchValidator,
         TLoaderData,
-        TAllContext,
-        TRouteContext,
-        TLoaderDeps
+        TLoaderDeps,
+        AnyContext,
+        TRouteContextFn,
+        TBeforeLoadFn
       >,
   ): Route<
     TParentRoute,
@@ -126,16 +111,12 @@ export class FileRoute<
     TFullPath,
     TFilePath,
     TId,
-    TSearchSchemaInput,
-    TSearchSchema,
-    TSearchSchemaUsed,
-    TFullSearchSchemaInput,
-    TFullSearchSchema,
+    TSearchValidator,
     TParams,
     TAllParams,
-    TRouteContextReturn,
-    TRouteContext,
-    TAllContext,
+    AnyContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
     TLoaderDeps,
     TLoaderDataReturn,
     TLoaderData,
@@ -163,15 +144,21 @@ export function FileRouteLoader<
   _path: TFilePath,
 ): <TLoaderData>(
   loaderFn: RouteLoaderFn<
-    TRoute['types']['allParams'],
+    TRoute['parentRoute'],
+    TRoute['types']['params'],
     TRoute['types']['loaderDeps'],
-    TRoute['types']['allContext'],
+    TRoute['types']['routerContext'],
+    TRoute['types']['routeContextFn'],
+    TRoute['types']['beforeLoadFn'],
     TLoaderData
   >,
 ) => RouteLoaderFn<
-  TRoute['types']['allParams'],
+  TRoute['parentRoute'],
+  TRoute['types']['params'],
   TRoute['types']['loaderDeps'],
-  TRoute['types']['allContext'],
+  TRoute['types']['routerContext'],
+  TRoute['types']['routeContextFn'],
+  TRoute['types']['beforeLoadFn'],
   NoInfer<TLoaderData>
 > {
   warning(
@@ -183,13 +170,15 @@ export function FileRouteLoader<
 
 export type LazyRouteOptions = Pick<
   UpdatableRouteOptions<
+    AnyRoute,
     string,
     AnyPathParams,
-    AnySearchSchema,
+    AnySearchValidator,
     {},
     AnyContext,
     AnyContext,
-    {}
+    AnyContext,
+    AnyContext
   >,
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
@@ -270,13 +259,6 @@ export function createLazyRoute<
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
->(path: TFilePath) {
-  const id = removeGroups(path)
+>(id: TFilePath) {
   return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
-}
-
-const routeGroupPatternRegex = /\(.+\)/g
-
-function removeGroups(s: string) {
-  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
 }

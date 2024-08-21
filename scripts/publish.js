@@ -17,6 +17,22 @@ await publish({
       packageDir: 'packages/react-router',
     },
     {
+      name: '@tanstack/react-router-with-query',
+      packageDir: 'packages/react-router-with-query',
+    },
+    {
+      name: '@tanstack/router-zod-adapter',
+      packageDir: 'packages/router-zod-adapter',
+    },
+    {
+      name: '@tanstack/router-valibot-adapter',
+      packageDir: 'packages/router-valibot-adapter',
+    },
+    {
+      name: '@tanstack/router-arktype-adapter',
+      packageDir: 'packages/router-arktype-adapter',
+    },
+    {
       name: '@tanstack/router-devtools',
       packageDir: 'packages/router-devtools',
     },

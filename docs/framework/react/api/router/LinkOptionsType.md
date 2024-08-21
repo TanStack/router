@@ -33,9 +33,10 @@ The `LinkOptions` object accepts/contains the following properties:
 
 ### `preload`
 
-- Type: `false | 'intent'`
+- Type: `false | 'intent' | 'viewport'`
 - Optional
-- If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
+- If set, the link's preloading strategy will be set to this value.
+- See the [Preloading guide](../../guide/preloading.md) for more information.
 
 ### `preloadDelay`
 

@@ -1,20 +1,15 @@
-// eslint-disable-next-line ts/consistent-type-imports
 import * as React from 'react'
 import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
 import type { NavigateOptions, ToOptions } from './link'
 import type { ParsedLocation } from './location'
-import type { AnyRoute } from './route'
 import type { RoutePaths } from './routeInfo'
 import type {
   AnyRouter,
   RegisteredRouter,
   Router,
   RouterOptions,
-  RouterState,
 } from './router'
-
-import type { MakeRouteMatch } from './Matches'
 
 export interface CommitLocationOptions {
   replace?: boolean
