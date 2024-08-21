@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  RouterConstructorOptions,
+  type RouterConstructorOptions,
   type RouterHistory,
-  RouterOptions,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -478,10 +477,16 @@ describe('router.navigate navigation with trailing slash options', () => {
 
     expect(router.state.location.pathname).toBe('/u/tanner')
 
-    await router.navigate({ to: '/u/tanner/' })
+    await router.navigate({
+      to: '/u/$username/',
+      params: { username: 'tanner' },
+    })
     expect(router.state.location.pathname).toBe('/u/tanner')
 
-    await router.navigate({ params: { username: 'tkdodo' } })
+    await router.navigate({
+      to: '/u/$username/',
+      params: { username: 'tkdodo' },
+    })
     expect(router.state.location.pathname).toBe('/u/tkdodo')
   })
 
@@ -493,13 +498,29 @@ describe('router.navigate navigation with trailing slash options', () => {
 
     await router.load()
 
+    // output without trailing slash
     expect(router.state.location.pathname).toBe('/u/tanner')
 
-    await router.navigate({ to: '/u/tanner/' })
+    // output without trailing slash
+    await router.navigate({
+      to: '/u/$username',
+      params: { username: 'sean' },
+    })
+    expect(router.state.location.pathname).toBe('/u/sean')
+
+    // output with trailing slash
+    await router.navigate({
+      to: '/u/$username/',
+      params: { username: 'tanner' },
+    })
     expect(router.state.location.pathname).toBe('/u/tanner/')
 
-    await router.navigate({ params: { username: 'tkdodo' } })
-    expect(router.state.location.pathname).toBe('/u/tkdodo')
+    // output with trailing slash
+    await router.navigate({
+      to: '/u/$username/',
+      params: { username: 'tkdodo' },
+    })
+    expect(router.state.location.pathname).toBe('/u/tkdodo/')
   })
 
   it('trailingSlash: "always"', async () => {
@@ -512,10 +533,16 @@ describe('router.navigate navigation with trailing slash options', () => {
 
     expect(router.state.location.pathname).toBe('/u/tanner')
 
-    await router.navigate({ to: '/u/tanner' })
+    await router.navigate({
+      to: '/u/$username',
+      params: { username: 'tanner' },
+    })
     expect(router.state.location.pathname).toBe('/u/tanner/')
 
-    await router.navigate({ params: { username: 'tkdodo' } })
+    await router.navigate({
+      to: '/u/$username',
+      params: { username: 'tkdodo' },
+    })
     expect(router.state.location.pathname).toBe('/u/tkdodo/')
   })
 })
