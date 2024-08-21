@@ -305,7 +305,8 @@ export const Route = createRootRoute({
   component: () => {
     const matches = useRouterState({ select: (s) => s.matches })
 
-    const breadcrumbs = matches.map(({ pathname, context }) => {
+    const breadcrumbs = matches
+      .map(({ pathname, context }) => {
         if (!context) return null
         if (!('getTitle' in routeContext)) return null
         if (!context.getTitle) return null
