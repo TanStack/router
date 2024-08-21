@@ -2123,6 +2123,10 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
+        // eslint-disable-next-line ts/no-unnecessary-condition
+        if (context === undefined) {
+          throw new Error('context is undefined')
+        }
         return <div>{JSON.stringify(context)}</div>
       },
     })
