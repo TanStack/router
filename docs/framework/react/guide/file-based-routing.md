@@ -201,6 +201,12 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Required) The directory containing the routes relative to the cwd.
 - **`generatedRouteTree`**
   - (Required) The path to the file where the generated route tree will be saved, relative to the cwd.
+- **`autoCodeSplitting`**
+
+  - (Optional, **Defaults to `false`**)
+  - If set to `true`, all non-critical route configuration items will be automatically code-split.
+  - See the [using automatic code-splitting](./code-splitting.md#using-automatic-code-splitting) guide.
+
 - **`quoteStyle`**
   - (Optional, **Defaults to `single`**) whether to use `single` or `double` quotes when formatting the generated route tree file.`
 - **`semicolons`**
@@ -236,10 +242,6 @@ The following options are available for configuration via the `tsr.config.json` 
       '/* prettier-ignore-end */'
     ]
     ```
-- **`experimental.enableCodeSplitting`** ⚠️
-  - (Optional, **Defaults to `false`**)
-  - If set to `true`, all non-critical route configuration items will be automatically code-split.
-  - See the [using automatic code-splitting](./code-splitting.md#using-automatic-code-splitting) guide.
 
 ## File Naming Conventions
 
