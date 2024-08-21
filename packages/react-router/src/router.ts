@@ -42,6 +42,7 @@ import type {
   AnyContext,
   AnyRoute,
   AnyRouteWithContext,
+  AnySearchSchema,
   BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
@@ -588,6 +589,8 @@ export function createRouter<
   >(options)
 }
 
+type MatchRoutesOpts = { preload?: boolean; throwOnError?: boolean }
+
 export class Router<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
@@ -950,10 +953,49 @@ export class Router<
     return this.routesById as Record<string, AnyRoute>
   }
 
-  matchRoutes = (
+  /** 
+  @deprecated use the following signature instead
+  ```ts
+  matchRoutes (
     next: ParsedLocation,
     opts?: { preload?: boolean; throwOnError?: boolean },
-  ): Array<AnyRouteMatch> => {
+  ): Array<AnyRouteMatch>;
+  ```
+*/
+  public matchRoutes(
+    pathname: string,
+    locationSearch: AnySearchSchema,
+    opts?: MatchRoutesOpts,
+  ): Array<AnyRouteMatch>
+  public matchRoutes(
+    next: ParsedLocation,
+    opts?: MatchRoutesOpts,
+  ): Array<AnyRouteMatch>
+
+  public matchRoutes(
+    pathnameOrNext: string | ParsedLocation,
+    locationSearchOrOpts?:
+      | AnySearchSchema
+      | { preload?: boolean; throwOnError?: boolean },
+    opts?: { preload?: boolean; throwOnError?: boolean },
+  ) {
+    if (typeof pathnameOrNext === 'string') {
+      return this.matchRoutesInternal(
+        {
+          pathname: pathnameOrNext,
+          search: locationSearchOrOpts,
+        } as ParsedLocation,
+        opts,
+      )
+    } else {
+      return this.matchRoutesInternal(pathnameOrNext, locationSearchOrOpts)
+    }
+  }
+
+  private matchRoutesInternal(
+    next: ParsedLocation,
+    opts?: { preload?: boolean; throwOnError?: boolean },
+  ): Array<AnyRouteMatch> {
     let routeParams: Record<string, string> = {}
 
     const foundRoute = this.flatRoutes.find((route) => {
