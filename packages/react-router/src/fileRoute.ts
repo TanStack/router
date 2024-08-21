@@ -6,8 +6,7 @@ import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
-import { type Constrain } from './utils'
-import type { ParsePathParams } from './link'
+import type { Constrain } from './utils'
 import type {
   AnyContext,
   AnyPathParams,
