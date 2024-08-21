@@ -25,7 +25,12 @@ import type {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import type { ControlledPromise, DeepPartial, NoInfer } from './utils'
+import type {
+  Constrain,
+  ControlledPromise,
+  DeepPartial,
+  NoInfer,
+} from './utils'
 
 export type AnyMatchAndValue = { match: any; value: any }
 
@@ -93,16 +98,9 @@ export type IsMatch<TMatch, TPath> = IsMatchParse<
   TMatch extends any ? { match: TMatch; value: TMatch } : never
 >
 
-export type ValidateIsMatchPath<
-  TMatch,
-  TPath extends string,
-> = TPath extends IsMatch<TMatch, TPath>['path']
-  ? TPath
-  : IsMatch<TMatch, TPath>['path']
-
 export const isMatch = <TMatch, TPath extends string>(
   match: TMatch,
-  path: ValidateIsMatchPath<TMatch, TPath>,
+  path: Constrain<TPath, IsMatch<TMatch, TPath>['path']>,
 ): match is IsMatch<TMatch, TPath>['result'] => {
   const parts = (path as string).split('.')
   let part
