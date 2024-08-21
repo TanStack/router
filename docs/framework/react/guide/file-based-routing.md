@@ -1,5 +1,5 @@
 ---
-title: File-Based Routes
+title: File-Based Routing
 ---
 
 Most of the TanStack Router documentation is written for file-based routing. This guide is mostly intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works.
