@@ -987,8 +987,7 @@ export class Router<
         } as ParsedLocation,
         opts,
       )
-    }
-    else {
+    } else {
       return this.matchRoutesInternal(pathnameOrNext, locationSearchOrOpts)
     }
   }
