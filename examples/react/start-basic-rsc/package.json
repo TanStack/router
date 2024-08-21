@@ -14,8 +14,8 @@
     "@babel/plugin-syntax-typescript": "^7.24.7",
     "@tanstack/react-router": "^1.49.2",
     "@tanstack/router-devtools": "^1.49.2",
-    "@tanstack/router-plugin": "^1.48.6",
-    "@tanstack/start": "^1.49.2",
+    "@tanstack/router-plugin": "^1.49.3",
+    "@tanstack/start": "^1.49.3",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.4.0",
     "vinxi": "0.4.1"
