@@ -27,8 +27,10 @@ export const configSchema = z.object({
     .array(z.string())
     .optional()
     .default(['/* prettier-ignore-end */']),
+  autoCodeSplitting: z.boolean().optional(),
   experimental: z
     .object({
+      // TODO: Remove this option in the next major release (v2).
       enableCodeSplitting: z.boolean().optional(),
     })
     .optional(),
