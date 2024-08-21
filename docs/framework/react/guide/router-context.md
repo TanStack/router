@@ -306,17 +306,14 @@ export const Route = createRootRoute({
     const matches = useRouterState({ select: (s) => s.matches })
 
     const breadcrumbs = matches
+      .filter((match) => match.context.getTitle)
       .map(({ pathname, context }) => {
-        if (!context) return null
-        if (!('getTitle' in routeContext)) return null
-        if (!context.getTitle) return null
-
         return {
           title: context.getTitle(),
           path: pathname,
         }
       })
-      .filter((item) => item !== null)
+
     // ...
   },
 })
