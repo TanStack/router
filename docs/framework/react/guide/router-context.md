@@ -303,15 +303,16 @@ Context, especially the isolated route `context` objects, make it trivial to acc
 // src/routes/__root.tsx
 export const Route = createRootRoute({
   component: () => {
-    const router = useRouter()
+    const matches = useRouterState({ select: (s) => s.matches })
 
-    const breadcrumbs = router.state.matches.map((match) => {
-      const { context } = match
-      return {
-        title: context.getTitle(),
-        path: match.path,
-      }
-    })
+    const breadcrumbs = matches
+      .filter((match) => match.context.getTitle)
+      .map(({ pathname, context }) => {
+        return {
+          title: context.getTitle(),
+          path: pathname,
+        }
+      })
 
     // ...
   },
@@ -324,9 +325,9 @@ Using that same route context, we could also generate a title tag for our page's
 // src/routes/__root.tsx
 export const Route = createRootRoute({
   component: () => {
-    const router = useRouter()
+    const matches = useRouterState({ select: (s) => s.matches })
 
-    const matchWithTitle = [...router.state.matches]
+    const matchWithTitle = [...matches]
       .reverse()
       .find((d) => d.context.getTitle)
 
