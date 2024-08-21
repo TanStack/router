@@ -32,9 +32,7 @@ export default createApp({
         TanStackRouterVite({
           routesDirectory: './app/routes',
           generatedRouteTree: './app/routeTree.gen.ts',
-          experimental: {
-            enableCodeSplitting: true,
-          },
+          autoCodeSplitting: true,
         }),
         reactRefresh(),
       ],

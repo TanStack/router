@@ -107,7 +107,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     enforce: 'pre',
 
     resolveId(source) {
-      if (!userConfig.experimental?.enableCodeSplitting) {
+      if (!userConfig.autoCodeSplitting) {
         return null
       }
 
@@ -118,7 +118,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     },
 
     transform(code, id) {
-      if (!userConfig.experimental?.enableCodeSplitting) {
+      if (!userConfig.autoCodeSplitting) {
         return null
       }
 
@@ -149,7 +149,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     },
 
     transformInclude(transformId) {
-      if (!userConfig.experimental?.enableCodeSplitting) {
+      if (!userConfig.autoCodeSplitting) {
         return undefined
       }
 
@@ -171,7 +171,8 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     vite: {
       configResolved(config) {
         ROOT = config.root
-        userConfig = getConfig(options, ROOT)
+
+        userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
       },
     },
 
@@ -192,7 +193,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         )
       })
 
-      userConfig = getConfig(options, ROOT)
+      userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
     },
 
     webpack(compiler) {
@@ -212,13 +213,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         )
       })
 
-      userConfig = getConfig(options, ROOT)
+      userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
 
       if (
-        userConfig.experimental?.enableCodeSplitting &&
+        userConfig.autoCodeSplitting &&
         compiler.options.mode === 'production'
       ) {
-        compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
+        compiler.hooks.done.tap(PLUGIN_NAME, () => {
           console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
           setTimeout(() => {
             process.exit(0)
@@ -227,4 +228,19 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       }
     },
   }
+}
+
+function CHECK_USER_FLAGS_TO_BE_CHANGED(config: Config): Config {
+  if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
+    const message = `
+------
+⚠️ ⚠️ ⚠️
+ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is now "autoCodeSplitting". Please update your configuration file to use "autoCodeSplitting" instead of "experimental.enableCodeSplitting".
+------
+`
+    console.error(message)
+    throw new Error(message)
+  }
+
+  return config
 }
