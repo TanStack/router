@@ -20,19 +20,6 @@ import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
-/**
- * Not all the deployment presets are fully functional or tested.
- * @see https://github.com/TanStack/router/pull/2002
- */
-const testedDeploymentPresets = ['bun', 'netlify', 'vercel']
-const staticDeploymentPresets = [
-  'cloudflare-pages-static',
-  'netlify-static',
-  'static',
-  'vercel-static',
-  'zeabur-static',
-]
-
 const deploymentSchema = z.object({
   preset: z
     .enum([
@@ -47,7 +34,7 @@ const deploymentSchema = z.object({
       'cli', // untested
       'cloudflare', // untested
       'cloudflare-module', // untested
-      'cloudflare-pages', // not working
+      'cloudflare-pages', // working
       'cloudflare-pages-static', // untested
       'deno', // untested
       'deno-deploy', // untested
@@ -99,6 +86,26 @@ const deploymentSchema = z.object({
     })
     .optional(),
 })
+
+/**
+ * Not all the deployment presets are fully functional or tested.
+ * @see https://github.com/TanStack/router/pull/2002
+ */
+type DeploymentPreset = z.infer<typeof deploymentSchema>['preset']
+
+const testedDeploymentPresets: Array<DeploymentPreset> = [
+  'bun',
+  'netlify',
+  'vercel',
+  'cloudflare-pages',
+]
+const staticDeploymentPresets: Array<DeploymentPreset> = [
+  'cloudflare-pages-static',
+  'netlify-static',
+  'static',
+  'vercel-static',
+  'zeabur-static',
+]
 
 const viteSchema = z.object({
   plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
