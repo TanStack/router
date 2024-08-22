@@ -75,4 +75,4 @@ TanStack works closely with our partners to provide the best possible developer 
 
 ## Ready to get started?
 
-Proceed to the next page to learn how to install TanStack Start and create your first page!
+Proceed to the next page to learn how to install TanStack Start and create your first app!
