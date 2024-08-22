@@ -182,6 +182,22 @@
             {
               "label": "Getting Started",
               "to": "framework/react/start/getting-started"
+            },
+            {
+              "label": "Hosting",
+              "to": "framework/react/start/hosting"
+            },
+            {
+              "label": "Authentication",
+              "to": "framework/react/start/authentication"
+            },
+            {
+              "label": "Databases",
+              "to": "framework/react/start/databases"
+            },
+            {
+              "label": "Observability",
+              "to": "framework/react/start/observability"
             }
           ]
         }
