@@ -19,7 +19,7 @@
     "@tanstack/react-router-with-query": "^1.49.2",
     "@tanstack/router-devtools": "^1.49.2",
     "@tanstack/router-plugin": "^1.49.3",
-    "@tanstack/start": "^1.49.3",
+    "@tanstack/start": "^1.49.4",
     "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-react": "^4.3.1",
     "@convex-dev/react-query": "0.0.0-alpha.5",
