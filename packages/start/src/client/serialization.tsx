@@ -110,13 +110,18 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
       }
     }
 
+    const meta =
+      match.status === 'success'
+        ? route.options.meta?.({
+            matches: router.state.matches,
+            match,
+            params: match.params,
+            loaderData: match.loaderData,
+          })
+        : undefined
+
     Object.assign(match, {
-      meta: route.options.meta?.({
-        matches: router.state.matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
-      }),
+      meta,
       links: route.options.links?.(),
       scripts: route.options.scripts?.(),
     })
