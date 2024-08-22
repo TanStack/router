@@ -41,7 +41,7 @@ What you get with TanStack Start:
 
 TanStack Start uses a tool called **Vinxi** to bundle and deploy your application. In fact, this is the same tool that powers Solid Start! With Vinxi, we can do a few things we couldn't do before:
 
-- Provide a unified APi for SSR, streaming and hydration
+- Provide a unified API for SSR, streaming, and hydration
 - Extract server-only code from your client-side code (e.g. server functions)
 - Bundle your application for deployment to any hosting provider
 
@@ -60,20 +60,20 @@ TanStack Start is perfect for you if you want to build a full-stack React applic
 
 TanStack Start is not for you if:
 
-- You're site will be 100% static
-- You're goal is a server-rendered site with zero JS or minimal client-side interactivity
+- Your site will be 100% static
+- Your goal is a server-rendered site with zero JS or minimal client-side interactivity
 - You're looking for a React-Server-Component-first framework. (We'll support RSCs soon in our own awesome flavor!)
 
 ## How is TanStack Start funded?
 
-TanStack works closely with our partners to provide the best possible developer experience while also providing solutions that work anywhere and are vetted by industry experts. Each of our partners place a unique role in the TanStack ecosystem:
+TanStack works closely with our partners to provide the best possible developer experience while also providing solutions that work anywhere and are vetted by industry experts. Each of our partners plays a unique role in the TanStack ecosystem:
 
 - **Vercel** <a href="https://vercel.com?utm_source=tanstack">
   <img alt="Vercel" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/vercel.svg" style="height: 40px" />
   </a> The leading hosting platform for web applications that provides a fast, secure, and reliable environment for deploying your web applications. We work closely with Vercel to ensure that TanStack Start applications not only deploy seamlessly to their platform, but also implement best practices for performance, security, and reliability regardless of where you end up deploying.
 - **Clerk** <a href="https://go.clerk.com/wOwHtuJ">
   <img alt="Clerk" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" style="height: 40px" />
-  </a> The best possible authentication experience for modern web applications, includeing TanStack Start applications. Clerk provides TanStack Start users with first-class integrations and solutions to auth and collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in auth best practices.
+  </a> The best possible authentication experience for modern web applications, including TanStack Start applications. Clerk provides TanStack Start users with first-class integrations and solutions to auth and collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in auth best practices.
 - **Convex** <a href="https://convex.dev?utm_source=tanstack">
   <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" style="height: 40px" />
   </a> A serverless database platform that integrates seamlessly with TanStack Start. Convex is designed to simplify the process of managing your application's data and provides a real-time, scalable, and transactional data backend that works well with TanStack Start applications. Convex also collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in database best practices.
