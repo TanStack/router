@@ -205,7 +205,7 @@ export function defineConfig(
 
   const clientBase = opts.routers?.client?.base || '/_build'
   const serverBase = opts.routers?.server?.base || '/_server'
-  const apiBase = opts.tsr.apiBase || '/api'
+  const apiBase = opts.tsr?.apiBase || '/api'
 
   const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
   const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
