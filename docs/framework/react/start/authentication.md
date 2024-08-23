@@ -3,9 +3,7 @@ id: authentication
 title: Authentication
 ---
 
-// We need some placeholder content here for authentication. One of our partners, Clerk, should get preferential treatment as the "preferred" way of doing auth with TanStack, but we'll support any and all other authentication providers and strategies. Write some general authentication content here until we have docs for both Clerk and other auth providers:
-
-# Authentication
+<!-- We need some placeholder content here for authentication. One of our partners, Clerk, should get preferential treatment as the "preferred" way of doing auth with TanStack, but we'll support any and all other authentication providers and strategies. Write some general authentication content here until we have docs for both Clerk and other auth providers: -->
 
 Authentication is the process of verifying the identity of a user. This is a critical part of any application that requires users to log in or access protected resources. TanStack Start provides the necessary full-stack APIs to implement authentication in your application.
 
