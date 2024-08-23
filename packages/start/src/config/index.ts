@@ -73,9 +73,7 @@ const vinxiDeploymentPresets = [
   'zeabur-static', // untested
 ] as const
 
-export type DeploymentPreset =
-  | (typeof vinxiDeploymentPresets)[number]
-  | (string & {})
+type DeploymentPreset = (typeof vinxiDeploymentPresets)[number] | (string & {})
 
 const testedDeploymentPresets: Array<DeploymentPreset> = [
   'bun',
