@@ -19,6 +19,7 @@ export interface RouterHistory {
   flush: () => void
   destroy: () => void
   notify: () => void
+  _ignoreSubscribers?: boolean
 }
 
 export interface HistoryLocation extends ParsedPath {
@@ -238,10 +239,19 @@ export function createBrowserHistory(opts?: {
       return
     }
 
-    // We use the original push/replace calls here to ensure that
-    // we do not notify subscribers about this push/replace call
-    const caller = next.isPush ? originalPushState : originalReplaceState
-    caller.call(win.history, next.state, '', next.href)
+    // We need to ignore any updates to the subscribers while we update the browser history
+    history._ignoreSubscribers = true
+
+    // Update the browser history
+    ;(next.isPush ? win.history.pushState : win.history.replaceState)(
+      next.state,
+      '',
+      next.href,
+    )
+
+    // Stop ignoring subscriber updates
+    history._ignoreSubscribers = false
+
     // Reset the nextIsPush flag and clear the scheduled update
     next = undefined
     scheduled = undefined
@@ -316,13 +326,13 @@ export function createBrowserHistory(opts?: {
 
   win.history.pushState = function (...args: Array<any>) {
     const res = originalPushState.apply(win.history, args)
-    onPushPop()
+    if (!history._ignoreSubscribers) onPushPop()
     return res
   }
 
   win.history.replaceState = function (...args: Array<any>) {
     const res = originalReplaceState.apply(win.history, args)
-    onPushPop()
+    if (!history._ignoreSubscribers) onPushPop()
     return res
   }
 

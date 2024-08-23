@@ -101,22 +101,27 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
         Object.entries(extracted).forEach(([_, ex]: any) => {
           if (ex.value instanceof Promise) {
             const og = ex.value
-            ex.value = og.then((data: any) =>
-              router.options.transformer.parse(data),
-            )
+            ex.value = og.then((data: any) => {
+              return data
+            })
           }
           deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
         })
       }
     }
 
+    const meta =
+      match.status === 'success'
+        ? route.options.meta?.({
+            matches: router.state.matches,
+            match,
+            params: match.params,
+            loaderData: match.loaderData,
+          })
+        : undefined
+
     Object.assign(match, {
-      meta: route.options.meta?.({
-        matches: router.state.matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
-      }),
+      meta,
       links: route.options.links?.(),
       scripts: route.options.scripts?.(),
     })

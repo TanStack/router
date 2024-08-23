@@ -20,19 +20,6 @@ import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
-/**
- * Not all the deployment presets are fully functional or tested.
- * @see https://github.com/TanStack/router/pull/2002
- */
-const testedDeploymentPresets = ['bun', 'netlify', 'vercel']
-const staticDeploymentPresets = [
-  'cloudflare-pages-static',
-  'netlify-static',
-  'static',
-  'vercel-static',
-  'zeabur-static',
-]
-
 const deploymentSchema = z.object({
   preset: z
     .enum([
@@ -42,12 +29,12 @@ const deploymentSchema = z.object({
       'azure', // untested
       'azure-functions', // untested
       'base-worker', // untested
-      'bun', // working
+      'bun', // ✅ working
       'cleavr', // untested
       'cli', // untested
       'cloudflare', // untested
       'cloudflare-module', // untested
-      'cloudflare-pages', // not working
+      'cloudflare-pages', // ✅ working
       'cloudflare-pages-static', // untested
       'deno', // untested
       'deno-deploy', // untested
@@ -63,7 +50,7 @@ const deploymentSchema = z.object({
       'iis-node', // untested
       'koyeb', // untested
       'layer0', // untested
-      'netlify', // working
+      'netlify', // ✅ working
       'netlify-builder', // untested
       'netlify-edge', // untested
       'netlify-static', // untested
@@ -71,12 +58,12 @@ const deploymentSchema = z.object({
       'nitro-prerender', // untested
       'node', // partially working
       'node-cluster', // untested
-      'node-server', // untested
+      'node-server', // ✅ working
       'platform-sh', // untested
       'service-worker', // untested
       'static', // partially working
       'stormkit', // untested
-      'vercel', // working
+      'vercel', // ✅ working
       'vercel-edge', // untested
       'vercel-static', // untested
       'winterjs', // untested
@@ -99,6 +86,27 @@ const deploymentSchema = z.object({
     })
     .optional(),
 })
+
+/**
+ * Not all the deployment presets are fully functional or tested.
+ * @see https://github.com/TanStack/router/pull/2002
+ */
+type DeploymentPreset = z.infer<typeof deploymentSchema>['preset']
+
+const testedDeploymentPresets: Array<DeploymentPreset> = [
+  'bun',
+  'netlify',
+  'vercel',
+  'cloudflare-pages',
+  'node-server',
+]
+const staticDeploymentPresets: Array<DeploymentPreset> = [
+  'cloudflare-pages-static',
+  'netlify-static',
+  'static',
+  'vercel-static',
+  'zeabur-static',
+]
 
 const viteSchema = z.object({
   plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
