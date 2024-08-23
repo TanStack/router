@@ -8,16 +8,18 @@ async function handleServerRequest(event: HTTPEvent) {
 
   const url = new URL(request.url, 'http://localhost:3000')
 
+  const vinxiAPIManifest = getManifest('api')
+
   let filepath = url.pathname
-  if (filepath.startsWith('/api')) {
-    filepath = filepath.slice(4)
+  if (filepath.startsWith(vinxiAPIManifest.base)) {
+    filepath = filepath.slice(vinxiAPIManifest.base.length)
   }
 
   const method = request.method.toUpperCase()
 
-  const requestHandler = (
-    await getManifest('api').chunks[filepath]?.import()
-  )?.[method] as Function
+  const requestHandler = (await vinxiAPIManifest.chunks[filepath]?.import())?.[
+    method
+  ] as Function
 
   return requestHandler({ request })
 }
