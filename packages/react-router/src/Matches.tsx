@@ -106,6 +106,10 @@ export type IsMatch<TMatch, TPath> = IsMatchParse<
   TMatch extends any ? { match: TMatch; value: TMatch } : never
 >
 
+/**
+ * Narrows matches based on a path
+ * @experimental
+ */
 export const isMatch = <TMatch, TPath extends string>(
   match: TMatch,
   path: Constrain<TPath, IsMatch<TMatch, TPath>['path']>,
