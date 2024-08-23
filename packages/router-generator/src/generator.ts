@@ -24,6 +24,7 @@ export type RouteNode = {
   isVirtualParentRequired?: boolean
   isVirtualParentRoute?: boolean
   isRoute?: boolean
+  isAPIRoute?: boolean
   isLoader?: boolean
   isComponent?: boolean
   isErrorComponent?: boolean
@@ -105,6 +106,9 @@ async function getRouteNodes(config: Config) {
           const isErrorComponent = routePath.endsWith('/errorComponent')
           const isPendingComponent = routePath.endsWith('/pendingComponent')
           const isLoader = routePath.endsWith('/loader')
+          const isAPIRoute = routePath.startsWith(
+            `${removeTrailingSlash(config.apiBase)}/`,
+          )
 
           const segments = routePath.split('/')
           const isLayout =
@@ -148,6 +152,7 @@ async function getRouteNodes(config: Config) {
             isLoader,
             isLazy,
             isLayout,
+            isAPIRoute,
           })
         }
       }),
@@ -458,11 +463,49 @@ export const Route = createRootRoute({
     routeNodes.push(node)
   }
 
-  for (const node of preRouteNodes) {
+  for (const node of preRouteNodes.filter((d) => !d.isAPIRoute)) {
     await handleNode(node)
   }
 
-  function buildRouteConfig(nodes: Array<RouteNode>, depth = 1): string {
+  const startAPIRouteTree: Array<RouteNode> = []
+  const startAPIRouteNodes: Array<RouteNode> = preRouteNodes.filter(
+    (d) => d.isAPIRoute,
+  )
+
+  const APIRouteNodes = []
+
+  const handleAPINode = async (node: RouteNode) => {
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
+    const escapedRoutePath = removeTrailingUnderscores(
+      node.routePath?.replaceAll('$', '$$') ?? '',
+    )
+
+    if (!routeCode) {
+      const replaced = `import { json } from '@tanstack/start'
+import { createApiRoute } from '@tanstack/start/server'
+
+export const route = createApiRoute('${escapedRoutePath}')({
+  GET: ({ request, params }) => {
+    return json({ message: 'Hello ${escapedRoutePath}' })
+  },
+})
+
+`
+
+      logger.log(`🟡 Creating ${node.fullPath}`)
+      fs.writeFileSync(
+        node.fullPath,
+        await prettier.format(replaced, prettierOptions),
+      )
+    }
+  }
+
+  for (const node of startAPIRouteNodes) {
+    await handleAPINode(node)
+  }
+
+  function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
       if (node.isRoot) {
         return
@@ -475,7 +518,7 @@ export const Route = createRootRoute({
       const route = `${node.variableName}Route`
 
       if (node.children?.length) {
-        const childConfigs = buildRouteConfig(node.children, depth + 1)
+        const childConfigs = buildRouteTreeConfig(node.children, depth + 1)
         return `${route}: ${route}.addChildren({${spaces(depth * 4)}${childConfigs}})`
       }
 
@@ -485,7 +528,7 @@ export const Route = createRootRoute({
     return children.filter(Boolean).join(`,`)
   }
 
-  const routeConfigChildrenText = buildRouteConfig(routeTree)
+  const routeConfigChildrenText = buildRouteTreeConfig(routeTree)
 
   const sortedRouteNodes = multiSortBy(routeNodes, [
     (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
@@ -831,6 +874,10 @@ function replaceBackslash(s: string) {
 
 function removeGroups(s: string) {
   return s.replace(possiblyNestedRouteGroupPatternRegex, '')
+}
+
+function removeTrailingSlash(s: string) {
+  return s.replace(/\/$/, '')
 }
 
 /**
