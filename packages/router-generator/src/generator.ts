@@ -31,6 +31,7 @@ export type RouteNode = {
   isVirtual?: boolean
   isLazy?: boolean
   isRoot?: boolean
+  isApiRoute?: boolean
   children?: Array<RouteNode>
   parent?: RouteNode
 }
@@ -105,6 +106,7 @@ async function getRouteNodes(config: Config) {
           const isErrorComponent = routePath.endsWith('/errorComponent')
           const isPendingComponent = routePath.endsWith('/pendingComponent')
           const isLoader = routePath.endsWith('/loader')
+          const isApiRoute = routePath.startsWith('/api/')
 
           const segments = routePath.split('/')
           const isLayout =
@@ -148,6 +150,7 @@ async function getRouteNodes(config: Config) {
             isLoader,
             isLazy,
             isLayout,
+            isApiRoute,
           })
         }
       }),
@@ -321,8 +324,8 @@ export const Route = createRootRoute({
           replaced = [
             `import { createLazyFileRoute } from '@tanstack/react-router'`,
             `export const Route = createLazyFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
+      component: () => <div>Hello ${escapedRoutePath}!</div>
+    })`,
           ].join('\n\n')
         } else if (
           node.isRoute ||
@@ -334,8 +337,8 @@ export const Route = createRootRoute({
           replaced = [
             `import { createFileRoute } from '@tanstack/react-router'`,
             `export const Route = createFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
+      component: () => <div>Hello ${escapedRoutePath}!</div>
+    })`,
           ].join('\n\n')
         }
       } else {
@@ -405,6 +408,7 @@ export const Route = createRootRoute({
     const nonPathRoute = node.isRoute && node.isNonPath
     node.isVirtualParentRequired =
       node.isLayout || nonPathRoute ? !cleanedPathIsEmpty : false
+
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
@@ -458,8 +462,37 @@ export const Route = createRootRoute({
     routeNodes.push(node)
   }
 
-  for (const node of preRouteNodes) {
+  for (const node of preRouteNodes.filter((d) => !d.isApiRoute)) {
     await handleNode(node)
+  }
+
+  const apiRouteNodes = checkApiRoutes(
+    preRouteNodes.filter((d) => d.isApiRoute),
+  )
+
+  const handleApiNode = async (node: RouteNode) => {
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
+    if (!routeCode) {
+      const replaced = `export const GET = () => {
+  return new Response('Hello ${node.routePath}!')
+}
+
+export const POST = () => {
+  return new Response('Hello ${node.routePath}!')
+}
+
+`
+      logger.log(`🟡 Creating ${node.fullPath}`)
+      fs.writeFileSync(
+        node.fullPath,
+        await prettier.format(replaced, prettierOptions),
+      )
+    }
+  }
+
+  for (const node of apiRouteNodes) {
+    await handleApiNode(node)
   }
 
   function buildRouteConfig(nodes: Array<RouteNode>, depth = 1): string {
@@ -833,6 +866,10 @@ function removeGroups(s: string) {
   return s.replace(possiblyNestedRouteGroupPatternRegex, '')
 }
 
+function removeTrailingSlash(s: string) {
+  return s.replace(/\/$/, '')
+}
+
 /**
  * The `node.path` is used as the `id` in the route definition.
  * This function checks if the given node has a parent and if so, it determines the correct path for the given node.
@@ -930,4 +967,39 @@ function getFilePathIdAndRouteIdFromPath(pathname: string) {
   const id = removeGroups(filePathId ?? '')
 
   return [filePathId, id] as const
+}
+
+function checkApiRoutes(_routes: Array<RouteNode>) {
+  if (_routes.length === 0) {
+    return []
+  }
+
+  // Make sure these are valid URLs
+  // Route Groups and Layout Routes aren't being removed since
+  // you may want to have an API route that starts with an underscore
+  // or be wrapped in parentheses
+  const routes = _routes.map((d) => {
+    const routePath = removeTrailingSlash(d.routePath ?? '')
+    return { ...d, routePath }
+  })
+
+  // Check no two API routes have the same routePath
+  // if they do, throw an error with the conflicting filePaths
+  const routePaths = routes.map((d) => d.routePath)
+  const uniqueRoutePaths = new Set(routePaths)
+  if (routePaths.length !== uniqueRoutePaths.size) {
+    const duplicateRoutePaths = routePaths.filter(
+      (d, i) => routePaths.indexOf(d) !== i,
+    )
+    const conflictingFiles = routes
+      .filter((d) => duplicateRoutePaths.includes(d.routePath))
+      .map((d) => `${d.fullPath}`)
+    const errorMessage = `The following API routes have conflicting route paths: ${duplicateRoutePaths
+      .map((p) => `"${p}"`)
+      .join(', ')}. Please ensure each API route has a unique route path.
+Conflicting files: \n ${conflictingFiles.join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+
+  return routes
 }
