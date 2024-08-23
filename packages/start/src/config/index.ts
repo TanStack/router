@@ -6,8 +6,12 @@ import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite, configSchema } from '@tanstack/router-plugin/vite'
 import { TanStackStartVite } from '@tanstack/start-vite-plugin'
-import { getConfig } from '@tanstack/router-generator'
+import {
+  getConfig,
+  startAPIRouteSegmentsFromPath,
+} from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
+import { BaseFileSystemRouter, analyzeModule, cleanPath } from 'vinxi/fs-router'
 import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
@@ -218,6 +222,20 @@ export function defineConfig(
         type: 'static',
         dir: './public',
         base: '/',
+      },
+      {
+        name: 'api',
+        type: 'http',
+        target: 'server',
+        base: '/api',
+        handler: importToProjectRelative('@tanstack/start/server-handler/api'),
+        routes: (router, app) =>
+          new TanStackStartServerFileSystemRouter(
+            { dir: tsrConfig.routesDirectory, extensions: FILE_EXTENSIONS },
+            router,
+            app,
+          ),
+        plugins: () => [],
       },
       withStartPlugins(tsrConfig)({
         name: 'client',
@@ -528,5 +546,67 @@ function tsrRoutesManifest(opts: {
       }
       return
     },
+  }
+}
+
+const FILE_EXTENSIONS = ['js', 'jsx', 'ts', 'tsx']
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
+
+class TanStackStartServerFileSystemRouter extends BaseFileSystemRouter {
+  toPath(src: string): string {
+    const path = cleanPath(src, this.config)
+
+    const segments = startAPIRouteSegmentsFromPath(path)
+
+    const pathname = segments
+      .map((part) => {
+        if (part.type === 'splat') {
+          return `*splat`
+        }
+
+        if (part.type === 'param') {
+          return `:${part.value}?`
+        }
+
+        return part.value
+      })
+      .join('/')
+
+    return pathname.length > 0 ? `/${pathname}` : '/'
+  }
+
+  toRoute(src: string) {
+    const path = this.toPath(src)
+
+    const [_, exports] = analyzeModule(src)
+
+    const hasAPIExports = !!exports.find((exp) => HTTP_METHODS.includes(exp.n))
+
+    if (!hasAPIExports)
+      return {
+        path,
+        filePath: src,
+        page: true,
+      }
+
+    const exportedAPIHandlers = exports
+      .filter((exp) => HTTP_METHODS.includes(exp.n))
+      .reduce(
+        (handlers, exp) => {
+          handlers[`$${exp.n}`] = {
+            src,
+            pick: [exp.n],
+          }
+          return handlers
+        },
+        {} as Record<string, any>,
+      )
+
+    return {
+      path,
+      filePath: src,
+      page: false,
+      ...exportedAPIHandlers,
+    }
   }
 }

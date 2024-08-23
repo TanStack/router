@@ -77,8 +77,7 @@ async function getRouteNodes(config: Config) {
         } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
-          let routePath =
-            cleanPath(`/${filePathNoExt.split('.').join('/')}`) || ''
+          let routePath = determineInitialRoutePath(filePathNoExt)
 
           if (routeFilePrefix) {
             routePath = routePath.replaceAll(routeFilePrefix, '')
@@ -466,7 +465,7 @@ export const Route = createRootRoute({
     await handleNode(node)
   }
 
-  const apiRouteNodes = checkApiRoutes(
+  const apiRouteNodes = checkAPIRoutes(
     preRouteNodes.filter((d) => d.isApiRoute),
   )
 
@@ -870,6 +869,10 @@ function removeTrailingSlash(s: string) {
   return s.replace(/\/$/, '')
 }
 
+function determineInitialRoutePath(routePath: string) {
+  return cleanPath(`/${routePath.split('.').join('/')}`) || ''
+}
+
 /**
  * The `node.path` is used as the `id` in the route definition.
  * This function checks if the given node has a parent and if so, it determines the correct path for the given node.
@@ -969,7 +972,7 @@ function getFilePathIdAndRouteIdFromPath(pathname: string) {
   return [filePathId, id] as const
 }
 
-function checkApiRoutes(_routes: Array<RouteNode>) {
+function checkAPIRoutes(_routes: Array<RouteNode>) {
   if (_routes.length === 0) {
     return []
   }
@@ -1002,4 +1005,31 @@ Conflicting files: \n ${conflictingFiles.join('\n ')}\n`
   }
 
   return routes
+}
+
+type StartAPIRoutePathSegment = {
+  value: string
+  type: 'path' | 'param' | 'splat'
+}
+
+export function startAPIRouteSegmentsFromPath(
+  pathname: string,
+): Array<StartAPIRoutePathSegment> {
+  const routePath = determineInitialRoutePath(pathname)
+
+  const parts = routePath.split('/').filter((p) => !!p && p !== 'index')
+  const segments: Array<StartAPIRoutePathSegment> = parts.map((part) => {
+    if (part.startsWith('$')) {
+      if (part === '$') {
+        return { value: part, type: 'splat' }
+      }
+
+      part.replaceAll('$', '')
+      return { value: part, type: 'param' }
+    }
+
+    return { value: part, type: 'path' }
+  })
+
+  return segments
 }

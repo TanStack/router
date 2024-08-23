@@ -1,6 +1,9 @@
 {
   "extends": "../../../tsconfig.json",
-  "include": ["../src/server-handler/index.tsx"],
+  "include": [
+    "../src/server-handler/index.tsx",
+    "../src/server-handler/api/index.ts"
+  ],
   "compilerOptions": {
     "outDir": "../dist/esm/server-handler",
     "target": "esnext",
