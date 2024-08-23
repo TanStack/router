@@ -235,7 +235,14 @@ export function defineConfig(
             router,
             app,
           ),
-        plugins: () => [],
+        plugins: () => [
+          // serverFunctions.server({
+          //   runtime: '@tanstack/start/react-server-runtime',
+          //   resolve: {
+          //     conditions: [],
+          //   },
+          // }),
+        ],
       },
       withStartPlugins(tsrConfig)({
         name: 'client',
