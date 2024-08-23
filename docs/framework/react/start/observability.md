@@ -3,8 +3,6 @@ id: observability
 title: Observability
 ---
 
-# Observability
-
 Observability is a critical aspect of modern web development, enabling you to monitor, trace, and debug your application’s performance and errors. TanStack Start integrates seamlessly with observability tools to provide comprehensive insights into how your application behaves in production, helping you ensure that everything runs smoothly.
 
 ## What should I use?
