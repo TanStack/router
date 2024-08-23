@@ -242,7 +242,7 @@ function Posts() {
 }
 ```
 
-Also, if you were previously using virtual routes, you should then their `.lazy.tsx` suffixes removed.
+Also, if you were previously using virtual routes, you should then have their `.lazy.tsx` suffixes removed.
 
 **Before using Virtual Routes**
 
