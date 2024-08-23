@@ -53,6 +53,7 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TCustomId extends string = string,
+  TFullPath extends string = string,
   TPath extends string = string,
   TSearchValidator = undefined,
   TParams = AnyPathParams,
@@ -76,6 +77,7 @@ export type RouteOptions<
   UpdatableRouteOptions<
     NoInfer<TParentRoute>,
     NoInfer<TCustomId>,
+    NoInfer<TFullPath>,
     NoInfer<TParams>,
     NoInfer<TSearchValidator>,
     NoInfer<TLoaderFn>,
@@ -309,6 +311,7 @@ export interface BeforeLoadContextOptions<
 export interface UpdatableRouteOptions<
   in out TParentRoute extends AnyRoute,
   in out TRouteId,
+  in out TFullPath,
   in out TParams,
   in out TSearchValidator,
   in out TLoaderFn,
@@ -351,6 +354,7 @@ export interface UpdatableRouteOptions<
   onEnter?: (
     match: RouteMatch<
       TRouteId,
+      TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
       ResolveLoaderData<TLoaderFn>,
@@ -366,6 +370,7 @@ export interface UpdatableRouteOptions<
   onStay?: (
     match: RouteMatch<
       TRouteId,
+      TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
       ResolveLoaderData<TLoaderFn>,
@@ -381,6 +386,7 @@ export interface UpdatableRouteOptions<
   onLeave?: (
     match: RouteMatch<
       TRouteId,
+      TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
       ResolveLoaderData<TLoaderFn>,
@@ -397,6 +403,7 @@ export interface UpdatableRouteOptions<
     matches: Array<
       RouteMatch<
         TRouteId,
+        TFullPath,
         ResolveAllParamsFromParent<TParentRoute, TParams>,
         ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
         ResolveLoaderData<TLoaderFn>,
@@ -411,6 +418,7 @@ export interface UpdatableRouteOptions<
     >
     match: RouteMatch<
       TRouteId,
+      TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
       ResolveLoaderData<TLoaderFn>,
@@ -860,6 +868,7 @@ export class Route<
   options: RouteOptions<
     TParentRoute,
     TCustomId,
+    TFullPath,
     TPath,
     TSearchValidator,
     TParams,
@@ -893,6 +902,7 @@ export class Route<
     options?: RouteOptions<
       TParentRoute,
       TCustomId,
+      TFullPath,
       TPath,
       TSearchValidator,
       TParams,
@@ -952,6 +962,7 @@ export class Route<
       | (RouteOptions<
           TParentRoute,
           TCustomId,
+          TFullPath,
           TPath,
           TSearchValidator,
           TParams,
@@ -1075,6 +1086,7 @@ export class Route<
     options: UpdatableRouteOptions<
       TParentRoute,
       TCustomId,
+      TFullPath,
       TParams,
       TSearchValidator,
       TLoaderFn,
@@ -1193,6 +1205,7 @@ export function createRoute<
   options: RouteOptions<
     TParentRoute,
     TCustomId,
+    TFullPath,
     TPath,
     TSearchValidator,
     TParams,
@@ -1232,7 +1245,8 @@ export type RootRouteOptions<
 > = Omit<
   RouteOptions<
     any, // TParentRoute
-    RootRouteId, // TCustomId
+    RootRouteId,
+    '', // TCustomId
     '', // TPath
     TSearchValidator,
     {}, // TParams
@@ -1493,6 +1507,7 @@ export class NotFoundRoute<
     options: Omit<
       RouteOptions<
         TParentRoute,
+        string,
         string,
         string,
         TSearchValidator,

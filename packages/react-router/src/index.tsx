@@ -80,6 +80,7 @@ export {
   useMatches,
   useParentMatches,
   useChildMatches,
+  isMatch,
 } from './Matches'
 export type {
   RouteMatch,

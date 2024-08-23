@@ -8,18 +8,24 @@ export const Route = createFileRoute('/dashboard/users/user')({
     userId: z.number(),
   }),
   loaderDeps: ({ search: { userId } }) => ({ userId }),
-  loader: ({ deps: { userId } }) => fetchUserById(userId),
+  loader: async ({ deps: { userId } }) => {
+    const user = await fetchUserById(userId)
+    return {
+      user,
+      crumb: user?.name,
+    }
+  },
   component: UserComponent,
 })
 
 function UserComponent() {
-  const user = Route.useLoaderData()
+  const data = Route.useLoaderData()
 
   return (
     <>
-      <h4 className="p-2 font-bold">{user?.name}</h4>
+      <h4 className="p-2 font-bold">{data.user?.name}</h4>
       <pre className="text-sm whitespace-pre-wrap">
-        {JSON.stringify(user, null, 2)}
+        {JSON.stringify(data.user, null, 2)}
       </pre>
     </>
   )
