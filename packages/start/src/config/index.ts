@@ -20,78 +20,62 @@ import type { RouterSchemaInput } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
-const deploymentSchema = z.object({
-  preset: z
-    .enum([
-      'alwaysdata', // untested
-      'aws-amplify', // untested
-      'aws-lambda', // untested
-      'azure', // untested
-      'azure-functions', // untested
-      'base-worker', // untested
-      'bun', // ✅ working
-      'cleavr', // untested
-      'cli', // untested
-      'cloudflare', // untested
-      'cloudflare-module', // untested
-      'cloudflare-pages', // ✅ working
-      'cloudflare-pages-static', // untested
-      'deno', // untested
-      'deno-deploy', // untested
-      'deno-server', // untested
-      'digital-ocean', // untested
-      'edgio', // untested
-      'firebase', // untested
-      'flight-control', // untested
-      'github-pages', // untested
-      'heroku', // untested
-      'iis', // untested
-      'iis-handler', // untested
-      'iis-node', // untested
-      'koyeb', // untested
-      'layer0', // untested
-      'netlify', // ✅ working
-      'netlify-builder', // untested
-      'netlify-edge', // untested
-      'netlify-static', // untested
-      'nitro-dev', // untested
-      'nitro-prerender', // untested
-      'node', // partially working
-      'node-cluster', // untested
-      'node-server', // ✅ working
-      'platform-sh', // untested
-      'service-worker', // untested
-      'static', // partially working
-      'stormkit', // untested
-      'vercel', // ✅ working
-      'vercel-edge', // untested
-      'vercel-static', // untested
-      'winterjs', // untested
-      'zeabur', // untested
-      'zeabur-static', // untested
-    ])
-    .optional(),
-  static: z.boolean().optional(),
-  prerender: z
-    .object({
-      routes: z.array(z.string()),
-      ignore: z
-        .array(
-          z.custom<
-            string | RegExp | ((path: string) => undefined | null | boolean)
-          >(),
-        )
-        .optional(),
-      crawlLinks: z.boolean().optional(),
-    })
-    .optional(),
-})
-
 /**
  * Not all the deployment presets are fully functional or tested.
  * @see https://github.com/TanStack/router/pull/2002
  */
-type DeploymentPreset = z.infer<typeof deploymentSchema>['preset']
+const vinxiDeploymentPresets = [
+  'alwaysdata', // untested
+  'aws-amplify', // untested
+  'aws-lambda', // untested
+  'azure', // untested
+  'azure-functions', // untested
+  'base-worker', // untested
+  'bun', // ✅ working
+  'cleavr', // untested
+  'cli', // untested
+  'cloudflare', // untested
+  'cloudflare-module', // untested
+  'cloudflare-pages', // ✅ working
+  'cloudflare-pages-static', // untested
+  'deno', // untested
+  'deno-deploy', // untested
+  'deno-server', // untested
+  'digital-ocean', // untested
+  'edgio', // untested
+  'firebase', // untested
+  'flight-control', // untested
+  'github-pages', // untested
+  'heroku', // untested
+  'iis', // untested
+  'iis-handler', // untested
+  'iis-node', // untested
+  'koyeb', // untested
+  'layer0', // untested
+  'netlify', // ✅ working
+  'netlify-builder', // untested
+  'netlify-edge', // untested
+  'netlify-static', // untested
+  'nitro-dev', // untested
+  'nitro-prerender', // untested
+  'node', // partially working
+  'node-cluster', // untested
+  'node-server', // ✅ working
+  'platform-sh', // untested
+  'service-worker', // untested
+  'static', // partially working
+  'stormkit', // untested
+  'vercel', // ✅ working
+  'vercel-edge', // untested
+  'vercel-static', // untested
+  'winterjs', // untested
+  'zeabur', // untested
+  'zeabur-static', // untested
+] as const
+
+export type DeploymentPreset =
+  | (typeof vinxiDeploymentPresets)[number]
+  | (string & {})
 
 const testedDeploymentPresets: Array<DeploymentPreset> = [
   'bun',
@@ -107,6 +91,42 @@ const staticDeploymentPresets: Array<DeploymentPreset> = [
   'vercel-static',
   'zeabur-static',
 ]
+
+function checkDeploymentPresetInput(preset: string): DeploymentPreset {
+  if (!vinxiDeploymentPresets.includes(preset as any)) {
+    console.warn(
+      `Invalid deployment preset "${preset}". Available presets are: ${vinxiDeploymentPresets
+        .map((p) => `"${p}"`)
+        .join(', ')}.`,
+    )
+  }
+
+  if (!testedDeploymentPresets.includes(preset as any)) {
+    console.warn(
+      `The deployment preset '${preset}' is not fully supported yet and may not work as expected.`,
+    )
+  }
+
+  return preset
+}
+
+const deploymentSchema = z.object({
+  preset: z.custom<DeploymentPreset>().optional(),
+  static: z.boolean().optional(),
+  prerender: z
+    .object({
+      routes: z.array(z.string()),
+      ignore: z
+        .array(
+          z.custom<
+            string | RegExp | ((path: string) => undefined | null | boolean)
+          >(),
+        )
+        .optional(),
+      crawlLinks: z.boolean().optional(),
+    })
+    .optional(),
+})
 
 const viteSchema = z.object({
   plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
@@ -184,16 +204,13 @@ export function defineConfig(
 
   const { preset: configDeploymentPreset, ...deploymentOptions } =
     deploymentSchema.parse(opts.deployment || {})
-  const deploymentPreset = configDeploymentPreset || 'vercel'
+
+  const deploymentPreset = checkDeploymentPresetInput(
+    configDeploymentPreset || 'vercel',
+  )
   const isStaticDeployment =
     deploymentOptions.static ??
     staticDeploymentPresets.includes(deploymentPreset)
-
-  if (!testedDeploymentPresets.includes(deploymentPreset)) {
-    console.warn(
-      `The deployment preset '${deploymentPreset}' is not fully supported yet and may not work as expected.`,
-    )
-  }
 
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
