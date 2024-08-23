@@ -1,6 +1,6 @@
 ---
-id: installation
-title: Installation
+id: getting-started
+title: Getting Started
 ---
 
 To set up a TanStack Start project, you'll need to:
@@ -39,7 +39,7 @@ Create a `tsconfig.json` file with at least the following settings:
 }
 ```
 
-# Install Dependencies
+## Install Dependencies
 
 TanStack Start is powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
 
@@ -61,7 +61,7 @@ and some TypeScript:
 npm i -D typescript @types/react @types/react-dom
 ```
 
-# Update Configuration Files
+## Update Configuration Files
 
 We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
 
@@ -86,7 +86,7 @@ import { defineConfig } from '@tanstack/start/config'
 export default defineConfig({})
 ```
 
-# Add the Basic Templating
+## Add the Basic Templating
 
 There are four required files for TanStack Start usage:
 
@@ -232,7 +232,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 ```
 
-# Writing Your First Route
+## Writing Your First Route
 
 Now that we have the basic templating setup, we can write our first route. This is done by creating a new file in the `app/routes` directory.
 
