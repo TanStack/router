@@ -249,6 +249,7 @@ export function createBrowserHistory(opts?: {
       next.href,
     )
 
+    // Stop ignoring subscriber updates
     history._ignoreSubscribers = false
 
     // Reset the nextIsPush flag and clear the scheduled update
