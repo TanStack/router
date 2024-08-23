@@ -582,12 +582,9 @@ class TanStackStartServerFileSystemRouter extends BaseFileSystemRouter {
 
     const hasAPIExports = !!exports.find((exp) => HTTP_METHODS.includes(exp.n))
 
-    if (!hasAPIExports)
-      return {
-        path,
-        filePath: src,
-        page: true,
-      }
+    if (!hasAPIExports) {
+      return
+    }
 
     const exportedAPIHandlers = exports
       .filter((exp) => HTTP_METHODS.includes(exp.n))
@@ -601,6 +598,10 @@ class TanStackStartServerFileSystemRouter extends BaseFileSystemRouter {
         },
         {} as Record<string, any>,
       )
+
+    if (Object.keys(exportedAPIHandlers).length === 0) {
+      return
+    }
 
     return {
       path,
