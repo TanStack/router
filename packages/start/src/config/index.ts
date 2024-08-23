@@ -144,6 +144,12 @@ const routersSchema = z.object({
       vite: viteSchema.optional(),
     })
     .optional(),
+  api: z
+    .object({
+      base: z.string().optional(),
+      entry: z.string().optional(),
+    })
+    .optional(),
 })
 
 const tsrConfig = configSchema.partial().extend({
@@ -198,10 +204,12 @@ export function defineConfig(
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
   const clientBase = opts.routers?.client?.base || '/_build'
-  const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
-
   const serverBase = opts.routers?.server?.base || '/_server'
+  const apiBase = opts.tsr.apiBase || '/api'
+
+  const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
   const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
+  const apiEntry = opts.routers?.api?.entry || './app/api.ts'
 
   return createApp({
     server: {
@@ -242,6 +250,45 @@ export function defineConfig(
           // TODO: RSCS - enable this
           // serverComponents.client(),
         ],
+      }),
+      withPlugins([
+        config('start-vite', {
+          ssr: {
+            noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+          },
+        }),
+        TanStackRouterVite({
+          ...tsrConfig,
+          autoCodeSplitting: true,
+          experimental: {
+            ...tsrConfig.experimental,
+          },
+        }),
+      ])({
+        name: 'api',
+        type: 'http',
+        target: 'server',
+        base: apiBase,
+        handler: apiEntry,
+        plugins: () => [
+          tsrRoutesManifest({
+            tsrConfig,
+            clientBase,
+          }),
+          ...(opts.vite?.plugins?.() || []),
+          ...(opts.routers?.ssr?.vite?.plugins?.() || []),
+          // serverTransform({
+          //   runtime: '@tanstack/start/server-runtime',
+          // }),
+          // config('start-api', {
+          //   ssr: {
+          //     external: ['@vinxi/react-server-dom/client'],
+          //   },
+          // }),
+        ],
+        // link: {
+        //   client: 'client',
+        // },
       }),
       withStartPlugins(tsrConfig)({
         name: 'ssr',
@@ -305,47 +352,50 @@ export function defineConfig(
   })
 }
 
-function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
-  return (
-    router: Extract<
-      RouterSchemaInput,
-      {
-        type: 'client' | 'http'
-      }
-    > & {
-      base?: string
-      link?: {
-        client: string
-      }
-      runtime?: string
-      build?: {
-        sourcemap?: boolean
-      }
-    },
-  ) => {
+type TempRouter = Extract<
+  RouterSchemaInput,
+  {
+    type: 'client' | 'http'
+  }
+> & {
+  base?: string
+  link?: {
+    client: string
+  }
+  runtime?: string
+  build?: {
+    sourcemap?: boolean
+  }
+}
+
+function withPlugins(plugins: Array<any>) {
+  return (router: TempRouter) => {
     return {
       ...router,
-      plugins: async () => [
-        config('start-vite', {
-          ssr: {
-            noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-          },
-          // optimizeDeps: {
-          //   include: ['@tanstack/start/server-runtime'],
-          // },
-        }),
-        TanStackRouterVite({
-          ...tsrConfig,
-          autoCodeSplitting: true,
-          experimental: {
-            ...tsrConfig.experimental,
-          },
-        }),
-        TanStackStartVite(),
-        ...((await router.plugins?.()) ?? []),
-      ],
+      plugins: async () => [...plugins, ...((await router.plugins?.()) ?? [])],
     }
   }
+}
+
+function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
+  return withPlugins([
+    config('start-vite', {
+      ssr: {
+        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+      },
+      // optimizeDeps: {
+      //   include: ['@tanstack/start/server-runtime'],
+      // },
+    }),
+    TanStackRouterVite({
+      ...tsrConfig,
+      autoCodeSplitting: true,
+      experimental: {
+        ...tsrConfig.experimental,
+      },
+    }),
+    TanStackStartVite(),
+  ])
 }
 
 // function resolveRelativePath(p: string) {
