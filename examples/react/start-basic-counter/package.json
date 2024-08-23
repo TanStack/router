@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.49.2",
-    "@tanstack/start": "^1.49.5",
+    "@tanstack/start": "^1.49.6",
     "@typescript-eslint/parser": "^7.18.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
