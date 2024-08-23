@@ -14,12 +14,10 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
 import { Route as DeferredImport } from './routes/deferred'
-import { Route as ApiTestImport } from './routes/api-test'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as ApiTestImport } from './routes/api/test'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
@@ -42,11 +40,6 @@ const DeferredRoute = DeferredImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const ApiTestRoute = ApiTestImport.update({
-  path: '/api-test',
-  getParentRoute: () => rootRoute,
-} as any)
-
 const LayoutRoute = LayoutImport.update({
   id: '/_layout',
   getParentRoute: () => rootRoute,
@@ -65,11 +58,6 @@ const PostsIndexRoute = PostsIndexImport.update({
 const PostsPostIdRoute = PostsPostIdImport.update({
   path: '/$postId',
   getParentRoute: () => PostsRoute,
-} as any)
-
-const ApiTestRoute = ApiTestImport.update({
-  path: '/api/test',
-  getParentRoute: () => rootRoute,
 } as any)
 
 const LayoutLayout2Route = LayoutLayout2Import.update({
@@ -110,13 +98,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
-    '/api-test': {
-      id: '/api-test'
-      path: '/api-test'
-      fullPath: '/api-test'
-      preLoaderRoute: typeof ApiTestImport
-      parentRoute: typeof rootRoute
-    }
     '/deferred': {
       id: '/deferred'
       path: '/deferred'
@@ -144,13 +125,6 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof LayoutLayout2Import
       parentRoute: typeof LayoutImport
-    }
-    '/api/test': {
-      id: '/api/test'
-      path: '/api/test'
-      fullPath: '/api/test'
-      preLoaderRoute: typeof ApiTestImport
-      parentRoute: typeof rootRoute
     }
     '/posts/$postId': {
       id: '/posts/$postId'
@@ -200,11 +174,9 @@ export const routeTree = rootRoute.addChildren({
       LayoutLayout2LayoutBRoute,
     }),
   }),
-  ApiTestRoute,
   DeferredRoute,
   PostsRoute: PostsRoute.addChildren({ PostsPostIdRoute, PostsIndexRoute }),
   RedirectRoute,
-  ApiTestRoute,
   PostsPostIdDeepRoute,
 })
 
@@ -218,11 +190,9 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/",
         "/_layout",
-        "/api-test",
         "/deferred",
         "/posts",
         "/redirect",
-        "/api/test",
         "/posts/$postId/deep"
       ]
     },
@@ -234,9 +204,6 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/_layout/_layout-2"
       ]
-    },
-    "/api-test": {
-      "filePath": "api-test.tsx"
     },
     "/deferred": {
       "filePath": "deferred.tsx"
@@ -258,9 +225,6 @@ export const routeTree = rootRoute.addChildren({
         "/_layout/_layout-2/layout-a",
         "/_layout/_layout-2/layout-b"
       ]
-    },
-    "/api/test": {
-      "filePath": "api/test.ts"
     },
     "/posts/$postId": {
       "filePath": "posts.$postId.tsx",
