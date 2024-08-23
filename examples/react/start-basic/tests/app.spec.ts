@@ -28,3 +28,11 @@ test('Navigating to a not-found route', async ({ page }) => {
   await page.getByRole('link', { name: 'Start Over' }).click()
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
 })
+
+test('Navigating to deferred route', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Deferred' }).click()
+  await expect(page.getByTestId('deferred-person')).toContainText(
+    'Tanner Linsley',
+  )
+})

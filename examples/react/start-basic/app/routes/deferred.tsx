@@ -1,5 +1,11 @@
 import { Await, createFileRoute, defer } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
 import { Suspense, useState } from 'react'
+
+const personServerFn = createServerFn('GET', async (name: string) => {
+  await new Promise((r) => setTimeout(r, 1000))
+  return { name, randomNumber: Math.floor(Math.random() * 100) }
+})
 
 export const Route = createFileRoute('/deferred')({
   loader: () => {
@@ -9,6 +15,7 @@ export const Route = createFileRoute('/deferred')({
           setTimeout(() => r('Hello deferred!'), 5000),
         ),
       ),
+      deferredPerson: defer(personServerFn('Tanner Linsley')),
     }
   },
   component: Deferred,
@@ -16,11 +23,21 @@ export const Route = createFileRoute('/deferred')({
 
 function Deferred() {
   const [count, setCount] = useState(0)
-  const { deferredStuff } = Route.useLoaderData()
+  const { deferredStuff, deferredPerson } = Route.useLoaderData()
 
   return (
     <div className="p-2">
-      <Suspense fallback="Loading...">
+      <Suspense fallback={<div>Loading person...</div>}>
+        <Await
+          promise={deferredPerson}
+          children={(data) => (
+            <div data-testid="deferred-person">
+              {data.name} - {data.randomNumber}
+            </div>
+          )}
+        />
+      </Suspense>
+      <Suspense fallback={<div>Loading stuff...</div>}>
         <Await promise={deferredStuff} children={(data) => <h3>{data}</h3>} />
       </Suspense>
       <div>Count: {count}</div>
