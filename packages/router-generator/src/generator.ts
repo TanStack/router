@@ -468,8 +468,8 @@ export const Route = createRootRoute({
   }
 
   const startAPIRouteTree: Array<RouteNode> = []
-  const startAPIRouteNodes: Array<RouteNode> = preRouteNodes.filter(
-    (d) => d.isAPIRoute,
+  const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
+    preRouteNodes.filter((d) => d.isAPIRoute),
   )
 
   const APIRouteNodes = []
@@ -977,4 +977,40 @@ function getFilePathIdAndRouteIdFromPath(pathname: string) {
   const id = removeGroups(filePathId ?? '')
 
   return [filePathId, id] as const
+}
+
+function checkStartAPIRoutes(_routes: Array<RouteNode>) {
+  if (_routes.length === 0) {
+    return []
+  }
+
+  // Make sure these are valid URLs
+  // Route Groups and Layout Routes aren't being removed since
+  // you may want to have an API route that starts with an underscore
+  // or be wrapped in parentheses
+  const routes = _routes.map((d) => {
+    const routePath = removeTrailingSlash(d.routePath ?? '')
+    return { ...d, routePath }
+  })
+
+  // Check no two API routes have the same routePath
+  // if they do, throw an error with the conflicting filePaths
+  const routePaths = routes.map((d) => d.routePath)
+  const uniqueRoutePaths = new Set(routePaths)
+  if (routePaths.length !== uniqueRoutePaths.size) {
+    const duplicateRoutePaths = routePaths.filter(
+      (d, i) => routePaths.indexOf(d) !== i,
+    )
+    const conflictingFiles = routes
+      .filter((d) => duplicateRoutePaths.includes(d.routePath))
+      .map((d) => `${d.fullPath}`)
+    const errorMessage = `Conflicting configuration paths was for found for the following API route${duplicateRoutePaths.length > 1 ? 's' : ''}: ${duplicateRoutePaths
+      .map((p) => `"${p}"`)
+      .join(', ')}.
+Please ensure each API route has a unique route path.
+Conflicting files: \n ${conflictingFiles.join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+
+  return routes
 }
