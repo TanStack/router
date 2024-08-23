@@ -34,9 +34,15 @@ import type {
 
 export type AnyMatchAndValue = { match: any; value: any }
 
-export type FindValueByKey<TKey, TValue> = TValue extends any
-  ? TValue[TKey & keyof TValue]
-  : never
+export type FindValueByIndex<
+  TKey,
+  TValue extends ReadonlyArray<any>,
+> = TKey extends `${infer TIndex extends number}` ? TValue[TIndex] : never
+
+export type FindValueByKey<TKey, TValue> =
+  TValue extends ReadonlyArray<any>
+    ? FindValueByIndex<TKey, TValue>
+    : TValue[TKey & keyof TValue]
 
 export type CreateMatchAndValue<TMatch, TValue> = TValue extends any
   ? {
@@ -57,7 +63,9 @@ export type NextMatchAndValue<
 
 export type IsMatchKeyOf<TValue> =
   TValue extends ReadonlyArray<any>
-    ? keyof TValue & `${number}`
+    ? number extends TValue['length']
+      ? `${number}`
+      : keyof TValue & `${number}`
     : TValue extends object
       ? keyof TValue & string
       : never
