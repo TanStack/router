@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { readFileSync, existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import reactRefresh from '@vitejs/plugin-react'
