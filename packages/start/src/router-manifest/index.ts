@@ -45,7 +45,14 @@ export function getFullRouterManifest() {
 }
 
 export function getAPIManifest() {
-  return tsrGetAPIManifest() as Manifest
+  const routerManifest = tsrGetAPIManifest() as Manifest
+
+  try {
+    //
+  } catch (e) {
+    //
+  }
+  return routerManifest
 }
 
 /**

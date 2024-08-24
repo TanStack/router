@@ -6,9 +6,18 @@ import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite, configSchema } from '@tanstack/router-plugin/vite'
 import { TanStackStartVite } from '@tanstack/start-vite-plugin'
-import { getConfig } from '@tanstack/router-generator'
+import {
+  getAPIBaseSegment,
+  getConfig,
+  startAPIRouteSegmentsFromPath,
+} from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
+import {
+  BaseFileSystemRouter as VinxiBaseFileSystemRouter,
+  analyzeModule as vinxiFsRouterAnalyzeModule,
+  cleanPath as vinxiFsRouterCleanPath,
+} from 'vinxi/fs-router'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
 // @ts-expect-error
@@ -16,7 +25,10 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
-import type { RouterSchemaInput } from 'vinxi'
+import type {
+  AppOptions as VinxiAppOptions,
+  RouterSchemaInput as VinxiRouterSchemaInput,
+} from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
@@ -277,6 +289,7 @@ export function defineConfig(
               target: 'server',
               base: apiBase,
               handler: apiEntry,
+              routes: tsrAPIRouter({ tsrConfig, apiBase }),
               plugins: () => [
                 tsrAPIManifest({
                   tsrConfig,
@@ -362,7 +375,7 @@ export function defineConfig(
 }
 
 type TempRouter = Extract<
-  RouterSchemaInput,
+  VinxiRouterSchemaInput,
   {
     type: 'client' | 'http'
   }
@@ -600,6 +613,72 @@ function tsrRoutesManifest(opts: {
       }
       return
     },
+  }
+}
+
+function tsrAPIRouter(opts: {
+  tsrConfig: z.infer<typeof configSchema>
+  apiBase: string
+}) {
+  const checkExp = new RegExp(`${getAPIBaseSegment(opts.apiBase)}/`)
+  return function (router: VinxiRouterSchemaInput, app: VinxiAppOptions) {
+    // Our own custom router that extends the VinxiBaseFileSystemRouter
+    // to full necessary API routes into its own "bundle"
+    class StartAPIFsRouter extends VinxiBaseFileSystemRouter {
+      toPath(src: string): string {
+        const inputPath = vinxiFsRouterCleanPath(src, this.config)
+
+        const segments = startAPIRouteSegmentsFromPath(inputPath)
+
+        const pathname = segments
+          .map((part) => {
+            if (part.type === 'splat') {
+              return `*splat`
+            }
+
+            if (part.type === 'param') {
+              return `:${part.value}?`
+            }
+
+            return part.value
+          })
+          .join('/')
+
+        return pathname.length > 0 ? `/${pathname}` : '/'
+      }
+
+      toRoute(src: string) {
+        const webPath = this.toPath(src)
+
+        if (!checkExp.test(webPath)) {
+          return undefined
+        }
+
+        const [_, exports] = vinxiFsRouterAnalyzeModule(src)
+
+        const hasRoute = exports.find((exp) => exp.n === 'Route')
+
+        return {
+          path: webPath,
+          filePath: src,
+          $route: hasRoute
+            ? {
+                src,
+                pick: ['Route'],
+              }
+            : undefined,
+        }
+      }
+    }
+
+    return new StartAPIFsRouter(
+      {
+        dir: opts.tsrConfig.routesDirectory,
+        extensions: ['js', 'jsx', 'ts', 'tsx'],
+      },
+      router,
+      app,
+    )
   }
 }
 

@@ -1,4 +1,5 @@
 import { eventHandler, toWebRequest } from 'vinxi/http'
+import { getManifest } from 'vinxi/manifest'
 import type { Manifest, ResolveParams } from '@tanstack/react-router'
 
 export type APIHandlerCallback = (ctx: {
@@ -28,13 +29,14 @@ export function createAPIHandler(cb: APIHandlerCallback) {
   })
 }
 
-export function handleAPIFileRoute({
+// eslint-disable-next-line @typescript-eslint/require-await
+export async function handleAPIFileRoute({
   request,
   getRouterManifest,
 }: {
   request: Request
   getRouterManifest: () => Manifest
-}): Response | Promise<Response> {
+}): Promise<Response> {
   const manifest = getRouterManifest()
 
   const apiBase = manifest.apiBase || '/api'

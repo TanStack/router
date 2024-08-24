@@ -1,2 +1,6 @@
 export { type Config, configSchema, getConfig } from './config'
-export { generator } from './generator'
+export {
+  generator,
+  getAPIBaseSegment,
+  startAPIRouteSegmentsFromPath,
+} from './generator'
