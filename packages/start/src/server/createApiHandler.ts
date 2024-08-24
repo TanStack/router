@@ -1,11 +1,11 @@
 import { eventHandler, toWebRequest } from 'vinxi/http'
 import type { Manifest, ResolveParams } from '@tanstack/react-router'
 
-export type ApiHandlerCallback = (ctx: {
+export type APIHandlerCallback = (ctx: {
   request: Request
 }) => Response | Promise<Response>
 
-export type ApiMethodCallback<TPath extends string> = (ctx: {
+export type APIMethodCallback<TPath extends string> = (ctx: {
   request: Request
   params: ResolveParams<TPath>
 }) => Response | Promise<Response>
@@ -18,9 +18,9 @@ const API_METHODS = [
   'DELETE',
   'OPTIONS',
 ] as const
-export type ApiMethodName = (typeof API_METHODS)[number]
+export type APIMethodName = (typeof API_METHODS)[number]
 
-export function createApiHandler(cb: ApiHandlerCallback) {
+export function createAPIHandler(cb: APIHandlerCallback) {
   return eventHandler(async (event) => {
     const request = toWebRequest(event)
     const res = await cb({ request })
@@ -28,7 +28,7 @@ export function createApiHandler(cb: ApiHandlerCallback) {
   })
 }
 
-export function handleApiFileRoute({
+export function handleAPIFileRoute({
   request,
   getRouterManifest,
 }: {
@@ -61,9 +61,9 @@ export function handleApiFileRoute({
   return new Response('Hello, world! ' + request.url)
 }
 
-export function createApiRoute<TPath extends string>(filePath: TPath) {
-  return function createApiRouteFn(
-    methods: Partial<Record<ApiMethodName, ApiMethodCallback<TPath>>>,
+export function createAPIRoute<TPath extends string>(filePath: TPath) {
+  return function createAPIRouteFn(
+    methods: Partial<Record<APIMethodName, APIMethodCallback<TPath>>>,
   ) {
     return {
       filePath,
