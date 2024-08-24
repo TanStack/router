@@ -714,42 +714,64 @@ export const route = createApiRoute('${escapedRoutePath}')({
     .filter(Boolean)
     .join('\n\n')
 
-  const createRouteManifest = () =>
-    JSON.stringify(
-      {
-        routes: {
-          __root__: {
-            filePath: rootRouteNode?.filePath,
-            children: routeTree.map(
-              (d) => getFilePathIdAndRouteIdFromPath(d.routePath!)[1],
-            ),
-          },
-          ...Object.fromEntries(
-            routeNodes.map((d) => {
-              const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
-                d.routePath!,
-              )
+  const createRouteManifest = () => {
+    const routesManifest = {
+      __root__: {
+        filePath: rootRouteNode?.filePath,
+        children: routeTree.map(
+          (d) => getFilePathIdAndRouteIdFromPath(d.routePath!)[1],
+        ),
+      },
+      ...Object.fromEntries(
+        routeNodes.map((d) => {
+          const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
+            d.routePath!,
+          )
 
-              return [
-                routeId,
-                {
-                  filePath: d.filePath,
-                  parent: d.parent?.routePath
-                    ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
-                    : undefined,
-                  children: d.children?.map(
-                    (childRoute) =>
-                      getFilePathIdAndRouteIdFromPath(childRoute.routePath!)[1],
-                  ),
-                },
-              ]
-            }),
-          ),
-        },
+          return [
+            routeId,
+            {
+              filePath: d.filePath,
+              parent: d.parent?.routePath
+                ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
+                : undefined,
+              children: d.children?.map(
+                (childRoute) =>
+                  getFilePathIdAndRouteIdFromPath(childRoute.routePath!)[1],
+              ),
+            },
+          ]
+        }),
+      ),
+    }
+
+    const starAPIManifest = {
+      ...Object.fromEntries(
+        startAPIRouteNodes.map((d) => {
+          const baseSegment = config.apiBase.split('/').filter(Boolean)[0]
+          const pathWithoutBaseSegment = d.routePath?.replace(
+            new RegExp(`^/${baseSegment}`),
+            '',
+          )
+          return [pathWithoutBaseSegment || '/', { filePath: d.filePath }]
+        }),
+      ),
+    }
+
+    return JSON.stringify(
+      {
+        ...(Object.keys(starAPIManifest).length
+          ? {
+              apiBase: config.apiBase,
+              apiRoutes: starAPIManifest,
+            }
+          : {}),
+        routes: routesManifest,
       },
       null,
       2,
     )
+  }
 
   const routeConfigFileContent = await prettier.format(
     config.disableManifestGeneration
