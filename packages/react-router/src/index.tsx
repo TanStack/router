@@ -138,6 +138,7 @@ export {
 } from './route'
 export type {
   AnyPathParams,
+  ResolveParams,
   SearchSchemaInput,
   SearchValidatorAdapter,
   AnySearchSchema,

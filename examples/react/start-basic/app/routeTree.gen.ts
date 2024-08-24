@@ -184,6 +184,15 @@ export const routeTree = rootRoute.addChildren({
 
 /* ROUTE_MANIFEST_START
 {
+  "apiBase": "/api",
+  "apiRoutes": {
+    "/hello": {
+      "filePath": "api/hello.ts"
+    },
+    "/foo/$": {
+      "filePath": "api/foo.$.ts"
+    }
+  },
   "routes": {
     "__root__": {
       "filePath": "__root.tsx",

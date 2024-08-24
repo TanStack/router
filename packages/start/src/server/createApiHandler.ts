@@ -1,6 +1,5 @@
 import { eventHandler, toWebRequest } from 'vinxi/http'
-import type { ResolveParams } from '../../../react-router/dist/esm/route'
-import type { Manifest, ParsePathParams } from '@tanstack/react-router'
+import type { Manifest, ResolveParams } from '@tanstack/react-router'
 
 export type ApiHandlerCallback = (ctx: {
   request: Request
@@ -11,7 +10,8 @@ export type ApiMethodCallback<TPath extends string> = (ctx: {
   params: ResolveParams<TPath>
 }) => Response | Promise<Response>
 
-export type ApiMethodName = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+const API_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
+export type ApiMethodName = (typeof API_METHODS)[number]
 
 export function createApiHandler(cb: ApiHandlerCallback) {
   return eventHandler(async (event) => {
@@ -21,17 +21,20 @@ export function createApiHandler(cb: ApiHandlerCallback) {
   })
 }
 
-export async function handleApiFileRoute({
+export function handleApiFileRoute({
   request,
   getRouterManifest,
 }: {
   request: Request
   getRouterManifest: () => Manifest
-}): Promise<Response> {
+}): Response | Promise<Response> {
   const manifest = getRouterManifest()
 
   const apiBase = manifest.apiBase || '/api'
   const apiRoutes = manifest.apiRoutes || {}
+
+  console.log('apiBase', apiBase)
+  console.log('apiRoutes', apiRoutes)
 
   // 1. Split routes on '/'
   // 2. Multi-sort routes by length, special rules for $param routes and $ (catch-all) routes
