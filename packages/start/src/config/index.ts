@@ -146,7 +146,6 @@ const routersSchema = z.object({
     .optional(),
   api: z
     .object({
-      base: z.string().optional(),
       entry: z.string().optional(),
     })
     .optional(),
