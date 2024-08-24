@@ -467,12 +467,9 @@ export const Route = createRootRoute({
     await handleNode(node)
   }
 
-  const startAPIRouteTree: Array<RouteNode> = []
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
     preRouteNodes.filter((d) => d.isAPIRoute),
   )
-
-  const APIRouteNodes = []
 
   const handleAPINode = async (node: RouteNode) => {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
@@ -485,7 +482,7 @@ export const Route = createRootRoute({
       const replaced = `import { json } from '@tanstack/start'
 import { createApiRoute } from '@tanstack/start/server'
 
-export const route = createApiRoute('${escapedRoutePath}')({
+export const Route = createApiRoute('${escapedRoutePath}')({
   GET: ({ request, params }) => {
     return json({ message: 'Hello ${escapedRoutePath}' })
   },
