@@ -191,6 +191,9 @@ export const routeTree = rootRoute.addChildren({
     },
     "/foo/$": {
       "filePath": "api/foo.$.ts"
+    },
+    "/boo/$id/name/$": {
+      "filePath": "api.boo.$id.name.$.tsx"
     }
   },
   "routes": {

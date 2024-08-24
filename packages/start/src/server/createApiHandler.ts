@@ -10,7 +10,14 @@ export type ApiMethodCallback<TPath extends string> = (ctx: {
   params: ResolveParams<TPath>
 }) => Response | Promise<Response>
 
-const API_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
+const API_METHODS = [
+  'GET',
+  'POST',
+  'PUT',
+  'PATCH',
+  'DELETE',
+  'OPTIONS',
+] as const
 export type ApiMethodName = (typeof API_METHODS)[number]
 
 export function createApiHandler(cb: ApiHandlerCallback) {
@@ -32,14 +39,14 @@ export function handleApiFileRoute({
 
   const apiBase = manifest.apiBase || '/api'
   const apiRoutes = manifest.apiRoutes || {}
-  console.log('handleApiFileRoute.apiRoutes', apiRoutes)
+  console.debug('handleApiFileRoute.apiRoutes\n', apiRoutes)
 
   const pathname = new URL(request.url, 'http://localhost:3000').pathname
   const withoutBase = pathname.startsWith(apiBase)
     ? pathname.slice(apiBase.length)
     : pathname
   const requestParts = withoutBase.split('/').filter(Boolean)
-  console.log('handleApiFileRoute.requestParts', requestParts)
+  console.debug('handleApiFileRoute.requestParts\n', requestParts)
 
   // 1. Split routes on '/'
   // 2. Multi-sort routes by length, special rules for $param routes and $ (catch-all) routes
@@ -51,7 +58,7 @@ export function handleApiFileRoute({
   // Loop through the manifest and find the route that matches the request
   // Dynamically import the route file and process the request to the right verb export
 
-  return new Response('Hello, world!')
+  return new Response('Hello, world! ' + request.url)
 }
 
 export function createApiRoute<TPath extends string>(filePath: TPath) {
