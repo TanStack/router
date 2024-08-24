@@ -6,6 +6,6 @@ export { createRequestHandler } from './createRequestHandler'
 export { defaultStreamHandler } from './defaultStreamHandler'
 export {
   createAPIHandler,
-  handleAPIFileRoute,
   createAPIRoute,
-} from './createAPIHandler'
+  handleAPIFileRoute,
+} from './createApiHandler'
