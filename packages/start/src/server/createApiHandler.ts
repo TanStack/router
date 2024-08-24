@@ -32,9 +32,14 @@ export function handleApiFileRoute({
 
   const apiBase = manifest.apiBase || '/api'
   const apiRoutes = manifest.apiRoutes || {}
+  console.log('handleApiFileRoute.apiRoutes', apiRoutes)
 
-  console.log('apiBase', apiBase)
-  console.log('apiRoutes', apiRoutes)
+  const pathname = new URL(request.url, 'http://localhost:3000').pathname
+  const withoutBase = pathname.startsWith(apiBase)
+    ? pathname.slice(apiBase.length)
+    : pathname
+  const requestParts = withoutBase.split('/').filter(Boolean)
+  console.log('handleApiFileRoute.requestParts', requestParts)
 
   // 1. Split routes on '/'
   // 2. Multi-sort routes by length, special rules for $param routes and $ (catch-all) routes
