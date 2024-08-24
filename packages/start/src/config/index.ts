@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import reactRefresh from '@vitejs/plugin-react'
@@ -210,6 +210,8 @@ export function defineConfig(
   const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
   const apiEntry = opts.routers?.api?.entry || './app/api.ts'
 
+  const apiEntryExists = existsSync(apiEntry)
+
   return createApp({
     server: {
       ...deploymentOptions,
@@ -250,49 +252,53 @@ export function defineConfig(
           // serverComponents.client(),
         ],
       }),
-      withPlugins([
-        config('start-vite', {
-          ssr: {
-            noExternal: [
-              '@tanstack/start',
-              'tsr:routes-manifest',
-              'tsr:api-manifest',
-            ],
-          },
-        }),
-        TanStackRouterVite({
-          ...tsrConfig,
-          autoCodeSplitting: true,
-          experimental: {
-            ...tsrConfig.experimental,
-          },
-        }),
-      ])({
-        name: 'api',
-        type: 'http',
-        target: 'server',
-        base: apiBase,
-        handler: apiEntry,
-        plugins: () => [
-          tsrAPIManifest({
-            tsrConfig,
-            apiBase,
-          }),
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.ssr?.vite?.plugins?.() || []),
-          // serverTransform({
-          //   runtime: '@tanstack/start/server-runtime',
-          // }),
-          // config('start-api', {
-          //   ssr: {
-          //     external: ['@vinxi/react-server-dom/client'],
-          //   },
-          // }),
-        ],
-        // link: {
-        //   client: 'client',
-        // },
-      }),
+      ...(apiEntryExists
+        ? [
+            withPlugins([
+              config('start-vite', {
+                ssr: {
+                  noExternal: [
+                    '@tanstack/start',
+                    'tsr:routes-manifest',
+                    'tsr:api-manifest',
+                  ],
+                },
+              }),
+              TanStackRouterVite({
+                ...tsrConfig,
+                autoCodeSplitting: true,
+                experimental: {
+                  ...tsrConfig.experimental,
+                },
+              }),
+            ])({
+              name: 'api',
+              type: 'http',
+              target: 'server',
+              base: apiBase,
+              handler: apiEntry,
+              plugins: () => [
+                tsrAPIManifest({
+                  tsrConfig,
+                  apiBase,
+                }),
+                ...(opts.vite?.plugins?.() || []),
+                ...(opts.routers?.ssr?.vite?.plugins?.() || []),
+                // serverTransform({
+                //   runtime: '@tanstack/start/server-runtime',
+                // }),
+                // config('start-api', {
+                //   ssr: {
+                //     external: ['@vinxi/react-server-dom/client'],
+                //   },
+                // }),
+              ],
+              // link: {
+              //   client: 'client',
+              // },
+            }),
+          ]
+        : []),
       withStartPlugins(tsrConfig)({
         name: 'ssr',
         type: 'http',
