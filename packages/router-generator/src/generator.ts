@@ -724,9 +724,7 @@ export const route = createApiRoute('${escapedRoutePath}')({
       },
       ...Object.fromEntries(
         routeNodes.map((d) => {
-          const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
-            d.routePath!,
-          )
+          const [_, routeId] = getFilePathIdAndRouteIdFromPath(d.routePath!)
 
           return [
             routeId,

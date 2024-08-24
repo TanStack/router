@@ -1,4 +1,6 @@
 export type Manifest = {
+  apiBase?: string
+  apiRoutes?: Record<string, { filePath: string }>
   routes: Record<
     string,
     {

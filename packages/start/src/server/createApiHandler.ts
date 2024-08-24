@@ -28,7 +28,10 @@ export async function handleApiFileRoute({
   request: Request
   getRouterManifest: () => Manifest
 }): Promise<Response> {
-  const manifest = await getRouterManifest()
+  const manifest = getRouterManifest()
+
+  const apiBase = manifest.apiBase || '/api'
+  const apiRoutes = manifest.apiRoutes || {}
 
   // 1. Split routes on '/'
   // 2. Multi-sort routes by length, special rules for $param routes and $ (catch-all) routes
