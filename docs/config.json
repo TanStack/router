@@ -184,6 +184,10 @@
               "to": "framework/react/start/getting-started"
             },
             {
+              "label": "Server Functions",
+              "to": "framework/react/start/server-functions"
+            },
+            {
               "label": "Hosting",
               "to": "framework/react/start/hosting"
             },
