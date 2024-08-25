@@ -368,4 +368,31 @@ export const Route = createFileRoute('/stuff')({
 })
 ```
 
-## Server Function Context
+## Can I simply use the `use server` directive?
+
+Sure, you can use the `use server` directive instead of the `createServerFn` function, however be aware of some caveats:
+
+- All arguments must be JSON-serializable and are passed as is
+- You will not have access to the `context` object, and thus will not be able to access request-specific information like method, headers, cookies, etc.
+
+```tsx
+// getServerTime.ts
+
+function greetUser(greeting: string, name: string) {
+  'use server'
+  return `${greeting}, ${name}!`
+}
+```
+
+## How do server functions work?
+
+Under the hood, server functions are extracted out of the client bundle and into a separate server bundle. On the server, they are executed as-is, and the result is sent back to the client. On the client, server functions proxy the request to the server, which executes the function and sends the result back to the client, all via `fetch`.
+
+The process looks like this:
+
+- When `createServerFn` is found in a file, the inner function is checked for a `use server` directive
+- If the `use server` directive is missing, it is added to the top of the function
+- On the client, the inner function is extracted out of the client bundle and into a separate server bundle
+- The client-side server function is replaced with a proxy function that sends a request to the server to execute the function that was extracted
+- On the server, the server function is no extracted and is executed as-is
+- After extraction occurs, each bundle applies a dead-code elimination process to remove any unused code from each bundle.
