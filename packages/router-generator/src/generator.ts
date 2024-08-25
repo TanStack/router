@@ -494,6 +494,19 @@ export const Route = createAPIRoute('${escapedRoutePath}')({
         node.fullPath,
         await prettier.format(replaced, prettierOptions),
       )
+    } else {
+      const copied = routeCode.replace(
+        /(createAPIRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+        (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
+      )
+
+      if (copied !== routeCode) {
+        logger.log(`🟡 Updating ${node.fullPath}`)
+        await fsp.writeFile(
+          node.fullPath,
+          await prettier.format(copied, prettierOptions),
+        )
+      }
     }
   }
 
