@@ -1039,8 +1039,8 @@ test('when creating a child route with context, search, params and beforeLoad', 
           | '/invoices/$invoiceId'
           | '/invoices/$invoiceId/details'
           | '/invoices/$invoiceId/details/$detailId'
-          | './'
-          | '../'
+          | '.'
+          | '..'
           | undefined
         >()
     },

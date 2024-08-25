@@ -41,7 +41,22 @@ export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
 
 export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
 
-export type CatchAllPaths = '.' | '..' | ''
+export type ParentPath<TOption> = 'always' extends TOption
+  ? '../'
+  : 'never' extends TOption
+    ? '..'
+    : '../' | '..'
+
+export type CurrentPath<TOption> = 'always' extends TOption
+  ? './'
+  : 'never' extends TOption
+    ? '.'
+    : './' | '.'
+
+export type CatchAllPaths<TOption> =
+  | CurrentPath<TOption>
+  | ParentPath<TOption>
+  | ''
 
 export type RoutesByPath<TRouteTree extends AnyRoute> = {
   [K in ParseRoute<TRouteTree> as K['fullPath']]: K
