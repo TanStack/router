@@ -1,6 +1,9 @@
-import { createAPIHandler, handleAPIFileRoute } from '@tanstack/start/api'
+import {
+  createStartAPIHandler,
+  defaultAPIFileRouteHandler,
+} from '@tanstack/start/api'
 import { getRouterManifest } from '@tanstack/start/router-manifest'
 
-export default createAPIHandler(({ request }) =>
-  handleAPIFileRoute({ request, getRouterManifest }),
+export default createStartAPIHandler(({ request }) =>
+  defaultAPIFileRouteHandler({ request, getRouterManifest }),
 )

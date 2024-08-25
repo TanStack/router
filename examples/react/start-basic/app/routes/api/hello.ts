@@ -1,7 +1,7 @@
 import { json } from '@tanstack/start'
-import { createAPIRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const Route = createAPIRoute('/api/hello')({
+export const Route = createAPIFileRoute('/api/hello')({
   GET: ({ request, params }) => {
     return json({ message: 'Hello /api/hello' })
   },

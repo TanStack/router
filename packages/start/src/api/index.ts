@@ -2,16 +2,16 @@ import { eventHandler, toWebRequest } from 'vinxi/http'
 import vinxiFileRoutes from 'vinxi/routes'
 import type { Manifest, ResolveParams } from '@tanstack/react-router'
 
-export type APIHandlerCallback = (ctx: {
+export type StartAPIHandlerCallback = (ctx: {
   request: Request
 }) => Response | Promise<Response>
 
-export type APIMethodCallback<TPath extends string> = (ctx: {
+export type StartAPIMethodCallback<TPath extends string> = (ctx: {
   request: Request
   params: ResolveParams<TPath>
 }) => Response | Promise<Response>
 
-const API_METHODS = [
+const HTTP_API_METHODS = [
   'GET',
   'POST',
   'PUT',
@@ -19,9 +19,9 @@ const API_METHODS = [
   'DELETE',
   'OPTIONS',
 ] as const
-export type APIMethodName = (typeof API_METHODS)[number]
+export type HTTP_API_METHOD = (typeof HTTP_API_METHODS)[number]
 
-export function createAPIHandler(cb: APIHandlerCallback) {
+export function createStartAPIHandler(cb: StartAPIHandlerCallback) {
   return eventHandler(async (event) => {
     const request = toWebRequest(event)
     const res = await cb({ request })
@@ -37,7 +37,7 @@ interface CustomizedVinxiFileRoute {
     import: () => Promise<{
       Route: {
         filePath: string
-        methods: Partial<Record<APIMethodName, APIMethodCallback<any>>>
+        methods: Partial<Record<HTTP_API_METHOD, StartAPIMethodCallback<any>>>
       }
     }>
   }
@@ -96,10 +96,12 @@ function toTSRFileBasedRoutes(
           params._splat = ''
           return '$'
         }
+
         if (part.startsWith(':$') && part.endsWith('?')) {
           params[part.slice(2, -1)] = ''
           return part.slice(1, -1)
         }
+
         return part
       })
       .join('/')
@@ -110,8 +112,7 @@ function toTSRFileBasedRoutes(
   return pairs
 }
 
-// eslint-disable-next-line @typescript-eslint/require-await
-export async function handleAPIFileRoute({
+export async function defaultAPIFileRouteHandler({
   request,
   getRouterManifest,
 }: {
@@ -123,7 +124,7 @@ export async function handleAPIFileRoute({
     return new Response('No routes found', { status: 404 })
   }
 
-  if (!API_METHODS.includes(request.method as APIMethodName)) {
+  if (!HTTP_API_METHODS.includes(request.method as HTTP_API_METHOD)) {
     return new Response('Method not allowed', { status: 405 })
   }
 
@@ -172,7 +173,7 @@ export async function handleAPIFileRoute({
   // the toTSRFileBasedRoutes function
   const params = route[1]
 
-  const method = request.method as APIMethodName
+  const method = request.method as HTTP_API_METHOD
 
   // Get the handler for the request method based on the Request Method
   const handler = action.methods[method]
@@ -188,9 +189,9 @@ export async function handleAPIFileRoute({
   return handler({ request, params })
 }
 
-export function createAPIRoute<TPath extends string>(filePath: TPath) {
+export function createAPIFileRoute<TPath extends string>(filePath: TPath) {
   return function createAPIRouteFn(
-    methods: Partial<Record<APIMethodName, APIMethodCallback<TPath>>>,
+    methods: Partial<Record<HTTP_API_METHOD, StartAPIMethodCallback<TPath>>>,
   ) {
     return {
       filePath,
