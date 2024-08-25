@@ -4,8 +4,3 @@ export { StartServer } from './StartServer'
 export { createStartHandler } from './createStartHandler'
 export { createRequestHandler } from './createRequestHandler'
 export { defaultStreamHandler } from './defaultStreamHandler'
-export {
-  createAPIHandler,
-  createAPIRoute,
-  handleAPIFileRoute,
-} from './createApiHandler'

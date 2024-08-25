@@ -479,7 +479,7 @@ export const Route = createRootRoute({
 
     if (!routeCode) {
       const replaced = `import { json } from '@tanstack/start'
-import { createAPIRoute } from '@tanstack/start/server'
+import { createAPIRoute } from '@tanstack/start/api'
 
 export const Route = createAPIRoute('${escapedRoutePath}')({
   GET: ({ request, params }) => {

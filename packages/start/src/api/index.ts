@@ -1,6 +1,5 @@
 import { eventHandler, toWebRequest } from 'vinxi/http'
 import vinxiFileRoutes from 'vinxi/routes'
-import { interpolatePath } from '@tanstack/react-router'
 import type { Manifest, ResolveParams } from '@tanstack/react-router'
 
 export type APIHandlerCallback = (ctx: {
