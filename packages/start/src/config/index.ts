@@ -289,7 +289,7 @@ export function defineConfig(
               target: 'server',
               base: apiBase,
               handler: apiEntry,
-              routes: tsrAPIRouter({ tsrConfig, apiBase }),
+              routes: tsrFileRouter({ tsrConfig, apiBase }),
               plugins: () => [
                 tsrAPIManifest({
                   tsrConfig,
@@ -616,7 +616,7 @@ function tsrRoutesManifest(opts: {
   }
 }
 
-function tsrAPIRouter(opts: {
+function tsrFileRouter(opts: {
   tsrConfig: z.infer<typeof configSchema>
   apiBase: string
 }) {
@@ -656,12 +656,12 @@ function tsrAPIRouter(opts: {
 
         const [_, exports] = vinxiFsRouterAnalyzeModule(src)
 
-        const hasRoute = exports.find((exp) => exp.n === 'Route')
+        const hasAPIRoute = exports.find((exp) => exp.n === 'Route')
 
         return {
           path: webPath,
           filePath: src,
-          $route: hasRoute
+          $APIRoute: hasAPIRoute
             ? {
                 src,
                 pick: ['Route'],
