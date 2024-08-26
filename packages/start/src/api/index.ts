@@ -18,6 +18,7 @@ const HTTP_API_METHODS = [
   'PATCH',
   'DELETE',
   'OPTIONS',
+  'HEAD',
 ] as const
 export type HTTP_API_METHOD = (typeof HTTP_API_METHODS)[number]
 
