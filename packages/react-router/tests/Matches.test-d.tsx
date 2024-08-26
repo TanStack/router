@@ -158,8 +158,8 @@ test('when matching a route with params', () => {
     .toHaveProperty('to')
     .toEqualTypeOf<
       | '/'
-      | './'
-      | '../'
+      | '.'
+      | '..'
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/comments/$id'
@@ -171,8 +171,8 @@ test('when matching a route with params', () => {
     .toHaveProperty('to')
     .toEqualTypeOf<
       | '/'
-      | './'
-      | '../'
+      | '.'
+      | '..'
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/comments/$id'
