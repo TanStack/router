@@ -80,8 +80,11 @@ const vinxiRoutes = (
  */
 function toTSRFileBasedRoutes(
   routes: Array<CustomizedVinxiFileRoute>,
-): Array<{ path: string; route: CustomizedVinxiFileRoute }> {
-  const pairs: Array<{ path: string; route: CustomizedVinxiFileRoute }> = []
+): Array<{ routePath: string; route: CustomizedVinxiFileRoute }> {
+  const pairs: Array<{
+    routePath: string
+    route: CustomizedVinxiFileRoute
+  }> = []
 
   routes.forEach((route) => {
     const parts = route.path.split('/').filter(Boolean)
@@ -100,7 +103,7 @@ function toTSRFileBasedRoutes(
       })
       .join('/')
 
-    pairs.push({ path: `/${path}`, route })
+    pairs.push({ routePath: `/${path}`, route })
   })
 
   return pairs
@@ -110,22 +113,34 @@ function toTSRFileBasedRoutes(
  * This function takes a URL object and a list of routes and finds the route that matches the URL.
  *
  * @param url URL object
- * @param routes List of routes parsed from the vinxi routes into the TSR format
+ * @param entryRoutes List of routes parsed from the vinxi routes into the TSR format
  */
 function findRoute(
   url: URL,
-  routes: Array<{ path: string; route: CustomizedVinxiFileRoute }>,
+  entryRoutes: Array<{ routePath: string; route: CustomizedVinxiFileRoute }>,
 ):
   | {
-      path: string
+      routePath: string
       params: Record<string, string>
       route: CustomizedVinxiFileRoute
     }
   | undefined {
   const urlSegments = url.pathname.split('/').filter(Boolean)
 
+  const routes = entryRoutes
+    .sort((a, b) => {
+      const aParts = a.routePath.split('/').filter(Boolean)
+      const bParts = b.routePath.split('/').filter(Boolean)
+
+      return bParts.length - aParts.length
+    })
+    .filter((r) => {
+      const routeSegments = r.routePath.split('/').filter(Boolean)
+      return routeSegments.length === urlSegments.length
+    })
+
   for (const route of routes) {
-    const routeSegments = route.path.split('/').filter(Boolean)
+    const routeSegments = route.routePath.split('/').filter(Boolean)
     const params: Record<string, string> = {}
     let matches = true
     for (let i = 0; i < routeSegments.length; i++) {
@@ -151,7 +166,7 @@ function findRoute(
       }
     }
     if (matches) {
-      return { path: route.path, params, route: route.route }
+      return { routePath: route.routePath, params, route: route.route }
     }
   }
 
@@ -219,7 +234,7 @@ export async function defaultAPIFileRouteHandler({
     return new Response('Method not allowed', { status: 405 })
   }
 
-  return handler({ request, params })
+  return await handler({ request, params })
 }
 
 export function createAPIFileRoute<TPath extends string>(filePath: TPath) {
