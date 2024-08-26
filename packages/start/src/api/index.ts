@@ -35,34 +35,20 @@ export function createStartAPIHandler(cb: StartAPIHandlerCallback) {
   })
 }
 
-type APIRoute<TPath extends string> = {
+export type APIRoute<TPath extends string> = {
   path: TPath
   methods: Partial<Record<HTTP_API_METHOD, StartAPIMethodCallback<TPath>>>
 }
 
-type CreateAPIRouteFn<TPath extends string> = (
+export type CreateAPIRouteFn<TPath extends string> = (
   methods: Partial<Record<HTTP_API_METHOD, StartAPIMethodCallback<TPath>>>,
 ) => APIRoute<TPath>
 
-type CreateAPIRoute = <TPath extends string>(
+export type CreateAPIRoute = <TPath extends string>(
   filePath: TPath,
 ) => CreateAPIRouteFn<TPath>
 
-type APIFileRouteReturnType = ReturnType<ReturnType<CreateAPIRoute>>
-
-/**
- * This function is used to create an API route that will be listening on a specific path when you are not using the file-based routes.
- *
- * @param path The path that the API route will be listening on. You need to make sure that this is a valid TanStack Router path in order for the route to be matched. This means that you can use the following syntax:
- * /api/foo/$bar/name/$
- * - The `$bar` is a parameter that will be extracted from the URL and passed to the handler
- * - The `$` is a wildcard that will match any number of segments in the URL
- * @returns A function that takes the methods that the route will be listening on and returns the API route object
- */
-export const createAPIRoute: CreateAPIRoute = (path) => (methods) => ({
-  path,
-  methods,
-})
+export type APIRouteReturnType = ReturnType<ReturnType<CreateAPIRoute>>
 
 /**
  * This function is used to create an API route that will be listening on a specific path when you are using the file-based routes.
@@ -146,7 +132,7 @@ interface CustomizedVinxiFileRoute {
   $APIRoute?: {
     src: string
     import: () => Promise<{
-      Route: APIFileRouteReturnType
+      Route: APIRouteReturnType
     }>
   }
 }
@@ -219,65 +205,6 @@ function toTSRFileBasedRoutes(
 }
 
 /**
- * You should only be using this function if you are not using the file-based routes.
- *
- *
- * @param handlerMap - A map of TSR routes with the values being the route handlers
- * @returns {StartAPIHandlerCallback}
- *
- * @example
- * ```ts
- * // app/foo.ts
- * import { createAPIRoute } from '@tanstack/start/api'
- * const fooBarRoute = createAPIRoute('/api/foo/$bar')({
- *  GET: ({ params }) => {
- *   return new Response(JSON.stringify({ params }))
- *  }
- * })
- *
- * // app/api.ts
- * import {
- *    createStartAPIHandler,
- *    defaultAPIRoutesHandler
- * } from '@tanstack/start/api'
- *
- * export default createStartAPIHandler(
- *  defaultAPIRoutesHandler({
- *   '/api/foo/$bar': fooBarRoute
- *  })
- * )
- * ```
- */
-export function defaultAPIRoutesHandler(handlerMap: {
-  [TPath in string]: APIRoute<TPath>
-}): StartAPIHandlerCallback {
-  return async ({ request }) => {
-    const url = new URL(request.url, 'http://localhost:3000')
-
-    const routes = Object.entries(handlerMap).map(([routePath, route]) => ({
-      routePath,
-      payload: route,
-    }))
-
-    const route = findRoute(url, routes)
-
-    if (!route) {
-      return new Response('Not found', { status: 404 })
-    }
-
-    const method = request.method as HTTP_API_METHOD
-
-    const handler = route.payload.methods[method]
-
-    if (!handler) {
-      return new Response('Method not allowed', { status: 405 })
-    }
-
-    return await handler({ request, params: route.params })
-  }
-}
-
-/**
  * This function is the default handler for the API routes when using file-based routes.
  *
  * @param StartAPIHandlerCallbackContext
@@ -322,7 +249,7 @@ export async function defaultAPIFileRouteHandler({
 
   // The action is the route file that we need to import
   // which contains the possible handlers for the incoming request
-  let action: APIFileRouteReturnType | undefined = undefined
+  let action: APIRouteReturnType | undefined = undefined
 
   try {
     // We can guarantee that action is defined since we filtered for it earlier
