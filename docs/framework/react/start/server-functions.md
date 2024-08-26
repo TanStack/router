@@ -234,7 +234,7 @@ Server functions can throw `redirect`s or `notFound`s and while not required, it
 
 ```tsx
 import { useServerFn } from '@tanstack/start'
-import { useQuery } from 'react-query'
+import { useQuery } from '@tanstack/react-query'
 import { getServerTime } from './getServerTime'
 
 export function Time() {
