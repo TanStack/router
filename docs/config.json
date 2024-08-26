@@ -188,6 +188,10 @@
               "to": "framework/react/start/server-functions"
             },
             {
+              "label": "SSR",
+              "to": "framework/react/start/ssr"
+            },
+            {
               "label": "Hosting",
               "to": "framework/react/start/hosting"
             },
