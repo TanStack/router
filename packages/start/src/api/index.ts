@@ -48,7 +48,7 @@ type CreateAPIRoute = <TPath extends string>(
   filePath: TPath,
 ) => CreateAPIRouteFn<TPath>
 
-type APIFileRouteReturnType = ReturnType<ReturnType<CreateAPIRoute>>
+type APIRouteReturnType = ReturnType<ReturnType<CreateAPIRoute>>
 
 /**
  * This function is used to create an API route that will be listening on a specific path when you are not using the file-based routes.
@@ -141,12 +141,12 @@ function findRoute<TPayload = unknown>(
 }
 
 interface CustomizedVinxiFileRoute {
-  path: string
-  filePath: string
+  path: string // this path is h3 path
+  filePath: string // this is the file path on the system
   $APIRoute?: {
-    src: string
+    src: string // this is the path to the source file
     import: () => Promise<{
-      Route: APIFileRouteReturnType
+      Route: APIRouteReturnType
     }>
   }
 }
@@ -322,7 +322,7 @@ export async function defaultAPIFileRouteHandler({
 
   // The action is the route file that we need to import
   // which contains the possible handlers for the incoming request
-  let action: APIFileRouteReturnType | undefined = undefined
+  let action: APIRouteReturnType | undefined = undefined
 
   try {
     // We can guarantee that action is defined since we filtered for it earlier
