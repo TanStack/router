@@ -269,11 +269,7 @@ export function defineConfig(
             withPlugins([
               config('start-vite', {
                 ssr: {
-                  noExternal: [
-                    '@tanstack/start',
-                    'tsr:routes-manifest',
-                    'tsr:api-manifest',
-                  ],
+                  noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
                 },
               }),
               TanStackRouterVite({
@@ -289,12 +285,8 @@ export function defineConfig(
               target: 'server',
               base: apiBase,
               handler: apiEntry,
-              routes: tsrFileRouter({ tsrConfig, apiBase }),
+              routes: tsrAPIFileRouter({ tsrConfig, apiBase }),
               plugins: () => [
-                tsrAPIManifest({
-                  tsrConfig,
-                  apiBase,
-                }),
                 ...(opts.vite?.plugins?.() || []),
                 ...(opts.routers?.ssr?.vite?.plugins?.() || []),
                 // serverTransform({
@@ -403,11 +395,7 @@ function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
   return withPlugins([
     config('start-vite', {
       ssr: {
-        noExternal: [
-          '@tanstack/start',
-          'tsr:routes-manifest',
-          'tsr:api-manifest',
-        ],
+        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
       },
       // optimizeDeps: {
       //   include: ['@tanstack/start/server-runtime'],
@@ -454,9 +442,6 @@ function tsrRoutesManifest(opts: {
     },
     resolveId(id) {
       if (id === 'tsr:routes-manifest') {
-        return id
-      }
-      if (id === 'tsr:api-manifest') {
         return id
       }
       return
@@ -606,17 +591,12 @@ function tsrRoutesManifest(opts: {
 
         return `export default () => (${JSON.stringify(routesManifest)})`
       }
-      if (id === 'tsr:api-manifest') {
-        return `export default () => ({
-            apiRoutes: {}
-          })`
-      }
       return
     },
   }
 }
 
-function tsrFileRouter(opts: {
+function tsrAPIFileRouter(opts: {
   tsrConfig: z.infer<typeof configSchema>
   apiBase: string
 }) {
@@ -679,86 +659,5 @@ function tsrFileRouter(opts: {
       router,
       app,
     )
-  }
-}
-
-function tsrAPIManifest(opts: {
-  tsrConfig: z.infer<typeof configSchema>
-  apiBase: string
-}): vite.Plugin {
-  let config: vite.ResolvedConfig
-
-  return {
-    name: 'tsr-api-manifest',
-    configResolved(resolvedConfig) {
-      config = resolvedConfig
-    },
-    resolveId(id) {
-      if (id === 'tsr:routes-manifest') {
-        return id
-      }
-      if (id === 'tsr:api-manifest') {
-        return id
-      }
-      return
-    },
-    load(id) {
-      if (id === 'tsr:api-manifest') {
-        // If we're in development, return a dummy manifest
-        // if (config.command === 'serve') {
-        //   return `export default () => ({
-        //     apiBase: '${opts.tsrConfig.apiBase}',
-        //     apiRoutes: {}
-        //   })`
-        // }
-
-        const routeTreePath = path.resolve(opts.tsrConfig.generatedRouteTree)
-
-        let routeTreeContent: string
-        try {
-          routeTreeContent = readFileSync(routeTreePath, 'utf-8')
-        } catch (err) {
-          throw new Error(
-            `Could not find the generated route tree at '${path.resolve(
-              opts.tsrConfig.generatedRouteTree,
-            )}'!`,
-          )
-        }
-
-        // Extract the routesManifest JSON from the route tree file.
-        // It's located between the /* ROUTE_MANIFEST_START and ROUTE_MANIFEST_END */ comment block.
-
-        const routerManifest = JSON.parse(
-          routeTreeContent.match(
-            /\/\* ROUTE_MANIFEST_START([\s\S]*?)ROUTE_MANIFEST_END \*\//,
-          )?.[1] || '{ apiBase: "/api", apiRoutes: {} }',
-        ) as Manifest
-
-        const apiBase =
-          routerManifest.apiBase || opts.tsrConfig.apiBase || '/api'
-        const apiRoutes = routerManifest.apiRoutes || {}
-
-        // console.log('plugin apiRoutes', apiRoutes)
-
-        const apiRoutesManifest = {
-          apiBase,
-          apiRoutes,
-        }
-
-        if (process.env.TSR_VITE_DEBUG) {
-          console.info(JSON.stringify(apiRoutesManifest, null, 2))
-        }
-
-        return `export default () => (${JSON.stringify(apiRoutesManifest)})`
-      }
-
-      if (id === 'tsr:routes-manifest') {
-        return `export default () => ({
-            routes: {}
-          })`
-      }
-
-      return
-    },
   }
 }

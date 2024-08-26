@@ -47,9 +47,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'no-manifest':
       config.disableManifestGeneration = true
       break
-    case 'api-routes-custom-base':
-      config.apiBase = '/custom'
-      break
     default:
       break
   }

@@ -2,9 +2,6 @@ import { getManifest } from 'vinxi/manifest'
 // @ts-expect-error
 // eslint-disable-next-line import/no-unresolved
 import tsrGetManifest from 'tsr:routes-manifest'
-// @ts-expect-error
-// eslint-disable-next-line import/no-unresolved
-import tsrGetAPIManifest from 'tsr:api-manifest'
 import type { Manifest } from '@tanstack/react-router'
 
 /**
@@ -44,17 +41,6 @@ export function getFullRouterManifest() {
   return routerManifest
 }
 
-export function getAPIManifest() {
-  const routerManifest = tsrGetAPIManifest() as Manifest
-
-  try {
-    //
-  } catch (e) {
-    //
-  }
-  return routerManifest
-}
-
 /**
  * @description Returns the router manifest that should be sent to the client.
  * This includes only the assets and preloads for the current route and any
@@ -63,11 +49,9 @@ export function getAPIManifest() {
  */
 export function getRouterManifest() {
   const routerManifest = getFullRouterManifest()
-  const apiManifest = getAPIManifest()
 
   // Strip out anything that isn't needed for the client
   return {
-    ...apiManifest,
     ...routerManifest,
     routes: Object.fromEntries(
       Object.entries(routerManifest.routes).map(([k, v]: any) => {

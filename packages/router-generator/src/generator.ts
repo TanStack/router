@@ -752,27 +752,8 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
       ),
     }
 
-    const starAPIManifest = {
-      ...Object.fromEntries(
-        startAPIRouteNodes.map((d) => {
-          const baseSegment = getAPIBaseSegment(config.apiBase)
-          const pathWithoutBaseSegment = d.routePath?.replace(
-            new RegExp(`^/${baseSegment}`),
-            '',
-          )
-          return [pathWithoutBaseSegment || '/', { filePath: d.filePath }]
-        }),
-      ),
-    }
-
     return JSON.stringify(
       {
-        ...(Object.keys(starAPIManifest).length
-          ? {
-              apiBase: config.apiBase,
-              apiRoutes: starAPIManifest,
-            }
-          : {}),
         routes: routesManifest,
       },
       null,
@@ -1053,7 +1034,15 @@ type StartAPIRoutePathSegment = {
   type: 'path' | 'param' | 'splat'
 }
 
-export function startAPIRouteSegmentsFromPath(
+/**
+ * This function takes in a path in the format accepted by TanStack Router
+ * and returns an array of path segments that can be used to generate
+ * the pathname of the TanStack Start API route.
+ *
+ * @param src
+ * @returns
+ */
+export function startAPIRouteSegmentsFromTSRPath(
   src: string,
 ): Array<StartAPIRoutePathSegment> {
   const routePath = determineInitialRoutePath(src)
@@ -1078,6 +1067,16 @@ export function startAPIRouteSegmentsFromPath(
   return segments
 }
 
+/**
+ * This function takes in the apiBase and returns the first segment of the apiBase.
+ * @param apiBase
+ * @returns
+ *
+ * @example
+ * ```ts
+ * getAPIBaseSegment('/api/v1') // 'api'
+ * ```
+ */
 export function getAPIBaseSegment(apiBase: string) {
   return apiBase.split('/').filter(Boolean)[0]
 }

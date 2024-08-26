@@ -1,6 +1,6 @@
 import { eventHandler, toWebRequest } from 'vinxi/http'
 import vinxiFileRoutes from 'vinxi/routes'
-import type { Manifest, ResolveParams } from '@tanstack/react-router'
+import type { ResolveParams } from '@tanstack/react-router'
 
 export type StartAPIHandlerCallback = (ctx: {
   request: Request
@@ -162,7 +162,6 @@ export async function defaultAPIFileRouteHandler({
   request,
 }: {
   request: Request
-  getRouterManifest: () => Manifest
 }): Promise<Response> {
   // Simple early abort if there are no routes
   if (!vinxiRoutes.length) {
@@ -174,32 +173,8 @@ export async function defaultAPIFileRouteHandler({
   }
 
   const routes = toTSRFileBasedRoutes(vinxiRoutes)
-  // console.debug('handleApiFileRoute.routes\n', routes)
-
-  // // TODO: Confirm with Tanner if we still need this API-manifest stuff anymore
-  // // --- API Manifest Stuff ---
-  // // We don't actually need this anymore, since we're using the vinxi routes
-  // // I'm leaving this in for now, but we should probably remove it before release
-  // // and make sure we take out its counterparts in the `config` and `generator`
-  // // that read from the manifest in the generated route-tree file
-  // const manifest = getRouterManifest()
-
-  // const apiBase = manifest.apiBase || '/api'
-  // console.debug('handleApiFileRoute.apiBase\n', apiBase)
-  // console.debug('')
-  // --- API Manifest Stuff ---
 
   const url = new URL(request.url, 'http://localhost:3000')
-
-  // 1. Split routes on '/'
-  // 2. Multi-sort routes by length, special rules for $param routes and $ (catch-all) routes
-  // 3. Search for a route that matches the request pattern
-  // 4. Extract the route params from the request
-  // 5. Import the route file
-  // 6. Call the route file's handler function with the request and route params
-
-  // Loop through the manifest and find the route that matches the request
-  // Dynamically import the route file and process the request to the right verb export
 
   // Find the route that file that matches the request by the request URL
   const match = findRoute(url, routes)
@@ -209,6 +184,8 @@ export async function defaultAPIFileRouteHandler({
     return new Response('Not found', { status: 404 })
   }
 
+  // The action is the route file that we need to import
+  // which contains the possible handlers for the incoming request
   let action: ApiRouteReturnType | undefined = undefined
 
   try {
@@ -226,8 +203,7 @@ export async function defaultAPIFileRouteHandler({
   }
 
   // Params need to be extracted from the request and put in here by their key
-  // This currently has the params seeded with empty string values by
-  // the toTSRFileBasedRoutes function
+  // This is being done by the `findRoute` function
   const params = match.params
 
   const method = request.method as HTTP_API_METHOD
