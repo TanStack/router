@@ -112,6 +112,9 @@ export const Route = createAPIFileRoute('/users/$id')({
     return new Response(`User ID: ${id}`)
   },
 })
+
+// Visit /api/users/123 to see the response
+// User ID: 123
 ```
 
 ## Wildcard/Splat Param
@@ -128,4 +131,7 @@ export const Route = createAPIFileRoute('/file/$')({
     return new Response(`File: ${_splat}`)
   },
 })
+
+// Visit /api/file/hello.txt to see the response
+// File: hello.txt
 ```
