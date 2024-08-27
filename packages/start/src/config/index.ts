@@ -284,7 +284,7 @@ export function defineConfig(
               target: 'server',
               base: apiBase,
               handler: apiEntry,
-              routes: tsrAPIFileRouter({ tsrConfig, apiBase }),
+              routes: tsrFileRouter({ tsrConfig, apiBase }),
               plugins: () => [
                 ...(opts.vite?.plugins?.() || []),
                 ...(opts.routers?.ssr?.vite?.plugins?.() || []),
@@ -595,7 +595,7 @@ function tsrRoutesManifest(opts: {
   }
 }
 
-function tsrAPIFileRouter(opts: {
+function tsrFileRouter(opts: {
   tsrConfig: z.infer<typeof configSchema>
   apiBase: string
 }) {
