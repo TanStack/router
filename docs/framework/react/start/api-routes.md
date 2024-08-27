@@ -21,9 +21,9 @@ API routes in TanStack Start, follow the same file-based routing conventions as 
 - `routes/api.users.$id.posts.ts` will **also** create an API route at `/api/users/$id/posts`
 - `routes/api/file/$.ts` will create an API route at `/api/file/$`
 
-Your route files that are prefixed with `api`, can be thought of as the handlers for the given API route path. It's important to remember that each route can only have a single handler file associated with it.
+Your route files that are prefixed with `api`, can be thought of as the handlers for the given API route path.
 
-So, if you have a file named `routes/api/users.ts` which'd equal the request path of `/api/users`, you cannot have other files that'd also resolve to the same route, like:
+It's important to remember that each route can only have a single handler file associated with it. So, if you have a file named `routes/api/users.ts` which'd equal the request path of `/api/users`, you cannot have other files that'd also resolve to the same route, like:
 
 - `routes/api/users.index.ts`
 - `routes/api.users.ts`.
