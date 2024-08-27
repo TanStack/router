@@ -24,6 +24,7 @@ export type RouteNode = {
   isVirtualParentRequired?: boolean
   isVirtualParentRoute?: boolean
   isRoute?: boolean
+  isAPIRoute?: boolean
   isLoader?: boolean
   isComponent?: boolean
   isErrorComponent?: boolean
@@ -76,8 +77,7 @@ async function getRouteNodes(config: Config) {
         } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
-          let routePath =
-            cleanPath(`/${filePathNoExt.split('.').join('/')}`) || ''
+          let routePath = determineInitialRoutePath(filePathNoExt)
 
           if (routeFilePrefix) {
             routePath = routePath.replaceAll(routeFilePrefix, '')
@@ -105,6 +105,9 @@ async function getRouteNodes(config: Config) {
           const isErrorComponent = routePath.endsWith('/errorComponent')
           const isPendingComponent = routePath.endsWith('/pendingComponent')
           const isLoader = routePath.endsWith('/loader')
+          const isAPIRoute = routePath.startsWith(
+            `${removeTrailingSlash(config.apiBase)}/`,
+          )
 
           const segments = routePath.split('/')
           const isLayout =
@@ -148,6 +151,7 @@ async function getRouteNodes(config: Config) {
             isLoader,
             isLazy,
             isLayout,
+            isAPIRoute,
           })
         }
       }),
@@ -458,11 +462,59 @@ export const Route = createRootRoute({
     routeNodes.push(node)
   }
 
-  for (const node of preRouteNodes) {
+  for (const node of preRouteNodes.filter((d) => !d.isAPIRoute)) {
     await handleNode(node)
   }
 
-  function buildRouteConfig(nodes: Array<RouteNode>, depth = 1): string {
+  const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
+    preRouteNodes.filter((d) => d.isAPIRoute),
+  )
+
+  const handleAPINode = async (node: RouteNode) => {
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
+    const escapedRoutePath = removeTrailingUnderscores(
+      node.routePath?.replaceAll('$', '$$') ?? '',
+    )
+
+    if (!routeCode) {
+      const replaced = `import { json } from '@tanstack/start'
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('${escapedRoutePath}')({
+  GET: ({ request, params }) => {
+    return json({ message: 'Hello ${escapedRoutePath}' })
+  },
+})
+
+`
+
+      logger.log(`🟡 Creating ${node.fullPath}`)
+      fs.writeFileSync(
+        node.fullPath,
+        await prettier.format(replaced, prettierOptions),
+      )
+    } else {
+      const copied = routeCode.replace(
+        /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+        (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
+      )
+
+      if (copied !== routeCode) {
+        logger.log(`🟡 Updating ${node.fullPath}`)
+        await fsp.writeFile(
+          node.fullPath,
+          await prettier.format(copied, prettierOptions),
+        )
+      }
+    }
+  }
+
+  for (const node of startAPIRouteNodes) {
+    await handleAPINode(node)
+  }
+
+  function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
       if (node.isRoot) {
         return
@@ -475,7 +527,7 @@ export const Route = createRootRoute({
       const route = `${node.variableName}Route`
 
       if (node.children?.length) {
-        const childConfigs = buildRouteConfig(node.children, depth + 1)
+        const childConfigs = buildRouteTreeConfig(node.children, depth + 1)
         return `${route}: ${route}.addChildren({${spaces(depth * 4)}${childConfigs}})`
       }
 
@@ -485,7 +537,7 @@ export const Route = createRootRoute({
     return children.filter(Boolean).join(`,`)
   }
 
-  const routeConfigChildrenText = buildRouteConfig(routeTree)
+  const routeConfigChildrenText = buildRouteTreeConfig(routeTree)
 
   const sortedRouteNodes = multiSortBy(routeNodes, [
     (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
@@ -671,42 +723,43 @@ export const Route = createRootRoute({
     .filter(Boolean)
     .join('\n\n')
 
-  const createRouteManifest = () =>
-    JSON.stringify(
-      {
-        routes: {
-          __root__: {
-            filePath: rootRouteNode?.filePath,
-            children: routeTree.map(
-              (d) => getFilePathIdAndRouteIdFromPath(d.routePath!)[1],
-            ),
-          },
-          ...Object.fromEntries(
-            routeNodes.map((d) => {
-              const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
-                d.routePath!,
-              )
+  const createRouteManifest = () => {
+    const routesManifest = {
+      __root__: {
+        filePath: rootRouteNode?.filePath,
+        children: routeTree.map(
+          (d) => getFilePathIdAndRouteIdFromPath(d.routePath!)[1],
+        ),
+      },
+      ...Object.fromEntries(
+        routeNodes.map((d) => {
+          const [_, routeId] = getFilePathIdAndRouteIdFromPath(d.routePath!)
 
-              return [
-                routeId,
-                {
-                  filePath: d.filePath,
-                  parent: d.parent?.routePath
-                    ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
-                    : undefined,
-                  children: d.children?.map(
-                    (childRoute) =>
-                      getFilePathIdAndRouteIdFromPath(childRoute.routePath!)[1],
-                  ),
-                },
-              ]
-            }),
-          ),
-        },
+          return [
+            routeId,
+            {
+              filePath: d.filePath,
+              parent: d.parent?.routePath
+                ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
+                : undefined,
+              children: d.children?.map(
+                (childRoute) =>
+                  getFilePathIdAndRouteIdFromPath(childRoute.routePath!)[1],
+              ),
+            },
+          ]
+        }),
+      ),
+    }
+
+    return JSON.stringify(
+      {
+        routes: routesManifest,
       },
       null,
       2,
     )
+  }
 
   const routeConfigFileContent = await prettier.format(
     config.disableManifestGeneration
@@ -833,6 +886,14 @@ function removeGroups(s: string) {
   return s.replace(possiblyNestedRouteGroupPatternRegex, '')
 }
 
+function removeTrailingSlash(s: string) {
+  return s.replace(/\/$/, '')
+}
+
+function determineInitialRoutePath(routePath: string) {
+  return cleanPath(`/${routePath.split('.').join('/')}`) || ''
+}
+
 /**
  * The `node.path` is used as the `id` in the route definition.
  * This function checks if the given node has a parent and if so, it determines the correct path for the given node.
@@ -930,4 +991,78 @@ function getFilePathIdAndRouteIdFromPath(pathname: string) {
   const id = removeGroups(filePathId ?? '')
 
   return [filePathId, id] as const
+}
+
+function checkStartAPIRoutes(_routes: Array<RouteNode>) {
+  if (_routes.length === 0) {
+    return []
+  }
+
+  // Make sure these are valid URLs
+  // Route Groups and Layout Routes aren't being removed since
+  // you may want to have an API route that starts with an underscore
+  // or be wrapped in parentheses
+  const routes = _routes.map((d) => {
+    const routePath = removeTrailingSlash(d.routePath ?? '')
+    return { ...d, routePath }
+  })
+
+  // Check no two API routes have the same routePath
+  // if they do, throw an error with the conflicting filePaths
+  const routePaths = routes.map((d) => d.routePath)
+  const uniqueRoutePaths = new Set(routePaths)
+  if (routePaths.length !== uniqueRoutePaths.size) {
+    const duplicateRoutePaths = routePaths.filter(
+      (d, i) => routePaths.indexOf(d) !== i,
+    )
+    const conflictingFiles = routes
+      .filter((d) => duplicateRoutePaths.includes(d.routePath))
+      .map((d) => `${d.fullPath}`)
+    const errorMessage = `Conflicting configuration paths was for found for the following API route${duplicateRoutePaths.length > 1 ? 's' : ''}: ${duplicateRoutePaths
+      .map((p) => `"${p}"`)
+      .join(', ')}.
+Please ensure each API route has a unique route path.
+Conflicting files: \n ${conflictingFiles.join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+
+  return routes
+}
+
+export type StartAPIRoutePathSegment = {
+  value: string
+  type: 'path' | 'param' | 'splat'
+}
+
+/**
+ * This function takes in a path in the format accepted by TanStack Router
+ * and returns an array of path segments that can be used to generate
+ * the pathname of the TanStack Start API route.
+ *
+ * @param src
+ * @returns
+ */
+export function startAPIRouteSegmentsFromTSRFilePath(
+  src: string,
+): Array<StartAPIRoutePathSegment> {
+  const routePath = determineInitialRoutePath(src)
+
+  const parts = routePath
+    .replaceAll('.', '/')
+    .split('/')
+    .filter((p) => !!p && p !== 'index')
+  const segments: Array<StartAPIRoutePathSegment> = parts.map((part) => {
+    if (part.startsWith('$')) {
+      if (part === '$') {
+        return { value: part, type: 'splat' }
+      }
+
+      part.replaceAll('$', '')
+      return { value: part, type: 'param' }
+    }
+
+    return { value: part, type: 'path' }
+  })
+
+  return segments
 }

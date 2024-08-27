@@ -1,14 +1,22 @@
 import path from 'node:path'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite, configSchema } from '@tanstack/router-plugin/vite'
 import { TanStackStartVite } from '@tanstack/start-vite-plugin'
-import { getConfig } from '@tanstack/router-generator'
+import {
+  getConfig,
+  startAPIRouteSegmentsFromTSRFilePath,
+} from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
+import {
+  BaseFileSystemRouter as VinxiBaseFileSystemRouter,
+  analyzeModule as vinxiFsRouterAnalyzeModule,
+  cleanPath as vinxiFsRouterCleanPath,
+} from 'vinxi/fs-router'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
 // @ts-expect-error
@@ -16,7 +24,10 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
-import type { RouterSchemaInput } from 'vinxi'
+import type {
+  AppOptions as VinxiAppOptions,
+  RouterSchemaInput as VinxiRouterSchemaInput,
+} from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 
@@ -162,6 +173,11 @@ const routersSchema = z.object({
       vite: viteSchema.optional(),
     })
     .optional(),
+  api: z
+    .object({
+      entry: z.string().optional(),
+    })
+    .optional(),
 })
 
 const tsrConfig = configSchema.partial().extend({
@@ -213,10 +229,14 @@ export function defineConfig(
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
   const clientBase = opts.routers?.client?.base || '/_build'
-  const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
-
   const serverBase = opts.routers?.server?.base || '/_server'
+  const apiBase = opts.tsr?.apiBase || '/api'
+
+  const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
   const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
+  const apiEntry = opts.routers?.api?.entry || './app/api.ts'
+
+  const apiEntryExists = existsSync(apiEntry)
 
   return createApp({
     server: {
@@ -258,6 +278,46 @@ export function defineConfig(
           // serverComponents.client(),
         ],
       }),
+      ...(apiEntryExists
+        ? [
+            withPlugins([
+              config('start-vite', {
+                ssr: {
+                  noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+                },
+              }),
+              TanStackRouterVite({
+                ...tsrConfig,
+                autoCodeSplitting: true,
+                experimental: {
+                  ...tsrConfig.experimental,
+                },
+              }),
+            ])({
+              name: 'api',
+              type: 'http',
+              target: 'server',
+              base: apiBase,
+              handler: apiEntry,
+              routes: tsrFileRouter({ tsrConfig, apiBase }),
+              plugins: () => [
+                ...(opts.vite?.plugins?.() || []),
+                ...(opts.routers?.ssr?.vite?.plugins?.() || []),
+                // serverTransform({
+                //   runtime: '@tanstack/start/server-runtime',
+                // }),
+                // config('start-api', {
+                //   ssr: {
+                //     external: ['@vinxi/react-server-dom/client'],
+                //   },
+                // }),
+              ],
+              // link: {
+              //   client: 'client',
+              // },
+            }),
+          ]
+        : []),
       withStartPlugins(tsrConfig)({
         name: 'ssr',
         type: 'http',
@@ -320,47 +380,50 @@ export function defineConfig(
   })
 }
 
-function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
-  return (
-    router: Extract<
-      RouterSchemaInput,
-      {
-        type: 'client' | 'http'
-      }
-    > & {
-      base?: string
-      link?: {
-        client: string
-      }
-      runtime?: string
-      build?: {
-        sourcemap?: boolean
-      }
-    },
-  ) => {
+type TempRouter = Extract<
+  VinxiRouterSchemaInput,
+  {
+    type: 'client' | 'http'
+  }
+> & {
+  base?: string
+  link?: {
+    client: string
+  }
+  runtime?: string
+  build?: {
+    sourcemap?: boolean
+  }
+}
+
+function withPlugins(plugins: Array<any>) {
+  return (router: TempRouter) => {
     return {
       ...router,
-      plugins: async () => [
-        config('start-vite', {
-          ssr: {
-            noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-          },
-          // optimizeDeps: {
-          //   include: ['@tanstack/start/server-runtime'],
-          // },
-        }),
-        TanStackRouterVite({
-          ...tsrConfig,
-          autoCodeSplitting: true,
-          experimental: {
-            ...tsrConfig.experimental,
-          },
-        }),
-        TanStackStartVite(),
-        ...((await router.plugins?.()) ?? []),
-      ],
+      plugins: async () => [...plugins, ...((await router.plugins?.()) ?? [])],
     }
   }
+}
+
+function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
+  return withPlugins([
+    config('start-vite', {
+      ssr: {
+        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+      },
+      // optimizeDeps: {
+      //   include: ['@tanstack/start/server-runtime'],
+      // },
+    }),
+    TanStackRouterVite({
+      ...tsrConfig,
+      autoCodeSplitting: true,
+      experimental: {
+        ...tsrConfig.experimental,
+      },
+    }),
+    TanStackStartVite(),
+  ])
 }
 
 // function resolveRelativePath(p: string) {
@@ -536,12 +599,80 @@ function tsrRoutesManifest(opts: {
           routes,
         }
 
-        if (process.env.TSR_VITE_DEBUG)
+        if (process.env.TSR_VITE_DEBUG) {
           console.info(JSON.stringify(routesManifest, null, 2))
+        }
 
         return `export default () => (${JSON.stringify(routesManifest)})`
       }
       return
     },
+  }
+}
+
+function tsrFileRouter(opts: {
+  tsrConfig: z.infer<typeof configSchema>
+  apiBase: string
+}) {
+  const apiBaseSegment = opts.apiBase.split('/').filter(Boolean).join('/')
+  const isAPIPath = new RegExp(`/${apiBaseSegment}/`)
+
+  return function (router: VinxiRouterSchemaInput, app: VinxiAppOptions) {
+    // Our own custom File Router that extends the VinxiBaseFileSystemRouter
+    // for splitting the API routes into its own "bundle"
+    // and adding the $APIRoute metadata to the route object
+    // This could be customized in future to support more complex splits
+    class TanStackStartFsRouter extends VinxiBaseFileSystemRouter {
+      toPath(src: string): string {
+        const inputPath = vinxiFsRouterCleanPath(src, this.config)
+
+        const segments = startAPIRouteSegmentsFromTSRFilePath(inputPath)
+
+        const pathname = segments
+          .map((part) => {
+            if (part.type === 'splat') {
+              return `*splat`
+            }
+
+            if (part.type === 'param') {
+              return `:${part.value}?`
+            }
+
+            return part.value
+          })
+          .join('/')
+
+        return pathname.length > 0 ? `/${pathname}` : '/'
+      }
+
+      toRoute(src: string) {
+        const webPath = this.toPath(src)
+
+        const [_, exports] = vinxiFsRouterAnalyzeModule(src)
+
+        const hasRoute = exports.find((exp) => exp.n === 'Route')
+
+        return {
+          path: webPath,
+          filePath: src,
+          $APIRoute:
+            isAPIPath.test(webPath) && hasRoute
+              ? {
+                  src,
+                  pick: ['Route'],
+                }
+              : undefined,
+        }
+      }
+    }
+
+    return new TanStackStartFsRouter(
+      {
+        dir: opts.tsrConfig.routesDirectory,
+        extensions: ['js', 'jsx', 'ts', 'tsx'],
+      },
+      router,
+      app,
+    )
   }
 }

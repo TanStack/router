@@ -73,6 +73,16 @@
         "default": "./dist/cjs/server/index.cjs"
       }
     },
+    "./api": {
+      "import": {
+        "types": "./dist/esm/api/index.d.ts",
+        "default": "./dist/esm/api/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/api/index.d.cts",
+        "default": "./dist/cjs/api/index.cjs"
+      }
+    },
     "./client-runtime": {
       "import": {
         "types": "./dist/esm/client-runtime/index.d.ts",
