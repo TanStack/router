@@ -80,6 +80,8 @@ import {
 export default createStartAPIHandler(defaultAPIFileRouteHandler)
 ```
 
+This file is responsible for creating the API handler that will be used to route incoming requests to the appropriate API route handler. The `defaultAPIFileRouteHandler` is a helper function that will automatically load and execute the appropriate API route handler based on the incoming request.
+
 ## Defining an API Route
 
 API routes export an APIRoute instance by calling the `createAPIFileRoute` function. Similar to other file-based routes in TanStack Router, the first argument to this function is the path of the route. The function returned is called again with an object that defines the route handlers for each HTTP method.
@@ -97,6 +99,13 @@ export const Route = createAPIFileRoute('/hello')({
   },
 })
 ```
+
+Each HTTP method handler receives an object with the following properties:
+
+- `request`: The incoming request object. You can read more about the `Request` object in the [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Request).
+- `params`: An object containing the dynamic path parameters of the route. For example, if the route path is `/users/$id`, and the request is made to `/users/123`, then `params` will be `{ id: '123' }`. We'll cover dynamic path parameters and wildcard parameters later in this guide.
+
+Once you've processed the request, you need to return a `Response` object or `Promise<Response>`. This can be done by creating a new `Response` object and returning it from the handler. You can read more about the `Response` object in the [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Response).
 
 ## Dynamic Path Params
 
@@ -134,4 +143,65 @@ export const Route = createAPIFileRoute('/file/$')({
 
 // Visit /api/file/hello.txt to see the response
 // File: hello.txt
+```
+
+## Setting headers in the response
+
+Sometimes you may need to set headers in the response. You can do this by passing an object as the second argument to the `Response` constructor.
+
+```ts
+// routes/api/hello.ts
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/hello')({
+  GET: async ({ request }) => {
+    return new Response('Hello, World!', {
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+    })
+  },
+})
+
+// Visit /api/hello to see the response
+// Hello, World!
+```
+
+## Responding with JSON
+
+When returning JSON using a Response object, this is a common pattern:
+
+```ts
+// routes/api/hello.ts
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/hello')({
+  GET: async ({ request }) => {
+    return new Response(JSON.stringify({ message: 'Hello, World!' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  },
+})
+
+// Visit /api/hello to see the response
+// {"message":"Hello, World!"}
+```
+
+Or you can use the `json` helper function to automatically set the `Content-Type` header to `application/json`.
+
+```ts
+// routes/api/hello.ts
+import { json } from '@tanstack/start'
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/hello')({
+  GET: async ({ request }) => {
+    return json({ message: 'Hello, World!' })
+  },
+})
+
+// Visit /api/hello to see the response
+// {"message":"Hello, World!"}
 ```
