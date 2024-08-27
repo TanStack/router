@@ -140,8 +140,81 @@ function findRoute<TPayload = unknown>(
   return undefined
 }
 
+/**
+ * You should only be using this function if you are not using the file-based routes.
+ *
+ *
+ * @param opts - A map of TSR routes with the values being the route handlers
+ * @returns The handler for the incoming request
+ *
+ * @example
+ * ```ts
+ * // app/foo.ts
+ * import { createAPIRoute } from '@tanstack/start/api'
+ * const fooBarRoute = createAPIRoute('/api/foo/$bar')({
+ *  GET: ({ params }) => {
+ *   return new Response(JSON.stringify({ params }))
+ *  }
+ * })
+ *
+ * // app/api.ts
+ * import {
+ *    createStartAPIHandler,
+ *    defaultAPIRoutesHandler
+ * } from '@tanstack/start/api'
+ *
+ * export default createStartAPIHandler(
+ *  defaultAPIRoutesHandler({
+ *   '/api/foo/$bar': fooBarRoute
+ *  })
+ * )
+ * ```
+ */
+export function defaultAPIRoutesHandler(opts: {
+  routes: {
+    [TPath in string]: APIRoute<TPath>
+  }
+}): StartAPIHandlerCallback {
+  return async ({ request }) => {
+    const url = new URL(request.url, 'http://localhost:3000')
+
+    const routes = Object.entries(opts.routes).map(([routePath, route]) => ({
+      routePath,
+      payload: route,
+    }))
+
+    // Find the route that matches the request by the request URL
+    const match = findRoute(url, routes)
+
+    // If we don't have a route that could possibly handle the request, return a 404
+    if (!match) {
+      return new Response('Not found', { status: 404 })
+    }
+
+    // If the route path doesn't match the payload path, return a 404
+    if (match.routePath !== match.payload.path) {
+      console.error(
+        `Route path mismatch: ${match.routePath} !== ${match.payload.path}. Please make sure that the route path in \`createAPIRoute\` matches the path in the handler map in \`defaultAPIRoutesHandler\``,
+      )
+      return new Response('Not found', { status: 404 })
+    }
+
+    const method = request.method as HTTP_API_METHOD
+
+    // Get the handler for the request method based on the Request Method
+    const handler = match.payload.methods[method]
+
+    // If the handler is not defined, return a 405
+    if (!handler) {
+      return new Response('Method not allowed', { status: 405 })
+    }
+
+    return await handler({ request, params: match.params })
+  }
+}
+
 interface CustomizedVinxiFileRoute {
-  path: string // this path is h3 path
+  path: string // this path adheres to the h3 router path format
   filePath: string // this is the file path on the system
   $APIRoute?: {
     src: string // this is the path to the source file
@@ -162,7 +235,7 @@ const vinxiRoutes = (
  * This function takes the vinxi routes and interpolates them into a format that can be worked with in the API handler
  *
  * @param routes The vinxi routes that have been filtered to only include those with a $APIRoute property
- * @returns {Array<{ path: string; route: CustomizedVinxiFileRoute }>} An array of tuples where the first element is the path, the second element is the params, and the third element is the route object
+ * @returns An array of objects where the path `key` is interpolated to a valid TanStack Router path, with the `payload` being the original route object
  *
  * @example
  * ```
@@ -219,78 +292,10 @@ function toTSRFileBasedRoutes(
 }
 
 /**
- * You should only be using this function if you are not using the file-based routes.
- *
- *
- * @param opts - A map of TSR routes with the values being the route handlers
- * @returns {StartAPIHandlerCallback}
- *
- * @example
- * ```ts
- * // app/foo.ts
- * import { createAPIRoute } from '@tanstack/start/api'
- * const fooBarRoute = createAPIRoute('/api/foo/$bar')({
- *  GET: ({ params }) => {
- *   return new Response(JSON.stringify({ params }))
- *  }
- * })
- *
- * // app/api.ts
- * import {
- *    createStartAPIHandler,
- *    defaultAPIRoutesHandler
- * } from '@tanstack/start/api'
- *
- * export default createStartAPIHandler(
- *  defaultAPIRoutesHandler({
- *   '/api/foo/$bar': fooBarRoute
- *  })
- * )
- * ```
- */
-export function defaultAPIRoutesHandler(opts: {
-  routes: {
-    [TPath in string]: APIRoute<TPath>
-  }
-}): StartAPIHandlerCallback {
-  return async ({ request }) => {
-    const url = new URL(request.url, 'http://localhost:3000')
-
-    const routes = Object.entries(opts.routes).map(([routePath, route]) => ({
-      routePath,
-      payload: route,
-    }))
-
-    const route = findRoute(url, routes)
-
-    if (!route) {
-      return new Response('Not found', { status: 404 })
-    }
-
-    if (route.routePath !== route.payload.path) {
-      console.error(
-        `Route path mismatch: ${route.routePath} !== ${route.payload.path}. Please make sure that the route path in \`createAPIRoute\` matches the path in the handler map in \`defaultAPIRoutesHandler\``,
-      )
-      return new Response('Not found', { status: 404 })
-    }
-
-    const method = request.method as HTTP_API_METHOD
-
-    const handler = route.payload.methods[method]
-
-    if (!handler) {
-      return new Response('Method not allowed', { status: 405 })
-    }
-
-    return await handler({ request, params: route.params })
-  }
-}
-
-/**
  * This function is the default handler for the API routes when using file-based routes.
  *
  * @param StartAPIHandlerCallbackContext
- * @returns The response from the handler
+ * @returns The handler for the incoming request
  *
  * @example
  * ```ts
@@ -347,10 +352,6 @@ export async function defaultAPIFileRouteHandler({
     return new Response('Internal server error', { status: 500 })
   }
 
-  // Params need to be extracted from the request and put in here by their key
-  // This is being done by the `findRoute` function
-  const params = match.params
-
   const method = request.method as HTTP_API_METHOD
 
   // Get the handler for the request method based on the Request Method
@@ -364,5 +365,5 @@ export async function defaultAPIFileRouteHandler({
     return new Response('Method not allowed', { status: 405 })
   }
 
-  return await handler({ request, params })
+  return await handler({ request, params: match.params })
 }
