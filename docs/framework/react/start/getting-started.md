@@ -72,7 +72,7 @@ We'll then update our `package.json` to reference the new Vinxi entry point and 
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
+    "start": "vinxi start"
   },
 }
 ```
