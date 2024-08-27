@@ -126,6 +126,23 @@ export const Route = createAPIFileRoute('/users/$id')({
 // User ID: 123
 ```
 
+You can also have multiple dynamic path parameters in a single route. For example, a file named `routes/api/users/$id/posts/$postId.ts` will create an API route at `/api/users/$id/posts/$postId` that accepts two dynamic parameters.
+
+```ts
+// routes/api/users/$id/posts/$postId.ts
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/users/$id/posts/$postId')({
+  GET: async ({ params }) => {
+    const { id, postId } = params
+    return new Response(`User ID: ${id}, Post ID: ${postId}`)
+  },
+})
+
+// Visit /api/users/123/posts/456 to see the response
+// User ID: 123, Post ID: 456
+```
+
 ## Wildcard/Splat Param
 
 API routes also support wildcard parameters at the end of the path, which are denoted by a `$` followed by nothing. For example, a file named `routes/api/file/$.ts` will create an API route at `/api/file/$` that accepts a wildcard parameter.
@@ -144,6 +161,31 @@ export const Route = createAPIFileRoute('/file/$')({
 // Visit /api/file/hello.txt to see the response
 // File: hello.txt
 ```
+
+## Handling requests with a body
+
+To handle POST requests,you can add a `POST` handler to the route object. The handler will receive the request object as the first argument, and you can access the request body using the `request.json()` method.
+
+```ts
+// routes/api/hello.ts
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/hello')({
+  POST: async ({ request }) => {
+    const body = await request.json()
+    return new Response(`Hello, ${body.name}!`)
+  },
+})
+
+// Send a POST request to /api/hello with a JSON body like { "name": "Tanner" }
+// Hello, Tanner!
+```
+
+This also applies to other HTTP methods like `PUT`, `PATCH`, and `DELETE`. You can add handlers for these methods in the route object and access the request body using the appropriate method.
+
+It's important to remember that the `request.json()` method returns a `Promise` that resolves to the parsed JSON body of the request. You need to `await` the result to access the body.
+
+This is a common pattern for handling POST requests in API routes. You can also use other methods like `request.text()` or `request.formData()` to access the body of the request.
 
 ## Setting headers in the response
 
