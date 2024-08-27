@@ -1499,8 +1499,8 @@ export type NotFoundRouteProps = {
 export type ReactNode = any
 
 export type SyncRouteComponent<TProps> =
-  | ((props: TProps) => ReactNode)
-  | React.LazyExoticComponent<(props: TProps) => ReactNode>
+  | ((props: TProps) => React.ReactNode)
+  | React.LazyExoticComponent<(props: TProps) => React.ReactNode>
 
 export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
