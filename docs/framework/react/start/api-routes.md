@@ -1,6 +1,6 @@
 ---
 id: api-routes
-title: API Routes
+title: API routes
 ---
 
 API routes are a powerful feature of TanStack Start that allow you to create server-side endpoints in your application without the need for a separate server. API routes are useful for handling form submissions, user authentication, and more.
