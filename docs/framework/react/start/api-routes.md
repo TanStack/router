@@ -187,6 +187,33 @@ It's important to remember that the `request.json()` method returns a `Promise` 
 
 This is a common pattern for handling POST requests in API routes. You can also use other methods like `request.text()` or `request.formData()` to access the body of the request.
 
+## Responding with a status code
+
+You can set the status code of the response by passing it as the second argument to the `Response` constructor.
+
+```ts
+// routes/api/hello.ts
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/users/$id')({
+  GET: async ({ request, params }) => {
+    const user = await findUser(params.id)
+    if (!user) {
+      return new Response('User not found', {
+        status: 404,
+      })
+    }
+    return new Response(JSON.stringify(user), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  },
+})
+```
+
+In this example, we're returning a `404` status code if the user is not found. You can set any valid HTTP status code using this method.
+
 ## Setting headers in the response
 
 Sometimes you may need to set headers in the response. You can do this by passing an object as the second argument to the `Response` constructor.
