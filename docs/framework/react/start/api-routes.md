@@ -66,6 +66,20 @@ routes/
     comments.ts
 ```
 
+## Setting up the entry handler
+
+Your TanStack Start project needs an entry handler to handle the API incoming requests and route them to the appropriate API route handler. This is done by creating an `app/api.ts` file in your project:
+
+```ts
+// app/api.ts
+import {
+  createStartAPIHandler,
+  defaultAPIFileRouteHandler,
+} from '@tanstack/start/api'
+
+export default createStartAPIHandler(defaultAPIFileRouteHandler)
+```
+
 ## Defining an API Route
 
 API routes export an APIRoute instance by calling the `createAPIFileRoute` function. Similar to other file-based routes in TanStack Router, the first argument to this function is the path of the route. The function returned is called again with an object that defines the route handlers for each HTTP method.
