@@ -45,7 +45,7 @@ type CreateAPIRouteFn<TPath extends string> = (
 ) => APIRoute<TPath>
 
 type CreateAPIRoute = <TPath extends string>(
-  filePath: TPath,
+  path: TPath,
 ) => CreateAPIRouteFn<TPath>
 
 type APIRouteReturnType = ReturnType<ReturnType<CreateAPIRoute>>
@@ -170,12 +170,14 @@ function findRoute<TPayload = unknown>(
  * )
  * ```
  */
-export function defaultAPIRoutesHandler(opts: {
-  routes: {
-    [TPath in string]: APIRoute<TPath>
-  }
-}): StartAPIHandlerCallback {
+export const defaultAPIRoutesHandler: (opts: {
+  routes: { [TPath in string]: APIRoute<TPath> }
+}) => StartAPIHandlerCallback = (opts) => {
   return async ({ request }) => {
+    if (!HTTP_API_METHODS.includes(request.method as HTTP_API_METHOD)) {
+      return new Response('Method not allowed', { status: 405 })
+    }
+
     const url = new URL(request.url, 'http://localhost:3000')
 
     const routes = Object.entries(opts.routes).map(([routePath, route]) => ({
@@ -308,11 +310,9 @@ function toTSRFileBasedRoutes(
  * export default createStartAPIHandler(defaultAPIFileRouteHandler)
  * ```
  */
-export async function defaultAPIFileRouteHandler({
+export const defaultAPIFileRouteHandler: StartAPIHandlerCallback = async ({
   request,
-}: {
-  request: Request
-}): Promise<Response> {
+}) => {
   // Simple early abort if there are no routes
   if (!vinxiRoutes.length) {
     return new Response('No routes found', { status: 404 })
