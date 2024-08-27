@@ -29,6 +29,8 @@ export const configSchema = z.object({
     .optional()
     .default(['/* prettier-ignore-end */']),
   autoCodeSplitting: z.boolean().optional(),
+  indexToken: z.string().optional().default('index'),
+  routeToken: z.string().optional().default('route'),
   experimental: z
     .object({
       // TODO: Remove this option in the next major release (v2).

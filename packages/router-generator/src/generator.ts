@@ -100,7 +100,7 @@ async function getRouteNodes(config: Config) {
             routePath = routePath.replace(/\/lazy$/, '')
           }
 
-          const isRoute = routePath.endsWith('/route')
+          const isRoute = routePath.endsWith(`/${config.routeToken}`)
           const isComponent = routePath.endsWith('/component')
           const isErrorComponent = routePath.endsWith('/errorComponent')
           const isPendingComponent = routePath.endsWith('/pendingComponent')
@@ -129,15 +129,18 @@ async function getRouteNodes(config: Config) {
           })
 
           routePath = routePath.replace(
-            /\/(component|errorComponent|pendingComponent|loader|route|lazy)$/,
+            new RegExp(
+              `/(component|errorComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
+            ),
             '',
           )
 
-          if (routePath === 'index') {
+          if (routePath === config.indexToken) {
             routePath = '/'
           }
 
-          routePath = routePath.replace(/\/index$/, '/') || '/'
+          routePath =
+            routePath.replace(new RegExp(`/${config.indexToken}$`), '/') || '/'
 
           routeNodes.push({
             filePath,
@@ -218,14 +221,16 @@ export async function generator(config: Config) {
   const preRouteNodes = multiSortBy(beforeRouteNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
     (d) => d.routePath?.split('/').length,
-    (d) => (d.filePath.match(/[./]index[.]/) ? 1 : -1),
+    (d) =>
+      d.filePath.match(new RegExp(`[./]${config.indexToken}[.]`)) ? 1 : -1,
     (d) =>
       d.filePath.match(
         /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
       )
         ? 1
         : -1,
-    (d) => (d.filePath.match(/[./]route[.]/) ? -1 : 1),
+    (d) =>
+      d.filePath.match(new RegExp(`[./]${config.routeToken}[.]`)) ? -1 : 1,
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
   ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
@@ -542,7 +547,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   const sortedRouteNodes = multiSortBy(routeNodes, [
     (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
     (d) => d.routePath?.split('/').length,
-    (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
+    (d) => (d.routePath?.endsWith(config.indexToken) ? -1 : 1),
     (d) => d,
   ])
 
@@ -1044,13 +1049,14 @@ export type StartAPIRoutePathSegment = {
  */
 export function startAPIRouteSegmentsFromTSRFilePath(
   src: string,
+  config: Config,
 ): Array<StartAPIRoutePathSegment> {
   const routePath = determineInitialRoutePath(src)
 
   const parts = routePath
     .replaceAll('.', '/')
     .split('/')
-    .filter((p) => !!p && p !== 'index')
+    .filter((p) => !!p && p !== config.indexToken)
   const segments: Array<StartAPIRoutePathSegment> = parts.map((part) => {
     if (part.startsWith('$')) {
       if (part === '$') {

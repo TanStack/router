@@ -4,9 +4,10 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
-import { TanStackRouterVite, configSchema } from '@tanstack/router-plugin/vite'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { TanStackStartVite } from '@tanstack/start-vite-plugin'
 import {
+  configSchema,
   getConfig,
   startAPIRouteSegmentsFromTSRFilePath,
 } from '@tanstack/router-generator'
@@ -626,7 +627,10 @@ function tsrFileRouter(opts: {
       toPath(src: string): string {
         const inputPath = vinxiFsRouterCleanPath(src, this.config)
 
-        const segments = startAPIRouteSegmentsFromTSRFilePath(inputPath)
+        const segments = startAPIRouteSegmentsFromTSRFilePath(
+          inputPath,
+          opts.tsrConfig,
+        )
 
         const pathname = segments
           .map((part) => {
