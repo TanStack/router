@@ -120,7 +120,7 @@ In addition to the single parameter that server functions accept, they also have
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const getServerTime = createServerFn('GET', async (context) => {
+export const getServerTime = createServerFn('GET', async (_payload, context) => {
   console.log(context.method) // GET
   console.log(context.request.headers.get('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
 })
