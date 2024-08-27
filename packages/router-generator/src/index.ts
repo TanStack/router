@@ -1,6 +1,5 @@
-export { type Config, configSchema, getConfig } from './config'
-export {
-  generator,
-  getAPIBaseSegment,
-  startAPIRouteSegmentsFromTSRPath as startAPIRouteSegmentsFromPath,
-} from './generator'
+export { configSchema, getConfig } from './config'
+export type { Config } from './config'
+
+export { generator, startAPIRouteSegmentsFromTSRFilePath } from './generator'
+export type { StartAPIRoutePathSegment } from './generator'

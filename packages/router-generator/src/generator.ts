@@ -1029,7 +1029,7 @@ Conflicting files: \n ${conflictingFiles.join('\n ')}\n`
   return routes
 }
 
-type StartAPIRoutePathSegment = {
+export type StartAPIRoutePathSegment = {
   value: string
   type: 'path' | 'param' | 'splat'
 }
@@ -1042,7 +1042,7 @@ type StartAPIRoutePathSegment = {
  * @param src
  * @returns
  */
-export function startAPIRouteSegmentsFromTSRPath(
+export function startAPIRouteSegmentsFromTSRFilePath(
   src: string,
 ): Array<StartAPIRoutePathSegment> {
   const routePath = determineInitialRoutePath(src)
@@ -1065,18 +1065,4 @@ export function startAPIRouteSegmentsFromTSRPath(
   })
 
   return segments
-}
-
-/**
- * This function takes in the apiBase and returns the first segment of the apiBase.
- * @param apiBase
- * @returns
- *
- * @example
- * ```ts
- * getAPIBaseSegment('/api/v1') // 'api'
- * ```
- */
-export function getAPIBaseSegment(apiBase: string) {
-  return apiBase.split('/').filter(Boolean)[0]
 }

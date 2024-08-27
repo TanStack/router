@@ -7,9 +7,8 @@ import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite, configSchema } from '@tanstack/router-plugin/vite'
 import { TanStackStartVite } from '@tanstack/start-vite-plugin'
 import {
-  getAPIBaseSegment,
   getConfig,
-  startAPIRouteSegmentsFromPath,
+  startAPIRouteSegmentsFromTSRFilePath,
 } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
@@ -600,15 +599,19 @@ function tsrAPIFileRouter(opts: {
   tsrConfig: z.infer<typeof configSchema>
   apiBase: string
 }) {
-  const checkExp = new RegExp(`${getAPIBaseSegment(opts.apiBase)}/`)
+  const apiBaseSegment = opts.apiBase.split('/').filter(Boolean).join('/')
+  const isAPIPath = new RegExp(`/${apiBaseSegment}/`)
+
   return function (router: VinxiRouterSchemaInput, app: VinxiAppOptions) {
-    // Our own custom router that extends the VinxiBaseFileSystemRouter
-    // to full necessary API routes into its own "bundle"
-    class StartAPIFsRouter extends VinxiBaseFileSystemRouter {
+    // Our own custom File Router that extends the VinxiBaseFileSystemRouter
+    // for splitting the API routes into its own "bundle"
+    // and adding the $APIRoute metadata to the route object
+    // This could be customized in future to support more complex splits
+    class TanStackStartFsRouter extends VinxiBaseFileSystemRouter {
       toPath(src: string): string {
         const inputPath = vinxiFsRouterCleanPath(src, this.config)
 
-        const segments = startAPIRouteSegmentsFromPath(inputPath)
+        const segments = startAPIRouteSegmentsFromTSRFilePath(inputPath)
 
         const pathname = segments
           .map((part) => {
@@ -630,10 +633,6 @@ function tsrAPIFileRouter(opts: {
       toRoute(src: string) {
         const webPath = this.toPath(src)
 
-        if (!checkExp.test(webPath)) {
-          return undefined
-        }
-
         const [_, exports] = vinxiFsRouterAnalyzeModule(src)
 
         const hasAPIRoute = exports.find((exp) => exp.n === 'Route')
@@ -641,17 +640,18 @@ function tsrAPIFileRouter(opts: {
         return {
           path: webPath,
           filePath: src,
-          $APIRoute: hasAPIRoute
-            ? {
-                src,
-                pick: ['Route'],
-              }
-            : undefined,
+          $APIRoute:
+            isAPIPath.test(webPath) && hasAPIRoute
+              ? {
+                  src,
+                  pick: ['Route'],
+                }
+              : undefined,
         }
       }
     }
 
-    return new StartAPIFsRouter(
+    return new TanStackStartFsRouter(
       {
         dir: opts.tsrConfig.routesDirectory,
         extensions: ['js', 'jsx', 'ts', 'tsx'],
