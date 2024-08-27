@@ -14,6 +14,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as NormalPageImport } from './routes/normal-page'
+import { Route as LazyWithLoaderPageImport } from './routes/lazy-with-loader-page'
 import { Route as LazyPageImport } from './routes/lazy-page'
 import { Route as IndexImport } from './routes/index'
 
@@ -32,6 +33,13 @@ const NormalPageRoute = NormalPageImport.update({
   path: '/normal-page',
   getParentRoute: () => rootRoute,
 } as any)
+
+const LazyWithLoaderPageRoute = LazyWithLoaderPageImport.update({
+  path: '/lazy-with-loader-page',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/lazy-with-loader-page.lazy').then((d) => d.Route),
+)
 
 const LazyPageRoute = LazyPageImport.update({
   path: '/lazy-page',
@@ -61,6 +69,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LazyPageImport
       parentRoute: typeof rootRoute
     }
+    '/lazy-with-loader-page': {
+      id: '/lazy-with-loader-page'
+      path: '/lazy-with-loader-page'
+      fullPath: '/lazy-with-loader-page'
+      preLoaderRoute: typeof LazyWithLoaderPageImport
+      parentRoute: typeof rootRoute
+    }
     '/normal-page': {
       id: '/normal-page'
       path: '/normal-page'
@@ -83,6 +98,7 @@ declare module '@tanstack/react-router' {
 export const routeTree = rootRoute.addChildren({
   IndexRoute,
   LazyPageRoute,
+  LazyWithLoaderPageRoute,
   NormalPageRoute,
   VirtualPageLazyRoute,
 })
@@ -97,6 +113,7 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/",
         "/lazy-page",
+        "/lazy-with-loader-page",
         "/normal-page",
         "/virtual-page"
       ]
@@ -106,6 +123,9 @@ export const routeTree = rootRoute.addChildren({
     },
     "/lazy-page": {
       "filePath": "lazy-page.tsx"
+    },
+    "/lazy-with-loader-page": {
+      "filePath": "lazy-with-loader-page.tsx"
     },
     "/normal-page": {
       "filePath": "normal-page.tsx"

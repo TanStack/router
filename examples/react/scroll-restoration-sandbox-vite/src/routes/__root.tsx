@@ -39,19 +39,24 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
       >
         {prefix}-/
       </Link>{' '}
-      {(['/normal-page', '/lazy-page', '/virtual-page'] as const).map(
-        (href, i) => (
-          <Link
-            key={`${prefix}-${href}-${i}`}
-            to={href}
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            {prefix}-{href}
-          </Link>
-        ),
-      )}
+      {(
+        [
+          '/normal-page',
+          '/lazy-page',
+          '/virtual-page',
+          '/lazy-with-loader-page',
+        ] as const
+      ).map((href, i) => (
+        <Link
+          key={`${prefix}-${href}-${i}`}
+          to={href}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          {prefix}-{href}
+        </Link>
+      ))}
     </Elem>
   )
 }

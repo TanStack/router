@@ -18,6 +18,9 @@ test('Smoke - Renders home', async ({ page }) => {
   {
     href: '/virtual-page',
   },
+  {
+    href: '/lazy-with-loader-page',
+  },
 ].forEach(({ href }) => {
   test(`On navigate to ${href} (from the header), scroll should be at top`, async ({
     page,
