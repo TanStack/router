@@ -65,3 +65,18 @@ routes/
     posts.ts
     comments.ts
 ```
+
+## Defining an API Route
+
+API routes export an APIRoute instance by calling the `createAPIFileRoute` function. Similar to other file-based routes in TanStack Router, the first argument to this function is the path of the route. The function returned is called again with an object that defines the route handlers for each HTTP method.
+
+```ts
+// routes/api/hello.ts
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/hello')({
+  GET: async ({ request }) => {
+    return new Response('Hello, World! from ' + request.url)
+  },
+})
+```
