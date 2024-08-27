@@ -222,7 +222,7 @@ function toTSRFileBasedRoutes(
  * You should only be using this function if you are not using the file-based routes.
  *
  *
- * @param handlerMap - A map of TSR routes with the values being the route handlers
+ * @param opts - A map of TSR routes with the values being the route handlers
  * @returns {StartAPIHandlerCallback}
  *
  * @example
@@ -248,13 +248,15 @@ function toTSRFileBasedRoutes(
  * )
  * ```
  */
-export function defaultAPIRoutesHandler(handlerMap: {
-  [TPath in string]: APIRoute<TPath>
+export function defaultAPIRoutesHandler(opts: {
+  routes: {
+    [TPath in string]: APIRoute<TPath>
+  }
 }): StartAPIHandlerCallback {
   return async ({ request }) => {
     const url = new URL(request.url, 'http://localhost:3000')
 
-    const routes = Object.entries(handlerMap).map(([routePath, route]) => ({
+    const routes = Object.entries(opts.routes).map(([routePath, route]) => ({
       routePath,
       payload: route,
     }))
