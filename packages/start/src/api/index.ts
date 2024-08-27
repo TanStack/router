@@ -103,7 +103,7 @@ function findRoute<TPayload = unknown>(
     })
     .filter((r) => {
       const routeSegments = r.routePath.split('/').filter(Boolean)
-      return routeSegments.length === urlSegments.length
+      return urlSegments.length >= routeSegments.length
     })
 
   for (const route of routes) {
@@ -262,6 +262,13 @@ export function defaultAPIRoutesHandler(handlerMap: {
     const route = findRoute(url, routes)
 
     if (!route) {
+      return new Response('Not found', { status: 404 })
+    }
+
+    if (route.routePath !== route.payload.path) {
+      console.error(
+        `Route path mismatch: ${route.routePath} !== ${route.payload.path}. Please make sure that the route path in \`createAPIRoute\` matches the path in the handler map in \`defaultAPIRoutesHandler\``,
+      )
       return new Response('Not found', { status: 404 })
     }
 
