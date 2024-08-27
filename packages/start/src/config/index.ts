@@ -635,13 +635,13 @@ function tsrAPIFileRouter(opts: {
 
         const [_, exports] = vinxiFsRouterAnalyzeModule(src)
 
-        const hasAPIRoute = exports.find((exp) => exp.n === 'Route')
+        const hasRoute = exports.find((exp) => exp.n === 'Route')
 
         return {
           path: webPath,
           filePath: src,
           $APIRoute:
-            isAPIPath.test(webPath) && hasAPIRoute
+            isAPIPath.test(webPath) && hasRoute
               ? {
                   src,
                   pick: ['Route'],
