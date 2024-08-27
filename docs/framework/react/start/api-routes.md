@@ -31,7 +31,7 @@ So, if you have a file named `routes/api/users.ts` which'd equal the request pat
 
 ❗ One more thing, API routes do not have the concept of pathless/layout routes or parallel routes. So, a file named:
 
-- `routes/api/_layout/users.ts` would resolve to `/api/_layout/users` and NOT `/api/users`.
+- `routes/api/_layout/users.ts` would resolve to `/api/_layout/users` and **NOT** `/api/users`.
 
 ## Directories vs File-names
 
