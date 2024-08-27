@@ -80,3 +80,19 @@ export const Route = createAPIFileRoute('/hello')({
   },
 })
 ```
+
+## Dynamic Path Params
+
+API routes support dynamic path parameters, which are denoted by a `$` followed by the parameter name. For example, a file named `routes/api/users/$id.ts` will create an API route at `/api/users/$id` that accepts a dynamic `id` parameter.
+
+```ts
+// routes/api/users/$id.ts
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/users/$id')({
+  GET: async ({ params }) => {
+    const { id } = params
+    return new Response(`User ID: ${id}`)
+  },
+})
+```
