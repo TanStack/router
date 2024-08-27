@@ -187,7 +187,7 @@ describe('redirect', () => {
         path: '/about',
         getParentRoute: () => rootRoute,
         component: () => {
-          return 'About'
+          return <>About</>
         },
       })
 
@@ -234,7 +234,7 @@ describe('redirect', () => {
         path: '/about',
         getParentRoute: () => rootRoute,
         component: () => {
-          return 'About'
+          return <>About</>
         },
       })
 

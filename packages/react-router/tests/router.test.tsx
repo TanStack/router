@@ -469,7 +469,7 @@ describe('router rendering stability', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => {
-        return ''
+        return null
       },
     })
     const fooIdRoute = createRoute({

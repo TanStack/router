@@ -1494,13 +1494,13 @@ export type NotFoundRouteProps = {
   // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
   data: unknown
 }
-//
 
-export type ReactNode = any
+// workaround for typescript 5.0, can be replaced with React.ReactNode once 5.0 is not supported
+export type ReactNode = React.ReactElement | null
 
 export type SyncRouteComponent<TProps> =
-  | ((props: TProps) => React.ReactNode)
-  | React.LazyExoticComponent<(props: TProps) => React.ReactNode>
+  | ((props: TProps) => ReactNode)
+  | React.LazyExoticComponent<(props: TProps) => ReactNode>
 
 export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>

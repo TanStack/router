@@ -53,7 +53,7 @@ export function CatchNotFound(props: {
         }
       }}
       errorComponent={({ error }: { error: NotFoundError }) =>
-        props.fallback?.(error)
+        props.fallback?.(error) ?? null
       }
     >
       {props.children}
