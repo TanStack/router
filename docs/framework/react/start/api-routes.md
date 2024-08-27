@@ -84,6 +84,9 @@ export default createStartAPIHandler(defaultAPIFileRouteHandler)
 
 API routes export an APIRoute instance by calling the `createAPIFileRoute` function. Similar to other file-based routes in TanStack Router, the first argument to this function is the path of the route. The function returned is called again with an object that defines the route handlers for each HTTP method.
 
+> [!TIP]
+> If you've already got the dev server running, when you create a new API route, it'll automatically have the initial handler set up for you. From there on, you can customize the handler as needed.
+
 ```ts
 // routes/api/hello.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
