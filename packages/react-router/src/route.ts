@@ -1496,7 +1496,10 @@ export type NotFoundRouteProps = {
 }
 
 // workaround for typescript 5.0, can be replaced with React.ReactNode once 5.0 is not supported
-export type ReactNode = React.ReactElement | null
+export type ReactNode =
+  (() => 'x') extends React.JSXElementConstructor<any>
+    ? React.ReactNode
+    : React.ReactElement | null
 
 export type SyncRouteComponent<TProps> =
   | ((props: TProps) => ReactNode)
