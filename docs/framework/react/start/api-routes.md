@@ -9,6 +9,19 @@ By default, API routes are defined in your `./app/routes/api` directory of your 
 
 > 🧠 This means that by default, your API routes will be prefixed with `/api` and will be served from the same server as your application. You can customize this base path by changing the `apiBase` in your TanStack Start config.
 
+Topics covered in this guide:
+
+- [File Route Conventions](#file-route-conventions)
+- [Directories vs File-names](#directories-vs-file-names)
+- [Setting up the entry handler](#setting-up-the-entry-handler)
+- [Defining an API Route](#defining-an-api-route)
+- [Dynamic Path Params](#dynamic-path-params)
+- [Wildcard/Splat Param](#wildcardsplat-param)
+- [Handling requests with a body](#handling-requests-with-a-body)
+- [Responding with JSON](#responding-with-json)
+- [Responding with a status code](#responding-with-a-status-code)
+- [Setting headers in the response](#setting-headers-in-the-response)
+
 ## File Route Conventions
 
 API routes in TanStack Start, follow the same file-based routing conventions as TanStack Router. This means that each file in your `routes` directory that is prefixed with `api` (which can be configured) will be treated as an API route. Here are a few examples:
@@ -39,7 +52,7 @@ In the examples above, you may have noticed that the file naming conventions are
 
 So you can choose to organize your API routes in a flat structure 🫓:
 
-```bash
+```plaintext
 routes/
   api.users.ts
   api.posts.ts
@@ -48,7 +61,7 @@ routes/
 
 Or you can choose to organize your API routes in a nested structure ⛰️:
 
-```bash
+```plaintext
 routes/
   api/
     users.ts
@@ -58,7 +71,7 @@ routes/
 
 Or even a combination of both 🤯:
 
-```bash
+```plaintext
 routes/
   api.users.ts
   api/
