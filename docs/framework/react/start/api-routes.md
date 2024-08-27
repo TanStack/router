@@ -96,3 +96,19 @@ export const Route = createAPIFileRoute('/users/$id')({
   },
 })
 ```
+
+## Wildcard/Splat Param
+
+API routes also support wildcard parameters at the end of the path, which are denoted by a `$` followed by nothing. For example, a file named `routes/api/file/$.ts` will create an API route at `/api/file/$` that accepts a wildcard parameter.
+
+```ts
+// routes/api/file/$.ts
+import { createAPIFileRoute } from '@tanstack/start/api'
+
+export const Route = createAPIFileRoute('/file/$')({
+  GET: async ({ params }) => {
+    const { _splat } = params
+    return new Response(`File: ${_splat}`)
+  },
+})
+```
