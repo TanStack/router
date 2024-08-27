@@ -32,3 +32,36 @@ So, if you have a file named `routes/api/users.ts` which'd equal the request pat
 ❗ One more thing, API routes do not have the concept of pathless/layout routes or parallel routes. So, a file named:
 
 - `routes/api/_layout/users.ts` would resolve to `/api/_layout/users` and NOT `/api/users`.
+
+## Directories vs File-names
+
+In the examples above, you may have noticed that the file naming conventions are flexible and allow you to mix and match directories and file names. This is intentional and allows you to organize your API routes in a way that makes sense for your application.
+
+So you can choose to organize your API routes in a flat structure 🫓:
+
+```bash
+routes/
+  api.users.ts
+  api.posts.ts
+  api.comments.ts
+```
+
+Or you can choose to organize your API routes in a nested structure ⛰️:
+
+```bash
+routes/
+  api/
+    users.ts
+    posts.ts
+    comments.ts
+```
+
+Or even a combination of both 🤯:
+
+```bash
+routes/
+  api.users.ts
+  api/
+    posts.ts
+    comments.ts
+```
