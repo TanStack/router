@@ -13,43 +13,49 @@ import { createFileRoute } from '@tanstack/react-router'
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as NormalPageImport } from './routes/normal-page'
-import { Route as LazyWithLoaderPageImport } from './routes/lazy-with-loader-page'
-import { Route as LazyPageImport } from './routes/lazy-page'
 import { Route as IndexImport } from './routes/index'
+import { Route as testsNormalPageImport } from './routes/(tests)/normal-page'
+import { Route as testsLazyWithLoaderPageImport } from './routes/(tests)/lazy-with-loader-page'
+import { Route as testsLazyPageImport } from './routes/(tests)/lazy-page'
 
 // Create Virtual Routes
 
-const VirtualPageLazyImport = createFileRoute('/virtual-page')()
+const testsVirtualPageLazyImport = createFileRoute('/(tests)/virtual-page')()
 
 // Create/Update Routes
-
-const VirtualPageLazyRoute = VirtualPageLazyImport.update({
-  path: '/virtual-page',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/virtual-page.lazy').then((d) => d.Route))
-
-const NormalPageRoute = NormalPageImport.update({
-  path: '/normal-page',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const LazyWithLoaderPageRoute = LazyWithLoaderPageImport.update({
-  path: '/lazy-with-loader-page',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import('./routes/lazy-with-loader-page.lazy').then((d) => d.Route),
-)
-
-const LazyPageRoute = LazyPageImport.update({
-  path: '/lazy-page',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/lazy-page.lazy').then((d) => d.Route))
 
 const IndexRoute = IndexImport.update({
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
+
+const testsVirtualPageLazyRoute = testsVirtualPageLazyImport
+  .update({
+    path: '/virtual-page',
+    getParentRoute: () => rootRoute,
+  } as any)
+  .lazy(() => import('./routes/(tests)/virtual-page.lazy').then((d) => d.Route))
+
+const testsNormalPageRoute = testsNormalPageImport.update({
+  path: '/normal-page',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const testsLazyWithLoaderPageRoute = testsLazyWithLoaderPageImport
+  .update({
+    path: '/lazy-with-loader-page',
+    getParentRoute: () => rootRoute,
+  } as any)
+  .lazy(() =>
+    import('./routes/(tests)/lazy-with-loader-page.lazy').then((d) => d.Route),
+  )
+
+const testsLazyPageRoute = testsLazyPageImport
+  .update({
+    path: '/lazy-page',
+    getParentRoute: () => rootRoute,
+  } as any)
+  .lazy(() => import('./routes/(tests)/lazy-page.lazy').then((d) => d.Route))
 
 // Populate the FileRoutesByPath interface
 
@@ -62,32 +68,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    '/lazy-page': {
+    '/(tests)/lazy-page': {
       id: '/lazy-page'
       path: '/lazy-page'
       fullPath: '/lazy-page'
-      preLoaderRoute: typeof LazyPageImport
+      preLoaderRoute: typeof testsLazyPageImport
       parentRoute: typeof rootRoute
     }
-    '/lazy-with-loader-page': {
+    '/(tests)/lazy-with-loader-page': {
       id: '/lazy-with-loader-page'
       path: '/lazy-with-loader-page'
       fullPath: '/lazy-with-loader-page'
-      preLoaderRoute: typeof LazyWithLoaderPageImport
+      preLoaderRoute: typeof testsLazyWithLoaderPageImport
       parentRoute: typeof rootRoute
     }
-    '/normal-page': {
+    '/(tests)/normal-page': {
       id: '/normal-page'
       path: '/normal-page'
       fullPath: '/normal-page'
-      preLoaderRoute: typeof NormalPageImport
+      preLoaderRoute: typeof testsNormalPageImport
       parentRoute: typeof rootRoute
     }
-    '/virtual-page': {
+    '/(tests)/virtual-page': {
       id: '/virtual-page'
       path: '/virtual-page'
       fullPath: '/virtual-page'
-      preLoaderRoute: typeof VirtualPageLazyImport
+      preLoaderRoute: typeof testsVirtualPageLazyImport
       parentRoute: typeof rootRoute
     }
   }
@@ -97,10 +103,10 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren({
   IndexRoute,
-  LazyPageRoute,
-  LazyWithLoaderPageRoute,
-  NormalPageRoute,
-  VirtualPageLazyRoute,
+  testsLazyPageRoute,
+  testsLazyWithLoaderPageRoute,
+  testsNormalPageRoute,
+  testsVirtualPageLazyRoute,
 })
 
 /* prettier-ignore-end */
@@ -122,16 +128,16 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "index.tsx"
     },
     "/lazy-page": {
-      "filePath": "lazy-page.tsx"
+      "filePath": "(tests)/lazy-page.tsx"
     },
     "/lazy-with-loader-page": {
-      "filePath": "lazy-with-loader-page.tsx"
+      "filePath": "(tests)/lazy-with-loader-page.tsx"
     },
     "/normal-page": {
-      "filePath": "normal-page.tsx"
+      "filePath": "(tests)/normal-page.tsx"
     },
     "/virtual-page": {
-      "filePath": "virtual-page.lazy.tsx"
+      "filePath": "(tests)/virtual-page.lazy.tsx"
     }
   }
 }
