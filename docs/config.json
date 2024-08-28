@@ -188,7 +188,7 @@
               "to": "framework/react/start/server-functions"
             },
             {
-              "label": "API routes",
+              "label": "API Routes",
               "to": "framework/react/start/api-routes"
             },
             {

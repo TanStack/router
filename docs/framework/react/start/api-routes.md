@@ -1,13 +1,13 @@
 ---
 id: api-routes
-title: API routes
+title: API Routes
 ---
 
-API routes are a powerful feature of TanStack Start that allow you to create server-side endpoints in your application without the need for a separate server. API routes are useful for handling form submissions, user authentication, and more.
+API Routes are a powerful feature of TanStack Start that allow you to create server-side endpoints in your application without the need for a separate server. API Routes are useful for handling form submissions, user authentication, and more.
 
-By default, API routes are defined in your `./app/routes/api` directory of your project and are automatically handled by the TanStack Start server.
+By default, API Routes are defined in your `./app/routes/api` directory of your project and are automatically handled by the TanStack Start server.
 
-> 🧠 This means that by default, your API routes will be prefixed with `/api` and will be served from the same server as your application. You can customize this base path by changing the `apiBase` in your TanStack Start config.
+> 🧠 This means that by default, your API Routes will be prefixed with `/api` and will be served from the same server as your application. You can customize this base path by changing the `apiBase` in your TanStack Start config.
 
 Topics covered in this guide:
 
@@ -24,7 +24,7 @@ Topics covered in this guide:
 
 ## File Route Conventions
 
-API routes in TanStack Start, follow the same file-based routing conventions as TanStack Router. This means that each file in your `routes` directory that is prefixed with `api` (which can be configured) will be treated as an API route. Here are a few examples:
+API Routes in TanStack Start, follow the same file-based routing conventions as TanStack Router. This means that each file in your `routes` directory that is prefixed with `api` (which can be configured) will be treated as an API route. Here are a few examples:
 
 - `routes/api.users.ts` will create an API route at `/api/users`
 - `routes/api/users.ts` will **also** create an API route at `/api/users`
@@ -42,15 +42,15 @@ It's important to remember that each route can only have a single handler file a
 - `routes/api.users.ts`.
 - `routes/api.users.index.ts`.
 
-❗ One more thing, API routes do not have the concept of pathless/layout routes or parallel routes. So, a file named:
+❗ One more thing, API Routes do not have the concept of pathless/layout routes or parallel routes. So, a file named:
 
 - `routes/api/_layout/users.ts` would resolve to `/api/_layout/users` and **NOT** `/api/users`.
 
 ## Directories vs File-names
 
-In the examples above, you may have noticed that the file naming conventions are flexible and allow you to mix and match directories and file names. This is intentional and allows you to organize your API routes in a way that makes sense for your application.
+In the examples above, you may have noticed that the file naming conventions are flexible and allow you to mix and match directories and file names. This is intentional and allows you to organize your API Routes in a way that makes sense for your application.
 
-So you can choose to organize your API routes in a flat structure 🫓:
+So you can choose to organize your API Routes in a flat structure 🫓:
 
 ```plaintext
 routes/
@@ -59,7 +59,7 @@ routes/
   api.comments.ts
 ```
 
-Or you can choose to organize your API routes in a nested structure ⛰️:
+Or you can choose to organize your API Routes in a nested structure ⛰️:
 
 ```plaintext
 routes/
@@ -97,7 +97,7 @@ This file is responsible for creating the API handler that will be used to route
 
 ## Defining an API Route
 
-API routes export an APIRoute instance by calling the `createAPIFileRoute` function. Similar to other file-based routes in TanStack Router, the first argument to this function is the path of the route. The function returned is called again with an object that defines the route handlers for each HTTP method.
+API Routes export an APIRoute instance by calling the `createAPIFileRoute` function. Similar to other file-based routes in TanStack Router, the first argument to this function is the path of the route. The function returned is called again with an object that defines the route handlers for each HTTP method.
 
 > [!TIP]
 > If you've already got the dev server running, when you create a new API route, it'll automatically have the initial handler set up for you. From there on, you can customize the handler as needed.
@@ -122,7 +122,7 @@ Once you've processed the request, you need to return a `Response` object or `Pr
 
 ## Dynamic Path Params
 
-API routes support dynamic path parameters, which are denoted by a `$` followed by the parameter name. For example, a file named `routes/api/users/$id.ts` will create an API route at `/api/users/$id` that accepts a dynamic `id` parameter.
+API Routes support dynamic path parameters, which are denoted by a `$` followed by the parameter name. For example, a file named `routes/api/users/$id.ts` will create an API route at `/api/users/$id` that accepts a dynamic `id` parameter.
 
 ```ts
 // routes/api/users/$id.ts
@@ -158,7 +158,7 @@ export const Route = createAPIFileRoute('/users/$id/posts/$postId')({
 
 ## Wildcard/Splat Param
 
-API routes also support wildcard parameters at the end of the path, which are denoted by a `$` followed by nothing. For example, a file named `routes/api/file/$.ts` will create an API route at `/api/file/$` that accepts a wildcard parameter.
+API Routes also support wildcard parameters at the end of the path, which are denoted by a `$` followed by nothing. For example, a file named `routes/api/file/$.ts` will create an API route at `/api/file/$` that accepts a wildcard parameter.
 
 ```ts
 // routes/api/file/$.ts
@@ -198,7 +198,7 @@ This also applies to other HTTP methods like `PUT`, `PATCH`, and `DELETE`. You c
 
 It's important to remember that the `request.json()` method returns a `Promise` that resolves to the parsed JSON body of the request. You need to `await` the result to access the body.
 
-This is a common pattern for handling POST requests in API routes. You can also use other methods like `request.text()` or `request.formData()` to access the body of the request.
+This is a common pattern for handling POST requests in API Routes. You can also use other methods like `request.text()` or `request.formData()` to access the body of the request.
 
 ## Responding with JSON
 
