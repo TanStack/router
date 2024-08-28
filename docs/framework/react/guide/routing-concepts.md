@@ -188,11 +188,11 @@ function LayoutComponent() {
 
 The following table shows which component will be rendered based on the URL:
 
-| URL Path | Component   |
-| -------- | ----------- |
-| `/`      | <Index>     |
-| `/a`     | <Layout><A> |
-| `/b`     | <Layout><B> |
+| URL Path | Component     |
+| -------- | ------------- |
+| `/`      | `<Index>`     |
+| `/a`     | `<Layout><A>` |
+| `/b`     | `<Layout><B>` |
 
 ## Non-Nested Routes
 
@@ -209,11 +209,11 @@ routes/
 
 The following table shows which component will be rendered based on the URL:
 
-| URL Path          | Component                  |
-| ----------------- | -------------------------- |
-| `/posts`          | <Posts>                    |
-| `/posts/123`      | <Posts><Post postId="123"> |
-| `/posts/123/edit` | <PostEditor postId="123">  |
+| URL Path          | Component                    |
+| ----------------- | ---------------------------- |
+| `/posts`          | `<Posts>`                    |
+| `/posts/123`      | `<Posts><Post postId="123">` |
+| `/posts/123/edit` | `<PostEditor postId="123">`  |
 
 - The `posts.$postId.tsx` route is nested as normal under the `posts.tsx` route and will render `<Posts><Post>`.
 - The `posts_.$postId.edit.tsx` route **does not share** the same `posts` prefix as the other routes and therefore will be treated as if it is a top-level route and will render `<PostEditor>`.
@@ -268,13 +268,13 @@ In the example above, the `app` and `auth` directories are purely organizational
 
 The following table shows which component will be rendered based on the URL:
 
-| URL Path     | Component   |
-| ------------ | ----------- |
-| `/`          | <Index>     |
-| `/dashboard` | <Dashboard> |
-| `/settings`  | <Settings>  |
-| `/users`     | <Users>     |
-| `/login`     | <Login>     |
-| `/register`  | <Register>  |
+| URL Path     | Component     |
+| ------------ | ------------- |
+| `/`          | `<Index>`     |
+| `/dashboard` | `<Dashboard>` |
+| `/settings`  | `<Settings>`  |
+| `/users`     | `<Users>`     |
+| `/login`     | `<Login>`     |
+| `/register`  | `<Register>`  |
 
 As you can see, the `app` and `auth` directories are purely organizational and do not affect the route tree or component tree in any way.
