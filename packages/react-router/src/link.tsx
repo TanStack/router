@@ -193,13 +193,13 @@ export type NavigateOptions<
 
 export interface NavigateOptionProps {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
-  replace?: boolean
-  resetScroll?: boolean
+  replace?: undefined | boolean
+  resetScroll?: undefined | boolean
   /** @deprecated All navigations now use startTransition under the hood */
-  startTransition?: boolean
+  startTransition?: undefined | boolean
   // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
-  viewTransition?: boolean
-  ignoreBlocker?: boolean
+  viewTransition?: undefined | boolean
+  ignoreBlocker?: undefined | boolean
 }
 
 export type ToOptions<
@@ -215,8 +215,8 @@ export interface MaskOptions<
   in out TMaskFrom extends RoutePaths<TRouter['routeTree']> | string,
   in out TMaskTo extends string,
 > {
-  _fromLocation?: ParsedLocation
-  mask?: ToMaskOptions<TRouter, TMaskFrom, TMaskTo>
+  _fromLocation?: undefined | ParsedLocation
+  mask?: undefined | ToMaskOptions<TRouter, TMaskFrom, TMaskTo>
 }
 
 export type ToMaskOptions<
@@ -224,7 +224,7 @@ export type ToMaskOptions<
   TMaskFrom extends RoutePaths<TRouteTree['routeTree']> | string = string,
   TMaskTo extends string = '',
 > = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
-  unmaskOnReload?: boolean
+  unmaskOnReload?: undefined | boolean
 }
 
 export type ToSubOptions<
@@ -240,11 +240,11 @@ export interface ToSubOptionsProps<
   in out TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   in out TTo extends string = '',
 > {
-  to?: ToPathOption<TRouter, TFrom, TTo> & {}
-  hash?: true | Updater<string>
-  state?: true | NonNullableUpdater<HistoryState>
+  to?: undefined | ToPathOption<TRouter, TFrom, TTo> & {}
+  hash?: undefined | true | Updater<string>
+  state?: undefined | true | NonNullableUpdater<HistoryState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
-  from?: FromPathOption<TRouter, TFrom> & {}
+  from?: undefined | FromPathOption<TRouter, TFrom> & {}
 }
 
 export type ParamsReducerFn<
@@ -347,7 +347,7 @@ interface MakeOptionalSearchParams<
   in out TFrom,
   in out TTo,
 > {
-  search?: true | (ParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {})
+  search?: undefined | true | (ParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {})
 }
 
 interface MakeOptionalPathParams<
@@ -355,7 +355,7 @@ interface MakeOptionalPathParams<
   in out TFrom,
   in out TTo,
 > {
-  params?: true | (ParamsReducer<TRouter, 'PATH', TFrom, TTo> & {})
+  params?: undefined | true | (ParamsReducer<TRouter, 'PATH', TFrom, TTo> & {})
 }
 
 type MakeRequiredParamsReducer<
@@ -461,9 +461,9 @@ export type FromPathOption<TRouter extends AnyRouter, TFrom> =
   | RoutePaths<TRouter['routeTree']>
 
 export interface ActiveOptions {
-  exact?: boolean
-  includeHash?: boolean
-  includeSearch?: boolean
+  exact?: undefined | boolean
+  includeHash?: undefined | boolean
+  includeSearch?: undefined | boolean
 }
 
 export type LinkOptions<
@@ -478,30 +478,30 @@ export interface LinkOptionsProps {
   /**
    * The standard anchor tag target attribute
    */
-  target?: HTMLAnchorElement['target']
+  target?: undefined | HTMLAnchorElement['target']
   /**
    * Configurable options to determine if the link should be considered active or not
    * @default {exact:true,includeHash:true}
    */
-  activeOptions?: ActiveOptions
+  activeOptions?: undefined | ActiveOptions
   /**
    * The preloading strategy for this link
    * - `false` - No preloading
    * - `'intent'` - Preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
    * - `'viewport'` - Preload the linked route when it enters the viewport
    */
-  preload?: false | 'intent' | 'viewport'
+  preload?: undefined | false | 'intent' | 'viewport'
   /**
    * When a preload strategy is set, this delays the preload by this many milliseconds.
    * If the user exits the link before this delay, the preload will be cancelled.
    */
-  preloadDelay?: number
+  preloadDelay?: undefined | number
   /**
    * Control whether the link should be disabled or not
    * If set to `true`, the link will be rendered without an `href` attribute
    * @default false
    */
-  disabled?: boolean
+  disabled?: undefined | boolean
 }
 
 export type CheckPath<TRouter extends AnyRouter, TPass, TFail, TFrom, TTo> =
@@ -563,7 +563,7 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
 // //   ^?
 
 type LinkCurrentTargetElement = {
-  preloadTimeout?: null | ReturnType<typeof setTimeout>
+  preloadTimeout?: undefined | null | ReturnType<typeof setTimeout>
 }
 
 const preloadWarning = 'Error preloading route! ☝️'
@@ -576,7 +576,7 @@ export function useLinkProps<
   TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  forwardedRef?: React.ForwardedRef<Element>,
+  forwardedRef?: undefined | React.ForwardedRef<Element>,
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
@@ -782,7 +782,7 @@ export function useLinkProps<
 
   const composeHandlers =
     (handlers: Array<undefined | ((e: any) => void)>) =>
-    (e: { persist?: () => void; defaultPrevented: boolean }) => {
+    (e: { persist?: undefined | (() => void); defaultPrevented: boolean }) => {
       e.persist?.()
       handlers.filter(Boolean).forEach((handler) => {
         if (e.defaultPrevented) return
@@ -870,12 +870,12 @@ export interface ActiveLinkOptionProps {
    * A function that returns additional props for the `active` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  activeProps?: ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
+  activeProps?: undefined | ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
   /**
    * A function that returns additional props for the `inactive` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  inactiveProps?: ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
+  inactiveProps?: undefined | ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
 }
 
 export type LinkProps<
@@ -890,6 +890,7 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
+    | undefined
     | React.ReactNode
     | ((state: {
         isActive: boolean
