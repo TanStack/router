@@ -10,9 +10,10 @@ export function Login() {
 
   const loginMutation = useMutation({
     fn: loginFn,
-    onSuccess: (ctx) => {
+    onSuccess: async (ctx) => {
       if (!ctx.data?.error) {
-        router.invalidate()
+        await router.invalidate()
+        router.navigate({ to: '/' })
         return
       }
     },
