@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, json } from '@tanstack/start'
 import { Auth } from '../components/Auth'
-import { sessionStorage } from '~/utils/session.js'
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { Login } from '~/components/Login'
+import { useAppSession } from '~/utils/session'
 
 export const loginFn = createServerFn(
   'POST',
@@ -41,17 +41,11 @@ export const loginFn = createServerFn(
     }
 
     // Create a session
-    const session = await sessionStorage.getSession(
-      request.headers.get('cookie'),
-    )
+    const session = await useAppSession()
 
     // Store the user's email in the session
-    session.set('userEmail', user.email)
-
-    return json(null, {
-      headers: {
-        'Set-Cookie': await sessionStorage.commitSession(session),
-      },
+    await session.update({
+      userEmail: user.email,
     })
   },
 )

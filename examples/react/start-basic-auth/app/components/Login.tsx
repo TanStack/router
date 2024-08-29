@@ -1,4 +1,4 @@
-import { Link, useRouter } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/start'
 import { useMutation } from '../hooks/useMutation'
 import { loginFn } from '../routes/_authed'
@@ -13,9 +13,6 @@ export function Login() {
     onSuccess: (ctx) => {
       if (!ctx.data?.error) {
         router.invalidate()
-        router.navigate({
-          to: '/',
-        })
         return
       }
     },

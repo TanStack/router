@@ -1,16 +1,18 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/start'
+import { updateSession } from 'vinxi/http'
 import { hashPassword, prismaClient } from '~/utils/prisma'
-import { sessionStorage } from '~/utils/session'
 import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
+import { useAppSession } from '~/utils/session'
 
 export const signupFn = createServerFn(
   'POST',
-  async (
-    payload: { email: string; password: string; redirectUrl?: string },
-    context,
-  ) => {
+  async (payload: {
+    email: string
+    password: string
+    redirectUrl?: string
+  }) => {
     // Check if the user already exists
     const found = await prismaClient.user.findUnique({
       where: {
@@ -22,9 +24,7 @@ export const signupFn = createServerFn(
     const password = await hashPassword(payload.password)
 
     // Create a session
-    const session = await sessionStorage.getSession(
-      context.request.headers.get('cookie'),
-    )
+    const session = await useAppSession()
 
     if (found) {
       if (found.password !== password) {
@@ -36,14 +36,13 @@ export const signupFn = createServerFn(
       }
 
       // Store the user's email in the session
-      session.set('userEmail', found.email)
+      await session.update({
+        userEmail: found.email,
+      })
 
       // Redirect to the prev page stored in the "redirect" search param
       throw redirect({
         href: payload.redirectUrl || '/',
-        headers: {
-          'Set-Cookie': await sessionStorage.commitSession(session),
-        },
       })
     }
 
@@ -56,14 +55,13 @@ export const signupFn = createServerFn(
     })
 
     // Store the user's email in the session
-    session.set('userEmail', user.email)
+    await session.update({
+      userEmail: user.email,
+    })
 
     // Redirect to the prev page stored in the "redirect" search param
     throw redirect({
       href: payload.redirectUrl || '/',
-      headers: {
-        'Set-Cookie': await sessionStorage.commitSession(session),
-      },
     })
   },
 )
