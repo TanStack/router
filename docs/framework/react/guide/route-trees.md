@@ -16,11 +16,13 @@ the [Code-Based Routing](./code-based-routing.md) guide.
 
 ## Route Trees
 
-Nested routing is a powerful concept that allows you to use a URL to render a nested component tree. For example, given the URL of `/blog/posts/123`, you could match a path hierarchy that looks like this:
+Nested routing is a powerful concept that allows you to use a URL to render a nested component tree. For example, given the URL of `/blog/posts/123`, you could create a route hierarchy that looks like this:
 
-- /blog
-  - /posts
-    - /$postId
+```tsx
+├── blog
+│   ├── posts
+│   │   ├── $postId
+```
 
 And render a component tree that looks like this:
 
@@ -32,7 +34,7 @@ And render a component tree that looks like this:
 </Blog>
 ```
 
-A file-based route tree might look something like this:
+Let's take that concept and expand it out to a larger site structure, but with file-names now:
 
 ```
 /routes
