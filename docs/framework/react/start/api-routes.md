@@ -12,7 +12,7 @@ By default, API Routes are defined in your `./app/routes/api` directory of your 
 Topics covered in this guide:
 
 - [File Route Conventions](#file-route-conventions)
-- [Directories vs File-names](#directories-vs-file-names)
+- [Nested Directories vs File-names](#nested-directories-vs-file-names)
 - [Setting up the entry handler](#setting-up-the-entry-handler)
 - [Defining an API Route](#defining-an-api-route)
 - [Dynamic Path Params](#dynamic-path-params)
@@ -46,38 +46,9 @@ It's important to remember that each route can only have a single handler file a
 
 - `routes/api/_layout/users.ts` would resolve to `/api/_layout/users` and **NOT** `/api/users`.
 
-## Directories vs File-names
+## Nested Directories vs File-names
 
-In the examples above, you may have noticed that the file naming conventions are flexible and allow you to mix and match directories and file names. This is intentional and allows you to organize your API Routes in a way that makes sense for your application.
-
-So you can choose to organize your API Routes in a flat structure 🫓:
-
-```plaintext
-routes/
-  api.users.ts
-  api.posts.ts
-  api.comments.ts
-```
-
-Or you can choose to organize your API Routes in a nested structure ⛰️:
-
-```plaintext
-routes/
-  api/
-    users.ts
-    posts.ts
-    comments.ts
-```
-
-Or even a combination of both 🤯:
-
-```plaintext
-routes/
-  api.users.ts
-  api/
-    posts.ts
-    comments.ts
-```
+In the examples above, you may have noticed that the file naming conventions are flexible and allow you to mix and match directories and file names. This is intentional and allows you to organize your API Routes in a way that makes sense for your application. You can read more about this in the [TanStack Router File-based Routing Guide](../guide/file-based-routing.md#s-or-s).
 
 ## Setting up the entry handler
 
