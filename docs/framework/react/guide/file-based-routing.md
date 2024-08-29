@@ -21,7 +21,7 @@ While directories have long been used to represent route hierarchy, file-based r
 
 ## Directory Routes
 
-Directories can be used to denote route hierarchy, which can be useful for organizing multiple routes into logical groups and also cutting down on the filename length for large groups of deeploy nested routes:
+Directories can be used to denote route hierarchy, which can be useful for organizing multiple routes into logical groups and also cutting down on the filename length for large groups of deeply nested routes:
 
 | Filename                | Route Path                | Component Output                  |
 | ----------------------- | ------------------------- | --------------------------------- |
