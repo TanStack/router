@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@prisma/client": "5.17.0",
-    "@remix-run/node": "^2.10.3",
-    "@remix-run/server-runtime": "^2.10.3",
+    "@remix-run/node": "^2.11.2",
+    "@remix-run/server-runtime": "^2.11.2",
     "@tanstack/react-router": "^1.51.2",
     "@tanstack/router-devtools": "^1.51.2",
     "@tanstack/router-plugin": "^1.51.0",
@@ -29,11 +29,11 @@
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "remix-auth-form": "^1.5.0",
-    "tailwind-merge": "^2.4.0",
-    "vinxi": "0.3.12"
+    "tailwind-merge": "^2.5.2",
+    "vinxi": "0.4.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.45.1",
+    "@playwright/test": "^1.46.1",
     "@replayio/playwright": "^3.1.8",
     "@types/node": "^20.12.11",
     "@types/react": "^18.2.65",
