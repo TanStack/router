@@ -9,7 +9,6 @@ import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../client'
-import { defaultTransformer } from '../client/defaultTransformer'
 import type { HandlerCallback } from './defaultStreamHandler'
 
 export type RequestHandler<TRouter extends AnyRouter> = (
@@ -30,8 +29,6 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
     // Inject a few of the SSR helpers and defaults
     router.serializeLoaderData = serializeLoaderData as any
-    router.options.transformer =
-      (router.options as any).transformer || defaultTransformer
 
     if (getRouterManifest) {
       router.manifest = getRouterManifest()

@@ -42,7 +42,7 @@ test('when navigating to a route', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      '/' | '/invoices' | '/invoices/$invoiceId' | './' | '../' | undefined
+      '/' | '/invoices' | '/invoices/$invoiceId' | '.' | '..' | undefined
     >()
 })
 

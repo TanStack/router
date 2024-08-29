@@ -337,16 +337,13 @@ export function matchByPath(
 
       if (routeSegment) {
         if (routeSegment.type === 'wildcard') {
-          if (baseSegment?.value) {
-            const _splat = decodeURI(
-              joinPaths(baseSegments.slice(i).map((d) => d.value)),
-            )
-            // TODO: Deprecate *
-            params['*'] = _splat
-            params['_splat'] = _splat
-            return true
-          }
-          return false
+          const _splat = decodeURI(
+            joinPaths(baseSegments.slice(i).map((d) => d.value)),
+          )
+          // TODO: Deprecate *
+          params['*'] = _splat
+          params['_splat'] = _splat
+          return true
         }
 
         if (routeSegment.type === 'pathname') {

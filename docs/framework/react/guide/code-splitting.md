@@ -35,6 +35,18 @@ TanStack Router separates code into two categories:
 > - The loader is already an asynchronous boundary, so you pay double to both get the chunk _and_ wait for the loader to execute.
 > - Categorically, it is less likely to contribute to a large bundle size than a component.
 > - The loader is one of the most important preloadable assets for a route, especially if you're using a default preload intent, like hovering over a link, so it's important for the loader to be available without any additional async overhead.
+>
+>   Knowing the disadvantages of splitting the loader, if you still want to go ahead with it, head over to the [Data Loader Splitting](#data-loader-splitting) section.
+
+## Approaches to code splitting
+
+TanStack Router supports multiple approaches to code splitting. If you are using code-based routing, skip to the [Code-Based Splitting](#code-based-splitting) section.
+
+When you are using file-based routing, you can use the following approaches to code splitting:
+
+- [Using the `.lazy.tsx` suffix](#using-the-lazytsx-suffix)
+- [Using Virtual Routes](#using-virtual-routes)
+- [Using automatic code-splitting ✨](#using-automatic-code-splitting)
 
 ## Encapsulating a route's files into a directory
 
@@ -178,26 +190,19 @@ Tada! 🎉
 
 ## Using automatic code-splitting
 
-> [!WARNING]
-> This feature is experimental and currently in development. It is not recommended for production use.
+When using the `autoCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
 
-When using the `experimental.enableCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
+> [!IMPORTANT]
+> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](./file-based-routing.md#prerequisites).
+> This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
 
-The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](./file-based-routing.md#prerequisites). This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
+If this is your first time using TanStack Router, then you can skip the following steps and head over to [Enabling automatic code-splitting](#enabling-automatic-code-splitting). If you've already been using TanStack Router, then you might need to make some changes to your route files to enable automatic code-splitting.
 
-To enable this feature, you can add the following to your `tsr.config.json`:
+### Preparing your route files for automatic code-splitting
 
-```json
-{
-  "experimental": {
-    "enableCodeSplitting": true
-  }
-}
-```
+When using automatic code-splitting, you should **not** use the `.lazy.tsx` suffix. Instead, any routes that are split into two using the `.lazy.tsx` suffix should be merged back into a single file.
 
-If you were previously using the `.lazy.tsx` suffix, you must remove it and let the automatic code-splitting feature take care of the rest. Your route files will now look like this:
-
-**Before (Automatic Code Splitting using the `.lazy` suffix)**
+**Before using the `.lazy` suffix**
 
 ```tsx
 // src/routes/posts.tsx
@@ -221,7 +226,7 @@ function Posts() {
 }
 ```
 
-**After (Automatic Code Splitting without the `.lazy` suffix)**
+**After removing the `.lazy` suffix**
 
 ```tsx
 // src/routes/posts.tsx
@@ -236,6 +241,48 @@ function Posts() {
   // ...
 }
 ```
+
+Also, if you were previously using virtual routes, you should then have their `.lazy.tsx` suffixes removed.
+
+**Before using Virtual Routes**
+
+```tsx
+// src/routes/posts.lazy.tsx
+import { createLazyFileRoute } from '@tanstack/react-router'
+
+export const Route = createLazyFileRoute('/posts')({
+  /* ... */
+})
+```
+
+**After without Virtual Routes**
+
+```tsx
+// src/routes/posts.tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({
+  /* ... */
+})
+```
+
+Once you've done this, your route files are ready for automatic code-splitting.
+
+### Enabling automatic code-splitting
+
+> [!IMPORTANT]
+> At this time, when using automatic code-splitting, ALL of your route files will be code-split. This means that you should only use this feature if you are sure that you want to code-split all of your route files.
+
+To enable automatic code-splitting, you can add the following to your `tsr.config.json`:
+
+```jsonc
+{
+  // ...
+  "autoCodeSplitting": true,
+}
+```
+
+That's it! TanStack Router will automatically code-split all your route files by their critical and non-critical route configurations.
 
 ## Code-Based Splitting
 
@@ -304,7 +351,7 @@ export const loader = async (context: LoaderContext) => {
 }
 ```
 
-## Manually accessing Route APIs in other files with the `RouteApi` class
+## Manually accessing Route APIs in other files with the `getRouteApi` helper
 
 As you might have guessed, placing your component code in a separate file than your route can make it difficult to consume the route itself. To help with this, TanStack Router exports a handy `getRouteApi` function that you can use to access a route's type-safe APIs in a file without importing the route itself.
 

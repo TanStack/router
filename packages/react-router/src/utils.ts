@@ -4,6 +4,7 @@ export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
   ? TYesResult
   : TNoResult
+
 export type PickAsRequired<TValue, TKey extends keyof TValue> = Omit<
   TValue,
   TKey
@@ -97,6 +98,10 @@ export type MergeUnionPrimitives<TUnion> = TUnion extends MergeUnionPrimitive
 export type MergeUnion<TUnion> =
   | MergeUnionPrimitives<TUnion>
   | MergeUnionObject<TUnion>
+
+export type Constrain<T, TConstaint, TDefault = TConstaint> =
+  | (T extends TConstaint ? T : never)
+  | TDefault
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]

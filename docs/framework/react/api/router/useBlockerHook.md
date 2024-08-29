@@ -42,7 +42,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   useBlocker({
-    blockerfn: () => window.confirm('Are you sure you want to leave?'),
+    blockerFn: () => window.confirm('Are you sure you want to leave?'),
     condition: formIsDirty,
   })
 

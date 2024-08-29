@@ -1,6 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
 import {
   type FullSearchSchema,
+  SearchSchemaInput,
   createRootRoute,
   createRoute,
   createRouter,
@@ -481,4 +482,22 @@ test('when the root has search params but the index does', () => {
         })
       | undefined
     >()
+})
+
+test('when a route has search params using SearchSchemaInput', () => {
+  const rootRoute = createRootRoute()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: (input: { page?: number } & SearchSchemaInput) => {
+      return { page: input.page ?? 0 }
+    },
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+
+  expectTypeOf(useSearch<typeof routeTree, '/'>).returns.toEqualTypeOf<{
+    page: number
+  }>
 })

@@ -297,21 +297,22 @@ export const Route = createFileRoute('/todos')({
 
 ## Processing Accumulated Route Context
 
-Context, especially the isolated `routeContext` objects, make it trivial to accumulate and process the route context objects for all matched routes. Here's an example where we use all of the matched route contexts to generate a breadcrumb trail:
+Context, especially the isolated route `context` objects, make it trivial to accumulate and process the route context objects for all matched routes. Here's an example where we use all of the matched route contexts to generate a breadcrumb trail:
 
 ```tsx
 // src/routes/__root.tsx
 export const Route = createRootRoute({
   component: () => {
-    const router = useRouter()
+    const matches = useRouterState({ select: (s) => s.matches })
 
-    const breadcrumbs = router.state.matches.map((match) => {
-      const { routeContext } = match
-      return {
-        title: routeContext.getTitle(),
-        path: match.path,
-      }
-    })
+    const breadcrumbs = matches
+      .filter((match) => match.context.getTitle)
+      .map(({ pathname, context }) => {
+        return {
+          title: context.getTitle(),
+          path: pathname,
+        }
+      })
 
     // ...
   },
@@ -324,13 +325,13 @@ Using that same route context, we could also generate a title tag for our page's
 // src/routes/__root.tsx
 export const Route = createRootRoute({
   component: () => {
-    const router = useRouter()
+    const matches = useRouterState({ select: (s) => s.matches })
 
-    const matchWithTitle = [...router.state.matches]
+    const matchWithTitle = [...matches]
       .reverse()
-      .find((d) => d.routeContext.getTitle)
+      .find((d) => d.context.getTitle)
 
-    const title = matchWithTitle?.routeContext.getTitle() || 'My App'
+    const title = matchWithTitle?.context.getTitle() || 'My App'
 
     return (
       <html>

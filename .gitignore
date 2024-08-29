@@ -18,6 +18,7 @@ artifacts
 .rpt2_cache
 coverage
 *.tgz
+.wrangler
 
 # tests
 packages/router-generator/tests/**/*.gen.ts

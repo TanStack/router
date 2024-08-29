@@ -57,13 +57,34 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => rootRoute,
     path: '/path-segment/🚀',
   })
+  const pathSegmentSoloSplatRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/solo-splat/$',
+  })
+  const pathSegmentLayoutSplatRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/layout-splat',
+  })
+  const pathSegmentLayoutSplatIndexRoute = createRoute({
+    getParentRoute: () => pathSegmentLayoutSplatRoute,
+    path: '/',
+  })
+  const pathSegmentLayoutSplatSplatRoute = createRoute({
+    getParentRoute: () => pathSegmentLayoutSplatRoute,
+    path: '$',
+  })
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
     pathSegmentEAccentRoute,
     pathSegmentRocketEmojiRoute,
+    pathSegmentSoloSplatRoute,
     topLevelSplatRoute,
+    pathSegmentLayoutSplatRoute.addChildren([
+      pathSegmentLayoutSplatIndexRoute,
+      pathSegmentLayoutSplatSplatRoute,
+    ]),
   ])
 
   const router = createRouter({ routeTree, history })
@@ -491,5 +512,61 @@ describe('transformer functions are defined', () => {
 
     expect(router.options.transformer.parse).toBeInstanceOf(Function)
     expect(router.options.transformer.stringify).toBeInstanceOf(Function)
+  })
+})
+
+describe('router matches URLs to route definitions', () => {
+  it('solo splat route matches index route', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/solo-splat'] }),
+    )
+
+    await act(() => router.load())
+
+    expect(router.state.matches.map((d) => d.routeId)).toEqual([
+      '__root__',
+      '/solo-splat/$',
+    ])
+  })
+
+  it('solo splat route matches with splat', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/solo-splat/test'] }),
+    )
+
+    await act(() => router.load())
+
+    expect(router.state.matches.map((d) => d.routeId)).toEqual([
+      '__root__',
+      '/solo-splat/$',
+    ])
+  })
+
+  it('layout splat route matches with splat', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/layout-splat/test'] }),
+    )
+
+    await act(() => router.load())
+
+    expect(router.state.matches.map((d) => d.routeId)).toEqual([
+      '__root__',
+      '/layout-splat',
+      '/layout-splat/$',
+    ])
+  })
+
+  it('layout splat route matches without splat', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/layout-splat'] }),
+    )
+
+    await act(() => router.load())
+
+    expect(router.state.matches.map((d) => d.routeId)).toEqual([
+      '__root__',
+      '/layout-splat',
+      '/layout-splat/',
+    ])
   })
 })

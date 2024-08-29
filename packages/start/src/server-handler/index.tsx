@@ -174,7 +174,10 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
 }
 
 function redirectOrNotFoundResponse(error: any) {
-  return new Response(JSON.stringify(error), {
+  const { headers, ...rest } = error
+
+  return new Response(JSON.stringify(rest), {
+    status: 200,
     headers: {
       'Content-Type': 'application/json',
       [serverFnReturnTypeHeader]: 'json',

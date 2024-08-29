@@ -6,8 +6,8 @@ import {
   isPlainArray,
   isPlainObject,
   pick,
-  rootRouteId,
   useRouter,
+  warning,
 } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import invariant from 'tiny-invariant'
@@ -15,32 +15,27 @@ import { Context } from '@tanstack/react-cross-context'
 import type {
   AnyRouteMatch,
   AnyRouter,
-  ControlledPromise,
+  ExtractedEntry,
+  StreamState,
 } from '@tanstack/react-router'
 
-type Entry = {
-  type: 'promise' | 'stream'
-  path: Array<string>
-  value: any
-  id: number
-  streamState?: StreamState
-  matchIndex: number
-}
-
 export function serializeLoaderData(
-  loaderData: any,
+  dataType: '__beforeLoadContext' | 'loaderData',
+  data: any,
   ctx: {
     match: AnyRouteMatch
     router: AnyRouter
   },
 ) {
   if (!ctx.router.isServer) {
-    return loaderData
+    return data
   }
 
-  const extracted: Array<Entry> = []
+  ;(ctx.match as any).extracted = (ctx.match as any).extracted || []
 
-  const replacedLoaderData = replaceBy(loaderData, (value, path) => {
+  const extracted = (ctx.match as any).extracted
+
+  const replacedLoaderData = replaceBy(data, (value, path) => {
     const type =
       value instanceof ReadableStream
         ? 'stream'
@@ -49,7 +44,8 @@ export function serializeLoaderData(
           : undefined
 
     if (type) {
-      const entry: Entry = {
+      const entry: ExtractedEntry = {
+        dataType,
         type,
         path,
         id: extracted.length,
@@ -73,41 +69,59 @@ export function serializeLoaderData(
     return value
   })
 
-  ;(ctx.match as any).extracted = extracted
-
   return replacedLoaderData
 }
 
+// Right after hydration and before the first render, we need to rehydrate each match
+// This includes rehydrating the loaderData and also using the beforeLoadContext
+// to reconstruct any context that was serialized on the server
 export function afterHydrate({ router }: { router: AnyRouter }) {
   router.state.matches.forEach((match) => {
     const route = router.looseRoutesById[match.routeId]!
-    if (window.__TSR__?.matches[match.index]) {
-      match.loaderData = router.options.transformer.parse(
-        window.__TSR__.matches[match.index].loaderData,
-      )
+    const dMatch = window.__TSR__?.matches[match.index]
+    if (dMatch) {
+      if (dMatch.__beforeLoadContext) {
+        match.__beforeLoadContext = router.options.transformer.parse(
+          dMatch.__beforeLoadContext,
+        ) as any
 
-      const extracted = window.__TSR__.matches[match.index].extracted
+        match.context = {
+          ...match.context,
+          ...match.__beforeLoadContext,
+        }
+      }
+
+      if (dMatch.loaderData) {
+        match.loaderData = router.options.transformer.parse(dMatch.loaderData)
+      }
+
+      const extracted = dMatch.extracted
 
       if (extracted) {
         Object.entries(extracted).forEach(([_, ex]: any) => {
           if (ex.value instanceof Promise) {
             const og = ex.value
-            ex.value = og.then((data: any) =>
-              router.options.transformer.parse(data),
-            )
+            ex.value = og.then((data: any) => {
+              return data
+            })
           }
           deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
         })
       }
     }
 
+    const meta =
+      match.status === 'success'
+        ? route.options.meta?.({
+            matches: router.state.matches,
+            match,
+            params: match.params,
+            loaderData: match.loaderData,
+          })
+        : undefined
+
     Object.assign(match, {
-      meta: route.options.meta?.({
-        matches: router.state.matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
-      }),
+      meta,
       links: route.options.links?.(),
       scripts: route.options.scripts?.(),
     })
@@ -123,28 +137,41 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
     return null
   }
 
-  const extracted = (fullMatch as any).extracted as undefined | Array<Entry>
+  const extracted = (fullMatch as any).extracted as
+    | undefined
+    | Array<ExtractedEntry>
 
-  // Remove the extracted values from the loaderData
-  const serializedLoaderData = extracted
-    ? extracted.reduce(
-        (acc: any, entry: Entry) => {
-          return deepImmutableSetByPath(
-            acc,
-            ['loaderData', ...entry.path],
-            undefined,
-          )
-        },
-        { loaderData: fullMatch.loaderData },
-      ).loaderData
-    : fullMatch.loaderData
+  const [serializedBeforeLoadData, serializedLoaderData] = (
+    ['__beforeLoadContext', 'loaderData'] as const
+  ).map((dataType) => {
+    return extracted
+      ? extracted.reduce(
+          (acc: any, entry: ExtractedEntry) => {
+            if (entry.dataType !== dataType) {
+              return deepImmutableSetByPath(
+                acc,
+                ['temp', ...entry.path],
+                undefined,
+              )
+            }
+            return acc
+          },
+          { temp: fullMatch[dataType] },
+        ).temp
+      : fullMatch[dataType]
+  })
 
   return (
     <>
-      {serializedLoaderData !== undefined || extracted?.length ? (
+      {serializedBeforeLoadData !== undefined ||
+      serializedLoaderData !== undefined ||
+      extracted?.length ? (
         <ScriptOnce
           children={`__TSR__.matches[${props.matchIndex}] = ${jsesc(
             {
+              __beforeLoadContext: router.options.transformer.stringify(
+                serializedBeforeLoadData,
+              ),
               loaderData:
                 router.options.transformer.stringify(serializedLoaderData),
               extracted: extracted
@@ -166,10 +193,10 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
       {extracted
         ? extracted.map((d, i) => {
             if (d.type === 'stream') {
-              return <DehydrateStream key={i} entry={d} />
+              return <DehydrateStream key={d.id} entry={d} />
             }
 
-            return <DehydratePromise key={i} entry={d} />
+            return <DehydratePromise key={d.id} entry={d} />
           })
         : null}
     </>
@@ -181,17 +208,12 @@ export function replaceBy<T>(
   cb: (value: any, path: Array<string>) => any,
   path: Array<string> = [],
 ): T {
-  const newObj = cb(obj, path)
-
-  if (newObj !== obj) {
-    return newObj
-  }
-
   if (isPlainArray(obj)) {
     return obj.map((value, i) => replaceBy(value, cb, [...path, `${i}`])) as any
   }
 
   if (isPlainObject(obj)) {
+    // Do not allow objects with illegal
     const newObj: any = {}
 
     for (const key in obj) {
@@ -201,10 +223,28 @@ export function replaceBy<T>(
     return newObj
   }
 
+  // // Detect classes, functions, and other non-serializable objects
+  // // and return undefined. Exclude some known types that are serializable
+  // if (
+  //   typeof obj === 'function' ||
+  //   (typeof obj === 'object' &&
+  //     ![Object, Promise, ReadableStream].includes((obj as any)?.constructor))
+  // ) {
+  //   console.info(obj)
+  //   warning(false, `Non-serializable value ☝️ found at ${path.join('.')}`)
+  //   return undefined as any
+  // }
+
+  const newObj = cb(obj, path)
+
+  if (newObj !== obj) {
+    return newObj
+  }
+
   return obj
 }
 
-function DehydratePromise({ entry }: { entry: Entry }) {
+function DehydratePromise({ entry }: { entry: ExtractedEntry }) {
   return (
     <div className="tsr-once">
       <React.Suspense fallback={null}>
@@ -214,7 +254,7 @@ function DehydratePromise({ entry }: { entry: Entry }) {
   )
 }
 
-function InnerDehydratePromise({ entry }: { entry: Entry }) {
+function InnerDehydratePromise({ entry }: { entry: ExtractedEntry }) {
   if (entry.value.status === 'pending') {
     throw entry.value
   }
@@ -233,7 +273,7 @@ function InnerDehydratePromise({ entry }: { entry: Entry }) {
   )
 }
 
-function DehydrateStream({ entry }: { entry: Entry }) {
+function DehydrateStream({ entry }: { entry: ExtractedEntry }) {
   invariant(entry.streamState, 'StreamState should be defined')
 
   return (
@@ -257,10 +297,6 @@ function DehydrateStream({ entry }: { entry: Entry }) {
       )}
     />
   )
-}
-
-type StreamState = {
-  promises: Array<ControlledPromise<string | null>>
 }
 
 // Readable stream with state is a stream that has a promise that resolves to the next chunk

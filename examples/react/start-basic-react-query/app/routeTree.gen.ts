@@ -11,12 +11,15 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as UsersImport } from './routes/users'
 import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
 import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
+import { Route as UsersIndexImport } from './routes/users.index'
 import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as UsersUserIdImport } from './routes/users.$userId'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
@@ -24,6 +27,11 @@ import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 
 // Create/Update Routes
+
+const UsersRoute = UsersImport.update({
+  path: '/users',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const RedirectRoute = RedirectImport.update({
   path: '/redirect',
@@ -50,9 +58,19 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const UsersIndexRoute = UsersIndexImport.update({
+  path: '/',
+  getParentRoute: () => UsersRoute,
+} as any)
+
 const PostsIndexRoute = PostsIndexImport.update({
   path: '/',
   getParentRoute: () => PostsRoute,
+} as any)
+
+const UsersUserIdRoute = UsersUserIdImport.update({
+  path: '/$userId',
+  getParentRoute: () => UsersRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
@@ -119,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectImport
       parentRoute: typeof rootRoute
     }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersImport
+      parentRoute: typeof rootRoute
+    }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
@@ -133,12 +158,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdImport
       parentRoute: typeof PostsImport
     }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof UsersUserIdImport
+      parentRoute: typeof UsersImport
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: typeof UsersIndexImport
+      parentRoute: typeof UsersImport
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
@@ -177,6 +216,7 @@ export const routeTree = rootRoute.addChildren({
   DeferredRoute,
   PostsRoute: PostsRoute.addChildren({ PostsPostIdRoute, PostsIndexRoute }),
   RedirectRoute,
+  UsersRoute: UsersRoute.addChildren({ UsersUserIdRoute, UsersIndexRoute }),
   PostsPostIdDeepRoute,
 })
 
@@ -193,6 +233,7 @@ export const routeTree = rootRoute.addChildren({
         "/deferred",
         "/posts",
         "/redirect",
+        "/users",
         "/posts/$postId/deep"
       ]
     },
@@ -218,6 +259,13 @@ export const routeTree = rootRoute.addChildren({
     "/redirect": {
       "filePath": "redirect.tsx"
     },
+    "/users": {
+      "filePath": "users.tsx",
+      "children": [
+        "/users/$userId",
+        "/users/"
+      ]
+    },
     "/_layout/_layout-2": {
       "filePath": "_layout/_layout-2.tsx",
       "parent": "/_layout",
@@ -230,9 +278,17 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "posts.$postId.tsx",
       "parent": "/posts"
     },
+    "/users/$userId": {
+      "filePath": "users.$userId.tsx",
+      "parent": "/users"
+    },
     "/posts/": {
       "filePath": "posts.index.tsx",
       "parent": "/posts"
+    },
+    "/users/": {
+      "filePath": "users.index.tsx",
+      "parent": "/users"
     },
     "/_layout/_layout-2/layout-a": {
       "filePath": "_layout/_layout-2/layout-a.tsx",

@@ -213,7 +213,7 @@ describe('redirect', () => {
         isRedirect: true,
         routeId: '/',
         routerCode: 'BEFORE_LOAD',
-        statusCode: 301,
+        statusCode: 307,
       })
     })
 
@@ -263,7 +263,7 @@ describe('redirect', () => {
         href: '/about',
         isRedirect: true,
         routeId: '/',
-        statusCode: 301,
+        statusCode: 307,
       })
     })
   })

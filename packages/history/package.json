@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/history",
-  "version": "1.45.3",
+  "version": "1.49.7",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",

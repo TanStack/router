@@ -173,6 +173,10 @@ export const Meta = ({ children }: { children?: React.ReactNode }) => {
   React[
     typeof document !== 'undefined' ? 'useLayoutEffect' : 'useEffect'
   ](() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
     // Remove all meta between the tsr meta tags
     const start = document.head.querySelector('meta[name="tsr-meta"]')
     const end = document.head.querySelector('meta[name="/tsr-meta"]')

@@ -3,6 +3,9 @@ import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardComponent,
+  loader: () => ({
+    crumb: 'Dashboard',
+  }),
 })
 
 function DashboardComponent() {
@@ -11,6 +14,7 @@ function DashboardComponent() {
       <div className="flex items-center border-b">
         <h2 className="text-xl p-2">Dashboard</h2>
       </div>
+
       <div className="flex flex-wrap divide-x">
         {(
           [
@@ -33,6 +37,7 @@ function DashboardComponent() {
         })}
       </div>
       <hr />
+
       <Outlet />
     </>
   )
