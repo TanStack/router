@@ -31,7 +31,7 @@
     "vinxi": "0.3.12"
   },
   "devDependencies": {
-    "@playwright/test": "^1.45.1",
+    "@playwright/test": "^1.46.1",
     "@replayio/playwright": "^3.1.8",
     "@types/node": "^20.12.11",
     "@types/react": "^18.2.65",
