@@ -13,7 +13,7 @@ However, since hosting is one of the most crucial aspects of your application's 
 
 ## What is Vercel?
 
-<a href="https://vercel.com" alt="Vercel Logo">
+<a href="https://vercel.com?utm_source=tanstack" alt="Vercel Logo">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-dark.svg" width="280">
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" width="280">
