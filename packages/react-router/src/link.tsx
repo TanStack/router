@@ -240,11 +240,11 @@ export interface ToSubOptionsProps<
   in out TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   in out TTo extends string = '',
 > {
-  to?: undefined | ToPathOption<TRouter, TFrom, TTo> & {}
+  to?: undefined | (ToPathOption<TRouter, TFrom, TTo> & {})
   hash?: undefined | true | Updater<string>
   state?: undefined | true | NonNullableUpdater<HistoryState>
   // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
-  from?: undefined | FromPathOption<TRouter, TFrom> & {}
+  from?: undefined | (FromPathOption<TRouter, TFrom> & {})
 }
 
 export type ParamsReducerFn<
@@ -347,7 +347,10 @@ interface MakeOptionalSearchParams<
   in out TFrom,
   in out TTo,
 > {
-  search?: undefined | true | (ParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {})
+  search?:
+    | undefined
+    | true
+    | (ParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {})
 }
 
 interface MakeOptionalPathParams<
@@ -870,12 +873,18 @@ export interface ActiveLinkOptionProps {
    * A function that returns additional props for the `active` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  activeProps?: undefined | ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
+  activeProps?:
+    | undefined
+    | ActiveLinkAnchorProps
+    | (() => ActiveLinkAnchorProps)
   /**
    * A function that returns additional props for the `inactive` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  inactiveProps?: undefined | ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
+  inactiveProps?:
+    | undefined
+    | ActiveLinkAnchorProps
+    | (() => ActiveLinkAnchorProps)
 }
 
 export type LinkProps<
