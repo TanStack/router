@@ -35,7 +35,7 @@
     "test:types:ts55": "tsc",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
-    "test:build": "publint --strict",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
   "type": "module",
