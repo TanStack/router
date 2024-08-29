@@ -9,16 +9,22 @@ Hosting is the process of deploying your application to the internet so that use
 
 TanStack Start is **designed to work with any hosting provider**, so if you already have a hosting provider in mind, you can deploy your application there using the full-stack APIs provided by TanStack Start.
 
-However, since hosting is one of the most crucial aspects of your application's performance, reliability, and scalability, we highly recommend using [Vercel](https://vercel.com) for the best possible hosting experience.
+However, since hosting is one of the most crucial aspects of your application's performance, reliability, and scalability, we highly recommend using [Vercel](https://vercel.com?utm_source=tanstack) for the best possible hosting experience.
 
 ## What is Vercel?
 
-[![Vercel Logo](https://raw.githubusercontent.com/tannerlinsley/files/master/partners/vercel.svg)](https://vercel.com)
+<a href="https://vercel.com?utm_source=tanstack" alt="Vercel Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" width="280">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" width="280">
+  </picture>
+</a>
 
 Vercel is a leading hosting platform that provides a fast, secure, and reliable environment for deploying your web applications. With Vercel, you can deploy your TanStack Start application in just a few clicks and benefit from features like a global edge network, automatic scaling, and seamless integrations with GitHub and GitLab. Vercel is designed to make your development process as smooth as possible, from local development to production deployment.
 
-- To learn more about Vercel, visit the [Vercel website](https://vercel.com)
-- To sign up, visit the [Vercel dashboard](https://vercel.com/signup)
+- To learn more about Vercel, visit the [Vercel website](https://vercel.com?utm_source=tanstack)
+- To sign up, visit the [Vercel dashboard](https://vercel.com/signup?utm_source=tanstack)
 
 ## Documentation & APIs
 
