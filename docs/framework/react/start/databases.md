@@ -15,12 +15,12 @@ That said, the choice of a database is critical to your application's performanc
 
 <a href="https://www.convex.dev">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/get-convex/assets/blob/main/images/convex-dark.svg" width="300">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/get-convex/assets/blob/main/images/convex-light.svg" width="300">
-    <img alt="Convex logo" src="https://github.com/get-convex/assets/blob/main/images/convex-light.svg" width="300">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-dark.svg" width="300">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-light.svg" width="300">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-light.svg" width="300">
   </picture>
 </a>
-    
+
 Convex is a powerful, serverless database platform that simplifies the process of managing your application's data. With Convex, you can build full-stack applications without the need to manually manage database servers or write complex queries. Convex provides a real-time, scalable, and transactional data backend that seamlessly integrates with TanStack Start, making it an excellent choice for modern web applications.
 
 Convex’s declarative data model and automatic conflict resolution ensure that your application remains consistent and responsive, even at scale. It’s designed to be developer-friendly, with a focus on simplicity and productivity.
