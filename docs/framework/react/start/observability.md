@@ -13,7 +13,13 @@ However, for the best observability experience, we highly recommend using [Sentr
 
 ## What is Sentry?
 
-[![Sentry Logo](https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg)](https://sentry.io)
+<a href="https://sentry.io" alt='Sentry Logo'>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/sentry-wordmark-light.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/sentry-wordmark-dark.svg" width="280">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/sentry-wordmark-light.svg" width="280">
+  </picture>
+</a>
 
 Sentry is a leading observability platform that helps developers monitor and fix crashes in real-time. With Sentry, you can track errors, performance issues, and trends across your entire stack, from the frontend to the backend. Sentry integrates seamlessly with TanStack Start, enabling you to identify and resolve issues faster, maintain a high level of performance, and deliver a better experience to your users.
 
