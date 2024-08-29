@@ -13,11 +13,11 @@ That said, the choice of a database is critical to your application's performanc
 
 ## What is Convex?
 
-<a href="https://www.convex.dev">
+<a href="https://www.convex.dev" alt="Convex Logo">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-dark.svg" width="300">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-light.svg" width="300">
-    <img alt="Convex logo" src="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-light.svg" width="300">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-white.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" width="280">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" width="280">
   </picture>
 </a>
 
