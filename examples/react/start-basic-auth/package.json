@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@prisma/client": "5.17.0",
-    "@remix-run/node": "^2.10.3",
-    "@remix-run/server-runtime": "^2.10.3",
+    "@remix-run/node": "^2.11.2",
+    "@remix-run/server-runtime": "^2.11.2",
     "@tanstack/react-router": "^1.51.2",
     "@tanstack/router-devtools": "^1.51.2",
     "@tanstack/router-plugin": "^1.51.0",
