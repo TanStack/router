@@ -55,20 +55,15 @@ Let's take that concept and expand it out to a larger site structure, but with f
 │   ├── $.tsx
 ```
 
-There's a lot of power and convention to unpack with file-based routing, so let's break it down a bit.
+The above is a valid route tree configuration that can be used with TanStack Router! There's a lot of power and convention to unpack with file-based routing, so let's break it down a bit.
 
 ## Route Tree Configuration
 
-Route trees can be represented using a number of different ways:
+Route trees can be configured using a few different ways:
 
 - [Flat Routes](./route-trees.md#flat-routes)
-- [Directory Routes](./route-trees.md#directory-routes)
-- [Mixed Flat and Directory Routes](./route-trees.md#mixed-flat-and-directory-routes)
+- [Directories](./route-trees.md#directory-routes)
+- [Mixed Flat Routes and Directories](./route-trees.md#mixed-flat-and-directory-routes)
 - [Code-Based Routes](./route-trees.md#code-based-routes)
-- [Case-Sensitivity](./route-trees.md#case-sensitivity)
 
 For a birds-eye view, the route tree examples below showcase the [Routing Concepts](./routing-concepts.md) that are available in TanStack Router, but please be sure to check out the full documentation links above for each type of route tree, or just proceed to the next section to get started with file-based routing.
-
-## Case-Sensitivity
-
-Route paths are **not case-sensitive** _by default_. This means that `about.tsx` and `AbOuT.tsx` are considered the same path out-of-the box. This is a good thing, since this is the way most of the web works anyway! That said, if you truly want to be weird and match a path with a different case, you can set a route's `caseSensitive` option to `true`.
