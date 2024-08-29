@@ -139,6 +139,7 @@ export {
 } from './route'
 export type {
   AnyPathParams,
+  ResolveParams,
   SearchSchemaInput,
   SearchValidatorAdapter,
   AnySearchSchema,
@@ -185,7 +186,6 @@ export type {
   AnyRouteWithContext,
   ParseSplatParams,
   SplatParams,
-  ResolveParams,
   StringifyParamsFn,
   ParamsOptions,
   FullSearchSchemaOption,

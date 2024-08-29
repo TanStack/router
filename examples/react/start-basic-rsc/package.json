@@ -12,13 +12,13 @@
   },
   "dependencies": {
     "@babel/plugin-syntax-typescript": "^7.24.7",
-    "@tanstack/react-router": "^1.50.1",
-    "@tanstack/router-devtools": "^1.50.1",
-    "@tanstack/router-plugin": "^1.49.3",
-    "@tanstack/start": "^1.50.2",
+    "@tanstack/react-router": "^1.51.4",
+    "@tanstack/router-devtools": "^1.51.4",
+    "@tanstack/router-plugin": "^1.51.0",
+    "@tanstack/start": "^1.51.4",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.4.0",
-    "vinxi": "0.4.1"
+    "tailwind-merge": "^2.5.2",
+    "vinxi": "0.4.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.65",
@@ -32,7 +32,7 @@
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.3",
     "vite": "^5.3.5",
-    "vite-tsconfig-paths": "^4.3.2"
+    "vite-tsconfig-paths": "^5.0.1"
   },
   "overrides": {
     "react": "0.0.0-experimental-035a41c4e-20230704",

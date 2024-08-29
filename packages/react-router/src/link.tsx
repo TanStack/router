@@ -11,7 +11,7 @@ import {
   useIntersectionObserver,
 } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
-import type { AnyRouter, ParsedLocation } from '.'
+import type { ParsedLocation } from './location'
 import type { HistoryState } from '@tanstack/history'
 import type {
   AllParams,
@@ -26,7 +26,7 @@ import type {
   RouteToPath,
   TrailingSlashOptionByRouter,
 } from './routeInfo'
-import type { RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter } from './router'
 import type {
   Expand,
   MakeDifferenceOptional,
