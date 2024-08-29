@@ -13,8 +13,6 @@
   },
   "dependencies": {
     "@clerk/tanstack-start": "0.3.0-snapshot.vdf04997",
-    "@remix-run/node": "^2.11.2",
-    "@remix-run/server-runtime": "^2.11.2",
     "@tanstack/react-router": "^1.51.5",
     "@tanstack/router-devtools": "^1.51.5",
     "@tanstack/router-plugin": "^1.51.0",
