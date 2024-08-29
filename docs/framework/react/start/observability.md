@@ -9,11 +9,11 @@ Observability is a critical aspect of modern web development, enabling you to mo
 
 TanStack Start is **designed to work with any observability tool**, so you can integrate your preferred solution using the full-stack APIs provided by TanStack Start. Whether you need logging, tracing, or error monitoring, TanStack Start is flexible enough to meet your observability needs.
 
-However, for the best observability experience, we highly recommend using [Sentry](https://sentry.io). Sentry is a powerful, full-featured observability platform that provides real-time insights into your application's performance and error tracking.
+However, for the best observability experience, we highly recommend using [Sentry](https://sentry.io?utm_source=tanstack). Sentry is a powerful, full-featured observability platform that provides real-time insights into your application's performance and error tracking.
 
 ## What is Sentry?
 
-<a href="https://sentry.io" alt='Sentry Logo'>
+<a href="https://sentry.io?utm_source=tanstack" alt='Sentry Logo'>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/sentry-wordmark-light.svg" width="280">
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/sentry-wordmark-dark.svg" width="280">
@@ -25,8 +25,8 @@ Sentry is a leading observability platform that helps developers monitor and fix
 
 Sentry’s comprehensive dashboards, alerting capabilities, and in-depth error analysis tools make it an invaluable resource for any development team looking to maintain control over their application’s health in production.
 
-- To learn more about Sentry, visit the [Sentry website](https://sentry.io)
-- To sign up, visit the [Sentry dashboard](https://sentry.io/signup)
+- To learn more about Sentry, visit the [Sentry website](https://sentry.io?utm_source=tanstack)
+- To sign up, visit the [Sentry dashboard](https://sentry.io/signup?utm_source=tanstack)
 
 ## Documentation & APIs
 

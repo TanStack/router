@@ -9,7 +9,7 @@ Hosting is the process of deploying your application to the internet so that use
 
 TanStack Start is **designed to work with any hosting provider**, so if you already have a hosting provider in mind, you can deploy your application there using the full-stack APIs provided by TanStack Start.
 
-However, since hosting is one of the most crucial aspects of your application's performance, reliability, and scalability, we highly recommend using [Vercel](https://vercel.com) for the best possible hosting experience.
+However, since hosting is one of the most crucial aspects of your application's performance, reliability, and scalability, we highly recommend using [Vercel](https://vercel.com?utm_source=tanstack) for the best possible hosting experience.
 
 ## What is Vercel?
 
@@ -23,8 +23,8 @@ However, since hosting is one of the most crucial aspects of your application's 
 
 Vercel is a leading hosting platform that provides a fast, secure, and reliable environment for deploying your web applications. With Vercel, you can deploy your TanStack Start application in just a few clicks and benefit from features like a global edge network, automatic scaling, and seamless integrations with GitHub and GitLab. Vercel is designed to make your development process as smooth as possible, from local development to production deployment.
 
-- To learn more about Vercel, visit the [Vercel website](https://vercel.com)
-- To sign up, visit the [Vercel dashboard](https://vercel.com/signup)
+- To learn more about Vercel, visit the [Vercel website](https://vercel.com?utm_source=tanstack)
+- To sign up, visit the [Vercel dashboard](https://vercel.com/signup?utm_source=tanstack)
 
 ## Documentation & APIs
 
