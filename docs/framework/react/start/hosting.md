@@ -13,7 +13,13 @@ However, since hosting is one of the most crucial aspects of your application's 
 
 ## What is Vercel?
 
-[![Vercel Logo](https://raw.githubusercontent.com/tannerlinsley/files/master/partners/vercel.svg)](https://vercel.com)
+<a href="https://www.convex.dev" alt="Vercel Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" width="280">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" width="280">
+  </picture>
+</a>
 
 Vercel is a leading hosting platform that provides a fast, secure, and reliable environment for deploying your web applications. With Vercel, you can deploy your TanStack Start application in just a few clicks and benefit from features like a global edge network, automatic scaling, and seamless integrations with GitHub and GitLab. Vercel is designed to make your development process as smooth as possible, from local development to production deployment.
 
