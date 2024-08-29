@@ -17,7 +17,7 @@
     "@tanstack/router-plugin": "^1.51.0",
     "@tanstack/start": "^1.51.3",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.4.0",
+    "tailwind-merge": "^2.5.2",
     "vinxi": "0.4.1"
   },
   "devDependencies": {
