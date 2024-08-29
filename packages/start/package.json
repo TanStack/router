@@ -36,7 +36,7 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build && pnpm build:config && pnpm build:router-manifest",
     "build:config": "tsc --project tsconfigs/config.tsconfig.json",
-    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json"    
+    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json"
   },
   "type": "module",
   "exports": {
