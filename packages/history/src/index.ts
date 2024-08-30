@@ -281,10 +281,6 @@ export function createBrowserHistory(opts?: {
     }
 
     if (!scheduled) {
-      if (process.env.NODE_ENV === 'test') {
-        flush()
-        return
-      }
       // Schedule an update to the browser history
       scheduled = Promise.resolve().then(() => flush())
     }
