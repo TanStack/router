@@ -3,7 +3,16 @@ id: server-functions
 title: Server Functions
 ---
 
-Server functions are functions that run **only** on the server. They are used to perform tasks that should never be directly exposed to the client. Server functions can be defined anywhere in your application, but must be defined at the top level of a file. They can be called from anywhere in your application, including loaders, hooks, etc. They are just asynchronous functions!
+## What are Server Functions?
+
+Server functions allow you to specify specific function to run **only** on the server. They are used to perform tasks that should never be directly exposed to the client.
+
+## How do they work?
+
+Server functions can be defined anywhere in your application, but must be defined at the top level of a file. They can be called from anywhere in your application, including loaders, hooks, etc. Traditionally, this pattern is known as a Remote Procedure Call (RPC), but due to the isomorphic nature of these functions, we refer to them as server functions.
+
+- On the server bundle, server functions are left alone. Nothing needs to be done since they are already in the correct place.
+- On the client however, server functions are removed out of the client bundle and replaced with a function that, when called, makes a `fetch` request to the server instructing it to execute the server function in the server bundle and then send the response back to the client.
 
 ## Defining Server Functions
 
@@ -21,13 +30,27 @@ export const getServerTime = createServerFn('GET', async () => {
 })
 ```
 
+## Where can I call server functions?
+
+- From server-side code
+- From client-side code
+- From other server functions
+- Anywhere, really!
+
 ## Accepting Parameters
 
 Server functions accept a single parameter, which can be a variety of types:
 
 - Primitives
-- JSON-serializable objects
+  - `string`
+  - `number`
+  - `boolean`
+  - `null`
+  - `Array`
+  - `Object`
 - FormData
+- ReadableStream (of any of the above)
+- Promise (of any of the above)
 
 Here's an example of a server function that accepts a simple string parameter:
 
@@ -112,17 +135,67 @@ function Test() {
 
 ## Server Function Context
 
-In addition to the single parameter that server functions accept, they also have access to a special `context` object that contains information about the current request. This object is useful for accessing headers, cookies, and other request-specific information. It contains properties like:
+In addition to the single parameter that server functions accept, you can also access server request context from within any server function using many utilites from `vinxi/http`. Under the hood, Vinxi uses `unjs`'s `h3` package to perform cross-platform HTTP requests.
 
-- `method`: The HTTP method of the request
-- `request`: The `Request` object
+There are many context functions available to you for things like:
+
+- Accessing the request context
+- Accessing/setting headers
+- Accessing/setting sessions/cookies
+- Setting response status codes and status messages
+- Dealing with mulit-part form data
+- Reading/Setting custom server context properties
+
+For a full list of available context functions, see all of the available [h3 Methods](https://h3.unjs.io/utils/request) or inspect the [Vinxi Exports Source Code](https://github.com/nksaraf/vinxi/blob/main/packages/vinxi/runtime/http.js#L232-L320).
+
+For starters, here are a few examples:
+
+## Accessing the Request Context
+
+Let's use Vinxi's `getWebRequest` function to access the request itself from within a server function:
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
+import { getWebRequest } from 'vinxi/http'
 
-export const getServerTime = createServerFn('GET', async (_, context) => {
-  console.log(context.method) // GET
+export const getServerTime = createServerFn('GET', async () => {
+  const { method } = getWebRequest()
+
+  console.log(method) // GET
+
   console.log(context.request.headers.get('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
+})
+```
+
+## Accessing Headers
+
+Use Vinxi's `getHeaders` function to access all headers from within a server function:
+
+```tsx
+import { createServerFn } from '@tanstack/start'
+import { getHeaders } from 'vinxi/http'
+
+export const getServerTime = createServerFn('GET', async () => {
+  console.log(getHeaders())
+  // {
+  //   "accept": "*/*",
+  //   "accept-encoding": "gzip, deflate, br",
+  //   "accept-language": "en-US,en;q=0.9",
+  //   "connection": "keep-alive",
+  //   "host": "localhost:3000",
+  //   ...
+  // }
+})
+```
+
+You can also access individual headers using the `getHeader` function:
+
+```tsx
+import { createServerFn } from '@tanstack/start'
+import { getHeader } from 'vinxi/http'
+
+export const getServerTime = createServerFn('GET', async () => {
+  console.log(getHeader('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
 })
 ```
 
@@ -156,19 +229,31 @@ export const getServerData = createServerFn('GET', async () => {
 
 By default, server functions assume that any non-Response object returned is either a primitive or JSON-serializable object.
 
-## Returning Primitives and JSON with custom headers
+## Responding with Custom Headers
 
-To return a primitive or JSON-serializable object with custom headers, use the `json` function exported from the `@tanstack/start` package:
+To respond with custom headers, you can use Vinxi's `setHeader` function:
 
 ```tsx
-import { createServerFn, json } from '@tanstack/start'
+import { createServerFn } from '@tanstack/start'
+import { setHeader } from 'vinxi/http'
 
 export const getServerTime = createServerFn('GET', async () => {
-  return json(new Date().toISOString(), {
-    headers: {
-      'X-Custom-Header': 'value',
-    },
-  })
+  setHeader('X-Custom-Header', 'value')
+  return new Date().toISOString()
+})
+```
+
+## Responding with Custom Status Codes
+
+To respond with a custom status code, you can use Vinxi's `setStatus` function:
+
+```tsx
+import { createServerFn } from '@tanstack/start'
+import { setStatus } from 'vinxi/http'
+
+export const getServerTime = createServerFn('GET', async () => {
+  setStatus(201)
+  return new Date().toISOString()
 })
 ```
 
@@ -291,6 +376,8 @@ export const doStuff = createServerFn('GET', async () => {
 })
 ```
 
+> ⚠️ Do not use Vinxi's `sendRedirect` function to send soft redirects from within server functions. This will send the redirect using the `Location` header and will force a full page hard navigation on the client.
+
 ## Redirect Headers
 
 You can also set custom headers on a redirect by passing a `headers` option:
@@ -368,23 +455,150 @@ export const Route = createFileRoute('/stuff')({
 })
 ```
 
-## Can I simply use the `use server` directive?
+## No-JS Server Functions
 
-Sure, you can use the `use server` directive instead of the `createServerFn` function, however be aware of some caveats:
+Without JavaScript enabled, there's only one way to execute server functions: by submitting a form.
 
-- All arguments must be JSON-serializable and are passed as is
-- You will not have access to the `context` object, and thus will not be able to access request-specific information like method, headers, cookies, etc.
+This is done by adding a `form` element to the page
+with [the HTML attribute `action`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/action).
+
+> Notice that we mentioned the **HTML** attribute `action`. This attribute only accepts a string in HTML, just like all
+> other attributes.
+>
+> While React
+> 19 [added support for passing a function to `action`](https://react.dev/reference/react-dom/components/form#form),
+> it's
+> a React-specific feature and not part of the HTML standard.
+
+The `action` attribute tells the browser where to send the form data when the form is submitted. In this case, we want
+to send the form data to the server function.
+
+To do this, we can utilize the `url` property of the server function:
+
+```typescript
+const yourFn = createServerFn('POST', async () => {
+  // Server-side code lives here
+})
+
+console.info(yourFn.url)
+```
+
+And pass this to the `action` attribute of the form:
 
 ```tsx
-// getServerTime.ts
-
-function greetUser(greeting: string, name: string) {
-  'use server'
-  return `${greeting}, ${name}!`
+function Component() {
+  return (
+    <form action={yourFn.url} method="POST">
+      <button type="submit">Click me!</button>
+    </form>
+  )
 }
 ```
 
-## How do server functions work?
+When the form is submitted, the server function will be executed.
+
+### No-JS Server Function Arguments
+
+To pass arguments to a server function when submitting a form, you can use the `input` element with the `name` attribute
+to attach the argument to the [`FormData`](https://developer.mozilla.org/en-US/docs/Web/API/FormData) passed to your
+server function:
+
+```tsx
+const yourFn = createServerFn('POST', async (formData: FormData) => {
+  // `val` will be '123'
+  const val = formData.get('val')
+  // ...
+})
+
+function Component() {
+  return (
+    //  We need to tell the server that our data type is `multipart/form-data` by setting the `encType` attribute on the form.
+    <form action={yourFn.url} method="POST" encType="multipart/form-data">
+      <input name="val" defaultValue="123" />
+      <button type="submit">Click me!</button>
+    </form>
+  )
+}
+```
+
+When the form is submitted, the server function will be executed with the form's data as an argument.
+
+### No-JS Server Function Return Value
+
+Regardless of whether JavaScript is enabled, the server function will return a response to the HTTP request made from
+the client.
+
+When JavaScript is enabled, this response can be accessed as the return value of the server function in the client's
+JavaScript code.
+
+```typescript
+const yourFn = createServerFn('POST', async () => {
+  return 'Hello, world!'
+})
+
+// `.then` is not available when JavaScript is disabled
+yourFn().then(console.log)
+```
+
+However, when JavaScript is disabled, there is no way to access the return value of the server function in the client's
+JavaScript code.
+
+Instead, the server function can provide a response to the client, telling the browser to navigate in a certain way.
+
+When combined with a `loader` from TanStack Router, we're able to provide an experience similar to a single-page application, even when
+JavaScript is disabled;
+all by telling the browser to reload the current page with new data piped through the `loader`:
+
+```tsx
+import * as fs from 'fs'
+import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
+
+const filePath = 'count.txt'
+
+async function readCount() {
+  return parseInt(
+    await fs.promises.readFile(filePath, 'utf-8').catch(() => '0'),
+  )
+}
+
+const getCount = createServerFn('GET', () => {
+  return readCount()
+})
+
+const updateCount = createServerFn('POST', async (formData: FormData) => {
+  const count = await readCount()
+  const addBy = Number(formData.get('addBy'))
+  await fs.promises.writeFile(filePath, `${count + addBy}`)
+  // Reload the page to trigger the loader again
+  return new Response('ok', { status: 301, headers: { Location: '/' } })
+})
+
+export const Route = createFileRoute('/')({
+  component: Home,
+  loader: async () => await getCount(),
+})
+
+function Home() {
+  const state = Route.useLoaderData()
+
+  return (
+    <div>
+      <form
+        action={updateCount.url}
+        method="POST"
+        encType={'multipart/form-data'}
+      >
+        <input type="number" name="addBy" defaultValue="1" />
+        <button type="submit">Add</button>
+      </form>
+      <pre>{state}</pre>
+    </div>
+  )
+}
+```
+
+## How are server functions compiled?
 
 Under the hood, server functions are extracted out of the client bundle and into a separate server bundle. On the server, they are executed as-is, and the result is sent back to the client. On the client, server functions proxy the request to the server, which executes the function and sends the result back to the client, all via `fetch`.
 
