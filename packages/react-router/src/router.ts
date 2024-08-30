@@ -84,24 +84,26 @@ import type { RouterTransformer } from './transformer'
 
 //
 
+interface TSR {
+  matches: Array<{
+    __beforeLoadContext?: string
+    loaderData?: string
+    extracted?: Array<ExtractedEntry>
+  }>
+  streamedValues: Record<
+    string,
+    {
+      value: any
+      parsed: any
+    }
+  >
+  cleanScripts: () => void
+  dehydrated?: any
+}
+
 declare global {
   interface Window {
-    __TSR__?: {
-      matches: Array<{
-        __beforeLoadContext?: string
-        loaderData?: string
-        extracted?: Array<ExtractedEntry>
-      }>
-      streamedValues: Record<
-        string,
-        {
-          value: any
-          parsed: any
-        }
-      >
-      cleanScripts: () => void
-      dehydrated?: any
-    }
+    __TSR__?: TSR
     __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any>>
   }
 }
@@ -558,6 +560,10 @@ export type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
   }
+  onStreamedValue: {
+    type: 'onStreamedValue'
+    key: string
+  }
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -589,6 +595,43 @@ export function createRouter<
 }
 
 type MatchRoutesOpts = { preload?: boolean; throwOnError?: boolean }
+
+const isProxyInitialized = Symbol()
+function emitOnStreamedValue(key: string) {
+  ;(window as any).__TSR__ROUTER__?.emit({
+    type: 'onStreamedValue',
+    key: key,
+  })
+}
+const streamedValuesProxyHandler: ProxyHandler<
+  Record<string, { value: any; parsed: any }>
+> = {
+  has(target, p) {
+    if (p === isProxyInitialized) {
+      return true
+    }
+    return Reflect.has(target, p)
+  },
+  set(target, p, newValue, receiver) {
+    try {
+      return Reflect.set(target, p, newValue, receiver)
+    } finally {
+      emitOnStreamedValue(p as string)
+    }
+  },
+}
+function initializeTSR(tsr: TSR) {
+  if (!(isProxyInitialized in tsr.streamedValues)) {
+    const realStreamedValues = tsr.streamedValues
+    tsr.streamedValues = new Proxy(
+      realStreamedValues,
+      streamedValuesProxyHandler,
+    )
+    for (const key of Object.keys(realStreamedValues)) {
+      emitOnStreamedValue(key)
+    }
+  }
+}
 
 export class Router<
   in out TRouteTree extends AnyRoute,
@@ -673,6 +716,21 @@ export class Router<
 
     if (typeof document !== 'undefined') {
       ;(window as any).__TSR__ROUTER__ = this
+
+      if (window.__TSR__) {
+        initializeTSR(window.__TSR__)
+      } else {
+        let tsr: TSR | undefined = undefined
+        Object.defineProperty(window, '__TSR__', {
+          set(v: any) {
+            initializeTSR(v)
+            tsr = v
+          },
+          get() {
+            return tsr
+          },
+        })
+      }
     }
   }
 
@@ -2648,7 +2706,14 @@ export class Router<
 
     this.injectedHtml.push(cb)
   }
-  streamedKeys: Set<string> = new Set()
+
+  private _streamedKeys: Set<string> = new Set()
+  get streamedKeys() {
+    if (this.isServer) {
+      return this._streamedKeys
+    }
+    return Object.keys(window.__TSR__?.streamedValues ?? {})
+  }
 
   getStreamedValue = <T>(key: string): T | undefined => {
     if (this.isServer) {
