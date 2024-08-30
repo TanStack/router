@@ -1,14 +1,11 @@
-import {
-  type AnyRouter,
-  type Manifest,
-  createMemoryHistory,
-} from '@tanstack/react-router'
+import { createMemoryHistory } from '@tanstack/react-router'
 import { serializeLoaderData } from '../client/serialization'
 import {
   mergeHeaders,
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../client'
+import type { AnyRouter, Manifest } from '@tanstack/react-router'
 import type { HandlerCallback } from './defaultStreamHandler'
 
 export type RequestHandler<TRouter extends AnyRouter> = (

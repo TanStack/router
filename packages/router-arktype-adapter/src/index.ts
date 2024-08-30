@@ -1,4 +1,4 @@
-import { type SearchValidatorAdapter } from '@tanstack/react-router'
+import type { SearchValidatorAdapter } from '@tanstack/react-router'
 
 export interface ArkTypeLike {
   infer: any
