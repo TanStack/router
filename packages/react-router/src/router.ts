@@ -492,7 +492,6 @@ export interface BuildNextOptions {
     unmaskOnReload?: boolean
   }
   from?: string
-  fromSearch?: unknown
   _fromLocation?: ParsedLocation
 }
 
@@ -1304,13 +1303,9 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-      const fromMatches =
-        dest._fromLocation != null
-          ? this.matchRoutes({
-              ...dest._fromLocation,
-              search: dest.fromSearch || dest._fromLocation.search,
-            })
-          : this.state.matches
+      const fromMatches = dest._fromLocation
+        ? this.matchRoutes(dest._fromLocation)
+        : this.state.matches
 
       const fromMatch =
         dest.from != null
@@ -1330,7 +1325,9 @@ export class Router<
         'Could not find match for from: ' + dest.from,
       )
 
-      const fromSearch = last(fromMatches)?.search || this.latestLocation.search
+      const fromSearch = this.state.pendingMatches
+        ? last(this.state.pendingMatches)?.search
+        : last(fromMatches)?.search || this.latestLocation.search
 
       const stayingMatches = matches?.filter((d) =>
         fromMatches.find((e) => e.routeId === d.routeId),
