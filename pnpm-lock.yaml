@@ -63,7 +63,7 @@ importers:
         version: 25.0.0
       nx:
         specifier: ^19.5.6
-        version: 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12))
+        version: 19.5.6(@swc/core@1.7.6)
       prettier:
         specifier: ^3.3.3
         version: 3.3.3
@@ -1484,7 +1484,7 @@ importers:
     dependencies:
       '@convex-dev/react-query':
         specifier: 0.0.0-alpha.5
-        version: 0.0.0-alpha.5(@tanstack/react-query@5.51.21(react@18.3.1))(convex@1.13.2(eslint@9.9.1(jiti@1.21.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+        version: 0.0.0-alpha.5(@tanstack/react-query@5.51.21(react@18.3.1))(convex@1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       '@tanstack/react-query':
         specifier: ^5.51.21
         version: 5.51.21(react@18.3.1)
@@ -1513,8 +1513,8 @@ importers:
         specifier: ^8.2.2
         version: 8.2.2
       convex:
-        specifier: ^1.13.2
-        version: 1.13.2(eslint@9.9.1(jiti@1.21.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^1.15.0
+        version: 1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       isbot:
         specifier: ^5.1.14
         version: 5.1.14
@@ -1992,7 +1992,7 @@ importers:
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
       webpack:
         specifier: '>=5.92.0'
-        version: 5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.21.5)
+        version: 5.93.0(@swc/core@1.7.6)(esbuild@0.21.5)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -5069,9 +5069,9 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  convex@1.13.2:
-    resolution: {integrity: sha512-XtXv5f5QXQgpcd+zcgecfIdUn1JmusGuHlP0c6XKxLEdA6v9dXI43/s5CgB3ioX1vwVTHpJBp0bqtpe37XXbuA==}
-    engines: {node: '>=16.15.1', npm: '>=7.0.0'}
+  convex@1.15.0:
+    resolution: {integrity: sha512-NTyr+4x3hhjzDwiQ18Rx7pfkkoZIWak3ERUd3ihWt1jQP4HVx+mqtU1B/q7ZkV5Xp4FLj3aJeck55wjc9im/bQ==}
+    engines: {node: '>=18.0.0', npm: '>=7.0.0'}
     hasBin: true
     peerDependencies:
       '@auth0/auth0-react': ^2.0.1
@@ -5592,12 +5592,6 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
-
-  eslint-plugin-require-extensions@0.1.3:
-    resolution: {integrity: sha512-T3c1PZ9PIdI3hjV8LdunfYI8gj017UQjzAnCrxuo3wAjneDbTPHdE3oNWInOjMA+z/aBkUtlW5vC0YepYMZIug==}
-    engines: {node: '>=16'}
-    peerDependencies:
-      eslint: ^9.9.1
 
   eslint-scope@5.1.1:
     resolution: {integrity: sha512-2NxwbF/hZ0KpepYN0cNbo+FN6XoK7GaHlQhgx/hIZl6Va0bF45RQOOwhLIy8lQDbuCiadSLCBnH2CFYquit5bw==}
@@ -9086,10 +9080,10 @@ snapshots:
       '@types/conventional-commits-parser': 5.0.0
       chalk: 5.3.0
 
-  '@convex-dev/react-query@0.0.0-alpha.5(@tanstack/react-query@5.51.21(react@18.3.1))(convex@1.13.2(eslint@9.9.1(jiti@1.21.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
+  '@convex-dev/react-query@0.0.0-alpha.5(@tanstack/react-query@5.51.21(react@18.3.1))(convex@1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
     dependencies:
       '@tanstack/react-query': 5.51.21(react@18.3.1)
-      convex: 1.13.2(eslint@9.9.1(jiti@1.21.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      convex: 1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   '@dabh/diagnostics@2.0.3':
     dependencies:
@@ -9727,9 +9721,9 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
 
-  '@nrwl/tao@19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12))':
+  '@nrwl/tao@19.5.6(@swc/core@1.7.6)':
     dependencies:
-      nx: 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12))
+      nx: 19.5.6(@swc/core@1.7.6)
       tslib: 2.7.0
     transitivePeerDependencies:
       - '@swc-node/register'
@@ -11843,19 +11837,14 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex@1.13.2(eslint@9.9.1(jiti@1.21.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  convex@1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       esbuild: 0.17.19
-      eslint-plugin-require-extensions: 0.1.3(eslint@9.9.1(jiti@1.21.0))
       jwt-decode: 3.1.2
-      node-fetch: 2.7.0
       prettier: 3.2.5
     optionalDependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-    transitivePeerDependencies:
-      - encoding
-      - eslint
 
   cookie-es@1.1.0: {}
 
@@ -12411,10 +12400,6 @@ snapshots:
       typescript: 5.5.3
     transitivePeerDependencies:
       - supports-color
-
-  eslint-plugin-require-extensions@0.1.3(eslint@9.9.1(jiti@1.21.0)):
-    dependencies:
-      eslint: 9.9.1(jiti@1.21.0)
 
   eslint-scope@5.1.1:
     dependencies:
@@ -13935,10 +13920,10 @@ snapshots:
 
   nwsapi@2.2.12: {}
 
-  nx@19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12)):
+  nx@19.5.6(@swc/core@1.7.6):
     dependencies:
       '@napi-rs/wasm-runtime': 0.2.4
-      '@nrwl/tao': 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12))
+      '@nrwl/tao': 19.5.6(@swc/core@1.7.6)
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.7
@@ -15096,14 +15081,14 @@ snapshots:
       '@swc/core': 1.7.6(@swc/helpers@0.5.12)
       esbuild: 0.21.5
 
-  terser-webpack-plugin@5.3.10(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.21.5)(webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.21.5)):
+  terser-webpack-plugin@5.3.10(@swc/core@1.7.6)(esbuild@0.21.5)(webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.21.5)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 3.3.0
       serialize-javascript: 6.0.2
       terser: 5.31.1
-      webpack: 5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.21.5)
+      webpack: 5.93.0(@swc/core@1.7.6)(esbuild@0.21.5)
     optionalDependencies:
       '@swc/core': 1.7.6(@swc/helpers@0.5.12)
       esbuild: 0.21.5
@@ -15722,37 +15707,6 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.21.5):
-    dependencies:
-      '@types/eslint-scope': 3.7.7
-      '@types/estree': 1.0.5
-      '@webassemblyjs/ast': 1.12.1
-      '@webassemblyjs/wasm-edit': 1.12.1
-      '@webassemblyjs/wasm-parser': 1.12.1
-      acorn: 8.12.1
-      acorn-import-attributes: 1.9.5(acorn@8.12.1)
-      browserslist: 4.23.3
-      chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.17.0
-      es-module-lexer: 1.5.4
-      eslint-scope: 5.1.1
-      events: 3.3.0
-      glob-to-regexp: 0.4.1
-      graceful-fs: 4.2.11
-      json-parse-even-better-errors: 2.3.1
-      loader-runner: 4.3.0
-      mime-types: 2.1.35
-      neo-async: 2.6.2
-      schema-utils: 3.3.0
-      tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.21.5)(webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.21.5))
-      watchpack: 2.4.1
-      webpack-sources: 3.2.3
-    transitivePeerDependencies:
-      - '@swc/core'
-      - esbuild
-      - uglify-js
-
   webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.21.5)(webpack-cli@5.1.4):
     dependencies:
       '@types/eslint-scope': 3.7.7
@@ -15781,6 +15735,37 @@ snapshots:
       webpack-sources: 3.2.3
     optionalDependencies:
       webpack-cli: 5.1.4(webpack-dev-server@5.0.4)(webpack@5.93.0)
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
+
+  webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.21.5):
+    dependencies:
+      '@types/eslint-scope': 3.7.7
+      '@types/estree': 1.0.5
+      '@webassemblyjs/ast': 1.12.1
+      '@webassemblyjs/wasm-edit': 1.12.1
+      '@webassemblyjs/wasm-parser': 1.12.1
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
+      browserslist: 4.23.3
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.17.0
+      es-module-lexer: 1.5.4
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 3.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.10(@swc/core@1.7.6)(esbuild@0.21.5)(webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.21.5))
+      watchpack: 2.4.1
+      webpack-sources: 3.2.3
     transitivePeerDependencies:
       - '@swc/core'
       - esbuild
