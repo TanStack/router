@@ -2503,12 +2503,12 @@ describe('useRouteContext in the component', () => {
     expect(linkToAbout).toBeInTheDocument()
     fireEvent.click(linkToAbout)
 
-    expect(router.state.location.href).toBe('/nested/about')
-    expect(window.location.pathname).toBe('/nested/about')
-
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'nested' }),
     )
+
+    expect(router.state.location.href).toBe('/nested/about')
+    expect(window.location.pathname).toBe('/nested/about')
 
     expect(content).toBeInTheDocument()
   })
