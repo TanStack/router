@@ -32,6 +32,12 @@ describe('encode function', () => {
     const queryString = encode(obj)
     expect(queryString).toEqual('token=foo%3F&key=value%3D')
   })
+
+  it('should handle encoding a top-level key with a special character', () => {
+    const obj = { 'foo=bar': 1 }
+    const queryString = encode(obj)
+    expect(queryString).toEqual('foo%3Dbar=1')
+  })
 })
 
 describe('decode function', () => {
@@ -63,5 +69,11 @@ describe('decode function', () => {
     const queryString = 'token=foo%3F&key=value%3D'
     const decodedObj = decode(queryString)
     expect(decodedObj).toEqual({ token: 'foo?', key: 'value=' })
+  })
+
+  it('should handle decoding a top-level key with a special character', () => {
+    const queryString = 'foo%3Dbar=1'
+    const decodedObj = decode(queryString)
+    expect(decodedObj).toEqual({ 'foo=bar': 1 })
   })
 })
