@@ -76,4 +76,16 @@ describe('decode function', () => {
     const decodedObj = decode(queryString)
     expect(decodedObj).toEqual({ 'foo=bar': 1 })
   })
+
+  it('should handle decoding a top-level key with a special character and without a value', () => {
+    const queryString = 'foo%3Dbar='
+    const decodedObj = decode(queryString)
+    expect(decodedObj).toEqual({ 'foo=bar': '' })
+  })
+
+  it('should handle decoding a value-less top-level key with a special character', () => {
+    const queryString = 'foo%3Dbar'
+    const decodedObj = decode(queryString)
+    expect(decodedObj).toEqual({ 'foo=bar': '' })
+  })
 })
