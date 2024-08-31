@@ -879,13 +879,44 @@ export class Route<
     TBeforeLoadFn
   >
 
-  // Set up in this.init()
+  // The following properties are set up in this.init()
   parentRoute!: TParentRoute
-  id!: TId
-  // customId!: TCustomId
-  path!: TPath
-  fullPath!: TFullPath
-  to!: TrimPathRight<TFullPath>
+  private _id!: TId
+  private _path!: TPath
+  private _fullPath!: TFullPath
+  private _to!: TrimPathRight<TFullPath>
+
+  public get to() {
+    invariant(
+      this._to,
+      `trying to access property 'to' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
+    )
+    return this._to
+  }
+
+  public get id() {
+    invariant(
+      this._id,
+      `trying to access property 'id' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
+    )
+    return this._id
+  }
+
+  public get path() {
+    invariant(
+      this._path,
+      `trying to access property 'path' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
+    )
+    return this._path
+  }
+
+  public get fullPath() {
+    invariant(
+      this._fullPath,
+      `trying to access property 'fullPath' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
+    )
+    return this._fullPath
+  }
 
   // Optional
   children?: TChildren
@@ -981,7 +1012,7 @@ export class Route<
     this.parentRoute = this.options.getParentRoute?.()
 
     if (isRoot) {
-      this.path = rootRouteId as TPath
+      this._path = rootRouteId as TPath
     } else {
       invariant(
         this.parentRoute,
@@ -1017,11 +1048,11 @@ export class Route<
     const fullPath =
       id === rootRouteId ? '/' : joinPaths([this.parentRoute.fullPath, path])
 
-    this.path = path as TPath
-    this.id = id as TId
+    this._path = path as TPath
+    this._id = id as TId
     // this.customId = customId as TCustomId
-    this.fullPath = fullPath as TFullPath
-    this.to = fullPath as TrimPathRight<TFullPath>
+    this._fullPath = fullPath as TFullPath
+    this._to = fullPath as TrimPathRight<TFullPath>
   }
 
   addChildren<
