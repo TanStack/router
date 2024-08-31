@@ -172,7 +172,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       configResolved(config) {
         ROOT = config.root
 
-        userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
+        userConfig = getConfig(options, ROOT)
       },
     },
 
@@ -193,7 +193,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         )
       })
 
-      userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
+      userConfig = getConfig(options, ROOT)
     },
 
     webpack(compiler) {
