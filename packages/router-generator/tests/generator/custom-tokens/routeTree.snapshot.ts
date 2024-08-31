@@ -11,20 +11,24 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsR0ut3Import } from './routes/posts/r0ut3'
-import { Route as R1nd3xImport } from './routes/1nd3x'
-import { Route as Posts1nd3xImport } from './routes/posts/1nd3x'
-import { Route as PostsIndexImport } from './routes/posts/index'
-import { Route as BlogRouteImport } from './routes/blog/route'
-import { Route as BlogIndexImport } from './routes/blog/index'
+import { Route as PostsR0ut3Import } from './routes/posts/_r0ut3_'
+import { Route as BlogR0ut3Import } from './routes/blog/_r0ut3_'
+import { Route as R1nd3xImport } from './routes/_1nd3x'
+import { Route as Posts1nd3xImport } from './routes/posts/_1nd3x'
+import { Route as Blog1nd3xImport } from './routes/blog/_1nd3x'
 import { Route as BlogSlugImport } from './routes/blog/$slug'
-import { Route as PostsPostId1nd3xImport } from './routes/posts/$postId/1nd3x'
+import { Route as PostsPostId1nd3xImport } from './routes/posts/$postId/_1nd3x'
 import { Route as PostsPostIdDeepImport } from './routes/posts/$postId/deep'
 
 // Create/Update Routes
 
 const PostsR0ut3Route = PostsR0ut3Import.update({
   path: '/posts',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const BlogR0ut3Route = BlogR0ut3Import.update({
+  path: '/blog',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -38,24 +42,14 @@ const Posts1nd3xRoute = Posts1nd3xImport.update({
   getParentRoute: () => PostsR0ut3Route,
 } as any)
 
-const PostsIndexRoute = PostsIndexImport.update({
-  path: '/index',
-  getParentRoute: () => PostsR0ut3Route,
-} as any)
-
-const BlogRouteRoute = BlogRouteImport.update({
-  path: '/blog/route',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const BlogIndexRoute = BlogIndexImport.update({
-  path: '/blog/index',
-  getParentRoute: () => rootRoute,
+const Blog1nd3xRoute = Blog1nd3xImport.update({
+  path: '/',
+  getParentRoute: () => BlogR0ut3Route,
 } as any)
 
 const BlogSlugRoute = BlogSlugImport.update({
-  path: '/blog/$slug',
-  getParentRoute: () => rootRoute,
+  path: '/$slug',
+  getParentRoute: () => BlogR0ut3Route,
 } as any)
 
 const PostsPostId1nd3xRoute = PostsPostId1nd3xImport.update({
@@ -79,6 +73,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof R1nd3xImport
       parentRoute: typeof rootRoute
     }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogR0ut3Import
+      parentRoute: typeof rootRoute
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
@@ -88,31 +89,17 @@ declare module '@tanstack/react-router' {
     }
     '/blog/$slug': {
       id: '/blog/$slug'
-      path: '/blog/$slug'
+      path: '/$slug'
       fullPath: '/blog/$slug'
       preLoaderRoute: typeof BlogSlugImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof BlogR0ut3Import
     }
-    '/blog/index': {
-      id: '/blog/index'
-      path: '/blog/index'
-      fullPath: '/blog/index'
-      preLoaderRoute: typeof BlogIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/blog/route': {
-      id: '/blog/route'
-      path: '/blog/route'
-      fullPath: '/blog/route'
-      preLoaderRoute: typeof BlogRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts/index': {
-      id: '/posts/index'
-      path: '/index'
-      fullPath: '/posts/index'
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsR0ut3Import
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof Blog1nd3xImport
+      parentRoute: typeof BlogR0ut3Import
     }
     '/posts/': {
       id: '/posts/'
@@ -142,15 +129,12 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren({
   R1nd3xRoute,
+  BlogR0ut3Route: BlogR0ut3Route.addChildren({ BlogSlugRoute, Blog1nd3xRoute }),
   PostsR0ut3Route: PostsR0ut3Route.addChildren({
-    PostsIndexRoute,
     Posts1nd3xRoute,
     PostsPostIdDeepRoute,
     PostsPostId1nd3xRoute,
   }),
-  BlogSlugRoute,
-  BlogIndexRoute,
-  BlogRouteRoute,
 })
 
 /* prettier-ignore-end */
@@ -162,39 +146,38 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/posts",
-        "/blog/$slug",
-        "/blog/index",
-        "/blog/route"
+        "/blog",
+        "/posts"
       ]
     },
     "/": {
-      "filePath": "1nd3x.tsx"
+      "filePath": "_1nd3x.tsx"
+    },
+    "/blog": {
+      "filePath": "blog/_r0ut3_.tsx",
+      "children": [
+        "/blog/$slug",
+        "/blog/"
+      ]
     },
     "/posts": {
-      "filePath": "posts/r0ut3.tsx",
+      "filePath": "posts/_r0ut3_.tsx",
       "children": [
-        "/posts/index",
         "/posts/",
         "/posts/$postId/deep",
         "/posts/$postId/"
       ]
     },
     "/blog/$slug": {
-      "filePath": "blog/$slug.tsx"
+      "filePath": "blog/$slug.tsx",
+      "parent": "/blog"
     },
-    "/blog/index": {
-      "filePath": "blog/index.tsx"
-    },
-    "/blog/route": {
-      "filePath": "blog/route.tsx"
-    },
-    "/posts/index": {
-      "filePath": "posts/index.tsx",
-      "parent": "/posts"
+    "/blog/": {
+      "filePath": "blog/_1nd3x.tsx",
+      "parent": "/blog"
     },
     "/posts/": {
-      "filePath": "posts/1nd3x.tsx",
+      "filePath": "posts/_1nd3x.tsx",
       "parent": "/posts"
     },
     "/posts/$postId/deep": {
@@ -202,7 +185,7 @@ export const routeTree = rootRoute.addChildren({
       "parent": "/posts"
     },
     "/posts/$postId/": {
-      "filePath": "posts/$postId/1nd3x.tsx",
+      "filePath": "posts/$postId/_1nd3x.tsx",
       "parent": "/posts"
     }
   }

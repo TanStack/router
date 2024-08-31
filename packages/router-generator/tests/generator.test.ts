@@ -48,8 +48,8 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.disableManifestGeneration = true
       break
     case 'custom-tokens':
-      config.indexToken = '1nd3x'
-      config.routeToken = 'r0ut3'
+      config.indexToken = '_1nd3x'
+      config.routeToken = '_r0ut3_'
       break
     default:
       break
