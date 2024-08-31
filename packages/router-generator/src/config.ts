@@ -96,5 +96,26 @@ export function getConfig(
     }
   }
 
+  validateConfig(config)
+  return config
+}
+
+function validateConfig(config: Config) {
+  if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
+    const message = `
+------
+⚠️ ⚠️ ⚠️
+ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is now "autoCodeSplitting". Please update your configuration file to use "autoCodeSplitting" instead of "experimental.enableCodeSplitting".
+------
+`
+    console.error(message)
+    throw new Error(message)
+  }
+
+  if (config.indexToken === config.routeToken) {
+    throw new Error(
+      `The "indexToken" and "routeToken" options must be different.`,
+    )
+  }
   return config
 }

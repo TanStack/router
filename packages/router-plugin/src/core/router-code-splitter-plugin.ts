@@ -213,7 +213,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         )
       })
 
-      userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
+      userConfig = getConfig(options, ROOT)
 
       if (
         userConfig.autoCodeSplitting &&
@@ -228,19 +228,4 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       }
     },
   }
-}
-
-function CHECK_USER_FLAGS_TO_BE_CHANGED(config: Config): Config {
-  if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
-    const message = `
-------
-⚠️ ⚠️ ⚠️
-ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is now "autoCodeSplitting". Please update your configuration file to use "autoCodeSplitting" instead of "experimental.enableCodeSplitting".
-------
-`
-    console.error(message)
-    throw new Error(message)
-  }
-
-  return config
 }
