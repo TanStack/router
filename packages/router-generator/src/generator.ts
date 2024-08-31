@@ -110,8 +110,12 @@ async function getRouteNodes(config: Config) {
           )
 
           const segments = routePath.split('/')
+          const lastRouteSegment = segments[segments.length - 1]
           const isLayout =
-            segments[segments.length - 1]?.startsWith('_') || false
+            (lastRouteSegment !== config.indexToken &&
+              lastRouteSegment !== config.routeToken &&
+              lastRouteSegment?.startsWith('_')) ||
+            false
 
           ;(
             [
