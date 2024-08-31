@@ -73,7 +73,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
     path: 'search',
     validateSearch: (search: Record<string, unknown>) => {
       return {
-        ["foo=bar"]: Number(search["foo=bar"] ?? 1),
+        ['foo=bar']: Number(search['foo=bar'] ?? 1),
       }
     },
   })
