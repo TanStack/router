@@ -904,7 +904,8 @@ export class Route<
 
   public get path() {
     invariant(
-      this._path,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      this.isRoot || this._id || this._path,
       `trying to access property 'path' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
     )
     return this._path
