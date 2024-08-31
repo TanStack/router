@@ -129,8 +129,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
   const out = React.useMemo(() => {
     const Comp = route.options.component ?? router.options.defaultComponent
-    return Comp ? <Comp key={routeId} /> : <Outlet />
-  }, [routeId, route.options.component, router.options.defaultComponent])
+    return Comp ? <Comp /> : <Outlet />
+  }, [route.options.component, router.options.defaultComponent])
 
   // function useChangedDiff(value: any) {
   //   const ref = React.useRef(value)
