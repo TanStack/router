@@ -1643,11 +1643,6 @@ export class Router<
   load = async (): Promise<void> => {
     this.latestLocation = this.parseLocation(this.latestLocation)
 
-    this.__store.setState((s) => ({
-      ...s,
-      loadedAt: Date.now(),
-    }))
-
     let redirect: ResolvedRedirect | undefined
     let notFound: NotFoundError | undefined
 
@@ -1738,6 +1733,7 @@ export class Router<
                     return {
                       ...s,
                       isLoading: false,
+                      loadedAt: Date.now(),
                       matches: newMatches,
                       pendingMatches: undefined,
                       cachedMatches: [
