@@ -32,7 +32,34 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({ IndexRoute })
+const IndexRouteWithChildren = IndexRoute
+
+interface FileRoutesByFullPath {
+  '/': typeof IndexRouteWithChildren
+}
+
+interface FileRoutesByTo {
+  '/': typeof IndexRouteWithChildren
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/'
+}
+
+interface RootRouteChildren {
+  IndexRoute: typeof IndexRouteWithChildren
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRouteWithChildren,
+}
+
+export const routeTree = rootRoute
+  .addChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 // append1
 

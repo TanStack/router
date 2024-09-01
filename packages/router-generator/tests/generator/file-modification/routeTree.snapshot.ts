@@ -86,12 +86,49 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  testFooRoute,
-  testInitiallyEmptyRoute,
-  testInitiallyLazyRoute,
-  testBarLazyRoute,
-})
+const testFooRouteWithChildren = testFooRoute
+const testInitiallyEmptyRouteWithChildren = testInitiallyEmptyRoute
+const testInitiallyLazyRouteWithChildren = testInitiallyLazyRoute
+const testBarLazyRouteWithChildren = testBarLazyRoute
+
+interface FileRoutesByFullPath {
+  '/foo': typeof testFooRouteWithChildren
+  '/initiallyEmpty': typeof testInitiallyEmptyRouteWithChildren
+  '/initiallyLazy': typeof testInitiallyLazyRouteWithChildren
+  '/bar': typeof testBarLazyRouteWithChildren
+}
+
+interface FileRoutesByTo {
+  '/foo': typeof testFooRouteWithChildren
+  '/initiallyEmpty': typeof testInitiallyEmptyRouteWithChildren
+  '/initiallyLazy': typeof testInitiallyLazyRouteWithChildren
+  '/bar': typeof testBarLazyRouteWithChildren
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
+}
+
+interface RootRouteChildren {
+  testFooRoute: typeof testFooRouteWithChildren
+  testInitiallyEmptyRoute: typeof testInitiallyEmptyRouteWithChildren
+  testInitiallyLazyRoute: typeof testInitiallyLazyRouteWithChildren
+  testBarLazyRoute: typeof testBarLazyRouteWithChildren
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  testFooRoute: testFooRouteWithChildren,
+  testInitiallyEmptyRoute: testInitiallyEmptyRouteWithChildren,
+  testInitiallyLazyRoute: testInitiallyLazyRouteWithChildren,
+  testBarLazyRoute: testBarLazyRouteWithChildren,
+}
+
+export const routeTree = rootRoute
+  .addChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

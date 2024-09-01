@@ -32,7 +32,11 @@ export {
   createLazyRoute,
   createLazyFileRoute,
 } from './fileRoute'
-export type { FileRoutesByPath, LazyRouteOptions } from './fileRoute'
+export type {
+  FileRoutesByPath,
+  FileRouteTypes,
+  LazyRouteOptions,
+} from './fileRoute'
 
 export * from './history'
 

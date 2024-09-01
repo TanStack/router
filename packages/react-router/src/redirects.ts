@@ -7,9 +7,9 @@ export type AnyRedirect = Redirect<any, any, any, any, any>
 
 export type Redirect<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = '/',
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = '/',
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 > = {
   /**

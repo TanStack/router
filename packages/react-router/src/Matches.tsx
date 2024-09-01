@@ -264,11 +264,11 @@ export interface MatchRouteOptions {
 
 export type UseMatchRouteOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = RoutePaths<
     TRouter['routeTree']
   >,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
   TOptions extends ToOptions<
     TRouter,

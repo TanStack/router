@@ -1,3 +1,5 @@
+import type { InferFileRouteTypes } from './fileRoute'
+import type { AddTrailingSlash, RemoveTrailingSlashes } from './link'
 import type { AnyRoute } from './route'
 import type { AnyRouter, TrailingSlashOption } from './router'
 import type { MergeUnion } from './utils'
@@ -53,22 +55,34 @@ export type CurrentPath<TOption> = 'always' extends TOption
     ? '.'
     : './' | '.'
 
-export type CatchAllPaths<TOption> =
-  | CurrentPath<TOption>
-  | ParentPath<TOption>
-  | ''
+export type CatchAllPaths<TOption> = CurrentPath<TOption> | ParentPath<TOption>
 
-export type RoutesByPath<TRouteTree extends AnyRoute> = {
-  [K in ParseRoute<TRouteTree> as K['fullPath']]: K
-}
+export type CodeRoutesByPath<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? {
+        [K in TRoutes as K['fullPath']]: K
+      }
+    : never
+
+export type RoutesByPath<TRouteTree extends AnyRoute> =
+  InferFileRouteTypes<TRouteTree> extends never
+    ? CodeRoutesByPath<TRouteTree>
+    : InferFileRouteTypes<TRouteTree>['fileRoutesByFullPath']
 
 export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
-  RoutesByPath<TRouteTree>[TPath],
+  RoutesByPath<TRouteTree>[TPath & keyof RoutesByPath<TRouteTree>],
   AnyRoute
 >
 
+export type CodeRoutePaths<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? TRoutes['fullPath']
+    : never
+
 export type RoutePaths<TRouteTree extends AnyRoute> =
-  | ParseRoute<TRouteTree>['fullPath']
+  | (InferFileRouteTypes<TRouteTree> extends never
+      ? CodeRoutePaths<TRouteTree>
+      : InferFileRouteTypes<TRouteTree>['fullPaths'])
   | '/'
 
 export type RouteToPathAlwaysTrailingSlash<TRoute extends AnyRoute> =
@@ -107,7 +121,7 @@ export type RouteToByRouter<
   TRoute extends AnyRoute,
 > = RouteToPathByTrailingSlashOption<TRoute>[TrailingSlashOptionByRouter<TRouter>]
 
-export type RouteToPath<
+export type CodeRouteToPath<
   TRouter extends AnyRouter,
   TRouteTree extends AnyRoute,
 > =
@@ -117,34 +131,63 @@ export type RouteToPath<
       : never
     : never
 
-export type RoutesByToPath<TRouter extends AnyRouter> = {
-  [TRoute in ParseRouteWithoutBranches<TRouter['routeTree']> as RouteToByRouter<
-    TRouter,
-    TRoute
-  >]: TRoute
-}
+export type FileRouteToPath<
+  TRouter extends AnyRouter,
+  TTo = InferFileRouteTypes<TRouter['routeTree']>['to'],
+  TTrailingSlashOption = TrailingSlashOptionByRouter<TRouter>,
+> = 'never' extends TTrailingSlashOption
+  ? RemoveTrailingSlashes<TTo>
+  : 'always' extends TTrailingSlashOption
+    ? AddTrailingSlash<TTo>
+    : RemoveTrailingSlashes<TTo> | AddTrailingSlash<TTo>
+
+export type RouteToPath<
+  TRouter extends AnyRouter,
+  TRouteTree extends AnyRoute,
+> =
+  InferFileRouteTypes<TRouter['routeTree']> extends never
+    ? CodeRouteToPath<TRouter, TRouteTree>
+    : FileRouteToPath<TRouter>
+
+export type CodeRoutesByToPath<TRouter extends AnyRouter> =
+  ParseRouteWithoutBranches<TRouter['routeTree']> extends infer TRoutes extends
+    AnyRoute
+    ? {
+        [TRoute in TRoutes as RouteToByRouter<TRouter, TRoute>]: TRoute
+      }
+    : never
+
+export type RoutesByToPath<TRouter extends AnyRouter> =
+  InferFileRouteTypes<TRouter['routeTree']> extends never
+    ? CodeRoutesByToPath<TRouter>
+    : InferFileRouteTypes<TRouter['routeTree']>['fileRoutesByTo']
 
 export type RouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
-  RoutesByToPath<TRouter>[TTo],
+  RoutesByToPath<TRouter>[TTo & keyof RoutesByToPath<TRouter>],
   AnyRoute
 >
 
-export type FullSearchSchema<TRouteTree extends AnyRoute> = MergeUnion<
-  ParseRoute<TRouteTree>['types']['fullSearchSchema']
->
+export type FullSearchSchema<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? MergeUnion<TRoutes['types']['fullSearchSchema']>
+    : never
 
-export type FullSearchSchemaInput<TRouteTree extends AnyRoute> = MergeUnion<
-  ParseRoute<TRouteTree>['types']['fullSearchSchemaInput']
->
+export type FullSearchSchemaInput<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? MergeUnion<TRoutes['types']['fullSearchSchemaInput']>
+    : never
 
-export type AllParams<TRouteTree extends AnyRoute> = MergeUnion<
-  ParseRoute<TRouteTree>['types']['allParams']
->
+export type AllParams<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? MergeUnion<TRoutes['types']['allParams']>
+    : never
 
-export type AllContext<TRouteTree extends AnyRoute> = MergeUnion<
-  ParseRoute<TRouteTree>['types']['allContext']
->
+export type AllContext<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? MergeUnion<TRoutes['types']['allContext']>
+    : never
 
-export type AllLoaderData<TRouteTree extends AnyRoute> = MergeUnion<
-  ParseRoute<TRouteTree>['types']['loaderData']
->
+export type AllLoaderData<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? MergeUnion<TRoutes['types']['loaderData']>
+    : never

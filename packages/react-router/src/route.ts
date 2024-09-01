@@ -1057,11 +1057,7 @@ export class Route<
     this._to = fullPath as TrimPathRight<TFullPath>
   }
 
-  addChildren<
-    const TNewChildren extends
-      | Record<string, AnyRoute>
-      | ReadonlyArray<AnyRoute>,
-  >(
+  addChildren<const TNewChildren>(
     children: TNewChildren,
   ): Route<
     TParentRoute,
@@ -1079,7 +1075,7 @@ export class Route<
     TNewChildren
   > {
     this.children = (
-      Array.isArray(children) ? children : Object.values(children)
+      Array.isArray(children) ? children : Object.values(children as any)
     ) as any
     return this as any
   }
@@ -1336,9 +1332,10 @@ export class RootRoute<
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
-  TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderDeps extends Record<string, any> = {},
   in out TLoaderFn = undefined,
-  TChildren = unknown,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
 > extends Route<
   any, // TParentRoute
   '/', // TPath
@@ -1370,11 +1367,7 @@ export class RootRoute<
     super(options as any)
   }
 
-  addChildren<
-    const TNewChildren extends
-      | Record<string, AnyRoute>
-      | ReadonlyArray<AnyRoute>,
-  >(
+  addChildren<const TNewChildren>(
     children: TNewChildren,
   ): RootRoute<
     TSearchValidator,
@@ -1383,9 +1376,24 @@ export class RootRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TNewChildren
+    TNewChildren,
+    TFileRouteTypes
   > {
-    return super.addChildren(children)
+    super.addChildren(children)
+    return this as any
+  }
+
+  _addFileTypes<TFileRouteTypes>(): RootRoute<
+    TSearchValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes
+  > {
+    return this as any
   }
 }
 
@@ -1466,7 +1474,7 @@ export type RouteMask<TRouteTree extends AnyRoute> = {
 
 export function createRouteMask<
   TRouteTree extends AnyRoute,
-  TFrom extends RoutePaths<TRouteTree>,
+  TFrom extends RoutePaths<TRouteTree> | string,
   TTo extends string,
 >(
   opts: {

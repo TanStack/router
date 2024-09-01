@@ -391,13 +391,29 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
 
       if (node.children?.length) {
         const childConfigs = buildRouteTreeConfig(node.children, depth + 1)
-        return `${route}: ${route}.addChildren({${spaces(depth * 4)}${childConfigs}})`
+
+        const childrenDeclaration = `interface ${route}Children {
+          ${node.children.map((child) => `${child.variableName}Route: typeof ${child.variableName}RouteWithChildren`).join(',')}
+        }`
+
+        const children = `const ${route}Children: ${route}Children = {
+          ${node.children.map((child) => `${child.variableName}Route: ${child.variableName}RouteWithChildren`).join(',')}
+        }`
+
+        const routeWithChildren = `const ${route}WithChildren = ${route}.addChildren(${route}Children)`
+
+        return [
+          childConfigs,
+          childrenDeclaration,
+          children,
+          routeWithChildren,
+        ].join('\n')
       }
 
-      return route
+      return `const ${route}WithChildren = ${route}`
     })
 
-    return children.filter(Boolean).join(`,`)
+    return children.filter(Boolean).join('\n')
   }
 
   const routeConfigChildrenText = buildRouteTreeConfig(routeTree)
@@ -571,7 +587,38 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
 }`,
         ]),
     '// Create and export the route tree',
-    `export const routeTree = rootRoute.addChildren({${routeConfigChildrenText}})`,
+    routeConfigChildrenText,
+    `interface FileRoutesByFullPath {
+      ${routeNodes.map((routeNode) => {
+        return `'${inferFullPath(routeNode)}': typeof ${routeNode.variableName}RouteWithChildren`
+      })}
+  }`,
+    `interface FileRoutesByTo {
+      ${dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => {
+        return `'${inferFullPath(routeNode)}': typeof ${routeNode.variableName}RouteWithChildren`
+      })}
+    }`,
+    `interface FileRouteTypes {
+    fileRoutesByFullPath: FileRoutesByFullPath
+    fullPaths: ${routeNodes
+      .map((routeNode) => {
+        return `'${inferFullPath(routeNode)}'`
+      })
+      .join('|')}
+    fileRoutesByTo: FileRoutesByTo
+    to: ${dedupeBranchesAndIndexRoutes(routeNodes)
+      .map((routeNode) => {
+        return `'${inferFullPath(routeNode)}'`
+      })
+      .join('|')}
+    }`,
+    `interface RootRouteChildren {
+      ${routeTree.map((child) => `${child.variableName}Route: typeof ${child.variableName}RouteWithChildren`).join(',')}
+    }`,
+    `const rootRouteChildren: RootRouteChildren = {
+      ${routeTree.map((child) => `${child.variableName}Route: ${child.variableName}RouteWithChildren`).join(',')}
+    }`,
+    `export const routeTree = rootRoute.addChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()`,
     ...config.routeTreeFileFooter,
   ]
     .filter(Boolean)
@@ -799,6 +846,18 @@ export const inferPath = (routeNode: RouteNode): string => {
   return routeNode.cleanedPath === '/'
     ? routeNode.cleanedPath
     : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
+}
+
+/**
+ * Dedupes branches and index routes
+ */
+export const dedupeBranchesAndIndexRoutes = (
+  routes: Array<RouteNode>,
+): Array<RouteNode> => {
+  return routes.filter((route) => {
+    if (route.children?.find((child) => child.cleanedPath === '/')) return false
+    return true
+  })
 }
 
 function getFilePathIdAndRouteIdFromPath(pathname?: string) {

@@ -14,13 +14,14 @@ import type {
   AnySearchValidator,
   FileBaseRouteOptions,
   ResolveParams,
+  RootRoute,
   Route,
   RouteConstraints,
   RouteLoaderFn,
   UpdatableRouteOptions,
 } from './route'
 import type { MakeRouteMatch } from './Matches'
-import type { RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
@@ -28,6 +29,27 @@ export interface FileRoutesByPath {
   //   parentRoute: typeof rootRoute
   // }
 }
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: any
+  fullPaths: any
+  to: any
+  fileRoutesByTo: any
+}
+
+export type InferFileRouteTypes<TRouteTree extends AnyRoute> =
+  TRouteTree extends RootRoute<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    infer TFileRouteTypes extends FileRouteTypes
+  >
+    ? TFileRouteTypes
+    : never
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
