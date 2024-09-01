@@ -26,6 +26,8 @@ body:
       options:
         - Router
         - Start
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:
