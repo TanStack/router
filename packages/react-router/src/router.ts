@@ -2133,7 +2133,7 @@ export class Router<
                 (async () => {
                   const { loaderPromise: prevLoaderPromise } =
                     this.getMatch(matchId)!
-
+                  let loaderRunningAsync = false
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
                   } else {
@@ -2328,13 +2328,12 @@ export class Router<
 
                     // If the route is successful and still fresh, just resolve
                     const { status, invalid } = this.getMatch(matchId)!
-
-                    if (preload && route.options.preload === false) {
-                      // Do nothing
-                    } else if (
+                    loaderRunningAsync =
                       status === 'success' &&
                       (invalid || (shouldReload ?? age > staleAge))
-                    ) {
+                    if (preload && route.options.preload === false) {
+                      // Do nothing
+                    } else if (loaderRunningAsync) {
                       ;(async () => {
                         try {
                           await runLoader()
@@ -2353,7 +2352,7 @@ export class Router<
 
                   updateMatch(matchId, (prev) => ({
                     ...prev,
-                    isFetching: false,
+                    isFetching: loaderRunningAsync ? prev.isFetching : false,
                     loaderPromise: undefined,
                   }))
                 })(),
