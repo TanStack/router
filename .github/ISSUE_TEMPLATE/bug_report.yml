@@ -19,10 +19,8 @@ body:
   - type: dropdown
     id: project
     attributes:
-      label: Project
-      description: |
-        Which project does this issue relate to?
-        If you are unsure, please leave this as "Router".
+      label: Which project does this relate to?
+      description: If you are unsure, please leave this as "Router".
       options:
         - Router
         - Start
