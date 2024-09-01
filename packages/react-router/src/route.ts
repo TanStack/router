@@ -887,35 +887,35 @@ export class Route<
   private _to!: TrimPathRight<TFullPath>
 
   public get to() {
-    invariant(
+    /* invariant(
       this._to,
       `trying to access property 'to' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
-    )
+    )*/
     return this._to
   }
 
   public get id() {
-    invariant(
+    /* invariant(
       this._id,
       `trying to access property 'id' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
-    )
+    )*/
     return this._id
   }
 
   public get path() {
-    invariant(
+    /* invariant(
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       this.isRoot || this._id || this._path,
       `trying to access property 'path' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
-    )
+    )*/
     return this._path
   }
 
   public get fullPath() {
-    invariant(
+    /* invariant(
       this._fullPath,
       `trying to access property 'fullPath' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
-    )
+    )*/
     return this._fullPath
   }
 
