@@ -28,7 +28,7 @@ import {
   useRouterState,
   useSearch,
 } from '../src'
-import { getIntersectionObserverMock } from './utils'
+import { getIntersectionObserverMock, sleep } from './utils'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -46,6 +46,8 @@ afterEach(() => {
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
+
+const WAIT_TIME = 300
 
 describe('Link', () => {
   test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
@@ -3527,6 +3529,57 @@ describe('Link', () => {
     expect(indexLink).toBeInTheDocument()
 
     expect(ioObserveMock).not.toBeCalled()
+  })
+
+  test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/posts" preload="intent">
+              link to posts
+            </Link>
+          </div>
+        )
+      },
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      loader: () => sleep(WAIT_TIME),
+      component: () => <div>Posts page</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([postRoute, indexRoute])
+    const router = createRouter({
+      routeTree,
+      defaultPreload: 'intent',
+      defaultPendingMs: 200,
+      defaultPendingComponent: () => <p>Loading...</p>,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const linkToPosts = await screen.findByRole('link', {
+      name: 'link to posts',
+    })
+    expect(linkToPosts).toBeInTheDocument()
+
+    fireEvent.focus(linkToPosts)
+    fireEvent.click(linkToPosts)
+
+    const loadingElement = await screen.findByText('Loading...')
+    expect(loadingElement).toBeInTheDocument()
+
+    const postsElement = await screen.findByText('Posts page')
+    expect(postsElement).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
   })
 })
 
