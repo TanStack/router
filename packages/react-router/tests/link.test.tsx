@@ -760,6 +760,77 @@ describe('Link', () => {
     expect(onError).toHaveBeenCalledOnce()
   })
 
+  test('when navigating away from a route with a loader that errors', async () => {
+    const postsOnError = vi.fn()
+    const indexOnError = vi.fn()
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <div>
+            <Link to="/">Index</Link> <Link to="/posts">Posts</Link>
+          </div>
+          <hr />
+          <Outlet />
+        </>
+      ),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+          </>
+        )
+      },
+      onError: indexOnError,
+      errorComponent: () => <span>IndexError</span>,
+    })
+
+    const error = new Error('Something went wrong!')
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      loaderDeps: (opts) => ({ page: opts.search }),
+      loader: () => {
+        throw error
+      },
+      onError: postsOnError,
+      errorComponent: () => <span>PostsError</span>,
+      component: () => {
+        return (
+          <>
+            <h1>Posts</h1>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    fireEvent.click(postsLink)
+
+    const postsErrorText = await screen.findByText('PostsError')
+    expect(postsErrorText).toBeInTheDocument()
+
+    expect(postsOnError).toHaveBeenCalledOnce()
+    expect(postsOnError).toHaveBeenCalledWith(error)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index' })
+    fireEvent.click(indexLink)
+
+    expect(screen.findByText('IndexError')).rejects.toThrow()
+    expect(indexOnError).not.toHaveBeenCalledOnce()
+  })
+
   test('when navigating to /posts with a beforeLoad that redirects', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({

@@ -8,7 +8,7 @@ TanStack Router supports a number of powerful routing concepts that allow you to
 - [Static Routes](./routing-concepts.md#static-routes)
 - [Index Routes](./routing-concepts.md#index-routes)
 - [Dynamic Route Segments](./routing-concepts.md#dynamic-route-segments)
-- [Splat / Catch-All Routes](./routing-concept.md#splat--catch-all-routes)
+- [Splat / Catch-All Routes](./routing-concepts.md#splat--catch-all-routes)
 - [Pathless Routes](./routing-concepts.md#pathless--layout-routes)
 - [Non-Nested Routes](./routing-concepts.md#non-nested-routes)
 - [Not-Found Routes](./routing-concepts.md#404--notfoundroutes)
