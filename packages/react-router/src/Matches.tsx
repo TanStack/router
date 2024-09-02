@@ -4,14 +4,10 @@ import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
-import {
-  type AnyRoute,
-  type ReactNode,
-  type StaticDataRouteOption,
-} from './route'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
+import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { ResolveRelativePath, ToOptions } from './link'
 import type {

@@ -13,13 +13,10 @@
   },
   "dependencies": {
     "@clerk/tanstack-start": "0.3.0-snapshot.vdf04997",
-    "@remix-run/node": "^2.10.3",
-    "@remix-run/server-runtime": "^2.10.3",
-    "@tanstack/react-router": "^1.50.1",
-    "@tanstack/router-devtools": "^1.50.1",
-    "@tanstack/router-plugin": "^1.49.3",
-    "@tanstack/start": "^1.50.1",
-    "@typescript-eslint/parser": "^7.16.0",
+    "@tanstack/react-router": "^1.52.3",
+    "@tanstack/router-devtools": "^1.52.3",
+    "@tanstack/router-plugin": "^1.52.0",
+    "@tanstack/start": "^1.52.3",
     "@vitejs/plugin-react": "^4.3.1",
     "dotenv": "^16.4.5",
     "isbot": "^5.1.12",
@@ -27,24 +24,22 @@
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "remix-auth-form": "^1.5.0",
-    "tailwind-merge": "^2.4.0",
-    "vinxi": "0.3.12"
+    "tailwind-merge": "^2.5.2",
+    "vinxi": "0.4.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.45.1",
+    "@playwright/test": "^1.46.1",
     "@replayio/playwright": "^3.1.8",
     "@types/node": "^20.12.11",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
-    "eslint": "^8.57.0",
-    "eslint-config-react-app": "^7.0.1",
     "postcss": "^8.4.39",
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.3",
     "vite": "^5.3.3",
-    "vite-tsconfig-paths": "^4.3.2"
+    "vite-tsconfig-paths": "^5.0.1"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router-with-query",
-  "version": "1.50.1",
+  "version": "1.52.3",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -35,7 +35,7 @@
     "test:types:ts55": "tsc",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch",
-    "test:build": "publint --strict",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
   "type": "module",

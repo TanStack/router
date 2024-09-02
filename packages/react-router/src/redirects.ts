@@ -45,7 +45,7 @@ export function redirect<
   opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   ;(opts as any).isRedirect = true
-  opts.statusCode = opts.statusCode || opts.code || 301
+  opts.statusCode = opts.statusCode || opts.code || 307
   opts.headers = opts.headers || {}
   if (opts.throw) {
     throw opts
