@@ -1997,12 +1997,8 @@ export class Router<
                 existingMatch.beforeLoadPromise ||
                 existingMatch.loaderPromise
               ) {
-                let pendingTimeout: ReturnType<typeof setTimeout>
-
                 if (shouldPending) {
-                  // If we might show a pending component, we need to wait for the
-                  // pending promise to resolve before we start showing that state
-                  pendingTimeout = setTimeout(() => {
+                  setTimeout(() => {
                     try {
                       // Update the match and prematurely resolve the loadMatches promise so that
                       // the pending component can start rendering
