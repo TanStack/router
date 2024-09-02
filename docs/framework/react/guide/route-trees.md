@@ -66,4 +66,4 @@ Route trees can be configured using a few different ways:
 - [Mixed Flat Routes and Directories](./route-trees.md#mixed-flat-and-directory-routes)
 - [Code-Based Routes](./route-trees.md#code-based-routes)
 
-For a birds-eye view, the route tree examples below showcase the [Routing Concepts](./routing-concepts.md) that are available in TanStack Router, but please be sure to check out the full documentation links above for each type of route tree, or just proceed to the next section to get started with file-based routing.
+Please be sure to check out the full documentation links above for each type of route tree, or just proceed to the next section to get started with file-based routing.
