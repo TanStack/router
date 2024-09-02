@@ -1975,12 +1975,42 @@ export class Router<
               const existingMatch = this.getMatch(matchId)!
               const parentMatchId = matches[index - 1]?.id
 
+              const route = this.looseRoutesById[routeId]!
+
+              const pendingMs =
+                route.options.pendingMs ?? this.options.defaultPendingMs
+
+              const shouldPending = !!(
+                onReady &&
+                !this.isServer &&
+                !preload &&
+                (route.options.loader || route.options.beforeLoad) &&
+                typeof pendingMs === 'number' &&
+                pendingMs !== Infinity &&
+                (route.options.pendingComponent ??
+                  this.options.defaultPendingComponent)
+              )
+
               if (
                 // If we are in the middle of a load, either of these will be present
                 // (not to be confused with `loadPromise`, which is always defined)
                 existingMatch.beforeLoadPromise ||
                 existingMatch.loaderPromise
               ) {
+                let pendingTimeout: ReturnType<typeof setTimeout>
+
+                if (shouldPending) {
+                  // If we might show a pending component, we need to wait for the
+                  // pending promise to resolve before we start showing that state
+                  pendingTimeout = setTimeout(() => {
+                    try {
+                      // Update the match and prematurely resolve the loadMatches promise so that
+                      // the pending component can start rendering
+                      triggerOnReady()
+                    } catch {}
+                  }, pendingMs)
+                }
+
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch.beforeLoadPromise
               } else {
@@ -1994,22 +2024,7 @@ export class Router<
                     beforeLoadPromise: createControlledPromise<void>(),
                   }))
 
-                  const route = this.looseRoutesById[routeId]!
                   const abortController = new AbortController()
-
-                  const pendingMs =
-                    route.options.pendingMs ?? this.options.defaultPendingMs
-
-                  const shouldPending = !!(
-                    onReady &&
-                    !this.isServer &&
-                    !preload &&
-                    (route.options.loader || route.options.beforeLoad) &&
-                    typeof pendingMs === 'number' &&
-                    pendingMs !== Infinity &&
-                    (route.options.pendingComponent ??
-                      this.options.defaultPendingComponent)
-                  )
 
                   let pendingTimeout: ReturnType<typeof setTimeout>
 
