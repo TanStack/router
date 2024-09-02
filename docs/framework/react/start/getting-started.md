@@ -32,7 +32,7 @@ Create a `tsconfig.json` file with at least the following settings:
   "compilerOptions": {
     "jsx": "react-jsx",
     "moduleResolution": "Bundler",
-    "module": "Preserve",
+    "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
   },
