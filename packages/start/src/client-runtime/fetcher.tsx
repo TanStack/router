@@ -123,20 +123,29 @@ export async function fetcher<TPayload>(
 
 async function handleResponseErrors(response: Response) {
   if (!response.ok) {
+    const contentType = response.headers.get('content-type')
     const body = await (async () => {
-      const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('application/json')) {
         return await response.json()
       }
       return await response.text()
     })()
 
-    throw new Error(
-      [
-        `Request failed with status ${response.status}`,
-        `${JSON.stringify(body, null, 2)}`,
-      ].join('\n\n'),
-    )
+    if (contentType && contentType.includes('application/json')) {
+      throw new Error(
+        JSON.stringify({
+          message: `Request failed with status ${response.status}`,
+          body,
+        }),
+      )
+    } else {
+      throw new Error(
+        [
+          `Request failed with status ${response.status}`,
+          `${JSON.stringify(body, null, 2)}`,
+        ].join('\n\n'),
+      )
+    }
   }
 
   return response
