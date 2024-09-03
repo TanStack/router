@@ -32,16 +32,32 @@ export type ParseRouteWithoutBranches<TRouteTree> =
       : never
     : never
 
-export type RoutesById<TRouteTree extends AnyRoute> = {
-  [K in ParseRoute<TRouteTree> as K['id']]: K
-}
+export type CodeRoutesById<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? {
+        [K in TRoutes as K['id']]: K
+      }
+    : never
+
+export type RoutesById<TRouteTree extends AnyRoute> =
+  InferFileRouteTypes<TRouteTree> extends never
+    ? CodeRoutesById<TRouteTree>
+    : InferFileRouteTypes<TRouteTree>['fileRoutesById']
 
 export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
-  RoutesById<TRouteTree>[TId],
+  RoutesById<TRouteTree>[TId & keyof RoutesById<TRouteTree>],
   AnyRoute
 >
 
-export type RouteIds<TRouteTree extends AnyRoute> = ParseRoute<TRouteTree>['id']
+export type CodeRouteIds<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? TRoutes['id']
+    : never
+
+export type RouteIds<TRouteTree extends AnyRoute> =
+  InferFileRouteTypes<TRouteTree> extends never
+    ? CodeRouteIds<TRouteTree>
+    : InferFileRouteTypes<TRouteTree>['id']
 
 export type ParentPath<TOption> = 'always' extends TOption
   ? '../'
@@ -136,10 +152,10 @@ export type FileRouteToPath<
   TTo = InferFileRouteTypes<TRouter['routeTree']>['to'],
   TTrailingSlashOption = TrailingSlashOptionByRouter<TRouter>,
 > = 'never' extends TTrailingSlashOption
-  ? RemoveTrailingSlashes<TTo>
+  ? TTo
   : 'always' extends TTrailingSlashOption
     ? AddTrailingSlash<TTo>
-    : RemoveTrailingSlashes<TTo> | AddTrailingSlash<TTo>
+    : TTo | AddTrailingSlash<TTo>
 
 export type RouteToPath<
   TRouter extends AnyRouter,

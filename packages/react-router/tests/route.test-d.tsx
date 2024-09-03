@@ -1060,8 +1060,13 @@ test('when creating a child route with context, search, params and beforeLoad', 
           | '/invoices/$invoiceId'
           | '/invoices/$invoiceId/details'
           | '/invoices/$invoiceId/details/$detailId'
+          | 'invoices'
+          | 'invoices/$invoiceId'
+          | 'invoices/$invoiceId/details'
+          | 'invoices/$invoiceId/details/$detailId'
           | '.'
           | '..'
+          | ''
           | undefined
         >()
     },
@@ -1459,18 +1464,18 @@ test('when creating a child route with no explicit search input', () => {
 
   const navigate = indexRoute.useNavigate()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function | boolean>()
     .toEqualTypeOf<{ page: number }>()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ page: number }>()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
@@ -1518,18 +1523,18 @@ test('when creating a child route with an explicit search input', () => {
 
   const navigate = indexRoute.useNavigate()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function | boolean>()
     .toEqualTypeOf<{ input: string }>()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ input: string }>()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)

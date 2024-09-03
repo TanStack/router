@@ -393,11 +393,11 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         const childConfigs = buildRouteTreeConfig(node.children, depth + 1)
 
         const childrenDeclaration = `interface ${route}Children {
-          ${node.children.map((child) => `${child.variableName}Route: typeof ${child.variableName}RouteWithChildren`).join(',')}
+          ${node.children.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
         }`
 
         const children = `const ${route}Children: ${route}Children = {
-          ${node.children.map((child) => `${child.variableName}Route: ${child.variableName}RouteWithChildren`).join(',')}
+          ${node.children.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
         }`
 
         const routeWithChildren = `const ${route}WithChildren = ${route}.addChildren(${route}Children)`
@@ -407,13 +407,13 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
           childrenDeclaration,
           children,
           routeWithChildren,
-        ].join('\n')
+        ].join('\n\n')
       }
 
-      return `const ${route}WithChildren = ${route}`
+      return undefined
     })
 
-    return children.filter(Boolean).join('\n')
+    return children.filter(Boolean).join('\n\n')
   }
 
   const routeConfigChildrenText = buildRouteTreeConfig(routeTree)
@@ -589,34 +589,39 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     '// Create and export the route tree',
     routeConfigChildrenText,
     `interface FileRoutesByFullPath {
-      ${routeNodes.map((routeNode) => {
-        return `'${inferFullPath(routeNode)}': typeof ${routeNode.variableName}RouteWithChildren`
-      })}
+        ${[...createRouteNodesByFullPath(routeNodes).entries()].map(
+          ([fullPath, routeNode]) => {
+            return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+          },
+        )}
   }`,
     `interface FileRoutesByTo {
-      ${dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => {
-        return `'${inferFullPath(routeNode)}': typeof ${routeNode.variableName}RouteWithChildren`
-      })}
+      ${[...createRouteNodesByTo(routeNodes).entries()].map(
+        ([to, routeNode]) => {
+          return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+        },
+      )}
+    }`,
+    `interface FileRoutesById {
+      ${[...createRouteNodesById(routeNodes).entries()].map(
+        ([id, routeNode]) => {
+          return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+        },
+      )}
     }`,
     `interface FileRouteTypes {
     fileRoutesByFullPath: FileRoutesByFullPath
-    fullPaths: ${routeNodes
-      .map((routeNode) => {
-        return `'${inferFullPath(routeNode)}'`
-      })
-      .join('|')}
+    fullPaths: ${[...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|')}
     fileRoutesByTo: FileRoutesByTo
-    to: ${dedupeBranchesAndIndexRoutes(routeNodes)
-      .map((routeNode) => {
-        return `'${inferFullPath(routeNode)}'`
-      })
-      .join('|')}
+    to: ${[...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|')}
+    id: ${[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`).join('|')}
+    fileRoutesById: FileRoutesById
     }`,
     `interface RootRouteChildren {
-      ${routeTree.map((child) => `${child.variableName}Route: typeof ${child.variableName}RouteWithChildren`).join(',')}
+      ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
     }`,
     `const rootRouteChildren: RootRouteChildren = {
-      ${routeTree.map((child) => `${child.variableName}Route: ${child.variableName}RouteWithChildren`).join(',')}
+      ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
     }`,
     `export const routeTree = rootRoute.addChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()`,
     ...config.routeTreeFileFooter,
@@ -829,6 +834,56 @@ export function hasParentRoute(
 }
 
 /**
+ * Gets the final variable name for a route
+ */
+export const getResolvedRouteNodeVariableName = (
+  routeNode: RouteNode,
+): string => {
+  return routeNode.children?.length
+    ? `${routeNode.variableName}RouteWithChildren`
+    : `${routeNode.variableName}Route`
+}
+
+/**
+ * Creates a map from fullPath to routeNode
+ */
+export const createRouteNodesByFullPath = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    routeNodes.map((routeNode) => [inferFullPath(routeNode), routeNode]),
+  )
+}
+
+/**
+ * Create a map from 'to' to a routeNode
+ */
+export const createRouteNodesByTo = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => [
+      inferTo(routeNode),
+      routeNode,
+    ]),
+  )
+}
+
+/**
+ * Create a map from 'id' to a routeNode
+ */
+export const createRouteNodesById = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    routeNodes.map((routeNode) => {
+      const [_, id] = getFilePathIdAndRouteIdFromPath(routeNode.routePath!)
+      return [id, routeNode]
+    }),
+  )
+}
+
+/**
  * Infers the full path for use by TS
  */
 export const inferFullPath = (routeNode: RouteNode): string => {
@@ -846,6 +901,17 @@ export const inferPath = (routeNode: RouteNode): string => {
   return routeNode.cleanedPath === '/'
     ? routeNode.cleanedPath
     : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
+}
+
+/**
+ * Infers to path
+ */
+export const inferTo = (routeNode: RouteNode): string => {
+  const fullPath = inferFullPath(routeNode)
+
+  if (fullPath === '/') return fullPath
+
+  return fullPath.replace(/\/$/, '')
 }
 
 /**

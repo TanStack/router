@@ -92,6 +92,8 @@ export type {
   MatchRouteOptions,
   UseMatchRouteOptions,
   MakeMatchRouteOptions,
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
 } from './Matches'
 
 export { matchContext } from './matchContext'
@@ -234,6 +236,9 @@ export type {
   RoutePaths,
   FullSearchSchema,
   AllParams,
+  AllLoaderData,
+  FullSearchSchemaInput,
+  AllContext,
 } from './routeInfo'
 
 export {

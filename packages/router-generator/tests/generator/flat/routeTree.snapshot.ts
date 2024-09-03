@@ -140,58 +140,68 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-const IndexRouteWithChildren = IndexRoute
-const BlogIndexRouteWithChildren = BlogIndexRoute
-const BlogSlugIndexRouteWithChildren = BlogSlugIndexRoute
 interface BlogRouteRouteChildren {
-  BlogIndexRoute: typeof BlogIndexRouteWithChildren
-  BlogSlugIndexRoute: typeof BlogSlugIndexRouteWithChildren
+  BlogIndexRoute: typeof BlogIndexRoute
+  BlogSlugIndexRoute: typeof BlogSlugIndexRoute
 }
+
 const BlogRouteRouteChildren: BlogRouteRouteChildren = {
-  BlogIndexRoute: BlogIndexRouteWithChildren,
-  BlogSlugIndexRoute: BlogSlugIndexRouteWithChildren,
+  BlogIndexRoute: BlogIndexRoute,
+  BlogSlugIndexRoute: BlogSlugIndexRoute,
 }
+
 const BlogRouteRouteWithChildren = BlogRouteRoute.addChildren(
   BlogRouteRouteChildren,
 )
-const PostsIndexRouteWithChildren = PostsIndexRoute
-const PostsPostIdDeepRouteWithChildren = PostsPostIdDeepRoute
-const PostsPostIdIndexRouteWithChildren = PostsPostIdIndexRoute
+
 interface PostsRouteRouteChildren {
-  PostsIndexRoute: typeof PostsIndexRouteWithChildren
-  PostsPostIdDeepRoute: typeof PostsPostIdDeepRouteWithChildren
-  PostsPostIdIndexRoute: typeof PostsPostIdIndexRouteWithChildren
+  PostsIndexRoute: typeof PostsIndexRoute
+  PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+  PostsPostIdIndexRoute: typeof PostsPostIdIndexRoute
 }
+
 const PostsRouteRouteChildren: PostsRouteRouteChildren = {
-  PostsIndexRoute: PostsIndexRouteWithChildren,
-  PostsPostIdDeepRoute: PostsPostIdDeepRouteWithChildren,
-  PostsPostIdIndexRoute: PostsPostIdIndexRouteWithChildren,
+  PostsIndexRoute: PostsIndexRoute,
+  PostsPostIdDeepRoute: PostsPostIdDeepRoute,
+  PostsPostIdIndexRoute: PostsPostIdIndexRoute,
 }
+
 const PostsRouteRouteWithChildren = PostsRouteRoute.addChildren(
   PostsRouteRouteChildren,
 )
-const BlogStatsRouteWithChildren = BlogStatsRoute
 
 interface FileRoutesByFullPath {
-  '/': typeof IndexRouteWithChildren
+  '/': typeof IndexRoute
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
-  '/blog/stats': typeof BlogStatsRouteWithChildren
-  '/blog/': typeof BlogIndexRouteWithChildren
-  '/posts/': typeof PostsIndexRouteWithChildren
-  '/posts/$postId/deep': typeof PostsPostIdDeepRouteWithChildren
-  '/blog/$slug': typeof BlogSlugIndexRouteWithChildren
-  '/posts/$postId': typeof PostsPostIdIndexRouteWithChildren
+  '/blog/stats': typeof BlogStatsRoute
+  '/blog/': typeof BlogIndexRoute
+  '/posts/': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/blog/$slug': typeof BlogSlugIndexRoute
+  '/posts/$postId': typeof PostsPostIdIndexRoute
 }
 
 interface FileRoutesByTo {
-  '/': typeof IndexRouteWithChildren
-  '/blog/stats': typeof BlogStatsRouteWithChildren
-  '/blog/': typeof BlogIndexRouteWithChildren
-  '/posts/': typeof PostsIndexRouteWithChildren
-  '/posts/$postId/deep': typeof PostsPostIdDeepRouteWithChildren
-  '/blog/$slug': typeof BlogSlugIndexRouteWithChildren
-  '/posts/$postId': typeof PostsPostIdIndexRouteWithChildren
+  '/': typeof IndexRoute
+  '/blog/stats': typeof BlogStatsRoute
+  '/blog': typeof BlogIndexRoute
+  '/posts': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/blog/$slug': typeof BlogSlugIndexRoute
+  '/posts/$postId': typeof PostsPostIdIndexRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
+  '/posts': typeof PostsRouteRouteWithChildren
+  '/blog/stats': typeof BlogStatsRoute
+  '/blog/': typeof BlogIndexRoute
+  '/posts/': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/blog/$slug/': typeof BlogSlugIndexRoute
+  '/posts/$postId/': typeof PostsPostIdIndexRoute
 }
 
 interface FileRouteTypes {
@@ -210,25 +220,36 @@ interface FileRouteTypes {
   to:
     | '/'
     | '/blog/stats'
-    | '/blog/'
-    | '/posts/'
+    | '/blog'
+    | '/posts'
     | '/posts/$postId/deep'
     | '/blog/$slug'
     | '/posts/$postId'
+  id:
+    | '/'
+    | '/blog'
+    | '/posts'
+    | '/blog/stats'
+    | '/blog/'
+    | '/posts/'
+    | '/posts/$postId/deep'
+    | '/blog/$slug/'
+    | '/posts/$postId/'
+  fileRoutesById: FileRoutesById
 }
 
 interface RootRouteChildren {
-  IndexRoute: typeof IndexRouteWithChildren
+  IndexRoute: typeof IndexRoute
   BlogRouteRoute: typeof BlogRouteRouteWithChildren
   PostsRouteRoute: typeof PostsRouteRouteWithChildren
-  BlogStatsRoute: typeof BlogStatsRouteWithChildren
+  BlogStatsRoute: typeof BlogStatsRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRouteWithChildren,
+  IndexRoute: IndexRoute,
   BlogRouteRoute: BlogRouteRouteWithChildren,
   PostsRouteRoute: PostsRouteRouteWithChildren,
-  BlogStatsRoute: BlogStatsRouteWithChildren,
+  BlogStatsRoute: BlogStatsRoute,
 }
 
 export const routeTree = rootRoute

@@ -35,6 +35,8 @@ export interface FileRouteTypes {
   fullPaths: any
   to: any
   fileRoutesByTo: any
+  id: any
+  fileRoutesById: any
 }
 
 export type InferFileRouteTypes<TRouteTree extends AnyRoute> =

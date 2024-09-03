@@ -36,14 +36,16 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-const fooAsdfbarIdRouteWithChildren = fooAsdfbarIdRoute
-
 interface FileRoutesByFullPath {
-  '/asdf/$id': typeof fooAsdfbarIdRouteWithChildren
+  '/asdf/$id': typeof fooAsdfbarIdRoute
 }
 
 interface FileRoutesByTo {
-  '/asdf/$id': typeof fooAsdfbarIdRouteWithChildren
+  '/asdf/$id': typeof fooAsdfbarIdRoute
+}
+
+interface FileRoutesById {
+  '/asdf/$id': typeof fooAsdfbarIdRoute
 }
 
 interface FileRouteTypes {
@@ -51,14 +53,16 @@ interface FileRouteTypes {
   fullPaths: '/asdf/$id'
   fileRoutesByTo: FileRoutesByTo
   to: '/asdf/$id'
+  id: '/asdf/$id'
+  fileRoutesById: FileRoutesById
 }
 
 interface RootRouteChildren {
-  fooAsdfbarIdRoute: typeof fooAsdfbarIdRouteWithChildren
+  fooAsdfbarIdRoute: typeof fooAsdfbarIdRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  fooAsdfbarIdRoute: fooAsdfbarIdRouteWithChildren,
+  fooAsdfbarIdRoute: fooAsdfbarIdRoute,
 }
 
 export const routeTree = rootRoute

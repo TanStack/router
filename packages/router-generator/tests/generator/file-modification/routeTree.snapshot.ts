@@ -86,23 +86,25 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-const testFooRouteWithChildren = testFooRoute
-const testInitiallyEmptyRouteWithChildren = testInitiallyEmptyRoute
-const testInitiallyLazyRouteWithChildren = testInitiallyLazyRoute
-const testBarLazyRouteWithChildren = testBarLazyRoute
-
 interface FileRoutesByFullPath {
-  '/foo': typeof testFooRouteWithChildren
-  '/initiallyEmpty': typeof testInitiallyEmptyRouteWithChildren
-  '/initiallyLazy': typeof testInitiallyLazyRouteWithChildren
-  '/bar': typeof testBarLazyRouteWithChildren
+  '/foo': typeof testFooRoute
+  '/initiallyEmpty': typeof testInitiallyEmptyRoute
+  '/initiallyLazy': typeof testInitiallyLazyRoute
+  '/bar': typeof testBarLazyRoute
 }
 
 interface FileRoutesByTo {
-  '/foo': typeof testFooRouteWithChildren
-  '/initiallyEmpty': typeof testInitiallyEmptyRouteWithChildren
-  '/initiallyLazy': typeof testInitiallyLazyRouteWithChildren
-  '/bar': typeof testBarLazyRouteWithChildren
+  '/foo': typeof testFooRoute
+  '/initiallyEmpty': typeof testInitiallyEmptyRoute
+  '/initiallyLazy': typeof testInitiallyLazyRoute
+  '/bar': typeof testBarLazyRoute
+}
+
+interface FileRoutesById {
+  '/foo': typeof testFooRoute
+  '/initiallyEmpty': typeof testInitiallyEmptyRoute
+  '/initiallyLazy': typeof testInitiallyLazyRoute
+  '/bar': typeof testBarLazyRoute
 }
 
 interface FileRouteTypes {
@@ -110,20 +112,22 @@ interface FileRouteTypes {
   fullPaths: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
   fileRoutesByTo: FileRoutesByTo
   to: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
+  id: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
+  fileRoutesById: FileRoutesById
 }
 
 interface RootRouteChildren {
-  testFooRoute: typeof testFooRouteWithChildren
-  testInitiallyEmptyRoute: typeof testInitiallyEmptyRouteWithChildren
-  testInitiallyLazyRoute: typeof testInitiallyLazyRouteWithChildren
-  testBarLazyRoute: typeof testBarLazyRouteWithChildren
+  testFooRoute: typeof testFooRoute
+  testInitiallyEmptyRoute: typeof testInitiallyEmptyRoute
+  testInitiallyLazyRoute: typeof testInitiallyLazyRoute
+  testBarLazyRoute: typeof testBarLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  testFooRoute: testFooRouteWithChildren,
-  testInitiallyEmptyRoute: testInitiallyEmptyRouteWithChildren,
-  testInitiallyLazyRoute: testInitiallyLazyRouteWithChildren,
-  testBarLazyRoute: testBarLazyRouteWithChildren,
+  testFooRoute: testFooRoute,
+  testInitiallyEmptyRoute: testInitiallyEmptyRoute,
+  testInitiallyLazyRoute: testInitiallyLazyRoute,
+  testBarLazyRoute: testBarLazyRoute,
 }
 
 export const routeTree = rootRoute

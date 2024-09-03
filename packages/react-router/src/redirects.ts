@@ -8,9 +8,9 @@ export type AnyRedirect = Redirect<any, any, any, any, any>
 export type Redirect<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = '/',
-  TTo extends string = '',
+  TTo extends string | undefined = '.',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-  TMaskTo extends string = '',
+  TMaskTo extends string = '.',
 > = {
   /**
    * @deprecated Use `statusCode` instead
@@ -37,9 +37,9 @@ export type ResolvedRedirect<
 
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 >(
   opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,

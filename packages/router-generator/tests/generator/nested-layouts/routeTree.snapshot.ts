@@ -353,189 +353,219 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-const IndexRouteWithChildren = IndexRoute
-const JestedLayoutB3LayoutC2BarRouteWithChildren =
-  JestedLayoutB3LayoutC2BarRoute
 interface JestedLayoutB3LayoutC2RouteChildren {
-  JestedLayoutB3LayoutC2BarRoute: typeof JestedLayoutB3LayoutC2BarRouteWithChildren
+  JestedLayoutB3LayoutC2BarRoute: typeof JestedLayoutB3LayoutC2BarRoute
 }
+
 const JestedLayoutB3LayoutC2RouteChildren: JestedLayoutB3LayoutC2RouteChildren =
   {
-    JestedLayoutB3LayoutC2BarRoute: JestedLayoutB3LayoutC2BarRouteWithChildren,
+    JestedLayoutB3LayoutC2BarRoute: JestedLayoutB3LayoutC2BarRoute,
   }
+
 const JestedLayoutB3LayoutC2RouteWithChildren =
   JestedLayoutB3LayoutC2Route.addChildren(JestedLayoutB3LayoutC2RouteChildren)
-const JestedLayoutB3IndexRouteWithChildren = JestedLayoutB3IndexRoute
+
 interface JestedLayoutB3RouteChildren {
   JestedLayoutB3LayoutC2Route: typeof JestedLayoutB3LayoutC2RouteWithChildren
-  JestedLayoutB3IndexRoute: typeof JestedLayoutB3IndexRouteWithChildren
+  JestedLayoutB3IndexRoute: typeof JestedLayoutB3IndexRoute
 }
+
 const JestedLayoutB3RouteChildren: JestedLayoutB3RouteChildren = {
   JestedLayoutB3LayoutC2Route: JestedLayoutB3LayoutC2RouteWithChildren,
-  JestedLayoutB3IndexRoute: JestedLayoutB3IndexRouteWithChildren,
+  JestedLayoutB3IndexRoute: JestedLayoutB3IndexRoute,
 }
+
 const JestedLayoutB3RouteWithChildren = JestedLayoutB3Route.addChildren(
   JestedLayoutB3RouteChildren,
 )
-const JestedLayoutB4FooRouteWithChildren = JestedLayoutB4FooRoute
+
 interface JestedLayoutB4RouteChildren {
-  JestedLayoutB4FooRoute: typeof JestedLayoutB4FooRouteWithChildren
+  JestedLayoutB4FooRoute: typeof JestedLayoutB4FooRoute
 }
+
 const JestedLayoutB4RouteChildren: JestedLayoutB4RouteChildren = {
-  JestedLayoutB4FooRoute: JestedLayoutB4FooRouteWithChildren,
+  JestedLayoutB4FooRoute: JestedLayoutB4FooRoute,
 }
+
 const JestedLayoutB4RouteWithChildren = JestedLayoutB4Route.addChildren(
   JestedLayoutB4RouteChildren,
 )
+
 interface JestedRouteRouteChildren {
   JestedLayoutB3Route: typeof JestedLayoutB3RouteWithChildren
   JestedLayoutB4Route: typeof JestedLayoutB4RouteWithChildren
 }
+
 const JestedRouteRouteChildren: JestedRouteRouteChildren = {
   JestedLayoutB3Route: JestedLayoutB3RouteWithChildren,
   JestedLayoutB4Route: JestedLayoutB4RouteWithChildren,
 }
+
 const JestedRouteRouteWithChildren = JestedRouteRoute.addChildren(
   JestedRouteRouteChildren,
 )
-const LayoutA1FooRouteWithChildren = LayoutA1FooRoute
+
 interface LayoutA1RouteChildren {
-  LayoutA1FooRoute: typeof LayoutA1FooRouteWithChildren
+  LayoutA1FooRoute: typeof LayoutA1FooRoute
 }
+
 const LayoutA1RouteChildren: LayoutA1RouteChildren = {
-  LayoutA1FooRoute: LayoutA1FooRouteWithChildren,
+  LayoutA1FooRoute: LayoutA1FooRoute,
 }
+
 const LayoutA1RouteWithChildren = LayoutA1Route.addChildren(
   LayoutA1RouteChildren,
 )
-const LayoutA2BarRouteWithChildren = LayoutA2BarRoute
+
 interface LayoutA2RouteChildren {
-  LayoutA2BarRoute: typeof LayoutA2BarRouteWithChildren
+  LayoutA2BarRoute: typeof LayoutA2BarRoute
 }
+
 const LayoutA2RouteChildren: LayoutA2RouteChildren = {
-  LayoutA2BarRoute: LayoutA2BarRouteWithChildren,
+  LayoutA2BarRoute: LayoutA2BarRoute,
 }
+
 const LayoutA2RouteWithChildren = LayoutA2Route.addChildren(
   LayoutA2RouteChildren,
 )
-const FooLayoutB5IdRouteWithChildren = FooLayoutB5IdRoute
-const FooLayoutB5IndexRouteWithChildren = FooLayoutB5IndexRoute
+
 interface FooLayoutB5RouteRouteChildren {
-  FooLayoutB5IdRoute: typeof FooLayoutB5IdRouteWithChildren
-  FooLayoutB5IndexRoute: typeof FooLayoutB5IndexRouteWithChildren
+  FooLayoutB5IdRoute: typeof FooLayoutB5IdRoute
+  FooLayoutB5IndexRoute: typeof FooLayoutB5IndexRoute
 }
+
 const FooLayoutB5RouteRouteChildren: FooLayoutB5RouteRouteChildren = {
-  FooLayoutB5IdRoute: FooLayoutB5IdRouteWithChildren,
-  FooLayoutB5IndexRoute: FooLayoutB5IndexRouteWithChildren,
+  FooLayoutB5IdRoute: FooLayoutB5IdRoute,
+  FooLayoutB5IndexRoute: FooLayoutB5IndexRoute,
 }
+
 const FooLayoutB5RouteRouteWithChildren = FooLayoutB5RouteRoute.addChildren(
   FooLayoutB5RouteRouteChildren,
 )
-const FooBarRouteWithChildren = FooBarRoute
+
 interface FooRouteChildren {
   FooLayoutB5RouteRoute: typeof FooLayoutB5RouteRouteWithChildren
-  FooBarRoute: typeof FooBarRouteWithChildren
+  FooBarRoute: typeof FooBarRoute
 }
+
 const FooRouteChildren: FooRouteChildren = {
   FooLayoutB5RouteRoute: FooLayoutB5RouteRouteWithChildren,
-  FooBarRoute: FooBarRouteWithChildren,
+  FooBarRoute: FooBarRoute,
 }
+
 const FooRouteWithChildren = FooRoute.addChildren(FooRouteChildren)
-const folderInFolderRouteWithChildren = folderInFolderRoute
-const NestedLayoutB1LayoutC1BarRouteWithChildren =
-  NestedLayoutB1LayoutC1BarRoute
+
 interface NestedLayoutB1LayoutC1RouteChildren {
-  NestedLayoutB1LayoutC1BarRoute: typeof NestedLayoutB1LayoutC1BarRouteWithChildren
+  NestedLayoutB1LayoutC1BarRoute: typeof NestedLayoutB1LayoutC1BarRoute
 }
+
 const NestedLayoutB1LayoutC1RouteChildren: NestedLayoutB1LayoutC1RouteChildren =
   {
-    NestedLayoutB1LayoutC1BarRoute: NestedLayoutB1LayoutC1BarRouteWithChildren,
+    NestedLayoutB1LayoutC1BarRoute: NestedLayoutB1LayoutC1BarRoute,
   }
+
 const NestedLayoutB1LayoutC1RouteWithChildren =
   NestedLayoutB1LayoutC1Route.addChildren(NestedLayoutB1LayoutC1RouteChildren)
-const NestedLayoutB1IndexRouteWithChildren = NestedLayoutB1IndexRoute
+
 interface NestedLayoutB1RouteChildren {
   NestedLayoutB1LayoutC1Route: typeof NestedLayoutB1LayoutC1RouteWithChildren
-  NestedLayoutB1IndexRoute: typeof NestedLayoutB1IndexRouteWithChildren
+  NestedLayoutB1IndexRoute: typeof NestedLayoutB1IndexRoute
 }
+
 const NestedLayoutB1RouteChildren: NestedLayoutB1RouteChildren = {
   NestedLayoutB1LayoutC1Route: NestedLayoutB1LayoutC1RouteWithChildren,
-  NestedLayoutB1IndexRoute: NestedLayoutB1IndexRouteWithChildren,
+  NestedLayoutB1IndexRoute: NestedLayoutB1IndexRoute,
 }
+
 const NestedLayoutB1RouteWithChildren = NestedLayoutB1Route.addChildren(
   NestedLayoutB1RouteChildren,
 )
-const NestedLayoutB2FooRouteWithChildren = NestedLayoutB2FooRoute
+
 interface NestedLayoutB2RouteChildren {
-  NestedLayoutB2FooRoute: typeof NestedLayoutB2FooRouteWithChildren
+  NestedLayoutB2FooRoute: typeof NestedLayoutB2FooRoute
 }
+
 const NestedLayoutB2RouteChildren: NestedLayoutB2RouteChildren = {
-  NestedLayoutB2FooRoute: NestedLayoutB2FooRouteWithChildren,
+  NestedLayoutB2FooRoute: NestedLayoutB2FooRoute,
 }
+
 const NestedLayoutB2RouteWithChildren = NestedLayoutB2Route.addChildren(
   NestedLayoutB2RouteChildren,
 )
+
 interface NestedRouteChildren {
   NestedLayoutB1Route: typeof NestedLayoutB1RouteWithChildren
   NestedLayoutB2Route: typeof NestedLayoutB2RouteWithChildren
 }
+
 const NestedRouteChildren: NestedRouteChildren = {
   NestedLayoutB1Route: NestedLayoutB1RouteWithChildren,
   NestedLayoutB2Route: NestedLayoutB2RouteWithChildren,
 }
+
 const NestedRouteWithChildren = NestedRoute.addChildren(NestedRouteChildren)
 
 interface FileRoutesByFullPath {
-  '/': typeof IndexRouteWithChildren
-  '/jested': typeof JestedRouteRouteWithChildren
-  '': typeof LayoutA1RouteWithChildren
-  '': typeof LayoutA2RouteWithChildren
-  '/foo': typeof FooRouteWithChildren
-  '/foo': typeof FooLayoutB5RouteRouteWithChildren
-  '/in-folder': typeof folderInFolderRouteWithChildren
-  '/foo': typeof LayoutA1FooRouteWithChildren
-  '/bar': typeof LayoutA2BarRouteWithChildren
-  '/foo/bar': typeof FooBarRouteWithChildren
-  '/jested': typeof JestedLayoutB3RouteWithChildren
-  '/jested': typeof JestedLayoutB4RouteWithChildren
-  '/nested': typeof NestedRouteWithChildren
-  '/nested': typeof NestedLayoutB1RouteWithChildren
-  '/nested': typeof NestedLayoutB2RouteWithChildren
-  '/foo/$id': typeof FooLayoutB5IdRouteWithChildren
+  '/': typeof IndexRoute
   '/jested': typeof JestedLayoutB3LayoutC2RouteWithChildren
-  '/jested/foo': typeof JestedLayoutB4FooRouteWithChildren
+  '': typeof LayoutA2RouteWithChildren
+  '/foo': typeof LayoutA1FooRoute
+  '/in-folder': typeof folderInFolderRoute
+  '/bar': typeof LayoutA2BarRoute
+  '/foo/bar': typeof FooBarRoute
   '/nested': typeof NestedLayoutB1LayoutC1RouteWithChildren
-  '/nested/foo': typeof NestedLayoutB2FooRouteWithChildren
-  '/foo/': typeof FooLayoutB5IndexRouteWithChildren
-  '/jested/': typeof JestedLayoutB3IndexRouteWithChildren
-  '/nested/': typeof NestedLayoutB1IndexRouteWithChildren
-  '/jested/bar': typeof JestedLayoutB3LayoutC2BarRouteWithChildren
-  '/nested/bar': typeof NestedLayoutB1LayoutC1BarRouteWithChildren
+  '/foo/$id': typeof FooLayoutB5IdRoute
+  '/jested/foo': typeof JestedLayoutB4FooRoute
+  '/nested/foo': typeof NestedLayoutB2FooRoute
+  '/foo/': typeof FooLayoutB5IndexRoute
+  '/jested/': typeof JestedLayoutB3IndexRoute
+  '/nested/': typeof NestedLayoutB1IndexRoute
+  '/jested/bar': typeof JestedLayoutB3LayoutC2BarRoute
+  '/nested/bar': typeof NestedLayoutB1LayoutC1BarRoute
 }
 
 interface FileRoutesByTo {
-  '/': typeof IndexRouteWithChildren
-  '/jested': typeof JestedRouteRouteWithChildren
-  '': typeof LayoutA1RouteWithChildren
+  '/': typeof IndexRoute
+  '/jested': typeof JestedLayoutB3IndexRoute
   '': typeof LayoutA2RouteWithChildren
+  '/foo': typeof FooLayoutB5IndexRoute
+  '/in-folder': typeof folderInFolderRoute
+  '/bar': typeof LayoutA2BarRoute
+  '/foo/bar': typeof FooBarRoute
+  '/nested': typeof NestedLayoutB1IndexRoute
+  '/foo/$id': typeof FooLayoutB5IdRoute
+  '/jested/foo': typeof JestedLayoutB4FooRoute
+  '/nested/foo': typeof NestedLayoutB2FooRoute
+  '/jested/bar': typeof JestedLayoutB3LayoutC2BarRoute
+  '/nested/bar': typeof NestedLayoutB1LayoutC1BarRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/jested': typeof JestedRouteRouteWithChildren
+  '/_layout-a1': typeof LayoutA1RouteWithChildren
+  '/_layout-a2': typeof LayoutA2RouteWithChildren
   '/foo': typeof FooRouteWithChildren
-  '/in-folder': typeof folderInFolderRouteWithChildren
-  '/foo': typeof LayoutA1FooRouteWithChildren
-  '/bar': typeof LayoutA2BarRouteWithChildren
-  '/foo/bar': typeof FooBarRouteWithChildren
-  '/jested': typeof JestedLayoutB4RouteWithChildren
+  '/foo/_layout-b5': typeof FooLayoutB5RouteRouteWithChildren
+  '/in-folder': typeof folderInFolderRoute
+  '/_layout-a1/foo': typeof LayoutA1FooRoute
+  '/_layout-a2/bar': typeof LayoutA2BarRoute
+  '/foo/bar': typeof FooBarRoute
+  '/jested/_layout-b3': typeof JestedLayoutB3RouteWithChildren
+  '/jested/_layout-b4': typeof JestedLayoutB4RouteWithChildren
   '/nested': typeof NestedRouteWithChildren
-  '/nested': typeof NestedLayoutB2RouteWithChildren
-  '/foo/$id': typeof FooLayoutB5IdRouteWithChildren
-  '/jested': typeof JestedLayoutB3LayoutC2RouteWithChildren
-  '/jested/foo': typeof JestedLayoutB4FooRouteWithChildren
-  '/nested': typeof NestedLayoutB1LayoutC1RouteWithChildren
-  '/nested/foo': typeof NestedLayoutB2FooRouteWithChildren
-  '/foo/': typeof FooLayoutB5IndexRouteWithChildren
-  '/jested/': typeof JestedLayoutB3IndexRouteWithChildren
-  '/nested/': typeof NestedLayoutB1IndexRouteWithChildren
-  '/jested/bar': typeof JestedLayoutB3LayoutC2BarRouteWithChildren
-  '/nested/bar': typeof NestedLayoutB1LayoutC1BarRouteWithChildren
+  '/nested/_layout-b1': typeof NestedLayoutB1RouteWithChildren
+  '/nested/_layout-b2': typeof NestedLayoutB2RouteWithChildren
+  '/foo/_layout-b5/$id': typeof FooLayoutB5IdRoute
+  '/jested/_layout-b3/_layout-c2': typeof JestedLayoutB3LayoutC2RouteWithChildren
+  '/jested/_layout-b4/foo': typeof JestedLayoutB4FooRoute
+  '/nested/_layout-b1/_layout-c1': typeof NestedLayoutB1LayoutC1RouteWithChildren
+  '/nested/_layout-b2/foo': typeof NestedLayoutB2FooRoute
+  '/foo/_layout-b5/': typeof FooLayoutB5IndexRoute
+  '/jested/_layout-b3/': typeof JestedLayoutB3IndexRoute
+  '/nested/_layout-b1/': typeof NestedLayoutB1IndexRoute
+  '/jested/_layout-b3/_layout-c2/bar': typeof JestedLayoutB3LayoutC2BarRoute
+  '/nested/_layout-b1/_layout-c1/bar': typeof NestedLayoutB1LayoutC1BarRoute
 }
 
 interface FileRouteTypes {
@@ -544,22 +574,13 @@ interface FileRouteTypes {
     | '/'
     | '/jested'
     | ''
-    | ''
-    | '/foo'
     | '/foo'
     | '/in-folder'
-    | '/foo'
     | '/bar'
     | '/foo/bar'
-    | '/jested'
-    | '/jested'
-    | '/nested'
-    | '/nested'
     | '/nested'
     | '/foo/$id'
-    | '/jested'
     | '/jested/foo'
-    | '/nested'
     | '/nested/foo'
     | '/foo/'
     | '/jested/'
@@ -571,44 +592,62 @@ interface FileRouteTypes {
     | '/'
     | '/jested'
     | ''
-    | ''
     | '/foo'
     | '/in-folder'
-    | '/foo'
     | '/bar'
     | '/foo/bar'
-    | '/jested'
-    | '/nested'
     | '/nested'
     | '/foo/$id'
-    | '/jested'
     | '/jested/foo'
-    | '/nested'
     | '/nested/foo'
-    | '/foo/'
-    | '/jested/'
-    | '/nested/'
     | '/jested/bar'
     | '/nested/bar'
+  id:
+    | '/'
+    | '/jested'
+    | '/_layout-a1'
+    | '/_layout-a2'
+    | '/foo'
+    | '/foo/_layout-b5'
+    | '/in-folder'
+    | '/_layout-a1/foo'
+    | '/_layout-a2/bar'
+    | '/foo/bar'
+    | '/jested/_layout-b3'
+    | '/jested/_layout-b4'
+    | '/nested'
+    | '/nested/_layout-b1'
+    | '/nested/_layout-b2'
+    | '/foo/_layout-b5/$id'
+    | '/jested/_layout-b3/_layout-c2'
+    | '/jested/_layout-b4/foo'
+    | '/nested/_layout-b1/_layout-c1'
+    | '/nested/_layout-b2/foo'
+    | '/foo/_layout-b5/'
+    | '/jested/_layout-b3/'
+    | '/nested/_layout-b1/'
+    | '/jested/_layout-b3/_layout-c2/bar'
+    | '/nested/_layout-b1/_layout-c1/bar'
+  fileRoutesById: FileRoutesById
 }
 
 interface RootRouteChildren {
-  IndexRoute: typeof IndexRouteWithChildren
+  IndexRoute: typeof IndexRoute
   JestedRouteRoute: typeof JestedRouteRouteWithChildren
   LayoutA1Route: typeof LayoutA1RouteWithChildren
   LayoutA2Route: typeof LayoutA2RouteWithChildren
   FooRoute: typeof FooRouteWithChildren
-  folderInFolderRoute: typeof folderInFolderRouteWithChildren
+  folderInFolderRoute: typeof folderInFolderRoute
   NestedRoute: typeof NestedRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRouteWithChildren,
+  IndexRoute: IndexRoute,
   JestedRouteRoute: JestedRouteRouteWithChildren,
   LayoutA1Route: LayoutA1RouteWithChildren,
   LayoutA2Route: LayoutA2RouteWithChildren,
   FooRoute: FooRouteWithChildren,
-  folderInFolderRoute: folderInFolderRouteWithChildren,
+  folderInFolderRoute: folderInFolderRoute,
   NestedRoute: NestedRouteWithChildren,
 }
 

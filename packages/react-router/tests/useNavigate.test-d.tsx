@@ -38,7 +38,7 @@ type DefaultRouter = typeof defaultRouter
 test('when navigating to a route', () => {
   const navigate = useNavigate()
 
-  expectTypeOf(navigate<'/invoices', DefaultRouter>)
+  expectTypeOf(navigate<DefaultRouter, '/invoices'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
