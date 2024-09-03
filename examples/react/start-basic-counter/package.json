@@ -11,19 +11,16 @@
     "format": "prettier --write '**/*' --ignore-unknown"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.49.2",
-    "@tanstack/start": "^1.49.3",
-    "@typescript-eslint/parser": "^7.18.0",
+    "@tanstack/react-router": "^1.52.4",
+    "@tanstack/start": "^1.52.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vinxi": "0.4.1"
+    "vinxi": "0.4.2"
   },
   "devDependencies": {
     "@types/node": "^20.12.11",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
-    "eslint": "^8.57.0",
-    "eslint-config-react-app": "^7.0.1",
     "prettier": "^3.3.3",
     "typescript": "^5.5.3",
     "vite": "^5.3.5"

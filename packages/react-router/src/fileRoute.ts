@@ -6,23 +6,16 @@ import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
-import type { NoInfer } from '@tanstack/react-store'
-import type { ParsePathParams } from './link'
+import type { Constrain } from './utils'
 import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
   AnySearchValidator,
-  DefaultSearchValidator,
   FileBaseRouteOptions,
-  ResolveAllParamsFromParent,
-  ResolveLoaderData,
   ResolveParams,
-  ResolveRouteContext,
   Route,
   RouteConstraints,
-  RouteContext,
-  RouteContextFn,
   RouteLoaderFn,
   UpdatableRouteOptions,
 } from './route'
@@ -73,14 +66,12 @@ export class FileRoute<
   }
 
   createRoute = <
-    TSearchValidator extends AnySearchValidator = DefaultSearchValidator,
+    TSearchValidator = undefined,
     TParams = ResolveParams<TPath>,
-    TAllParams = ResolveAllParamsFromParent<TParentRoute, TParams>,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderDataReturn = {},
-    TLoaderData = ResolveLoaderData<TLoaderDataReturn>,
+    TLoaderFn = undefined,
     TChildren = unknown,
   >(
     options?: FileBaseRouteOptions<
@@ -89,7 +80,7 @@ export class FileRoute<
       TSearchValidator,
       TParams,
       TLoaderDeps,
-      TLoaderDataReturn,
+      TLoaderFn,
       AnyContext,
       TRouteContextFn,
       TBeforeLoadFn
@@ -97,9 +88,10 @@ export class FileRoute<
       UpdatableRouteOptions<
         TParentRoute,
         TId,
-        TAllParams,
+        TFullPath,
+        TParams,
         TSearchValidator,
-        TLoaderData,
+        TLoaderFn,
         TLoaderDeps,
         AnyContext,
         TRouteContextFn,
@@ -113,13 +105,11 @@ export class FileRoute<
     TId,
     TSearchValidator,
     TParams,
-    TAllParams,
     AnyContext,
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderDataReturn,
-    TLoaderData,
+    TLoaderFn,
     TChildren
   > => {
     warning(
@@ -142,35 +132,30 @@ export function FileRouteLoader<
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
 >(
   _path: TFilePath,
-): <TLoaderData>(
-  loaderFn: RouteLoaderFn<
-    TRoute['parentRoute'],
-    TRoute['types']['params'],
-    TRoute['types']['loaderDeps'],
-    TRoute['types']['routerContext'],
-    TRoute['types']['routeContextFn'],
-    TRoute['types']['beforeLoadFn'],
-    TLoaderData
+): <TLoaderFn>(
+  loaderFn: Constrain<
+    TLoaderFn,
+    RouteLoaderFn<
+      TRoute['parentRoute'],
+      TRoute['types']['params'],
+      TRoute['types']['loaderDeps'],
+      TRoute['types']['routerContext'],
+      TRoute['types']['routeContextFn'],
+      TRoute['types']['beforeLoadFn']
+    >
   >,
-) => RouteLoaderFn<
-  TRoute['parentRoute'],
-  TRoute['types']['params'],
-  TRoute['types']['loaderDeps'],
-  TRoute['types']['routerContext'],
-  TRoute['types']['routeContextFn'],
-  TRoute['types']['beforeLoadFn'],
-  NoInfer<TLoaderData>
-> {
+) => TLoaderFn {
   warning(
     false,
     `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
   )
-  return (loaderFn) => loaderFn
+  return (loaderFn) => loaderFn as any
 }
 
 export type LazyRouteOptions = Pick<
   UpdatableRouteOptions<
     AnyRoute,
+    string,
     string,
     AnyPathParams,
     AnySearchValidator,
@@ -256,9 +241,16 @@ export function createLazyRoute<
   }
 }
 
+const routeGroupPatternRegex = /\(.+\)/g
+
+function removeGroups(s: string) {
+  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
+}
+
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
 >(id: TFilePath) {
-  return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
+  return (opts: LazyRouteOptions) =>
+    new LazyRoute<TRoute>({ id: removeGroups(id), ...opts })
 }

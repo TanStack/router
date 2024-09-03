@@ -1,15 +1,14 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
-import { sessionStorage } from '~/utils/session'
+import { useAppSession } from '~/utils/session'
 
-const logoutFn = createServerFn('POST', async (_: void, { request }) => {
-  const session = await sessionStorage.getSession(request.headers.get('cookie'))
+const logoutFn = createServerFn('POST', async () => {
+  const session = await useAppSession()
+
+  session.clear()
 
   throw redirect({
     href: '/',
-    headers: {
-      'Set-Cookie': await sessionStorage.destroySession(session),
-    },
   })
 })
 

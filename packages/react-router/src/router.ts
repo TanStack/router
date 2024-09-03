@@ -138,7 +138,6 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
     any,
     any,
     any,
-    any,
     any
   >
     ? TRouterContext
@@ -493,7 +492,6 @@ export interface BuildNextOptions {
     unmaskOnReload?: boolean
   }
   from?: string
-  fromSearch?: unknown
   _fromLocation?: ParsedLocation
 }
 
@@ -1211,6 +1209,7 @@ export class Router<
           scripts: route.options.scripts?.(),
           staticData: route.options.staticData || {},
           loadPromise: createControlledPromise(),
+          fullPath: route.fullPath,
         }
       }
 
@@ -1304,13 +1303,9 @@ export class Router<
       } = {},
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
-      const fromMatches =
-        dest._fromLocation != null
-          ? this.matchRoutes({
-              ...dest._fromLocation,
-              search: dest.fromSearch || dest._fromLocation.search,
-            })
-          : this.state.matches
+      const fromMatches = dest._fromLocation
+        ? this.matchRoutes(dest._fromLocation)
+        : this.state.matches
 
       const fromMatch =
         dest.from != null
@@ -1330,7 +1325,9 @@ export class Router<
         'Could not find match for from: ' + dest.from,
       )
 
-      const fromSearch = last(fromMatches)?.search || this.latestLocation.search
+      const fromSearch = this.state.pendingMatches
+        ? last(this.state.pendingMatches)?.search
+        : last(fromMatches)?.search || this.latestLocation.search
 
       const stayingMatches = matches?.filter((d) =>
         fromMatches.find((e) => e.routeId === d.routeId),
@@ -1646,11 +1643,6 @@ export class Router<
   load = async (): Promise<void> => {
     this.latestLocation = this.parseLocation(this.latestLocation)
 
-    this.__store.setState((s) => ({
-      ...s,
-      loadedAt: Date.now(),
-    }))
-
     let redirect: ResolvedRedirect | undefined
     let notFound: NotFoundError | undefined
 
@@ -1741,6 +1733,7 @@ export class Router<
                     return {
                       ...s,
                       isLoading: false,
+                      loadedAt: Date.now(),
                       matches: newMatches,
                       pendingMatches: undefined,
                       cachedMatches: [
@@ -2136,7 +2129,7 @@ export class Router<
                 (async () => {
                   const { loaderPromise: prevLoaderPromise } =
                     this.getMatch(matchId)!
-
+                  let loaderRunningAsync = false
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
                   } else {
@@ -2331,13 +2324,12 @@ export class Router<
 
                     // If the route is successful and still fresh, just resolve
                     const { status, invalid } = this.getMatch(matchId)!
-
-                    if (preload && route.options.preload === false) {
-                      // Do nothing
-                    } else if (
+                    loaderRunningAsync =
                       status === 'success' &&
                       (invalid || (shouldReload ?? age > staleAge))
-                    ) {
+                    if (preload && route.options.preload === false) {
+                      // Do nothing
+                    } else if (loaderRunningAsync) {
                       ;(async () => {
                         try {
                           await runLoader()
@@ -2356,7 +2348,7 @@ export class Router<
 
                   updateMatch(matchId, (prev) => ({
                     ...prev,
-                    isFetching: false,
+                    isFetching: loaderRunningAsync ? prev.isFetching : false,
                     loaderPromise: undefined,
                   }))
                 })(),

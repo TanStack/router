@@ -13,7 +13,7 @@ import {
 
 import { Meta, Scripts } from '../index'
 
-describe('ssr scripts', async () => {
+describe('ssr scripts', () => {
   test('it works', async () => {
     const rootRoute = createRootRoute({
       // loader: () => new Promise((r) => setTimeout(r, 1)),
@@ -70,7 +70,7 @@ describe('ssr scripts', async () => {
   })
 })
 
-describe('ssr meta', async () => {
+describe('ssr meta', () => {
   test('derives title, dedupes meta, and allows non-loader meta', async () => {
     const rootRoute = createRootRoute({
       loader: () =>

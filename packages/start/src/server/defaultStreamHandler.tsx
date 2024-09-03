@@ -12,7 +12,7 @@ export type HandlerCallback<TRouter extends AnyRouter> = (ctx: {
   request: Request
   router: TRouter
   responseHeaders: Headers
-}) => Promise<Response>
+}) => Response | Promise<Response>
 
 export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
   request,

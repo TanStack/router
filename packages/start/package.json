@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start",
-  "version": "1.49.3",
+  "version": "1.52.4",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -33,13 +33,10 @@
     "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "tsc",
-    "test:build": "publint --strict",
-    "build": "vite build && pnpm build:config && pnpm build:router-manifest && pnpm build:server-handler && pnpm build:server-runtime && pnpm build:react-server-runtime",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
+    "build": "vite build && pnpm build:config && pnpm build:router-manifest",
     "build:config": "tsc --project tsconfigs/config.tsconfig.json",
-    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json",
-    "build:server-handler": "tsc --project tsconfigs/server-handler.tsconfig.json",
-    "build:server-runtime": "tsc --project tsconfigs/server-runtime.tsconfig.json",
-    "build:react-server-runtime": "tsc --project tsconfigs/react-server-runtime.tsconfig.json"
+    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json"
   },
   "type": "module",
   "exports": {
@@ -73,6 +70,16 @@
         "default": "./dist/cjs/server/index.cjs"
       }
     },
+    "./api": {
+      "import": {
+        "types": "./dist/esm/api/index.d.ts",
+        "default": "./dist/esm/api/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/api/index.d.cts",
+        "default": "./dist/cjs/api/index.cjs"
+      }
+    },
     "./client-runtime": {
       "import": {
         "types": "./dist/esm/client-runtime/index.d.ts",
@@ -97,8 +104,8 @@
     },
     "./server-runtime": {
       "import": {
-        "types": "./dist/esm/server-runtime/server-runtime/index.d.ts",
-        "default": "./dist/esm/server-runtime/server-runtime/index.js"
+        "types": "./dist/esm/server-runtime/index.d.ts",
+        "default": "./dist/esm/server-runtime/index.js"
       }
     },
     "./react-server-runtime": {
@@ -109,8 +116,8 @@
     },
     "./server-handler": {
       "import": {
-        "types": "./dist/esm/server-handler/server-handler/index.d.ts",
-        "default": "./dist/esm/server-handler/server-handler/index.js"
+        "types": "./dist/esm/server-handler/index.d.ts",
+        "default": "./dist/esm/server-handler/index.js"
       }
     },
     "./package.json": "./package.json"
@@ -130,16 +137,16 @@
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/start-vite-plugin": "workspace:^",
     "@types/jsesc": "^3.0.3",
-    "@vinxi/react": "0.2.3",
+    "@vinxi/react": "0.2.4",
     "@vinxi/react-server-dom": "^0.0.3",
-    "@vinxi/server-components": "^0.4.1",
-    "@vinxi/server-functions": "^0.4.1",
+    "@vinxi/server-components": "^0.4.2",
+    "@vinxi/server-functions": "^0.4.2",
     "import-meta-resolve": "^4.1.0",
     "isbot": "^5.1.14",
     "jsesc": "^3.0.2",
     "tiny-invariant": "^1.3.3",
-    "vinxi": "0.4.1",
-    "vite-tsconfig-paths": "^4.3.2",
+    "vinxi": "0.4.2",
+    "vite-tsconfig-paths": "^5.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -147,10 +154,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "rollup-plugin-preserve-directives": "^0.4.0",
-    "typescript": "^5.5.3",
-    "vite-plugin-dts": "^3.9.1",
-    "vite-plugin-externalize-deps": "^0.8.0"
+    "typescript": "^5.5.3"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

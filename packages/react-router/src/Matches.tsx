@@ -4,14 +4,10 @@ import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
-import {
-  type AnyRoute,
-  type ReactNode,
-  type StaticDataRouteOption,
-} from './route'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
+import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { ResolveRelativePath, ToOptions } from './link'
 import type {
@@ -25,10 +21,109 @@ import type {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
-import type { ControlledPromise, DeepPartial, NoInfer } from './utils'
+import type {
+  Constrain,
+  ControlledPromise,
+  DeepPartial,
+  NoInfer,
+} from './utils'
+
+export type AnyMatchAndValue = { match: any; value: any }
+
+export type FindValueByIndex<
+  TKey,
+  TValue extends ReadonlyArray<any>,
+> = TKey extends `${infer TIndex extends number}` ? TValue[TIndex] : never
+
+export type FindValueByKey<TKey, TValue> =
+  TValue extends ReadonlyArray<any>
+    ? FindValueByIndex<TKey, TValue>
+    : TValue[TKey & keyof TValue]
+
+export type CreateMatchAndValue<TMatch, TValue> = TValue extends any
+  ? {
+      match: TMatch
+      value: TValue
+    }
+  : never
+
+export type NextMatchAndValue<
+  TKey,
+  TMatchAndValue extends AnyMatchAndValue,
+> = TMatchAndValue extends any
+  ? CreateMatchAndValue<
+      TMatchAndValue['match'],
+      FindValueByKey<TKey, TMatchAndValue['value']>
+    >
+  : never
+
+export type IsMatchKeyOf<TValue> =
+  TValue extends ReadonlyArray<any>
+    ? number extends TValue['length']
+      ? `${number}`
+      : keyof TValue & `${number}`
+    : TValue extends object
+      ? keyof TValue & string
+      : never
+
+export type IsMatchPath<
+  TParentPath extends string,
+  TMatchAndValue extends AnyMatchAndValue,
+> = `${TParentPath}${IsMatchKeyOf<TMatchAndValue['value']>}`
+
+export type IsMatchResult<
+  TKey,
+  TMatchAndValue extends AnyMatchAndValue,
+> = TMatchAndValue extends any
+  ? TKey extends keyof TMatchAndValue['value']
+    ? TMatchAndValue['match']
+    : never
+  : never
+
+export type IsMatchParse<
+  TPath,
+  TMatchAndValue extends AnyMatchAndValue,
+  TParentPath extends string = '',
+> = TPath extends `${string}.${string}`
+  ? TPath extends `${infer TFirst}.${infer TRest}`
+    ? IsMatchParse<
+        TRest,
+        NextMatchAndValue<TFirst, TMatchAndValue>,
+        `${TParentPath}${TFirst}.`
+      >
+    : never
+  : {
+      path: IsMatchPath<TParentPath, TMatchAndValue>
+      result: IsMatchResult<TPath, TMatchAndValue>
+    }
+
+export type IsMatch<TMatch, TPath> = IsMatchParse<
+  TPath,
+  TMatch extends any ? { match: TMatch; value: TMatch } : never
+>
+
+/**
+ * Narrows matches based on a path
+ * @experimental
+ */
+export const isMatch = <TMatch, TPath extends string>(
+  match: TMatch,
+  path: Constrain<TPath, IsMatch<TMatch, TPath>['path']>,
+): match is IsMatch<TMatch, TPath>['result'] => {
+  const parts = (path as string).split('.')
+  let part
+  let value: any = match
+
+  while ((part = parts.shift()) != null && value != null) {
+    value = value[part]
+  }
+
+  return value != null
+}
 
 export interface RouteMatch<
   TRouteId,
+  TFullPath,
   TAllParams,
   TFullSearchSchema,
   TLoaderData,
@@ -37,6 +132,7 @@ export interface RouteMatch<
 > {
   id: string
   routeId: TRouteId
+  fullPath: TFullPath
   index: number
   pathname: string
   params: TAllParams
@@ -76,6 +172,7 @@ export type MakeRouteMatch<
   TRouteId = ParseRoute<TRouteTree>['id'],
   TStrict extends boolean = true,
   TTypes extends AnyRoute['types'] = RouteById<TRouteTree, TRouteId>['types'],
+  TFullPath = TTypes['fullPath'],
   TAllParams = TStrict extends false
     ? AllParams<TRouteTree>
     : TTypes['allParams'],
@@ -91,6 +188,7 @@ export type MakeRouteMatch<
   TLoaderDeps = TTypes['loaderDeps'],
 > = RouteMatch<
   TRouteId,
+  TFullPath,
   TAllParams,
   TFullSearchSchema,
   TLoaderData,
@@ -98,7 +196,7 @@ export type MakeRouteMatch<
   TLoaderDeps
 >
 
-export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any>
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 
 export function Matches() {
   const router = useRouter()
@@ -254,10 +352,24 @@ export function MatchRoute<
   return params ? props.children : null
 }
 
+export type MakeRouteMatches<
+  TRouter extends AnyRouter = AnyRouter,
+  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+> = TRoute extends any
+  ? RouteMatch<
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema'],
+      TRoute['types']['loaderData'],
+      TRoute['types']['allContext'],
+      TRoute['types']['loaderDeps']
+    >
+  : never
+
 export function useMatches<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId>,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRouteMatch = MakeRouteMatches<TRouter>,
   T = Array<TRouteMatch>,
 >(opts?: { select?: (matches: Array<TRouteMatch>) => T }): T {
   return useRouterState({

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-cli",
-  "version": "1.49.3",
+  "version": "1.52.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -33,7 +33,7 @@
     "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "tsc",
-    "test:build": "publint --strict",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
   "type": "module",

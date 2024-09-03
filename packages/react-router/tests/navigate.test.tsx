@@ -72,6 +72,15 @@ function createTestRouter(
     getParentRoute: () => gLayoutRoute,
     path: '$username',
   })
+  const searchRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'search',
+    validateSearch: (search: Record<string, unknown>) => {
+      return {
+        ['foo=bar']: Number(search['foo=bar'] ?? 1),
+      }
+    },
+  })
 
   const projectTree = projectRoute.addChildren([
     projectIdRoute.addChildren([
@@ -463,6 +472,24 @@ describe('router.navigate navigation using layout routes resolves correctly', ()
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/g/tkdodo')
+  })
+
+  it('should handle search params with special characters', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/search?foo%3Dbar=2'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/search')
+    expect(router.state.location.search).toStrictEqual({ 'foo=bar': 2 })
+
+    await router.navigate({
+      search: { 'foo=bar': 3 },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.search).toStrictEqual({ 'foo=bar': 3 })
   })
 })
 

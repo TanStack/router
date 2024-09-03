@@ -18,19 +18,18 @@ import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo.js'
-import { sessionStorage } from '~/utils/session.js'
+import { useAppSession } from '~/utils/session.js'
 
-const fetchUser = createServerFn('GET', async (_, { request }) => {
-  const cookie = request.headers.get('cookie')
-  const session = await sessionStorage.getSession(cookie)
-  const userEmail = session.get('userEmail')
+const fetchUser = createServerFn('GET', async () => {
+  // We need to auth on the server so we have access to secure cookies
+  const session = await useAppSession()
 
-  if (!userEmail) {
+  if (!session.data.userEmail) {
     return null
   }
 
   return {
-    email: userEmail,
+    email: session.data.userEmail,
   }
 })
 

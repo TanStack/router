@@ -16,6 +16,16 @@ body:
          - `router` Discussions tab: https://github.com/tanstack/router/discussions
 
         The more information you fill in, the better the community can help you.
+  - type: dropdown
+    id: project
+    attributes:
+      label: Which project does this relate to?
+      description: If you are unsure, please leave this as "Router".
+      options:
+        - Router
+        - Start
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:

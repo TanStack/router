@@ -14,6 +14,7 @@ export const configSchema = z.object({
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
   disableManifestGeneration: z.boolean().optional().default(false),
+  apiBase: z.string().optional().default('/api'),
   routeTreeFileHeader: z
     .array(z.string())
     .optional()
@@ -28,6 +29,8 @@ export const configSchema = z.object({
     .optional()
     .default(['/* prettier-ignore-end */']),
   autoCodeSplitting: z.boolean().optional(),
+  indexToken: z.string().optional().default('index'),
+  routeToken: z.string().optional().default('route'),
   experimental: z
     .object({
       // TODO: Remove this option in the next major release (v2).
@@ -93,5 +96,26 @@ export function getConfig(
     }
   }
 
+  validateConfig(config)
+  return config
+}
+
+function validateConfig(config: Config) {
+  if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
+    const message = `
+------
+⚠️ ⚠️ ⚠️
+ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is now "autoCodeSplitting". Please update your configuration file to use "autoCodeSplitting" instead of "experimental.enableCodeSplitting".
+------
+`
+    console.error(message)
+    throw new Error(message)
+  }
+
+  if (config.indexToken === config.routeToken) {
+    throw new Error(
+      `The "indexToken" and "routeToken" options must be different.`,
+    )
+  }
   return config
 }

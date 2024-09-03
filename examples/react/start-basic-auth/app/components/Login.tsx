@@ -1,4 +1,4 @@
-import { Link, useRouter } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/start'
 import { useMutation } from '../hooks/useMutation'
 import { loginFn } from '../routes/_authed'
@@ -10,12 +10,10 @@ export function Login() {
 
   const loginMutation = useMutation({
     fn: loginFn,
-    onSuccess: (ctx) => {
+    onSuccess: async (ctx) => {
       if (!ctx.data?.error) {
-        router.invalidate()
-        router.navigate({
-          to: '/',
-        })
+        await router.invalidate()
+        router.navigate({ to: '/' })
         return
       }
     },

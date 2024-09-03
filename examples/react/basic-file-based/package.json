@@ -10,9 +10,9 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.49.2",
-    "@tanstack/router-devtools": "^1.49.2",
-    "@tanstack/router-plugin": "^1.49.3",
+    "@tanstack/react-router": "^1.52.4",
+    "@tanstack/router-devtools": "^1.52.4",
+    "@tanstack/router-plugin": "^1.52.0",
     "immer": "^10.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -20,7 +20,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.45.3",
+    "@playwright/test": "^1.46.1",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.3.1",

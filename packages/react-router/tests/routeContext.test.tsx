@@ -5,12 +5,13 @@ import {
   render,
   screen,
 } from '@testing-library/react'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import {
   Link,
   Outlet,
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -18,12 +19,20 @@ import {
 } from '../src'
 
 import { sleep } from './utils'
+import type { RouterHistory } from '../src'
 
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 afterEach(() => {
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
-  cleanup()
   vi.clearAllMocks()
   vi.resetAllMocks()
+  cleanup()
 })
 
 const WAIT_TIME = 150
@@ -45,7 +54,7 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -68,7 +77,7 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree, context: {} })
+      const router = createRouter({ routeTree, history, context: {} })
 
       render(<RouterProvider router={router} />)
 
@@ -91,7 +100,11 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree, context: { project: 'Router' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'Router' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -118,7 +131,7 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -144,7 +157,11 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree, context: { project: 'foo' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'foo' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -169,7 +186,11 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree, context: { project: 'foo' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'foo' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -191,7 +212,11 @@ describe('context function', () => {
         component: () => <div>Root page</div>,
       })
       const routeTree = rootRoute.addChildren([])
-      const router = createRouter({ routeTree, context: { project: 'foo' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'foo' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -227,7 +252,11 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree, context: { project: 'bar' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'bar' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -257,7 +286,11 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree, context: { project: 'foo' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'foo' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -282,7 +315,11 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree, context: { project: 'foo' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'foo' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -304,7 +341,11 @@ describe('context function', () => {
         component: () => <div>Root page</div>,
       })
       const routeTree = rootRoute.addChildren([])
-      const router = createRouter({ routeTree, context: { project: 'foo' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'foo' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -340,7 +381,11 @@ describe('context function', () => {
         component: () => <div>Index page</div>,
       })
       const routeTree = rootRoute.addChildren([indexRoute])
-      const router = createRouter({ routeTree, context: { project: 'bar' } })
+      const router = createRouter({
+        routeTree,
+        history,
+        context: { project: 'bar' },
+      })
 
       render(<RouterProvider router={router} />)
 
@@ -370,7 +415,7 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -392,7 +437,7 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -417,7 +462,7 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -442,7 +487,7 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -476,7 +521,7 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -510,7 +555,7 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -546,7 +591,7 @@ describe('beforeLoad in the route definition', () => {
       component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -606,7 +651,7 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -671,7 +716,7 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -736,7 +781,7 @@ describe('beforeLoad in the route definition', () => {
       nestedRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -810,7 +855,7 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -883,7 +928,7 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -928,7 +973,7 @@ describe('beforeLoad in the route definition', () => {
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -987,7 +1032,7 @@ describe('beforeLoad in the route definition', () => {
       layoutRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1061,7 +1106,7 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1134,7 +1179,7 @@ describe('beforeLoad in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1169,7 +1214,7 @@ describe('loader in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1191,7 +1236,7 @@ describe('loader in the route definition', () => {
       component: () => <div>Root page</div>,
     })
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1216,7 +1261,7 @@ describe('loader in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1241,7 +1286,7 @@ describe('loader in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1275,7 +1320,7 @@ describe('loader in the route definition', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1311,6 +1356,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({
       routeTree,
+      history,
       context: { foo: 'bar' },
     })
 
@@ -1362,6 +1408,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
     const router = createRouter({
       routeTree,
+      history,
       defaultPreload: 'intent',
       context: { foo: 'bar' },
     })
@@ -1409,7 +1456,7 @@ describe('loader in the route definition', () => {
       component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1445,7 +1492,7 @@ describe('loader in the route definition', () => {
       component: () => <div>About page</div>,
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1505,7 +1552,7 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1570,7 +1617,7 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1635,7 +1682,7 @@ describe('loader in the route definition', () => {
       nestedRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1709,7 +1756,7 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1782,7 +1829,7 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1827,7 +1874,7 @@ describe('loader in the route definition', () => {
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1886,7 +1933,7 @@ describe('loader in the route definition', () => {
       layoutRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -1960,7 +2007,7 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2033,7 +2080,7 @@ describe('loader in the route definition', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2066,7 +2113,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2086,7 +2133,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2106,7 +2153,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2131,7 +2178,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2154,7 +2201,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2177,7 +2224,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2203,7 +2250,7 @@ describe('useRouteContext in the component', () => {
     })
 
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2232,7 +2279,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2261,7 +2308,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2292,7 +2339,7 @@ describe('useRouteContext in the component', () => {
       },
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2340,7 +2387,7 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2392,7 +2439,7 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2445,13 +2492,14 @@ describe('useRouteContext in the component', () => {
       nestedRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByRole('link', {
       name: 'link to about',
     })
+
     expect(linkToAbout).toBeInTheDocument()
     fireEvent.click(linkToAbout)
 
@@ -2510,7 +2558,7 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2574,7 +2622,7 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2617,7 +2665,7 @@ describe('useRouteContext in the component', () => {
     const routeTree = rootRoute.addChildren([
       layoutRoute.addChildren([indexRoute]),
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2667,7 +2715,7 @@ describe('useRouteContext in the component', () => {
       layoutRoute.addChildren([aboutRoute]),
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2732,7 +2780,7 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 
@@ -2796,7 +2844,7 @@ describe('useRouteContext in the component', () => {
       aboutRoute,
       indexRoute,
     ])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
 
     render(<RouterProvider router={router} />)
 

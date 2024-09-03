@@ -8,6 +8,13 @@ test('Navigating to post', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
+test('Navigating to user', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Users' }).click()
+  await page.getByRole('link', { name: 'Leanne Graham' }).click()
+  await expect(page.getByRole('heading')).toContainText('Leanne Graham')
+})
+
 test('Navigating nested layouts', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()

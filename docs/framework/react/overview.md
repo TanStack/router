@@ -53,7 +53,6 @@ TanStack Router delivers on the same fundamental expectations as other routers t
 - URL Path Params
 - Error Boundaries and Handling
 - SSR
-- Prefetching
 - Route Masking
 
 And it also delivers some new features that raise the bar:

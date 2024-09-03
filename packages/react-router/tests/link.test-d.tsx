@@ -158,8 +158,8 @@ test('when navigating to the root', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | '../'
-      | './'
+      | '..'
+      | '.'
       | '/'
       | '/invoices'
       | '/invoices/$invoiceId'
@@ -176,8 +176,8 @@ test('when navigating to the root', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | '../'
-      | './'
+      | '..'
+      | '.'
       | '/'
       | '/invoices'
       | '/invoices/$invoiceId'
@@ -212,8 +212,8 @@ test('when navigating to the root', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | '../'
-      | './'
+      | '..'
+      | '.'
       | '/'
       | '/invoices'
       | '/invoices/$invoiceId'
@@ -230,8 +230,10 @@ test('when navigating to the root', () => {
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | '../'
+      | '..'
+      | '.'
       | './'
+      | '../'
       | '/'
       | '/invoices'
       | '/invoices/'
@@ -388,8 +390,8 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | '../'
-      | './'
+      | '..'
+      | '.'
       | '/'
       | ''
       | '/invoices'
@@ -408,8 +410,8 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | '../'
-      | './'
+      | '..'
+      | '.'
       | '/'
       | ''
       | '/invoices'
@@ -448,8 +450,8 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | '../'
-      | './'
+      | '..'
+      | '.'
       | '/'
       | ''
       | '/invoices'
@@ -468,6 +470,8 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
+      | '.'
+      | '..'
       | '../'
       | '../'
       | './'
@@ -609,12 +613,12 @@ test('when navigating from a route with no params and no search to the current r
   expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | './'>()
+    .toEqualTypeOf<'./$postId' | undefined | './' | '.'>()
 
   expectTypeOf(Link<DefaultRouterObjects, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | './'>()
+    .toEqualTypeOf<'./$postId' | undefined | './' | '.'>()
 
   expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
     .parameter(0)
@@ -624,20 +628,20 @@ test('when navigating from a route with no params and no search to the current r
   expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | './'>()
+    .toEqualTypeOf<'./$postId' | undefined | './' | '.'>()
 
   expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId/' | './$postId' | undefined | './'>()
+    .toEqualTypeOf<'./$postId/' | './$postId' | undefined | './' | '.'>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
+  expectTypeOf(Link<DefaultRouter, '/posts/', '.'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>()
     .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts/', './'>)
+  expectTypeOf(Link<DefaultRouterObjects, '/posts/', '.'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>()
@@ -649,7 +653,7 @@ test('when navigating from a route with no params and no search to the current r
     .exclude<Function>()
     .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', '.'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>()
@@ -661,7 +665,7 @@ test('when navigating from a route with no params and no search to the current r
     .exclude<Function>()
     .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
+  expectTypeOf(Link<DefaultRouter, '/posts/', '.'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ rootPage?: number }>()
@@ -821,8 +825,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
-      | './'
-      | '../'
+      | '.'
+      | '..'
       | undefined
     >()
 
@@ -839,8 +843,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
-      | './'
-      | '../'
+      | '.'
+      | '..'
       | undefined
     >()
 
@@ -877,8 +881,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
-      | './'
-      | '../'
+      | '.'
+      | '..'
       | undefined
     >()
 
@@ -905,6 +909,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '.'
+      | '..'
       | './'
       | '../'
       | undefined
@@ -1120,7 +1126,7 @@ test('when navigating to the parent route', () => {
   const RouterAlwaysTrailingSlashesLink = Link<
     RouterAlwaysTrailingSlashes,
     string,
-    '..'
+    '../'
   >
   const RouterNeverTrailingSlashesLink = Link<
     RouterNeverTrailingSlashes,
