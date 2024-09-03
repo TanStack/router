@@ -16,6 +16,7 @@ import type {
   Route,
   SearchSchemaInput,
 } from '../src'
+import type { MakeRouteMatchUnion } from '../src/Matches'
 
 test('when creating the root', () => {
   const rootRoute = createRootRoute()
@@ -38,6 +39,7 @@ test('when creating the root with routeContext', () => {
         cause: 'preload' | 'enter' | 'stay'
         context: {}
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -60,6 +62,7 @@ test('when creating the root with beforeLoad', () => {
         cause: 'preload' | 'enter' | 'stay'
         context: {}
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -107,6 +110,7 @@ test('when creating the root route with context and routeContext', () => {
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -141,6 +145,7 @@ test('when creating the root route with context and beforeLoad', () => {
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -210,6 +215,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
 
       return {
@@ -227,6 +233,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: 'env1' }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { permission: 'view' as const }
     },
@@ -319,6 +326,7 @@ test('when creating a child route with routeContext from the root route with con
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
 
       return {
@@ -345,6 +353,7 @@ test('when creating a child route with beforeLoad from the root route with conte
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -614,6 +623,7 @@ test('when creating a child route with params, search with routeContext from the
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -637,6 +647,7 @@ test('when creating a child route with params, search with beforeLoad from the r
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -660,6 +671,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return {
         env: 'env1',
@@ -676,6 +688,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { permission: 'view' } as const
     },
@@ -774,6 +787,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
 
       return { invoiceId: 'invoiceId1' }
@@ -794,6 +808,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; invoiceId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
 
       return { detailId: 'detailId1' }
@@ -837,6 +852,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { invoiceId: 'invoiceId1' }
     },
@@ -856,6 +872,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; invoiceId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { detailId: 'detailId1' }
     },
@@ -899,6 +916,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { env: 'env1' }
     },
@@ -913,6 +931,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { invoicePermissions: ['view'] as const }
     },
@@ -942,6 +961,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           invoicePermissions: readonly ['view']
         }
         search: { page: number; detailPage: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { detailEnv: 'detailEnv' }
     },
@@ -961,6 +981,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           invoicePermissions: readonly ['view']
         }
         search: { page: number; detailPage: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { detailsPermissions: ['view'] as const }
     },

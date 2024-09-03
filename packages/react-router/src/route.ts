@@ -11,7 +11,7 @@ import { rootRouteId } from './root'
 import type * as React from 'react'
 import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
-import type { MakeRouteMatch, RouteMatch } from './Matches'
+import type { MakeRouteMatch, MakeRouteMatchUnion, RouteMatch } from './Matches'
 import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
@@ -285,6 +285,7 @@ export interface ContextOptions<
   navigate: NavigateFn
   buildLocation: BuildLocationFn
   cause: 'preload' | 'enter' | 'stay'
+  matches: Array<MakeRouteMatchUnion>
 }
 
 export interface RouteContextOptions<

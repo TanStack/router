@@ -1264,6 +1264,7 @@ export class Router<
         cause: match.cause,
         abortController: match.abortController,
         preload: !!match.preload,
+        matches,
       }
 
       // Get the route context
@@ -2080,6 +2081,7 @@ export class Router<
                       this.navigate({ ...opts, _fromLocation: location }),
                     buildLocation: this.buildLocation,
                     cause: preload ? 'preload' : cause,
+                    matches,
                   }
 
                   let beforeLoadContext =
