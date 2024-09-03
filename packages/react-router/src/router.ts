@@ -2712,7 +2712,7 @@ export class Router<
     if (this.isServer) {
       return this._streamedKeys
     }
-    return Object.keys(window.__TSR__?.streamedValues ?? {})
+    return new Set(Object.keys(window.__TSR__?.streamedValues ?? {}))
   }
 
   getStreamedValue = <T>(key: string): T | undefined => {
