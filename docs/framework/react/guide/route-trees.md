@@ -61,9 +61,9 @@ The above is a valid route tree configuration that can be used with TanStack Rou
 
 Route trees can be configured using a few different ways:
 
-- [Flat Routes](./file-based-routing#flat-routes)
-- [Directories](./file-based-routing#directory-routes)
-- [Mixed Flat Routes and Directories](./file-based-routing#mixed-flat-and-directory-routes)
-- [Code-Based Routes](./code-based-routing)
+- [Flat Routes](./file-based-routing.md#flat-routes)
+- [Directories](./file-based-routing.md#directory-routes)
+- [Mixed Flat Routes and Directories](./file-based-routing.md#mixed-flat-and-directory-routes)
+- [Code-Based Routes](./code-based-routing.md)
 
 Please be sure to check out the full documentation links above for each type of route tree, or just proceed to the next section to get started with file-based routing.
