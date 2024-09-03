@@ -352,8 +352,8 @@ export function MatchRoute<
   return params ? props.children : null
 }
 
-export type MakeRouteMatches<
-  TRouter extends AnyRouter = AnyRouter,
+export type MakeRouteMatchUnion<
+  TRouter extends AnyRouter = RegisteredRouter,
   TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
 > = TRoute extends any
   ? RouteMatch<
@@ -369,7 +369,7 @@ export type MakeRouteMatches<
 
 export function useMatches<
   TRouter extends AnyRouter = RegisteredRouter,
-  TRouteMatch = MakeRouteMatches<TRouter>,
+  TRouteMatch = MakeRouteMatchUnion<TRouter>,
   T = Array<TRouteMatch>,
 >(opts?: { select?: (matches: Array<TRouteMatch>) => T }): T {
   return useRouterState({
