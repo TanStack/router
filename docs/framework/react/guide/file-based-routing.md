@@ -123,7 +123,7 @@ const virtualRouteConfig = rootRoute('root.tsx', [
 ])
 ```
 
-For more information on how to configure virtual file routes, see the [Virtual File Routes](./virtual-file-routes) guide.
+For more information on how to configure virtual file routes, see the [Virtual File Routes](./virtual-file-routes.md) guide.
 
 ## Dynamic Path Params
 
