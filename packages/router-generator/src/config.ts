@@ -1,8 +1,10 @@
 import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
+import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
 export const configSchema = z.object({
+  virtualRouteConfig: virtualRootRouteSchema.optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
   routeFileIgnorePattern: z.string().optional(),

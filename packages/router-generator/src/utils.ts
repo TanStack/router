@@ -26,3 +26,46 @@ export function logging(config: { disabled: boolean }) {
     },
   }
 }
+
+export function removeLeadingSlash(path: string): string {
+  return path.replace(/^\//, '')
+}
+
+export function removeTrailingSlash(s: string) {
+  return s.replace(/\/$/, '')
+}
+
+export function determineInitialRoutePath(routePath: string) {
+  return cleanPath(`/${routePath.split('.').join('/')}`) || ''
+}
+
+export function replaceBackslash(s: string) {
+  return s.replaceAll(/\\/gi, '/')
+}
+
+export function routePathToVariable(routePath: string): string {
+  return (
+    removeUnderscores(routePath)
+      ?.replace(/\/\$\//g, '/splat/')
+      .replace(/\$$/g, 'splat')
+      .replace(/\$/g, '')
+      .split(/[/-]/g)
+      .map((d, i) => (i > 0 ? capitalize(d) : d))
+      .join('')
+      .replace(/([^a-zA-Z0-9]|[.])/gm, '')
+      .replace(/^(\d)/g, 'R$1') ?? ''
+  )
+}
+
+export function removeUnderscores(s?: string) {
+  return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
+}
+
+export function capitalize(s: string) {
+  if (typeof s !== 'string') return ''
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+export function removeExt(d: string, keepExtension: boolean = false) {
+  return keepExtension ? d : d.substring(0, d.lastIndexOf('.')) || d
+}

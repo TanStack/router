@@ -1,13 +1,13 @@
 {
-  "name": "@tanstack/router-generator",
-  "version": "1.52.0",
+  "name": "@tanstack/virtual-file-routes",
+  "version": "1.52.5",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/router-generator"
+    "directory": "packages/virtual-file-routes"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
@@ -34,6 +34,7 @@
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "tsc",
     "test:unit": "vitest",
+    "test:unit:dev": "pnpm run test:unit --watch --typecheck",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
@@ -61,10 +62,5 @@
   ],
   "engines": {
     "node": ">=12"
-  },
-  "dependencies": {
-    "prettier": "^3.3.3",
-    "zod": "^3.23.8",
-    "@tanstack/virtual-file-routes": "workspace:^"
   }
 }
