@@ -181,7 +181,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
       return {
         type: 'pathname',
-        value: decodeURIComponent(part),
+        value: decodeURI(part),
       }
     }),
   )
