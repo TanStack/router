@@ -25,6 +25,7 @@ Feature/Capability Key:
 | Typesafe Routes                                | ✅                                               | 🛑                                                    | 🟡                                                    |
 | Code-based Routes                              | ✅                                               | ✅                                                    | 🛑                                                    |
 | File-based Routes                              | ✅                                               | ✅                                                    | ✅                                                    |
+| Virtual/Programmatic File-based Routes         | ✅                                               | ✅                                                    | 🛑                                                    |
 | Router Loaders                                 | ✅                                               | ✅                                                    | ✅                                                    |
 | SWR Loader Caching                             | ✅                                               | 🛑                                                    | ✅                                                    |
 | Route Prefetching                              | ✅                                               | ✅                                                    | ✅                                                    |

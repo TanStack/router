@@ -70,6 +70,7 @@
       "@tanstack/router-cli": "workspace:*",
       "@tanstack/router-devtools": "workspace:*",
       "@tanstack/router-generator": "workspace:*",
+      "@tanstack/virtual-file-routes": "workspace:*",
       "@tanstack/router-plugin": "workspace:*",
       "@tanstack/router-vite-plugin": "workspace:*",
       "@tanstack/react-router-with-query": "workspace:*",

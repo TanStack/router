@@ -73,6 +73,10 @@
               "to": "framework/react/guide/file-based-routing"
             },
             {
+              "label": "Virtual File Routes",
+              "to": "framework/react/guide/virtual-file-routes"
+            },
+            {
               "label": "Code Based Routing",
               "to": "framework/react/guide/code-based-routing"
             },
