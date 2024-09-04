@@ -2,7 +2,13 @@ import fs from 'node:fs/promises'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { index, layout, rootRoute, route } from '@tanstack/virtual-file-routes'
+import {
+  index,
+  layout,
+  physical,
+  rootRoute,
+  route,
+} from '@tanstack/virtual-file-routes'
 import { generator, getConfig } from '../src'
 import type { Config } from '../src'
 
@@ -64,6 +70,7 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
                 route('$id', 'db/invoice-detail.tsx'),
               ]),
             ]),
+            physical('/hello', 'subtree'),
           ]),
         ])
         config.virtualRouteConfig = virtualRouteConfig

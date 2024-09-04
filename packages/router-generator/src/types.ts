@@ -21,3 +21,8 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
 }
+
+export interface GetRouteNodesResult {
+  rootRouteNode?: RouteNode
+  routeNodes: Array<RouteNode>
+}

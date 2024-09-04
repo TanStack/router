@@ -8,12 +8,15 @@ import {
   replaceBackslash,
   routePathToVariable,
 } from '../../utils'
-import type { RouteNode } from '../../types'
+import { rootPathId } from './rootPathId'
+import type { GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 
 const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
 
-export async function getRouteNodes(config: Config): Promise<Array<RouteNode>> {
+export async function getRouteNodes(
+  config: Config,
+): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
     config
   const logger = logging({ disabled: config.disableLogging })
@@ -143,5 +146,6 @@ export async function getRouteNodes(config: Config): Promise<Array<RouteNode>> {
 
   await recurse('./')
 
-  return routeNodes
+  const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
+  return { rootRouteNode, routeNodes }
 }

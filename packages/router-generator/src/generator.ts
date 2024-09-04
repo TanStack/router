@@ -14,11 +14,11 @@ import {
 } from './utils'
 import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
-import type { RouteNode } from './types'
+import { rootPathId } from './filesystem/physical/rootPathId'
+import type { GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
 let latestTask = 0
-export const rootPathId = '__root'
 const routeGroupPatternRegex = /\(.+\)/g
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
 
@@ -66,37 +66,34 @@ export async function generator(config: Config) {
     parser: 'typescript',
   }
 
-  let preRouteNodes: Array<RouteNode>
+  let getRouteNodesResult: GetRouteNodesResult
 
-  let rootRouteNode: RouteNode
   if (config.virtualRouteConfig) {
-    preRouteNodes = virtualGetRouteNodes(config)
-    rootRouteNode = preRouteNodes[0]!
-    preRouteNodes = preRouteNodes.slice(1)
+    getRouteNodesResult = await virtualGetRouteNodes(config)
   } else {
-    const beforeRouteNodes = await physicalGetRouteNodes(config)
-
-    rootRouteNode = beforeRouteNodes.find(
-      (d) => d.routePath === `/${rootPathId}`,
-    )!
-
-    preRouteNodes = multiSortBy(beforeRouteNodes, [
-      (d) => (d.routePath === '/' ? -1 : 1),
-      (d) => d.routePath?.split('/').length,
-      (d) =>
-        d.filePath.match(new RegExp(`[./]${config.indexToken}[.]`)) ? 1 : -1,
-      (d) =>
-        d.filePath.match(
-          /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
-        )
-          ? 1
-          : -1,
-      (d) =>
-        d.filePath.match(new RegExp(`[./]${config.routeToken}[.]`)) ? -1 : 1,
-      (d) => (d.routePath?.endsWith('/') ? -1 : 1),
-      (d) => d.routePath,
-    ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
+    getRouteNodesResult = await physicalGetRouteNodes(config)
   }
+
+  const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult
+  if (rootRouteNode === undefined) {
+    throw new Error(`rootRouteNode must not be undefined`)
+  }
+  const preRouteNodes = multiSortBy(beforeRouteNodes, [
+    (d) => (d.routePath === '/' ? -1 : 1),
+    (d) => d.routePath?.split('/').length,
+    (d) =>
+      d.filePath.match(new RegExp(`[./]${config.indexToken}[.]`)) ? 1 : -1,
+    (d) =>
+      d.filePath.match(
+        /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
+      )
+        ? 1
+        : -1,
+    (d) =>
+      d.filePath.match(new RegExp(`[./]${config.routeToken}[.]`)) ? -1 : 1,
+    (d) => (d.routePath?.endsWith('/') ? -1 : 1),
+    (d) => d.routePath,
+  ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
 
   const routeTree: Array<RouteNode> = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}

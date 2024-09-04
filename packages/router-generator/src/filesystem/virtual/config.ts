@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type {
   LayoutRoute,
+  PhysicalSubtree,
   Route,
   VirtualRootRoute,
 } from '@tanstack/virtual-file-routes'
@@ -24,10 +25,17 @@ const routeSchema: z.ZodType<Route> = z.object({
   children: z.array(z.lazy(() => virtualRouteNodeSchema)).optional(),
 })
 
+const physicalSubTreeSchema: z.ZodType<PhysicalSubtree> = z.object({
+  type: z.literal('physical'),
+  directory: z.string(),
+  pathPrefix: z.string(),
+})
+
 const virtualRouteNodeSchema = z.union([
   indexRouteSchema,
   layoutRouteSchema,
   routeSchema,
+  physicalSubTreeSchema,
 ])
 
 export const virtualRootRouteSchema: z.ZodType<VirtualRootRoute> = z.object({

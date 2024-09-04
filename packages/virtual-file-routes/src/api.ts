@@ -1,6 +1,7 @@
 import type {
   IndexRoute,
   LayoutRoute,
+  PhysicalSubtree,
   Route,
   VirtualRootRoute,
   VirtualRouteNode,
@@ -65,5 +66,16 @@ export function route(
     file,
     path,
     children,
+  }
+}
+
+export function physical(
+  pathPrefix: string,
+  directory: string,
+): PhysicalSubtree {
+  return {
+    type: 'physical',
+    directory,
+    pathPrefix,
   }
 }

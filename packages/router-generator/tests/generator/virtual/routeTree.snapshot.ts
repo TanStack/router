@@ -14,8 +14,11 @@ import { Route as rootRoute } from './routes/root'
 import { Route as layoutImport } from './routes/layout'
 import { Route as indexImport } from './routes/index'
 import { Route as dbDashboardImport } from './routes/db/dashboard'
+import { Route as HelloIndexImport } from './routes/subtree/index'
 import { Route as dbDashboardInvoicesImport } from './routes/db/dashboard-invoices'
 import { Route as dbDashboardIndexImport } from './routes/db/dashboard-index'
+import { Route as HelloFooIndexImport } from './routes/subtree/foo/index'
+import { Route as HelloFooIdImport } from './routes/subtree/foo/$id'
 import { Route as dbInvoiceDetailImport } from './routes/db/invoice-detail'
 import { Route as dbInvoicesIndexImport } from './routes/db/invoices-index'
 
@@ -36,6 +39,11 @@ const dbDashboardRoute = dbDashboardImport.update({
   getParentRoute: () => layoutRoute,
 } as any)
 
+const HelloIndexRoute = HelloIndexImport.update({
+  path: '/hello/',
+  getParentRoute: () => layoutRoute,
+} as any)
+
 const dbDashboardInvoicesRoute = dbDashboardInvoicesImport.update({
   path: '/invoices',
   getParentRoute: () => dbDashboardRoute,
@@ -44,6 +52,16 @@ const dbDashboardInvoicesRoute = dbDashboardInvoicesImport.update({
 const dbDashboardIndexRoute = dbDashboardIndexImport.update({
   path: '/',
   getParentRoute: () => dbDashboardRoute,
+} as any)
+
+const HelloFooIndexRoute = HelloFooIndexImport.update({
+  path: '/hello/foo/',
+  getParentRoute: () => layoutRoute,
+} as any)
+
+const HelloFooIdRoute = HelloFooIdImport.update({
+  path: '/hello/foo/$id',
+  getParentRoute: () => layoutRoute,
 } as any)
 
 const dbInvoiceDetailRoute = dbInvoiceDetailImport.update({
@@ -95,6 +113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dbDashboardInvoicesImport
       parentRoute: typeof dbDashboardImport
     }
+    '/_layout/hello/': {
+      id: '/_layout/hello/'
+      path: '/hello'
+      fullPath: '/hello'
+      preLoaderRoute: typeof HelloIndexImport
+      parentRoute: typeof layoutImport
+    }
     '/_layout/dashboard/invoices/': {
       id: '/_layout/dashboard/invoices/'
       path: '/'
@@ -108,6 +133,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/invoices/$id'
       preLoaderRoute: typeof dbInvoiceDetailImport
       parentRoute: typeof dbDashboardInvoicesImport
+    }
+    '/_layout/hello/foo/$id': {
+      id: '/_layout/hello/foo/$id'
+      path: '/hello/foo/$id'
+      fullPath: '/hello/foo/$id'
+      preLoaderRoute: typeof HelloFooIdImport
+      parentRoute: typeof layoutImport
+    }
+    '/_layout/hello/foo/': {
+      id: '/_layout/hello/foo/'
+      path: '/hello/foo'
+      fullPath: '/hello/foo'
+      preLoaderRoute: typeof HelloFooIndexImport
+      parentRoute: typeof layoutImport
     }
   }
 }
@@ -124,6 +163,9 @@ export const routeTree = rootRoute.addChildren({
         dbInvoiceDetailRoute,
       }),
     }),
+    HelloIndexRoute,
+    HelloFooIdRoute,
+    HelloFooIndexRoute,
   }),
 })
 
@@ -145,7 +187,10 @@ export const routeTree = rootRoute.addChildren({
     "/_layout": {
       "filePath": "layout.tsx",
       "children": [
-        "/_layout/dashboard"
+        "/_layout/dashboard",
+        "/_layout/hello/",
+        "/_layout/hello/foo/$id",
+        "/_layout/hello/foo/"
       ]
     },
     "/_layout/dashboard": {
@@ -168,6 +213,10 @@ export const routeTree = rootRoute.addChildren({
         "/_layout/dashboard/invoices/$id"
       ]
     },
+    "/_layout/hello/": {
+      "filePath": "subtree/index.tsx",
+      "parent": "/_layout"
+    },
     "/_layout/dashboard/invoices/": {
       "filePath": "db/invoices-index.tsx",
       "parent": "/_layout/dashboard/invoices"
@@ -175,6 +224,14 @@ export const routeTree = rootRoute.addChildren({
     "/_layout/dashboard/invoices/$id": {
       "filePath": "db/invoice-detail.tsx",
       "parent": "/_layout/dashboard/invoices"
+    },
+    "/_layout/hello/foo/$id": {
+      "filePath": "subtree/foo/$id.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/hello/foo/": {
+      "filePath": "subtree/foo/index.tsx",
+      "parent": "/_layout"
     }
   }
 }
