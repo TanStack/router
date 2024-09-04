@@ -143,7 +143,7 @@ Consider the following file structure:
 
 ```
 /routes
-├── __root.tsx
+├── root.tsx
 ├── index.tsx
 ├── layout.tsx
 ├── app
