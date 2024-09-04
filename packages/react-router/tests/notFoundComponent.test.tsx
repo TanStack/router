@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   Link,
+  Outlet,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -32,18 +33,36 @@ const getNotFoundComponent = (text: string) => {
   NotFoundComponent.notFoundTextName = text
   return NotFoundComponent
 }
+const getRootComponent = () => {
+  const rootTextName = 'RootComponent'
+  function RootComponent() {
+    return (
+      <>
+        <div>{rootTextName}</div>
+        <Outlet />
+      </>
+    )
+  }
+  RootComponent.rootTextName = rootTextName
+  return RootComponent
+}
 
 describe('notFoundComp rendered when notFound thrown in beforeLoad', () => {
   test('blank notFound in sync fn', async () => {
+    const RootComponent = getRootComponent()
     const NotFoundComponent = getNotFoundComponent('Not Found root')
-    const Component = getStartComponent(
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+      notFoundComponent: NotFoundComponent,
+    })
+
+    const IndexComponent = getStartComponent(
       '/sync-before-load-throws-empty-not-found',
     )
-    const rootRoute = createRootRoute({ notFoundComponent: NotFoundComponent })
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: Component,
+      component: IndexComponent,
     })
     const syncBeforeLoadThrowsEmptyNotFound = createRoute({
       getParentRoute: () => rootRoute,
@@ -59,28 +78,38 @@ describe('notFoundComp rendered when notFound thrown in beforeLoad', () => {
     const router = createRouter({ routeTree, notFoundMode: 'fuzzy' })
     render(<RouterProvider router={router} />)
 
+    // setup
     const link = await screen.findByRole('link', {
-      name: Component.startTextLinkName,
+      name: IndexComponent.startTextLinkName,
     })
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
+    // actual assertions
     const notFoundText = await screen.findByText(
       NotFoundComponent.notFoundTextName,
     )
     expect(notFoundText).toBeInTheDocument()
+
+    const rootText = await screen.findByText(RootComponent.rootTextName)
+    expect(rootText).toBeInTheDocument()
   })
 
   test('blank notFound in async fn', async () => {
+    const RootComponent = getRootComponent()
     const NotFoundComponent = getNotFoundComponent('Not Found root')
-    const Component = getStartComponent(
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+      notFoundComponent: NotFoundComponent,
+    })
+
+    const IndexComponent = getStartComponent(
       '/async-before-load-throws-empty-not-found',
     )
-    const rootRoute = createRootRoute({ notFoundComponent: NotFoundComponent })
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: Component,
+      component: IndexComponent,
     })
     const asyncBeforeLoadThrowsEmptyNotFound = createRoute({
       getParentRoute: () => rootRoute,
@@ -97,16 +126,21 @@ describe('notFoundComp rendered when notFound thrown in beforeLoad', () => {
     const router = createRouter({ routeTree, notFoundMode: 'fuzzy' })
     render(<RouterProvider router={router} />)
 
+    // setup
     const link = await screen.findByRole('link', {
-      name: Component.startTextLinkName,
+      name: IndexComponent.startTextLinkName,
     })
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
+    // actual assertions
     const notFoundText = await screen.findByText(
       NotFoundComponent.notFoundTextName,
     )
     expect(notFoundText).toBeInTheDocument()
+
+    const rootText = await screen.findByText(RootComponent.rootTextName)
+    expect(rootText).toBeInTheDocument()
   })
 })
 
@@ -116,13 +150,20 @@ describe('notFoundComp rendered when notFound thrown in loader', () => {
    * This probably shouldn't be happening, since we haven't configured it.
    */
   test('blank notFound in sync fn', async () => {
+    const RootComponent = getRootComponent()
     const NotFoundComponent = getNotFoundComponent('Not Found root')
-    const Component = getStartComponent('/sync-loader-throws-empty-not-found')
-    const rootRoute = createRootRoute({ notFoundComponent: NotFoundComponent })
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+      notFoundComponent: NotFoundComponent,
+    })
+
+    const IndexComponent = getStartComponent(
+      '/sync-loader-throws-empty-not-found',
+    )
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: Component,
+      component: IndexComponent,
     })
     const syncLoaderThrowsEmptyNotFound = createRoute({
       getParentRoute: () => rootRoute,
@@ -138,26 +179,38 @@ describe('notFoundComp rendered when notFound thrown in loader', () => {
     const router = createRouter({ routeTree, notFoundMode: 'fuzzy' })
     render(<RouterProvider router={router} />)
 
+    // setup
     const link = await screen.findByRole('link', {
-      name: Component.startTextLinkName,
+      name: IndexComponent.startTextLinkName,
     })
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
+    // actual assertions
     const notFoundText = await screen.findByText(
       NotFoundComponent.notFoundTextName,
     )
     expect(notFoundText).toBeInTheDocument()
+
+    const rootText = await screen.findByText(RootComponent.rootTextName)
+    expect(rootText).toBeInTheDocument()
   })
 
   test('blank notFound in async fn', async () => {
+    const RootComponent = getRootComponent()
     const NotFoundComponent = getNotFoundComponent('Not Found root')
-    const Component = getStartComponent('/async-loader-throws-empty-not-found')
-    const rootRoute = createRootRoute({ notFoundComponent: NotFoundComponent })
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+      notFoundComponent: NotFoundComponent,
+    })
+
+    const IndexComponent = getStartComponent(
+      '/async-loader-throws-empty-not-found',
+    )
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: Component,
+      component: IndexComponent,
     })
     const asyncLoaderThrowsEmptyNotFound = createRoute({
       getParentRoute: () => rootRoute,
@@ -174,42 +227,56 @@ describe('notFoundComp rendered when notFound thrown in loader', () => {
     const router = createRouter({ routeTree, notFoundMode: 'fuzzy' })
     render(<RouterProvider router={router} />)
 
+    // setup
     const link = await screen.findByRole('link', {
-      name: Component.startTextLinkName,
+      name: IndexComponent.startTextLinkName,
     })
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
+    // actual assertions
     const notFoundText = await screen.findByText(
       NotFoundComponent.notFoundTextName,
     )
     expect(notFoundText).toBeInTheDocument()
+
+    const rootText = await screen.findByText(RootComponent.rootTextName)
+    expect(rootText).toBeInTheDocument()
   })
 })
 
 describe('route does not exist', () => {
   test('navigate from the index route to expect a notFoundComponent', async () => {
+    const RootComponent = getRootComponent()
     const NotFoundComponent = getNotFoundComponent('Not Found root')
-    const Component = getStartComponent('/route-does-not-exist')
-    const rootRoute = createRootRoute({ notFoundComponent: NotFoundComponent })
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+      notFoundComponent: NotFoundComponent,
+    })
+    const IndexComponent = getStartComponent('/route-does-not-exist')
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: Component,
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, notFoundMode: 'fuzzy' })
     render(<RouterProvider router={router} />)
 
+    // setup
     const link = await screen.findByRole('link', {
-      name: Component.startTextLinkName,
+      name: IndexComponent.startTextLinkName,
     })
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
+    // actual assertions
     const notFoundText = await screen.findByText(
       NotFoundComponent.notFoundTextName,
     )
     expect(notFoundText).toBeInTheDocument()
+
+    const rootText = await screen.findByText(RootComponent.rootTextName)
+    expect(rootText).toBeInTheDocument()
   })
 })
