@@ -61,7 +61,7 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 
-function RootComponent() {
+export function RootComponent() {
   return (
     <RootDocument>
       <Outlet />
@@ -84,7 +84,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             }}
             activeOptions={{ exact: true }}
           >
-            Home
+            Homeasdfasd
           </Link>{' '}
           <Link
             to="/posts"

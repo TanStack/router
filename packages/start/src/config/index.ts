@@ -255,7 +255,9 @@ export function defineConfig(
         dir: './public',
         base: '/',
       },
-      withStartPlugins(tsrConfig)({
+      withStartPlugins(tsrConfig, {
+        enableRouteGeneration: true,
+      })({
         name: 'client',
         type: 'client',
         target: 'browser',
@@ -293,6 +295,7 @@ export function defineConfig(
                 experimental: {
                   ...tsrConfig.experimental,
                 },
+                enableRouteGeneration: false,
               }),
             ])({
               name: 'api',
@@ -334,6 +337,11 @@ export function defineConfig(
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
+          // reactRefresh({
+          //   babel: opts.react?.babel,
+          //   exclude: opts.react?.exclude,
+          //   include: opts.react?.include,
+          // }),
           config('start-ssr', {
             ssr: {
               external: ['@vinxi/react-server-dom/client'],
@@ -406,7 +414,12 @@ function withPlugins(plugins: Array<any>) {
   }
 }
 
-function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
+function withStartPlugins(
+  tsrConfig: z.infer<typeof configSchema>,
+  opts?: {
+    enableRouteGeneration?: boolean
+  },
+) {
   return withPlugins([
     config('start-vite', {
       ssr: {
@@ -422,6 +435,7 @@ function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
       experimental: {
         ...tsrConfig.experimental,
       },
+      enableRouteGeneration: opts?.enableRouteGeneration ?? false,
     }),
     TanStackStartVite(),
   ])
