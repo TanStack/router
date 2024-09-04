@@ -20,17 +20,19 @@ afterEach(() => {
 
 const getStartComponent = (href: string) => {
   const startTextLinkName = 'Link to test'
-  function RouteComponent() {
+  function StartComponent() {
     return <Link to={href}>{startTextLinkName}</Link>
   }
-  RouteComponent.startTextLinkName = startTextLinkName
-  return RouteComponent
+  StartComponent.startTextLinkName = startTextLinkName
+  StartComponent.linkScreenElement = () => screen.findByText(startTextLinkName)
+  return StartComponent
 }
 const getNotFoundComponent = (text: string) => {
   function NotFoundComponent() {
     return <div>{text}</div>
   }
   NotFoundComponent.notFoundTextName = text
+  NotFoundComponent.screenElement = () => screen.findByText(text)
   return NotFoundComponent
 }
 const getRootComponent = () => {
@@ -44,6 +46,7 @@ const getRootComponent = () => {
     )
   }
   RootComponent.rootTextName = rootTextName
+  RootComponent.screenElement = () => screen.findByText(rootTextName)
   return RootComponent
 }
 
@@ -79,19 +82,15 @@ describe('notFoundComp rendered when notFound thrown in beforeLoad', () => {
     render(<RouterProvider router={router} />)
 
     // setup
-    const link = await screen.findByRole('link', {
-      name: IndexComponent.startTextLinkName,
-    })
+    const link = await IndexComponent.linkScreenElement()
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
     // actual assertions
-    const notFoundText = await screen.findByText(
-      NotFoundComponent.notFoundTextName,
-    )
+    const notFoundText = await NotFoundComponent.screenElement()
     expect(notFoundText).toBeInTheDocument()
 
-    const rootText = await screen.findByText(RootComponent.rootTextName)
+    const rootText = await RootComponent.screenElement()
     expect(rootText).toBeInTheDocument()
   })
 
@@ -127,19 +126,15 @@ describe('notFoundComp rendered when notFound thrown in beforeLoad', () => {
     render(<RouterProvider router={router} />)
 
     // setup
-    const link = await screen.findByRole('link', {
-      name: IndexComponent.startTextLinkName,
-    })
+    const link = await IndexComponent.linkScreenElement()
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
     // actual assertions
-    const notFoundText = await screen.findByText(
-      NotFoundComponent.notFoundTextName,
-    )
+    const notFoundText = await NotFoundComponent.screenElement()
     expect(notFoundText).toBeInTheDocument()
 
-    const rootText = await screen.findByText(RootComponent.rootTextName)
+    const rootText = await RootComponent.screenElement()
     expect(rootText).toBeInTheDocument()
   })
 })
@@ -180,19 +175,15 @@ describe('notFoundComp rendered when notFound thrown in loader', () => {
     render(<RouterProvider router={router} />)
 
     // setup
-    const link = await screen.findByRole('link', {
-      name: IndexComponent.startTextLinkName,
-    })
+    const link = await IndexComponent.linkScreenElement()
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
     // actual assertions
-    const notFoundText = await screen.findByText(
-      NotFoundComponent.notFoundTextName,
-    )
+    const notFoundText = await NotFoundComponent.screenElement()
     expect(notFoundText).toBeInTheDocument()
 
-    const rootText = await screen.findByText(RootComponent.rootTextName)
+    const rootText = await RootComponent.screenElement()
     expect(rootText).toBeInTheDocument()
   })
 
@@ -228,19 +219,15 @@ describe('notFoundComp rendered when notFound thrown in loader', () => {
     render(<RouterProvider router={router} />)
 
     // setup
-    const link = await screen.findByRole('link', {
-      name: IndexComponent.startTextLinkName,
-    })
+    const link = await IndexComponent.linkScreenElement()
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
     // actual assertions
-    const notFoundText = await screen.findByText(
-      NotFoundComponent.notFoundTextName,
-    )
+    const notFoundText = await NotFoundComponent.screenElement()
     expect(notFoundText).toBeInTheDocument()
 
-    const rootText = await screen.findByText(RootComponent.rootTextName)
+    const rootText = await RootComponent.screenElement()
     expect(rootText).toBeInTheDocument()
   })
 })
@@ -264,19 +251,15 @@ describe('route does not exist', () => {
     render(<RouterProvider router={router} />)
 
     // setup
-    const link = await screen.findByRole('link', {
-      name: IndexComponent.startTextLinkName,
-    })
+    const link = await IndexComponent.linkScreenElement()
     expect(link).toBeInTheDocument()
     fireEvent.click(link)
 
     // actual assertions
-    const notFoundText = await screen.findByText(
-      NotFoundComponent.notFoundTextName,
-    )
+    const notFoundText = await NotFoundComponent.screenElement()
     expect(notFoundText).toBeInTheDocument()
 
-    const rootText = await screen.findByText(RootComponent.rootTextName)
+    const rootText = await RootComponent.screenElement()
     expect(rootText).toBeInTheDocument()
   })
 })
