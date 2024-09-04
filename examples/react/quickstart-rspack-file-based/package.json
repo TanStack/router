@@ -16,7 +16,7 @@
   "devDependencies": {
     "@rsbuild/core": "1.0.1-rc.0",
     "@rsbuild/plugin-react": "1.0.1-rc.0",
-    "@tanstack/router-plugin": "^1.52.0",
+    "@tanstack/router-plugin": "^1.54.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "typescript": "^5.5.3"
