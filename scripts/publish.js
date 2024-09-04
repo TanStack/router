@@ -41,6 +41,10 @@ await publish({
       packageDir: 'packages/router-generator',
     },
     {
+      name: '@tanstack/virtual-file-routes',
+      packageDir: 'packages/virtual-file-routes',
+    },
+    {
       name: '@tanstack/router-cli',
       packageDir: 'packages/router-cli',
     },
