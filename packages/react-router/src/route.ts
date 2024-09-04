@@ -1495,7 +1495,14 @@ export type NotFoundRouteProps = {
   data: unknown
 }
 
-// workaround for typescript 5.0, can be replaced with React.ReactNode once 5.0 is not supported
+/**
+ * Up until typescript 5.0, react components could only return a JSX element or null.
+ * Typescript 5.1 changed the signature for React.JSXElementConstructor,
+ * which allows components to return any valid ReactNode, e.g. string or undefined.
+ *
+ * Since we still support typescript 5.0, we need to use this workaround to support both versions.
+ * Once typescript 5.0 is not supported, this type can be removed and replaced by React.ReactNode.
+ */
 export type ReactNode =
   (() => 'x') extends React.JSXElementConstructor<any>
     ? React.ReactNode
