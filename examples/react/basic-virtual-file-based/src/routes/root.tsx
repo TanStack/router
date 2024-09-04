@@ -44,6 +44,14 @@ function RootComponent() {
           Layout
         </Link>{' '}
         <Link
+          to="/classic/hello"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Subtree
+        </Link>{' '}
+        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{

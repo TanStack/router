@@ -1,4 +1,10 @@
-import { index, layout, rootRoute, route } from '@tanstack/virtual-file-routes'
+import {
+  index,
+  layout,
+  physical,
+  rootRoute,
+  route,
+} from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
   index('home.tsx'),
@@ -12,4 +18,5 @@ export const routes = rootRoute('root.tsx', [
       route('/layout-b', 'b.tsx'),
     ]),
   ]),
+  physical('/classic', 'file-based-subtree'),
 ])

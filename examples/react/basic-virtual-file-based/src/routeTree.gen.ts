@@ -11,24 +11,28 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/root'
-import { Route as layoutFirstLayoutImport } from './routes/layout/first-layout'
 import { Route as postsPostsImport } from './routes/posts/posts'
+import { Route as layoutFirstLayoutImport } from './routes/layout/first-layout'
 import { Route as homeImport } from './routes/home'
-import { Route as layoutSecondLayoutImport } from './routes/layout/second-layout'
 import { Route as postsPostsDetailImport } from './routes/posts/posts-detail'
+import { Route as layoutSecondLayoutImport } from './routes/layout/second-layout'
 import { Route as postsPostsHomeImport } from './routes/posts/posts-home'
+import { Route as ClassicHelloRouteImport } from './routes/file-based-subtree/hello/route'
+import { Route as ClassicHelloIndexImport } from './routes/file-based-subtree/hello/index'
+import { Route as ClassicHelloWorldImport } from './routes/file-based-subtree/hello/world'
+import { Route as ClassicHelloUniverseImport } from './routes/file-based-subtree/hello/universe'
 import { Route as bImport } from './routes/b'
 import { Route as aImport } from './routes/a'
 
 // Create/Update Routes
 
-const layoutFirstLayoutRoute = layoutFirstLayoutImport.update({
-  id: '/_first',
+const postsPostsRoute = postsPostsImport.update({
+  path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const postsPostsRoute = postsPostsImport.update({
-  path: '/posts',
+const layoutFirstLayoutRoute = layoutFirstLayoutImport.update({
+  id: '/_first',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -37,19 +41,39 @@ const homeRoute = homeImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const layoutSecondLayoutRoute = layoutSecondLayoutImport.update({
-  id: '/_second',
-  getParentRoute: () => layoutFirstLayoutRoute,
-} as any)
-
 const postsPostsDetailRoute = postsPostsDetailImport.update({
   path: '/$postId',
   getParentRoute: () => postsPostsRoute,
 } as any)
 
+const layoutSecondLayoutRoute = layoutSecondLayoutImport.update({
+  id: '/_second',
+  getParentRoute: () => layoutFirstLayoutRoute,
+} as any)
+
 const postsPostsHomeRoute = postsPostsHomeImport.update({
   path: '/',
   getParentRoute: () => postsPostsRoute,
+} as any)
+
+const ClassicHelloRouteRoute = ClassicHelloRouteImport.update({
+  path: '/classic/hello',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ClassicHelloIndexRoute = ClassicHelloIndexImport.update({
+  path: '/',
+  getParentRoute: () => ClassicHelloRouteRoute,
+} as any)
+
+const ClassicHelloWorldRoute = ClassicHelloWorldImport.update({
+  path: '/world',
+  getParentRoute: () => ClassicHelloRouteRoute,
+} as any)
+
+const ClassicHelloUniverseRoute = ClassicHelloUniverseImport.update({
+  path: '/universe',
+  getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 
 const bRoute = bImport.update({
@@ -73,11 +97,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof homeImport
       parentRoute: typeof rootRoute
     }
+    '/_first': {
+      id: '/_first'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof layoutFirstLayoutImport
+      parentRoute: typeof rootRoute
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof postsPostsImport
+      parentRoute: typeof rootRoute
+    }
+    '/classic/hello': {
+      id: '/classic/hello'
+      path: '/classic/hello'
+      fullPath: '/classic/hello'
+      preLoaderRoute: typeof ClassicHelloRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts/': {
@@ -87,26 +125,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof postsPostsHomeImport
       parentRoute: typeof postsPostsImport
     }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof postsPostsDetailImport
-      parentRoute: typeof postsPostsImport
-    }
-    '/_first': {
-      id: '/_first'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof layoutFirstLayoutImport
-      parentRoute: typeof rootRoute
-    }
     '/_first/_second': {
       id: '/_first/_second'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof layoutSecondLayoutImport
       parentRoute: typeof layoutFirstLayoutImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof postsPostsDetailImport
+      parentRoute: typeof postsPostsImport
     }
     '/_first/_second/layout-a': {
       id: '/_first/_second/layout-a'
@@ -122,6 +153,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof bImport
       parentRoute: typeof layoutSecondLayoutImport
     }
+    '/classic/hello/universe': {
+      id: '/classic/hello/universe'
+      path: '/universe'
+      fullPath: '/classic/hello/universe'
+      preLoaderRoute: typeof ClassicHelloUniverseImport
+      parentRoute: typeof ClassicHelloRouteImport
+    }
+    '/classic/hello/world': {
+      id: '/classic/hello/world'
+      path: '/world'
+      fullPath: '/classic/hello/world'
+      preLoaderRoute: typeof ClassicHelloWorldImport
+      parentRoute: typeof ClassicHelloRouteImport
+    }
+    '/classic/hello/': {
+      id: '/classic/hello/'
+      path: '/'
+      fullPath: '/classic/hello/'
+      preLoaderRoute: typeof ClassicHelloIndexImport
+      parentRoute: typeof ClassicHelloRouteImport
+    }
   }
 }
 
@@ -129,15 +181,20 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren({
   homeRoute,
-  postsPostsRoute: postsPostsRoute.addChildren({
-    postsPostsHomeRoute,
-    postsPostsDetailRoute,
-  }),
   layoutFirstLayoutRoute: layoutFirstLayoutRoute.addChildren({
     layoutSecondLayoutRoute: layoutSecondLayoutRoute.addChildren({
       aRoute,
       bRoute,
     }),
+  }),
+  postsPostsRoute: postsPostsRoute.addChildren({
+    postsPostsHomeRoute,
+    postsPostsDetailRoute,
+  }),
+  ClassicHelloRouteRoute: ClassicHelloRouteRoute.addChildren({
+    ClassicHelloUniverseRoute,
+    ClassicHelloWorldRoute,
+    ClassicHelloIndexRoute,
   }),
 })
 
@@ -150,12 +207,19 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "root.tsx",
       "children": [
         "/",
+        "/_first",
         "/posts",
-        "/_first"
+        "/classic/hello"
       ]
     },
     "/": {
       "filePath": "home.tsx"
+    },
+    "/_first": {
+      "filePath": "layout/first-layout.tsx",
+      "children": [
+        "/_first/_second"
+      ]
     },
     "/posts": {
       "filePath": "posts/posts.tsx",
@@ -164,19 +228,17 @@ export const routeTree = rootRoute.addChildren({
         "/posts/$postId"
       ]
     },
+    "/classic/hello": {
+      "filePath": "file-based-subtree/hello/route.tsx",
+      "children": [
+        "/classic/hello/universe",
+        "/classic/hello/world",
+        "/classic/hello/"
+      ]
+    },
     "/posts/": {
       "filePath": "posts/posts-home.tsx",
       "parent": "/posts"
-    },
-    "/posts/$postId": {
-      "filePath": "posts/posts-detail.tsx",
-      "parent": "/posts"
-    },
-    "/_first": {
-      "filePath": "layout/first-layout.tsx",
-      "children": [
-        "/_first/_second"
-      ]
     },
     "/_first/_second": {
       "filePath": "layout/second-layout.tsx",
@@ -186,6 +248,10 @@ export const routeTree = rootRoute.addChildren({
         "/_first/_second/layout-b"
       ]
     },
+    "/posts/$postId": {
+      "filePath": "posts/posts-detail.tsx",
+      "parent": "/posts"
+    },
     "/_first/_second/layout-a": {
       "filePath": "a.tsx",
       "parent": "/_first/_second"
@@ -193,6 +259,18 @@ export const routeTree = rootRoute.addChildren({
     "/_first/_second/layout-b": {
       "filePath": "b.tsx",
       "parent": "/_first/_second"
+    },
+    "/classic/hello/universe": {
+      "filePath": "file-based-subtree/hello/universe.tsx",
+      "parent": "/classic/hello"
+    },
+    "/classic/hello/world": {
+      "filePath": "file-based-subtree/hello/world.tsx",
+      "parent": "/classic/hello"
+    },
+    "/classic/hello/": {
+      "filePath": "file-based-subtree/hello/index.tsx",
+      "parent": "/classic/hello"
     }
   }
 }
