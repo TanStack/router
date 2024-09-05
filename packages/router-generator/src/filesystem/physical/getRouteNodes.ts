@@ -64,7 +64,7 @@ export async function getRouteNodes(
       )
       let virtualRouteSubtreeConfig: VirtualRouteSubtreeConfig
       if (typeof virtualRouteConfigExport.default === 'function') {
-        virtualRouteSubtreeConfig = await virtualRouteConfigExport()
+        virtualRouteSubtreeConfig = await virtualRouteConfigExport.default()
       } else {
         virtualRouteSubtreeConfig = virtualRouteConfigExport.default
       }
