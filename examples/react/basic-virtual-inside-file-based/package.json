@@ -6,8 +6,7 @@
     "dev": "vite --port=3001",
     "build": "vite build",
     "serve": "vite preview",
-    "start": "vite",
-    "test:e2e": "playwright test --project=chromium"
+    "start": "vite"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.52.5",
