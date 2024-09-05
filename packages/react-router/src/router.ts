@@ -1336,7 +1336,8 @@ export class Router<
 
       const fromRouteByFromPathRouteId =
         this.routesById[
-          stayingMatches?.find((d) => d.pathname === fromPath)?.routeId
+          stayingMatches?.find((d) => d.pathname === fromPath)
+            ?.routeId as keyof this['routesById']
         ]
 
       let pathname = dest.to
@@ -1634,7 +1635,7 @@ export class Router<
 
     return this.buildAndCommitLocation({
       ...rest,
-      to,
+      to: to as string,
       // to: toString,
     })
   }
@@ -2447,7 +2448,7 @@ export class Router<
 
   preloadRoute = async <
     TFrom extends RoutePaths<TRouteTree> | string = string,
-    TTo extends string = '',
+    TTo extends string | undefined = undefined,
     TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
     TMaskTo extends string = '',
   >(
@@ -2521,7 +2522,7 @@ export class Router<
 
   matchRoute = <
     TFrom extends RoutePaths<TRouteTree> = '/',
-    TTo extends string = '',
+    TTo extends string | undefined = undefined,
     TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
   >(
     location: ToOptions<
@@ -2534,7 +2535,10 @@ export class Router<
     const matchLocation = {
       ...location,
       to: location.to
-        ? this.resolvePathWithBase((location.from || '') as string, location.to)
+        ? this.resolvePathWithBase(
+            (location.from || '') as string,
+            location.to as string,
+          )
         : undefined,
       params: location.params || {},
       leaveParams: true,

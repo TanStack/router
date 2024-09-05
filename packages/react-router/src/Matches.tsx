@@ -169,31 +169,24 @@ export interface RouteMatch<
 
 export type MakeRouteMatch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId = ParseRoute<TRouteTree>['id'],
+  TRouteId = RouteIds<TRouteTree>,
   TStrict extends boolean = true,
-  TTypes extends AnyRoute['types'] = RouteById<TRouteTree, TRouteId>['types'],
-  TFullPath = TTypes['fullPath'],
-  TAllParams = TStrict extends false
-    ? AllParams<TRouteTree>
-    : TTypes['allParams'],
-  TFullSearchSchema = TStrict extends false
-    ? FullSearchSchema<TRouteTree>
-    : TTypes['fullSearchSchema'],
-  TLoaderData = TStrict extends false
-    ? AllLoaderData<TRouteTree>
-    : TTypes['loaderData'],
-  TAllContext = TStrict extends false
-    ? AllContext<TRouteTree>
-    : TTypes['allContext'],
-  TLoaderDeps = TTypes['loaderDeps'],
 > = RouteMatch<
   TRouteId,
-  TFullPath,
-  TAllParams,
-  TFullSearchSchema,
-  TLoaderData,
-  TAllContext,
-  TLoaderDeps
+  RouteById<TRouteTree, TRouteId>['types']['fullPath'],
+  TStrict extends false
+    ? AllParams<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['allParams'],
+  TStrict extends false
+    ? FullSearchSchema<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
+  TStrict extends false
+    ? AllLoaderData<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['loaderData'],
+  TStrict extends false
+    ? AllContext<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['allContext'],
+  RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
 >
 
 export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
@@ -264,11 +257,11 @@ export interface MatchRouteOptions {
 
 export type UseMatchRouteOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = RoutePaths<
     TRouter['routeTree']
   >,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
   TOptions extends ToOptions<
     TRouter,

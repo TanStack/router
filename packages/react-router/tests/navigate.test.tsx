@@ -139,7 +139,7 @@ describe('router.navigate navigation using a single path param - object syntax f
 
     await router.navigate({
       params: { slug: 'tkdodo' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
@@ -176,7 +176,7 @@ describe('router.navigate navigation using a single path param - function syntax
 
     await router.navigate({
       params: (p: any) => ({ ...p, slug: 'tkdodo' }),
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
@@ -213,7 +213,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
 
     await router.navigate({
       params: { projectId: 'query' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/query/v1/react')
@@ -248,7 +248,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
 
     await router.navigate({
       params: { version: 'v3' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v3/react')
@@ -283,7 +283,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
 
     await router.navigate({
       params: { framework: 'vue' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v1/vue')
@@ -320,7 +320,7 @@ describe('router.navigate navigation using multiple path params - function synta
 
     await router.navigate({
       params: (p: any) => ({ ...p, projectId: 'query' }),
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/query/v1/react')
@@ -355,7 +355,7 @@ describe('router.navigate navigation using multiple path params - function synta
 
     await router.navigate({
       params: (p: any) => ({ ...p, version: 'v3' }),
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v3/react')
@@ -390,7 +390,7 @@ describe('router.navigate navigation using multiple path params - function synta
 
     await router.navigate({
       params: (p: any) => ({ ...p, framework: 'vue' }),
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v1/vue')
@@ -428,7 +428,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
 
     await router.navigate({
       params: { username: 'tkdodo' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/u/tkdodo')
@@ -464,7 +464,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
 
     await router.navigate({
       params: { username: 'tkdodo' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/g/tkdodo')
@@ -482,7 +482,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
 
     await router.navigate({
       search: { 'foo=bar': 3 },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.search).toStrictEqual({ 'foo=bar': 3 })

@@ -127,18 +127,117 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  ParamsRouteRoute: ParamsRouteRoute.addChildren({
-    ParamsParamsPlaceholderRoute,
-  }),
-  SearchRouteRoute: SearchRouteRoute.addChildren({
-    SearchSearchPlaceholderRoute,
-  }),
-  AbsoluteRoute,
-  LinkPropsRoute,
-  RelativeRoute,
-})
+interface ParamsRouteRouteChildren {
+  ParamsParamsPlaceholderRoute: typeof ParamsParamsPlaceholderRoute
+}
+
+const ParamsRouteRouteChildren: ParamsRouteRouteChildren = {
+  ParamsParamsPlaceholderRoute: ParamsParamsPlaceholderRoute,
+}
+
+const ParamsRouteRouteWithChildren = ParamsRouteRoute._addFileChildren(
+  ParamsRouteRouteChildren,
+)
+
+interface SearchRouteRouteChildren {
+  SearchSearchPlaceholderRoute: typeof SearchSearchPlaceholderRoute
+}
+
+const SearchRouteRouteChildren: SearchRouteRouteChildren = {
+  SearchSearchPlaceholderRoute: SearchSearchPlaceholderRoute,
+}
+
+const SearchRouteRouteWithChildren = SearchRouteRoute._addFileChildren(
+  SearchRouteRouteChildren,
+)
+
+interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/params': typeof ParamsRouteRouteWithChildren
+  '/search': typeof SearchRouteRouteWithChildren
+  '/absolute': typeof AbsoluteRoute
+  '/linkProps': typeof LinkPropsRoute
+  '/relative': typeof RelativeRoute
+  '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
+  '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/params': typeof ParamsRouteRouteWithChildren
+  '/search': typeof SearchRouteRouteWithChildren
+  '/absolute': typeof AbsoluteRoute
+  '/linkProps': typeof LinkPropsRoute
+  '/relative': typeof RelativeRoute
+  '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
+  '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/params': typeof ParamsRouteRouteWithChildren
+  '/search': typeof SearchRouteRouteWithChildren
+  '/absolute': typeof AbsoluteRoute
+  '/linkProps': typeof LinkPropsRoute
+  '/relative': typeof RelativeRoute
+  '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
+  '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/params'
+    | '/search'
+    | '/absolute'
+    | '/linkProps'
+    | '/relative'
+    | '/params/$paramsPlaceholder'
+    | '/search/searchPlaceholder'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/params'
+    | '/search'
+    | '/absolute'
+    | '/linkProps'
+    | '/relative'
+    | '/params/$paramsPlaceholder'
+    | '/search/searchPlaceholder'
+  id:
+    | '/'
+    | '/params'
+    | '/search'
+    | '/absolute'
+    | '/linkProps'
+    | '/relative'
+    | '/params/$paramsPlaceholder'
+    | '/search/searchPlaceholder'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  ParamsRouteRoute: typeof ParamsRouteRouteWithChildren
+  SearchRouteRoute: typeof SearchRouteRouteWithChildren
+  AbsoluteRoute: typeof AbsoluteRoute
+  LinkPropsRoute: typeof LinkPropsRoute
+  RelativeRoute: typeof RelativeRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  ParamsRouteRoute: ParamsRouteRouteWithChildren,
+  SearchRouteRoute: SearchRouteRouteWithChildren,
+  AbsoluteRoute: AbsoluteRoute,
+  LinkPropsRoute: LinkPropsRoute,
+  RelativeRoute: RelativeRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

@@ -393,7 +393,6 @@ test('when navigating from a route with no params and no search to the root', ()
       | '..'
       | '.'
       | '/'
-      | ''
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
@@ -413,7 +412,6 @@ test('when navigating from a route with no params and no search to the root', ()
       | '..'
       | '.'
       | '/'
-      | ''
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
@@ -446,14 +444,13 @@ test('when navigating from a route with no params and no search to the root', ()
       | undefined
     >()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', '/'>)
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
       | '..'
       | '.'
       | '/'
-      | ''
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
@@ -610,25 +607,25 @@ test('when navigating from a route with no params and no search to the root', ()
 })
 
 test('when navigating from a route with no params and no search to the current route', () => {
-  expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
+  expectTypeOf(Link<DefaultRouter, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | './' | '.'>()
+    .toEqualTypeOf<'./$postId' | undefined | '.'>()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts/', './'>)
+  expectTypeOf(Link<DefaultRouterObjects, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | './' | '.'>()
+    .toEqualTypeOf<'./$postId' | undefined | '.'>()
 
   expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<'./$postId/' | undefined | './'>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | './' | '.'>()
+    .toEqualTypeOf<'./$postId' | undefined | '.'>()
 
   expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
     .parameter(0)

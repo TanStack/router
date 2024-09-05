@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import * as React from 'react'
 import {
   ErrorComponent,
@@ -7,7 +9,12 @@ import {
 } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/(test)/foo')({
-  loader: async ({ params: { postId } }) => ({ postId }),
+  loader: async ({ params: { postId } }) => ({
+    postId,
+    title: 'title',
+    body: 'body',
+    id: 'id',
+  }),
   errorComponent: PostErrorComponent as any,
   notFoundComponent: () => {
     return <p>Post not found</p>

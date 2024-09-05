@@ -10,7 +10,6 @@ import {
   useMatchRoute,
   useMatches,
 } from '../src'
-import { FindValueByKey } from '../src/Matches'
 
 const rootRoute = createRootRoute()
 
