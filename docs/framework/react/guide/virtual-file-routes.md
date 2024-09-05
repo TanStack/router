@@ -230,9 +230,9 @@ The helper function `defineVirtualSubtreeConfig` is closely modeled after vite's
 
 ## Inception
 
-You can mix and match TanStack Router's File Based routing convention and virtual route configuration however you like.   
+You can mix and match TanStack Router's File Based routing convention and virtual route configuration however you like.  
 Let's go deeper!  
-Check out the following example that starts off using File Based routing convention, switches over to virtual route configuration for `/posts`, switches back to File Based routing convention for `/posts/lets-go` only to switch over to virtual route configuration again for `/posts/lets-go/deeper`. 
+Check out the following example that starts off using File Based routing convention, switches over to virtual route configuration for `/posts`, switches back to File Based routing convention for `/posts/lets-go` only to switch over to virtual route configuration again for `/posts/lets-go/deeper`.
 
 ```
 ├── __root.tsx
