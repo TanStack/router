@@ -247,6 +247,7 @@ Check out the following example that starts off using File Based routing convent
 │       │   └── home.tsx
 │       └── index.tsx
 └── posts.tsx
+```
 
 ## Configuration via the TanStack Router CLI
 
