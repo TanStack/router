@@ -17,8 +17,10 @@ import { Route as IndexImport } from './routes/index'
 import { Route as postsDetailsImport } from './routes/posts/details'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as postsHomeImport } from './routes/posts/home'
+import { Route as postsLetsGoIndexImport } from './routes/posts/lets-go/index'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as postsLetsGoDeeperHomeImport } from './routes/posts/lets-go/deeper/home'
 
 // Create/Update Routes
 
@@ -52,6 +54,11 @@ const postsHomeRoute = postsHomeImport.update({
   getParentRoute: () => PostsRoute,
 } as any)
 
+const postsLetsGoIndexRoute = postsLetsGoIndexImport.update({
+  path: '/inception/',
+  getParentRoute: () => PostsRoute,
+} as any)
+
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
@@ -60,6 +67,11 @@ const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
 const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
+} as any)
+
+const postsLetsGoDeeperHomeRoute = postsLetsGoDeeperHomeImport.update({
+  path: '/inception/deeper/',
+  getParentRoute: () => PostsRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -122,6 +134,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2LayoutBImport
       parentRoute: typeof LayoutLayout2Import
     }
+    '/posts/inception/': {
+      id: '/posts/inception/'
+      path: '/inception'
+      fullPath: '/posts/inception'
+      preLoaderRoute: typeof postsLetsGoIndexImport
+      parentRoute: typeof PostsImport
+    }
+    '/posts/inception/deeper/': {
+      id: '/posts/inception/deeper/'
+      path: '/inception/deeper'
+      fullPath: '/posts/inception/deeper'
+      preLoaderRoute: typeof postsLetsGoDeeperHomeImport
+      parentRoute: typeof PostsImport
+    }
   }
 }
 
@@ -135,7 +161,12 @@ export const routeTree = rootRoute.addChildren({
       LayoutLayout2LayoutBRoute,
     }),
   }),
-  PostsRoute: PostsRoute.addChildren({ postsHomeRoute, postsDetailsRoute }),
+  PostsRoute: PostsRoute.addChildren({
+    postsHomeRoute,
+    postsDetailsRoute,
+    postsLetsGoIndexRoute,
+    postsLetsGoDeeperHomeRoute,
+  }),
 })
 
 /* prettier-ignore-end */
@@ -164,7 +195,9 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "posts.tsx",
       "children": [
         "/posts/",
-        "/posts/$postId"
+        "/posts/$postId",
+        "/posts/inception/",
+        "/posts/inception/deeper/"
       ]
     },
     "/posts/": {
@@ -190,6 +223,14 @@ export const routeTree = rootRoute.addChildren({
     "/_layout/_layout-2/layout-b": {
       "filePath": "_layout/_layout-2/layout-b.tsx",
       "parent": "/_layout/_layout-2"
+    },
+    "/posts/inception/": {
+      "filePath": "posts/lets-go/index.tsx",
+      "parent": "/posts"
+    },
+    "/posts/inception/deeper/": {
+      "filePath": "posts/lets-go/deeper/home.tsx",
+      "parent": "/posts"
     }
   }
 }

@@ -1,6 +1,7 @@
 import {
   defineVirtualSubtreeConfig,
   index,
+  physical,
   route,
 } from '@tanstack/virtual-file-routes'
 
@@ -8,4 +9,5 @@ import {
 export default defineVirtualSubtreeConfig(async () => [
   index('home.tsx'),
   route('$postId', 'details.tsx'),
+  physical('/inception', 'lets-go'),
 ])
