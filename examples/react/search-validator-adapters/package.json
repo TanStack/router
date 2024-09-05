@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/react-router": "^1.53.1",
     "@tanstack/router-devtools": "^1.53.1",
-    "@tanstack/router-plugin": "^1.55.0",
+    "@tanstack/router-plugin": "^1.56.0",
     "@tanstack/router-zod-adapter": "^1.53.1",
     "@tanstack/router-valibot-adapter": "^1.53.1",
     "@tanstack/router-arktype-adapter": "^1.53.1",
