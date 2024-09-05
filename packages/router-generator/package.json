@@ -63,8 +63,9 @@
     "node": ">=12"
   },
   "dependencies": {
+    "@tanstack/virtual-file-routes": "workspace:^",
+    "tsx": "^4.19.0",
     "prettier": "^3.3.3",
-    "zod": "^3.23.8",
-    "@tanstack/virtual-file-routes": "workspace:^"
+    "zod": "^3.23.8"
   }
 }
