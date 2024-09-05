@@ -1983,6 +1983,10 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.23.8
+    devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
 
   packages/router-plugin:
     dependencies:

@@ -400,7 +400,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
           ${node.children.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
         }`
 
-        const routeWithChildren = `const ${route}WithChildren = ${route}.addChildren(${route}Children)`
+        const routeWithChildren = `const ${route}WithChildren = ${route}._addFileChildren(${route}Children)`
 
         return [
           childConfigs,
@@ -623,7 +623,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     `const rootRouteChildren: RootRouteChildren = {
       ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
     }`,
-    `export const routeTree = rootRoute.addChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()`,
+    `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()`,
     ...config.routeTreeFileFooter,
   ]
     .filter(Boolean)

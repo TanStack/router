@@ -1057,7 +1057,31 @@ export class Route<
     this._to = fullPath as TrimPathRight<TFullPath>
   }
 
-  addChildren<const TNewChildren>(
+  addChildren<
+    const TNewChildren extends
+      | Record<string, AnyRoute>
+      | ReadonlyArray<AnyRoute>,
+  >(
+    children: TNewChildren,
+  ): Route<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TNewChildren
+  > {
+    return this._addFileChildren(children)
+  }
+
+  _addFileChildren<const TNewChildren>(
     children: TNewChildren,
   ): Route<
     TParentRoute,
@@ -1367,7 +1391,11 @@ export class RootRoute<
     super(options as any)
   }
 
-  addChildren<const TNewChildren>(
+  addChildren<
+    const TNewChildren extends
+      | Record<string, AnyRoute>
+      | ReadonlyArray<AnyRoute>,
+  >(
     children: TNewChildren,
   ): RootRoute<
     TSearchValidator,
@@ -1380,6 +1408,22 @@ export class RootRoute<
     TFileRouteTypes
   > {
     super.addChildren(children)
+    return this as any
+  }
+
+  _addFileChildren<const TNewChildren>(
+    children: TNewChildren,
+  ): RootRoute<
+    TSearchValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TNewChildren,
+    TFileRouteTypes
+  > {
+    super._addFileChildren(children)
     return this as any
   }
 
