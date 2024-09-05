@@ -153,21 +153,137 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  indexRoute,
-  layoutRoute: layoutRoute.addChildren({
-    dbDashboardRoute: dbDashboardRoute.addChildren({
-      dbDashboardIndexRoute,
-      dbDashboardInvoicesRoute: dbDashboardInvoicesRoute.addChildren({
-        dbInvoicesIndexRoute,
-        dbInvoiceDetailRoute,
-      }),
-    }),
-    HelloIndexRoute,
-    HelloFooIdRoute,
-    HelloFooIndexRoute,
-  }),
-})
+interface dbDashboardInvoicesRouteChildren {
+  dbInvoicesIndexRoute: typeof dbInvoicesIndexRoute
+  dbInvoiceDetailRoute: typeof dbInvoiceDetailRoute
+}
+
+const dbDashboardInvoicesRouteChildren: dbDashboardInvoicesRouteChildren = {
+  dbInvoicesIndexRoute: dbInvoicesIndexRoute,
+  dbInvoiceDetailRoute: dbInvoiceDetailRoute,
+}
+
+const dbDashboardInvoicesRouteWithChildren =
+  dbDashboardInvoicesRoute._addFileChildren(dbDashboardInvoicesRouteChildren)
+
+interface dbDashboardRouteChildren {
+  dbDashboardIndexRoute: typeof dbDashboardIndexRoute
+  dbDashboardInvoicesRoute: typeof dbDashboardInvoicesRouteWithChildren
+}
+
+const dbDashboardRouteChildren: dbDashboardRouteChildren = {
+  dbDashboardIndexRoute: dbDashboardIndexRoute,
+  dbDashboardInvoicesRoute: dbDashboardInvoicesRouteWithChildren,
+}
+
+const dbDashboardRouteWithChildren = dbDashboardRoute._addFileChildren(
+  dbDashboardRouteChildren,
+)
+
+interface layoutRouteChildren {
+  dbDashboardRoute: typeof dbDashboardRouteWithChildren
+  HelloIndexRoute: typeof HelloIndexRoute
+  HelloFooIdRoute: typeof HelloFooIdRoute
+  HelloFooIndexRoute: typeof HelloFooIndexRoute
+}
+
+const layoutRouteChildren: layoutRouteChildren = {
+  dbDashboardRoute: dbDashboardRouteWithChildren,
+  HelloIndexRoute: HelloIndexRoute,
+  HelloFooIdRoute: HelloFooIdRoute,
+  HelloFooIndexRoute: HelloFooIndexRoute,
+}
+
+const layoutRouteWithChildren =
+  layoutRoute._addFileChildren(layoutRouteChildren)
+
+interface FileRoutesByFullPath {
+  '/': typeof indexRoute
+  '': typeof layoutRouteWithChildren
+  '/dashboard': typeof dbDashboardRouteWithChildren
+  '/dashboard/': typeof dbDashboardIndexRoute
+  '/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
+  '/hello': typeof HelloIndexRoute
+  '/dashboard/invoices/': typeof dbInvoicesIndexRoute
+  '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
+  '/hello/foo/$id': typeof HelloFooIdRoute
+  '/hello/foo': typeof HelloFooIndexRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof indexRoute
+  '': typeof layoutRouteWithChildren
+  '/dashboard': typeof dbDashboardIndexRoute
+  '/hello': typeof HelloIndexRoute
+  '/dashboard/invoices': typeof dbInvoicesIndexRoute
+  '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
+  '/hello/foo/$id': typeof HelloFooIdRoute
+  '/hello/foo': typeof HelloFooIndexRoute
+}
+
+interface FileRoutesById {
+  '/': typeof indexRoute
+  '/_layout': typeof layoutRouteWithChildren
+  '/_layout/dashboard': typeof dbDashboardRouteWithChildren
+  '/_layout/dashboard/': typeof dbDashboardIndexRoute
+  '/_layout/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
+  '/_layout/hello/': typeof HelloIndexRoute
+  '/_layout/dashboard/invoices/': typeof dbInvoicesIndexRoute
+  '/_layout/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
+  '/_layout/hello/foo/$id': typeof HelloFooIdRoute
+  '/_layout/hello/foo/': typeof HelloFooIndexRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/dashboard'
+    | '/dashboard/'
+    | '/dashboard/invoices'
+    | '/hello'
+    | '/dashboard/invoices/'
+    | '/dashboard/invoices/$id'
+    | '/hello/foo/$id'
+    | '/hello/foo'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | ''
+    | '/dashboard'
+    | '/hello'
+    | '/dashboard/invoices'
+    | '/dashboard/invoices/$id'
+    | '/hello/foo/$id'
+    | '/hello/foo'
+  id:
+    | '/'
+    | '/_layout'
+    | '/_layout/dashboard'
+    | '/_layout/dashboard/'
+    | '/_layout/dashboard/invoices'
+    | '/_layout/hello/'
+    | '/_layout/dashboard/invoices/'
+    | '/_layout/dashboard/invoices/$id'
+    | '/_layout/hello/foo/$id'
+    | '/_layout/hello/foo/'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  indexRoute: typeof indexRoute
+  layoutRoute: typeof layoutRouteWithChildren
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  indexRoute: indexRoute,
+  layoutRoute: layoutRouteWithChildren,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

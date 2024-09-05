@@ -150,7 +150,7 @@ const BlogRouteRouteChildren: BlogRouteRouteChildren = {
   BlogSlugIndexRoute: BlogSlugIndexRoute,
 }
 
-const BlogRouteRouteWithChildren = BlogRouteRoute.addChildren(
+const BlogRouteRouteWithChildren = BlogRouteRoute._addFileChildren(
   BlogRouteRouteChildren,
 )
 
@@ -166,7 +166,7 @@ const PostsRouteRouteChildren: PostsRouteRouteChildren = {
   PostsPostIdIndexRoute: PostsPostIdIndexRoute,
 }
 
-const PostsRouteRouteWithChildren = PostsRouteRoute.addChildren(
+const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
   PostsRouteRouteChildren,
 )
 
@@ -253,7 +253,7 @@ const rootRouteChildren: RootRouteChildren = {
 }
 
 export const routeTree = rootRoute
-  .addChildren(rootRouteChildren)
+  ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */

@@ -30,8 +30,8 @@ export interface MatchLocation {
 }
 
 export type NavigateFn = <
-  TRouter extends AnyRouter = RegisteredRouter,
-  TTo extends string | undefined = undefined,
+  TRouter extends RegisteredRouter,
+  TTo extends string | undefined,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
@@ -42,9 +42,9 @@ export type NavigateFn = <
 ) => Promise<void>
 
 export type BuildLocationFn = <
+  TRouter extends RegisteredRouter,
   TTo extends string | undefined,
-  TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = '',
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(

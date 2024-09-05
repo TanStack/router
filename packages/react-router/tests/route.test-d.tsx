@@ -1051,22 +1051,16 @@ test('when creating a child route with context, search, params and beforeLoad', 
           invoicePermissions: readonly ['view']
         }
       }>()
-      expectTypeOf(opts.buildLocation<'/', Router>)
+      expectTypeOf(opts.buildLocation<Router, '.', '/'>)
         .parameter(0)
         .toHaveProperty('to')
         .toEqualTypeOf<
-          | '/'
-          | '/invoices'
-          | '/invoices/$invoiceId'
-          | '/invoices/$invoiceId/details'
-          | '/invoices/$invoiceId/details/$detailId'
-          | 'invoices'
-          | 'invoices/$invoiceId'
-          | 'invoices/$invoiceId/details'
-          | 'invoices/$invoiceId/details/$detailId'
           | '.'
-          | '..'
-          | ''
+          | './'
+          | './invoices'
+          | './invoices/$invoiceId'
+          | './invoices/$invoiceId/details'
+          | './invoices/$invoiceId/details/$detailId'
           | undefined
         >()
     },

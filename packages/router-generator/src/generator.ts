@@ -877,7 +877,7 @@ export const createRouteNodesById = (
 ): Map<string, RouteNode> => {
   return new Map(
     routeNodes.map((routeNode) => {
-      const [_, id] = getFilePathIdAndRouteIdFromPath(routeNode.routePath!)
+      const [_, id] = getFilePathIdAndRouteIdFromPath(routeNode.routePath)
       return [id, routeNode]
     }),
   )

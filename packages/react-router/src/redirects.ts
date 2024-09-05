@@ -36,9 +36,9 @@ export type ResolvedRedirect<
 }
 
 export function redirect<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRouter extends RegisteredRouter,
+  TTo extends string | undefined,
   TFrom extends string = string,
-  TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 >(

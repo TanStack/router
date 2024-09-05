@@ -183,13 +183,24 @@ export type CodeRouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
   AnyRoute
 >
 
+export type FileRouteByToPath<TRouter extends AnyRouter, TTo> =
+  'never' extends TrailingSlashOptionByRouter<TRouter>
+    ? CodeRouteByToPath<TRouter, TTo>
+    : 'always' extends TrailingSlashOptionByRouter<TRouter>
+      ? TTo extends '/'
+        ? CodeRouteByToPath<TRouter, TTo>
+        : TTo extends `${infer TPath}/`
+          ? CodeRouteByToPath<TRouter, TPath>
+          : never
+      : CodeRouteByToPath<
+          TRouter,
+          TTo extends '/' ? TTo : RemoveTrailingSlashes<TTo>
+        >
+
 export type RouteByToPath<TRouter extends AnyRouter, TTo> =
   InferFileRouteTypes<TRouter['routeTree']> extends never
     ? CodeRouteByToPath<TRouter, TTo>
-    : CodeRouteByToPath<
-        TRouter,
-        TTo extends '/' ? TTo : RemoveTrailingSlashes<TTo>
-      >
+    : FileRouteByToPath<TRouter, TTo>
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute

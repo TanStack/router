@@ -363,7 +363,9 @@ const JestedLayoutB3LayoutC2RouteChildren: JestedLayoutB3LayoutC2RouteChildren =
   }
 
 const JestedLayoutB3LayoutC2RouteWithChildren =
-  JestedLayoutB3LayoutC2Route.addChildren(JestedLayoutB3LayoutC2RouteChildren)
+  JestedLayoutB3LayoutC2Route._addFileChildren(
+    JestedLayoutB3LayoutC2RouteChildren,
+  )
 
 interface JestedLayoutB3RouteChildren {
   JestedLayoutB3LayoutC2Route: typeof JestedLayoutB3LayoutC2RouteWithChildren
@@ -375,7 +377,7 @@ const JestedLayoutB3RouteChildren: JestedLayoutB3RouteChildren = {
   JestedLayoutB3IndexRoute: JestedLayoutB3IndexRoute,
 }
 
-const JestedLayoutB3RouteWithChildren = JestedLayoutB3Route.addChildren(
+const JestedLayoutB3RouteWithChildren = JestedLayoutB3Route._addFileChildren(
   JestedLayoutB3RouteChildren,
 )
 
@@ -387,7 +389,7 @@ const JestedLayoutB4RouteChildren: JestedLayoutB4RouteChildren = {
   JestedLayoutB4FooRoute: JestedLayoutB4FooRoute,
 }
 
-const JestedLayoutB4RouteWithChildren = JestedLayoutB4Route.addChildren(
+const JestedLayoutB4RouteWithChildren = JestedLayoutB4Route._addFileChildren(
   JestedLayoutB4RouteChildren,
 )
 
@@ -401,7 +403,7 @@ const JestedRouteRouteChildren: JestedRouteRouteChildren = {
   JestedLayoutB4Route: JestedLayoutB4RouteWithChildren,
 }
 
-const JestedRouteRouteWithChildren = JestedRouteRoute.addChildren(
+const JestedRouteRouteWithChildren = JestedRouteRoute._addFileChildren(
   JestedRouteRouteChildren,
 )
 
@@ -413,7 +415,7 @@ const LayoutA1RouteChildren: LayoutA1RouteChildren = {
   LayoutA1FooRoute: LayoutA1FooRoute,
 }
 
-const LayoutA1RouteWithChildren = LayoutA1Route.addChildren(
+const LayoutA1RouteWithChildren = LayoutA1Route._addFileChildren(
   LayoutA1RouteChildren,
 )
 
@@ -425,7 +427,7 @@ const LayoutA2RouteChildren: LayoutA2RouteChildren = {
   LayoutA2BarRoute: LayoutA2BarRoute,
 }
 
-const LayoutA2RouteWithChildren = LayoutA2Route.addChildren(
+const LayoutA2RouteWithChildren = LayoutA2Route._addFileChildren(
   LayoutA2RouteChildren,
 )
 
@@ -439,9 +441,8 @@ const FooLayoutB5RouteRouteChildren: FooLayoutB5RouteRouteChildren = {
   FooLayoutB5IndexRoute: FooLayoutB5IndexRoute,
 }
 
-const FooLayoutB5RouteRouteWithChildren = FooLayoutB5RouteRoute.addChildren(
-  FooLayoutB5RouteRouteChildren,
-)
+const FooLayoutB5RouteRouteWithChildren =
+  FooLayoutB5RouteRoute._addFileChildren(FooLayoutB5RouteRouteChildren)
 
 interface FooRouteChildren {
   FooLayoutB5RouteRoute: typeof FooLayoutB5RouteRouteWithChildren
@@ -453,7 +454,7 @@ const FooRouteChildren: FooRouteChildren = {
   FooBarRoute: FooBarRoute,
 }
 
-const FooRouteWithChildren = FooRoute.addChildren(FooRouteChildren)
+const FooRouteWithChildren = FooRoute._addFileChildren(FooRouteChildren)
 
 interface NestedLayoutB1LayoutC1RouteChildren {
   NestedLayoutB1LayoutC1BarRoute: typeof NestedLayoutB1LayoutC1BarRoute
@@ -465,7 +466,9 @@ const NestedLayoutB1LayoutC1RouteChildren: NestedLayoutB1LayoutC1RouteChildren =
   }
 
 const NestedLayoutB1LayoutC1RouteWithChildren =
-  NestedLayoutB1LayoutC1Route.addChildren(NestedLayoutB1LayoutC1RouteChildren)
+  NestedLayoutB1LayoutC1Route._addFileChildren(
+    NestedLayoutB1LayoutC1RouteChildren,
+  )
 
 interface NestedLayoutB1RouteChildren {
   NestedLayoutB1LayoutC1Route: typeof NestedLayoutB1LayoutC1RouteWithChildren
@@ -477,7 +480,7 @@ const NestedLayoutB1RouteChildren: NestedLayoutB1RouteChildren = {
   NestedLayoutB1IndexRoute: NestedLayoutB1IndexRoute,
 }
 
-const NestedLayoutB1RouteWithChildren = NestedLayoutB1Route.addChildren(
+const NestedLayoutB1RouteWithChildren = NestedLayoutB1Route._addFileChildren(
   NestedLayoutB1RouteChildren,
 )
 
@@ -489,7 +492,7 @@ const NestedLayoutB2RouteChildren: NestedLayoutB2RouteChildren = {
   NestedLayoutB2FooRoute: NestedLayoutB2FooRoute,
 }
 
-const NestedLayoutB2RouteWithChildren = NestedLayoutB2Route.addChildren(
+const NestedLayoutB2RouteWithChildren = NestedLayoutB2Route._addFileChildren(
   NestedLayoutB2RouteChildren,
 )
 
@@ -503,7 +506,8 @@ const NestedRouteChildren: NestedRouteChildren = {
   NestedLayoutB2Route: NestedLayoutB2RouteWithChildren,
 }
 
-const NestedRouteWithChildren = NestedRoute.addChildren(NestedRouteChildren)
+const NestedRouteWithChildren =
+  NestedRoute._addFileChildren(NestedRouteChildren)
 
 interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -652,7 +656,7 @@ const rootRouteChildren: RootRouteChildren = {
 }
 
 export const routeTree = rootRoute
-  .addChildren(rootRouteChildren)
+  ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */

@@ -1098,10 +1098,29 @@ export class Route<
     TLoaderFn,
     TNewChildren
   > {
-    this.children = (
-      Array.isArray(children) ? children : Object.values(children as any)
-    ) as any
-    return this as any
+    if (Array.isArray(children)) {
+      this.children = children as TChildren
+    }
+
+    if (typeof children === 'object' && children !== null) {
+      this.children = Object.values(children) as TChildren
+    }
+
+    return this as unknown as Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TNewChildren
+    >
   }
 
   updateLoader = <TNewLoaderFn>(options: {
@@ -1408,7 +1427,16 @@ export class RootRoute<
     TFileRouteTypes
   > {
     super.addChildren(children)
-    return this as any
+    return this as unknown as RootRoute<
+      TSearchValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TNewChildren,
+      TFileRouteTypes
+    >
   }
 
   _addFileChildren<const TNewChildren>(
@@ -1424,7 +1452,16 @@ export class RootRoute<
     TFileRouteTypes
   > {
     super._addFileChildren(children)
-    return this as any
+    return this as unknown as RootRoute<
+      TSearchValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TNewChildren,
+      TFileRouteTypes
+    >
   }
 
   _addFileTypes<TFileRouteTypes>(): RootRoute<

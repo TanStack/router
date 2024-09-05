@@ -84,7 +84,7 @@ const rootRouteChildren: RootRouteChildren = {
 }
 
 export const routeTree = rootRoute
-  .addChildren(rootRouteChildren)
+  ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
