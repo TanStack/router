@@ -178,10 +178,15 @@ export type RoutesByToPath<TRouter extends AnyRouter> =
     ? CodeRoutesByToPath<TRouter>
     : InferFileRouteTypes<TRouter['routeTree']>['fileRoutesByTo']
 
-export type RouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
+export type CodeRouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
   RoutesByToPath<TRouter>[TTo & keyof RoutesByToPath<TRouter>],
   AnyRoute
 >
+
+export type RouteByToPath<TRouter extends AnyRouter, TTo> =
+  InferFileRouteTypes<TRouter['routeTree']> extends never
+    ? CodeRouteByToPath<TRouter, TTo>
+    : CodeRouteByToPath<TRouter, RemoveTrailingSlashes<TTo>>
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute

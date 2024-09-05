@@ -66,5 +66,8 @@
     "prettier": "^3.3.3",
     "zod": "^3.23.8",
     "@tanstack/virtual-file-routes": "workspace:^"
+  },
+  "devDependencies": {
+    "@tanstack/react-router": "^1.53.0"
   }
 }

@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import * as React from 'react'
 import {
   ErrorComponent,
@@ -8,12 +6,11 @@ import {
   createFileRoute,
 } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/posts/$postId')({
+export const Route = createFileRoute('/posts/$postId/')({
   loader: async ({ params: { postId } }) => ({
-    postId,
+    id: postId,
     title: 'title',
     body: 'body',
-    id: 'id',
   }),
   errorComponent: PostErrorComponent as any,
   notFoundComponent: () => {
