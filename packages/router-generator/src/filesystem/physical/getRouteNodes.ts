@@ -58,7 +58,6 @@ export async function getRouteNodes(
     })
 
     if (virtualConfigFile !== undefined) {
-      logger.info(`Found a virtual route config file in "${fullDir}"`)
       const virtualRouteConfigExport = await loadConfigFile(
         path.resolve(fullDir, virtualConfigFile.name),
       )
