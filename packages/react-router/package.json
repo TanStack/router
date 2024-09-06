@@ -80,6 +80,12 @@
   },
   "peerDependencies": {
     "react": ">=18",
-    "react-dom": ">=18"
+    "react-dom": ">=18",
+    "@tanstack/router-generator": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-router": {
+      "optional": true
+    }
   }
 }
