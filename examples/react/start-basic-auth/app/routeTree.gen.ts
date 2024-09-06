@@ -127,18 +127,107 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  AuthedRoute: AuthedRoute.addChildren({
-    AuthedPostsRoute: AuthedPostsRoute.addChildren({
-      AuthedPostsPostIdRoute,
-      AuthedPostsIndexRoute,
-    }),
-  }),
-  LoginRoute,
-  LogoutRoute,
-  SignupRoute,
-})
+interface AuthedPostsRouteChildren {
+  AuthedPostsPostIdRoute: typeof AuthedPostsPostIdRoute
+  AuthedPostsIndexRoute: typeof AuthedPostsIndexRoute
+}
+
+const AuthedPostsRouteChildren: AuthedPostsRouteChildren = {
+  AuthedPostsPostIdRoute: AuthedPostsPostIdRoute,
+  AuthedPostsIndexRoute: AuthedPostsIndexRoute,
+}
+
+const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(
+  AuthedPostsRouteChildren,
+)
+
+interface AuthedRouteChildren {
+  AuthedPostsRoute: typeof AuthedPostsRouteWithChildren
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedPostsRoute: AuthedPostsRouteWithChildren,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
+interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '': typeof AuthedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
+  '/signup': typeof SignupRoute
+  '/posts': typeof AuthedPostsRouteWithChildren
+  '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/posts/': typeof AuthedPostsIndexRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '': typeof AuthedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
+  '/signup': typeof SignupRoute
+  '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/posts': typeof AuthedPostsIndexRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
+  '/signup': typeof SignupRoute
+  '/_authed/posts': typeof AuthedPostsRouteWithChildren
+  '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/_authed/posts/': typeof AuthedPostsIndexRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/login'
+    | '/logout'
+    | '/signup'
+    | '/posts'
+    | '/posts/$postId'
+    | '/posts/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '' | '/login' | '/logout' | '/signup' | '/posts/$postId' | '/posts'
+  id:
+    | '/'
+    | '/_authed'
+    | '/login'
+    | '/logout'
+    | '/signup'
+    | '/_authed/posts'
+    | '/_authed/posts/$postId'
+    | '/_authed/posts/'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  LogoutRoute: typeof LogoutRoute
+  SignupRoute: typeof SignupRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AuthedRoute: AuthedRouteWithChildren,
+  LoginRoute: LoginRoute,
+  LogoutRoute: LogoutRoute,
+  SignupRoute: SignupRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

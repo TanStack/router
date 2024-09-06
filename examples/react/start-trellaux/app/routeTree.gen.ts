@@ -49,10 +49,43 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  BoardsBoardIdRoute,
-})
+interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/boards/$boardId': typeof BoardsBoardIdRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/boards/$boardId': typeof BoardsBoardIdRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/boards/$boardId': typeof BoardsBoardIdRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/boards/$boardId'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/boards/$boardId'
+  id: '/' | '/boards/$boardId'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  BoardsBoardIdRoute: typeof BoardsBoardIdRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  BoardsBoardIdRoute: BoardsBoardIdRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

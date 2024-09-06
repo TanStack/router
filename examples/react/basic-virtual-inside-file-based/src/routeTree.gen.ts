@@ -153,21 +153,134 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  LayoutRoute: LayoutRoute.addChildren({
-    LayoutLayout2Route: LayoutLayout2Route.addChildren({
-      LayoutLayout2LayoutARoute,
-      LayoutLayout2LayoutBRoute,
-    }),
-  }),
-  PostsRoute: PostsRoute.addChildren({
-    postsHomeRoute,
-    postsDetailsRoute,
-    postsLetsGoIndexRoute,
-    postsLetsGoDeeperHomeRoute,
-  }),
-})
+interface LayoutLayout2RouteChildren {
+  LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
+  LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
+}
+
+const LayoutLayout2RouteChildren: LayoutLayout2RouteChildren = {
+  LayoutLayout2LayoutARoute: LayoutLayout2LayoutARoute,
+  LayoutLayout2LayoutBRoute: LayoutLayout2LayoutBRoute,
+}
+
+const LayoutLayout2RouteWithChildren = LayoutLayout2Route._addFileChildren(
+  LayoutLayout2RouteChildren,
+)
+
+interface LayoutRouteChildren {
+  LayoutLayout2Route: typeof LayoutLayout2RouteWithChildren
+}
+
+const LayoutRouteChildren: LayoutRouteChildren = {
+  LayoutLayout2Route: LayoutLayout2RouteWithChildren,
+}
+
+const LayoutRouteWithChildren =
+  LayoutRoute._addFileChildren(LayoutRouteChildren)
+
+interface PostsRouteChildren {
+  postsHomeRoute: typeof postsHomeRoute
+  postsDetailsRoute: typeof postsDetailsRoute
+  postsLetsGoIndexRoute: typeof postsLetsGoIndexRoute
+  postsLetsGoDeeperHomeRoute: typeof postsLetsGoDeeperHomeRoute
+}
+
+const PostsRouteChildren: PostsRouteChildren = {
+  postsHomeRoute: postsHomeRoute,
+  postsDetailsRoute: postsDetailsRoute,
+  postsLetsGoIndexRoute: postsLetsGoIndexRoute,
+  postsLetsGoDeeperHomeRoute: postsLetsGoDeeperHomeRoute,
+}
+
+const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+
+interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '': typeof LayoutLayout2RouteWithChildren
+  '/posts': typeof PostsRouteWithChildren
+  '/posts/': typeof postsHomeRoute
+  '/posts/$postId': typeof postsDetailsRoute
+  '/layout-a': typeof LayoutLayout2LayoutARoute
+  '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/posts/inception': typeof postsLetsGoIndexRoute
+  '/posts/inception/deeper': typeof postsLetsGoDeeperHomeRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '': typeof LayoutLayout2RouteWithChildren
+  '/posts': typeof postsHomeRoute
+  '/posts/$postId': typeof postsDetailsRoute
+  '/layout-a': typeof LayoutLayout2LayoutARoute
+  '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/posts/inception': typeof postsLetsGoIndexRoute
+  '/posts/inception/deeper': typeof postsLetsGoDeeperHomeRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/_layout': typeof LayoutRouteWithChildren
+  '/posts': typeof PostsRouteWithChildren
+  '/posts/': typeof postsHomeRoute
+  '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/posts/$postId': typeof postsDetailsRoute
+  '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
+  '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/posts/inception/': typeof postsLetsGoIndexRoute
+  '/posts/inception/deeper/': typeof postsLetsGoDeeperHomeRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/posts'
+    | '/posts/'
+    | '/posts/$postId'
+    | '/layout-a'
+    | '/layout-b'
+    | '/posts/inception'
+    | '/posts/inception/deeper'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | ''
+    | '/posts'
+    | '/posts/$postId'
+    | '/layout-a'
+    | '/layout-b'
+    | '/posts/inception'
+    | '/posts/inception/deeper'
+  id:
+    | '/'
+    | '/_layout'
+    | '/posts'
+    | '/posts/'
+    | '/_layout/_layout-2'
+    | '/posts/$postId'
+    | '/_layout/_layout-2/layout-a'
+    | '/_layout/_layout-2/layout-b'
+    | '/posts/inception/'
+    | '/posts/inception/deeper/'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  LayoutRoute: typeof LayoutRouteWithChildren
+  PostsRoute: typeof PostsRouteWithChildren
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  LayoutRoute: LayoutRouteWithChildren,
+  PostsRoute: PostsRouteWithChildren,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

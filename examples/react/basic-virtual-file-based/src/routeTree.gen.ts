@@ -179,24 +179,158 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  homeRoute,
-  layoutFirstLayoutRoute: layoutFirstLayoutRoute.addChildren({
-    layoutSecondLayoutRoute: layoutSecondLayoutRoute.addChildren({
-      aRoute,
-      bRoute,
-    }),
-  }),
-  postsPostsRoute: postsPostsRoute.addChildren({
-    postsPostsHomeRoute,
-    postsPostsDetailRoute,
-  }),
-  ClassicHelloRouteRoute: ClassicHelloRouteRoute.addChildren({
-    ClassicHelloUniverseRoute,
-    ClassicHelloWorldRoute,
-    ClassicHelloIndexRoute,
-  }),
-})
+interface layoutSecondLayoutRouteChildren {
+  aRoute: typeof aRoute
+  bRoute: typeof bRoute
+}
+
+const layoutSecondLayoutRouteChildren: layoutSecondLayoutRouteChildren = {
+  aRoute: aRoute,
+  bRoute: bRoute,
+}
+
+const layoutSecondLayoutRouteWithChildren =
+  layoutSecondLayoutRoute._addFileChildren(layoutSecondLayoutRouteChildren)
+
+interface layoutFirstLayoutRouteChildren {
+  layoutSecondLayoutRoute: typeof layoutSecondLayoutRouteWithChildren
+}
+
+const layoutFirstLayoutRouteChildren: layoutFirstLayoutRouteChildren = {
+  layoutSecondLayoutRoute: layoutSecondLayoutRouteWithChildren,
+}
+
+const layoutFirstLayoutRouteWithChildren =
+  layoutFirstLayoutRoute._addFileChildren(layoutFirstLayoutRouteChildren)
+
+interface postsPostsRouteChildren {
+  postsPostsHomeRoute: typeof postsPostsHomeRoute
+  postsPostsDetailRoute: typeof postsPostsDetailRoute
+}
+
+const postsPostsRouteChildren: postsPostsRouteChildren = {
+  postsPostsHomeRoute: postsPostsHomeRoute,
+  postsPostsDetailRoute: postsPostsDetailRoute,
+}
+
+const postsPostsRouteWithChildren = postsPostsRoute._addFileChildren(
+  postsPostsRouteChildren,
+)
+
+interface ClassicHelloRouteRouteChildren {
+  ClassicHelloUniverseRoute: typeof ClassicHelloUniverseRoute
+  ClassicHelloWorldRoute: typeof ClassicHelloWorldRoute
+  ClassicHelloIndexRoute: typeof ClassicHelloIndexRoute
+}
+
+const ClassicHelloRouteRouteChildren: ClassicHelloRouteRouteChildren = {
+  ClassicHelloUniverseRoute: ClassicHelloUniverseRoute,
+  ClassicHelloWorldRoute: ClassicHelloWorldRoute,
+  ClassicHelloIndexRoute: ClassicHelloIndexRoute,
+}
+
+const ClassicHelloRouteRouteWithChildren =
+  ClassicHelloRouteRoute._addFileChildren(ClassicHelloRouteRouteChildren)
+
+interface FileRoutesByFullPath {
+  '/': typeof homeRoute
+  '': typeof layoutSecondLayoutRouteWithChildren
+  '/posts': typeof postsPostsRouteWithChildren
+  '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
+  '/posts/': typeof postsPostsHomeRoute
+  '/posts/$postId': typeof postsPostsDetailRoute
+  '/layout-a': typeof aRoute
+  '/layout-b': typeof bRoute
+  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
+  '/classic/hello/world': typeof ClassicHelloWorldRoute
+  '/classic/hello/': typeof ClassicHelloIndexRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof homeRoute
+  '': typeof layoutSecondLayoutRouteWithChildren
+  '/posts': typeof postsPostsHomeRoute
+  '/posts/$postId': typeof postsPostsDetailRoute
+  '/layout-a': typeof aRoute
+  '/layout-b': typeof bRoute
+  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
+  '/classic/hello/world': typeof ClassicHelloWorldRoute
+  '/classic/hello': typeof ClassicHelloIndexRoute
+}
+
+interface FileRoutesById {
+  '/': typeof homeRoute
+  '/_first': typeof layoutFirstLayoutRouteWithChildren
+  '/posts': typeof postsPostsRouteWithChildren
+  '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
+  '/posts/': typeof postsPostsHomeRoute
+  '/_first/_second': typeof layoutSecondLayoutRouteWithChildren
+  '/posts/$postId': typeof postsPostsDetailRoute
+  '/_first/_second/layout-a': typeof aRoute
+  '/_first/_second/layout-b': typeof bRoute
+  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
+  '/classic/hello/world': typeof ClassicHelloWorldRoute
+  '/classic/hello/': typeof ClassicHelloIndexRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/posts'
+    | '/classic/hello'
+    | '/posts/'
+    | '/posts/$postId'
+    | '/layout-a'
+    | '/layout-b'
+    | '/classic/hello/universe'
+    | '/classic/hello/world'
+    | '/classic/hello/'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | ''
+    | '/posts'
+    | '/posts/$postId'
+    | '/layout-a'
+    | '/layout-b'
+    | '/classic/hello/universe'
+    | '/classic/hello/world'
+    | '/classic/hello'
+  id:
+    | '/'
+    | '/_first'
+    | '/posts'
+    | '/classic/hello'
+    | '/posts/'
+    | '/_first/_second'
+    | '/posts/$postId'
+    | '/_first/_second/layout-a'
+    | '/_first/_second/layout-b'
+    | '/classic/hello/universe'
+    | '/classic/hello/world'
+    | '/classic/hello/'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  homeRoute: typeof homeRoute
+  layoutFirstLayoutRoute: typeof layoutFirstLayoutRouteWithChildren
+  postsPostsRoute: typeof postsPostsRouteWithChildren
+  ClassicHelloRouteRoute: typeof ClassicHelloRouteRouteWithChildren
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  homeRoute: homeRoute,
+  layoutFirstLayoutRoute: layoutFirstLayoutRouteWithChildren,
+  postsPostsRoute: postsPostsRouteWithChildren,
+  ClassicHelloRouteRoute: ClassicHelloRouteRouteWithChildren,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 
