@@ -101,16 +101,87 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  AuthedRoute: AuthedRoute.addChildren({
-    AuthedPostsRoute: AuthedPostsRoute.addChildren({
-      AuthedPostsPostIdRoute,
-      AuthedPostsIndexRoute,
-    }),
-    AuthedProfileSplatRoute,
-  }),
-})
+interface AuthedPostsRouteChildren {
+  AuthedPostsPostIdRoute: typeof AuthedPostsPostIdRoute
+  AuthedPostsIndexRoute: typeof AuthedPostsIndexRoute
+}
+
+const AuthedPostsRouteChildren: AuthedPostsRouteChildren = {
+  AuthedPostsPostIdRoute: AuthedPostsPostIdRoute,
+  AuthedPostsIndexRoute: AuthedPostsIndexRoute,
+}
+
+const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(
+  AuthedPostsRouteChildren,
+)
+
+interface AuthedRouteChildren {
+  AuthedPostsRoute: typeof AuthedPostsRouteWithChildren
+  AuthedProfileSplatRoute: typeof AuthedProfileSplatRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedPostsRoute: AuthedPostsRouteWithChildren,
+  AuthedProfileSplatRoute: AuthedProfileSplatRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
+interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '': typeof AuthedRouteWithChildren
+  '/posts': typeof AuthedPostsRouteWithChildren
+  '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/profile/$': typeof AuthedProfileSplatRoute
+  '/posts/': typeof AuthedPostsIndexRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '': typeof AuthedRouteWithChildren
+  '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/profile/$': typeof AuthedProfileSplatRoute
+  '/posts': typeof AuthedPostsIndexRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteWithChildren
+  '/_authed/posts': typeof AuthedPostsRouteWithChildren
+  '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/_authed/profile/$': typeof AuthedProfileSplatRoute
+  '/_authed/posts/': typeof AuthedPostsIndexRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '' | '/posts' | '/posts/$postId' | '/profile/$' | '/posts/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '' | '/posts/$postId' | '/profile/$' | '/posts'
+  id:
+    | '/'
+    | '/_authed'
+    | '/_authed/posts'
+    | '/_authed/posts/$postId'
+    | '/_authed/profile/$'
+    | '/_authed/posts/'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AuthedRoute: AuthedRouteWithChildren,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

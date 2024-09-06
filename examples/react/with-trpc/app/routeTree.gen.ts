@@ -101,16 +101,93 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  DashboardRoute: DashboardRoute.addChildren({
-    DashboardPostsRoute: DashboardPostsRoute.addChildren({
-      DashboardPostsPostIdRoute,
-      DashboardPostsIndexRoute,
-    }),
-    DashboardIndexRoute,
-  }),
-})
+interface DashboardPostsRouteChildren {
+  DashboardPostsPostIdRoute: typeof DashboardPostsPostIdRoute
+  DashboardPostsIndexRoute: typeof DashboardPostsIndexRoute
+}
+
+const DashboardPostsRouteChildren: DashboardPostsRouteChildren = {
+  DashboardPostsPostIdRoute: DashboardPostsPostIdRoute,
+  DashboardPostsIndexRoute: DashboardPostsIndexRoute,
+}
+
+const DashboardPostsRouteWithChildren = DashboardPostsRoute._addFileChildren(
+  DashboardPostsRouteChildren,
+)
+
+interface DashboardRouteChildren {
+  DashboardPostsRoute: typeof DashboardPostsRouteWithChildren
+  DashboardIndexRoute: typeof DashboardIndexRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardPostsRoute: DashboardPostsRouteWithChildren,
+  DashboardIndexRoute: DashboardIndexRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
+interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/posts': typeof DashboardPostsRouteWithChildren
+  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/posts/$postId': typeof DashboardPostsPostIdRoute
+  '/dashboard/posts/': typeof DashboardPostsIndexRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/posts/$postId': typeof DashboardPostsPostIdRoute
+  '/dashboard/posts': typeof DashboardPostsIndexRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/posts': typeof DashboardPostsRouteWithChildren
+  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/posts/$postId': typeof DashboardPostsPostIdRoute
+  '/dashboard/posts/': typeof DashboardPostsIndexRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/dashboard/posts'
+    | '/dashboard/'
+    | '/dashboard/posts/$postId'
+    | '/dashboard/posts/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/dashboard' | '/dashboard/posts/$postId' | '/dashboard/posts'
+  id:
+    | '/'
+    | '/dashboard'
+    | '/dashboard/posts'
+    | '/dashboard/'
+    | '/dashboard/posts/$postId'
+    | '/dashboard/posts/'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRouteWithChildren,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

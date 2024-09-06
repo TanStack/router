@@ -88,11 +88,65 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  ErrorRoute,
-  PostsRoute: PostsRoute.addChildren({ PostsPostIdRoute, PostsIndexRoute }),
-})
+interface PostsRouteChildren {
+  PostsPostIdRoute: typeof PostsPostIdRoute
+  PostsIndexRoute: typeof PostsIndexRoute
+}
+
+const PostsRouteChildren: PostsRouteChildren = {
+  PostsPostIdRoute: PostsPostIdRoute,
+  PostsIndexRoute: PostsIndexRoute,
+}
+
+const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+
+interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/error': typeof ErrorRoute
+  '/posts': typeof PostsRouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/': typeof PostsIndexRoute
+}
+
+interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/error': typeof ErrorRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts': typeof PostsIndexRoute
+}
+
+interface FileRoutesById {
+  '/': typeof IndexRoute
+  '/error': typeof ErrorRoute
+  '/posts': typeof PostsRouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/': typeof PostsIndexRoute
+}
+
+interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/error' | '/posts' | '/posts/$postId' | '/posts/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/error' | '/posts/$postId' | '/posts'
+  id: '/' | '/error' | '/posts' | '/posts/$postId' | '/posts/'
+  fileRoutesById: FileRoutesById
+}
+
+interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  ErrorRoute: typeof ErrorRoute
+  PostsRoute: typeof PostsRouteWithChildren
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  ErrorRoute: ErrorRoute,
+  PostsRoute: PostsRouteWithChildren,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 
