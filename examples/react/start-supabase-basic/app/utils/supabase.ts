@@ -1,11 +1,6 @@
 // app/services/session.server.ts
-import { parseCookies, setCookie, useSession } from 'vinxi/http'
+import { parseCookies, setCookie } from 'vinxi/http'
 import { createServerClient } from '@supabase/ssr'
-import type { User } from '@prisma/client'
-
-type SessionUser = {
-  userEmail: User['email']
-}
 
 export function useSupabase() {
   return createServerClient(
