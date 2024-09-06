@@ -349,6 +349,10 @@
               "to": "framework/react/examples/start-basic-auth"
             },
             {
+              "label": "Basic + Supabase Auth",
+              "to": "framework/react/examples/start-supabase-basic"
+            },
+            {
               "label": "Trellaux + Convex",
               "to": "framework/react/examples/start-convex-trellaux"
             },
