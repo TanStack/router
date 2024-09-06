@@ -27,7 +27,7 @@ import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
 const fetchClerkAuth = createServerFn('GET', async (_, ctx) => {
-  const user = await getAuth(ctx)
+  const user = await getAuth(ctx.request)
 
   return {
     user,

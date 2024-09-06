@@ -64,7 +64,7 @@ importers:
         version: 25.0.0
       nx:
         specifier: ^19.5.6
-        version: 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12))
+        version: 19.5.6(@swc/core@1.7.6)
       prettier:
         specifier: ^3.3.3
         version: 3.3.3
@@ -1494,8 +1494,8 @@ importers:
   examples/react/start-clerk-basic:
     dependencies:
       '@clerk/tanstack-start':
-        specifier: 0.3.0-snapshot.vdf04997
-        version: 0.3.0-snapshot.vdf04997(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.3.5
+        version: 0.3.5(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1577,7 +1577,7 @@ importers:
     dependencies:
       '@convex-dev/react-query':
         specifier: 0.0.0-alpha.5
-        version: 0.0.0-alpha.5(@tanstack/react-query@5.51.21(react@18.3.1))(convex@1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+        version: 0.0.0-alpha.5(@tanstack/react-query@5.51.21(react@18.3.1))(convex@1.15.0(@clerk/clerk-react@5.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       '@tanstack/react-query':
         specifier: ^5.51.21
         version: 5.51.21(react@18.3.1)
@@ -1607,7 +1607,7 @@ importers:
         version: 8.2.2
       convex:
         specifier: ^1.15.0
-        version: 1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 1.15.0(@clerk/clerk-react@5.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       isbot:
         specifier: ^5.1.14
         version: 5.1.14
@@ -2098,7 +2098,7 @@ importers:
         version: 5.3.5(@types/node@20.14.9)(terser@5.31.1)
       webpack:
         specifier: '>=5.92.0'
-        version: 5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.23.1)
+        version: 5.93.0(@swc/core@1.7.6)(esbuild@0.23.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -2401,19 +2401,19 @@ packages:
   '@bundled-es-modules/tough-cookie@0.1.6':
     resolution: {integrity: sha512-dvMHbL464C0zI+Yqxbz6kZ5TOEp7GLW+pry/RWndAR8MJQAXZ2rPmIs8tziTZjeIyhSNZgZbCePtfSbdWqStJw==}
 
-  '@clerk/backend@1.7.0-snapshot.vdf04997':
-    resolution: {integrity: sha512-yVKKF4H4pPXlH4xGuWhqQl8L8UfACQRyi6Bo0/n4SPI8xhfAUbI+xXgl+0ewa76ExdmAYqOpQ8Nokwf0LnYoaw==}
+  '@clerk/backend@1.9.2':
+    resolution: {integrity: sha512-8vCYux8Xbu5TQ2iq9tYuDnNhv3K/XhZ+34QJG+n4ZX4w4FfTTuzwb5OylcmP69vPvYybhoQfjpK57kBOW22deg==}
     engines: {node: '>=18.17.0'}
 
-  '@clerk/clerk-react@5.4.2-snapshot.vdf04997':
-    resolution: {integrity: sha512-QiWbY5uvwI/90IdhKviotiPOSaezWSivoEotzh3gawlRtR+InLur1JTfRHqAonqq5WGejAet3R+3DKQrC0lw6Q==}
+  '@clerk/clerk-react@5.7.0':
+    resolution: {integrity: sha512-VCYj/Qhm4P5u0A3X1M+yycod8cz8flFwtpnI8+ajGUDmMdel9iuR5ix01cgsHfyPuamfiuP1a4xNg7F0d+2P7Q==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: '>=18 || >=19.0.0-beta'
       react-dom: '>=18 || >=19.0.0-beta'
 
-  '@clerk/shared@2.5.2-snapshot.vdf04997':
-    resolution: {integrity: sha512-JokAhs1CcZ4UDQwJJCoSWPSqy/gUV7N8aRrgp4XkUiAiF7jeUrxvD4C9FNXjAlfn01utjmk3HuCQ1FyRMaB9Rg==}
+  '@clerk/shared@2.6.2':
+    resolution: {integrity: sha512-RkrNknIr98GPu3srXLhjJViC1Mom1gUsRMNnf1deibX2yvRnndloZGnFb0qxf+pFL/NCkKd3nSHtK3eCJQrVYQ==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: '>=18 || >=19.0.0-beta'
@@ -2424,8 +2424,8 @@ packages:
       react-dom:
         optional: true
 
-  '@clerk/tanstack-start@0.3.0-snapshot.vdf04997':
-    resolution: {integrity: sha512-MR6uTPn2gUcQXd4iwVQnTz1C5IAPXbT96bRqjFyxqWWklmMCL55Z+AwqdkYWslRxrNjqWaS26VPZrZ3upOsMcg==}
+  '@clerk/tanstack-start@0.3.5':
+    resolution: {integrity: sha512-Rctqajkvy1MC6bjvS6+6wvA0ah1mk0CJq92QXK2ib4uoBH4p0BAlH5JhlinAKD1ab3udlHkFitshEDgKjUP3KA==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       '@tanstack/react-router': workspace:*
@@ -2433,8 +2433,8 @@ packages:
       react: '>=18 || >=19.0.0-beta'
       react-dom: '>=18 || >=19.0.0-beta'
 
-  '@clerk/types@4.14.0-snapshot.vdf04997':
-    resolution: {integrity: sha512-X5OKm/AqWkdjPbTgP+0orYUB3Fa7Cky65LPhMN1Es5ATgQKxHgIfA5tetBdazqeK7kUL3eejSPQH/c03tksiaw==}
+  '@clerk/types@4.19.0':
+    resolution: {integrity: sha512-bDN/nRUD5PFCehQ+Kjdcft0I3b9CIyCcY3OBNDSc1L6RQhlXH+J48EtaP/cbRdslb83LJiBPQ2i/gV4VgblzwA==}
     engines: {node: '>=18.17.0'}
 
   '@cloudflare/kv-asset-handler@0.3.2':
@@ -9276,10 +9276,10 @@ snapshots:
       '@types/tough-cookie': 4.0.5
       tough-cookie: 4.1.4
 
-  '@clerk/backend@1.7.0-snapshot.vdf04997(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@clerk/backend@1.9.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@clerk/shared': 2.5.2-snapshot.vdf04997(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@clerk/types': 4.14.0-snapshot.vdf04997
+      '@clerk/shared': 2.6.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@clerk/types': 4.19.0
       cookie: 0.5.0
       snakecase-keys: 5.4.4
       tslib: 2.4.1
@@ -9287,17 +9287,17 @@ snapshots:
       - react
       - react-dom
 
-  '@clerk/clerk-react@5.4.2-snapshot.vdf04997(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@clerk/clerk-react@5.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@clerk/shared': 2.5.2-snapshot.vdf04997(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@clerk/types': 4.14.0-snapshot.vdf04997
+      '@clerk/shared': 2.6.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@clerk/types': 4.19.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       tslib: 2.4.1
 
-  '@clerk/shared@2.5.2-snapshot.vdf04997(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@clerk/shared@2.6.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@clerk/types': 4.14.0-snapshot.vdf04997
+      '@clerk/types': 4.19.0
       glob-to-regexp: 0.4.1
       js-cookie: 3.0.5
       std-env: 3.7.0
@@ -9306,19 +9306,19 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@clerk/tanstack-start@0.3.0-snapshot.vdf04997(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@clerk/tanstack-start@0.3.5(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@clerk/backend': 1.7.0-snapshot.vdf04997(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@clerk/clerk-react': 5.4.2-snapshot.vdf04997(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@clerk/shared': 2.5.2-snapshot.vdf04997(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@clerk/types': 4.14.0-snapshot.vdf04997
+      '@clerk/backend': 1.9.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@clerk/clerk-react': 5.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@clerk/shared': 2.6.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@clerk/types': 4.19.0
       '@tanstack/react-router': link:packages/react-router
       '@tanstack/start': link:packages/start
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       tslib: 2.4.1
 
-  '@clerk/types@4.14.0-snapshot.vdf04997':
+  '@clerk/types@4.19.0':
     dependencies:
       csstype: 3.1.1
 
@@ -9342,10 +9342,10 @@ snapshots:
       '@types/conventional-commits-parser': 5.0.0
       chalk: 5.3.0
 
-  '@convex-dev/react-query@0.0.0-alpha.5(@tanstack/react-query@5.51.21(react@18.3.1))(convex@1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
+  '@convex-dev/react-query@0.0.0-alpha.5(@tanstack/react-query@5.51.21(react@18.3.1))(convex@1.15.0(@clerk/clerk-react@5.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
     dependencies:
       '@tanstack/react-query': 5.51.21(react@18.3.1)
-      convex: 1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      convex: 1.15.0(@clerk/clerk-react@5.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   '@dabh/diagnostics@2.0.3':
     dependencies:
@@ -10055,9 +10055,9 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
 
-  '@nrwl/tao@19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12))':
+  '@nrwl/tao@19.5.6(@swc/core@1.7.6)':
     dependencies:
-      nx: 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12))
+      nx: 19.5.6(@swc/core@1.7.6)
       tslib: 2.7.0
     transitivePeerDependencies:
       - '@swc-node/register'
@@ -12171,12 +12171,13 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex@1.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  convex@1.15.0(@clerk/clerk-react@5.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       esbuild: 0.17.19
       jwt-decode: 3.1.2
       prettier: 3.2.5
     optionalDependencies:
+      '@clerk/clerk-react': 5.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
@@ -14281,10 +14282,10 @@ snapshots:
 
   nwsapi@2.2.12: {}
 
-  nx@19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12)):
+  nx@19.5.6(@swc/core@1.7.6):
     dependencies:
       '@napi-rs/wasm-runtime': 0.2.4
-      '@nrwl/tao': 19.5.6(@swc/core@1.7.6(@swc/helpers@0.5.12))
+      '@nrwl/tao': 19.5.6(@swc/core@1.7.6)
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.7
@@ -15442,14 +15443,14 @@ snapshots:
       '@swc/core': 1.7.6(@swc/helpers@0.5.12)
       esbuild: 0.23.1
 
-  terser-webpack-plugin@5.3.10(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.23.1)(webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.23.1)):
+  terser-webpack-plugin@5.3.10(@swc/core@1.7.6)(esbuild@0.23.1)(webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.23.1)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 3.3.0
       serialize-javascript: 6.0.2
       terser: 5.31.1
-      webpack: 5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.23.1)
+      webpack: 5.93.0(@swc/core@1.7.6)(esbuild@0.23.1)
     optionalDependencies:
       '@swc/core': 1.7.6(@swc/helpers@0.5.12)
       esbuild: 0.23.1
@@ -16075,37 +16076,6 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.23.1):
-    dependencies:
-      '@types/eslint-scope': 3.7.7
-      '@types/estree': 1.0.5
-      '@webassemblyjs/ast': 1.12.1
-      '@webassemblyjs/wasm-edit': 1.12.1
-      '@webassemblyjs/wasm-parser': 1.12.1
-      acorn: 8.12.1
-      acorn-import-attributes: 1.9.5(acorn@8.12.1)
-      browserslist: 4.23.3
-      chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.17.0
-      es-module-lexer: 1.5.4
-      eslint-scope: 5.1.1
-      events: 3.3.0
-      glob-to-regexp: 0.4.1
-      graceful-fs: 4.2.11
-      json-parse-even-better-errors: 2.3.1
-      loader-runner: 4.3.0
-      mime-types: 2.1.35
-      neo-async: 2.6.2
-      schema-utils: 3.3.0
-      tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.23.1)(webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.23.1))
-      watchpack: 2.4.1
-      webpack-sources: 3.2.3
-    transitivePeerDependencies:
-      - '@swc/core'
-      - esbuild
-      - uglify-js
-
   webpack@5.93.0(@swc/core@1.7.6(@swc/helpers@0.5.12))(esbuild@0.23.1)(webpack-cli@5.1.4):
     dependencies:
       '@types/eslint-scope': 3.7.7
@@ -16134,6 +16104,37 @@ snapshots:
       webpack-sources: 3.2.3
     optionalDependencies:
       webpack-cli: 5.1.4(webpack-dev-server@5.0.4)(webpack@5.93.0)
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
+
+  webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.23.1):
+    dependencies:
+      '@types/eslint-scope': 3.7.7
+      '@types/estree': 1.0.5
+      '@webassemblyjs/ast': 1.12.1
+      '@webassemblyjs/wasm-edit': 1.12.1
+      '@webassemblyjs/wasm-parser': 1.12.1
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
+      browserslist: 4.23.3
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.17.0
+      es-module-lexer: 1.5.4
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 3.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.10(@swc/core@1.7.6)(esbuild@0.23.1)(webpack@5.93.0(@swc/core@1.7.6)(esbuild@0.23.1))
+      watchpack: 2.4.1
+      webpack-sources: 3.2.3
     transitivePeerDependencies:
       - '@swc/core'
       - esbuild

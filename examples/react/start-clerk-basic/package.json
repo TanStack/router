@@ -12,7 +12,7 @@
     "test:e2e": "exit 0; playwright test --project=chromium"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.3.0-snapshot.vdf04997",
+    "@clerk/tanstack-start": "0.3.5",
     "@tanstack/react-router": "^1.56.1",
     "@tanstack/router-devtools": "^1.56.1",
     "@tanstack/router-plugin": "^1.56.1",
