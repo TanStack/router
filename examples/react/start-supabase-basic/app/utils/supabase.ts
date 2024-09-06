@@ -1,4 +1,3 @@
-// app/services/session.server.ts
 import { parseCookies, setCookie } from 'vinxi/http'
 import { createServerClient } from '@supabase/ssr'
 
