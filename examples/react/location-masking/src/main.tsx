@@ -276,7 +276,8 @@ function PhotoModalComponent() {
       }}
     >
       <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
-        <Link to="."
+        <Link
+          to="."
           target="_blank"
           className="text-blue-600 hover:opacity-75 underline"
         >
