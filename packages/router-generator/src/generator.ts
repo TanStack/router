@@ -589,28 +589,28 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         ]),
     '// Create and export the route tree',
     routeConfigChildrenText,
-    `interface FileRoutesByFullPath {
+    `export interface FileRoutesByFullPath {
         ${[...createRouteNodesByFullPath(routeNodes).entries()].map(
           ([fullPath, routeNode]) => {
             return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
           },
         )}
   }`,
-    `interface FileRoutesByTo {
+    `export interface FileRoutesByTo {
       ${[...createRouteNodesByTo(routeNodes).entries()].map(
         ([to, routeNode]) => {
           return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
         },
       )}
     }`,
-    `interface FileRoutesById {
+    `export interface FileRoutesById {
       ${[...createRouteNodesById(routeNodes).entries()].map(
         ([id, routeNode]) => {
           return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
         },
       )}
     }`,
-    `interface FileRouteTypes {
+    `export interface FileRouteTypes {
     fileRoutesByFullPath: FileRoutesByFullPath
     fullPaths: ${[...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|')}
     fileRoutesByTo: FileRoutesByTo
@@ -618,7 +618,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     id: ${[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`).join('|')}
     fileRoutesById: FileRoutesById
     }`,
-    `interface RootRouteChildren {
+    `export interface RootRouteChildren {
       ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
     }`,
     `const rootRouteChildren: RootRouteChildren = {

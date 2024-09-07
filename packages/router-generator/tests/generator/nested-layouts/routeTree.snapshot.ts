@@ -509,7 +509,7 @@ const NestedRouteChildren: NestedRouteChildren = {
 const NestedRouteWithChildren =
   NestedRoute._addFileChildren(NestedRouteChildren)
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/jested': typeof JestedLayoutB3LayoutC2RouteWithChildren
   '': typeof LayoutA2RouteWithChildren
@@ -528,7 +528,7 @@ interface FileRoutesByFullPath {
   '/nested/bar': typeof NestedLayoutB1LayoutC1BarRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/jested': typeof JestedLayoutB3IndexRoute
   '': typeof LayoutA2RouteWithChildren
@@ -544,7 +544,7 @@ interface FileRoutesByTo {
   '/nested/bar': typeof NestedLayoutB1LayoutC1BarRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
   '/': typeof IndexRoute
   '/jested': typeof JestedRouteRouteWithChildren
   '/_layout-a1': typeof LayoutA1RouteWithChildren
@@ -572,7 +572,7 @@ interface FileRoutesById {
   '/nested/_layout-b1/_layout-c1/bar': typeof NestedLayoutB1LayoutC1BarRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -635,7 +635,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   JestedRouteRoute: typeof JestedRouteRouteWithChildren
   LayoutA1Route: typeof LayoutA1RouteWithChildren

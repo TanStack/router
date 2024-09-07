@@ -36,19 +36,19 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/asdf/$id': typeof fooAsdfbarIdRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/asdf/$id': typeof fooAsdfbarIdRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
   '/asdf/$id': typeof fooAsdfbarIdRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/asdf/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -57,7 +57,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   fooAsdfbarIdRoute: typeof fooAsdfbarIdRoute
 }
 

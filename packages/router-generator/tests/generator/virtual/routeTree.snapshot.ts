@@ -197,7 +197,7 @@ const layoutRouteChildren: layoutRouteChildren = {
 const layoutRouteWithChildren =
   layoutRoute._addFileChildren(layoutRouteChildren)
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof indexRoute
   '': typeof layoutRouteWithChildren
   '/dashboard': typeof dbDashboardRouteWithChildren
@@ -210,7 +210,7 @@ interface FileRoutesByFullPath {
   '/hello/foo': typeof HelloFooIndexRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof indexRoute
   '': typeof layoutRouteWithChildren
   '/dashboard': typeof dbDashboardIndexRoute
@@ -221,7 +221,7 @@ interface FileRoutesByTo {
   '/hello/foo': typeof HelloFooIndexRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
   '/': typeof indexRoute
   '/_layout': typeof layoutRouteWithChildren
   '/_layout/dashboard': typeof dbDashboardRouteWithChildren
@@ -234,7 +234,7 @@ interface FileRoutesById {
   '/_layout/hello/foo/': typeof HelloFooIndexRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -271,7 +271,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   indexRoute: typeof indexRoute
   layoutRoute: typeof layoutRouteWithChildren
 }
