@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-generator",
-  "version": "1.56.1",
+  "version": "1.56.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -67,8 +67,5 @@
     "tsx": "^4.19.0",
     "prettier": "^3.3.3",
     "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "@tanstack/react-router": "^1.53.1"
   }
 }
