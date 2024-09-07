@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
 import { Login } from '../components/Login'
-import { useSupabase } from '../utils/supabase'
+import { getSupabaseServerClient } from '../utils/supabase'
 
 export const loginFn = createServerFn(
   'POST',
@@ -12,7 +12,7 @@ export const loginFn = createServerFn(
     },
     { request },
   ) => {
-    const supabase = await useSupabase()
+    const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase.auth.signInWithPassword({
       email: payload.email,
       password: payload.password,

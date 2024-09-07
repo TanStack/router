@@ -18,10 +18,10 @@ import { DefaultCatchBoundary } from '../components/DefaultCatchBoundary'
 import { NotFound } from '../components/NotFound'
 import appCss from '../styles/app.css?url'
 import { seo } from '../utils/seo'
-import { useSupabase } from '../utils/supabase'
+import { getSupabaseServerClient } from '../utils/supabase'
 
 const fetchUser = createServerFn('GET', async () => {
-  const supabase = await useSupabase()
+  const supabase = await getSupabaseServerClient()
   const { data, error } = await supabase.auth.getUser()
 
   if (!data.user?.email) {

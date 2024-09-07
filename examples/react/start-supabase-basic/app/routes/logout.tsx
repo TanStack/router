@@ -1,9 +1,9 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
-import { useSupabase } from '../utils/supabase'
+import { getSupabaseServerClient } from '../utils/supabase'
 
 const logoutFn = createServerFn('POST', async () => {
-  const supabase = await useSupabase()
+  const supabase = await getSupabaseServerClient()
   const { error } = await supabase.auth.signOut()
 
   if (error) {

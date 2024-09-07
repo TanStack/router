@@ -1,7 +1,7 @@
 import { parseCookies, setCookie } from 'vinxi/http'
 import { createServerClient } from '@supabase/ssr'
 
-export function useSupabase() {
+export function getSupabaseServerClient() {
   return createServerClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
