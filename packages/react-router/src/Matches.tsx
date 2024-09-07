@@ -376,9 +376,8 @@ export function useMatches<
 }
 
 export function useParentMatches<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId>,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRouteMatch = MakeRouteMatchUnion<TRouter>,
   T = Array<TRouteMatch>,
 >(opts?: { select?: (matches: Array<TRouteMatch>) => T }): T {
   const contextMatchId = React.useContext(matchContext)
@@ -397,9 +396,8 @@ export function useParentMatches<
 }
 
 export function useChildMatches<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TRouteMatch = MakeRouteMatch<TRouteTree, TRouteId>,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRouteMatch = MakeRouteMatchUnion<TRouter>,
   T = Array<TRouteMatch>,
 >(opts?: { select?: (matches: Array<TRouteMatch>) => T }): T {
   const contextMatchId = React.useContext(matchContext)
