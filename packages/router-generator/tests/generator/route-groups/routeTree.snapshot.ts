@@ -54,7 +54,7 @@ export interface FileRouteTypes {
   fullPaths: '/asdf/$id'
   fileRoutesByTo: FileRoutesByTo
   to: '/asdf/$id'
-  id: '/asdf/$id'
+  id: '__root__' | '/asdf/$id'
   fileRoutesById: FileRoutesById
 }
 

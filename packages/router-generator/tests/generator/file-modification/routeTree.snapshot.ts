@@ -113,7 +113,7 @@ export interface FileRouteTypes {
   fullPaths: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
   fileRoutesByTo: FileRoutesByTo
   to: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
-  id: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
+  id: '__root__' | '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
   fileRoutesById: FileRoutesById
 }
 

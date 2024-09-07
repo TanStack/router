@@ -411,6 +411,7 @@ export interface FileRouteTypes {
     | '/dashboard/invoices'
     | '/dashboard/users'
   id:
+    | '__root__'
     | '/'
     | '/_auth'
     | '/_layout'

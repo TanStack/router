@@ -50,7 +50,7 @@ export interface FileRouteTypes {
   fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
   to: '/'
-  id: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 

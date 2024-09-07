@@ -7853,6 +7853,7 @@ export interface FileRouteTypes {
     | '/search/search98'
     | '/search/search99'
   id:
+    | '__root__'
     | '/'
     | '/params'
     | '/search'

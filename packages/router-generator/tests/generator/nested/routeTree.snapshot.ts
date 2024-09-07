@@ -227,6 +227,7 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/posts/$postId'
   id:
+    | '__root__'
     | '/'
     | '/blog'
     | '/posts'

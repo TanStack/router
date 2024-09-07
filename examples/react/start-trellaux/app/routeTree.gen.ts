@@ -70,7 +70,7 @@ export interface FileRouteTypes {
   fullPaths: '/' | '/boards/$boardId'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/boards/$boardId'
-  id: '/' | '/boards/$boardId'
+  id: '__root__' | '/' | '/boards/$boardId'
   fileRoutesById: FileRoutesById
 }
 

@@ -616,7 +616,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     fullPaths: ${[...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|')}
     fileRoutesByTo: FileRoutesByTo
     to: ${[...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|')}
-    id: ${[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`).join('|')}
+    id: '__root__' | ${[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`).join('|')}
     fileRoutesById: FileRoutesById
     }`,
     `export interface RootRouteChildren {

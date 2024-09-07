@@ -114,7 +114,7 @@ export interface FileRouteTypes {
   fullPaths: '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/foo/bar' | '/foo/bar/$id'
-  id: '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
+  id: '__root__' | '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
   fileRoutesById: FileRoutesById
 }
 

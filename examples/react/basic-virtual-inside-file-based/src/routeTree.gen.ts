@@ -254,6 +254,7 @@ export interface FileRouteTypes {
     | '/posts/inception'
     | '/posts/inception/deeper'
   id:
+    | '__root__'
     | '/'
     | '/_layout'
     | '/posts'

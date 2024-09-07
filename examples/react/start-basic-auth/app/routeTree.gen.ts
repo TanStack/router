@@ -199,6 +199,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '' | '/login' | '/logout' | '/signup' | '/posts/$postId' | '/posts'
   id:
+    | '__root__'
     | '/'
     | '/_authed'
     | '/login'

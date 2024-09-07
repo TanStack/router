@@ -259,6 +259,7 @@ export interface FileRouteTypes {
     | '/hello/foo/$id'
     | '/hello/foo'
   id:
+    | '__root__'
     | '/'
     | '/_layout'
     | '/_layout/dashboard'

@@ -129,7 +129,7 @@ export interface FileRouteTypes {
   fullPaths: '/' | '/error' | '/posts' | '/posts/$postId' | '/posts/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/error' | '/posts/$postId' | '/posts'
-  id: '/' | '/error' | '/posts' | '/posts/$postId' | '/posts/'
+  id: '__root__' | '/' | '/error' | '/posts' | '/posts/$postId' | '/posts/'
   fileRoutesById: FileRoutesById
 }
 

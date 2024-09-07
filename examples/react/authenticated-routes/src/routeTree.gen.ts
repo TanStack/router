@@ -183,6 +183,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '' | '/login' | '/dashboard' | '/invoices/$invoiceId' | '/invoices'
   id:
+    | '__root__'
     | '/'
     | '/_auth'
     | '/login'

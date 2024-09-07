@@ -232,6 +232,7 @@ export interface FileRouteTypes {
     | '/layout-b'
     | '/posts/$postId/deep'
   id:
+    | '__root__'
     | '/'
     | '/_layout'
     | '/posts'

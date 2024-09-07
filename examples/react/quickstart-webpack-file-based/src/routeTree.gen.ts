@@ -70,7 +70,7 @@ export interface FileRouteTypes {
   fullPaths: '/' | '/about'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/about'
-  id: '/' | '/about'
+  id: '__root__' | '/' | '/about'
   fileRoutesById: FileRoutesById
 }
 

@@ -300,6 +300,7 @@ export interface FileRouteTypes {
     | '/classic/hello/world'
     | '/classic/hello'
   id:
+    | '__root__'
     | '/'
     | '/_first'
     | '/posts'

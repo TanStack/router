@@ -167,6 +167,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/dashboard' | '/dashboard/posts/$postId' | '/dashboard/posts'
   id:
+    | '__root__'
     | '/'
     | '/dashboard'
     | '/dashboard/posts'

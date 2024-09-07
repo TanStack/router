@@ -161,6 +161,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '' | '/posts/$postId' | '/profile/$' | '/posts'
   id:
+    | '__root__'
     | '/'
     | '/_authed'
     | '/_authed/posts'

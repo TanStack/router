@@ -608,6 +608,7 @@ export interface FileRouteTypes {
     | '/jested/bar'
     | '/nested/bar'
   id:
+    | '__root__'
     | '/'
     | '/jested'
     | '/_layout-a1'

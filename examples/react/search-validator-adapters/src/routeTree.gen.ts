@@ -102,7 +102,7 @@ export interface FileRouteTypes {
   fullPaths: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
-  id: '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
+  id: '__root__' | '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
   fileRoutesById: FileRoutesById
 }
 
