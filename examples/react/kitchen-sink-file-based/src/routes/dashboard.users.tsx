@@ -124,10 +124,9 @@ function UsersComponent() {
                   {user.name}{' '}
                   <MatchRoute
                     to="/dashboard/users/user"
-                    search={(d) => ({
-                      ...d,
+                    search={{
                       userId: user.id,
-                    })}
+                    }}
                     pending
                   >
                     {(match) => <Spinner show={!!match} wait="delay-50" />}
