@@ -188,7 +188,7 @@ const LayoutTestLazyRouteWithChildren = LayoutTestLazyRoute._addFileChildren(
   LayoutTestLazyRouteChildren,
 )
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof IndexLazyRoute
   '/posts': typeof PostsRouteWithChildren
   '': typeof LayoutTestLazyRouteWithChildren
@@ -200,7 +200,7 @@ interface FileRoutesByFullPath {
   '/layout-b/test': typeof LayoutTestLayoutBTestLazyRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof IndexLazyRoute
   '': typeof LayoutTestLazyRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRouteRoute
@@ -211,7 +211,7 @@ interface FileRoutesByTo {
   '/layout-b/test': typeof LayoutTestLayoutBTestLazyRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
   '/': typeof IndexLazyRoute
   '/posts': typeof PostsRouteWithChildren
   '/_layout-test': typeof LayoutTestLazyRouteWithChildren
@@ -223,7 +223,7 @@ interface FileRoutesById {
   '/_layout-test/layout-b/test': typeof LayoutTestLayoutBTestLazyRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -258,7 +258,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   IndexLazyRoute: typeof IndexLazyRoute
   PostsRoute: typeof PostsRouteWithChildren
   LayoutTestLazyRoute: typeof LayoutTestLazyRouteWithChildren

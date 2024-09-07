@@ -128,7 +128,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof AuthedRouteWithChildren
   '/posts': typeof AuthedPostsRouteWithChildren
@@ -137,7 +137,7 @@ interface FileRoutesByFullPath {
   '/posts/': typeof AuthedPostsIndexRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof AuthedRouteWithChildren
   '/posts/$postId': typeof AuthedPostsPostIdRoute
@@ -145,7 +145,7 @@ interface FileRoutesByTo {
   '/posts': typeof AuthedPostsIndexRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/_authed/posts': typeof AuthedPostsRouteWithChildren
@@ -154,7 +154,7 @@ interface FileRoutesById {
   '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '' | '/posts' | '/posts/$postId' | '/profile/$' | '/posts/'
   fileRoutesByTo: FileRoutesByTo
@@ -169,7 +169,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
 }

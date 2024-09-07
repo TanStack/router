@@ -232,7 +232,7 @@ const ClassicHelloRouteRouteChildren: ClassicHelloRouteRouteChildren = {
 const ClassicHelloRouteRouteWithChildren =
   ClassicHelloRouteRoute._addFileChildren(ClassicHelloRouteRouteChildren)
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof homeRoute
   '': typeof layoutSecondLayoutRouteWithChildren
   '/posts': typeof postsPostsRouteWithChildren
@@ -246,7 +246,7 @@ interface FileRoutesByFullPath {
   '/classic/hello/': typeof ClassicHelloIndexRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof homeRoute
   '': typeof layoutSecondLayoutRouteWithChildren
   '/posts': typeof postsPostsHomeRoute
@@ -258,7 +258,7 @@ interface FileRoutesByTo {
   '/classic/hello': typeof ClassicHelloIndexRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
   '/': typeof homeRoute
   '/_first': typeof layoutFirstLayoutRouteWithChildren
   '/posts': typeof postsPostsRouteWithChildren
@@ -273,7 +273,7 @@ interface FileRoutesById {
   '/classic/hello/': typeof ClassicHelloIndexRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -314,7 +314,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   homeRoute: typeof homeRoute
   layoutFirstLayoutRoute: typeof layoutFirstLayoutRouteWithChildren
   postsPostsRoute: typeof postsPostsRouteWithChildren
