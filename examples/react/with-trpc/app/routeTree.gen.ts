@@ -129,7 +129,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/posts': typeof DashboardPostsRouteWithChildren
@@ -138,14 +138,15 @@ interface FileRoutesByFullPath {
   '/dashboard/posts/': typeof DashboardPostsIndexRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/posts/$postId': typeof DashboardPostsPostIdRoute
   '/dashboard/posts': typeof DashboardPostsIndexRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/posts': typeof DashboardPostsRouteWithChildren
@@ -154,7 +155,7 @@ interface FileRoutesById {
   '/dashboard/posts/': typeof DashboardPostsIndexRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -166,6 +167,7 @@ interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/dashboard' | '/dashboard/posts/$postId' | '/dashboard/posts'
   id:
+    | '__root__'
     | '/'
     | '/dashboard'
     | '/dashboard/posts'
@@ -175,7 +177,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
 }

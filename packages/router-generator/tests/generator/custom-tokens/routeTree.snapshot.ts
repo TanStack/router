@@ -157,7 +157,7 @@ const PostsR0ut3RouteWithChildren = PostsR0ut3Route._addFileChildren(
   PostsR0ut3RouteChildren,
 )
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof R1nd3xRoute
   '/blog': typeof BlogR0ut3RouteWithChildren
   '/posts': typeof PostsR0ut3RouteWithChildren
@@ -168,7 +168,7 @@ interface FileRoutesByFullPath {
   '/posts/$postId': typeof PostsPostId1nd3xRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof R1nd3xRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog': typeof Blog1nd3xRoute
@@ -177,7 +177,8 @@ interface FileRoutesByTo {
   '/posts/$postId': typeof PostsPostId1nd3xRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof R1nd3xRoute
   '/blog': typeof BlogR0ut3RouteWithChildren
   '/posts': typeof PostsR0ut3RouteWithChildren
@@ -188,7 +189,7 @@ interface FileRoutesById {
   '/posts/$postId/': typeof PostsPostId1nd3xRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -208,6 +209,7 @@ interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/posts/$postId'
   id:
+    | '__root__'
     | '/'
     | '/blog'
     | '/posts'
@@ -219,7 +221,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   R1nd3xRoute: typeof R1nd3xRoute
   BlogR0ut3Route: typeof BlogR0ut3RouteWithChildren
   PostsR0ut3Route: typeof PostsR0ut3RouteWithChildren

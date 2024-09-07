@@ -320,7 +320,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof LayoutRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
@@ -339,7 +339,7 @@ interface FileRoutesByFullPath {
   '/dashboard/users/': typeof DashboardUsersIndexRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof LayoutRouteWithChildren
   '/login': typeof LoginRoute
@@ -355,7 +355,8 @@ interface FileRoutesByTo {
   '/dashboard/users': typeof DashboardUsersIndexRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
@@ -375,7 +376,7 @@ interface FileRoutesById {
   '/dashboard/users/': typeof DashboardUsersIndexRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -410,6 +411,7 @@ interface FileRouteTypes {
     | '/dashboard/invoices'
     | '/dashboard/users'
   id:
+    | '__root__'
     | '/'
     | '/_auth'
     | '/_layout'
@@ -430,7 +432,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren

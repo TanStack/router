@@ -164,7 +164,7 @@ const PostsRouteChildren: PostsRouteChildren = {
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/posts': typeof PostsRouteWithChildren
@@ -174,7 +174,7 @@ interface FileRoutesByFullPath {
   '/layout-b': typeof LayoutLayout2LayoutBRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
@@ -183,7 +183,8 @@ interface FileRoutesByTo {
   '/layout-b': typeof LayoutLayout2LayoutBRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
@@ -194,7 +195,7 @@ interface FileRoutesById {
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -207,6 +208,7 @@ interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
   id:
+    | '__root__'
     | '/'
     | '/_layout'
     | '/posts'
@@ -218,7 +220,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren

@@ -170,7 +170,7 @@ const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
   PostsRouteRouteChildren,
 )
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
@@ -182,7 +182,7 @@ interface FileRoutesByFullPath {
   '/posts/$postId': typeof PostsPostIdIndexRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/blog/stats': typeof BlogStatsRoute
   '/blog': typeof BlogIndexRoute
@@ -192,7 +192,8 @@ interface FileRoutesByTo {
   '/posts/$postId': typeof PostsPostIdIndexRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
@@ -204,7 +205,7 @@ interface FileRoutesById {
   '/posts/$postId/': typeof PostsPostIdIndexRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
@@ -226,6 +227,7 @@ interface FileRouteTypes {
     | '/blog/$slug'
     | '/posts/$postId'
   id:
+    | '__root__'
     | '/'
     | '/blog'
     | '/posts'
@@ -238,7 +240,7 @@ interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BlogRouteRoute: typeof BlogRouteRouteWithChildren
   PostsRouteRoute: typeof PostsRouteRouteWithChildren

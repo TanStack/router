@@ -88,36 +88,37 @@ const FooBarRouteChildren: FooBarRouteChildren = {
 const FooBarRouteWithChildren =
   FooBarRoute._addFileChildren(FooBarRouteChildren)
 
-interface FileRoutesByFullPath {
+export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/foo/bar': typeof FooBarRouteWithChildren
   '/foo/bar/': typeof fooBarHomeRoute
   '/foo/bar/$id': typeof fooBarDetailsRoute
 }
 
-interface FileRoutesByTo {
+export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/foo/bar': typeof fooBarHomeRoute
   '/foo/bar/$id': typeof fooBarDetailsRoute
 }
 
-interface FileRoutesById {
+export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/foo/bar': typeof FooBarRouteWithChildren
   '/foo/bar/': typeof fooBarHomeRoute
   '/foo/bar/$id': typeof fooBarDetailsRoute
 }
 
-interface FileRouteTypes {
+export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/foo/bar' | '/foo/bar/$id'
-  id: '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
+  id: '__root__' | '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
   fileRoutesById: FileRoutesById
 }
 
-interface RootRouteChildren {
+export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FooBarRoute: typeof FooBarRouteWithChildren
 }
