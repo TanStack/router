@@ -60,6 +60,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/boards/$boardId': typeof BoardsBoardIdRoute
 }

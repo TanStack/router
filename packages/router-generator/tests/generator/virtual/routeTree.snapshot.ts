@@ -222,6 +222,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof indexRoute
   '/_layout': typeof layoutRouteWithChildren
   '/_layout/dashboard': typeof dbDashboardRouteWithChildren

@@ -101,6 +101,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/foo': typeof testFooRoute
   '/initiallyEmpty': typeof testInitiallyEmptyRoute
   '/initiallyLazy': typeof testInitiallyLazyRoute

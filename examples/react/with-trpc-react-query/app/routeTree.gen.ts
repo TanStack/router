@@ -146,6 +146,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/posts': typeof DashboardPostsRouteWithChildren

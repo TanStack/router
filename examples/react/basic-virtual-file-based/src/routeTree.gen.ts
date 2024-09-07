@@ -259,6 +259,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof homeRoute
   '/_first': typeof layoutFirstLayoutRouteWithChildren
   '/posts': typeof postsPostsRouteWithChildren

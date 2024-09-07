@@ -102,6 +102,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/foo/bar': typeof FooBarRouteWithChildren
   '/foo/bar/': typeof fooBarHomeRoute

@@ -545,6 +545,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/jested': typeof JestedRouteRouteWithChildren
   '/_layout-a1': typeof LayoutA1RouteWithChildren

@@ -90,6 +90,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/users/arktype/': typeof UsersArktypeIndexRoute
   '/users/valibot/': typeof UsersValibotIndexRoute

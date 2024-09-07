@@ -6620,6 +6620,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/params': typeof genParamsRouteRouteWithChildren
   '/search': typeof genSearchRouteRouteWithChildren

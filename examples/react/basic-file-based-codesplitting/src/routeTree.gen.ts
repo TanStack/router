@@ -212,6 +212,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/': typeof IndexLazyRoute
   '/posts': typeof PostsRouteWithChildren
   '/_layout-test': typeof LayoutTestLazyRouteWithChildren

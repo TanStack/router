@@ -45,6 +45,7 @@ export interface FileRoutesByTo {
 }
 
 export interface FileRoutesById {
+  __root__: typeof rootRoute
   '/asdf/$id': typeof fooAsdfbarIdRoute
 }
 
