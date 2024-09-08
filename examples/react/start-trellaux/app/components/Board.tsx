@@ -74,8 +74,8 @@ export function Board({ boardId }: { boardId: string }) {
           }}
         />
       </h1>
-
       <div className="flex flex-grow min-h-0 h-full items-start px-8 pb-4 w-fit">
+        <h1 className="text-2xl text-black">hello123321123312</h1>
         {columns.map((col, index) => {
           return (
             <ColumnComponent
@@ -101,7 +101,6 @@ export function Board({ boardId }: { boardId: string }) {
           }}
         />
       </div>
-
       {/* trolling you to add some extra margin to the right of the container with a whole dang div */}
       <div data-lol className="w-8 h-1 flex-shrink-0" />
     </div>
