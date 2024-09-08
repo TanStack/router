@@ -4,7 +4,7 @@ import { fetcher } from '../client-runtime/fetcher'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
 import { handleServerRequest } from '../server-handler/index'
 import type { WritableOptions } from 'node:stream'
-import type { FetchFn } from '../client/createServerFn'
+import type { ServerFn } from '../client/createServerFn'
 /**
  *
  * @returns {import('node:http').IncomingMessage}
@@ -80,7 +80,7 @@ function createAsyncStream(options?: WritableOptions) {
 }
 
 export function createServerReference<TPayload, TResponse>(
-  _fn: FetchFn<TPayload, TResponse>,
+  _fn: ServerFn<TPayload, TResponse>,
   id: string,
   name: string,
 ) {

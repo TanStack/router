@@ -2,7 +2,7 @@ import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import reactRefresh from '@vitejs/plugin-react'
+import viteReact from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { TanStackStartVite } from '@tanstack/start-vite-plugin'
@@ -218,7 +218,7 @@ export function defineConfig(
   const opts = inlineConfigSchema.parse(inlineConfig)
 
   const { preset: configDeploymentPreset, ...deploymentOptions } =
-    deploymentSchema.parse(opts.deployment || {})
+    deploymentSchema.parse(opts.deployment)
 
   const deploymentPreset = checkDeploymentPresetInput(
     configDeploymentPreset || 'vercel',
@@ -239,6 +239,20 @@ export function defineConfig(
 
   const apiEntryExists = existsSync(apiEntry)
 
+  const testClientPlugin = () =>
+    ({
+      name: 'custom-hot-update-client',
+      configResolved(resolvedConfig: any) {
+        console.log(resolvedConfig)
+        throw new Error('test')
+      },
+      handleHotUpdate(ctx: any) {
+        console.log('client hot', ctx)
+
+        return []
+      },
+    }) as const
+
   return createApp({
     server: {
       ...deploymentOptions,
@@ -255,7 +269,25 @@ export function defineConfig(
         dir: './public',
         base: '/',
       },
-      withStartPlugins(tsrConfig)({
+      withPlugins([
+        config('start-vite-test', {
+          ssr: {
+            noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+          },
+          plugins: [testClientPlugin()],
+          // optimizeDeps: {
+          //   include: ['@tanstack/start/server-runtime'],
+          // },
+        }),
+        TanStackRouterVite({
+          ...tsrConfig,
+          autoCodeSplitting: true,
+          experimental: {
+            ...tsrConfig.experimental,
+          },
+        }),
+        // TanStackStartVite(),
+      ])({
         name: 'client',
         type: 'client',
         target: 'browser',
@@ -270,56 +302,77 @@ export function defineConfig(
           serverFunctions.client({
             runtime: '@tanstack/start/client-runtime',
           }),
-          reactRefresh({
+          viteReact({
             babel: opts.react?.babel,
             exclude: opts.react?.exclude,
             include: opts.react?.include,
           }),
+
           // TODO: RSCS - enable this
           // serverComponents.client(),
         ],
       }),
-      ...(apiEntryExists
-        ? [
-            withPlugins([
-              config('start-vite', {
-                ssr: {
-                  noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-                },
-              }),
-              TanStackRouterVite({
-                ...tsrConfig,
-                autoCodeSplitting: true,
-                experimental: {
-                  ...tsrConfig.experimental,
-                },
-              }),
-            ])({
-              name: 'api',
-              type: 'http',
-              target: 'server',
-              base: apiBase,
-              handler: apiEntry,
-              routes: tsrFileRouter({ tsrConfig, apiBase }),
-              plugins: () => [
-                ...(opts.vite?.plugins?.() || []),
-                ...(opts.routers?.ssr?.vite?.plugins?.() || []),
-                // serverTransform({
-                //   runtime: '@tanstack/start/server-runtime',
-                // }),
-                // config('start-api', {
-                //   ssr: {
-                //     external: ['@vinxi/react-server-dom/client'],
-                //   },
-                // }),
-              ],
-              // link: {
-              //   client: 'client',
-              // },
-            }),
-          ]
-        : []),
-      withStartPlugins(tsrConfig)({
+      // ...(apiEntryExists
+      //   ? [
+      //       withPlugins([
+      //         config('start-vite', {
+      //           ssr: {
+      //             noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+      //           },
+      //         }),
+      //         TanStackRouterVite({
+      //           ...tsrConfig,
+      //           autoCodeSplitting: true,
+      //           experimental: {
+      //             ...(tsrConfig.experimental ),
+      //           },
+      //         }),
+      //       ])({
+      //         name: 'api',
+      //         type: 'http',
+      //         target: 'server',
+      //         base: apiBase,
+      //         handler: apiEntry,
+      //         routes: tsrFileRouter({
+      //           tsrConfig,
+      //           apiBase,
+      //         }),
+      //         plugins: () => [
+      //           ...(opts.vite?.plugins?.() || []),
+      //           ...(opts.routers?.ssr?.vite?.plugins?.() || []),
+      //           // serverTransform({
+      //           //   runtime: '@tanstack/start/server-runtime',
+      //           // }),
+      //           // config('start-api', {
+      //           //   ssr: {
+      //           //     external: ['@vinxi/react-server-dom/client'],
+      //           //   },
+      //           // }),
+      //         ],
+      //         // link: {
+      //         //   client: 'client',
+      //         // },
+      //       }),
+      //     ]
+      //   : []),
+      withPlugins([
+        config('start-vite', {
+          ssr: {
+            noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+          },
+          // optimizeDeps: {
+          //   include: ['@tanstack/start/server-runtime'],
+          // },
+        }),
+        TanStackRouterVite({
+          ...tsrConfig,
+          autoCodeSplitting: true,
+          experimental: {
+            ...tsrConfig.experimental,
+          },
+        }),
+        // TanStackStartVite(),
+      ])({
         name: 'ssr',
         type: 'http',
         target: 'server',
@@ -334,17 +387,45 @@ export function defineConfig(
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
-          config('start-ssr', {
+          config('debug-ssr', {
             ssr: {
               external: ['@vinxi/react-server-dom/client'],
             },
+            plugins: [
+              {
+                name: 'custom-hot-update-ssr',
+                configResolved(resolvedConfig) {
+                  console.log('ssr config resolved', resolvedConfig)
+                },
+                handleHotUpdate(ctx) {
+                  console.log('ssr hot', ctx)
+                },
+              },
+            ],
           }),
         ],
         link: {
           client: 'client',
         },
       }),
-      withStartPlugins(tsrConfig)({
+      withPlugins([
+        config('start-vite', {
+          ssr: {
+            noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+          },
+          // optimizeDeps: {
+          //   include: ['@tanstack/start/server-runtime'],
+          // },
+        }),
+        TanStackRouterVite({
+          ...tsrConfig,
+          autoCodeSplitting: true,
+          experimental: {
+            ...tsrConfig.experimental,
+          },
+        }),
+        // TanStackStartVite(),
+      ])({
         name: 'server',
         type: 'http',
         target: 'server',
@@ -359,6 +440,16 @@ export function defineConfig(
             resolve: {
               conditions: [],
             },
+          }),
+          config('debug-server', {
+            plugins: [
+              {
+                name: 'custom-hot-update-client',
+                handleHotUpdate(ctx) {
+                  console.log('server hot', ctx)
+                },
+              },
+            ],
           }),
           // TODO: RSCs - add this
           // serverComponents.serverActions({
@@ -404,27 +495,6 @@ function withPlugins(plugins: Array<any>) {
       plugins: async () => [...plugins, ...((await router.plugins?.()) ?? [])],
     }
   }
-}
-
-function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
-  return withPlugins([
-    config('start-vite', {
-      ssr: {
-        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-      },
-      // optimizeDeps: {
-      //   include: ['@tanstack/start/server-runtime'],
-      // },
-    }),
-    TanStackRouterVite({
-      ...tsrConfig,
-      autoCodeSplitting: true,
-      experimental: {
-        ...tsrConfig.experimental,
-      },
-    }),
-    TanStackStartVite(),
-  ])
 }
 
 // function resolveRelativePath(p: string) {
