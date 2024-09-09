@@ -1,13 +1,21 @@
-/* eslint-disable */
-import { describe, it, expect } from 'vitest'
+import React from 'react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
+
 import {
-  getRouteApi,
-  createRoute,
   createRootRoute,
+  createRoute,
   createRouter,
+  getRouteApi,
+  RouterProvider,
   useNavigate,
 } from '../src'
-import React from 'react'
+
+afterEach(() => {
+  vi.resetAllMocks()
+  window.history.replaceState(null, 'root', '/')
+  cleanup()
+})
 
 describe('getRouteApi', () => {
   it('should have the useMatch hook', () => {
@@ -139,3 +147,50 @@ describe('throws invariant exception when trying to access properties before `cr
   })
 })
 */
+
+describe('onEnter event', () => {
+  it('should have router context defined in router.load()', async () => {
+    const fn = vi.fn()
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return <h1>Index</h1>
+      },
+      onEnter: ({ context }) => {
+        fn(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    await router.load()
+
+    await waitFor(() => expect(fn).toHaveBeenCalledWith({ foo: 'bar' }))
+  })
+
+  it('should have router context defined in <RouterProvider router={router} />', async () => {
+    const fn = vi.fn()
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return <h1>Index</h1>
+      },
+      onEnter: ({ context }) => {
+        fn(context)
+      },
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    expect(fn).toHaveBeenCalledWith({ foo: 'bar' })
+  })
+})
