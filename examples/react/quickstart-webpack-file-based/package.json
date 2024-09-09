@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "webpack serve --port 3001 --no-open",
-    "build": "webpack build"
+    "build": "webpack build && tsc --noEmit"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.56.5",

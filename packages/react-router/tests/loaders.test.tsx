@@ -163,7 +163,7 @@ describe('loaders parentMatchPromise', () => {
     expect(fooElement).toBeInTheDocument()
 
     expect(nestedLoaderMock).toHaveBeenCalled()
-    expect(nestedLoaderMock.mock.calls[0][0]).toBeInstanceOf(Promise)
+    expect(nestedLoaderMock.mock.calls[0]?.[0]).toBeInstanceOf(Promise)
   })
 })
 
