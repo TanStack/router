@@ -1,13 +1,13 @@
 import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 
 import {
+  RouterProvider,
   createRootRoute,
   createRoute,
   createRouter,
   getRouteApi,
-  RouterProvider,
   useNavigate,
 } from '../src'
 
@@ -167,7 +167,7 @@ describe('onEnter event', () => {
 
     await router.load()
 
-    await waitFor(() => expect(fn).toHaveBeenCalledWith({ foo: 'bar' }))
+    expect(fn).toHaveBeenCalledWith({ foo: 'bar' })
   })
 
   it('should have router context defined in <RouterProvider router={router} />', async () => {
