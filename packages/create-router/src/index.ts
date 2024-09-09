@@ -1,7 +1,7 @@
 import { basename, resolve } from 'node:path'
 import { existsSync } from 'node:fs'
 
-import { input, select } from '@inquirer/prompts'
+import { confirm, input, select } from '@inquirer/prompts'
 import { cli } from './cli'
 import {
   DEFAULT_BUNDLER,
@@ -41,13 +41,25 @@ async function main() {
     })
   }
 
-  if (!cli.options.bundler) {
-    cli.options.bundler = await select({
-      message: 'Select a bundler',
-      choices: SUPPORTED_BUNDLERS.map((bundler) => ({ value: bundler })),
-      default: DEFAULT_BUNDLER,
-    })
-  }
+  do {
+    if (!cli.options.bundler) {
+      cli.options.bundler = await select({
+        message: 'Select a bundler',
+        choices: SUPPORTED_BUNDLERS.map((bundler) => ({ value: bundler })),
+        default: DEFAULT_BUNDLER,
+      })
+    }
+
+    if (cli.options.bundler !== 'vite') {
+      const bundlerConfirmed = await confirm({
+        message:
+          'Are you sure you want to use this bundler? If you ever choose to adopt full-stack features with Start, Vite is currently required. Proceed anyway?',
+      })
+      if (!bundlerConfirmed) {
+        cli.options.bundler = undefined
+      }
+    }
+  } while (cli.options.bundler === undefined)
 
   const targetFolder = resolve(cli.directory)
   const projectName = basename(targetFolder)
