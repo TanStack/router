@@ -54,8 +54,8 @@
     "typescript52": "npm:typescript@5.2",
     "typescript53": "npm:typescript@5.3",
     "typescript54": "npm:typescript@5.4",
-    "vite": "^5.3.5",
-    "vitest": "^1.6.0"
+    "vite": "^5.4.3",
+    "vitest": "^2.0.5"
   },
   "resolutions": {
     "use-sync-external-store": "1.2.2"

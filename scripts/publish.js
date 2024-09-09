@@ -68,6 +68,10 @@ await publish({
       name: '@tanstack/start-vite-plugin',
       packageDir: 'packages/start-vite-plugin',
     },
+    {
+      name: '@tanstack/create-router',
+      packageDir: 'packages/create-router',
+    },
   ],
   branchConfigs: {
     main: {
