@@ -1,5 +1,5 @@
 import packageJson from '../../package.json'
-import { PeerDependency } from '../types'
+import type { PeerDependency } from '../types'
 
 export function getDependenciesWithVersion(deps: Array<PeerDependency>) {
   return deps.reduce(

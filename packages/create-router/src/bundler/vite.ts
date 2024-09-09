@@ -1,5 +1,5 @@
-import type { ApplyParams, BundlerResult, PeerDependency } from '../types'
 import { copyTemplateFiles } from '../utils/copyTemplateFiles'
+import type { ApplyParams, BundlerResult, PeerDependency } from '../types'
 
 export const scripts = {
   dev: 'vite --port=3001',
