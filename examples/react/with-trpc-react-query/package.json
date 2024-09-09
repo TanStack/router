@@ -12,7 +12,7 @@
     "@tanstack/react-query-devtools": "^5.51.21",
     "@tanstack/react-router": "^1.56.5",
     "@tanstack/router-devtools": "^1.56.5",
-    "@tanstack/router-plugin": "^1.56.4",
+    "@tanstack/router-plugin": "^1.57.1",
     "@trpc/client": "11.0.0-rc.477",
     "@trpc/react-query": "11.0.0-rc.477",
     "@trpc/server": "11.0.0-rc.477",
