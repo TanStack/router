@@ -79,7 +79,9 @@ export async function create({
     )
     return
   }
-  const installSpinner = yoctoSpinner({text: 'installing dependencies'}).start()
+  const installSpinner = yoctoSpinner({
+    text: 'installing dependencies',
+  }).start()
   try {
     await install(packageManager)
     installSpinner.success('dependencies installed')
@@ -96,7 +98,7 @@ export async function create({
     return
   }
 
-  const buildSpinner = yoctoSpinner({text: 'building project'}).start()
+  const buildSpinner = yoctoSpinner({ text: 'building project' }).start()
   try {
     await build(packageManager)
     buildSpinner.success('dependencies installed')

@@ -1,4 +1,4 @@
-import { ApplyParams, BundlerResult, PeerDependency } from '../types'
+import type { ApplyParams, BundlerResult, PeerDependency } from '../types'
 import { copyTemplateFiles } from '../utils/copyTemplateFiles'
 
 export const scripts = {
