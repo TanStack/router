@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
-import type { PeerDependency } from '../types'
 import { packageJson } from './packageJson'
+import type { PeerDependency } from '../types'
 
 export function getDependenciesWithVersion(deps: Array<PeerDependency>) {
   return deps.reduce(
