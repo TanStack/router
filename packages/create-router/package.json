@@ -45,8 +45,8 @@
     "yocto-spinner": "^0.1.0"
   },
   "peerDependencies": {
-    "@rsbuild/core": "1.0.1-rc.0",
-    "@rsbuild/plugin-react": "1.0.1-rc.0",
+    "@rsbuild/core": "1.0.1-rc.5",
+    "@rsbuild/plugin-react": "1.0.1-rc.5",
     "@swc/core": "^1.7.6",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
