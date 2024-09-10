@@ -597,41 +597,39 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
       ? []
       : [
           `export interface FileRoutesByFullPath {
-        ${[...createRouteNodesByFullPath(routeNodes).entries()].map(
-          ([fullPath, routeNode]) => {
-            return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
-          },
-        )}
-  }`,
+  ${[...createRouteNodesByFullPath(routeNodes).entries()].map(
+    ([fullPath, routeNode]) => {
+      return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+    },
+  )}
+}`,
           `export interface FileRoutesByTo {
       ${[...createRouteNodesByTo(routeNodes).entries()].map(
         ([to, routeNode]) => {
           return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
         },
       )}
-    }`,
+}`,
           `export interface FileRoutesById {
-      '__root__': typeof rootRoute,
-      ${[...createRouteNodesById(routeNodes).entries()].map(
-        ([id, routeNode]) => {
-          return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
-        },
-      )}
-    }`,
+  '__root__': typeof rootRoute,
+  ${[...createRouteNodesById(routeNodes).entries()].map(([id, routeNode]) => {
+    return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+  })}
+}`,
           `export interface FileRouteTypes {
-    fileRoutesByFullPath: FileRoutesByFullPath
-    fullPaths: ${[...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|')}
-    fileRoutesByTo: FileRoutesByTo
-    to: ${[...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|')}
-    id: '__root__' | ${[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`).join('|')}
-    fileRoutesById: FileRoutesById
-    }`,
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: ${[...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|')}
+  fileRoutesByTo: FileRoutesByTo
+  to: ${[...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|')}
+  id: '__root__' | ${[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`).join('|')}
+  fileRoutesById: FileRoutesById
+}`,
           `export interface RootRouteChildren {
       ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
-    }`,
+}`,
           `const rootRouteChildren: RootRouteChildren = {
       ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
-    }`,
+}`,
         ]),
     TYPES_DISABLED
       ? `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)`
