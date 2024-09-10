@@ -61,6 +61,8 @@ export async function generator(config: Config) {
 
   const start = Date.now()
 
+  const TYPES_DISABLED = config.disableTypes
+
   const prettierOptions: prettier.Options = {
     semi: config.semicolons,
     singleQuote: config.quoteStyle === 'single',
@@ -393,13 +395,15 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
       if (node.children?.length) {
         const childConfigs = buildRouteTreeConfig(node.children, depth + 1)
 
-        const childrenDeclaration = `interface ${route}Children {
-          ${node.children.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
-        }`
+        const childrenDeclaration = TYPES_DISABLED
+          ? ''
+          : `interface ${route}Children {
+  ${node.children.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`
 
-        const children = `const ${route}Children: ${route}Children = {
-          ${node.children.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
-        }`
+        const children = `const ${route}Children${TYPES_DISABLED ? '' : `: ${route}Children`} = {
+  ${node.children.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`
 
         const routeWithChildren = `const ${route}WithChildren = ${route}._addFileChildren(${route}Children)`
 
@@ -502,7 +506,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
           ]
             .filter(Boolean)
             .join(',')}
-        }${config.disableTypes ? '' : 'as any'})`,
+        }${TYPES_DISABLED ? '' : 'as any'})`,
           loaderNode
             ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
                 removeExt(
@@ -557,7 +561,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         ].join('')
       })
       .join('\n\n'),
-    ...(config.disableTypes
+    ...(TYPES_DISABLED
       ? []
       : [
           '// Populate the FileRoutesByPath interface',
@@ -589,21 +593,24 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         ]),
     '// Create and export the route tree',
     routeConfigChildrenText,
-    `export interface FileRoutesByFullPath {
+    ...(TYPES_DISABLED
+      ? []
+      : [
+          `export interface FileRoutesByFullPath {
         ${[...createRouteNodesByFullPath(routeNodes).entries()].map(
           ([fullPath, routeNode]) => {
             return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
           },
         )}
   }`,
-    `export interface FileRoutesByTo {
+          `export interface FileRoutesByTo {
       ${[...createRouteNodesByTo(routeNodes).entries()].map(
         ([to, routeNode]) => {
           return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
         },
       )}
     }`,
-    `export interface FileRoutesById {
+          `export interface FileRoutesById {
       '__root__': typeof rootRoute,
       ${[...createRouteNodesById(routeNodes).entries()].map(
         ([id, routeNode]) => {
@@ -611,7 +618,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         },
       )}
     }`,
-    `export interface FileRouteTypes {
+          `export interface FileRouteTypes {
     fileRoutesByFullPath: FileRoutesByFullPath
     fullPaths: ${[...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|')}
     fileRoutesByTo: FileRoutesByTo
@@ -619,13 +626,16 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     id: '__root__' | ${[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`).join('|')}
     fileRoutesById: FileRoutesById
     }`,
-    `export interface RootRouteChildren {
+          `export interface RootRouteChildren {
       ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
     }`,
-    `const rootRouteChildren: RootRouteChildren = {
+          `const rootRouteChildren: RootRouteChildren = {
       ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
     }`,
-    `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()`,
+        ]),
+    TYPES_DISABLED
+      ? `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)`
+      : `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()`,
     ...config.routeTreeFileFooter,
   ]
     .filter(Boolean)
