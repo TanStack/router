@@ -604,11 +604,9 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   )}
 }`,
           `export interface FileRoutesByTo {
-      ${[...createRouteNodesByTo(routeNodes).entries()].map(
-        ([to, routeNode]) => {
-          return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
-        },
-      )}
+  ${[...createRouteNodesByTo(routeNodes).entries()].map(([to, routeNode]) => {
+    return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+  })}
 }`,
           `export interface FileRoutesById {
   '__root__': typeof rootRoute,
