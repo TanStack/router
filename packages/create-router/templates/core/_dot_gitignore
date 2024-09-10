@@ -6,6 +6,11 @@
 # Dist
 node_modules
 dist/
+.vinxi
+.output
+.vercel
+.netlify
+.wrangler
 
 # IDE
 .vscode/*
