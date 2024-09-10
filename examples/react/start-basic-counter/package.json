@@ -18,11 +18,11 @@
     "vinxi": "0.4.2"
   },
   "devDependencies": {
-    "@types/node": "^20.12.11",
+    "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.3",
+    "typescript": "^5.6.2",
     "vite": "^5.3.5"
   }
 }

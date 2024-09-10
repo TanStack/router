@@ -1816,12 +1816,16 @@ export class Router<
     // Reset the view transition flag
     delete this.shouldViewTransition
     // Attempt to start a view transition (or just apply the changes if we can't)
-    ;(shouldViewTransition && typeof document !== 'undefined'
-      ? document
-      : undefined
-    )
-      // @ts-expect-error
-      ?.startViewTransition?.(fn) || fn()
+    if (
+      shouldViewTransition &&
+      typeof document !== 'undefined' &&
+      'startViewTransition' in document &&
+      typeof document.startViewTransition === 'function'
+    ) {
+      document.startViewTransition(fn)
+    } else {
+      fn()
+    }
   }
 
   updateMatch = (
