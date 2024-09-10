@@ -1,12 +1,14 @@
-import { isAbsolute, join } from 'node:path'
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { existsSync, readFileSync } from 'node:fs'
 import { getConfig } from './config'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
 } from './code-splitter/compilers'
-import { splitPrefix } from './constants'
+import { splitToken } from './constants'
+import type { ModuleNode } from 'vite'
 
 import type { Config } from './config'
 import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin'
@@ -52,7 +54,8 @@ plugins: [
 }
 
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
-const JoinedSplitPrefix = splitPrefix + ':'
+// a regex for either ?splitToken or &splitToken
+const splitTokenRegex = new RegExp(`[?&]${splitToken}`)
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
@@ -105,18 +108,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   return {
     name: 'router-code-splitter-plugin',
     enforce: 'pre',
-
-    resolveId(source) {
-      if (!userConfig.autoCodeSplitting) {
-        return null
-      }
-
-      if (source.startsWith(splitPrefix + ':')) {
-        return source.replace(splitPrefix + ':', '')
-      }
-      return null
-    },
-
     transform(code, id) {
       if (!userConfig.autoCodeSplitting) {
         return null
@@ -126,7 +117,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (id.includes(splitPrefix)) {
+      if (id.includes(splitToken)) {
         return handleSplittingFile(code, id)
       } else if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
@@ -153,15 +144,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         return undefined
       }
 
-      let id = transformId
-
-      if (id.startsWith(JoinedSplitPrefix)) {
-        id = id.replace(JoinedSplitPrefix, '')
-      }
-
       if (
-        fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
-        id.includes(splitPrefix)
+        fileIsInRoutesDirectory(transformId, userConfig.routesDirectory) ||
+        transformId.includes(splitToken)
       ) {
         return true
       }
@@ -174,26 +159,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
         userConfig = getConfig(options, ROOT)
       },
+      // handleHotUpdate({ file, server, modules }) {
+      //   return []
+      // },
     },
 
     rspack(compiler) {
       ROOT = process.cwd()
-
-      compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
-        self.normalModuleFactory.hooks.beforeResolve.tap(
-          PLUGIN_NAME,
-          (resolveData: { request: string }) => {
-            if (resolveData.request.includes(JoinedSplitPrefix)) {
-              resolveData.request = resolveData.request.replace(
-                JoinedSplitPrefix,
-                '',
-              )
-            }
-          },
-        )
-      })
-
-      userConfig = getConfig(options, ROOT)
     },
 
     webpack(compiler) {
@@ -203,9 +175,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         self.normalModuleFactory.hooks.beforeResolve.tap(
           PLUGIN_NAME,
           (resolveData: { request: string }) => {
-            if (resolveData.request.includes(JoinedSplitPrefix)) {
+            if (resolveData.request.match(splitTokenRegex)) {
               resolveData.request = resolveData.request.replace(
-                JoinedSplitPrefix,
+                splitTokenRegex,
                 '',
               )
             }

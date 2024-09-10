@@ -4,7 +4,7 @@ import _generate from '@babel/generator'
 import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 
-import { splitPrefix } from '../constants'
+import { splitToken } from '../constants'
 import { parseAst } from './ast'
 import type { ParseAstOptions } from './ast'
 
@@ -49,7 +49,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
       enter(programPath, programState) {
         const state = programState as unknown as State
 
-        const splitUrl = `${splitPrefix}:${opts.filename}?${splitPrefix}`
+        const splitUrl = `${opts.filename}?${splitToken}`
 
         /**
          * If the component for the route is being imported from
@@ -142,7 +142,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
                           programPath.pushContainer('body', [
                             template.statement(
-                              `function DummyComponent() { return null }`,
+                              `export function TSR_DummyComponent() { return null }`,
                             )(),
                           ])
 
@@ -319,23 +319,23 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
             splitNode = binding?.path.node
           }
 
+          let componentId = 'SplitComponent'
+
           // Add the node to the program
           if (splitNode) {
             if (t.isFunctionDeclaration(splitNode)) {
+              componentId = splitNode.id?.name || componentId
               programPath.pushContainer(
                 'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitType),
-                    t.functionExpression(
-                      splitNode.id || null, // Anonymize the function expression
-                      splitNode.params,
-                      splitNode.body,
-                      splitNode.generator,
-                      splitNode.async,
-                    ),
-                  ),
-                ]),
+                // Push the function declaration to the program
+                // but change the name to the componentId
+                t.functionDeclaration(
+                  t.identifier(componentId),
+                  splitNode.params,
+                  splitNode.body,
+                  splitNode.generator,
+                  splitNode.async,
+                ),
               )
             } else if (
               t.isFunctionExpression(splitNode) ||
@@ -345,7 +345,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 'body',
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
-                    t.identifier(splitType),
+                    t.identifier(componentId),
                     splitNode as any,
                   ),
                 ]),
@@ -358,7 +358,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 'body',
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
-                    t.identifier(splitType),
+                    t.identifier(componentId),
                     splitNode.local,
                   ),
                 ]),
@@ -410,7 +410,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
           programPath.pushContainer('body', [
             t.exportNamedDeclaration(null, [
               t.exportSpecifier(
-                t.identifier(splitType),
+                t.identifier(componentId),
                 t.identifier(splitType),
               ),
             ]),
@@ -435,7 +435,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                       ),
                     ),
                     t.stringLiteral(
-                      opts.filename.split(`?${splitPrefix}`)[0] as string,
+                      opts.filename.split(`?${splitToken}`)[0] as string,
                     ),
                   ),
                 )

@@ -6,7 +6,7 @@ import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
 } from '../src/core/code-splitter/compilers'
-import { splitPrefix } from '../src/core/constants'
+import { splitToken } from '../src/core/constants'
 
 async function getFilenames() {
   return await readdir(path.resolve(__dirname, './code-splitter/test-files'))
@@ -46,7 +46,7 @@ describe('code-splitter works', async () => {
       const splitResult = compileCodeSplitVirtualRoute({
         code: code,
         root: './code-splitter/test-files',
-        filename: `${filename}?${splitPrefix}`,
+        filename: `${filename}?${splitToken}`,
       })
 
       await expect(splitResult.code).toMatchFileSnapshot(
