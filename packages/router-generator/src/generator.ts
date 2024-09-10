@@ -616,10 +616,10 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
 }`,
           `export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: ${[...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|')}
+  fullPaths: ${routeNodes.length > 0 ? [...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|') : 'never'}
   fileRoutesByTo: FileRoutesByTo
-  to: ${[...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|')}
-  id: '__root__' | ${[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`).join('|')}
+  to: ${routeNodes.length > 0 ? [...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|') : 'never'}
+  id: ${[`'__root__'`, ...[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
   fileRoutesById: FileRoutesById
 }`,
           `export interface RootRouteChildren {
