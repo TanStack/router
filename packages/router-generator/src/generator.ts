@@ -623,15 +623,13 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   fileRoutesById: FileRoutesById
 }`,
           `export interface RootRouteChildren {
-      ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+  ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`,
         ]),
     `const rootRouteChildren${TYPES_DISABLED ? '' : ': RootRouteChildren'} = {
-      ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+  ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`,
-    TYPES_DISABLED
-      ? `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)`
-      : `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()`,
+    `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)${TYPES_DISABLED ? '' : '._addFileTypes<FileRouteTypes>()'}`,
     ...config.routeTreeFileFooter,
   ]
     .filter(Boolean)
