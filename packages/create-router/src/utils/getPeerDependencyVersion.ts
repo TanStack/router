@@ -1,7 +1,6 @@
+import { resolve } from 'node:path'
+import { packageJson } from './packageJson'
 import type { PeerDependency } from '../types'
-// do not import at build time since router peer dependencies will still be '*'
-// eslint-disable-next-line import/no-commonjs
-const packageJson = require('../../package.json')
 
 export function getDependenciesWithVersion(deps: Array<PeerDependency>) {
   return deps.reduce(

@@ -1,6 +1,5 @@
 import { basename, resolve } from 'node:path'
 import { Command, InvalidArgumentError } from 'commander'
-import packageJson from '../package.json'
 import {
   NAME,
   SUPPORTED_BUNDLERS,
@@ -8,6 +7,7 @@ import {
 } from './constants'
 import { validateProjectName } from './utils/validateProjectName'
 import { getPackageManager } from './utils/getPackageManager'
+import { packageJson } from './utils/packageJson'
 import type { Bundler, PackageManager } from './constants'
 
 let directory: string | undefined

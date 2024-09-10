@@ -101,7 +101,7 @@ export async function create({
   const buildSpinner = yoctoSpinner({ text: 'building project' }).start()
   try {
     await build(packageManager)
-    buildSpinner.success('dependencies installed')
+    buildSpinner.success('project built')
   } catch (e) {
     console.error(e)
     buildSpinner.error('failed to build project')

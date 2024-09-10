@@ -1948,11 +1948,11 @@ importers:
   packages/create-router:
     dependencies:
       '@rsbuild/core':
-        specifier: 1.0.1-rc.0
-        version: 1.0.1-rc.0
+        specifier: 1.0.1-rc.5
+        version: 1.0.1-rc.5
       '@rsbuild/plugin-react':
-        specifier: 1.0.1-rc.0
-        version: 1.0.1-rc.0(@rsbuild/core@1.0.1-rc.0)
+        specifier: 1.0.1-rc.5
+        version: 1.0.1-rc.5(@rsbuild/core@1.0.1-rc.5)
       '@swc/core':
         specifier: ^1.7.6
         version: 1.7.6(@swc/helpers@0.5.12)
@@ -4428,6 +4428,11 @@ packages:
     resolution: {integrity: sha512-bjKRNdihb3LoWW74Ri2lBQqrTaksIpGx9/mp/RiRpVUGzX+9/SDlXWvrnWdndKPm7UYfY3VBCZNT2zJRi0CCKg==}
     peerDependencies:
       '@rsbuild/core': ^1.0.1-rc.0
+
+  '@rsbuild/plugin-react@1.0.1-rc.5':
+    resolution: {integrity: sha512-8W/PK8l//CsGXxfo8psDttyYimdehZ6n5mm8rz5QwNnyKtuxvjUS30P7meQjJxTrZTlZU3LN6yB63tOcD9xtdQ==}
+    peerDependencies:
+      '@rsbuild/core': ^1.0.1-rc.4
 
   '@rspack/binding-darwin-arm64@1.0.0':
     resolution: {integrity: sha512-ZHQk9YK+swlTG48kJTgzFUW9T26KjhLXRok5la7t2AMoiuHyhGHHgC5iQfPJLZ62XzcJ/rfqs2rwakl97151jQ==}
@@ -11734,6 +11739,12 @@ snapshots:
       '@rspack/plugin-react-refresh': 1.0.0(react-refresh@0.14.2)
       react-refresh: 0.14.2
 
+  '@rsbuild/plugin-react@1.0.1-rc.5(@rsbuild/core@1.0.1-rc.5)':
+    dependencies:
+      '@rsbuild/core': 1.0.1-rc.5
+      '@rspack/plugin-react-refresh': 1.0.0(react-refresh@0.14.2)
+      react-refresh: 0.14.2
+
   '@rspack/binding-darwin-arm64@1.0.0':
     optional: true
 
@@ -11817,7 +11828,7 @@ snapshots:
       '@module-federation/runtime-tools': 0.5.1
       '@rspack/binding': 1.0.0
       '@rspack/lite-tapable': 1.0.0
-      caniuse-lite: 1.0.30001653
+      caniuse-lite: 1.0.30001659
     optionalDependencies:
       '@swc/helpers': 0.5.12
 
@@ -13090,7 +13101,7 @@ snapshots:
   caniuse-api@3.0.0:
     dependencies:
       browserslist: 4.23.3
-      caniuse-lite: 1.0.30001653
+      caniuse-lite: 1.0.30001659
       lodash.memoize: 4.1.2
       lodash.uniq: 4.5.0
 
