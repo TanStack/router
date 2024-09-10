@@ -30,24 +30,50 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 ## Partners
 
-<div><a href="https://vercel.com?utm_source=tanstack">
-  <img alt="Vercel" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/vercel.svg" height="40"
-</a></div><br />
-<div><a href="https://go.clerk.com/wOwHtuJ">
-  <img alt="Clerk" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40"
-</a></div><br />
-<div><a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable">
-  <img alt="AG Grid" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40"
-</a></div><br />
-<div><a href="https://convex.dev?utm_source=tanstack">
-  <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
-</a></div><br />
-<div><a href="https://sentry.io?utm_source=tanstack">
-  <img alt="Sentry" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40"
-</a></div><br />
-<div><a href="https://nozzle.io/?utm_source=tanstack&utm_campaign=tanstack">
-  <img alt="Nozzle.io" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/nozzle.svg" height="40"
-</a></div><br />
+<div style="display:grid;gap:0.25rem;">
+  <a href="https://vercel.com?utm_source=tanstack" alt="Vercel Logo">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-dark.svg" style="height: 40px;">
+      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" style="height: 40px;">
+      <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" style="height: 40px;">
+    </picture>
+  </a><br>
+  <a href="https://go.clerk.com/wOwHtuJ" alt="Clerk Logo">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-dark.svg" style="height: 40px;">
+      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" style="height: 40px;">
+      <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" style="height: 40px;">
+    </picture>
+  </a><br>
+  <a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable" alt="AG Grid Logo">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/ag-grid-light.svg" style="height: 40px;">
+      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/ag-grid-dark.svg" style="height: 40px;">
+      <img alt="AG Grid logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/ag-grid-dark.svg" style="height: 40px;">
+    </picture>
+  </a><br>
+  <a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-white.svg" style="height: 80px;">
+      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" style="height: 80px;">
+      <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" style="height: 80px;">
+    </picture>
+  </a><br>
+  <a href="https://sentry.io?utm_source=tanstack" alt='Sentry Logo'>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/sentry-wordmark-light.svg" style="height: 50px;">
+      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/sentry-wordmark-dark.svg" style="height: 50px;">
+      <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/sentry-wordmark-light.svg" style="height: 50px;">
+    </picture>
+  </a><br>
+  <a href="https://nozzle.io/?utm_source=tanstack&utm_campaign=tanstack" alt='Nozzle.io Logo'>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/nozzle-light.svg" style="height: 40px;">
+      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/nozzle-dark.svg" style="height: 40px;">
+      <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/nozzle-dark.svg" style="height: 40px;">
+    </picture>
+  </a>
+</div>
 
 ## Quick Features
 
