@@ -76,6 +76,11 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         config.virtualRouteConfig = virtualRouteConfig
       }
       break
+    case 'types-disabled':
+      config.disableTypes = true
+      config.generatedRouteTree =
+        makeFolderDir(folderName) + '/routeTree.gen.js'
+      break
     default:
       break
   }
@@ -144,7 +149,11 @@ describe('generator works', async () => {
       const generatedRouteTree = await getRouteTreeFileText(config)
 
       expect(generatedRouteTree).toMatchFileSnapshot(
-        join('generator', folderName, 'routeTree.snapshot.ts'),
+        join(
+          'generator',
+          folderName,
+          `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+        ),
       )
       await postprocess(folderName)
     },
