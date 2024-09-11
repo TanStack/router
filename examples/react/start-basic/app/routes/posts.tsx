@@ -11,7 +11,6 @@ function PostsComponent() {
 
   return (
     <div className="p-2 flex gap-2">
-      <div>Hello world</div>
       <ul className="list-disc pl-4">
         {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
           (post) => {
