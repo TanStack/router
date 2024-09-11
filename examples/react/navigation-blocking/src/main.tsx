@@ -29,7 +29,7 @@ function RootComponent() {
           Home
         </Link>{' '}
         <Link
-          to={'/editor-1'}
+          to="/editor-1"
           activeProps={{
             className: 'font-bold',
           }}

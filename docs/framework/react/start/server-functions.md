@@ -587,7 +587,7 @@ function Home() {
       <form
         action={updateCount.url}
         method="POST"
-        encType={'multipart/form-data'}
+        encType="multipart/form-data"
       >
         <input type="number" name="addBy" defaultValue="1" />
         <button type="submit">Add</button>

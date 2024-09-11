@@ -20,7 +20,7 @@ function RootComponent() {
           Home
         </Link>{' '}
         <Link
-          to={'/posts'}
+          to="/posts"
           activeProps={{
             className: 'font-bold',
           }}
