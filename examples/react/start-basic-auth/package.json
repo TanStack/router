@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@prisma/client": "5.17.0",
-    "@tanstack/react-router": "^1.57.9",
-    "@tanstack/router-devtools": "^1.57.9",
+    "@tanstack/react-router": "^1.57.10",
+    "@tanstack/router-devtools": "^1.57.10",
     "@tanstack/router-plugin": "^1.57.9",
-    "@tanstack/start": "^1.57.9",
+    "@tanstack/start": "^1.57.10",
     "@vitejs/plugin-react": "^4.3.1",
     "dotenv": "^16.4.5",
     "isbot": "^5.1.12",
