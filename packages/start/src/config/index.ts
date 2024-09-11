@@ -1,7 +1,6 @@
 import path from 'node:path'
 import * as fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { dir } from 'node:console'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
@@ -274,6 +273,9 @@ export function defineConfig(
             // optimizeDeps: {
             //   include: ['@tanstack/start/server-runtime'],
             // },
+            define: {
+              CLIENT_BASE: JSON.stringify(clientBase),
+            },
           }),
           TanStackRouterVite({
             ...tsrConfig,
@@ -350,6 +352,9 @@ export function defineConfig(
                   ssr: {
                     noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
                   },
+                  define: {
+                    'process.env.CLIENT_BASE': JSON.stringify(clientBase),
+                  },
                 }),
                 TanStackRouterVite({
                   ...tsrConfig,
@@ -381,6 +386,9 @@ export function defineConfig(
             ssr: {
               noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
               external: ['@vinxi/react-server-dom/client'],
+            },
+            define: {
+              'process.env.CLIENT_BASE': JSON.stringify(clientBase),
             },
           }),
           TanStackRouterVite({
@@ -418,6 +426,9 @@ export function defineConfig(
           config('start-server', {
             ssr: {
               noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+            },
+            define: {
+              'process.env.CLIENT_BASE': JSON.stringify(clientBase),
             },
           }),
           TanStackRouterVite({
@@ -506,7 +517,7 @@ function tsrRoutesManifest(opts: {
       }
       return
     },
-    async load(id) {
+    load(id) {
       if (id === 'tsr:routes-manifest') {
         // If we're in development, return a dummy manifest
 

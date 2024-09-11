@@ -11,6 +11,14 @@ import type { Manifest } from '@tanstack/react-router'
 export function getFullRouterManifest() {
   const routerManifest = tsrGetManifest() as Manifest
 
+  const CLIENT_BASE = process.env.CLIENT_BASE
+
+  if (!CLIENT_BASE) {
+    throw new Error(
+      'Something went wrong. CLIENT_BASE is not defined in the environment for getFullRouterManifest',
+    )
+  }
+
   const rootRoute = (routerManifest.routes.__root__ =
     routerManifest.routes.__root__ || {})
 
@@ -20,7 +28,12 @@ export function getFullRouterManifest() {
   if (process.env.NODE_ENV === 'development') {
     rootRoute.assets.push({
       tag: 'script',
-      children: `window.__vite_plugin_react_preamble_installed__ = true`,
+      attrs: { type: 'module' },
+      children: `import RefreshRuntime from "${CLIENT_BASE}/@react-refresh";
+RefreshRuntime.injectIntoGlobalHook(window)
+window.$RefreshReg$ = () => {}
+window.$RefreshSig$ = () => (type) => type
+window.__vite_plugin_react_preamble_installed__ = true`,
     })
   }
 
