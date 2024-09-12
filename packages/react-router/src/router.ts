@@ -1767,7 +1767,12 @@ export class Router<
           if (isResolvedRedirect(err)) {
             redirect = err
             if (!this.isServer) {
-              this.navigate({ ...err, replace: true, __isRedirect: true })
+              this.navigate({
+                ...err,
+                replace: true,
+                __isRedirect: true,
+                ignoreBlocker: true,
+              })
             }
           } else if (isNotFound(err)) {
             notFound = err
