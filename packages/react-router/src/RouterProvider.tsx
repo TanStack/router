@@ -36,9 +36,7 @@ export type NavigateFn = <
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(
-  opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
-    __isRedirect?: boolean
-  },
+  opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Promise<void>
 
 export type BuildLocationFn = <
