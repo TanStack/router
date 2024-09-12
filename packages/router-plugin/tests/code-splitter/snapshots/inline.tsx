@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('tsr-split:inline.tsx?tsr-split');
+const $$splitComponentImporter = () => import('inline.tsx?tsr-split');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({
@@ -6,3 +6,6 @@ export const Route = createFileRoute('/')({
 });
 Route.addChildren([]);
 export const test = 'test';
+export function TSR_DummyComponent() {
+  return null;
+}
