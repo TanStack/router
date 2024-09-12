@@ -1615,7 +1615,7 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn = ({ to, __isRedirect, ...rest }) => {
+  navigate: NavigateFn = ({ to, ...rest }) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -1770,7 +1770,6 @@ export class Router<
               this.navigate({
                 ...err,
                 replace: true,
-                __isRedirect: true,
                 ignoreBlocker: true,
               })
             }
