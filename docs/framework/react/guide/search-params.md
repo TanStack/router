@@ -209,9 +209,9 @@ import { zodSearchValidator } from '@tanstack/router-zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
-  page: z.number().default(1),
-  filter: z.string().default(''),
-  sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
+  page: z.number().catch(1),
+  filter: z.string().catch(''),
+  sort: z.enum(['newest', 'oldest', 'price']).catch('newest'),
 })
 
 export const Route = createFileRoute('/shop/products/')({
@@ -233,9 +233,9 @@ import { fallback, zodSearchValidator } from '@tanstack/router-zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
-  page: fallback(z.number(), 1).default(1),
-  filter: fallback(z.string(), '').default(''),
-  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
+  page: fallback(z.number(), 1).catch(1),
+  filter: fallback(z.string(), '').catch(''),
+  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').catch(
     'newest',
   ),
 })
@@ -251,9 +251,9 @@ While not recommended, it is also possible to configure `input` and `output` typ
 
 ```tsx
 const productSearchSchema = z.object({
-  page: fallback(z.number(), 1).default(1),
-  filter: fallback(z.string(), '').default(''),
-  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
+  page: fallback(z.number(), 1).catch(1),
+  filter: fallback(z.string(), '').catch(''),
+  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').catch(
     'newest',
   ),
 })
