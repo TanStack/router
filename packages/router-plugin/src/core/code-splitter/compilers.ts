@@ -319,12 +319,13 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
             splitNode = binding?.path.node
           }
 
-          let componentId = 'SplitComponent'
+          let componentId =
+            splitType === 'component' ? 'SplitComponent' : 'SplitLoader'
 
           // Add the node to the program
           if (splitNode) {
             if (t.isFunctionDeclaration(splitNode)) {
-              componentId = splitNode.id?.name || componentId
+              componentId = splitNode.id?.name || 'SplitComponent'
               programPath.pushContainer(
                 'body',
                 // Push the function declaration to the program
@@ -386,7 +387,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 programPath.pushContainer(
                   'body',
                   t.variableDeclaration('const', [
-                    t.variableDeclarator(t.identifier(splitType), expression),
+                    t.variableDeclarator(t.identifier(componentId), expression),
                   ]),
                 )
               } else {
