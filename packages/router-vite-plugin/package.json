@@ -65,8 +65,5 @@
   },
   "dependencies": {
     "@tanstack/router-plugin": "workspace:^"
-  },
-  "devDependencies": {
-    "vite": "^5.3.5"
   }
 }
