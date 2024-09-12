@@ -1,3 +1,6 @@
+import * as fs from 'node:fs'
+import * as prettier from 'prettier'
+
 export function multiSortBy<T>(
   arr: Array<T>,
   accessors: Array<(item: T) => any> = [(d) => d],
@@ -98,4 +101,36 @@ export function capitalize(s: string) {
 
 export function removeExt(d: string, keepExtension: boolean = false) {
   return keepExtension ? d : d.substring(0, d.lastIndexOf('.')) || d
+}
+
+/**
+ * This function writes to a file if the content is different.
+ *
+ * @param filepath The path to the file
+ * @param prettierOptions Prettier options
+ * @param content Original content
+ * @param incomingContent New content
+ * @param callbacks Callbacks to run before and after writing
+ * @returns Whether the file was written
+ */
+export async function writeIfDifferent(
+  filepath: string,
+  prettierOptions: prettier.Options,
+  content: string,
+  incomingContent: string,
+  callbacks?: { beforeWrite?: () => void; afterWrite?: () => void },
+): Promise<boolean> {
+  const [formattedContent, updatedContent] = await Promise.all([
+    prettier.format(content, prettierOptions),
+    prettier.format(incomingContent, prettierOptions),
+  ])
+
+  if (formattedContent !== updatedContent) {
+    callbacks?.beforeWrite?.()
+    fs.writeFileSync(filepath, updatedContent)
+    callbacks?.afterWrite?.()
+    return true
+  }
+
+  return false
 }
