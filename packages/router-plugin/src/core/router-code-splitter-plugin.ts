@@ -1,14 +1,12 @@
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { existsSync, readFileSync } from 'node:fs'
 import { getConfig } from './config'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
 } from './code-splitter/compilers'
 import { splitToken } from './constants'
-import type { ModuleNode } from 'vite'
 
 import type { Config } from './config'
 import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin'
