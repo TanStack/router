@@ -45,24 +45,24 @@
     "yocto-spinner": "^0.1.0"
   },
   "peerDependencies": {
-    "@rsbuild/core": "1.0.1-rc.5",
-    "@rsbuild/plugin-react": "1.0.1-rc.5",
-    "@swc/core": "^1.7.6",
+    "@rsbuild/core": "^1.0.2",
+    "@rsbuild/plugin-react": "^1.0.1",
+    "@swc/core": "^1.7.25",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
-    "@types/react": "^18.3.5",
+    "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "html-webpack-plugin": "^5.6.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "swc-loader": "^0.2.6",
-    "typescript": "^5.5.3",
-    "vite": "^5.4.3",
-    "webpack": "^5.93.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.4",
+    "webpack": "^5.94.0",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.0.4"
+    "webpack-dev-server": "^5.1.0"
   },
   "peerDependenciesMeta": {
     "@tanstack/react-router": {
@@ -99,6 +99,9 @@
       "optional": true
     },
     "@rsbuild/core": {
+      "optional": true
+    },
+    "@rsbuild/plugin-react": {
       "optional": true
     },
     "@types/react": {
