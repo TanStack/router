@@ -51,10 +51,6 @@ plugins: [
   }
 }
 
-const PLUGIN_NAME = 'unplugin:router-code-splitter'
-// a regex for either ?splitToken or &splitToken
-const splitTokenRegex = new RegExp(`[?&]${splitToken}`)
-
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}, { framework }) => {
