@@ -162,40 +162,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       // },
     },
 
-    rspack(compiler) {
+    rspack() {
       ROOT = process.cwd()
+      userConfig = getConfig(options, ROOT)
     },
 
-    webpack(compiler) {
+    webpack() {
       ROOT = process.cwd()
-
-      compiler.hooks.beforeCompile.tap(PLUGIN_NAME, (self) => {
-        self.normalModuleFactory.hooks.beforeResolve.tap(
-          PLUGIN_NAME,
-          (resolveData: { request: string }) => {
-            if (resolveData.request.match(splitTokenRegex)) {
-              resolveData.request = resolveData.request.replace(
-                splitTokenRegex,
-                '',
-              )
-            }
-          },
-        )
-      })
-
       userConfig = getConfig(options, ROOT)
-
-      if (
-        userConfig.autoCodeSplitting &&
-        compiler.options.mode === 'production'
-      ) {
-        compiler.hooks.done.tap(PLUGIN_NAME, () => {
-          console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
-          setTimeout(() => {
-            process.exit(0)
-          })
-        })
-      }
     },
   }
 }
