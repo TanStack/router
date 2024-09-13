@@ -109,8 +109,10 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             (n) => n === (prop.key as any).name,
                           )
                         ) {
-                          const componentType = (prop.key as any).name
-                          const componentImporterName = `$$split${capitalizeFirstLetter(componentType)}Importer`
+                          const componentType = (prop.key as any).name as string
+                          const componentImporterIdent =
+                            splitImportIdent(componentType)
+
                           const value = prop.value
 
                           if (t.isIdentifier(value)) {
@@ -141,24 +143,24 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
                           if (
                             !hasImportedOrDefinedIdentifier(
-                              componentImporterName,
+                              componentImporterIdent,
                             )
                           ) {
                             programPath.unshiftContainer('body', [
                               template.statement(
-                                `const ${componentImporterName} = () => import('${splitUrl}')`,
+                                `const ${componentImporterIdent} = () => import('${splitUrl}')`,
                               )(),
                             ])
                           }
 
                           prop.value = template.expression(
-                            `lazyRouteComponent(${componentImporterName}, '${componentType}')`,
+                            `lazyRouteComponent(${componentImporterIdent}, '${componentType}')`,
                           )()
 
                           if (
                             !splitComponentTypes.some((type) =>
                               hasImportedOrDefinedIdentifier(
-                                `$$split${capitalizeFirstLetter(type)}Importer`,
+                                splitImportIdent(type),
                               ),
                             ) &&
                             !hasImportedOrDefinedIdentifier('DummyComponent')
@@ -173,6 +175,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           found = true
                         } else if (prop.key.name === 'loader') {
                           const value = prop.value
+                          const loaderImporterIdent = splitImportIdent('loader')
 
                           if (t.isIdentifier(value)) {
                             existingLoaderImportPath =
@@ -195,19 +198,17 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           }
 
                           if (
-                            !hasImportedOrDefinedIdentifier(
-                              '$$splitLoaderImporter',
-                            )
+                            !hasImportedOrDefinedIdentifier(loaderImporterIdent)
                           ) {
                             programPath.unshiftContainer('body', [
                               template.statement(
-                                `const $$splitLoaderImporter = () => import('${splitUrl}')`,
+                                `const ${loaderImporterIdent} = () => import('${splitUrl}')`,
                               )(),
                             ])
                           }
 
                           prop.value = template.expression(
-                            `lazyFn($$splitLoaderImporter, 'loader')`,
+                            `lazyFn(${loaderImporterIdent}, 'loader')`,
                           )()
 
                           found = true
@@ -544,4 +545,8 @@ function removeIdentifierLiteral(path: any, node: any) {
 
 function capitalizeFirstLetter(string: string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
+}
+
+function splitImportIdent(type: string) {
+  return `$$split${capitalizeFirstLetter(type)}Importer`
 }
