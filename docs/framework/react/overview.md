@@ -25,7 +25,7 @@ To get started quickly, head to the next page. For a more lengthy explanation, b
 
 Using a router to build applications is widely regarded as a must-have and is usually one of the first choices you’ll make in your tech stack.
 
-**So, why should to choose TanStack Router over another router?**
+**So, why should you choose TanStack Router over another router?**
 
 To answer this question, we need to look at the other options in the space. There are many if you look hard enough, but in my experience, only a couple are worth exploring seriously:
 
