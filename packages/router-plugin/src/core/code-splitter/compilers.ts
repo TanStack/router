@@ -98,6 +98,8 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                         if (prop.key.name === 'component') {
                           const value = prop.value
 
+                          let shouldSplit = true
+
                           if (t.isIdentifier(value)) {
                             existingCompImportPath =
                               getImportSpecifierAndPathFromLocalName(
@@ -105,48 +107,59 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                                 value.name,
                               ).path
 
-                            removeIdentifierLiteral(path, value)
+                            const binding = path.scope.getBinding(value.name)
+                            const referenceCount = (
+                              binding?.referencePaths || []
+                            ).length
+
+                            shouldSplit = referenceCount <= 1
+
+                            if (shouldSplit) {
+                              removeIdentifierLiteral(path, value)
+                            }
                           }
 
-                          // Prepend the import statement to the program along with the importer function
-                          // Check to see if lazyRouteComponent is already imported before attempting
-                          // to import it again
+                          if (shouldSplit) {
+                            // Prepend the import statement to the program along with the importer function
+                            // Check to see if lazyRouteComponent is already imported before attempting
+                            // to import it again
 
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              'lazyRouteComponent',
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
+                            if (
+                              !hasImportedOrDefinedIdentifier(
+                                'lazyRouteComponent',
+                              )
+                            ) {
+                              programPath.unshiftContainer('body', [
+                                template.statement(
+                                  `import { lazyRouteComponent } from '@tanstack/react-router'`,
+                                )(),
+                              ])
+                            }
+
+                            if (
+                              !hasImportedOrDefinedIdentifier(
+                                '$$splitComponentImporter',
+                              )
+                            ) {
+                              programPath.unshiftContainer('body', [
+                                template.statement(
+                                  `const $$splitComponentImporter = () => import('${splitUrl}')`,
+                                )(),
+                              ])
+                            }
+
+                            prop.value = template.expression(
+                              `lazyRouteComponent($$splitComponentImporter, 'component')`,
+                            )()
+
+                            programPath.pushContainer('body', [
                               template.statement(
-                                `import { lazyRouteComponent } from '@tanstack/react-router'`,
+                                `function DummyComponent() { return null }`,
                               )(),
                             ])
+
+                            found = true
                           }
-
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              '$$splitComponentImporter',
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
-                              template.statement(
-                                `const $$splitComponentImporter = () => import('${splitUrl}')`,
-                              )(),
-                            ])
-                          }
-
-                          prop.value = template.expression(
-                            `lazyRouteComponent($$splitComponentImporter, 'component')`,
-                          )()
-
-                          programPath.pushContainer('body', [
-                            template.statement(
-                              `function DummyComponent() { return null }`,
-                            )(),
-                          ])
-
-                          found = true
                         } else if (prop.key.name === 'loader') {
                           const value = prop.value
 
