@@ -22,6 +22,15 @@ type SplitModulesById = Record<
   { id: string; node: t.FunctionExpression }
 >
 
+const splitComponentTypes = [
+  'component',
+  'pendingComponent',
+  'notFoundComponent',
+  'errorComponent',
+] as const
+const splitNodeTypes = [...splitComponentTypes, 'loader'] as const
+type SplitNodeType = (typeof splitNodeTypes)[number]
+
 interface State {
   filename: string
   opts: {
@@ -95,7 +104,13 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
                       if (t.isIdentifier(prop.key)) {
-                        if (prop.key.name === 'component') {
+                        if (
+                          splitComponentTypes.find(
+                            (n) => n === (prop.key as any).name,
+                          )
+                        ) {
+                          const componentType = (prop.key as any).name
+                          const componentImporterName = `$$split${capitalizeFirstLetter(componentType)}Importer`
                           const value = prop.value
 
                           if (t.isIdentifier(value)) {
@@ -126,25 +141,34 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
                           if (
                             !hasImportedOrDefinedIdentifier(
-                              '$$splitComponentImporter',
+                              componentImporterName,
                             )
                           ) {
                             programPath.unshiftContainer('body', [
                               template.statement(
-                                `const $$splitComponentImporter = () => import('${splitUrl}')`,
+                                `const ${componentImporterName} = () => import('${splitUrl}')`,
                               )(),
                             ])
                           }
 
                           prop.value = template.expression(
-                            `lazyRouteComponent($$splitComponentImporter, 'component')`,
+                            `lazyRouteComponent(${componentImporterName}, '${componentType}')`,
                           )()
 
-                          programPath.pushContainer('body', [
-                            template.statement(
-                              `function DummyComponent() { return null }`,
-                            )(),
-                          ])
+                          if (
+                            !splitComponentTypes.some((type) =>
+                              hasImportedOrDefinedIdentifier(
+                                `$$split${capitalizeFirstLetter(type)}Importer`,
+                              ),
+                            ) &&
+                            !hasImportedOrDefinedIdentifier('DummyComponent')
+                          ) {
+                            programPath.pushContainer('body', [
+                              template.statement(
+                                `function DummyComponent() { return null }`,
+                              )(),
+                            ])
+                          }
 
                           found = true
                         } else if (prop.key.name === 'loader') {
@@ -240,9 +264,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   })
 }
 
-const splitNodeTypes = ['component', 'loader'] as const
-type SplitNodeType = (typeof splitNodeTypes)[number]
-
 export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
 
@@ -259,6 +280,9 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
         const splitNodesByType: Record<SplitNodeType, t.Node | undefined> = {
           component: undefined,
+          pendingComponent: undefined,
+          notFoundComponent: undefined,
+          errorComponent: undefined,
           loader: undefined,
         }
 
@@ -516,4 +540,8 @@ function removeIdentifierLiteral(path: any, node: any) {
       binding.path.remove()
     }
   }
+}
+
+function capitalizeFirstLetter(string: string) {
+  return string.charAt(0).toUpperCase() + string.slice(1)
 }
