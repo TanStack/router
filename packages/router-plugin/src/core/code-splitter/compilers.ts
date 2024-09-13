@@ -107,12 +107,8 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                                 value.name,
                               ).path
 
-                            const binding = path.scope.getBinding(value.name)
-                            const referenceCount = (
-                              binding?.referencePaths || []
-                            ).length
-
-                            shouldSplit = referenceCount <= 1
+                            const isExported = hasExport(ast, value.name)
+                            shouldSplit = !isExported
 
                             if (shouldSplit) {
                               removeIdentifierLiteral(path, value)
@@ -163,6 +159,8 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                         } else if (prop.key.name === 'loader') {
                           const value = prop.value
 
+                          let shouldSplit = true
+
                           if (t.isIdentifier(value)) {
                             existingLoaderImportPath =
                               getImportSpecifierAndPathFromLocalName(
@@ -170,36 +168,42 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                                 value.name,
                               ).path
 
-                            removeIdentifierLiteral(path, value)
+                            const isExported = hasExport(ast, value.name)
+                            shouldSplit = !isExported
+
+                            if (shouldSplit) {
+                              removeIdentifierLiteral(path, value)
+                            }
                           }
 
-                          // Prepend the import statement to the program along with the importer function
+                          if (shouldSplit) {
+                            // Prepend the import statement to the program along with the importer function
+                            if (!hasImportedOrDefinedIdentifier('lazyFn')) {
+                              programPath.unshiftContainer('body', [
+                                template.smart(
+                                  `import { lazyFn } from '@tanstack/react-router'`,
+                                )() as t.Statement,
+                              ])
+                            }
 
-                          if (!hasImportedOrDefinedIdentifier('lazyFn')) {
-                            programPath.unshiftContainer('body', [
-                              template.smart(
-                                `import { lazyFn } from '@tanstack/react-router'`,
-                              )() as t.Statement,
-                            ])
+                            if (
+                              !hasImportedOrDefinedIdentifier(
+                                '$$splitLoaderImporter',
+                              )
+                            ) {
+                              programPath.unshiftContainer('body', [
+                                template.statement(
+                                  `const $$splitLoaderImporter = () => import('${splitUrl}')`,
+                                )(),
+                              ])
+                            }
+
+                            prop.value = template.expression(
+                              `lazyFn($$splitLoaderImporter, 'loader')`,
+                            )()
+
+                            found = true
                           }
-
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              '$$splitLoaderImporter',
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
-                              template.statement(
-                                `const $$splitLoaderImporter = () => import('${splitUrl}')`,
-                              )(),
-                            ])
-                          }
-
-                          prop.value = template.expression(
-                            `lazyFn($$splitLoaderImporter, 'loader')`,
-                          )()
-
-                          found = true
                         }
                       }
                     }
@@ -529,4 +533,33 @@ function removeIdentifierLiteral(path: any, node: any) {
       binding.path.remove()
     }
   }
+}
+
+function hasExport(ast: t.File, name: string) {
+  let found = false
+  babel.traverse(ast, {
+    ExportNamedDeclaration(path) {
+      if (path.node.declaration) {
+        if (t.isVariableDeclaration(path.node.declaration)) {
+          path.node.declaration.declarations.forEach((decl) => {
+            if (t.isVariableDeclarator(decl)) {
+              if (t.isIdentifier(decl.id)) {
+                if (decl.id.name === name) {
+                  found = true
+                }
+              }
+            }
+          })
+        }
+      }
+    },
+    ExportDefaultDeclaration(path) {
+      if (t.isIdentifier(path.node.declaration)) {
+        if (path.node.declaration.name === name) {
+          found = true
+        }
+      }
+    },
+  })
+  return found
 }
