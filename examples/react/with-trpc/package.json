@@ -11,12 +11,12 @@
     "@tanstack/react-router": "^1.57.13",
     "@tanstack/router-devtools": "^1.57.13",
     "@tanstack/router-plugin": "^1.57.13",
-    "@trpc/client": "11.0.0-rc.477",
-    "@trpc/server": "11.0.0-rc.477",
+    "@trpc/client": "11.0.0-rc.502",
+    "@trpc/server": "11.0.0-rc.502",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1",
-    "vinxi": "0.4.2",
+    "vinxi": "0.4.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {

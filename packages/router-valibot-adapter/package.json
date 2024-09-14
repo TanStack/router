@@ -64,10 +64,10 @@
     "node": ">=12"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.4.6",
-    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.1",
     "@tanstack/react-router": "workspace:*",
-    "valibot": "^0.36.0"
+    "valibot": "^0.41.0"
   },
   "peerDependencies": {
     "valibot": ">=0.36.0",
