@@ -313,28 +313,32 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 if (t.isObjectExpression(options)) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
-                      if (t.isIdentifier(prop.key)) {
-                        if (splitNodeTypes.includes(prop.key.name as any)) {
-                          const value = prop.value
+                      splitNodeTypes.forEach((splitType) => {
+                        if (
+                          !t.isIdentifier(prop.key) ||
+                          prop.key.name !== splitType
+                        ) {
+                          return
+                        }
 
-                          let isExported = false
-                          if (t.isIdentifier(value)) {
-                            isExported = hasExport(ast, value)
-                            if (isExported) {
-                              knownExportedIdents.add(value.name)
-                            }
-                          }
+                        const value = prop.value
 
-                          // If the node is exported, we need to remove
-                          // the export from the split file
-                          if (isExported && t.isIdentifier(value)) {
-                            removeExports(ast, value)
-                          } else {
-                            splitNodesByType[prop.key.name as SplitNodeType] =
-                              prop.value
+                        let isExported = false
+                        if (t.isIdentifier(value)) {
+                          isExported = hasExport(ast, value)
+                          if (isExported) {
+                            knownExportedIdents.add(value.name)
                           }
                         }
-                      }
+
+                        // If the node is exported, we need to remove
+                        // the export from the split file
+                        if (isExported && t.isIdentifier(value)) {
+                          removeExports(ast, value)
+                        } else {
+                          splitNodesByType[splitType] = prop.value
+                        }
+                      })
                     }
                   })
 
