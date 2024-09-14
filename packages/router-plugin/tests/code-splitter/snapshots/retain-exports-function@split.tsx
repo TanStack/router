@@ -1,1 +1,1 @@
-console.warn("These exports from \"retain-exports-function.tsx\" are not being code-split and therefore increasing your bundle size: \n- Layout\n- loaderFn\nYou should remove the export statement from these exports or import them from another file that is not a route.");
+console.warn("These exports from \"retain-exports-function.tsx\" are not being code-split and will increase your bundle size: \n- Layout\n- loaderFn\nThese should either have their export statements removed or be imported from another file that is not a route.");

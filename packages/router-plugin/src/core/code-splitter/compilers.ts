@@ -503,7 +503,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
       return str
     }, '')
 
-    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and therefore increasing your bundle size: ${list}\nYou should remove the export statement from these exports or import them from another file that is not a route.`
+    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
     console.warn(warningMessage)
 
     // append this warning to the file using a template
