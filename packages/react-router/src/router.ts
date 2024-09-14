@@ -306,7 +306,7 @@ export interface RouterOptions<
    */
   notFoundMode?: 'root' | 'fuzzy'
   /**
-   * The default `gcTime` a route should use if no
+   * The default `gcTime` a route should use if no gcTime is provided.
    *
    * @default 1_800_000 `(30 minutes)`
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultgctime-property)
@@ -322,7 +322,6 @@ export interface RouterOptions<
    */
   caseSensitive?: boolean
   /**
-   * __Required*__
    *
    * The route tree that will be used to configure the router instance.
    *
