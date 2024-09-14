@@ -157,6 +157,7 @@
     "typescript": "^5.6.2"
   },
   "peerDependencies": {
+    "@vitejs/plugin-react": ">=4.3.1",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0"
   }

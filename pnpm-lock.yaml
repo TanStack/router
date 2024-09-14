@@ -1747,7 +1747,7 @@ importers:
         version: link:../../../packages/start
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.3.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.4(@types/node@22.5.4)(terser@5.31.1))
       isbot:
         specifier: ^5.1.14
         version: 5.1.14
@@ -1803,12 +1803,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
-      vite:
-        specifier: ^5.3.5
-        version: 5.3.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.3.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.4(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/with-framer-motion:
     dependencies:
