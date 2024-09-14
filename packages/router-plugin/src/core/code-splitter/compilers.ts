@@ -107,7 +107,10 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                                 value.name,
                               ).path
 
-                            const isExported = hasExport(ast, value.name)
+                            // exported identifiers should not be split
+                            // since they are already being imported
+                            // and need to be retained in the compiled file
+                            const isExported = hasExport(ast, value)
                             shouldSplit = !isExported
 
                             if (shouldSplit) {
@@ -168,7 +171,10 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                                 value.name,
                               ).path
 
-                            const isExported = hasExport(ast, value.name)
+                            // exported identifiers should not be split
+                            // since they are already being imported
+                            // and need to be retained in the compiled file
+                            const isExported = hasExport(ast, value)
                             shouldSplit = !isExported
 
                             if (shouldSplit) {
@@ -269,6 +275,8 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
     )
   }
 
+  const knownExportedIdents = new Set<string>()
+
   babel.traverse(ast, {
     Program: {
       enter(programPath, programState) {
@@ -305,13 +313,28 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 if (t.isObjectExpression(options)) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
-                      splitNodeTypes.forEach((type) => {
-                        if (t.isIdentifier(prop.key)) {
-                          if (prop.key.name === type) {
-                            splitNodesByType[type] = prop.value
+                      if (t.isIdentifier(prop.key)) {
+                        if (splitNodeTypes.includes(prop.key.name as any)) {
+                          const value = prop.value
+
+                          let isExported = false
+                          if (t.isIdentifier(value)) {
+                            isExported = hasExport(ast, value)
+                            if (isExported) {
+                              knownExportedIdents.add(value.name)
+                            }
+                          }
+
+                          // If the node is exported, we need to remove
+                          // the export from the split file
+                          if (isExported) {
+                            removeExports(ast, value)
+                          } else {
+                            splitNodesByType[prop.key.name as SplitNodeType] =
+                              prop.value
                           }
                         }
-                      })
+                      }
                     }
                   })
 
@@ -466,6 +489,28 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
   deadCodeElimination(ast)
 
+  // if there are exported identifiers, then we need to add a warning
+  // to the file to let the user know that the exported identifiers
+  // will not in the split file but in the original file, therefore
+  // increasing the bundle size
+  if (knownExportedIdents.size > 0) {
+    const list = Array.from(knownExportedIdents).reduce((str, ident) => {
+      str += `\n- ${ident}`
+      return str
+    }, '')
+
+    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and therefore increasing your bundle size: ${list}\nYou should remove the export statement from these exports or move them to another file that is not a route.`
+    console.warn(warningMessage)
+
+    // append this warning to the file using a template
+    if (process.env.NODE_ENV !== 'production') {
+      const warningTemplate = template.statement(
+        `console.warn(${JSON.stringify(warningMessage)})`,
+      )()
+      ast.program.body.unshift(warningTemplate)
+    }
+  }
+
   return generate(ast, {
     sourceMaps: true,
     minified: process.env.NODE_ENV === 'production',
@@ -535,31 +580,90 @@ function removeIdentifierLiteral(path: any, node: any) {
   }
 }
 
-function hasExport(ast: t.File, name: string) {
+function hasExport(ast: t.File, node: t.Identifier | unknown) {
   let found = false
-  babel.traverse(ast, {
-    ExportNamedDeclaration(path) {
-      if (path.node.declaration) {
-        if (t.isVariableDeclaration(path.node.declaration)) {
-          path.node.declaration.declarations.forEach((decl) => {
-            if (t.isVariableDeclarator(decl)) {
-              if (t.isIdentifier(decl.id)) {
-                if (decl.id.name === name) {
-                  found = true
+
+  if (!t.isNode(node)) {
+    throw new Error(
+      `hasExport() only accepts valid babel nodes, received:` + node,
+    )
+  }
+
+  switch (true) {
+    case t.isIdentifier(node):
+      babel.traverse(ast, {
+        ExportNamedDeclaration(path) {
+          if (path.node.declaration) {
+            if (t.isVariableDeclaration(path.node.declaration)) {
+              path.node.declaration.declarations.forEach((decl) => {
+                if (t.isVariableDeclarator(decl)) {
+                  if (t.isIdentifier(decl.id)) {
+                    if (decl.id.name === node.name) {
+                      found = true
+                    }
+                  }
                 }
-              }
+              })
             }
-          })
-        }
-      }
-    },
-    ExportDefaultDeclaration(path) {
-      if (t.isIdentifier(path.node.declaration)) {
-        if (path.node.declaration.name === name) {
-          found = true
-        }
-      }
-    },
-  })
+          }
+        },
+        ExportDefaultDeclaration(path) {
+          if (t.isIdentifier(path.node.declaration)) {
+            if (path.node.declaration.name === node.name) {
+              found = true
+            }
+          }
+        },
+      })
+      break
+    default:
+      break
+  }
+
   return found
+}
+
+function removeExports(ast: t.File, node: t.Identifier | unknown) {
+  let removed = false
+
+  if (!t.isNode(node)) {
+    throw new Error(
+      `removeExports() only accepts valid babel nodes, received:` + node,
+    )
+  }
+
+  switch (true) {
+    case t.isIdentifier(node):
+      babel.traverse(ast, {
+        ExportNamedDeclaration(path) {
+          if (path.node.declaration) {
+            if (t.isVariableDeclaration(path.node.declaration)) {
+              path.node.declaration.declarations.forEach((decl) => {
+                if (t.isVariableDeclarator(decl)) {
+                  if (t.isIdentifier(decl.id)) {
+                    if (decl.id.name === node.name) {
+                      path.remove()
+                      removed = true
+                    }
+                  }
+                }
+              })
+            }
+          }
+        },
+        ExportDefaultDeclaration(path) {
+          if (t.isIdentifier(path.node.declaration)) {
+            if (path.node.declaration.name === node.name) {
+              path.remove()
+              removed = true
+            }
+          }
+        },
+      })
+      break
+    default:
+      break
+  }
+
+  return removed
 }
