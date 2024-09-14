@@ -327,7 +327,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
                           // If the node is exported, we need to remove
                           // the export from the split file
-                          if (isExported) {
+                          if (isExported && t.isIdentifier(value)) {
                             removeExports(ast, value)
                           } else {
                             splitNodesByType[prop.key.name as SplitNodeType] =
@@ -499,7 +499,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
       return str
     }, '')
 
-    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and therefore increasing your bundle size: ${list}\nYou should remove the export statement from these exports or move them to another file that is not a route.`
+    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and therefore increasing your bundle size: ${list}\nYou should remove the export statement from these exports or import them from another file that is not a route.`
     console.warn(warningMessage)
 
     // append this warning to the file using a template
@@ -580,90 +580,87 @@ function removeIdentifierLiteral(path: any, node: any) {
   }
 }
 
-function hasExport(ast: t.File, node: t.Identifier | unknown) {
+function hasExport(ast: t.File, node: t.Identifier): boolean {
   let found = false
 
-  if (!t.isNode(node)) {
-    throw new Error(
-      `hasExport() only accepts valid babel nodes, received:` + node,
-    )
-  }
-
-  switch (true) {
-    case t.isIdentifier(node):
-      babel.traverse(ast, {
-        ExportNamedDeclaration(path) {
-          if (path.node.declaration) {
-            if (t.isVariableDeclaration(path.node.declaration)) {
-              path.node.declaration.declarations.forEach((decl) => {
-                if (t.isVariableDeclarator(decl)) {
-                  if (t.isIdentifier(decl.id)) {
-                    if (decl.id.name === node.name) {
-                      found = true
-                    }
-                  }
+  babel.traverse(ast, {
+    ExportNamedDeclaration(path) {
+      if (path.node.declaration) {
+        // declared as `const loaderFn = () => {}`
+        if (t.isVariableDeclaration(path.node.declaration)) {
+          path.node.declaration.declarations.forEach((decl) => {
+            if (t.isVariableDeclarator(decl)) {
+              if (t.isIdentifier(decl.id)) {
+                if (decl.id.name === node.name) {
+                  found = true
                 }
-              })
+              }
             }
-          }
-        },
-        ExportDefaultDeclaration(path) {
-          if (t.isIdentifier(path.node.declaration)) {
-            if (path.node.declaration.name === node.name) {
+          })
+        }
+
+        // declared as `function loaderFn() {}`
+        if (t.isFunctionDeclaration(path.node.declaration)) {
+          if (t.isIdentifier(path.node.declaration.id)) {
+            if (path.node.declaration.id.name === node.name) {
               found = true
             }
           }
-        },
-      })
-      break
-    default:
-      break
-  }
+        }
+      }
+    },
+    ExportDefaultDeclaration(path) {
+      if (t.isIdentifier(path.node.declaration)) {
+        if (path.node.declaration.name === node.name) {
+          found = true
+        }
+      }
+    },
+  })
 
   return found
 }
 
-function removeExports(ast: t.File, node: t.Identifier | unknown) {
+function removeExports(ast: t.File, node: t.Identifier): boolean {
   let removed = false
 
-  if (!t.isNode(node)) {
-    throw new Error(
-      `removeExports() only accepts valid babel nodes, received:` + node,
-    )
-  }
-
-  switch (true) {
-    case t.isIdentifier(node):
-      babel.traverse(ast, {
-        ExportNamedDeclaration(path) {
-          if (path.node.declaration) {
-            if (t.isVariableDeclaration(path.node.declaration)) {
-              path.node.declaration.declarations.forEach((decl) => {
-                if (t.isVariableDeclarator(decl)) {
-                  if (t.isIdentifier(decl.id)) {
-                    if (decl.id.name === node.name) {
-                      path.remove()
-                      removed = true
-                    }
-                  }
+  babel.traverse(ast, {
+    ExportNamedDeclaration(path) {
+      if (path.node.declaration) {
+        // declared as `const loaderFn = () => {}`
+        if (t.isVariableDeclaration(path.node.declaration)) {
+          path.node.declaration.declarations.forEach((decl) => {
+            if (t.isVariableDeclarator(decl)) {
+              if (t.isIdentifier(decl.id)) {
+                if (decl.id.name === node.name) {
+                  path.remove()
+                  removed = true
                 }
-              })
+              }
             }
-          }
-        },
-        ExportDefaultDeclaration(path) {
-          if (t.isIdentifier(path.node.declaration)) {
-            if (path.node.declaration.name === node.name) {
+          })
+        }
+
+        // declared as `function loaderFn() {}`
+        if (t.isFunctionDeclaration(path.node.declaration)) {
+          if (t.isIdentifier(path.node.declaration.id)) {
+            if (path.node.declaration.id.name === node.name) {
               path.remove()
               removed = true
             }
           }
-        },
-      })
-      break
-    default:
-      break
-  }
+        }
+      }
+    },
+    ExportDefaultDeclaration(path) {
+      if (t.isIdentifier(path.node.declaration)) {
+        if (path.node.declaration.name === node.name) {
+          path.remove()
+          removed = true
+        }
+      }
+    },
+  })
 
   return removed
 }
