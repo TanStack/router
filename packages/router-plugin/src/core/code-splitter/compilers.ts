@@ -639,10 +639,7 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
               }
             }
           })
-        }
-
-        // declared as `function loaderFn() {}`
-        if (t.isFunctionDeclaration(path.node.declaration)) {
+        } else if (t.isFunctionDeclaration(path.node.declaration)) {
           if (t.isIdentifier(path.node.declaration.id)) {
             if (path.node.declaration.id.name === node.name) {
               path.remove()
