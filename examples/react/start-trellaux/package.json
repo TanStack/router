@@ -19,7 +19,6 @@
     "@tanstack/router-plugin": "^1.57.13",
     "@tanstack/start": "^1.57.13",
     "@vitejs/plugin-react": "^4.3.1",
-    "isbot": "^5.1.14",
     "ky": "^1.5.0",
     "msw": "^2.3.5",
     "react": "^18.3.1",

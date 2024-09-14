@@ -1748,9 +1748,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
         version: 4.3.1(vite@5.4.4(@types/node@22.5.4)(terser@5.31.1))
-      isbot:
-        specifier: ^5.1.14
-        version: 5.1.14
       ky:
         specifier: ^1.5.0
         version: 1.5.0
