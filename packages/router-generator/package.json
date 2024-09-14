@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "@tanstack/virtual-file-routes": "workspace:^",
-    "tsx": "^4.19.0",
+    "tsx": "^4.19.1",
     "prettier": "^3.3.3",
     "zod": "^3.23.8"
   }
