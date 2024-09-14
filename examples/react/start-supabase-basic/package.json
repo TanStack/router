@@ -16,13 +16,13 @@
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.3",
     "@tanstack/react-router": "^1.57.13",
-    "@tanstack/router-plugin": "^1.57.13",
     "@tanstack/router-devtools": "^1.57.13",
+    "@tanstack/router-plugin": "^1.57.13",
     "@tanstack/start": "^1.57.13",
     "@vitejs/plugin-react": "^4.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vinxi": "0.4.2"
+    "vinxi": "0.4.3"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",
