@@ -80,8 +80,13 @@ export async function generator(config: Config) {
 
   const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult
   if (rootRouteNode === undefined) {
-    throw new Error(`rootRouteNode must not be undefined`)
+    let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
+    if (!config.virtualRouteConfig) {
+      errorMessage += `\nMake sure that you add a "${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${config.routesDirectory}/${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}"`
+    }
+    throw new Error(errorMessage)
   }
+
   const preRouteNodes = multiSortBy(beforeRouteNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
     (d) => d.routePath?.split('/').length,
