@@ -99,8 +99,8 @@ importers:
         specifier: npm:typescript@5.4
         version: typescript@5.4.5
       typescript55:
-        specifier: npm:typescript@5.6.2
-        version: typescript@5.6.2
+        specifier: npm:typescript@5.5
+        version: typescript@5.5.4
       vite:
         specifier: ^5.4.5
         version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
@@ -9109,6 +9109,11 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  typescript@5.5.4:
+    resolution: {integrity: sha512-Mtq29sKDAEYP7aljRgtPOpTvOfbwRWlS6dPRzwjdE+C0R4brX/GUyhHSecbHMFLNBLcJIPt9nl9yG5TZ1weH+Q==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   typescript@5.6.1-rc:
     resolution: {integrity: sha512-E3b2+1zEFu84jB0YQi9BORDjz9+jGbwwy1Zi3G0LUNw7a7cePUrHMRNy8aPh53nXpkFGVHSxIZo5vKTfYaFiBQ==}
     engines: {node: '>=14.17'}
@@ -16731,6 +16736,8 @@ snapshots:
   typescript@5.4.2: {}
 
   typescript@5.4.5: {}
+
+  typescript@5.5.4: {}
 
   typescript@5.6.1-rc: {}
 
