@@ -84,7 +84,7 @@
     "@tanstack/router-generator": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@tanstack/react-generator": {
+    "@tanstack/router-generator": {
       "optional": true
     }
   }
