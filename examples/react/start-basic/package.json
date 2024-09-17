@@ -8,8 +8,7 @@
     "build": "vinxi build",
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
-    "format": "prettier --write '**/*' --ignore-unknown",
-    "test:e2e": "playwright test --project=chromium"
+    "format": "prettier --write '**/*' --ignore-unknown"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.57.15",
@@ -25,7 +24,6 @@
     "vinxi": "0.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.47.1",
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",

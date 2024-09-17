@@ -6,8 +6,7 @@
     "dev": "vite --port=3001",
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
-    "start": "vite",
-    "test:e2e": "playwright test --project=chromium"
+    "start": "vite"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.57.15",
@@ -21,7 +20,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.47.1",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.3.1",

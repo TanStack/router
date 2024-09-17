@@ -752,9 +752,6 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@types/react':
         specifier: ^18.2.47
         version: 18.3.5
@@ -832,9 +829,6 @@ importers:
         specifier: ^3.23.8
         version: 3.23.8
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@types/react':
         specifier: ^18.2.47
         version: 18.3.5
@@ -912,9 +906,6 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@types/react':
         specifier: ^18.2.47
         version: 18.3.5
@@ -961,9 +952,6 @@ importers:
         specifier: ^3.23.8
         version: 3.23.8
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@types/react':
         specifier: ^18.2.47
         version: 18.3.5
@@ -1138,9 +1126,6 @@ importers:
         specifier: ^3.23.8
         version: 3.23.8
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@types/react':
         specifier: ^18.2.47
         version: 18.3.5
@@ -1184,9 +1169,6 @@ importers:
         specifier: ^3.23.8
         version: 3.23.8
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@types/react':
         specifier: ^18.2.47
         version: 18.3.5
@@ -1784,9 +1766,6 @@ importers:
         specifier: 0.4.3
         version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
@@ -1866,9 +1845,6 @@ importers:
         specifier: 0.4.3
         version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@replayio/playwright':
         specifier: ^3.1.8
         version: 3.1.8(@playwright/test@1.47.1)
@@ -1985,9 +1961,6 @@ importers:
         specifier: 0.4.3
         version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
@@ -2122,12 +2095,6 @@ importers:
         specifier: 0.4.3
         version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.47.1
-        version: 1.47.1
-      '@replayio/playwright':
-        specifier: ^3.1.8
-        version: 3.1.8(@playwright/test@1.47.1)
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
