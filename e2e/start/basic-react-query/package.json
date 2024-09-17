@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-e2e-react-start-clerk-basic",
+  "name": "tanstack-start-e2e-basic-react-query",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -9,21 +9,21 @@
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
     "format": "prettier --write '**/*' --ignore-unknown",
-    "test:e2e": "exit 0; playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.4.1",
+    "@tanstack/react-query": "^5.56.2",
+    "@tanstack/react-query-devtools": "^5.56.2",
     "@tanstack/react-router": "^1.57.15",
+    "@tanstack/react-router-with-query": "^1.57.15",
     "@tanstack/router-devtools": "^1.57.15",
     "@tanstack/router-plugin": "^1.57.15",
     "@tanstack/start": "^1.57.15",
     "@vitejs/plugin-react": "^4.3.1",
-    "dotenv": "^16.4.5",
     "isbot": "^5.1.17",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
-    "remix-auth-form": "^1.5.0",
     "tailwind-merge": "^2.5.2",
     "vinxi": "0.4.3"
   },
