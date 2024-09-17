@@ -2,6 +2,7 @@ import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
+import type { PingEvent } from './api/ping'
 
 const deployURL = 'http://localhost:3000'
 
@@ -18,10 +19,7 @@ const useUpdatePing = () => {
 
       const data = await res.json()
 
-      return data as {
-        message: string
-        data: number
-      }
+      return data as PingEvent
     },
     mutationKey: ['increment', 'counter'],
   })
@@ -51,17 +49,15 @@ const useCounterStream = () => {
         console.info('received message', data)
         apiUtil.setQueryData(queryKey, (prev) => {
           return {
-            data: data.value,
-          }
+            value: data.value,
+          } satisfies PingEvent
         })
       },
     })
 
     return {
-      data: null,
-    } as {
-      data: number | null
-    }
+      value: 0,
+    } satisfies PingEvent
   }, [])
 
   return useQuery({
@@ -110,7 +106,7 @@ function DashboardPage() {
             </button>
           ) : (
             <button type="submit" className="py-12 font-mono text-5xl">
-              Stream Clicks: {JSON.stringify(streamCounter.data?.data) || '0'}
+              Stream Clicks: {JSON.stringify(streamCounter.data?.value) || '0'}
             </button>
           )}
         </form>

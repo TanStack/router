@@ -28,6 +28,10 @@ const incrementCount = async () => {
   return sum
 }
 
+export interface PingEvent {
+  value: number
+}
+
 export const Route = createAPIFileRoute('/api/ping')({
   GET: () => {
     setHeaders({
@@ -54,13 +58,20 @@ export const Route = createAPIFileRoute('/api/ping')({
       event,
       new ReadableStream({
         async start(controller) {
+          console.info('Client connected')
           const initialValue = await readCount()
-          controller.enqueue(dataToSSEvent('message', { value: initialValue }))
+          controller.enqueue(
+            dataToSSEvent('message', {
+              value: initialValue,
+            } satisfies PingEvent),
+          )
           listener = async () => {
             const currentValue = await readCount()
             console.info('Sent value to client', currentValue)
             controller.enqueue(
-              dataToSSEvent('message', { value: currentValue }),
+              dataToSSEvent('message', {
+                value: currentValue,
+              } satisfies PingEvent),
             )
           }
 
@@ -80,9 +91,8 @@ export const Route = createAPIFileRoute('/api/ping')({
     console.info('Client incremented value', newValue)
     return json(
       {
-        message: 'ok',
-        data: newValue,
-      },
+        value: newValue,
+      } satisfies PingEvent,
       {
         status: 200,
       },
