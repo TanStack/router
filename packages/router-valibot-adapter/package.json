@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-valibot-adapter",
-  "version": "1.57.15",
+  "version": "1.57.17",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -67,7 +67,7 @@
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@tanstack/react-router": "workspace:*",
-    "valibot": "^0.41.0"
+    "valibot": "^0.42.0"
   },
   "peerDependencies": {
     "valibot": ">=0.36.0",
