@@ -15,10 +15,10 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.4",
-    "@tanstack/react-router": "^1.57.16",
+    "@tanstack/react-router": "^1.57.17",
     "@tanstack/router-plugin": "^1.57.15",
-    "@tanstack/router-devtools": "^1.57.16",
-    "@tanstack/start": "^1.57.16",
+    "@tanstack/router-devtools": "^1.57.17",
+    "@tanstack/start": "^1.57.17",
     "@vitejs/plugin-react": "^4.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
