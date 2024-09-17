@@ -80,7 +80,7 @@ function DashboardPage() {
     await updateCounter.mutateAsync()
   }
 
-  const onClientSideSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const onClientSideSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setCounter((prev) => prev + 1)
   }
