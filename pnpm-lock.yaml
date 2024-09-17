@@ -64,7 +64,7 @@ importers:
         version: 25.0.0
       nx:
         specifier: ^19.7.3
-        version: 19.7.3(@swc/core@1.7.26(@swc/helpers@0.5.13))
+        version: 19.7.3(@swc/core@1.7.26)
       prettier:
         specifier: ^3.3.3
         version: 3.3.3
@@ -107,6 +107,592 @@ importers:
       vitest:
         specifier: ^1.6.0
         version: 1.6.0(@types/node@22.5.4)(jsdom@25.0.0)(terser@5.31.1)
+
+  e2e/react/basic:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+
+  e2e/react/basic-file-based:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      immer:
+        specifier: ^10.1.1
+        version: 10.1.1
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+
+  e2e/react/basic-react-query:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.56.2
+        version: 5.56.2(react@18.3.1)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.56.2
+        version: 5.56.2(@tanstack/react-query@5.56.2(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+
+  e2e/react/basic-react-query-file-based:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.56.2
+        version: 5.56.2(react@18.3.1)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.56.2
+        version: 5.56.2(@tanstack/react-query@5.56.2(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      immer:
+        specifier: ^10.1.1
+        version: 10.1.1
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+
+  e2e/react/basic-virtual-file-based:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/virtual-file-routes':
+        specifier: workspace:*
+        version: link:../../../packages/virtual-file-routes
+      immer:
+        specifier: ^10.1.1
+        version: 10.1.1
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+
+  e2e/react/start-basic:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      isbot:
+        specifier: ^5.1.17
+        version: 5.1.17
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^2.5.2
+        version: 2.5.2
+      vinxi:
+        specifier: 0.4.3
+        version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@types/node':
+        specifier: ^22.5.4
+        version: 22.5.4
+      '@types/react':
+        specifier: ^18.2.65
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.21
+        version: 18.3.0
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.4.47)
+      postcss:
+        specifier: ^8.4.47
+        version: 8.4.47
+      prettier:
+        specifier: ^3.3.3
+        version: 3.3.3
+      tailwindcss:
+        specifier: ^3.4.11
+        version: 3.4.11
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite-tsconfig-paths:
+        specifier: ^5.0.1
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+
+  e2e/react/start-basic-auth:
+    dependencies:
+      '@prisma/client':
+        specifier: 5.19.1
+        version: 5.19.1(prisma@5.19.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.4.5
+      isbot:
+        specifier: ^5.1.17
+        version: 5.1.17
+      prisma:
+        specifier: ^5.19.1
+        version: 5.19.1
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      remix-auth-form:
+        specifier: ^1.5.0
+        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.2))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2)))
+      tailwind-merge:
+        specifier: ^2.5.2
+        version: 2.5.2
+      vinxi:
+        specifier: 0.4.3
+        version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@replayio/playwright':
+        specifier: ^3.1.8
+        version: 3.1.8(@playwright/test@1.47.1)
+      '@types/node':
+        specifier: ^22.5.4
+        version: 22.5.4
+      '@types/react':
+        specifier: ^18.2.65
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.21
+        version: 18.3.0
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.4.47)
+      postcss:
+        specifier: ^8.4.47
+        version: 8.4.47
+      prettier:
+        specifier: ^3.3.3
+        version: 3.3.3
+      tailwindcss:
+        specifier: ^3.4.11
+        version: 3.4.11
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite-tsconfig-paths:
+        specifier: ^5.0.1
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+
+  e2e/react/start-basic-react-query:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.56.2
+        version: 5.56.2(react@18.3.1)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.56.2
+        version: 5.56.2(@tanstack/react-query@5.56.2(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-with-query':
+        specifier: workspace:*
+        version: link:../../../packages/react-router-with-query
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      isbot:
+        specifier: ^5.1.17
+        version: 5.1.17
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^2.5.2
+        version: 2.5.2
+      vinxi:
+        specifier: 0.4.3
+        version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@types/node':
+        specifier: ^22.5.4
+        version: 22.5.4
+      '@types/react':
+        specifier: ^18.2.65
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.21
+        version: 18.3.0
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.4.47)
+      postcss:
+        specifier: ^8.4.47
+        version: 8.4.47
+      prettier:
+        specifier: ^3.3.3
+        version: 3.3.3
+      tailwindcss:
+        specifier: ^3.4.11
+        version: 3.4.11
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite-tsconfig-paths:
+        specifier: ^5.0.1
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+
+  e2e/react/start-basic-rsc:
+    dependencies:
+      '@babel/plugin-syntax-typescript':
+        specifier: ^7.25.4
+        version: 7.25.4(@babel/core@7.25.2)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^2.5.2
+        version: 2.5.2
+      vinxi:
+        specifier: 0.4.3
+        version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.65
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.21
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.4.47)
+      postcss:
+        specifier: ^8.4.47
+        version: 8.4.47
+      prettier:
+        specifier: ^3.3.3
+        version: 3.3.3
+      tailwindcss:
+        specifier: ^3.4.11
+        version: 3.4.11
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite-tsconfig-paths:
+        specifier: ^5.0.1
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+
+  e2e/react/start-clerk-basic:
+    dependencies:
+      '@clerk/tanstack-start':
+        specifier: 0.4.1
+        version: 0.4.1(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.4.5
+      isbot:
+        specifier: ^5.1.17
+        version: 5.1.17
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      remix-auth-form:
+        specifier: ^1.5.0
+        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.2))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2)))
+      tailwind-merge:
+        specifier: ^2.5.2
+        version: 2.5.2
+      vinxi:
+        specifier: 0.4.3
+        version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.47.1
+        version: 1.47.1
+      '@replayio/playwright':
+        specifier: ^3.1.8
+        version: 3.1.8(@playwright/test@1.47.1)
+      '@types/node':
+        specifier: ^22.5.4
+        version: 22.5.4
+      '@types/react':
+        specifier: ^18.2.65
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.21
+        version: 18.3.0
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.4.47)
+      postcss:
+        specifier: ^8.4.47
+        version: 8.4.47
+      prettier:
+        specifier: ^3.3.3
+        version: 3.3.3
+      tailwindcss:
+        specifier: ^3.4.11
+        version: 3.4.11
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite-tsconfig-paths:
+        specifier: ^5.0.1
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/authenticated-routes:
     dependencies:
@@ -2234,7 +2820,7 @@ importers:
         version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       webpack:
         specifier: '>=5.92.0'
-        version: 5.94.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)
+        version: 5.94.0(@swc/core@1.7.26)(esbuild@0.23.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -10808,9 +11394,9 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
 
-  '@nrwl/tao@19.7.3(@swc/core@1.7.26(@swc/helpers@0.5.13))':
+  '@nrwl/tao@19.7.3(@swc/core@1.7.26)':
     dependencies:
-      nx: 19.7.3(@swc/core@1.7.26(@swc/helpers@0.5.13))
+      nx: 19.7.3(@swc/core@1.7.26)
       tslib: 2.7.0
     transitivePeerDependencies:
       - '@swc-node/register'
@@ -15231,10 +15817,10 @@ snapshots:
 
   nwsapi@2.2.12: {}
 
-  nx@19.7.3(@swc/core@1.7.26(@swc/helpers@0.5.13)):
+  nx@19.7.3(@swc/core@1.7.26):
     dependencies:
       '@napi-rs/wasm-runtime': 0.2.4
-      '@nrwl/tao': 19.7.3(@swc/core@1.7.26(@swc/helpers@0.5.13))
+      '@nrwl/tao': 19.7.3(@swc/core@1.7.26)
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.7
@@ -16555,14 +17141,14 @@ snapshots:
       '@swc/core': 1.7.26(@swc/helpers@0.5.13)
       esbuild: 0.23.1
 
-  terser-webpack-plugin@5.3.10(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack@5.94.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)):
+  terser-webpack-plugin@5.3.10(@swc/core@1.7.26)(esbuild@0.23.1)(webpack@5.94.0(@swc/core@1.7.26)(esbuild@0.23.1)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 3.3.0
       serialize-javascript: 6.0.2
       terser: 5.31.1
-      webpack: 5.94.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)
+      webpack: 5.94.0(@swc/core@1.7.26)(esbuild@0.23.1)
     optionalDependencies:
       '@swc/core': 1.7.26(@swc/helpers@0.5.13)
       esbuild: 0.23.1
@@ -17236,36 +17822,6 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  webpack@5.94.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1):
-    dependencies:
-      '@types/estree': 1.0.5
-      '@webassemblyjs/ast': 1.12.1
-      '@webassemblyjs/wasm-edit': 1.12.1
-      '@webassemblyjs/wasm-parser': 1.12.1
-      acorn: 8.12.1
-      acorn-import-attributes: 1.9.5(acorn@8.12.1)
-      browserslist: 4.23.3
-      chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.17.1
-      es-module-lexer: 1.5.4
-      eslint-scope: 5.1.1
-      events: 3.3.0
-      glob-to-regexp: 0.4.1
-      graceful-fs: 4.2.11
-      json-parse-even-better-errors: 2.3.1
-      loader-runner: 4.3.0
-      mime-types: 2.1.35
-      neo-async: 2.6.2
-      schema-utils: 3.3.0
-      tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack@5.94.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1))
-      watchpack: 2.4.1
-      webpack-sources: 3.2.3
-    transitivePeerDependencies:
-      - '@swc/core'
-      - esbuild
-      - uglify-js
-
   webpack@5.94.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4):
     dependencies:
       '@types/estree': 1.0.5
@@ -17293,6 +17849,36 @@ snapshots:
       webpack-sources: 3.2.3
     optionalDependencies:
       webpack-cli: 5.1.4(webpack-dev-server@5.1.0)(webpack@5.94.0)
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
+
+  webpack@5.94.0(@swc/core@1.7.26)(esbuild@0.23.1):
+    dependencies:
+      '@types/estree': 1.0.5
+      '@webassemblyjs/ast': 1.12.1
+      '@webassemblyjs/wasm-edit': 1.12.1
+      '@webassemblyjs/wasm-parser': 1.12.1
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
+      browserslist: 4.23.3
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.17.1
+      es-module-lexer: 1.5.4
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 3.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.10(@swc/core@1.7.26)(esbuild@0.23.1)(webpack@5.94.0(@swc/core@1.7.26)(esbuild@0.23.1))
+      watchpack: 2.4.1
+      webpack-sources: 3.2.3
     transitivePeerDependencies:
       - '@swc/core'
       - esbuild
