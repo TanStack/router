@@ -341,6 +341,10 @@
               "to": "framework/react/examples/start-basic-react-query"
             },
             {
+              "label": "Basic + React Query + SSE",
+              "to": "framework/react/examples/start-basic-counter-react-query-stream"
+            },
+            {
               "label": "Basic + Clerk Auth",
               "to": "framework/react/examples/start-clerk-basic"
             },
