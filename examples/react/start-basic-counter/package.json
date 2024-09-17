@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-example-react-start-basic-counter",
+  "name": "tanstack-start-example-basic-counter",
   "private": true,
   "sideEffects": false,
   "type": "module",
