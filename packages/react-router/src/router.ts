@@ -1326,7 +1326,7 @@ export class Router<
         'Could not find match for from: ' + dest.from,
       )
 
-      const fromSearch = this.state.pendingMatches
+      const fromSearch = this.state.pendingMatches?.length
         ? last(this.state.pendingMatches)?.search
         : last(fromMatches)?.search || this.latestLocation.search
 
