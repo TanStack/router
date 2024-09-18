@@ -16,11 +16,10 @@ function capitalizeFirst(str: string): string {
 }
 
 function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
-  const routesDirectoryPath = normalize(
-    isAbsolute(routesDirectory)
-      ? routesDirectory
-      : join(process.cwd(), routesDirectory),
-  )
+  const routesDirectoryPath = isAbsolute(routesDirectory)
+    ? routesDirectory
+    : join(process.cwd(), routesDirectory)
+
   const path = normalize(filePath)
 
   return path.startsWith(routesDirectoryPath)
