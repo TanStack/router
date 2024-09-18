@@ -239,6 +239,19 @@
       ]
     },
     {
+      "label": "ESLint",
+      "children": [
+        {
+          "label": "ESLint Plugin Router",
+          "to": "eslint/eslint-plugin-router"
+        },
+        {
+          "label": "Create Route Property Order",
+          "to": "eslint/create-route-property-order"
+        }
+      ]
+    },
+    {
       "label": "Router Examples",
       "children": [],
       "frameworks": [
