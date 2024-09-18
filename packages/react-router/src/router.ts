@@ -2275,11 +2275,6 @@ export class Router<
                             componentsPromise,
                           }))
 
-                          // Lazy option can modify the route options,
-                          // so we need to wait for it to resolve before
-                          // we can use the options
-                          await route._lazyPromise
-
                           // Kick off the loader!
                           let loaderData =
                             await route.options.loader?.(getLoaderContext())
@@ -2299,6 +2294,11 @@ export class Router<
                             this.getMatch(matchId)!,
                             loaderData,
                           )
+
+                          // Lazy option can modify the route options,
+                          // so we need to wait for it to resolve before
+                          // we can use the options
+                          await route._lazyPromise
 
                           await potentialPendingMinPromise()
 
