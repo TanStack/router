@@ -193,18 +193,12 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
-      redaxios:
-        specifier: ^0.5.1
-        version: 0.5.1
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -282,9 +276,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -328,9 +319,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -739,9 +727,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -847,9 +832,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1221,9 +1203,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1430,9 +1409,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1569,9 +1545,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -2402,9 +2375,6 @@ importers:
       framer-motion:
         specifier: ^11.5.4
         version: 11.5.4(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      immer:
-        specifier: ^10.1.1
-        version: 10.1.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
