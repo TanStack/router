@@ -22,6 +22,7 @@ overrides:
   '@tanstack/router-arktype-adapter': workspace:*
   '@tanstack/start': workspace:*
   '@tanstack/start-vite-plugin': workspace:*
+  '@tanstack/eslint-plugin-router': workspace:*
   temp-react: 0.0.0-experimental-035a41c4e-20230704
   temp-react-dom: 0.0.0-experimental-035a41c4e-20230704
 
@@ -2032,6 +2033,22 @@ importers:
       yocto-spinner:
         specifier: ^0.1.0
         version: 0.1.0
+
+  packages/eslint-plugin-router:
+    dependencies:
+      '@typescript-eslint/utils':
+        specifier: ^8.3.0
+        version: 8.5.0(eslint@9.10.0(jiti@1.21.6))(typescript@5.6.2)
+    devDependencies:
+      '@typescript-eslint/rule-tester':
+        specifier: ^8.3.0
+        version: 8.5.0(eslint@9.10.0(jiti@1.21.6))(typescript@5.6.2)
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
+      eslint:
+        specifier: ^9.10.0
+        version: 9.10.0(jiti@1.21.6)
 
   packages/history: {}
 
@@ -4813,6 +4830,12 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  '@typescript-eslint/rule-tester@8.5.0':
+    resolution: {integrity: sha512-ySLDyc7rktaTLcAICIKf5MG6tjc20g9e6oud4oG1OlsBLZlV9Yl4iuCnmBILojjST8/iYs5o1qebYhF1r97EfA==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    peerDependencies:
+      eslint: ^9.10.0
 
   '@typescript-eslint/scope-manager@8.3.0':
     resolution: {integrity: sha512-mz2X8WcN2nVu5Hodku+IR8GgCOl4C0G/Z1ruaWN4dgec64kDBabuXyPAr+/RgJtumv8EEkqIzf3X2U5DUKB2eg==}
@@ -11976,6 +11999,19 @@ snapshots:
       typescript: 5.6.2
     transitivePeerDependencies:
       - supports-color
+
+  '@typescript-eslint/rule-tester@8.5.0(eslint@9.10.0(jiti@1.21.6))(typescript@5.6.2)':
+    dependencies:
+      '@typescript-eslint/typescript-estree': 8.5.0(typescript@5.6.2)
+      '@typescript-eslint/utils': 8.5.0(eslint@9.10.0(jiti@1.21.6))(typescript@5.6.2)
+      ajv: 6.12.6
+      eslint: 9.10.0(jiti@1.21.6)
+      json-stable-stringify-without-jsonify: 1.0.1
+      lodash.merge: 4.6.2
+      semver: 7.6.3
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
 
   '@typescript-eslint/scope-manager@8.3.0':
     dependencies:
