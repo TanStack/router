@@ -878,25 +878,23 @@ export type ActiveLinkOptions<
 > = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
   ActiveLinkOptionProps<TComp>
 
-type ActiveLinkAnchorProps<TComp> = LinkComponentReactProps<TComp> & {
-  [key: `data-${string}`]: unknown
-}
+type ActiveLinkProps<TComp> = Partial<
+  LinkComponentReactProps<TComp> & {
+    [key: `data-${string}`]: unknown
+  }
+>
 
 export interface ActiveLinkOptionProps<TComp = 'a'> {
   /**
    * A function that returns additional props for the `active` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  activeProps?:
-    | ActiveLinkAnchorProps<TComp>
-    | (() => ActiveLinkAnchorProps<TComp>)
+  activeProps?: ActiveLinkProps<TComp> | (() => ActiveLinkProps<TComp>)
   /**
    * A function that returns additional props for the `inactive` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  inactiveProps?:
-    | ActiveLinkAnchorProps<TComp>
-    | (() => ActiveLinkAnchorProps<TComp>)
+  inactiveProps?: ActiveLinkProps<TComp> | (() => ActiveLinkProps<TComp>)
 }
 
 export type LinkProps<
