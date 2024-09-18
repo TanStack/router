@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "@clerk/tanstack-start": "0.4.1",
-    "@tanstack/react-router": "^1.58.1",
-    "@tanstack/router-devtools": "^1.58.1",
+    "@tanstack/react-router": "^1.58.2",
+    "@tanstack/router-devtools": "^1.58.2",
     "@tanstack/router-plugin": "^1.58.1",
-    "@tanstack/start": "^1.58.1",
+    "@tanstack/start": "^1.58.2",
     "@vitejs/plugin-react": "^4.3.1",
     "dotenv": "^16.4.5",
     "isbot": "^5.1.17",
