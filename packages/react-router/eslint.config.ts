@@ -1,4 +1,3 @@
-
 import pluginReact from '@eslint-react/eslint-plugin'
 // @ts-expect-error
 import pluginReactHooks from 'eslint-plugin-react-hooks'
@@ -21,5 +20,5 @@ export default [
       'react-hooks/exhaustive-deps': 'error',
       'react-hooks/rules-of-hooks': 'error',
     },
-  }
+  },
 ]

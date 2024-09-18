@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  
   createMemoryHistory,
   createRootRoute,
   createRoute,
-  createRouter
+  createRouter,
 } from '../src'
-import type {RouterHistory} from '../src';
+import type { RouterHistory } from '../src'
 
 afterEach(() => {
   vi.clearAllMocks()

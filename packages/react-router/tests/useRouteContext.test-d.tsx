@@ -1,13 +1,12 @@
 import { expectTypeOf, test } from 'vitest'
 import {
-  
   createRootRoute,
   createRootRouteWithContext,
   createRoute,
   createRouter,
-  useRouteContext
+  useRouteContext,
 } from '../src'
-import type {FullSearchSchema} from '../src';
+import type { FullSearchSchema } from '../src'
 
 test('when there is no context', () => {
   const rootRoute = createRootRoute()

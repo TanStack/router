@@ -1,12 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
-import {
-  
-  createRootRoute,
-  createRoute,
-  createRouter,
-  useParams
-} from '../src'
-import type {FullSearchSchema} from '../src';
+import { createRootRoute, createRoute, createRouter, useParams } from '../src'
+import type { FullSearchSchema } from '../src'
 
 test('when there are no params', () => {
   const rootRoute = createRootRoute()

@@ -365,7 +365,7 @@ test('when creating a child route with a loader from the root route', () => {
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader:  (opt) => {
+    loader: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -407,7 +407,7 @@ test('when creating a child route with a loader from the root route with context
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader:  (opts) => {
+    loader: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
