@@ -1,23 +1,24 @@
 {
-  "name": "tanstack-router-react-example-with-framer-motion",
+  "name": "tanstack-router-e2e-react-basic-file-based-code-splitting",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --port=3001",
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
-    "start": "vite"
+    "start": "vite",
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.57.18",
-    "@tanstack/router-devtools": "^1.57.18",
-    "redaxios": "^0.5.1",
-    "framer-motion": "^11.5.4",
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-devtools": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.47.1",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.3.1",

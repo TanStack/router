@@ -532,6 +532,15 @@ export const componentTypes = [
   'notFoundComponent',
 ] as const
 
+function routeNeedsPreload(route: AnyRoute) {
+  for (const componentType of componentTypes) {
+    if ((route.options[componentType] as any)?.preload) {
+      return true
+    }
+  }
+  return false
+}
+
 export type RouterEvents = {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
@@ -1179,7 +1188,10 @@ export class Router<
         }
       } else {
         const status =
-          route.options.loader || route.options.beforeLoad || route.lazyFn
+          route.options.loader ||
+          route.options.beforeLoad ||
+          route.lazyFn ||
+          routeNeedsPreload(route)
             ? 'pending'
             : 'success'
 
