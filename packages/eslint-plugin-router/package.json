@@ -26,7 +26,7 @@
     "test:types:ts56": "tsc",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --typecheck",
-    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
+    "test:build": "publint --strict && attw --pack .",
     "build": "vite build"
   },
   "type": "module",
