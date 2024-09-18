@@ -277,16 +277,16 @@ importers:
   e2e/react-router/basic-virtual-file-based:
     dependencies:
       '@tanstack/react-router':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../packages/router-plugin
       '@tanstack/virtual-file-routes':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../packages/virtual-file-routes
       immer:
         specifier: ^10.1.1
