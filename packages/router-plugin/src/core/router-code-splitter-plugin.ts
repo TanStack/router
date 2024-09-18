@@ -1,4 +1,4 @@
-import { isAbsolute, join } from 'node:path'
+import { isAbsolute, join, normalize } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { getConfig } from './config'
@@ -16,11 +16,14 @@ function capitalizeFirst(str: string): string {
 }
 
 function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
-  const routesDirectoryPath = isAbsolute(routesDirectory)
-    ? routesDirectory
-    : join(process.cwd(), routesDirectory)
+  const routesDirectoryPath = normalize(
+    isAbsolute(routesDirectory)
+      ? routesDirectory
+      : join(process.cwd(), routesDirectory),
+  )
+  const path = normalize(filePath)
 
-  return filePath.startsWith(routesDirectoryPath)
+  return path.startsWith(routesDirectoryPath)
 }
 
 type BannedBeforeExternalPlugin = {
@@ -60,7 +63,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
   let ROOT: string = process.cwd()
-  let userConfig = options as Config
+  let userConfig = options
 
   const handleSplittingFile = (code: string, id: string) => {
     if (debug) console.info('Splitting route: ', id)
