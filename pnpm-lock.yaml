@@ -55,7 +55,7 @@ importers:
         specifier: ^9.10.0
         version: 9.10.0(jiti@1.21.6)
       eslint-plugin-react-hooks:
-        specifier: ^5.1.0-rc-fb9a90fa48-20240614
+        specifier: ^5.1.0-rc-5dcb0097-20240918
         version: 5.1.0-rc-fb9a90fa48-20240614(eslint@9.10.0(jiti@1.21.6))
       glob:
         specifier: ^10.4.5

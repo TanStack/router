@@ -1,8 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import {
-  type AnyRouteMatch,
   MatchRoute,
-  type RouteMatch,
   createRootRoute,
   createRoute,
   createRouter,
@@ -10,6 +8,7 @@ import {
   useMatchRoute,
   useMatches,
 } from '../src'
+import type { AnyRouteMatch, RouteMatch } from '../src'
 
 const rootRoute = createRootRoute()
 
