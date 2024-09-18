@@ -956,7 +956,8 @@ export class Router<
   ```ts
   matchRoutes (
     next: ParsedLocation,
-    opts?: { preload?: boolean; throwOnError?: boolean },
+    opts?: MatchRoutesOpts,
+    routeFullPath?: string,
   ): Array<AnyRouteMatch>;
   ```
 */
@@ -964,18 +965,19 @@ export class Router<
     pathname: string,
     locationSearch: AnySearchSchema,
     opts?: MatchRoutesOpts,
+    routeFullPath?: string,
   ): Array<AnyRouteMatch>
   public matchRoutes(
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
+    routeFullPath?: string,
   ): Array<AnyRouteMatch>
 
   public matchRoutes(
     pathnameOrNext: string | ParsedLocation,
-    locationSearchOrOpts?:
-      | AnySearchSchema
-      | { preload?: boolean; throwOnError?: boolean },
-    opts?: { preload?: boolean; throwOnError?: boolean },
+    locationSearchOrOpts?: AnySearchSchema | MatchRoutesOpts,
+    optsOrRouteFullPath?: MatchRoutesOpts | string,
+    routeFullPath?: string,
   ) {
     if (typeof pathnameOrNext === 'string') {
       return this.matchRoutesInternal(
@@ -983,38 +985,65 @@ export class Router<
           pathname: pathnameOrNext,
           search: locationSearchOrOpts,
         } as ParsedLocation,
-        opts,
+        optsOrRouteFullPath as MatchRoutesOpts,
+        routeFullPath,
       )
     } else {
-      return this.matchRoutesInternal(pathnameOrNext, locationSearchOrOpts)
+      return this.matchRoutesInternal(
+        pathnameOrNext,
+        locationSearchOrOpts,
+        optsOrRouteFullPath as string,
+      )
     }
   }
 
   private matchRoutesInternal(
     next: ParsedLocation,
     opts?: { preload?: boolean; throwOnError?: boolean },
+    routeFullPath?: string,
   ): Array<AnyRouteMatch> {
     let routeParams: Record<string, string> = {}
 
-    const foundRoute = this.flatRoutes.find((route) => {
+    let foundRoute: AnyRoute | undefined = routeFullPath
+      ? this.routesByPath[routeFullPath]
+      : undefined
+
+    if (foundRoute) {
       const matchedParams = matchPathname(
         this.basepath,
         trimPathRight(next.pathname),
         {
-          to: route.fullPath,
+          to: foundRoute.fullPath,
           caseSensitive:
-            route.options.caseSensitive ?? this.options.caseSensitive,
+            foundRoute.options.caseSensitive ?? this.options.caseSensitive,
           fuzzy: true,
         },
       )
 
       if (matchedParams) {
         routeParams = matchedParams
-        return true
       }
+    } else {
+      foundRoute = this.flatRoutes.find((route) => {
+        const matchedParams = matchPathname(
+          this.basepath,
+          trimPathRight(next.pathname),
+          {
+            to: route.fullPath,
+            caseSensitive:
+              route.options.caseSensitive ?? this.options.caseSensitive,
+            fuzzy: true,
+          },
+        )
 
-      return false
-    })
+        if (matchedParams) {
+          routeParams = matchedParams
+          return true
+        }
+
+        return false
+      })
+    }
 
     let routeCursor: AnyRoute =
       foundRoute || (this.routesById as any)[rootRouteId]
@@ -1484,9 +1513,17 @@ export class Router<
         }
       }
 
-      const nextMatches = this.matchRoutes(next)
+      const nextMatches = this.matchRoutes(
+        next,
+        undefined,
+        typeof dest.to === 'string' ? dest.to : undefined,
+      )
       const maskedMatches = maskedNext
-        ? this.matchRoutes(maskedNext)
+        ? this.matchRoutes(
+            maskedNext,
+            undefined,
+            typeof maskedDest?.to === 'string' ? maskedDest.to : undefined,
+          )
         : undefined
       const maskedFinal = maskedNext
         ? build(maskedDest, maskedMatches)
@@ -2470,10 +2507,11 @@ export class Router<
   ): Promise<Array<AnyRouteMatch> | undefined> => {
     const next = this.buildLocation(opts as any)
 
-    let matches = this.matchRoutes(next, {
-      throwOnError: true,
-      preload: true,
-    })
+    let matches = this.matchRoutes(
+      next,
+      { throwOnError: true, preload: true },
+      typeof opts.to === 'string' ? opts.to : undefined,
+    )
 
     const loadedMatchIds = Object.fromEntries(
       [
