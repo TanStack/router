@@ -11,6 +11,7 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as WithoutLoaderImport } from './routes/without-loader'
 import { Route as PostsImport } from './routes/posts'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
@@ -21,6 +22,11 @@ import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 
 // Create/Update Routes
+
+const WithoutLoaderRoute = WithoutLoaderImport.update({
+  path: '/without-loader',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const PostsRoute = PostsImport.update({
   path: '/posts',
@@ -85,6 +91,13 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsImport
+      parentRoute: typeof rootRoute
+    }
+    '/without-loader': {
+      id: '/without-loader'
+      path: '/without-loader'
+      fullPath: '/without-loader'
+      preLoaderRoute: typeof WithoutLoaderImport
       parentRoute: typeof rootRoute
     }
     '/_layout/_layout-2': {
@@ -168,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/posts': typeof PostsRouteWithChildren
+  '/without-loader': typeof WithoutLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -177,6 +191,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
+  '/without-loader': typeof WithoutLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -188,6 +203,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
+  '/without-loader': typeof WithoutLoaderRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
@@ -201,17 +217,26 @@ export interface FileRouteTypes {
     | '/'
     | ''
     | '/posts'
+    | '/without-loader'
     | '/posts/$postId'
     | '/posts/'
     | '/layout-a'
     | '/layout-b'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
+  to:
+    | '/'
+    | ''
+    | '/without-loader'
+    | '/posts/$postId'
+    | '/posts'
+    | '/layout-a'
+    | '/layout-b'
   id:
     | '__root__'
     | '/'
     | '/_layout'
     | '/posts'
+    | '/without-loader'
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/posts/'
@@ -224,12 +249,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren
+  WithoutLoaderRoute: typeof WithoutLoaderRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
+  WithoutLoaderRoute: WithoutLoaderRoute,
 }
 
 export const routeTree = rootRoute
@@ -246,7 +273,8 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/_layout",
-        "/posts"
+        "/posts",
+        "/without-loader"
       ]
     },
     "/": {
@@ -264,6 +292,9 @@ export const routeTree = rootRoute
         "/posts/$postId",
         "/posts/"
       ]
+    },
+    "/without-loader": {
+      "filePath": "without-loader.tsx"
     },
     "/_layout/_layout-2": {
       "filePath": "_layout/_layout-2.tsx",

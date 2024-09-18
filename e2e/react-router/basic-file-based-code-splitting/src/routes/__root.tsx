@@ -44,6 +44,14 @@ function RootComponent() {
           Layout
         </Link>{' '}
         <Link
+          to="/without-loader"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          without-loader
+        </Link>{' '}
+        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
