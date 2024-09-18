@@ -80,7 +80,7 @@ export function detectTanstackRouterImports(create: EnhancedCreate): Create {
           detectionInstructions[instruction]?.(node)
         }
 
-        const ruleFunction = ruleInstructions[instruction];
+        const ruleFunction = ruleInstructions[instruction]
         if (ruleFunction !== undefined) {
           return ruleFunction(node)
         }
