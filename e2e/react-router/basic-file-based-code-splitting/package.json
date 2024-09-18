@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-e2e-react-basic-file-based",
+  "name": "tanstack-router-e2e-react-basic-file-based-code-splitting",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
+    "immer": "^10.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1",
