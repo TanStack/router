@@ -236,7 +236,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
   return generate(ast, {
     sourceMaps: true,
-    minified: process.env.NODE_ENV === 'production',
   })
 }
 
@@ -451,7 +450,6 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
   return generate(ast, {
     sourceMaps: true,
-    minified: process.env.NODE_ENV === 'production',
   })
 }
 
