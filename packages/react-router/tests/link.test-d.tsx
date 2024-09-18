@@ -1,11 +1,12 @@
 import { expectTypeOf, test } from 'vitest'
 import {
   Link,
-  type SearchSchemaInput,
+  
   createRootRoute,
   createRoute,
-  createRouter,
+  createRouter
 } from '../src'
+import type {SearchSchemaInput} from '../src';
 
 const rootRoute = createRootRoute({
   validateSearch: (): { rootPage?: number } => ({ rootPage: 0 }),

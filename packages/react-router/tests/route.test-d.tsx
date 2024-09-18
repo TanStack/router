@@ -365,7 +365,7 @@ test('when creating a child route with a loader from the root route', () => {
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader: async (opt) => {
+    loader:  (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -407,7 +407,7 @@ test('when creating a child route with a loader from the root route with context
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader: async (opts) => {
+    loader:  (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -841,7 +841,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    beforeLoad: async (opt) => {
+    beforeLoad: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -861,7 +861,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
   const detailsRoute = createRoute({
     path: 'details',
     getParentRoute: () => invoicesRoute,
-    beforeLoad: async (opt) => {
+    beforeLoad: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -1125,11 +1125,11 @@ test('when creating a child route with context, search, params, loader, loaderDe
   createRoute({
     path: '$detailId',
     getParentRoute: () => detailsRoute,
+    beforeLoad: () => ({ detailPermission: true }),
     loaderDeps: (deps) => ({
       detailPage: deps.search.detailPage,
       invoicePage: deps.search.page,
     }),
-    beforeLoad: () => ({ detailPermission: true }),
     loader: () => ({ detailLoader: 'detailResult' }) as const,
     onEnter: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
     onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),

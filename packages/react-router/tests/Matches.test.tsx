@@ -1,13 +1,13 @@
 import { expect, test } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
+  Link,
+  Outlet,
+  RouterProvider,
   createRootRoute,
   createRoute,
   createRouter,
-  Outlet,
   isMatch,
-  Link,
-  RouterProvider,
   useMatches,
 } from '../src'
 

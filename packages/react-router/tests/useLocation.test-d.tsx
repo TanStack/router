@@ -1,12 +1,13 @@
 import { expectTypeOf, test } from 'vitest'
 import {
+  
+  
   createRootRoute,
   createRoute,
   createRouter,
-  useLocation,
-  type ParsedLocation,
-  type RouterState,
+  useLocation
 } from '../src'
+import type {ParsedLocation, RouterState} from '../src';
 
 const rootRoute = createRootRoute()
 
