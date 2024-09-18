@@ -9,12 +9,12 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.58.2",
-    "@tanstack/router-devtools": "^1.58.2",
-    "@tanstack/router-plugin": "^1.58.1",
-    "@tanstack/router-zod-adapter": "^1.58.2",
-    "@tanstack/router-valibot-adapter": "^1.58.2",
-    "@tanstack/router-arktype-adapter": "^1.58.2",
+    "@tanstack/react-router": "^1.58.3",
+    "@tanstack/router-devtools": "^1.58.3",
+    "@tanstack/router-plugin": "^1.58.3",
+    "@tanstack/router-zod-adapter": "^1.58.3",
+    "@tanstack/router-valibot-adapter": "^1.58.3",
+    "@tanstack/router-arktype-adapter": "^1.58.3",
     "@tanstack/react-query": "^5.56.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
