@@ -1188,7 +1188,10 @@ export class Router<
         }
       } else {
         const status =
-          route.options.loader || route.options.beforeLoad || route.lazyFn || routeNeedsPreload(route)
+          route.options.loader ||
+          route.options.beforeLoad ||
+          route.lazyFn ||
+          routeNeedsPreload(route)
             ? 'pending'
             : 'success'
 
