@@ -3748,7 +3748,7 @@ describe('createLink', () => {
             to="/posts"
             overrideMeIfYouWant="Button2"
             activeProps={{
-              active: false,
+              active: true,
               'data-hello': 'world',
             }}
             inactiveProps={{
@@ -3763,7 +3763,7 @@ describe('createLink', () => {
             to="/posts"
             overrideMeIfYouWant="Button3"
             activeProps={{
-              active: false,
+              active: true,
             }}
             inactiveProps={{
               active: false,
