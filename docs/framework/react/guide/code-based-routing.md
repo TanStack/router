@@ -302,6 +302,12 @@ const layoutBRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: 'layout-b',
 })
+
+const routeTree = rootRoute.addChildren([
+  // The layout route has no path, only an id
+  // So its children will be nested under the layout route
+  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
+])
 ```
 
 Now both `/layout-a` and `/layout-b` will render the their contents inside of the `LayoutComponent`:
