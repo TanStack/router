@@ -159,11 +159,11 @@ import { createServerFn } from '@tanstack/start'
 import { getWebRequest } from 'vinxi/http'
 
 export const getServerTime = createServerFn('GET', async () => {
-  const { method } = getWebRequest()
+  const request = getWebRequest()
 
-  console.log(method) // GET
+  console.log(request.method) // GET
 
-  console.log(context.request.headers.get('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
+  console.log(request.headers.get('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
 })
 ```
 
