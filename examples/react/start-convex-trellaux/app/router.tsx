@@ -19,7 +19,7 @@ export function createRouter() {
 
   const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!
   if (!CONVEX_URL) {
-    throw new Error('missing envar')
+    console.error('missing envar CONVEX_URL')
   }
   const convexQueryClient = new ConvexQueryClient(CONVEX_URL)
 

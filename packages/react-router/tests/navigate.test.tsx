@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  type RouterHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
+import type { RouterHistory } from '../src'
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -397,7 +397,7 @@ describe('router.navigate navigation using multiple path params - function synta
   })
 })
 
-describe('router.navigate navigation using layout routes resolves correctly', async () => {
+describe('router.navigate navigation using layout routes resolves correctly', () => {
   it('should resolve "/u/tanner" in "/u/_layout/$username" to "/u/tkdodo"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/u/tanner'] }),

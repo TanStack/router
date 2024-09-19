@@ -663,8 +663,6 @@ describe('Link', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
-      loaderDeps: (opts) => ({ page: opts.search }),
-      loader: loader,
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
@@ -674,6 +672,8 @@ describe('Link', () => {
           page,
         }
       },
+      loaderDeps: (opts) => ({ page: opts.search }),
+      loader: loader,
       component: PostsComponent,
     })
 
@@ -726,12 +726,6 @@ describe('Link', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
-      loaderDeps: (opts) => ({ page: opts.search }),
-      loader: () => {
-        throw new Error()
-      },
-      onError,
-      errorComponent: () => <span>Something went wrong!</span>,
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
@@ -740,6 +734,12 @@ describe('Link', () => {
         return {
           page,
         }
+      },
+      loaderDeps: (opts) => ({ page: opts.search }),
+      onError,
+      errorComponent: () => <span>Something went wrong!</span>,
+      loader: () => {
+        throw new Error()
       },
       component: PostsComponent,
     })

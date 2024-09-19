@@ -72,6 +72,10 @@ await publish({
       name: '@tanstack/create-router',
       packageDir: 'packages/create-router',
     },
+    {
+      name: '@tanstack/eslint-plugin-router',
+      packageDir: 'packages/eslint-plugin-router',
+    },
   ],
   branchConfigs: {
     main: {

@@ -1,4 +1,4 @@
-import { isAbsolute, join } from 'node:path'
+import { isAbsolute, join, normalize } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { getConfig } from './config'
@@ -15,12 +15,17 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
-function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
+function fileIsInRoutesDirectory(
+  filePath: string,
+  routesDirectory: string,
+): boolean {
   const routesDirectoryPath = isAbsolute(routesDirectory)
     ? routesDirectory
     : join(process.cwd(), routesDirectory)
 
-  return filePath.startsWith(routesDirectoryPath)
+  const path = normalize(filePath)
+
+  return path.startsWith(routesDirectoryPath)
 }
 
 type BannedBeforeExternalPlugin = {

@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-example-react-start-basic-auth",
+  "name": "tanstack-start-example-basic-auth",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -9,39 +9,35 @@
     "start": "vinxi start",
     "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
     "format": "prettier --write '**/*' --ignore-unknown",
-    "prisma-generate": "prisma generate",
-    "test:e2e": "pnpm run prisma-generate && playwright test --project=chromium"
+    "prisma-generate": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "5.17.0",
-    "@tanstack/react-router": "^1.57.12",
-    "@tanstack/router-devtools": "^1.57.12",
-    "@tanstack/router-plugin": "^1.57.11",
-    "@tanstack/start": "^1.57.12",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@prisma/client": "5.19.1",
+    "@tanstack/react-router": "^1.58.3",
+    "@tanstack/router-devtools": "^1.58.3",
+    "@tanstack/router-plugin": "^1.58.4",
+    "@tanstack/start": "^1.58.4",
     "dotenv": "^16.4.5",
-    "isbot": "^5.1.12",
-    "prisma": "^5.17.0",
+    "isbot": "^5.1.17",
+    "prisma": "^5.19.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "remix-auth-form": "^1.5.0",
     "tailwind-merge": "^2.5.2",
-    "vinxi": "0.4.2"
+    "vinxi": "0.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.46.1",
-    "@replayio/playwright": "^3.1.8",
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.39",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
     "prettier": "^3.3.3",
-    "tailwindcss": "^3.4.4",
+    "tailwindcss": "^3.4.11",
     "typescript": "^5.6.2",
-    "vite": "^5.3.3",
+    "vite": "^5.4.5",
     "vite-tsconfig-paths": "^5.0.1"
   }
 }

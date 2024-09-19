@@ -61,7 +61,6 @@ export function Navigate<
     navigate({
       ...props,
     } as any)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null
