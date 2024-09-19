@@ -86,20 +86,6 @@ import { defineConfig } from '@tanstack/start/config'
 export default defineConfig({})
 ```
 
-> [!NOTE]  
-> Vercel is set as the default deployment platform. To run builds locally, switch the deployment configuration to your local runtime."
-
-> ```typescript
-> // app.config.ts
-> import { defineConfig } from '@tanstack/start/config'
->
-> export default defineConfig({
->   deployment: {
->     preset: 'node-server',
->   },
-> })
-> ```
-
 ## Add the Basic Templating
 
 There are four required files for TanStack Start usage:
@@ -299,3 +285,5 @@ function Home() {
 That's it! 🤯 You've now set up a TanStack Start project and written your first route. 🎉
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
+
+You want to deploy your application? Check out the [hosting guide](./hosting.md).
