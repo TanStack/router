@@ -12,4 +12,6 @@ export const Route = createFileRoute('/_layout')({
 });
 export const SIDEBAR_WIDTH = '150px';
 export const SIDEBAR_MINI_WIDTH = '80px';
-export function TSR_Dummy_Component() {}
+export function TSR_Dummy_Component() {
+  return null;
+}

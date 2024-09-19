@@ -10,4 +10,6 @@ export const Route = createFileRoute('/_libraries/start/$version/')({
     description: startProject.description
   })
 });
-export function TSR_Dummy_Component() {}
+export function TSR_Dummy_Component() {
+  return null;
+}

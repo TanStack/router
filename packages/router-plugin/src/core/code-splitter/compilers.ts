@@ -85,8 +85,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                   path.parentPath.node.arguments[0],
                 )
 
-                let found = false
-
                 const hasImportedOrDefinedIdentifier = (name: string) => {
                   return programPath.scope.hasBinding(name)
                 }
@@ -151,8 +149,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                               `lazyRouteComponent($$splitComponentImporter, 'component')`,
                             )()
                           }
-
-                          found = true
                         } else if (prop.key.name === 'loader') {
                           const value = prop.value
 
@@ -201,8 +197,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             prop.value = template.expression(
                               `lazyFn($$splitLoaderImporter, 'loader')`,
                             )()
-
-                            found = true
                           }
                         }
                       }
@@ -216,7 +210,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                 // }
                 programPath.pushContainer('body', [
                   template.statement(
-                    `export function TSR_Dummy_Component() {}`,
+                    `export function TSR_Dummy_Component() { return null }`,
                   )(),
                 ])
               }

@@ -6,4 +6,6 @@ export const Route = createFileRoute('/')({
 });
 Route.addChildren([]);
 export const test = 'test';
-export function TSR_Dummy_Component() {}
+export function TSR_Dummy_Component() {
+  return null;
+}
