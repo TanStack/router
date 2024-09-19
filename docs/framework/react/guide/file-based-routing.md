@@ -2,7 +2,7 @@
 title: File-Based Routing
 ---
 
-Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](./code-based-routing) if you prefer.
+Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](./code-based-routing.md) if you prefer.
 
 ## What is File-Based Routing?
 
@@ -134,7 +134,7 @@ Dynamic path params can be used in both flat and directory routes to create rout
 | ...                   | ...              | ...                         |
 | ʦ `posts.$postId.tsx` | `/posts/$postId` | `<Root><Posts><Post><Post>` |
 
-We'll learn more about dynamic path params in the [Path Params](./path-params) guide.
+We'll learn more about dynamic path params in the [Path Params](./path-params.md) guide.
 
 ## Pathless Routes
 
