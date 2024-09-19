@@ -15,7 +15,10 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
-function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
+function fileIsInRoutesDirectory(
+  filePath: string,
+  routesDirectory: string,
+): boolean {
   const routesDirectoryPath = isAbsolute(routesDirectory)
     ? routesDirectory
     : join(process.cwd(), routesDirectory)
@@ -62,7 +65,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
   let ROOT: string = process.cwd()
-  let userConfig = options
+  let userConfig = options as Config
 
   const handleSplittingFile = (code: string, id: string) => {
     if (debug) console.info('Splitting route: ', id)
