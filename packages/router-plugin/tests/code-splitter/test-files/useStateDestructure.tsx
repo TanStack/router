@@ -84,7 +84,7 @@ export const Route = createFileRoute('/_libraries/start/$version/')({
 
 const librariesRouteApi = getRouteApi('/_libraries')
 
-export default function VersionIndex() {
+function VersionIndex() {
   const { sponsorsPromise } = librariesRouteApi.useLoaderData()
   const { version } = Route.useParams()
   const branch = getBranch(startProject, version)

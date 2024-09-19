@@ -4,6 +4,4 @@ import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({
   component: lazyRouteComponent($$splitComponentImporter, 'component')
 });
-export function TSR_DummyComponent() {
-  return null;
-}
+export function TSR_Dummy_Component() {}

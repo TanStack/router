@@ -25,3 +25,4 @@ export const Route = createFileRoute('/_layout')({
 });
 const HEADER_HEIGHT = '63px';
 export const SIDEBAR_WIDTH = '150px';
+export function TSR_Dummy_Component() {}

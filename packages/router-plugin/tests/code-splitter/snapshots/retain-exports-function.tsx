@@ -28,3 +28,4 @@ const HEADER_HEIGHT = '63px';
 export const SIDEBAR_WIDTH = '150px';
 export const SIDEBAR_MINI_WIDTH = '80px';
 export default Layout;
+export function TSR_Dummy_Component() {}

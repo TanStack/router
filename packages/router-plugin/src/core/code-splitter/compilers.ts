@@ -101,7 +101,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           let shouldSplit = true
 
                           if (t.isIdentifier(value)) {
-                            console.log('is identifier', value)
                             existingCompImportPath =
                               getImportSpecifierAndPathFromLocalName(
                                 programPath,
@@ -114,13 +113,10 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             const isExported = hasExport(ast, value)
                             shouldSplit = !isExported
 
-                            console.log('inner shouldSplit', shouldSplit)
                             if (shouldSplit) {
                               removeIdentifierLiteral(path, value)
                             }
                           }
-
-                          console.log('outer shouldSplit', shouldSplit)
 
                           if (shouldSplit) {
                             // Prepend the import statement to the program along with the importer function
@@ -154,12 +150,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             prop.value = template.expression(
                               `lazyRouteComponent($$splitComponentImporter, 'component')`,
                             )()
-
-                            programPath.pushContainer('body', [
-                              template.statement(
-                                `function DummyComponent() { return null }`,
-                              )(),
-                            ])
                           }
 
                           found = true
@@ -222,11 +212,13 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                   })
                 }
 
-                if (found as boolean) {
-                  programPath.pushContainer('body', [
-                    template.statement(`function TSR_Dummy_Component() {}`)(),
-                  ])
-                }
+                // if (found as boolean) {
+                // }
+                programPath.pushContainer('body', [
+                  template.statement(
+                    `export function TSR_Dummy_Component() {}`,
+                  )(),
+                ])
               }
             },
           },
