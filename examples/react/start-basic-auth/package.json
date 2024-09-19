@@ -17,7 +17,6 @@
     "@tanstack/router-devtools": "^1.58.3",
     "@tanstack/router-plugin": "^1.58.4",
     "@tanstack/start": "^1.58.4",
-    "@vitejs/plugin-react": "^4.3.1",
     "dotenv": "^16.4.5",
     "isbot": "^5.1.17",
     "prisma": "^5.19.1",
