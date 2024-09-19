@@ -40,7 +40,13 @@ When a TanStack Start application is being deployed, the `deployment.preset` val
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
 
-Choose the deployment target that best suits your needs and follow the deployment guidelines below to deploy your TanStack Start application to your preferred hosting provider.
+Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice.
+
+If you don't want to specify your deployment target in the `app.config.ts` file, you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+
+```sh
+npm run build --preset vercel
+```
 
 ### Vercel
 
