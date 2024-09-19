@@ -2,7 +2,7 @@ console.warn("These exports from \"retain-exports-loader.tsx\" are not being cod
 import { Outlet } from '@tanstack/react-router';
 import { importedComponent as ImportedComponent } from '../shared/imported';
 const HEADER_HEIGHT = '63px';
-const component = function Layout() {
+function Layout() {
   return <main>
       <header style={{
       height: HEADER_HEIGHT
@@ -18,5 +18,5 @@ const component = function Layout() {
       <ImportedComponent />
       <Outlet />
     </main>;
-};
-export { component };
+}
+export { Layout as component };

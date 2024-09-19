@@ -101,6 +101,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           let shouldSplit = true
 
                           if (t.isIdentifier(value)) {
+                            console.log('is identifier', value)
                             existingCompImportPath =
                               getImportSpecifierAndPathFromLocalName(
                                 programPath,
@@ -113,10 +114,13 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             const isExported = hasExport(ast, value)
                             shouldSplit = !isExported
 
+                            console.log('inner shouldSplit', shouldSplit)
                             if (shouldSplit) {
                               removeIdentifierLiteral(path, value)
                             }
                           }
+
+                          console.log('outer shouldSplit', shouldSplit)
 
                           if (shouldSplit) {
                             // Prepend the import statement to the program along with the importer function
@@ -158,18 +162,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             ])
                           }
 
-                          prop.value = template.expression(
-                            `lazyRouteComponent($$splitComponentImporter, 'component')`,
-                          )()
-
-                          programPath.pushContainer('body', [
-                            template.statement(
-                              `export function TSR_DummyComponent() { return null }`,
-                            )(),
-                          ])
-
-                            found = true
-                          }
+                          found = true
                         } else if (prop.key.name === 'loader') {
                           const value = prop.value
 
@@ -514,7 +507,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
       return str
     }, '')
 
-    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
+    const warningMessage = `These exports from "${opts.filename.replace('?' + splitToken, '')}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
     console.warn(warningMessage)
 
     // append this warning to the file using a template
