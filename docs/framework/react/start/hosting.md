@@ -40,7 +40,7 @@ When a TanStack Start application is being deployed, the `deployment.preset` val
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
 
-Choose the deployment target that best suits your needs and follow the deployment guidelines below to deploy your TanStack Start application to your preferred hosting provider.
+Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice.
 
 ### Vercel
 
@@ -57,11 +57,17 @@ export default defineConfig({
 })
 ```
 
-Deploy you application to Vercel and you're ready to go!
+Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+
+```sh
+npm run build --preset vercel
+```
+
+Deploy you application to Vercel using their one-click deployment process, and you're ready to go!
 
 ### Cloudflare Pages
 
-Deploying your TanStack Start application to Cloudflare Pages is easy and straightforward. Just set the `deployment.preset` value to `cf-pages` in your `app.config.ts` file, and you're ready to deploy your application to Cloudflare Pages.
+Set the `deployment.preset` value to `cloudflare-pages` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
@@ -74,11 +80,17 @@ export default defineConfig({
 })
 ```
 
-Deploy you application to Cloudflare Pages and you're ready to go!
+Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+
+```sh
+npm run build --preset cloudflare-pages
+```
+
+Deploy you application to Cloudflare Pages using their one-click deployment process, and you're ready to go!
 
 ### Netlify
 
-Deploying your TanStack Start application to Vercel is easy and straightforward. Just set the `deployment.preset` value to `netlify` in your `app.config.ts` file, and you're ready to deploy your application to Vercel.
+Set the `deployment.preset` value to `netlify` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
@@ -91,11 +103,17 @@ export default defineConfig({
 })
 ```
 
-Deploy you application to Netlify and you're ready to go!
+Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+
+```sh
+npm run build --preset netlify
+```
+
+Deploy you application to Netlify using their one-click deployment process, and you're ready to go!
 
 ### Node.js
 
-Deploying your TanStack Start application to a Bun server is easy and straightforward. Just set the `deployment.preset` value to `node-server` in your `app.config.ts` file, and you're ready to deploy your application to a Node.js server.
+Set the `deployment.preset` value to `node-server` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
@@ -106,6 +124,10 @@ export default defineConfig({
     preset: 'node-server',
   },
 })
+
+// Or you can use the --preset flag with the build command
+// to specify the deployment target when building the application:
+// npm run build --preset node-server
 ```
 
 Then you can run the following command to build and start your application:
@@ -114,7 +136,7 @@ Then you can run the following command to build and start your application:
 npm run build
 ```
 
-Once the build is complete, you can start your application by running:
+You're now ready to deploy your application to a Node.js server. You can start your application by running:
 
 ```sh
 node .output/server/index.mjs
@@ -131,7 +153,7 @@ Make sure that your `react` and `react-dom` packages are set to version 19.0.0 o
 npm install react@rc react-dom@rc
 ```
 
-Set the `deployment.preset` value to `bun` in your `app.config.ts` file, and you're ready to deploy your application to a Node.js server.
+Set the `deployment.preset` value to `bun` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
@@ -142,6 +164,10 @@ export default defineConfig({
     preset: 'bun',
   },
 })
+
+// Or you can use the --preset flag with the build command
+// to specify the deployment target when building the application:
+// npm run build --preset bun
 ```
 
 Then you can run the following command to build and start your application:
@@ -150,7 +176,7 @@ Then you can run the following command to build and start your application:
 bun run build
 ```
 
-Once the build is complete, you can start your application by running:
+You're now ready to deploy your application to a Bun server. You can start your application by running:
 
 ```sh
 bun run .output/server/index.mjs
