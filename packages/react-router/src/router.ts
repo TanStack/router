@@ -532,6 +532,15 @@ export const componentTypes = [
   'notFoundComponent',
 ] as const
 
+function routeNeedsPreload(route: AnyRoute) {
+  for (const componentType of componentTypes) {
+    if ((route.options[componentType] as any)?.preload) {
+      return true
+    }
+  }
+  return false
+}
+
 export type RouterEvents = {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
@@ -1179,7 +1188,10 @@ export class Router<
         }
       } else {
         const status =
-          route.options.loader || route.options.beforeLoad || route.lazyFn
+          route.options.loader ||
+          route.options.beforeLoad ||
+          route.lazyFn ||
+          routeNeedsPreload(route)
             ? 'pending'
             : 'success'
 
@@ -1326,7 +1338,7 @@ export class Router<
         'Could not find match for from: ' + dest.from,
       )
 
-      const fromSearch = this.state.pendingMatches
+      const fromSearch = this.state.pendingMatches?.length
         ? last(this.state.pendingMatches)?.search
         : last(fromMatches)?.search || this.latestLocation.search
 
@@ -2263,11 +2275,6 @@ export class Router<
                             componentsPromise,
                           }))
 
-                          // Lazy option can modify the route options,
-                          // so we need to wait for it to resolve before
-                          // we can use the options
-                          await route._lazyPromise
-
                           // Kick off the loader!
                           let loaderData =
                             await route.options.loader?.(getLoaderContext())
@@ -2287,6 +2294,11 @@ export class Router<
                             this.getMatch(matchId)!,
                             loaderData,
                           )
+
+                          // Lazy option can modify the route options,
+                          // so we need to wait for it to resolve before
+                          // we can use the options
+                          await route._lazyPromise
 
                           await potentialPendingMinPromise()
 

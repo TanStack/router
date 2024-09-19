@@ -5,7 +5,7 @@ import {
   createRouter,
   useLoaderData,
 } from '../src'
-import { type MakeRouteMatch } from '../src/Matches'
+import type { MakeRouteMatch } from '../src/Matches'
 
 test('when there is no loaders', () => {
   const rootRoute = createRootRoute()

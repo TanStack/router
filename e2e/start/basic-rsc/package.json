@@ -1,0 +1,39 @@
+{
+  "name": "tanstack-start-e2e-basic-rsc",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
+    "format": "prettier --write '**/*' --ignore-unknown"
+  },
+  "dependencies": {
+    "@babel/plugin-syntax-typescript": "^7.25.4",
+    "@tanstack/react-router": "^1.57.15",
+    "@tanstack/router-devtools": "^1.57.15",
+    "@tanstack/router-plugin": "^1.57.15",
+    "@tanstack/start": "^1.57.15",
+    "redaxios": "^0.5.1",
+    "tailwind-merge": "^2.5.2",
+    "vinxi": "0.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.65",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "prettier": "^3.3.3",
+    "tailwindcss": "^3.4.11",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.5",
+    "vite-tsconfig-paths": "^5.0.1"
+  },
+  "overrides": {
+    "react": "0.0.0-experimental-035a41c4e-20230704",
+    "react-dom": "0.0.0-experimental-035a41c4e-20230704"
+  }
+}
