@@ -218,6 +218,10 @@
             {
               "label": "Static Prerendering",
               "to": "framework/react/start/static-prerendering"
+            },
+            {
+              "label": "Path Aliases",
+              "to": "framework/react/start/path-aliases"
             }
           ]
         }
