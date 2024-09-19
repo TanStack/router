@@ -94,13 +94,6 @@ const testedDeploymentPresets: Array<DeploymentPreset> = [
   'cloudflare-pages',
   'node-server',
 ]
-const staticDeploymentPresets: Array<DeploymentPreset> = [
-  'cloudflare-pages-static',
-  'netlify-static',
-  'static',
-  'vercel-static',
-  'zeabur-static',
-]
 
 function checkDeploymentPresetInput(preset: string): DeploymentPreset {
   if (!vinxiDeploymentPresets.includes(preset as any)) {
@@ -223,9 +216,6 @@ export function defineConfig(
   const deploymentPreset = checkDeploymentPresetInput(
     configDeploymentPreset || 'vercel',
   )
-  const isStaticDeployment =
-    deploymentOptions.static ??
-    staticDeploymentPresets.includes(deploymentPreset)
 
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
@@ -242,7 +232,7 @@ export function defineConfig(
   return createApp({
     server: {
       ...deploymentOptions,
-      static: isStaticDeployment,
+      static: deploymentOptions.static,
       preset: deploymentPreset,
       experimental: {
         asyncContext: true,
