@@ -1,4 +1,4 @@
-import { isAbsolute, join } from 'node:path'
+import { isAbsolute, join, normalize } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { getConfig } from './config'
@@ -15,12 +15,17 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
-function fileIsInRoutesDirectory(filePath: string, routesDirectory: string) {
+function fileIsInRoutesDirectory(
+  filePath: string,
+  routesDirectory: string,
+): boolean {
   const routesDirectoryPath = isAbsolute(routesDirectory)
     ? routesDirectory
     : join(process.cwd(), routesDirectory)
 
-  return filePath.startsWith(routesDirectoryPath)
+  const path = normalize(filePath)
+
+  return path.startsWith(routesDirectoryPath)
 }
 
 type BannedBeforeExternalPlugin = {
@@ -172,7 +177,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       configResolved(config) {
         ROOT = config.root
 
-        userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
+        userConfig = getConfig(options, ROOT)
       },
     },
 
@@ -193,7 +198,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         )
       })
 
-      userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
+      userConfig = getConfig(options, ROOT)
     },
 
     webpack(compiler) {
@@ -213,7 +218,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         )
       })
 
-      userConfig = CHECK_USER_FLAGS_TO_BE_CHANGED(getConfig(options, ROOT))
+      userConfig = getConfig(options, ROOT)
 
       if (
         userConfig.autoCodeSplitting &&
@@ -228,19 +233,4 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       }
     },
   }
-}
-
-function CHECK_USER_FLAGS_TO_BE_CHANGED(config: Config): Config {
-  if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
-    const message = `
-------
-⚠️ ⚠️ ⚠️
-ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is now "autoCodeSplitting". Please update your configuration file to use "autoCodeSplitting" instead of "experimental.enableCodeSplitting".
-------
-`
-    console.error(message)
-    throw new Error(message)
-  }
-
-  return config
 }

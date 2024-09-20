@@ -9,15 +9,15 @@ Databases are at the core of any dynamic application, providing the necessary in
 
 TanStack Start is **designed to work with any database provider**, so if you already have a preferred database system, you can integrate it with TanStack Start using the provided full-stack APIs. Whether you're working with SQL, NoSQL, or other types of databases, TanStack Start can handle your needs.
 
-That said, the choice of a database is critical to your application's performance, scalability, and reliability, which is we highly recommend using [Convex](https://convex.dev) for the best possible database experience.
+That said, the choice of a database is critical to your application's performance, scalability, and reliability, which is we highly recommend using [Convex](https://convex.dev?utm_source=tanstack) for the best possible database experience.
 
 ## What is Convex?
 
-<a href="https://www.convex.dev">
+<a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-dark.svg" width="300">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-light.svg" width="300">
-    <img alt="Convex logo" src="https://raw.githubusercontent.com/get-convex/assets/main/images/convex-light.svg" width="300">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-white.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" width="280">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" width="280">
   </picture>
 </a>
 
@@ -25,8 +25,8 @@ Convex is a powerful, serverless database platform that simplifies the process o
 
 Convex’s declarative data model and automatic conflict resolution ensure that your application remains consistent and responsive, even at scale. It’s designed to be developer-friendly, with a focus on simplicity and productivity.
 
-- To learn more about Convex, visit the [Convex website](https://convex.dev)
-- To sign up, visit the [Convex dashboard](https://dashboard.convex.dev/signup)
+- To learn more about Convex, visit the [Convex website](https://convex.dev?utm_source=tanstack)
+- To sign up, visit the [Convex dashboard](https://dashboard.convex.dev/signup?utm_source=tanstack)
 
 ## Documentation & APIs
 

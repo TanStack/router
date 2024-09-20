@@ -193,7 +193,9 @@ export const Route = createAPIFileRoute('/hello')({
 // {"message":"Hello, World!"}
 ```
 
-Or you can use the `json` helper function to automatically set the `Content-Type` header to `application/json`.
+## Using the `json` helper function
+
+Or you can use the `json` helper function to automatically set the `Content-Type` header to `application/json` and serialize the JSON object for you.
 
 ```ts
 // routes/api/hello.ts
@@ -212,46 +214,87 @@ export const Route = createAPIFileRoute('/hello')({
 
 ## Responding with a status code
 
-You can set the status code of the response by passing it as the second argument to the `Response` constructor.
+You can set the status code of the response by either:
 
-```ts
-// routes/api/hello.ts
-import { json } from '@tanstack/start'
-import { createAPIFileRoute } from '@tanstack/start/api'
+- Passing it as a property of the second argument to the `Response` constructor
 
-export const Route = createAPIFileRoute('/users/$id')({
-  GET: async ({ request, params }) => {
-    const user = await findUser(params.id)
-    if (!user) {
-      return new Response('User not found', {
-        status: 404,
-      })
-    }
-    return json(user)
-  },
-})
-```
+  ```ts
+  // routes/api/hello.ts
+  import { json } from '@tanstack/start'
+  import { createAPIFileRoute } from '@tanstack/start/api'
+
+  export const Route = createAPIFileRoute('/users/$id')({
+    GET: async ({ request, params }) => {
+      const user = await findUser(params.id)
+      if (!user) {
+        return new Response('User not found', {
+          status: 404,
+        })
+      }
+      return json(user)
+    },
+  })
+  ```
+
+- Using the `setStatus` helper function from `vinxi/http`
+
+  ```ts
+  // routes/api/hello.ts
+  import { json } from '@tanstack/start'
+  import { createAPIFileRoute } from '@tanstack/start/api'
+  import { setStatus } from 'vinxi/http'
+
+  export const Route = createAPIFileRoute('/users/$id')({
+    GET: async ({ request, params }) => {
+      const user = await findUser(params.id)
+      if (!user) {
+        setStatus(404)
+        return new Response('User not found')
+      }
+      return json(user)
+    },
+  })
+  ```
 
 In this example, we're returning a `404` status code if the user is not found. You can set any valid HTTP status code using this method.
 
 ## Setting headers in the response
 
-Sometimes you may need to set headers in the response. You can do this by passing an object as the second argument to the `Response` constructor.
+Sometimes you may need to set headers in the response. You can do this by either:
 
-```ts
-// routes/api/hello.ts
-import { createAPIFileRoute } from '@tanstack/start/api'
+- Passing an object as the second argument to the `Response` constructor.
 
-export const Route = createAPIFileRoute('/hello')({
-  GET: async ({ request }) => {
-    return new Response('Hello, World!', {
-      headers: {
+  ```ts
+  // routes/api/hello.ts
+  import { createAPIFileRoute } from '@tanstack/start/api'
+
+  export const Route = createAPIFileRoute('/hello')({
+    GET: async ({ request }) => {
+      return new Response('Hello, World!', {
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+      })
+    },
+  })
+
+  // Visit /api/hello to see the response
+  // Hello, World!
+  ```
+
+- Or using the `setHeaders` helper function from `vinxi/http`.
+
+  ```ts
+  // routes/api/hello.ts
+  import { createAPIFileRoute } from '@tanstack/start/api'
+  import { setHeaders } from 'vinxi/http'
+
+  export const Route = createAPIFileRoute('/hello')({
+    GET: async ({ request }) => {
+      setHeaders({
         'Content-Type': 'text/plain',
-      },
-    })
-  },
-})
-
-// Visit /api/hello to see the response
-// Hello, World!
-```
+      })
+      return new Response('Hello, World!')
+    },
+  })
+  ```

@@ -36,7 +36,7 @@ const defaultRouter = createRouter({
 type DefaultRouter = typeof defaultRouter
 
 test('can redirect to valid route', () => {
-  expectTypeOf(redirect<DefaultRouter, string, '/invoices'>)
+  expectTypeOf(redirect<DefaultRouter, '/invoices', string>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<

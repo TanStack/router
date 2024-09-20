@@ -151,20 +151,132 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexLazyRoute,
-  PostsRoute: PostsRoute.addChildren({
-    PostsPostIdRouteRoute,
-    PostsIndexRoute,
-  }),
-  LayoutTestLazyRoute: LayoutTestLazyRoute.addChildren({
-    LayoutTestLayoutARoute,
-    LayoutTestLayoutBRoute: LayoutTestLayoutBRoute.addChildren({
-      LayoutTestLayoutBTestLazyRoute,
-    }),
-  }),
-  PostsPostIdDeepRoute,
-})
+interface PostsRouteChildren {
+  PostsPostIdRouteRoute: typeof PostsPostIdRouteRoute
+  PostsIndexRoute: typeof PostsIndexRoute
+}
+
+const PostsRouteChildren: PostsRouteChildren = {
+  PostsPostIdRouteRoute: PostsPostIdRouteRoute,
+  PostsIndexRoute: PostsIndexRoute,
+}
+
+const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+
+interface LayoutTestLayoutBRouteChildren {
+  LayoutTestLayoutBTestLazyRoute: typeof LayoutTestLayoutBTestLazyRoute
+}
+
+const LayoutTestLayoutBRouteChildren: LayoutTestLayoutBRouteChildren = {
+  LayoutTestLayoutBTestLazyRoute: LayoutTestLayoutBTestLazyRoute,
+}
+
+const LayoutTestLayoutBRouteWithChildren =
+  LayoutTestLayoutBRoute._addFileChildren(LayoutTestLayoutBRouteChildren)
+
+interface LayoutTestLazyRouteChildren {
+  LayoutTestLayoutARoute: typeof LayoutTestLayoutARoute
+  LayoutTestLayoutBRoute: typeof LayoutTestLayoutBRouteWithChildren
+}
+
+const LayoutTestLazyRouteChildren: LayoutTestLazyRouteChildren = {
+  LayoutTestLayoutARoute: LayoutTestLayoutARoute,
+  LayoutTestLayoutBRoute: LayoutTestLayoutBRouteWithChildren,
+}
+
+const LayoutTestLazyRouteWithChildren = LayoutTestLazyRoute._addFileChildren(
+  LayoutTestLazyRouteChildren,
+)
+
+export interface FileRoutesByFullPath {
+  '/': typeof IndexLazyRoute
+  '/posts': typeof PostsRouteWithChildren
+  '': typeof LayoutTestLazyRouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRouteRoute
+  '/layout-a': typeof LayoutTestLayoutARoute
+  '/layout-b': typeof LayoutTestLayoutBRouteWithChildren
+  '/posts/': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/layout-b/test': typeof LayoutTestLayoutBTestLazyRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexLazyRoute
+  '': typeof LayoutTestLazyRouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRouteRoute
+  '/layout-a': typeof LayoutTestLayoutARoute
+  '/layout-b': typeof LayoutTestLayoutBRouteWithChildren
+  '/posts': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/layout-b/test': typeof LayoutTestLayoutBTestLazyRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexLazyRoute
+  '/posts': typeof PostsRouteWithChildren
+  '/_layout-test': typeof LayoutTestLazyRouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRouteRoute
+  '/_layout-test/layout-a': typeof LayoutTestLayoutARoute
+  '/_layout-test/layout-b': typeof LayoutTestLayoutBRouteWithChildren
+  '/posts/': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/_layout-test/layout-b/test': typeof LayoutTestLayoutBTestLazyRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/posts'
+    | ''
+    | '/posts/$postId'
+    | '/layout-a'
+    | '/layout-b'
+    | '/posts/'
+    | '/posts/$postId/deep'
+    | '/layout-b/test'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | ''
+    | '/posts/$postId'
+    | '/layout-a'
+    | '/layout-b'
+    | '/posts'
+    | '/posts/$postId/deep'
+    | '/layout-b/test'
+  id:
+    | '__root__'
+    | '/'
+    | '/posts'
+    | '/_layout-test'
+    | '/posts/$postId'
+    | '/_layout-test/layout-a'
+    | '/_layout-test/layout-b'
+    | '/posts/'
+    | '/posts/$postId/deep'
+    | '/_layout-test/layout-b/test'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexLazyRoute: typeof IndexLazyRoute
+  PostsRoute: typeof PostsRouteWithChildren
+  LayoutTestLazyRoute: typeof LayoutTestLazyRouteWithChildren
+  PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexLazyRoute: IndexLazyRoute,
+  PostsRoute: PostsRouteWithChildren,
+  LayoutTestLazyRoute: LayoutTestLazyRouteWithChildren,
+  PostsPostIdDeepRoute: PostsPostIdDeepRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

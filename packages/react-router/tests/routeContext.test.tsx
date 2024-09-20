@@ -2170,7 +2170,7 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
-        // eslint-disable-next-line ts/no-unnecessary-condition
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (context === undefined) {
           throw new Error('context is undefined')
         }
@@ -2503,12 +2503,12 @@ describe('useRouteContext in the component', () => {
     expect(linkToAbout).toBeInTheDocument()
     fireEvent.click(linkToAbout)
 
-    expect(router.state.location.href).toBe('/nested/about')
-    expect(window.location.pathname).toBe('/nested/about')
-
     const content = await screen.findByText(
       JSON.stringify({ foo: 'bar', layout: 'nested' }),
     )
+
+    expect(router.state.location.href).toBe('/nested/about')
+    expect(window.location.pathname).toBe('/nested/about')
 
     expect(content).toBeInTheDocument()
   })

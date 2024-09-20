@@ -5,10 +5,10 @@ import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
-  TTo extends string,
-  TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = TDefaultFrom,
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TRouter extends RegisteredRouter,
+  TTo extends string | undefined,
+  TFrom extends string = TDefaultFrom,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 >({
   from,
@@ -51,7 +51,7 @@ export function useNavigate<
 export function Navigate<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  TTo extends string = '',
+  TTo extends string | undefined = undefined,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
@@ -61,7 +61,6 @@ export function Navigate<
     navigate({
       ...props,
     } as any)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null

@@ -2,168 +2,27 @@ import path from 'node:path'
 import * as fs from 'node:fs'
 import * as fsp from 'node:fs/promises'
 import * as prettier from 'prettier'
-import { cleanPath, logging, trimPathLeft } from './utils'
+import {
+  determineInitialRoutePath,
+  logging,
+  multiSortBy,
+  removeExt,
+  removeTrailingSlash,
+  removeUnderscores,
+  replaceBackslash,
+  routePathToVariable,
+  trimPathLeft,
+  writeIfDifferent,
+} from './utils'
+import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
+import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
+import { rootPathId } from './filesystem/physical/rootPathId'
+import type { GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
 let latestTask = 0
-export const rootPathId = '__root'
 const routeGroupPatternRegex = /\(.+\)/g
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
-const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
-
-export type RouteNode = {
-  filePath: string
-  fullPath: string
-  variableName: string
-  routePath?: string
-  cleanedPath?: string
-  path?: string
-  isNonPath?: boolean
-  isNonLayout?: boolean
-  isLayout?: boolean
-  isVirtualParentRequired?: boolean
-  isVirtualParentRoute?: boolean
-  isRoute?: boolean
-  isAPIRoute?: boolean
-  isLoader?: boolean
-  isComponent?: boolean
-  isErrorComponent?: boolean
-  isPendingComponent?: boolean
-  isVirtual?: boolean
-  isLazy?: boolean
-  isRoot?: boolean
-  children?: Array<RouteNode>
-  parent?: RouteNode
-}
-
-async function getRouteNodes(config: Config) {
-  const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
-    config
-  const logger = logging({ disabled: config.disableLogging })
-  const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
-
-  const routeNodes: Array<RouteNode> = []
-
-  async function recurse(dir: string) {
-    const fullDir = path.resolve(config.routesDirectory, dir)
-    let dirList = await fsp.readdir(fullDir, { withFileTypes: true })
-
-    dirList = dirList.filter((d) => {
-      if (
-        d.name.startsWith('.') ||
-        (routeFileIgnorePrefix && d.name.startsWith(routeFileIgnorePrefix))
-      ) {
-        return false
-      }
-
-      if (routeFilePrefix) {
-        return d.name.startsWith(routeFilePrefix)
-      }
-
-      if (routeFileIgnorePattern) {
-        return !d.name.match(routeFileIgnoreRegExp)
-      }
-
-      return true
-    })
-
-    await Promise.all(
-      dirList.map(async (dirent) => {
-        const fullPath = path.join(fullDir, dirent.name)
-        const relativePath = path.join(dir, dirent.name)
-
-        if (dirent.isDirectory()) {
-          await recurse(relativePath)
-        } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
-          const filePath = replaceBackslash(path.join(dir, dirent.name))
-          const filePathNoExt = removeExt(filePath)
-          let routePath = determineInitialRoutePath(filePathNoExt)
-
-          if (routeFilePrefix) {
-            routePath = routePath.replaceAll(routeFilePrefix, '')
-          }
-
-          if (disallowedRouteGroupConfiguration.test(dirent.name)) {
-            const errorMessage = `A route configuration for a route group was found at \`${filePath}\`. This is not supported. Did you mean to use a layout/pathless route instead?`
-            logger.error(`ERROR: ${errorMessage}`)
-            throw new Error(errorMessage)
-          }
-
-          const variableName = routePathToVariable(routePath)
-
-          // Remove the index from the route path and
-          // if the route path is empty, use `/'
-
-          const isLazy = routePath.endsWith('/lazy')
-
-          if (isLazy) {
-            routePath = routePath.replace(/\/lazy$/, '')
-          }
-
-          const isRoute = routePath.endsWith('/route')
-          const isComponent = routePath.endsWith('/component')
-          const isErrorComponent = routePath.endsWith('/errorComponent')
-          const isPendingComponent = routePath.endsWith('/pendingComponent')
-          const isLoader = routePath.endsWith('/loader')
-          const isAPIRoute = routePath.startsWith(
-            `${removeTrailingSlash(config.apiBase)}/`,
-          )
-
-          const segments = routePath.split('/')
-          const isLayout =
-            segments[segments.length - 1]?.startsWith('_') || false
-
-          ;(
-            [
-              [isComponent, 'component'],
-              [isErrorComponent, 'errorComponent'],
-              [isPendingComponent, 'pendingComponent'],
-              [isLoader, 'loader'],
-            ] as const
-          ).forEach(([isType, type]) => {
-            if (isType) {
-              logger.warn(
-                `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
-              )
-            }
-          })
-
-          routePath = routePath.replace(
-            /\/(component|errorComponent|pendingComponent|loader|route|lazy)$/,
-            '',
-          )
-
-          if (routePath === 'index') {
-            routePath = '/'
-          }
-
-          routePath = routePath.replace(/\/index$/, '/') || '/'
-
-          routeNodes.push({
-            filePath,
-            fullPath,
-            routePath,
-            variableName,
-            isRoute,
-            isComponent,
-            isErrorComponent,
-            isPendingComponent,
-            isLoader,
-            isLazy,
-            isLayout,
-            isAPIRoute,
-          })
-        }
-      }),
-    )
-
-    return routeNodes
-  }
-
-  await recurse('./')
-
-  return routeNodes
-}
 
 let isFirst = false
 let skipMessage = false
@@ -203,29 +62,44 @@ export async function generator(config: Config) {
 
   const start = Date.now()
 
+  const TYPES_DISABLED = config.disableTypes
+
   const prettierOptions: prettier.Options = {
     semi: config.semicolons,
     singleQuote: config.quoteStyle === 'single',
     parser: 'typescript',
   }
 
-  const routePathIdPrefix = config.routeFilePrefix ?? ''
-  const beforeRouteNodes = await getRouteNodes(config)
-  const rootRouteNode = beforeRouteNodes.find(
-    (d) => d.routePath === `/${rootPathId}`,
-  )
+  let getRouteNodesResult: GetRouteNodesResult
+
+  if (config.virtualRouteConfig) {
+    getRouteNodesResult = await virtualGetRouteNodes(config)
+  } else {
+    getRouteNodesResult = await physicalGetRouteNodes(config)
+  }
+
+  const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult
+  if (rootRouteNode === undefined) {
+    let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
+    if (!config.virtualRouteConfig) {
+      errorMessage += `\nMake sure that you add a "${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${config.routesDirectory}/${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}"`
+    }
+    throw new Error(errorMessage)
+  }
 
   const preRouteNodes = multiSortBy(beforeRouteNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
     (d) => d.routePath?.split('/').length,
-    (d) => (d.filePath.match(/[./]index[.]/) ? 1 : -1),
+    (d) =>
+      d.filePath.match(new RegExp(`[./]${config.indexToken}[.]`)) ? 1 : -1,
     (d) =>
       d.filePath.match(
         /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
       )
         ? 1
         : -1,
-    (d) => (d.filePath.match(/[./]route[.]/) ? -1 : 1),
+    (d) =>
+      d.filePath.match(new RegExp(`[./]${config.routeToken}[.]`)) ? -1 : 1,
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
   ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
@@ -298,13 +172,11 @@ export const Route = createRootRoute({
     const trimmedPath = trimPathLeft(node.path ?? '')
 
     const split = trimmedPath.split('/')
-    const first = split[0] ?? trimmedPath
     const lastRouteSegment = split[split.length - 1] ?? trimmedPath
 
     node.isNonPath =
       lastRouteSegment.startsWith('_') ||
       routeGroupPatternRegex.test(lastRouteSegment)
-    node.isNonLayout = first.endsWith('_')
 
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
@@ -360,10 +232,17 @@ export const Route = createRootRoute({
           )
       }
 
-      if (replaced !== routeCode) {
-        logger.log(`🟡 Updating ${node.fullPath}`)
-        await fsp.writeFile(node.fullPath, replaced)
-      }
+      await writeIfDifferent(
+        node.fullPath,
+        prettierOptions,
+        routeCode,
+        replaced,
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Updating ${node.fullPath}`)
+          },
+        },
+      )
     }
 
     if (
@@ -495,18 +374,20 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         await prettier.format(replaced, prettierOptions),
       )
     } else {
-      const copied = routeCode.replace(
-        /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-        (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
+      await writeIfDifferent(
+        node.fullPath,
+        prettierOptions,
+        routeCode,
+        routeCode.replace(
+          /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+          (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
+        ),
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Updating ${node.fullPath}`)
+          },
+        },
       )
-
-      if (copied !== routeCode) {
-        logger.log(`🟡 Updating ${node.fullPath}`)
-        await fsp.writeFile(
-          node.fullPath,
-          await prettier.format(copied, prettierOptions),
-        )
-      }
     }
   }
 
@@ -528,13 +409,31 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
 
       if (node.children?.length) {
         const childConfigs = buildRouteTreeConfig(node.children, depth + 1)
-        return `${route}: ${route}.addChildren({${spaces(depth * 4)}${childConfigs}})`
+
+        const childrenDeclaration = TYPES_DISABLED
+          ? ''
+          : `interface ${route}Children {
+  ${node.children.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`
+
+        const children = `const ${route}Children${TYPES_DISABLED ? '' : `: ${route}Children`} = {
+  ${node.children.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`
+
+        const routeWithChildren = `const ${route}WithChildren = ${route}._addFileChildren(${route}Children)`
+
+        return [
+          childConfigs,
+          childrenDeclaration,
+          children,
+          routeWithChildren,
+        ].join('\n\n')
       }
 
-      return route
+      return undefined
     })
 
-    return children.filter(Boolean).join(`,`)
+    return children.filter(Boolean).join('\n\n')
   }
 
   const routeConfigChildrenText = buildRouteTreeConfig(routeTree)
@@ -542,7 +441,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   const sortedRouteNodes = multiSortBy(routeNodes, [
     (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
     (d) => d.routePath?.split('/').length,
-    (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
+    (d) => (d.routePath?.endsWith(config.indexToken) ? -1 : 1),
     (d) => d,
   ])
 
@@ -562,11 +461,18 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     .map((d) => d[0])
 
   const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
-  const rootPathIdExtension =
-    config.addExtensions && rootRouteNode
-      ? path.extname(rootRouteNode.filePath)
-      : ''
 
+  function getImportPath(node: RouteNode) {
+    return replaceBackslash(
+      removeExt(
+        path.relative(
+          path.dirname(config.generatedRouteTree),
+          path.resolve(config.routesDirectory, node.filePath),
+        ),
+        config.addExtensions,
+      ),
+    )
+  }
   const routeImports = [
     ...config.routeTreeFileHeader,
     '// This file is auto-generated by TanStack Router',
@@ -575,29 +481,13 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
       : '',
     '// Import Routes',
     [
-      `import { Route as rootRoute } from './${replaceBackslash(
-        path.relative(
-          path.dirname(config.generatedRouteTree),
-          path.resolve(
-            config.routesDirectory,
-            `${routePathIdPrefix}${rootPathId}${rootPathIdExtension}`,
-          ),
-        ),
-      )}'`,
+      `import { Route as rootRoute } from './${getImportPath(rootRouteNode)}'`,
       ...sortedRouteNodes
         .filter((d) => !d.isVirtual)
         .map((node) => {
           return `import { Route as ${
             node.variableName
-          }Import } from './${replaceBackslash(
-            removeExt(
-              path.relative(
-                path.dirname(config.generatedRouteTree),
-                path.resolve(config.routesDirectory, node.filePath),
-              ),
-              config.addExtensions,
-            ),
-          )}'`
+          }Import } from './${getImportPath(node)}'`
         }),
     ].join('\n'),
     virtualRouteNodes.length ? '// Create Virtual Routes' : '',
@@ -631,7 +521,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
           ]
             .filter(Boolean)
             .join(',')}
-        }${config.disableTypes ? '' : 'as any'})`,
+        }${TYPES_DISABLED ? '' : 'as any'})`,
           loaderNode
             ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
                 removeExt(
@@ -686,7 +576,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         ].join('')
       })
       .join('\n\n'),
-    ...(config.disableTypes
+    ...(TYPES_DISABLED
       ? []
       : [
           '// Populate the FileRoutesByPath interface',
@@ -695,7 +585,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     ${routeNodes
       .map((routeNode) => {
         const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
-          routeNode.routePath!,
+          routeNode.routePath,
         )
 
         return `'${filePathId}': {
@@ -717,7 +607,44 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
 }`,
         ]),
     '// Create and export the route tree',
-    `export const routeTree = rootRoute.addChildren({${routeConfigChildrenText}})`,
+    routeConfigChildrenText,
+    ...(TYPES_DISABLED
+      ? []
+      : [
+          `export interface FileRoutesByFullPath {
+  ${[...createRouteNodesByFullPath(routeNodes).entries()].map(
+    ([fullPath, routeNode]) => {
+      return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+    },
+  )}
+}`,
+          `export interface FileRoutesByTo {
+  ${[...createRouteNodesByTo(routeNodes).entries()].map(([to, routeNode]) => {
+    return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+  })}
+}`,
+          `export interface FileRoutesById {
+  '__root__': typeof rootRoute,
+  ${[...createRouteNodesById(routeNodes).entries()].map(([id, routeNode]) => {
+    return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+  })}
+}`,
+          `export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: ${routeNodes.length > 0 ? [...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|') : 'never'}
+  fileRoutesByTo: FileRoutesByTo
+  to: ${routeNodes.length > 0 ? [...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|') : 'never'}
+  id: ${[`'__root__'`, ...[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
+  fileRoutesById: FileRoutesById
+}`,
+          `export interface RootRouteChildren {
+  ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`,
+        ]),
+    `const rootRouteChildren${TYPES_DISABLED ? '' : ': RootRouteChildren'} = {
+  ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`,
+    `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)${TYPES_DISABLED ? '' : '._addFileTypes<FileRouteTypes>()'}`,
     ...config.routeTreeFileFooter,
   ]
     .filter(Boolean)
@@ -726,14 +653,14 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   const createRouteManifest = () => {
     const routesManifest = {
       __root__: {
-        filePath: rootRouteNode?.filePath,
+        filePath: rootRouteNode.filePath,
         children: routeTree.map(
-          (d) => getFilePathIdAndRouteIdFromPath(d.routePath!)[1],
+          (d) => getFilePathIdAndRouteIdFromPath(d.routePath)[1],
         ),
       },
       ...Object.fromEntries(
         routeNodes.map((d) => {
-          const [_, routeId] = getFilePathIdAndRouteIdFromPath(d.routePath!)
+          const [_, routeId] = getFilePathIdAndRouteIdFromPath(d.routePath)
 
           return [
             routeId,
@@ -744,7 +671,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
                 : undefined,
               children: d.children?.map(
                 (childRoute) =>
-                  getFilePathIdAndRouteIdFromPath(childRoute.routePath!)[1],
+                  getFilePathIdAndRouteIdFromPath(childRoute.routePath)[1],
               ),
             },
           ]
@@ -761,18 +688,15 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     )
   }
 
-  const routeConfigFileContent = await prettier.format(
-    config.disableManifestGeneration
-      ? routeImports
-      : [
-          routeImports,
-          '\n',
-          '/* ROUTE_MANIFEST_START',
-          createRouteManifest(),
-          'ROUTE_MANIFEST_END */',
-        ].join('\n'),
-    prettierOptions,
-  )
+  const routeConfigFileContent = config.disableManifestGeneration
+    ? routeImports
+    : [
+        routeImports,
+        '\n',
+        '/* ROUTE_MANIFEST_START',
+        createRouteManifest(),
+        'ROUTE_MANIFEST_END */',
+      ].join('\n')
 
   if (!checkLatest()) return
 
@@ -796,12 +720,19 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   if (!checkLatest()) return
 
   // Write the route tree file, if it has changed
-  if (existingRouteTreeContent !== routeConfigFileContent) {
-    await fsp.writeFile(
-      path.resolve(config.generatedRouteTree),
-      routeConfigFileContent,
-    )
-    if (!checkLatest()) return
+  const routeTreeWriteResult = await writeIfDifferent(
+    path.resolve(config.generatedRouteTree),
+    prettierOptions,
+    existingRouteTreeContent,
+    routeConfigFileContent,
+    {
+      beforeWrite: () => {
+        logger.log(`🟡 Updating ${config.generatedRouteTree}`)
+      },
+    },
+  )
+  if (routeTreeWriteResult && !checkLatest()) {
+    return
   }
 
   logger.log(
@@ -811,87 +742,18 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   )
 }
 
-function routePathToVariable(routePath: string): string {
-  return (
-    removeUnderscores(routePath)
-      ?.replace(/\/\$\//g, '/splat/')
-      .replace(/\$$/g, 'splat')
-      .replace(/\$/g, '')
-      .split(/[/-]/g)
-      .map((d, i) => (i > 0 ? capitalize(d) : d))
-      .join('')
-      .replace(/([^a-zA-Z0-9]|[.])/gm, '')
-      .replace(/^(\d)/g, 'R$1') ?? ''
-  )
-}
-
-export function removeExt(d: string, keepExtension: boolean = false) {
-  return keepExtension ? d : d.substring(0, d.lastIndexOf('.')) || d
-}
-
 function spaces(d: number): string {
   return Array.from({ length: d })
     .map(() => ' ')
     .join('')
 }
 
-export function multiSortBy<T>(
-  arr: Array<T>,
-  accessors: Array<(item: T) => any> = [(d) => d],
-): Array<T> {
-  return arr
-    .map((d, i) => [d, i] as const)
-    .sort(([a, ai], [b, bi]) => {
-      for (const accessor of accessors) {
-        const ao = accessor(a)
-        const bo = accessor(b)
-
-        if (typeof ao === 'undefined') {
-          if (typeof bo === 'undefined') {
-            continue
-          }
-          return 1
-        }
-
-        if (ao === bo) {
-          continue
-        }
-
-        return ao > bo ? 1 : -1
-      }
-
-      return ai - bi
-    })
-    .map(([d]) => d)
-}
-
-function capitalize(s: string) {
-  if (typeof s !== 'string') return ''
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-function removeUnderscores(s?: string) {
-  return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
-}
-
 function removeTrailingUnderscores(s?: string) {
   return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
 }
 
-function replaceBackslash(s: string) {
-  return s.replaceAll(/\\/gi, '/')
-}
-
 function removeGroups(s: string) {
   return s.replace(possiblyNestedRouteGroupPatternRegex, '')
-}
-
-function removeTrailingSlash(s: string) {
-  return s.replace(/\/$/, '')
-}
-
-function determineInitialRoutePath(routePath: string) {
-  return cleanPath(`/${routePath.split('.').join('/')}`) || ''
 }
 
 /**
@@ -902,7 +764,7 @@ function determineInitialRoutePath(routePath: string) {
  */
 function determineNodePath(node: RouteNode) {
   return (node.path = node.parent
-    ? node.routePath?.replace(node.parent.routePath!, '') || '/'
+    ? node.routePath?.replace(node.parent.routePath ?? '', '') || '/'
     : node.routePath)
 }
 
@@ -967,6 +829,56 @@ export function hasParentRoute(
 }
 
 /**
+ * Gets the final variable name for a route
+ */
+export const getResolvedRouteNodeVariableName = (
+  routeNode: RouteNode,
+): string => {
+  return routeNode.children?.length
+    ? `${routeNode.variableName}RouteWithChildren`
+    : `${routeNode.variableName}Route`
+}
+
+/**
+ * Creates a map from fullPath to routeNode
+ */
+export const createRouteNodesByFullPath = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    routeNodes.map((routeNode) => [inferFullPath(routeNode), routeNode]),
+  )
+}
+
+/**
+ * Create a map from 'to' to a routeNode
+ */
+export const createRouteNodesByTo = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => [
+      inferTo(routeNode),
+      routeNode,
+    ]),
+  )
+}
+
+/**
+ * Create a map from 'id' to a routeNode
+ */
+export const createRouteNodesById = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    routeNodes.map((routeNode) => {
+      const [_, id] = getFilePathIdAndRouteIdFromPath(routeNode.routePath)
+      return [id, routeNode]
+    }),
+  )
+}
+
+/**
  * Infers the full path for use by TS
  */
 export const inferFullPath = (routeNode: RouteNode): string => {
@@ -986,7 +898,30 @@ export const inferPath = (routeNode: RouteNode): string => {
     : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
 }
 
-function getFilePathIdAndRouteIdFromPath(pathname: string) {
+/**
+ * Infers to path
+ */
+export const inferTo = (routeNode: RouteNode): string => {
+  const fullPath = inferFullPath(routeNode)
+
+  if (fullPath === '/') return fullPath
+
+  return fullPath.replace(/\/$/, '')
+}
+
+/**
+ * Dedupes branches and index routes
+ */
+export const dedupeBranchesAndIndexRoutes = (
+  routes: Array<RouteNode>,
+): Array<RouteNode> => {
+  return routes.filter((route) => {
+    if (route.children?.find((child) => child.cleanedPath === '/')) return false
+    return true
+  })
+}
+
+function getFilePathIdAndRouteIdFromPath(pathname?: string) {
   const filePathId = removeTrailingUnderscores(pathname)
   const id = removeGroups(filePathId ?? '')
 
@@ -1044,13 +979,14 @@ export type StartAPIRoutePathSegment = {
  */
 export function startAPIRouteSegmentsFromTSRFilePath(
   src: string,
+  config: Config,
 ): Array<StartAPIRoutePathSegment> {
   const routePath = determineInitialRoutePath(src)
 
   const parts = routePath
     .replaceAll('.', '/')
     .split('/')
-    .filter((p) => !!p && p !== 'index')
+    .filter((p) => !!p && p !== config.indexToken)
   const segments: Array<StartAPIRoutePathSegment> = parts.map((part) => {
     if (part.startsWith('$')) {
       if (part === '$') {

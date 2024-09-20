@@ -75,12 +75,54 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  UsersArktypeIndexRoute,
-  UsersValibotIndexRoute,
-  UsersZodIndexRoute,
-})
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/users/arktype': typeof UsersArktypeIndexRoute
+  '/users/valibot': typeof UsersValibotIndexRoute
+  '/users/zod': typeof UsersZodIndexRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/users/arktype': typeof UsersArktypeIndexRoute
+  '/users/valibot': typeof UsersValibotIndexRoute
+  '/users/zod': typeof UsersZodIndexRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/users/arktype/': typeof UsersArktypeIndexRoute
+  '/users/valibot/': typeof UsersValibotIndexRoute
+  '/users/zod/': typeof UsersZodIndexRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
+  id: '__root__' | '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  UsersArktypeIndexRoute: typeof UsersArktypeIndexRoute
+  UsersValibotIndexRoute: typeof UsersValibotIndexRoute
+  UsersZodIndexRoute: typeof UsersZodIndexRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  UsersArktypeIndexRoute: UsersArktypeIndexRoute,
+  UsersValibotIndexRoute: UsersValibotIndexRoute,
+  UsersZodIndexRoute: UsersZodIndexRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

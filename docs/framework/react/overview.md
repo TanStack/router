@@ -25,14 +25,14 @@ To get started quickly, head to the next page. For a more lengthy explanation, b
 
 Using a router to build applications is widely regarded as a must-have and is usually one of the first choices you’ll make in your tech stack.
 
-**So, why should to choose TanStack Router over another router?**
+**So, why should you choose TanStack Router over another router?**
 
 To answer this question, we need to look at the other options in the space. There are many if you look hard enough, but in my experience, only a couple are worth exploring seriously:
 
-- **Next.js** - Widely regarded as the de facto framework for starting a new React project, it’s laser focused on performance, workflow, and bleeding edge technology. It’s APIs and abstractions are powerful, but can sometimes come across as non-standard. It's extremely fast growth and adoption in the industry has resulted in a featured packed experience, but not at the expense of feeling overwhelming and sometimes bloated.
+- **Next.js** - Widely regarded as the de facto framework for starting a new React project, it’s laser focused on performance, workflow, and bleeding edge technology. Its APIs and abstractions are powerful, but can sometimes come across as non-standard. Its extremely fast growth and adoption in the industry has resulted in a featured packed experience, but not at the expense of feeling overwhelming and sometimes bloated.
 - **Remix / React Router** - A full-stack framework based on the historically successful React Router offers a similarly powerful developer and user experience, with APIs and vision based firmly on web standards like Request/Response and a focus on running anywhere JS can run. Many of its APIs and abstractions are wonderfully designed and were inspiration for more than a few TanStack Router APIs. That said, its rigid design, bolted-on type safety and sometimes strict over-adherence to platform APIs can leave some developers wanting more.
 
-Both of these frameworks (and their routers) are great, and I can personally attest that both are very good solutions for build React applications. My experience has also taught me that these solutions could also be much better, especially around the actual routing APIs that are available to developers to make their apps faster, easier, and more enjoyable to work with.
+Both of these frameworks (and their routers) are great, and I can personally attest that both are very good solutions for building React applications. My experience has also taught me that these solutions could also be much better, especially around the actual routing APIs that are available to developers to make their apps faster, easier, and more enjoyable to work with.
 
 It's probably no surprise at this point that picking a router is so important that it is often tied 1-to-1 with your choice of framework, since most frameworks rely on a specific router.
 
@@ -53,7 +53,6 @@ TanStack Router delivers on the same fundamental expectations as other routers t
 - URL Path Params
 - Error Boundaries and Handling
 - SSR
-- Prefetching
 - Route Masking
 
 And it also delivers some new features that raise the bar:
@@ -127,7 +126,7 @@ TanStack Router is designed with a flexible and powerful data loading API that m
 
 ## Inherited Route Context
 
-TanStack Router's router and route context is a powerful feature that allows you to define context that is specific to a route which is then inherited by all child routes. Even the router and root route's themselves can provide context. Context can be built up both synchronously and asynchronously, and can be used to share data, configuration, or even functions between routes and route configurations. This is especially useful for scenarios like:
+TanStack Router's router and route context is a powerful feature that allows you to define context that is specific to a route which is then inherited by all child routes. Even the router and root routes themselves can provide context. Context can be built up both synchronously and asynchronously, and can be used to share data, configuration, or even functions between routes and route configurations. This is especially useful for scenarios like:
 
 - Authentication and Authorization
 - Hybrid SSR/CSR data fetching and preloading

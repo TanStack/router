@@ -384,8 +384,18 @@ describe('encoding: URL path segment', () => {
       type: 'encoded',
     },
     {
+      input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
+      output: '/path-segment/🚀to%2Fthe%2Fmoon',
+      type: 'encoded',
+    },
+    {
       input: '/path-segment/🚀',
       output: '/path-segment/🚀',
+      type: 'not encoded',
+    },
+    {
+      input: '/path-segment/🚀to%2Fthe%2Fmoon',
+      output: '/path-segment/🚀to%2Fthe%2Fmoon',
       type: 'not encoded',
     },
   ])(

@@ -28,7 +28,7 @@ import {
   useRouterState,
   useSearch,
 } from '../src'
-import { getIntersectionObserverMock } from './utils'
+import { getIntersectionObserverMock, sleep } from './utils'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -46,6 +46,8 @@ afterEach(() => {
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
+
+const WAIT_TIME = 300
 
 describe('Link', () => {
   test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
@@ -661,8 +663,6 @@ describe('Link', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
-      loaderDeps: (opts) => ({ page: opts.search }),
-      loader: loader,
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
@@ -672,6 +672,8 @@ describe('Link', () => {
           page,
         }
       },
+      loaderDeps: (opts) => ({ page: opts.search }),
+      loader: loader,
       component: PostsComponent,
     })
 
@@ -724,12 +726,6 @@ describe('Link', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
-      loaderDeps: (opts) => ({ page: opts.search }),
-      loader: () => {
-        throw new Error()
-      },
-      onError,
-      errorComponent: () => <span>Something went wrong!</span>,
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
@@ -738,6 +734,12 @@ describe('Link', () => {
         return {
           page,
         }
+      },
+      loaderDeps: (opts) => ({ page: opts.search }),
+      onError,
+      errorComponent: () => <span>Something went wrong!</span>,
+      loader: () => {
+        throw new Error()
       },
       component: PostsComponent,
     })
@@ -758,6 +760,77 @@ describe('Link', () => {
     expect(errorText).toBeInTheDocument()
 
     expect(onError).toHaveBeenCalledOnce()
+  })
+
+  test('when navigating away from a route with a loader that errors', async () => {
+    const postsOnError = vi.fn()
+    const indexOnError = vi.fn()
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <div>
+            <Link to="/">Index</Link> <Link to="/posts">Posts</Link>
+          </div>
+          <hr />
+          <Outlet />
+        </>
+      ),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+          </>
+        )
+      },
+      onError: indexOnError,
+      errorComponent: () => <span>IndexError</span>,
+    })
+
+    const error = new Error('Something went wrong!')
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      loaderDeps: (opts) => ({ page: opts.search }),
+      loader: () => {
+        throw error
+      },
+      onError: postsOnError,
+      errorComponent: () => <span>PostsError</span>,
+      component: () => {
+        return (
+          <>
+            <h1>Posts</h1>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    fireEvent.click(postsLink)
+
+    const postsErrorText = await screen.findByText('PostsError')
+    expect(postsErrorText).toBeInTheDocument()
+
+    expect(postsOnError).toHaveBeenCalledOnce()
+    expect(postsOnError).toHaveBeenCalledWith(error)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index' })
+    fireEvent.click(indexLink)
+
+    expect(screen.findByText('IndexError')).rejects.toThrow()
+    expect(indexOnError).not.toHaveBeenCalledOnce()
   })
 
   test('when navigating to /posts with a beforeLoad that redirects', async () => {
@@ -3527,6 +3600,57 @@ describe('Link', () => {
     expect(indexLink).toBeInTheDocument()
 
     expect(ioObserveMock).not.toBeCalled()
+  })
+
+  test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/posts" preload="intent">
+              link to posts
+            </Link>
+          </div>
+        )
+      },
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      loader: () => sleep(WAIT_TIME),
+      component: () => <div>Posts page</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([postRoute, indexRoute])
+    const router = createRouter({
+      routeTree,
+      defaultPreload: 'intent',
+      defaultPendingMs: 200,
+      defaultPendingComponent: () => <p>Loading...</p>,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const linkToPosts = await screen.findByRole('link', {
+      name: 'link to posts',
+    })
+    expect(linkToPosts).toBeInTheDocument()
+
+    fireEvent.focus(linkToPosts)
+    fireEvent.click(linkToPosts)
+
+    const loadingElement = await screen.findByText('Loading...')
+    expect(loadingElement).toBeInTheDocument()
+
+    const postsElement = await screen.findByText('Posts page')
+    expect(postsElement).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
   })
 })
 

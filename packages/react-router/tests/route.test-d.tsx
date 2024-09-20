@@ -16,6 +16,7 @@ import type {
   Route,
   SearchSchemaInput,
 } from '../src'
+import type { MakeRouteMatchUnion } from '../src/Matches'
 
 test('when creating the root', () => {
   const rootRoute = createRootRoute()
@@ -38,6 +39,7 @@ test('when creating the root with routeContext', () => {
         cause: 'preload' | 'enter' | 'stay'
         context: {}
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -60,6 +62,7 @@ test('when creating the root with beforeLoad', () => {
         cause: 'preload' | 'enter' | 'stay'
         context: {}
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -107,6 +110,7 @@ test('when creating the root route with context and routeContext', () => {
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -141,6 +145,7 @@ test('when creating the root route with context and beforeLoad', () => {
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -210,6 +215,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
 
       return {
@@ -227,6 +233,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: 'env1' }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { permission: 'view' as const }
     },
@@ -319,6 +326,7 @@ test('when creating a child route with routeContext from the root route with con
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
 
       return {
@@ -345,6 +353,7 @@ test('when creating a child route with beforeLoad from the root route with conte
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -356,7 +365,7 @@ test('when creating a child route with a loader from the root route', () => {
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader: async (opt) => {
+    loader: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -398,7 +407,7 @@ test('when creating a child route with a loader from the root route with context
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader: async (opts) => {
+    loader: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -614,6 +623,7 @@ test('when creating a child route with params, search with routeContext from the
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -637,6 +647,7 @@ test('when creating a child route with params, search with beforeLoad from the r
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
     },
   })
@@ -660,6 +671,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return {
         env: 'env1',
@@ -676,6 +688,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { permission: 'view' } as const
     },
@@ -774,6 +787,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
 
       return { invoiceId: 'invoiceId1' }
@@ -794,6 +808,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; invoiceId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
 
       return { detailId: 'detailId1' }
@@ -826,7 +841,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    beforeLoad: async (opt) => {
+    beforeLoad: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -837,6 +852,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { invoiceId: 'invoiceId1' }
     },
@@ -845,7 +861,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
   const detailsRoute = createRoute({
     path: 'details',
     getParentRoute: () => invoicesRoute,
-    beforeLoad: async (opt) => {
+    beforeLoad: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -856,6 +872,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; invoiceId: string }
         search: {}
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { detailId: 'detailId1' }
     },
@@ -899,6 +916,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { env: 'env1' }
     },
@@ -913,6 +931,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: string }
         search: { page: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { invoicePermissions: ['view'] as const }
     },
@@ -942,6 +961,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           invoicePermissions: readonly ['view']
         }
         search: { page: number; detailPage: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { detailEnv: 'detailEnv' }
     },
@@ -961,6 +981,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           invoicePermissions: readonly ['view']
         }
         search: { page: number; detailPage: number }
+        matches: Array<MakeRouteMatchUnion>
       }>()
       return { detailsPermissions: ['view'] as const }
     },
@@ -1030,17 +1051,16 @@ test('when creating a child route with context, search, params and beforeLoad', 
           invoicePermissions: readonly ['view']
         }
       }>()
-      expectTypeOf(opts.buildLocation<'/', Router>)
+      expectTypeOf(opts.buildLocation<Router, '.', '/'>)
         .parameter(0)
         .toHaveProperty('to')
         .toEqualTypeOf<
-          | '/'
-          | '/invoices'
-          | '/invoices/$invoiceId'
-          | '/invoices/$invoiceId/details'
-          | '/invoices/$invoiceId/details/$detailId'
           | '.'
-          | '..'
+          | './'
+          | './invoices'
+          | './invoices/$invoiceId'
+          | './invoices/$invoiceId/details'
+          | './invoices/$invoiceId/details/$detailId'
           | undefined
         >()
     },
@@ -1105,11 +1125,11 @@ test('when creating a child route with context, search, params, loader, loaderDe
   createRoute({
     path: '$detailId',
     getParentRoute: () => detailsRoute,
+    beforeLoad: () => ({ detailPermission: true }),
     loaderDeps: (deps) => ({
       detailPage: deps.search.detailPage,
       invoicePage: deps.search.page,
     }),
-    beforeLoad: () => ({ detailPermission: true }),
     loader: () => ({ detailLoader: 'detailResult' }) as const,
     onEnter: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
     onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
@@ -1438,18 +1458,18 @@ test('when creating a child route with no explicit search input', () => {
 
   const navigate = indexRoute.useNavigate()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function | boolean>()
     .toEqualTypeOf<{ page: number }>()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ page: number }>()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
@@ -1497,18 +1517,18 @@ test('when creating a child route with an explicit search input', () => {
 
   const navigate = indexRoute.useNavigate()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function | boolean>()
     .toEqualTypeOf<{ input: string }>()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ input: string }>()
 
-  expectTypeOf(navigate<'/', typeof router, '/'>)
+  expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)

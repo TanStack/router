@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  type RouterHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
+import type { RouterHistory } from '../src'
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -67,6 +67,15 @@ function createTestRouter(initialHistory?: RouterHistory) {
   const gUsernameRoute = createRoute({
     getParentRoute: () => gLayoutRoute,
     path: '$username',
+  })
+  const searchRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'search',
+    validateSearch: (search: Record<string, unknown>) => {
+      return {
+        ['foo=bar']: Number(search['foo=bar'] ?? 1),
+      }
+    },
   })
 
   const projectTree = projectRoute.addChildren([
@@ -130,7 +139,7 @@ describe('router.navigate navigation using a single path param - object syntax f
 
     await router.navigate({
       params: { slug: 'tkdodo' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
@@ -167,7 +176,7 @@ describe('router.navigate navigation using a single path param - function syntax
 
     await router.navigate({
       params: (p: any) => ({ ...p, slug: 'tkdodo' }),
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
@@ -204,7 +213,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
 
     await router.navigate({
       params: { projectId: 'query' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/query/v1/react')
@@ -239,7 +248,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
 
     await router.navigate({
       params: { version: 'v3' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v3/react')
@@ -274,7 +283,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
 
     await router.navigate({
       params: { framework: 'vue' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v1/vue')
@@ -311,7 +320,7 @@ describe('router.navigate navigation using multiple path params - function synta
 
     await router.navigate({
       params: (p: any) => ({ ...p, projectId: 'query' }),
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/query/v1/react')
@@ -346,7 +355,7 @@ describe('router.navigate navigation using multiple path params - function synta
 
     await router.navigate({
       params: (p: any) => ({ ...p, version: 'v3' }),
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v3/react')
@@ -381,14 +390,14 @@ describe('router.navigate navigation using multiple path params - function synta
 
     await router.navigate({
       params: (p: any) => ({ ...p, framework: 'vue' }),
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/p/router/v1/vue')
   })
 })
 
-describe('router.navigate navigation using layout routes resolves correctly', async () => {
+describe('router.navigate navigation using layout routes resolves correctly', () => {
   it('should resolve "/u/tanner" in "/u/_layout/$username" to "/u/tkdodo"', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/u/tanner'] }),
@@ -419,7 +428,7 @@ describe('router.navigate navigation using layout routes resolves correctly', as
 
     await router.navigate({
       params: { username: 'tkdodo' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/u/tkdodo')
@@ -455,9 +464,27 @@ describe('router.navigate navigation using layout routes resolves correctly', as
 
     await router.navigate({
       params: { username: 'tkdodo' },
-    })
+    } as any)
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/g/tkdodo')
+  })
+
+  it('should handle search params with special characters', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/search?foo%3Dbar=2'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/search')
+    expect(router.state.location.search).toStrictEqual({ 'foo=bar': 2 })
+
+    await router.navigate({
+      search: { 'foo=bar': 3 },
+    } as any)
+    await router.invalidate()
+
+    expect(router.state.location.search).toStrictEqual({ 'foo=bar': 3 })
   })
 })

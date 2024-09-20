@@ -32,7 +32,7 @@ Create a `tsconfig.json` file with at least the following settings:
   "compilerOptions": {
     "jsx": "react-jsx",
     "moduleResolution": "Bundler",
-    "module": "Preserve",
+    "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
   },
@@ -285,3 +285,5 @@ function Home() {
 That's it! 🤯 You've now set up a TanStack Start project and written your first route. 🎉
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
+
+You want to deploy your application? Check out the [hosting guide](./hosting.md).

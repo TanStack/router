@@ -161,12 +161,11 @@ Consider the following usage of `Link`
 ```tsx
 <Link to=".." search={{ page: 0 }} />
 <Link to="." search={{ page: 0 }} />
-<Link search={{ page: 0 }} />
 ```
 
-**These examples are bad for TS performance**. That's because `search` resolves to a union of all `search` params for all routes and TS has to check whatever you pass to the `search` prop against this potentially big union. As your application grows, this check time will increase linearly to number of routes and search params. We have done our best to optimize for this case (TypeScript will typically do this work once and cache it) but the initial check against this large union is expensive. This also applies to `params` and other API's such as `useSearch`, `useParams`, `useNavigate` etc
+**These examples are bad for TS performance**. That's because `search` resolves to a union of all `search` params for all routes and TS has to check whatever you pass to the `search` prop against this potentially big union. As your application grows, this check time will increase linearly to number of routes and search params. We have done our best to optimize for this case (TypeScript will typically do this work once and cache it) but the initial check against this large union is expensive. This also applies to `params` and other API's such as `useSearch`, `useParams`, `useNavigate` etc.
 
-Instead you should try to narrow to relevant routes with `from` or `to`
+Instead you should try to narrow to relevant routes with `from` or `to`.
 
 ```tsx
 <Link from={Route.fullPath} to=".." search={{page: 0}} />
@@ -180,7 +179,7 @@ const from: '/posts/$postId/deep' | '/posts/' = '/posts/'
 <Link from={from} to='..' />
 ```
 
-You can also pass branches to `from` to only resolve `search` or `params` to be from any descendants of that branch
+You can also pass branches to `from` to only resolve `search` or `params` to be from any descendants of that branch:
 
 ```tsx
 const from = '/posts'

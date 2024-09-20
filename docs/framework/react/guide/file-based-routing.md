@@ -2,7 +2,7 @@
 title: File-Based Routing
 ---
 
-Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](./code-based-routing) if you prefer.
+Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](./code-based-routing.md) if you prefer.
 
 ## What is File-Based Routing?
 
@@ -87,6 +87,44 @@ It's extremely likely that a 100% directory or flat route structure won't be the
 
 Both flat and directory routes can be mixed together to create a route tree that uses the best of both worlds where it makes sense.
 
+## Virtual File Routes
+
+> We'd like to thank the Remix team for [pioneering the concept of virtual file routes](https://www.youtube.com/watch?v=fjTX8hQTlEc&t=730s). We've taken inspiration from their work and adapted it to work with TanStack Router's existing file-based route-tree generation.
+
+Virtual file routes are a powerful concept that allows you to build a route tree programmatically using code that references real files in your project. This can be useful if:
+
+- You have an existing route organization that you want to keep.
+- You want to customize the location of your route files.
+- You want to completely override TanStack Router's file-based route generation and build your own convention.
+
+Here's a quick example of using virtual file routes to map a route tree to a set of real files in your project:
+
+```tsx
+import {
+  rootRoute,
+  route,
+  index,
+  layout,
+  physical,
+} from '@tanstack/virtual-file-routes'
+
+const virtualRouteConfig = rootRoute('root.tsx', [
+  index('index.tsx'),
+  layout('layout.tsx', [
+    route('/dashboard', 'app/dashboard.tsx', [
+      index('app/dashboard-index.tsx'),
+      route('/invoices', 'app/dashboard-invoices.tsx', [
+        index('app/invoices-index.tsx'),
+        route('$id', 'app/invoice-detail.tsx'),
+      ]),
+    ]),
+    physical('/posts', 'posts'),
+  ]),
+])
+```
+
+For more information on how to configure virtual file routes, see the [Virtual File Routes](./virtual-file-routes.md) guide.
+
 ## Dynamic Path Params
 
 Dynamic path params can be used in both flat and directory routes to create routes that can match a dynamic segment of the URL path. Dynamic path params are denoted by the `$` character in the filename:
@@ -96,7 +134,7 @@ Dynamic path params can be used in both flat and directory routes to create rout
 | ...                   | ...              | ...                         |
 | ʦ `posts.$postId.tsx` | `/posts/$postId` | `<Root><Posts><Post><Post>` |
 
-We'll learn more about dynamic path params in the [Path Params](./path-params) guide.
+We'll learn more about dynamic path params in the [Path Params](./path-params.md) guide.
 
 ## Pathless Routes
 
@@ -133,8 +171,10 @@ File-based routing requires that you follow a few simple file naming conventions
   - A folder that matches this pattern is treated as a **route group** which prevents this folder to be included in the route's URL path.
 - **`index` Token**
   - Routes segments ending with the `index` token (but before any file types) will be used to match the parent route when the URL pathname matches the parent route exactly.
+    This can be configured via the `indexToken` configuration option, see [options](#options).
 - **`.route.tsx` File Type**
   - When using directories to organize your routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used at the route file for the `/blog/post` route.
+    This can be configured via the `routeToken` configuration option, see [options](#options).
 - **`.lazy.tsx` File Type**
   - The `lazy` suffix can be used to code-split components for a route. For example, `blog.post.lazy.tsx` will be used as the component for the `blog.post` route.
 
@@ -331,6 +371,10 @@ The following options are available for configuration via the `tsr.config.json` 
   - (Optional, **Defaults to `-`**) Route files and directories that start with this string will be ignored. By default this is set to `-` to allow for the use of directories to house related files that do not contain any route files.
 - **`routeFileIgnorePattern`**
   - (Optional) Ignore specific files and directories in the route directory. It can be used in regular expression format. For example, `.((css|const).ts)|test-page` will ignore files / directories with names containing `.css.ts`, `.const.ts` or `test-page`.
+- **`indexToken`**
+  - (Optional, **Defaults to `'index'`**) allows to customize the `index` Token [file naming convention](#file-naming-conventions).
+- **`routeToken`**
+  - (Optional, **Defaults to `'route'`**) allows to customize the `route` Token [file naming convention](#file-naming-conventions).
 - **`routesDirectory`**
   - (Required) The directory containing the routes relative to the cwd.
 - **`generatedRouteTree`**
