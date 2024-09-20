@@ -1,5 +1,6 @@
 import { RuleTester } from '@typescript-eslint/rule-tester'
 import combinate from 'combinate'
+
 import {
   name,
   rule,
@@ -23,6 +24,7 @@ const testedCheckedProperties = [
   checkedProperties[0],
   checkedProperties[1],
   checkedProperties[2],
+  checkedProperties[3],
 ]
 type TestedCheckedProperties = (typeof testedCheckedProperties)[number]
 const orderIndependentProps = ['gcTime', '...foo'] as const
@@ -45,18 +47,49 @@ const validTestMatrix = combinate({
   properties: generatePartialCombinations(testedCheckedProperties, 2),
 })
 
-export function generateInvalidPermutations<T>(
-  arr: ReadonlyArray<T>,
-): Array<{ invalid: Array<T>; valid: Array<T> }> {
+export function generateInvalidPermutations(
+  arr: ReadonlyArray<TestedCheckedProperties>,
+): Array<{
+  invalid: Array<TestedCheckedProperties>
+  valid: Array<TestedCheckedProperties>
+}> {
   const combinations = generatePartialCombinations(arr, 2)
-  const allPermutations: Array<{ invalid: Array<T>; valid: Array<T> }> = []
+  const allPermutations: Array<{
+    invalid: Array<TestedCheckedProperties>
+    valid: Array<TestedCheckedProperties>
+  }> = []
 
   for (const combination of combinations) {
     const permutations = generatePermutations(combination)
     // skip the first permutation as it matches the original combination
     const invalidPermutations = permutations.slice(1)
+
+    if (
+      combination.includes('params') &&
+      combination.includes('validateSearch')
+    ) {
+      if (
+        combination.indexOf('params') < combination.indexOf('validateSearch')
+      ) {
+        // since we ignore the relative order of 'params' and 'validateSearch', we skip this combination (but keep the other one where `validateSearch` is before `params`)
+        continue
+      }
+    }
+
     allPermutations.push(
-      ...invalidPermutations.map((p) => ({ invalid: p, valid: combination })),
+      ...invalidPermutations.map((p) => {
+        // ignore the relative order of 'params' and 'validateSearch'
+        const correctedValid = [...combination].sort((a, b) => {
+          if (
+            (a === 'params' && b === 'validateSearch') ||
+            (a === 'validateSearch' && b === 'params')
+          ) {
+            return p.indexOf(a) - p.indexOf(b)
+          }
+          return checkedProperties.indexOf(a) - checkedProperties.indexOf(b)
+        })
+        return { invalid: p, valid: correctedValid }
+      }),
     )
   }
 
