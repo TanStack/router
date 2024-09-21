@@ -14,12 +14,10 @@
   "dependencies": {
     "@tanstack/react-query": "^5.56.2",
     "@tanstack/react-query-devtools": "^5.56.2",
-    "@tanstack/react-router": "^1.57.15",
-    "@tanstack/react-router-with-query": "^1.57.15",
-    "@tanstack/router-devtools": "^1.57.15",
-    "@tanstack/router-plugin": "^1.57.15",
-    "@tanstack/start": "^1.57.15",
-    "isbot": "^5.1.17",
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-router-with-query": "workspace:^",
+    "@tanstack/router-devtools": "workspace:^",
+    "@tanstack/start": "workspace:^",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
@@ -37,7 +35,6 @@
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.6.2",
-    "vite": "^5.4.5",
     "vite-tsconfig-paths": "^5.0.1"
   }
 }
