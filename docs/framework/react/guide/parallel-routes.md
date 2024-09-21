@@ -2,4 +2,4 @@
 title: Parallel Routes
 ---
 
-TODO: Write this guide
+We haven't covered this yet. Stay tuned!

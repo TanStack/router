@@ -10,7 +10,7 @@ File based route generation (through Vite, and other supported bundlers) is the 
 
 ### Scaffolding Your First TanStack Router Project
 
-```bash
+```sh
 npm create @tanstack/router@latest
 # or
 pnpm create @tanstack/router
@@ -26,8 +26,8 @@ Follow the prompts to setup the project.
 
 #### Install the Vite Plugin and the Router Devtools
 
-```bash
-npm i -D @tanstack/router-plugin @tanstack/router-devtools
+```sh
+npm install -D @tanstack/router-plugin @tanstack/router-devtools
 # or
 pnpm add -D @tanstack/router-plugin @tanstack/router-devtools
 # or
