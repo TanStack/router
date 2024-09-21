@@ -1,9 +1,9 @@
-import { createServerFn } from '@tanstack/start'
+import { createServerMiddleware as middlewareFn } from '@tanstack/start'
 import { z } from 'zod'
 
-export const withUseServer = createServerFn({
-  method: 'GET',
-  fn: async function () {
+export const withUseServer = middlewareFn({
+  id: 'test',
+  before: async function () {
     console.info('Fetching posts...')
     await new Promise((r) => setTimeout(r, 500))
     return axios
@@ -12,19 +12,9 @@ export const withUseServer = createServerFn({
   },
 })
 
-export const withArrowFunction = createServerFn({
-  method: 'GET',
-  fn: async () => null,
-})
-
-export const withArrowFunctionAndFunction = createServerFn({
-  method: 'GET',
-  fn: async () => test(),
-})
-
-export const withoutUseServer = createServerFn({
-  method: 'GET',
-  fn: async () => {
+export const withoutUseServer = middlewareFn({
+  id: 'test',
+  after: async () => {
     console.info('Fetching posts...')
     await new Promise((r) => setTimeout(r, 500))
     return axios
@@ -33,9 +23,10 @@ export const withoutUseServer = createServerFn({
   },
 })
 
-export const withVariable = createServerFn({
+export const withVariable = middlewareFn({
   method: 'GET',
-  fn: abstractedFunction,
+  id: 'test',
+  before: abstractedFunction,
 })
 
 async function abstractedFunction() {
@@ -55,9 +46,9 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(
   }
 }
 
-export const withZodValidator = createServerFn({
-  method: 'GET',
-  fn: zodValidator(z.number(), (input) => {
+export const withZodValidator = middlewareFn({
+  id: 'test',
+  before: zodValidator(z.number(), (input) => {
     return { 'you gave': input }
   }),
 })

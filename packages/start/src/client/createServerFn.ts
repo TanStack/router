@@ -1,40 +1,32 @@
 import invariant from 'tiny-invariant'
-import type { ResolveParams } from '@tanstack/react-router'
 
 export interface JsonResponse<TData> extends Response {
   json: () => Promise<TData>
 }
 
-export type CompiledFetcherFnOptions<TSearch, TPayload> = {
+export type CompiledFetcherFnOptions = {
   method: Method
-  search: unknown
   payload: unknown
   requestInit?: RequestInit
   middleware: Array<ServerMiddleware<any, any>>
+  serverValidator: () => any
 }
 
 export type IsOptional<T> = [T] extends [undefined] ? true : false
 
-export type Fetcher<TMethod, TSearch, TPayload, TResponse> = {
+export type Fetcher<TMethod, TPayload, TResponse> = {
   url: string
 } & (TMethod extends 'GET' | 'DELETE'
-  ? FetcherImpl<TSearch, never, TResponse>
-  : FetcherImpl<TSearch, TPayload, TResponse>)
+  ? FetcherImpl<never, TResponse>
+  : FetcherImpl<TPayload, TResponse>)
 
-export type FetcherImpl<TSearch, TPayload, TResponse> = [
-  IsOptional<TPayload>,
-  IsOptional<TSearch>,
-] extends [true, true]
-  ? (
-      opts?: FetcherOptions<TSearch, TPayload>,
-    ) => Promise<FetcherPayload<TResponse>>
-  : (
-      opts: FetcherOptions<TSearch, TPayload>,
-    ) => Promise<FetcherPayload<TResponse>>
+export type FetcherImpl<TPayload, TResponse> =
+  IsOptional<TPayload> extends true
+    ? (opts?: FetcherOptions<TPayload>) => Promise<FetcherPayload<TResponse>>
+    : (opts: FetcherOptions<TPayload>) => Promise<FetcherPayload<TResponse>>
 
-export type FetcherOptions<TSearch, TPayload> = FetcherBaseOptions &
-  FetcherPayloadOptions<TPayload> &
-  FetcherSearchOptions<TSearch>
+export type FetcherOptions<TPayload> = FetcherBaseOptions &
+  FetcherPayloadOptions<TPayload>
 
 export type FetcherBaseOptions = {
   requestInit?: RequestInit
@@ -99,15 +91,17 @@ export type ServerMiddlewarePostFn<TContextOut> = (options: {
 }) => void
 
 export type MiddlewareOptions<
+  TId,
   TContextOut,
   TMiddlewares extends Array<ServerMiddleware<any, any>> = [],
 > = {
+  id: TId
   middleware?: TMiddlewares
-  pre?: ServerMiddlewarePreFn<
+  before?: ServerMiddlewarePreFn<
     ResolveMiddlewareContext<TMiddlewares>,
     TContextOut
   >
-  post?: ServerMiddlewarePostFn<TContextOut>
+  after?: ServerMiddlewarePostFn<TContextOut>
 }
 
 export function createServerMiddleware<
@@ -165,67 +159,49 @@ export type testMiddleware = [
 
 type testFlat = FlattenMiddleware<testMiddleware>
 type testResolved = ResolveMiddlewareContext<testMiddleware>
-type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+type Method = 'GET' | 'POST'
 
-export type ServerFn<
-  TPath extends string,
-  TMethod,
-  TSearch,
-  TPayload,
-  TResponse,
-  TContextIn,
-> = (
-  ctx: ServerFnCtx<
-    ResolveParams<TPath>,
-    TMethod,
-    TSearch,
-    TPayload,
-    TContextIn
-  >,
+export type ServerFn<TMethod, TPayload, TResponse, TContextIn> = (
+  ctx: ServerFnCtx<TMethod, TPayload, TContextIn>,
 ) => Promise<TResponse> | TResponse
 
-export type ServerFnCtx<TParams, TMethod, TSearch, TPayload, TContextIn> = {
-  path: string
-  params: TParams
+export type ServerFnCtx<TMethod, TPayload, TContextIn> = {
   method: TMethod
-  search: TSearch
   payload: TPayload
   context: TContextIn
 }
 
-export type CompiledFetcherFn<TSearch, TPayload, TResponse> = {
-  (opts: CompiledFetcherFnOptions<TSearch, TPayload>): Promise<TResponse>
+export type CompiledFetcherFn<TResponse> = {
+  (opts: CompiledFetcherFnOptions): Promise<TResponse>
   url: string
 }
 
+type Validator = {
+  in?: any
+  out?: any
+}
+
 export function createServerFn<
-  TPath extends string = string,
   TMethod extends Method = 'GET',
-  TSearch = undefined,
   TPayload = undefined,
   TResponse = unknown,
   const TMiddlewares extends Array<ServerMiddleware<any, any>> = Array<
     ServerMiddleware<any, any>
   >,
+  TServerValidator extends Validator = Validator,
 >(options: {
-  path?: TPath
   method?: TMethod
   middleware?: TMiddlewares
+  serverValidator?: TServerValidator
   fn: ServerFn<
-    TPath,
     TMethod,
-    TSearch,
     TPayload,
     TResponse,
     ResolveMiddlewareContext<TMiddlewares>
   >
-}): Fetcher<TMethod, TSearch, TPayload, TResponse> {
+}): Fetcher<TMethod, TPayload, TResponse> {
   // Cast the compiled function that will be injected by vinxi
-  const compiledFn = options as unknown as CompiledFetcherFn<
-    TPayload,
-    TResponse,
-    TSearch
-  >
+  const compiledFn = options as unknown as CompiledFetcherFn<TResponse>
 
   invariant(
     compiledFn.url,
@@ -235,13 +211,13 @@ export function createServerFn<
   const middleware = options.middleware || []
 
   return Object.assign(
-    (opts: FetcherOptions<TSearch, TPayload>) => {
+    (opts: FetcherOptions<TPayload>) => {
       return compiledFn({
-        method: options.method || 'GET',
-        payload: opts.payload!,
-        search: opts.search,
-        requestInit: opts.requestInit,
         middleware,
+        method: options.method || 'GET',
+        serverValidator: options.serverValidator,
+        payload: opts.payload!,
+        requestInit: opts.requestInit,
       })
     },
     {
@@ -250,58 +226,209 @@ export function createServerFn<
   ) as any
 }
 
-const rootMiddleware = createServerMiddleware({
-  // defaultValidatorFn: zodValidator,
-})
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
-const authMiddleware = createServerMiddleware({
-  middleware: [rootMiddleware],
-  pre: async () => {
-    const user = await {
-      id: '123',
-      name: 'Bob',
-    }
+// The createServerFn function
 
-    return {
-      context: {
-        user,
-      },
-    }
-  },
-  post: ({ context }) => {
-    context.user
-    // console.log(getHeaders())
-  },
-})
+// const doStuff = createServerFn({
+//   fn: (payload) => {
+//     // ...
+//   },
+// })
 
-const workspaceMiddleware = createServerMiddleware({
-  middleware: [authMiddleware],
-  pre: ({ context }) => {
-    const workspace = context.user + '-workspace'
+// // Customizing the method
 
-    return {
-      context: {
-        workspace,
-      },
-    }
-  },
-})
+// const doStuff = createServerFn({
+//   method: 'GET',
+//   fn: () => {
+//     // ...
+//   },
+// })
+
+// // Typesafety
+
+// type Person = {
+//   name: string
+// }
+
+// const doStuff = createServerFn({
+//   method: 'GET',
+//   fn: (person: Person) => {
+//     // ...
+//   },
+// })
+
+// doStuff({
+//   notName: 'bob', // Type Error, but allowed at runtime
+// })
+
+// // Runtime Type Safety and Validation
 
 // const personSchema = z.object({
 //   name: z.string(),
 // })
 
-const doStuff = createServerFn({
-  path: '/api/do-stuff/$stuffId',
-  method: 'GET',
-  middleware: [workspaceMiddleware],
-  // validator: personSchema,
-  fn: ({ payload, search, context }) => {
-    // context.user
-    // context.workspace
-    // params.stuffId
-    // ...
-  },
-})
+// const doStuff = createServerFn({
+//   method: 'GET',
+//   validator: personSchema,
+//   fn: (person) => {
+//     // ...
+//   },
+// })
 
-doStuff()
+// doStuff({
+//   name: 'Bob',
+// })
+
+// // What if we need to access externally via REST?
+
+// const personSchema = z.object({
+//   name: z.string(),
+// })
+
+// const doStuff = createServerFn({
+//   method: 'GET',
+//   validator: personSchema,
+//   fn: (person) => {
+//     // ...
+//   },
+// })
+
+// fetch({
+//   url: '/api/person',
+//   searchParams: {
+//     name: 'Bob',
+//   },
+//   method: 'GET',
+// })
+
+// // Middleware?
+
+// export const apiServerFn = createServerFn({
+//   before: async () => {
+//     // authenticate the user
+//     const user = await authUser()
+
+//     return {
+//       context: {
+//         user,
+//       },
+//     }
+//   },
+// })
+
+// const doStuff = createServerFn({
+//   method: 'GET',
+//   fn: ({ context }) => {
+//     console.log(context.user)
+//     // ...
+//   },
+// })
+
+// // Composed Middleware?
+
+// const apiMiddleware = createServerFn({
+//   before: async () => {
+//     // authenticate the user
+//     const user = await authUser()
+
+//     return {
+//       context: {
+//         user,
+//       },
+//     }
+//   },
+// })
+
+// const doStuff = createServerFn({
+//   middleware: [apiMiddleware],
+//   fn: ({ context }) => {
+//     console.log(context.user)
+//     // ...
+//   },
+// })
+
+// // Nested Middleware?
+// // I'm not sure I like this API yet, but we should attempt to remove ambiguity
+// // in the order of global middleware
+
+// export const zodValidatorMiddleware = registerServerMiddleware([
+//   // Customize the validator implementation
+//   {
+//     defaultValidatorFn: zodValidator,
+//   },
+//   // Add the sentry middleware
+//   {
+//     before: sentryServerStartMiddleware,
+//   },
+// ])
+
+// // middleware/auth.ts
+
+// export const authMiddleware = createServerMiddleware({
+//   id: 'auth',
+//   before: async ({ context }) => {
+//     const user = await getUser()
+
+//     // Provide a user to the context
+//     return {
+//       context: {
+//         user,
+//       },
+//     }
+//   },
+// })
+
+// export const workspaceMiddleware = createServerMiddleware({
+//   id: 'workspace',
+//   dependencies: ['auth'],
+//   before: async ({ context }) => {
+//     const workspace = await getWorkspace(context.user.id)
+
+//     // Provide a workspace to the context
+//     return {
+//       context: {
+//         workspace,
+//       },
+//     }
+//   },
+//   after: ({ context }) => {
+//     // If things were successful, log the workspace
+//     console.log(context.workspace)
+//   },
+//   clientBefore: () => {
+//     setHeader('x-workspace-id', context.workspace.id)
+//   },
+// })
+
+// const personSchema = z.object({
+//   name: z.string(),
+// })
+
+// const doStuff = createServerFn({
+//   dependencies: ['workspace'],
+//   validator: personSchema,
+//   fn: ({ payload, context }) => {
+//     console.log(context.user)
+//     console.log(context.workspace)
+//     console.log(payload.name)
+//   },
+//   method: 'GET',
+//   requestHeaders: {
+//     'x-custom-header': 'value',
+//   },
+// })
+
+// // In your app:
+// doStuff({
+//   name: 'Bob',
+// })

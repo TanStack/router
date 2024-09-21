@@ -1,23 +1,32 @@
 import { createServerFn as serverFn } from '@tanstack/start';
 import { z } from 'zod';
-export const withUseServer = serverFn('GET', async function () {
-  "use server";
+export const withUseServer = serverFn({
+  method: 'GET',
+  fn: async function () {
+    "use server";
 
-  console.info('Fetching posts...');
-  await new Promise(r => setTimeout(r, 500));
-  return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
+    console.info('Fetching posts...');
+    await new Promise(r => setTimeout(r, 500));
+    return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
+  }
 });
-export const withoutUseServer = serverFn('GET', async () => {
-  "use server";
+export const withoutUseServer = serverFn({
+  method: 'GET',
+  fn: async () => {
+    "use server";
 
-  console.info('Fetching posts...');
-  await new Promise(r => setTimeout(r, 500));
-  return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
+    console.info('Fetching posts...');
+    await new Promise(r => setTimeout(r, 500));
+    return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
+  }
 });
-export const withVariable = serverFn('GET', (...args: Parameters<Parameters<typeof serverFn>[1]>) => {
-  "use server";
+export const withVariable = serverFn({
+  method: 'GET',
+  fn: (...args) => {
+    "use server";
 
-  return abstractedFunction.apply(this, args);
+    return abstractedFunction.apply(this, args);
+  }
 });
 async function abstractedFunction() {
   console.info('Fetching posts...');
@@ -29,12 +38,15 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
     return fn(schema.parse(input));
   };
 }
-export const withZodValidator = serverFn('GET', (...args: Parameters<Parameters<typeof serverFn>[1]>) => {
-  "use server";
+export const withZodValidator = serverFn({
+  method: 'GET',
+  fn: (...args) => {
+    "use server";
 
-  return zodValidator(z.number(), input => {
-    return {
-      'you gave': input
-    };
-  }).apply(this, args);
+    return zodValidator(z.number(), input => {
+      return {
+        'you gave': input
+      };
+    }).apply(this, args);
+  }
 });

@@ -8,6 +8,10 @@ export function TanStackStartVite(): Array<Plugin> {
   return [TanStackStartViteCreateServerFn()]
 }
 
+const shouldCompile = (code: string) => {
+  return /(createServerFn|createServerMiddleware)/.test(code)
+}
+
 export function TanStackStartViteCreateServerFn(): Plugin {
   let ROOT: string = process.cwd()
 
@@ -22,7 +26,7 @@ export function TanStackStartViteCreateServerFn(): Plugin {
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (code.includes('createServerFn')) {
+      if (shouldCompile(code)) {
         if (code.includes('@react-refresh')) {
           throw new Error(
             `We detected that the '@vitejs/plugin-react' was passed before '@tanstack/start-vite-plugin'. Please make sure that '@tanstack/router-vite-plugin' is passed before '@vitejs/plugin-react' and try again: 

@@ -1,18 +1,8 @@
-import * as TanStackStart from '@tanstack/start';
+import { createServerMiddleware } from '@tanstack/start';
 import { z } from 'zod';
-export const withUseServer = TanStackStart.createServerFn({
-  method: 'GET',
-  fn: async function () {
-    'use server';
-
-    console.info('Fetching posts...');
-    await new Promise(r => setTimeout(r, 500));
-    return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
-  }
-});
-export const withoutUseServer = TanStackStart.createServerFn({
-  method: 'GET',
-  fn: async () => {
+export const withUseServer = createServerMiddleware({
+  id: 'test',
+  before: async function () {
     "use server";
 
     console.info('Fetching posts...');
@@ -20,9 +10,19 @@ export const withoutUseServer = TanStackStart.createServerFn({
     return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
   }
 });
-export const withVariable = TanStackStart.createServerFn({
-  method: 'GET',
-  fn: (...args) => {
+export const withoutUseServer = createServerMiddleware({
+  id: 'test',
+  after: async () => {
+    "use server";
+
+    console.info('Fetching posts...');
+    await new Promise(r => setTimeout(r, 500));
+    return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
+  }
+});
+export const withVariable = createServerMiddleware({
+  id: 'test',
+  before: (...args) => {
     "use server";
 
     return abstractedFunction.apply(this, args);
@@ -38,9 +38,9 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
     return fn(schema.parse(input));
   };
 }
-export const withZodValidator = TanStackStart.createServerFn({
-  method: 'GET',
-  fn: (...args) => {
+export const withZodValidator = createServerMiddleware({
+  id: 'test',
+  before: (...args) => {
     "use server";
 
     return zodValidator(z.number(), input => {
