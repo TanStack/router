@@ -7,8 +7,6 @@
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
-    "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
-    "format": "prettier --write '**/*' --ignore-unknown",
     "prisma-generate": "prisma generate",
     "test:e2e": "pnpm run prisma-generate && playwright test --project=chromium"
   },

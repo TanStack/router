@@ -6,9 +6,7 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
-    "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
-    "format": "prettier --write '**/*' --ignore-unknown"
+    "start": "vinxi start"
   },
   "dependencies": {
     "@babel/plugin-syntax-typescript": "^7.25.4",

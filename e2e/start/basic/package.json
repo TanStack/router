@@ -7,8 +7,6 @@
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
-    "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
-    "format": "prettier --write '**/*' --ignore-unknown",
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
