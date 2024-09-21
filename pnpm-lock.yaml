@@ -1689,15 +1689,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
-      isbot:
-        specifier: ^5.1.17
-        version: 5.1.17
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1732,18 +1726,12 @@ importers:
       postcss:
         specifier: ^8.4.47
         version: 8.4.47
-      prettier:
-        specifier: ^3.3.3
-        version: 3.3.3
       tailwindcss:
         specifier: ^3.4.11
         version: 3.4.11
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
-      vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -1759,18 +1747,12 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
       dotenv:
         specifier: ^16.4.5
         version: 16.4.5
-      isbot:
-        specifier: ^5.1.17
-        version: 5.1.17
       prisma:
         specifier: ^5.19.1
         version: 5.19.1
@@ -1811,58 +1793,15 @@ importers:
       postcss:
         specifier: ^8.4.47
         version: 8.4.47
-      prettier:
-        specifier: ^3.3.3
-        version: 3.3.3
       tailwindcss:
         specifier: ^3.4.11
         version: 3.4.11
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
-      vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
-
-  examples/react/start-basic-counter:
-    dependencies:
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../../../packages/react-router
-      '@tanstack/start':
-        specifier: workspace:*
-        version: link:../../../packages/start
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
-    devDependencies:
-      '@types/node':
-        specifier: ^22.5.4
-        version: 22.5.4
-      '@types/react':
-        specifier: ^18.2.65
-        version: 18.3.5
-      '@types/react-dom':
-        specifier: ^18.2.21
-        version: 18.3.0
-      prettier:
-        specifier: ^3.3.3
-        version: 3.3.3
-      typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
-      vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/start-basic-react-query:
     dependencies:
@@ -1881,15 +1820,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
-      isbot:
-        specifier: ^5.1.17
-        version: 5.1.17
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1924,18 +1857,12 @@ importers:
       postcss:
         specifier: ^8.4.47
         version: 8.4.47
-      prettier:
-        specifier: ^3.3.3
-        version: 3.3.3
       tailwindcss:
         specifier: ^3.4.11
         version: 3.4.11
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
-      vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -1951,9 +1878,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -1982,18 +1906,12 @@ importers:
       postcss:
         specifier: ^8.4.47
         version: 8.4.47
-      prettier:
-        specifier: ^3.3.3
-        version: 3.3.3
       tailwindcss:
         specifier: ^3.4.11
         version: 3.4.11
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
-      vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -2009,18 +1927,12 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
       dotenv:
         specifier: ^16.4.5
         version: 16.4.5
-      isbot:
-        specifier: ^5.1.17
-        version: 5.1.17
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2058,18 +1970,12 @@ importers:
       postcss:
         specifier: ^8.4.47
         version: 8.4.47
-      prettier:
-        specifier: ^3.3.3
-        version: 3.3.3
       tailwindcss:
         specifier: ^3.4.11
         version: 3.4.11
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
-      vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -2094,9 +2000,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -2106,9 +2009,6 @@ importers:
       convex:
         specifier: ^1.16.0
         version: 1.16.0(@clerk/clerk-react@5.8.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      isbot:
-        specifier: ^5.1.17
-        version: 5.1.17
       ky:
         specifier: ^1.7.2
         version: 1.7.2
@@ -2155,21 +2055,46 @@ importers:
       postcss:
         specifier: ^8.4.47
         version: 8.4.47
-      prettier:
-        specifier: ^3.3.3
-        version: 3.3.3
       tailwindcss:
         specifier: ^3.4.11
         version: 3.4.11
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
-      vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+
+  examples/react/start-counter:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      vinxi:
+        specifier: 0.4.3
+        version: 0.4.3(@opentelemetry/api@1.8.0)(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.5.4
+        version: 22.5.4
+      '@types/react':
+        specifier: ^18.2.65
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.21
+        version: 18.3.0
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.2
 
   examples/react/start-supabase-basic:
     dependencies:
@@ -2185,9 +2110,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
@@ -2240,15 +2162,9 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/start':
         specifier: workspace:*
         version: link:../../../packages/start
-      isbot:
-        specifier: ^5.1.17
-        version: 5.1.17
       ky:
         specifier: ^1.7.2
         version: 1.7.2
@@ -2295,18 +2211,12 @@ importers:
       postcss:
         specifier: ^8.4.47
         version: 8.4.47
-      prettier:
-        specifier: ^3.3.3
-        version: 3.3.3
       tailwindcss:
         specifier: ^3.4.11
         version: 3.4.11
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
-      vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
