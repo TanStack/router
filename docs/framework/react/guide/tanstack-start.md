@@ -17,7 +17,7 @@ Follow this guide to build a basic TanStack Start web application. Together, we 
 - Which displays a counter...
 - With a button to increment the counter persistently.
 
-[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-basic-counter)
+[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-counter)
 
 Create a new project if you're starting fresh.
 
