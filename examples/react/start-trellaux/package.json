@@ -6,9 +6,7 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
-    "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
-    "format": "prettier --write '**/*' --ignore-unknown"
+    "start": "vinxi start"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.56.2",
@@ -16,9 +14,7 @@
     "@tanstack/react-router": "^1.58.3",
     "@tanstack/react-router-with-query": "^1.58.3",
     "@tanstack/router-devtools": "^1.58.3",
-    "@tanstack/router-plugin": "^1.58.4",
     "@tanstack/start": "^1.58.5",
-    "isbot": "^5.1.17",
     "ky": "^1.7.2",
     "msw": "^2.4.7",
     "react": "^18.3.1",
@@ -36,10 +32,8 @@
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
-    "prettier": "^3.3.3",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.6.2",
-    "vite": "^5.4.5",
     "vite-tsconfig-paths": "^5.0.1"
   }
 }
