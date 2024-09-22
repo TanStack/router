@@ -30,7 +30,7 @@ export const NavigationLink = createLink(
 
 > React.forwardRef wil not be required in React 19 -->
 
-To can then use your newly created `Link` component as any other `Link`
+You can then use your newly created `Link` component as any other `Link`
 
 ```tsx
 <NavigationLink
@@ -60,7 +60,7 @@ const ButtonLink = createLink(
 
 `createLink` will infer types from the component passed to `createLink` and create a new `Link` component with TanStack Router's type parameters necessary for type safety and the additional props from `Button`
 
-`ButtonLink` can then be used with both with types from both
+`ButtonLink` can then be used with props from both
 
 ```tsx
 <ButtonLink to="/about" variant="outlined" />
