@@ -819,9 +819,9 @@ export function useLinkProps<
   }
 
   return {
+    ...rest,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
-    ...rest,
     href: disabled
       ? undefined
       : next.maskedLocation
