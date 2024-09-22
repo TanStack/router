@@ -412,7 +412,7 @@ export type IsRequired<
   TTo,
 > =
   ResolveRelativePath<TFrom, TTo> extends infer TPath
-    ? string extends TPath
+    ? undefined extends TPath
       ? never
       : TPath extends CatchAllPaths<TrailingSlashOptionByRouter<TRouter>>
         ? never
