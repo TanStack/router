@@ -1,0 +1,1 @@
+export const result = {"type":"createLazyFileRoute","routePath":"/foo"}

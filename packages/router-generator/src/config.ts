@@ -3,6 +3,17 @@ import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
+const scaffoldingParamsSchema = z.object({
+  routePath: z.string(),
+  filePath: z.string(),
+  type: z.union([
+    z.literal('createRootRoute'),
+    z.literal('createFileRoute'),
+    z.literal('createLazyFileRoute'),
+    z.literal('createAPIFileRoute'),
+  ]),
+})
+
 export const configSchema = z.object({
   virtualRouteConfig: virtualRootRouteSchema.optional(),
   routeFilePrefix: z.string().optional(),
@@ -37,6 +48,11 @@ export const configSchema = z.object({
     .object({
       // TODO: Remove this option in the next major release (v2).
       enableCodeSplitting: z.boolean().optional(),
+      customScaffolding: z
+        .function()
+        .args(scaffoldingParamsSchema)
+        .returns(z.union([z.promise(z.void()), z.void()]))
+        .optional(),
     })
     .optional(),
 })
