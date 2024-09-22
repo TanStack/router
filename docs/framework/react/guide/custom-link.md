@@ -28,7 +28,7 @@ export const NavigationLink = createLink(
 )
 ```
 
-> React.forwardRef wil not be required in React 19 -->
+> React.forwardRef will not be required in React 19 -->
 
 You can then use your newly created `Link` component as any other `Link`
 
