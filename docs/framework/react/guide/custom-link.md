@@ -46,6 +46,9 @@ You can then use your newly created `Link` component as any other `Link`
 You might want to use third party component libraries with TanStack Router. For example to use `Button` from MUI you can use `createLink` which infers the types from both `Button` and `Link` while keeping type parameters necessary for TanStack Router's type safety
 
 ```tsx
+import { createLink, Link } from '@tanstack/react-router'
+import { Button } from '@mui/material'
+
 const ButtonLink = createLink(
   React.forwardRef(
     (
