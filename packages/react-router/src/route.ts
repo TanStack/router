@@ -750,37 +750,21 @@ export type RouteConstraints = {
   TRouteTree: AnyRoute
 }
 
+export type RouteTypesById<
+  TRouter extends RegisteredRouter,
+  TId extends RouteIds<TRouter['routeTree']>,
+> = RouteById<TRouter['routeTree'], TId>['types']
+
 export function getRouteApi<
-  TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRouter extends AnyRouter = RegisteredRouter,
-  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
-  TFullSearchSchema = TRoute['types']['fullSearchSchema'],
-  TAllParams = TRoute['types']['allParams'],
-  TAllContext = TRoute['types']['allContext'],
-  TLoaderDeps = TRoute['types']['loaderDeps'],
-  TLoaderData = TRoute['types']['loaderData'],
+  TRouter extends RegisteredRouter,
+  TId extends RouteIds<TRouter['routeTree']>,
 >(id: TId) {
-  return new RouteApi<
-    TId,
-    TRouter,
-    TRoute,
-    TFullSearchSchema,
-    TAllParams,
-    TAllContext,
-    TLoaderDeps,
-    TLoaderData
-  >({ id })
+  return new RouteApi<TRouter, TId>({ id })
 }
 
 export class RouteApi<
-  TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRouter extends AnyRouter = RegisteredRouter,
-  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
-  TFullSearchSchema = TRoute['types']['fullSearchSchema'],
-  TAllParams = TRoute['types']['allParams'],
-  TAllContext = TRoute['types']['allContext'],
-  TLoaderDeps = TRoute['types']['loaderDeps'],
-  TLoaderData = TRoute['types']['loaderData'],
+  TRouter extends RegisteredRouter,
+  TId extends RouteIds<TRouter['routeTree']>,
 > {
   id: TId
 
@@ -801,8 +785,12 @@ export class RouteApi<
     return useMatch({ select: opts?.select, from: this.id })
   }
 
-  useRouteContext = <TSelected = Expand<TAllContext>>(opts?: {
-    select?: (s: Expand<TAllContext>) => TSelected
+  useRouteContext = <
+    TSelected = Expand<RouteTypesById<TRouter, TId>['allContext']>,
+  >(opts?: {
+    select?: (
+      s: Expand<RouteTypesById<TRouter, TId>['allContext']>,
+    ) => TSelected
   }): TSelected => {
     return useMatch({
       from: this.id,
@@ -810,32 +798,44 @@ export class RouteApi<
     })
   }
 
-  useSearch = <TSelected = Expand<TFullSearchSchema>>(opts?: {
-    select?: (s: Expand<TFullSearchSchema>) => TSelected
+  useSearch = <
+    TSelected = Expand<RouteTypesById<TRouter, TId>['fullSearchSchema']>,
+  >(opts?: {
+    select?: (
+      s: Expand<RouteTypesById<TRouter, TId>['fullSearchSchema']>,
+    ) => TSelected
   }): TSelected => {
     return useSearch({ ...opts, from: this.id })
   }
 
-  useParams = <TSelected = Expand<TAllParams>>(opts?: {
-    select?: (s: Expand<TAllParams>) => TSelected
+  useParams = <
+    TSelected = Expand<RouteTypesById<TRouter, TId>['allParams']>,
+  >(opts?: {
+    select?: (s: Expand<RouteTypesById<TRouter, TId>['allParams']>) => TSelected
   }): TSelected => {
     return useParams({ ...opts, from: this.id })
   }
 
-  useLoaderDeps = <TSelected = TLoaderDeps>(opts?: {
-    select?: (s: TLoaderDeps) => TSelected
+  useLoaderDeps = <
+    TSelected = RouteTypesById<TRouter, TId>['loaderDeps'],
+  >(opts?: {
+    select?: (s: RouteTypesById<TRouter, TId>['loaderDeps']) => TSelected
   }): TSelected => {
     return useLoaderDeps({ ...opts, from: this.id, strict: false } as any)
   }
 
-  useLoaderData = <TSelected = TLoaderData>(opts?: {
-    select?: (s: TLoaderData) => TSelected
+  useLoaderData = <
+    TSelected = RouteTypesById<TRouter, TId>['loaderData'],
+  >(opts?: {
+    select?: (s: RouteTypesById<TRouter, TId>['loaderData']) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
   }
 
-  useNavigate = (): UseNavigateResult<TRoute['fullPath']> => {
-    return useNavigate({ from: this.id })
+  useNavigate = (): UseNavigateResult<
+    RouteTypesById<TRouter, TId>['fullPath']
+  > => {
+    return useNavigate({ from: this.id as string })
   }
 
   notFound = (opts?: NotFoundError) => {

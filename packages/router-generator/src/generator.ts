@@ -12,6 +12,7 @@ import {
   replaceBackslash,
   routePathToVariable,
   trimPathLeft,
+  writeIfDifferent,
 } from './utils'
 import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
@@ -79,8 +80,13 @@ export async function generator(config: Config) {
 
   const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult
   if (rootRouteNode === undefined) {
-    throw new Error(`rootRouteNode must not be undefined`)
+    let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
+    if (!config.virtualRouteConfig) {
+      errorMessage += `\nMake sure that you add a "${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${config.routesDirectory}/${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}"`
+    }
+    throw new Error(errorMessage)
   }
+
   const preRouteNodes = multiSortBy(beforeRouteNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
     (d) => d.routePath?.split('/').length,
@@ -226,10 +232,17 @@ export const Route = createRootRoute({
           )
       }
 
-      if (replaced !== routeCode) {
-        logger.log(`🟡 Updating ${node.fullPath}`)
-        await fsp.writeFile(node.fullPath, replaced)
-      }
+      await writeIfDifferent(
+        node.fullPath,
+        prettierOptions,
+        routeCode,
+        replaced,
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Updating ${node.fullPath}`)
+          },
+        },
+      )
     }
 
     if (
@@ -361,18 +374,20 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         await prettier.format(replaced, prettierOptions),
       )
     } else {
-      const copied = routeCode.replace(
-        /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-        (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
+      await writeIfDifferent(
+        node.fullPath,
+        prettierOptions,
+        routeCode,
+        routeCode.replace(
+          /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+          (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
+        ),
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Updating ${node.fullPath}`)
+          },
+        },
       )
-
-      if (copied !== routeCode) {
-        logger.log(`🟡 Updating ${node.fullPath}`)
-        await fsp.writeFile(
-          node.fullPath,
-          await prettier.format(copied, prettierOptions),
-        )
-      }
     }
   }
 
@@ -673,18 +688,15 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     )
   }
 
-  const routeConfigFileContent = await prettier.format(
-    config.disableManifestGeneration
-      ? routeImports
-      : [
-          routeImports,
-          '\n',
-          '/* ROUTE_MANIFEST_START',
-          createRouteManifest(),
-          'ROUTE_MANIFEST_END */',
-        ].join('\n'),
-    prettierOptions,
-  )
+  const routeConfigFileContent = config.disableManifestGeneration
+    ? routeImports
+    : [
+        routeImports,
+        '\n',
+        '/* ROUTE_MANIFEST_START',
+        createRouteManifest(),
+        'ROUTE_MANIFEST_END */',
+      ].join('\n')
 
   if (!checkLatest()) return
 
@@ -708,12 +720,19 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   if (!checkLatest()) return
 
   // Write the route tree file, if it has changed
-  if (existingRouteTreeContent !== routeConfigFileContent) {
-    await fsp.writeFile(
-      path.resolve(config.generatedRouteTree),
-      routeConfigFileContent,
-    )
-    if (!checkLatest()) return
+  const routeTreeWriteResult = await writeIfDifferent(
+    path.resolve(config.generatedRouteTree),
+    prettierOptions,
+    existingRouteTreeContent,
+    routeConfigFileContent,
+    {
+      beforeWrite: () => {
+        logger.log(`🟡 Updating ${config.generatedRouteTree}`)
+      },
+    },
+  )
+  if (routeTreeWriteResult && !checkLatest()) {
+    return
   }
 
   logger.log(

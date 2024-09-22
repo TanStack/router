@@ -1,45 +1,35 @@
 {
-  "name": "tanstack-router-example-react-start-clerk-basic",
+  "name": "tanstack-start-example-clerk-basic",
   "private": true,
   "sideEffects": false,
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
-    "lint": "prettier --check '**/*' --ignore-unknown && eslint --ext .ts,.tsx ./app",
-    "format": "prettier --write '**/*' --ignore-unknown",
-    "test:e2e": "exit 0; playwright test --project=chromium"
+    "start": "vinxi start"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.3.5",
-    "@tanstack/react-router": "^1.57.9",
-    "@tanstack/router-devtools": "^1.57.9",
-    "@tanstack/router-plugin": "^1.57.9",
-    "@tanstack/start": "^1.57.9",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@clerk/tanstack-start": "0.4.1",
+    "@tanstack/react-router": "^1.58.3",
+    "@tanstack/router-devtools": "^1.58.3",
+    "@tanstack/start": "^1.58.5",
     "dotenv": "^16.4.5",
-    "isbot": "^5.1.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "remix-auth-form": "^1.5.0",
     "tailwind-merge": "^2.5.2",
-    "vinxi": "0.4.2"
+    "vinxi": "0.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.46.1",
-    "@replayio/playwright": "^3.1.8",
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.39",
-    "prettier": "^3.3.3",
-    "tailwindcss": "^3.4.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.11",
     "typescript": "^5.6.2",
-    "vite": "^5.3.3",
     "vite-tsconfig-paths": "^5.0.1"
   }
 }

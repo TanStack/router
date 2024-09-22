@@ -1,4 +1,8 @@
-// qss has been slightly modified and inlined here for our use cases (and compression's sake). We've included it as a hard dependency for MIT license attribution.
+/**
+ * Program uses a modified version of the `qss` package:
+ * Copyright (c) Luke Edwards luke.edwards05@gmail.com, MIT License
+ * https://github.com/lukeed/qss/blob/master/license.md
+ */
 
 /**
  * Encodes an object into a query string.

@@ -119,7 +119,8 @@ export type SearchPaths<
   TSearchPath extends string,
   TPaths = ResolvePaths<TRouter, TSearchPath>,
   TPrefix extends string = `${RemoveTrailingSlashes<TSearchPath>}/`,
-> = TPaths extends `${TPrefix}${infer TRest}` ? TRest : never
+  TFilteredPaths = TPaths & `${TPrefix}${string}`,
+> = TFilteredPaths extends `${TPrefix}${infer TRest}` ? TRest : never
 
 export type SearchRelativePathAutoComplete<
   TRouter extends AnyRouter,

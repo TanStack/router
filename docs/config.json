@@ -218,6 +218,10 @@
             {
               "label": "Static Prerendering",
               "to": "framework/react/start/static-prerendering"
+            },
+            {
+              "label": "Path Aliases",
+              "to": "framework/react/start/path-aliases"
             }
           ]
         }
@@ -235,6 +239,19 @@
               "to": "framework/react/api/router"
             }
           ]
+        }
+      ]
+    },
+    {
+      "label": "ESLint",
+      "children": [
+        {
+          "label": "ESLint Plugin Router",
+          "to": "eslint/eslint-plugin-router"
+        },
+        {
+          "label": "Create Route Property Order",
+          "to": "eslint/create-route-property-order"
         }
       ]
     },

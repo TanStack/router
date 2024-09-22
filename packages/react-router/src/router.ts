@@ -306,7 +306,7 @@ export interface RouterOptions<
    */
   notFoundMode?: 'root' | 'fuzzy'
   /**
-   * The default `gcTime` a route should use if no
+   * The default `gcTime` a route should use if no gcTime is provided.
    *
    * @default 1_800_000 `(30 minutes)`
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultgctime-property)
@@ -322,7 +322,6 @@ export interface RouterOptions<
    */
   caseSensitive?: boolean
   /**
-   * __Required*__
    *
    * The route tree that will be used to configure the router instance.
    *
@@ -532,6 +531,15 @@ export const componentTypes = [
   'pendingComponent',
   'notFoundComponent',
 ] as const
+
+function routeNeedsPreload(route: AnyRoute) {
+  for (const componentType of componentTypes) {
+    if ((route.options[componentType] as any)?.preload) {
+      return true
+    }
+  }
+  return false
+}
 
 export type RouterEvents = {
   onBeforeNavigate: {
@@ -1180,7 +1188,10 @@ export class Router<
         }
       } else {
         const status =
-          route.options.loader || route.options.beforeLoad || route.lazyFn
+          route.options.loader ||
+          route.options.beforeLoad ||
+          route.lazyFn ||
+          routeNeedsPreload(route)
             ? 'pending'
             : 'success'
 
@@ -1327,7 +1338,7 @@ export class Router<
         'Could not find match for from: ' + dest.from,
       )
 
-      const fromSearch = this.state.pendingMatches
+      const fromSearch = this.state.pendingMatches?.length
         ? last(this.state.pendingMatches)?.search
         : last(fromMatches)?.search || this.latestLocation.search
 
@@ -1615,7 +1626,7 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn = ({ to, __isRedirect, ...rest }) => {
+  navigate: NavigateFn = ({ to, ...rest }) => {
     // If this link simply reloads the current route,
     // make sure it has a new key so it will trigger a data refresh
 
@@ -1767,7 +1778,11 @@ export class Router<
           if (isResolvedRedirect(err)) {
             redirect = err
             if (!this.isServer) {
-              this.navigate({ ...err, replace: true, __isRedirect: true })
+              this.navigate({
+                ...err,
+                replace: true,
+                ignoreBlocker: true,
+              })
             }
           } else if (isNotFound(err)) {
             notFound = err
@@ -2260,11 +2275,6 @@ export class Router<
                             componentsPromise,
                           }))
 
-                          // Lazy option can modify the route options,
-                          // so we need to wait for it to resolve before
-                          // we can use the options
-                          await route._lazyPromise
-
                           // Kick off the loader!
                           let loaderData =
                             await route.options.loader?.(getLoaderContext())
@@ -2284,6 +2294,11 @@ export class Router<
                             this.getMatch(matchId)!,
                             loaderData,
                           )
+
+                          // Lazy option can modify the route options,
+                          // so we need to wait for it to resolve before
+                          // we can use the options
+                          await route._lazyPromise
 
                           await potentialPendingMinPromise()
 

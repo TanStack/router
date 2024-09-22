@@ -1,4 +1,3 @@
-/* eslint-disable @eslint-react/dom/no-dangerously-set-innerhtml */
 export function ScriptOnce({
   className,
   children,

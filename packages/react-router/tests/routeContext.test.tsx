@@ -2170,7 +2170,7 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
-        // eslint-disable-next-line ts/no-unnecessary-condition
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (context === undefined) {
           throw new Error('context is undefined')
         }

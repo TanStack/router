@@ -12,11 +12,6 @@ export const devDependencies = [
   '@rsbuild/plugin-react',
 ] as const satisfies Array<PeerDependency>
 
-export const overrides = {
-  '@tanstack/router-plugin': {
-    '@rsbuild/core': '$@rsbuild/core',
-  },
-}
 export async function apply({
   targetFolder,
 }: ApplyParams): Promise<BundlerResult> {
@@ -28,6 +23,5 @@ export async function apply({
   return {
     scripts,
     devDependencies,
-    overrides,
   }
 }
