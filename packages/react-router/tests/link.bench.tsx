@@ -2,7 +2,7 @@ import { render } from '@testing-library/react'
 import { bench, describe } from 'vitest'
 import {
   Link,
-  LinkProps,
+  type LinkProps,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
