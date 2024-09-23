@@ -2,6 +2,7 @@ import { render } from '@testing-library/react'
 import { bench, describe } from 'vitest'
 import {
   Link,
+  LinkProps,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -32,21 +33,23 @@ const createRouterRenderer =
     })
   }
 
-const InterpolatePathLink = ({ to, params, children }: LinkProps) => {
+const InterpolatePathLink = ({
+  to,
+  params,
+  children,
+}: React.PropsWithChildren<LinkProps>) => {
   const href = interpolatePath({ path: to, params })
   return <a href={href}>{children}</a>
 }
 
-const BuildLocationLink = ({ to, params, children }: LinkProps) => {
+const BuildLocationLink = ({
+  children,
+  ...props
+}: React.PropsWithChildren<LinkProps>) => {
   const router = useRouter()
-  const { href } = router.buildLocation({ to, params })
+  const { href } = router.buildLocation(props)
   return <a href={href}>{children}</a>
 }
-
-type LinkProps = React.PropsWithChildren<{
-  to: string
-  params: Record<string, string | number>
-}>
 
 describe.each([
   {
@@ -124,7 +127,7 @@ describe.each([
   )
 
   bench(
-    'link component',
+    'link to absolute path',
     () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
@@ -133,6 +136,41 @@ describe.each([
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
+            {i}
+          </Link>
+        )),
+      )
+      render(<RouterProvider router={router} />)
+    },
+    { warmupIterations: 1 },
+  )
+
+  bench(
+    'link to relative path',
+    () => {
+      const router = renderRouter(
+        Array.from({ length: numberOfLinks }).map((_, i) => (
+          <Link
+            key={i}
+            from="/"
+            to={`./params/$param${Math.min(i, matchedParamId)}`}
+            params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
+          >
+            {i}
+          </Link>
+        )),
+      )
+      render(<RouterProvider router={router} />)
+    },
+    { warmupIterations: 1 },
+  )
+
+  bench(
+    'link to current path',
+    () => {
+      const router = renderRouter(
+        Array.from({ length: numberOfLinks }).map((_, i) => (
+          <Link key={i} from="/" search={{ param: i }}>
             {i}
           </Link>
         )),
