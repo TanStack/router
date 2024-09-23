@@ -50,17 +50,23 @@ type LinkProps = React.PropsWithChildren<{
 
 describe.each([
   {
-    name: 'small router (1 route with params)',
+    name: 'small router',
     numberOfRoutes: 1,
     matchedParamId: 0, // range from 0 to numberOfRoutes-1
     numberOfLinks: 5000,
   },
   {
-    name: 'large router (1000 routes with params)',
+    name: 'medium router',
     numberOfRoutes: 1000,
     matchedParamId: 500, // range from 0 to numberOfRoutes-1
     numberOfLinks: 5000,
   },
+  // {
+  //   name: 'large router',
+  //   numberOfRoutes: 10000,
+  //   matchedParamId: 9999, // range from 0 to numberOfRoutes-1
+  //   numberOfLinks: 15000,
+  // },
 ])('$name', ({ numberOfRoutes, numberOfLinks, matchedParamId }) => {
   const renderRouter = createRouterRenderer(numberOfRoutes)
 
@@ -86,8 +92,8 @@ describe.each([
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <InterpolatePathLink
             key={i}
-            to={`/params/$param${matchedParamId}`}
-            params={{ [`param${matchedParamId}`]: i }}
+            to={`/params/$param${Math.min(i, matchedParamId)}`}
+            params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
             {i}
           </InterpolatePathLink>
@@ -105,8 +111,8 @@ describe.each([
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <BuildLocationLink
             key={i}
-            to={`/params/$param${matchedParamId}`}
-            params={{ [`param${matchedParamId}`]: i }}
+            to={`/params/$param${Math.min(i, matchedParamId)}`}
+            params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
             {i}
           </BuildLocationLink>
@@ -124,8 +130,8 @@ describe.each([
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <Link
             key={i}
-            to={`/params/$param${matchedParamId}`}
-            params={{ [`param${matchedParamId}`]: i }}
+            to={`/params/$param${Math.min(i, matchedParamId)}`}
+            params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
             {i}
           </Link>
