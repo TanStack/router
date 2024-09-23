@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, act } from '@testing-library/react'
 import { bench, describe } from 'vitest'
 import {
   createMemoryHistory,
@@ -7,25 +7,30 @@ import {
   createRouter,
   interpolatePath,
   Link,
-  RouterContextProvider,
+  RouterProvider,
   useRouter,
 } from '../src'
 
-const createTestRouter = (routesCount: number) => {
-  const rootRoute = createRootRoute()
-  const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
-  const paramRoutes = Array.from({ length: routesCount }).map((_, i) =>
-    createRoute({
-      getParentRoute: () => indexRoute,
-      path: `/params/$param${i}`,
-    }),
-  )
-  const routeTree = rootRoute.addChildren([indexRoute, ...paramRoutes])
-  return createRouter({
-    routeTree,
-    history: createMemoryHistory(),
-  })
-}
+const createRouterRenderer =
+  (routesCount: number) => (children: React.ReactNode) => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => children,
+    })
+    const paramRoutes = Array.from({ length: routesCount }).map((_, i) =>
+      createRoute({
+        getParentRoute: () => indexRoute,
+        path: `/params/$param${i}`,
+      }),
+    )
+    const routeTree = rootRoute.addChildren([indexRoute, ...paramRoutes])
+    return createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+  }
 
 const InterpolatePathLink = ({ to, params, children }: LinkProps) => {
   const href = interpolatePath({ path: to, params })
@@ -57,81 +62,77 @@ describe.each([
     numberOfLinks: 5000,
   },
 ])('$name', ({ numberOfRoutes, numberOfLinks, matchedParamId }) => {
-  const router = createTestRouter(numberOfRoutes)
+  const renderRouter = createRouterRenderer(numberOfRoutes)
 
   bench(
     'hardcoded href',
     () => {
-      render(
-        <RouterContextProvider router={router}>
-          {Array.from({ length: numberOfLinks }).map((_, i) => (
-            <a key={i} href={`/params/${i}`}>
-              {i}
-            </a>
-          ))}
-        </RouterContextProvider>,
+      const router = renderRouter(
+        Array.from({ length: numberOfLinks }).map((_, i) => (
+          <a key={i} href={`/params/${i}`}>
+            {i}
+          </a>
+        )),
       )
+      render(<RouterProvider router={router} />)
     },
-    { warmupIterations: 0 },
+    { warmupIterations: 1 },
   )
 
   bench(
     'interpolate path',
     () => {
-      render(
-        <RouterContextProvider router={router}>
-          {Array.from({ length: numberOfLinks }).map((_, i) => (
-            <InterpolatePathLink
-              key={i}
-              to={`/params/$param${matchedParamId}`}
-              params={{ [`param${matchedParamId}`]: i }}
-            >
-              {i}
-            </InterpolatePathLink>
-          ))}
-        </RouterContextProvider>,
+      const router = renderRouter(
+        Array.from({ length: numberOfLinks }).map((_, i) => (
+          <InterpolatePathLink
+            key={i}
+            to={`/params/$param${matchedParamId}`}
+            params={{ [`param${matchedParamId}`]: i }}
+          >
+            {i}
+          </InterpolatePathLink>
+        )),
       )
+      render(<RouterProvider router={router} />)
     },
-    { warmupIterations: 0 },
+    { warmupIterations: 1 },
   )
 
   bench(
     'build location',
     () => {
-      render(
-        <RouterContextProvider router={router}>
-          {Array.from({ length: numberOfLinks }).map((_, i) => (
-            <BuildLocationLink
-              key={i}
-              to={`/params/$param${matchedParamId}`}
-              params={{ [`param${matchedParamId}`]: i }}
-            >
-              {i}
-            </BuildLocationLink>
-          ))}
-        </RouterContextProvider>,
+      const router = renderRouter(
+        Array.from({ length: numberOfLinks }).map((_, i) => (
+          <BuildLocationLink
+            key={i}
+            to={`/params/$param${matchedParamId}`}
+            params={{ [`param${matchedParamId}`]: i }}
+          >
+            {i}
+          </BuildLocationLink>
+        )),
       )
+      render(<RouterProvider router={router} />)
     },
-    { warmupIterations: 0 },
+    { warmupIterations: 1 },
   )
 
   bench(
     'link component',
     () => {
-      render(
-        <RouterContextProvider router={router}>
-          {Array.from({ length: numberOfLinks }).map((_, i) => (
-            <Link
-              key={i}
-              to={`/params/$param${matchedParamId}`}
-              params={{ [`param${matchedParamId}`]: i }}
-            >
-              {i}
-            </Link>
-          ))}
-        </RouterContextProvider>,
+      const router = renderRouter(
+        Array.from({ length: numberOfLinks }).map((_, i) => (
+          <Link
+            key={i}
+            to={`/params/$param${matchedParamId}`}
+            params={{ [`param${matchedParamId}`]: i }}
+          >
+            {i}
+          </Link>
+        )),
       )
+      render(<RouterProvider router={router} />)
     },
-    { warmupIterations: 0 },
+    { warmupIterations: 1 },
   )
 })
