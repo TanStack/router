@@ -31,7 +31,7 @@ Vercel is a leading hosting platform that provides a fast, secure, and reliable 
 > [!WARNING]
 > The page is still a work in progress. We'll keep updating this page with guides on deployment to different hosting providers soon!
 
-When a TanStack Start application is being deployed, the `deployment.preset` value in the `app.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
+When a TanStack Start application is being deployed, the `server.preset` value in the `app.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
 
 - [`vercel`](#vercel): Deploy to Vercel
 - [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
@@ -44,14 +44,14 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 
 ### Vercel
 
-Deploying your TanStack Start application to Vercel is easy and straightforward. Just set the `deployment.preset` value to `vercel` in your `app.config.ts` file, and you're ready to deploy your application to Vercel.
+Deploying your TanStack Start application to Vercel is easy and straightforward. Just set the `server.preset` value to `vercel` in your `app.config.ts` file, and you're ready to deploy your application to Vercel.
 
 ```ts
 // app.config.ts
 import { defineConfig } from '@tanstack/start/config'
 
 export default defineConfig({
-  deployment: {
+  server: {
     preset: 'vercel',
   },
 })
@@ -67,14 +67,14 @@ Deploy you application to Vercel using their one-click deployment process, and y
 
 ### Cloudflare Pages
 
-Set the `deployment.preset` value to `cloudflare-pages` in your `app.config.ts` file.
+Set the `server.preset` value to `cloudflare-pages` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
 import { defineConfig } from '@tanstack/start/config'
 
 export default defineConfig({
-  deployment: {
+  server: {
     preset: 'cloudflare-pages',
   },
 })
@@ -90,14 +90,14 @@ Deploy you application to Cloudflare Pages using their one-click deployment proc
 
 ### Netlify
 
-Set the `deployment.preset` value to `netlify` in your `app.config.ts` file.
+Set the `server.preset` value to `netlify` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
 import { defineConfig } from '@tanstack/start/config'
 
 export default defineConfig({
-  deployment: {
+  server: {
     preset: 'netlify',
   },
 })
@@ -113,14 +113,14 @@ Deploy you application to Netlify using their one-click deployment process, and 
 
 ### Node.js
 
-Set the `deployment.preset` value to `node-server` in your `app.config.ts` file.
+Set the `server.preset` value to `node-server` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
 import { defineConfig } from '@tanstack/start/config'
 
 export default defineConfig({
-  deployment: {
+  server: {
     preset: 'node-server',
   },
 })
@@ -153,14 +153,14 @@ Make sure that your `react` and `react-dom` packages are set to version 19.0.0 o
 npm install react@rc react-dom@rc
 ```
 
-Set the `deployment.preset` value to `bun` in your `app.config.ts` file.
+Set the `server.preset` value to `bun` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
 import { defineConfig } from '@tanstack/start/config'
 
 export default defineConfig({
-  deployment: {
+  server: {
     preset: 'bun',
   },
 })

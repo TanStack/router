@@ -114,7 +114,7 @@ function checkDeploymentPresetInput(preset: string): DeploymentPreset {
   return preset
 }
 
-const deploymentSchema = z.object({
+const serverSchema = z.object({
   routeRules: z.custom<NitroOptions['routeRules']>().optional(),
   preset: z.custom<DeploymentPreset>().optional(),
   static: z.boolean().optional(),
@@ -185,7 +185,7 @@ const inlineConfigSchema = z.object({
   vite: viteSchema.optional(),
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
-  deployment: deploymentSchema.optional(),
+  server: serverSchema.optional(),
 })
 
 export type TanStackStartDefineConfigOptions = z.infer<
@@ -212,8 +212,8 @@ export function defineConfig(
 ) {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
-  const { preset: configDeploymentPreset, ...deploymentOptions } =
-    deploymentSchema.parse(opts.deployment || {})
+  const { preset: configDeploymentPreset, ...serverOptions } =
+    serverSchema.parse(opts.server || {})
 
   const deploymentPreset = checkDeploymentPresetInput(
     configDeploymentPreset || 'vercel',
@@ -233,8 +233,7 @@ export function defineConfig(
 
   return createApp({
     server: {
-      ...deploymentOptions,
-      static: deploymentOptions.static,
+      ...serverOptions,
       preset: deploymentPreset,
       experimental: {
         asyncContext: true,
