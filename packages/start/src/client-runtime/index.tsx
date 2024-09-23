@@ -1,6 +1,6 @@
 import { fetcher } from './fetcher'
 import { getBaseUrl } from './getBaseUrl'
-import type { FetchFn } from '../client'
+import type { FetchFn } from '../client/createServerFn'
 
 export function createServerReference<TPayload, TResponse>(
   _fn: FetchFn<TPayload, TResponse>,

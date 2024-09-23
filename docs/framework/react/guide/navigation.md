@@ -206,6 +206,7 @@ It's also common to want to update a single search param without supplying any o
 ```tsx
 const link = (
   <Link
+    to="."
     search={(prev) => ({
       ...prev,
       page: prev.page + 1,

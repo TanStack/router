@@ -1,10 +1,10 @@
 import { Readable, Writable } from 'node:stream'
 import { getEvent, getRequestHeaders } from 'vinxi/http'
-import { fetcher } from '../client-runtime'
+import { fetcher } from '../client-runtime/fetcher'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
-import { handleServerRequest } from '../server-handler'
+import { handleServerRequest } from '../server-handler/index'
 import type { WritableOptions } from 'node:stream'
-import type { FetchFn } from '../client'
+import type { FetchFn } from '../client/createServerFn'
 /**
  *
  * @returns {import('node:http').IncomingMessage}

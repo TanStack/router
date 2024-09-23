@@ -28,6 +28,74 @@ test('when creating a router without context', () => {
     }>()
 })
 
+test('when navigating using router', () => {
+  const rootRoute = createRootRoute()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts',
+    validateSearch: () => ({
+      page: 0,
+    }),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, postsRoute])
+
+  const router = createRouter({
+    routeTree,
+  })
+
+  expectTypeOf(router.navigate<typeof router, '/posts'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'/posts' | '/' | '.' | '..' | undefined>()
+
+  expectTypeOf(router.navigate<typeof router, '/posts'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<(...args: Array<any>) => any>()
+    .toEqualTypeOf<{ page: number }>()
+})
+
+test('when building location using router', () => {
+  const rootRoute = createRootRoute()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts',
+    validateSearch: () => ({
+      page: 0,
+    }),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, postsRoute])
+
+  const router = createRouter({
+    routeTree,
+  })
+
+  expectTypeOf(router.buildLocation<typeof router, '/posts'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'/posts' | '/' | '.' | '..' | undefined>()
+
+  expectTypeOf(router.buildLocation<typeof router, '/posts'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<(...args: Array<any>) => any>()
+    .toEqualTypeOf<{ page: number }>()
+})
+
 test('when creating a router with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 

@@ -3,7 +3,7 @@ import type { AnyRoute } from './route'
 import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
 import type { MakeRouteMatch } from './Matches'
-import type { Expand, StrictOrFrom } from './utils'
+import type { Constrain, Expand, StrictOrFrom } from './utils'
 
 export type UseSearchOptions<
   TFrom,
@@ -16,16 +16,23 @@ export type UseSearchOptions<
 
 export function useSearch<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
+  TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSearch = TStrict extends false
     ? FullSearchSchema<TRouteTree>
     : Expand<RouteById<TRouteTree, TFrom>['types']['fullSearchSchema']>,
   TSelected = TSearch,
->(opts: UseSearchOptions<TFrom, TStrict, TSearch, TSelected>): TSelected {
+>(
+  opts: UseSearchOptions<
+    Constrain<TFrom, RouteIds<TRouteTree>>,
+    TStrict,
+    TSearch,
+    TSelected
+  >,
+): TSelected {
   return useMatch({
     ...opts,
-    select: (match: MakeRouteMatch<TRouteTree, TFrom>) => {
+    select: (match) => {
       return opts.select ? opts.select(match.search) : match.search
     },
   })

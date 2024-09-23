@@ -11,7 +11,7 @@ import { rootRouteId } from './root'
 import type * as React from 'react'
 import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
-import type { MakeRouteMatch, RouteMatch } from './Matches'
+import type { MakeRouteMatch, MakeRouteMatchUnion, RouteMatch } from './Matches'
 import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
@@ -285,6 +285,7 @@ export interface ContextOptions<
   navigate: NavigateFn
   buildLocation: BuildLocationFn
   cause: 'preload' | 'enter' | 'stay'
+  matches: Array<MakeRouteMatchUnion>
 }
 
 export interface RouteContextOptions<
@@ -749,37 +750,21 @@ export type RouteConstraints = {
   TRouteTree: AnyRoute
 }
 
+export type RouteTypesById<
+  TRouter extends RegisteredRouter,
+  TId extends RouteIds<TRouter['routeTree']>,
+> = RouteById<TRouter['routeTree'], TId>['types']
+
 export function getRouteApi<
-  TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRouter extends AnyRouter = RegisteredRouter,
-  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
-  TFullSearchSchema = TRoute['types']['fullSearchSchema'],
-  TAllParams = TRoute['types']['allParams'],
-  TAllContext = TRoute['types']['allContext'],
-  TLoaderDeps = TRoute['types']['loaderDeps'],
-  TLoaderData = TRoute['types']['loaderData'],
+  TRouter extends RegisteredRouter,
+  TId extends RouteIds<TRouter['routeTree']>,
 >(id: TId) {
-  return new RouteApi<
-    TId,
-    TRouter,
-    TRoute,
-    TFullSearchSchema,
-    TAllParams,
-    TAllContext,
-    TLoaderDeps,
-    TLoaderData
-  >({ id })
+  return new RouteApi<TRouter, TId>({ id })
 }
 
 export class RouteApi<
-  TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRouter extends AnyRouter = RegisteredRouter,
-  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
-  TFullSearchSchema = TRoute['types']['fullSearchSchema'],
-  TAllParams = TRoute['types']['allParams'],
-  TAllContext = TRoute['types']['allContext'],
-  TLoaderDeps = TRoute['types']['loaderDeps'],
-  TLoaderData = TRoute['types']['loaderData'],
+  TRouter extends RegisteredRouter,
+  TId extends RouteIds<TRouter['routeTree']>,
 > {
   id: TId
 
@@ -800,8 +785,12 @@ export class RouteApi<
     return useMatch({ select: opts?.select, from: this.id })
   }
 
-  useRouteContext = <TSelected = Expand<TAllContext>>(opts?: {
-    select?: (s: Expand<TAllContext>) => TSelected
+  useRouteContext = <
+    TSelected = Expand<RouteTypesById<TRouter, TId>['allContext']>,
+  >(opts?: {
+    select?: (
+      s: Expand<RouteTypesById<TRouter, TId>['allContext']>,
+    ) => TSelected
   }): TSelected => {
     return useMatch({
       from: this.id,
@@ -809,32 +798,44 @@ export class RouteApi<
     })
   }
 
-  useSearch = <TSelected = Expand<TFullSearchSchema>>(opts?: {
-    select?: (s: Expand<TFullSearchSchema>) => TSelected
+  useSearch = <
+    TSelected = Expand<RouteTypesById<TRouter, TId>['fullSearchSchema']>,
+  >(opts?: {
+    select?: (
+      s: Expand<RouteTypesById<TRouter, TId>['fullSearchSchema']>,
+    ) => TSelected
   }): TSelected => {
     return useSearch({ ...opts, from: this.id })
   }
 
-  useParams = <TSelected = Expand<TAllParams>>(opts?: {
-    select?: (s: Expand<TAllParams>) => TSelected
+  useParams = <
+    TSelected = Expand<RouteTypesById<TRouter, TId>['allParams']>,
+  >(opts?: {
+    select?: (s: Expand<RouteTypesById<TRouter, TId>['allParams']>) => TSelected
   }): TSelected => {
     return useParams({ ...opts, from: this.id })
   }
 
-  useLoaderDeps = <TSelected = TLoaderDeps>(opts?: {
-    select?: (s: TLoaderDeps) => TSelected
+  useLoaderDeps = <
+    TSelected = RouteTypesById<TRouter, TId>['loaderDeps'],
+  >(opts?: {
+    select?: (s: RouteTypesById<TRouter, TId>['loaderDeps']) => TSelected
   }): TSelected => {
     return useLoaderDeps({ ...opts, from: this.id, strict: false } as any)
   }
 
-  useLoaderData = <TSelected = TLoaderData>(opts?: {
-    select?: (s: TLoaderData) => TSelected
+  useLoaderData = <
+    TSelected = RouteTypesById<TRouter, TId>['loaderData'],
+  >(opts?: {
+    select?: (s: RouteTypesById<TRouter, TId>['loaderData']) => TSelected
   }): TSelected => {
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
   }
 
-  useNavigate = (): UseNavigateResult<TRoute['fullPath']> => {
-    return useNavigate({ from: this.id })
+  useNavigate = (): UseNavigateResult<
+    RouteTypesById<TRouter, TId>['fullPath']
+  > => {
+    return useNavigate({ from: this.id as string })
   }
 
   notFound = (opts?: NotFoundError) => {
@@ -879,13 +880,45 @@ export class Route<
     TBeforeLoadFn
   >
 
-  // Set up in this.init()
+  // The following properties are set up in this.init()
   parentRoute!: TParentRoute
-  id!: TId
-  // customId!: TCustomId
-  path!: TPath
-  fullPath!: TFullPath
-  to!: TrimPathRight<TFullPath>
+  private _id!: TId
+  private _path!: TPath
+  private _fullPath!: TFullPath
+  private _to!: TrimPathRight<TFullPath>
+
+  public get to() {
+    /* invariant(
+      this._to,
+      `trying to access property 'to' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
+    )*/
+    return this._to
+  }
+
+  public get id() {
+    /* invariant(
+      this._id,
+      `trying to access property 'id' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
+    )*/
+    return this._id
+  }
+
+  public get path() {
+    /* invariant(
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      this.isRoot || this._id || this._path,
+      `trying to access property 'path' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
+    )*/
+    return this._path
+  }
+
+  public get fullPath() {
+    /* invariant(
+      this._fullPath,
+      `trying to access property 'fullPath' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
+    )*/
+    return this._fullPath
+  }
 
   // Optional
   children?: TChildren
@@ -981,7 +1014,7 @@ export class Route<
     this.parentRoute = this.options.getParentRoute?.()
 
     if (isRoot) {
-      this.path = rootRouteId as TPath
+      this._path = rootRouteId as TPath
     } else {
       invariant(
         this.parentRoute,
@@ -1017,11 +1050,11 @@ export class Route<
     const fullPath =
       id === rootRouteId ? '/' : joinPaths([this.parentRoute.fullPath, path])
 
-    this.path = path as TPath
-    this.id = id as TId
+    this._path = path as TPath
+    this._id = id as TId
     // this.customId = customId as TCustomId
-    this.fullPath = fullPath as TFullPath
-    this.to = fullPath as TrimPathRight<TFullPath>
+    this._fullPath = fullPath as TFullPath
+    this._to = fullPath as TrimPathRight<TFullPath>
   }
 
   addChildren<
@@ -1045,10 +1078,49 @@ export class Route<
     TLoaderFn,
     TNewChildren
   > {
-    this.children = (
-      Array.isArray(children) ? children : Object.values(children)
-    ) as any
-    return this as any
+    return this._addFileChildren(children)
+  }
+
+  _addFileChildren<const TNewChildren>(
+    children: TNewChildren,
+  ): Route<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TNewChildren
+  > {
+    if (Array.isArray(children)) {
+      this.children = children as TChildren
+    }
+
+    if (typeof children === 'object' && children !== null) {
+      this.children = Object.values(children) as TChildren
+    }
+
+    return this as unknown as Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TNewChildren
+    >
   }
 
   updateLoader = <TNewLoaderFn>(options: {
@@ -1303,9 +1375,10 @@ export class RootRoute<
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
-  TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderDeps extends Record<string, any> = {},
   in out TLoaderFn = undefined,
-  TChildren = unknown,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
 > extends Route<
   any, // TParentRoute
   '/', // TPath
@@ -1350,9 +1423,58 @@ export class RootRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TNewChildren
+    TNewChildren,
+    TFileRouteTypes
   > {
-    return super.addChildren(children)
+    super.addChildren(children)
+    return this as unknown as RootRoute<
+      TSearchValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TNewChildren,
+      TFileRouteTypes
+    >
+  }
+
+  _addFileChildren<const TNewChildren>(
+    children: TNewChildren,
+  ): RootRoute<
+    TSearchValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TNewChildren,
+    TFileRouteTypes
+  > {
+    super._addFileChildren(children)
+    return this as unknown as RootRoute<
+      TSearchValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TNewChildren,
+      TFileRouteTypes
+    >
+  }
+
+  _addFileTypes<TFileRouteTypes>(): RootRoute<
+    TSearchValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes
+  > {
+    return this as any
   }
 }
 
@@ -1433,7 +1555,7 @@ export type RouteMask<TRouteTree extends AnyRoute> = {
 
 export function createRouteMask<
   TRouteTree extends AnyRoute,
-  TFrom extends RoutePaths<TRouteTree>,
+  TFrom extends RoutePaths<TRouteTree> | string,
   TTo extends string,
 >(
   opts: {

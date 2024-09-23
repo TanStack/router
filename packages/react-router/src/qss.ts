@@ -1,4 +1,8 @@
-// qss has been slightly modified and inlined here for our use cases (and compression's sake). We've included it as a hard dependency for MIT license attribution.
+/**
+ * Program uses a modified version of the `qss` package:
+ * Copyright (c) Luke Edwards luke.edwards05@gmail.com, MIT License
+ * https://github.com/lukeed/qss/blob/master/license.md
+ */
 
 /**
  * Encodes an object into a query string.
@@ -68,6 +72,7 @@ export function decode(str: any, pfx?: string) {
     const equalIndex = tmp.indexOf('=')
     if (equalIndex !== -1) {
       k = tmp.slice(0, equalIndex)
+      k = decodeURIComponent(k)
       const value = tmp.slice(equalIndex + 1)
       if (out[k] !== void 0) {
         // @ts-expect-error
@@ -77,6 +82,7 @@ export function decode(str: any, pfx?: string) {
       }
     } else {
       k = tmp
+      k = decodeURIComponent(k)
       out[k] = ''
     }
   }

@@ -4,9 +4,10 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
-import { TanStackRouterVite, configSchema } from '@tanstack/router-plugin/vite'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { TanStackStartVite } from '@tanstack/start-vite-plugin'
 import {
+  configSchema,
   getConfig,
   startAPIRouteSegmentsFromTSRFilePath,
 } from '@tanstack/router-generator'
@@ -92,13 +93,6 @@ const testedDeploymentPresets: Array<DeploymentPreset> = [
   'vercel',
   'cloudflare-pages',
   'node-server',
-]
-const staticDeploymentPresets: Array<DeploymentPreset> = [
-  'cloudflare-pages-static',
-  'netlify-static',
-  'static',
-  'vercel-static',
-  'zeabur-static',
 ]
 
 function checkDeploymentPresetInput(preset: string): DeploymentPreset {
@@ -222,9 +216,6 @@ export function defineConfig(
   const deploymentPreset = checkDeploymentPresetInput(
     configDeploymentPreset || 'vercel',
   )
-  const isStaticDeployment =
-    deploymentOptions.static ??
-    staticDeploymentPresets.includes(deploymentPreset)
 
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
@@ -241,7 +232,7 @@ export function defineConfig(
   return createApp({
     server: {
       ...deploymentOptions,
-      static: isStaticDeployment,
+      static: deploymentOptions.static,
       preset: deploymentPreset,
       experimental: {
         asyncContext: true,
@@ -490,10 +481,7 @@ function tsrRoutesManifest(opts: {
         } catch (err) {
           console.error(err)
           throw new Error(
-            `Could not find the production client vite manifest at '${path.resolve(
-              config.build.outDir,
-              '../client/_build/.vite/manifest.json',
-            )}'!`,
+            `Could not find the production client vite manifest at '${clientViteManifestPath}'!`,
           )
         }
 
@@ -504,9 +492,7 @@ function tsrRoutesManifest(opts: {
           routeTreeContent = readFileSync(routeTreePath, 'utf-8')
         } catch (err) {
           throw new Error(
-            `Could not find the generated route tree at '${path.resolve(
-              opts.tsrConfig.generatedRouteTree,
-            )}'!`,
+            `Could not find the generated route tree at '${routeTreePath}'!`,
           )
         }
 
@@ -626,7 +612,10 @@ function tsrFileRouter(opts: {
       toPath(src: string): string {
         const inputPath = vinxiFsRouterCleanPath(src, this.config)
 
-        const segments = startAPIRouteSegmentsFromTSRFilePath(inputPath)
+        const segments = startAPIRouteSegmentsFromTSRFilePath(
+          inputPath,
+          opts.tsrConfig,
+        )
 
         const pathname = segments
           .map((part) => {

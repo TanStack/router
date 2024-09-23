@@ -18,7 +18,7 @@ function IndexComponent() {
     <div className="p-2">
       <h3>Welcome Home!</h3>
       <p>Data: {data.date.getDate()}</p>
-      <Await promise={data.deferred} fallback={'Loading...'}>
+      <Await promise={data.deferred} fallback="Loading...">
         {(data) => <p>Deferred: {data.date.getDate()}</p>}
       </Await>
     </div>

@@ -2,7 +2,7 @@ import { useMatch } from './useMatch'
 import type { AnyRoute } from './route'
 import type { AllParams, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
-import type { StrictOrFrom } from './utils'
+import type { Constrain, StrictOrFrom } from './utils'
 
 export type UseParamsOptions<
   TFrom,
@@ -15,13 +15,20 @@ export type UseParamsOptions<
 
 export function useParams<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
+  TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TParams = TStrict extends false
     ? AllParams<TRouteTree>
     : RouteById<TRouteTree, TFrom>['types']['allParams'],
   TSelected = TParams,
->(opts: UseParamsOptions<TFrom, TStrict, TParams, TSelected>): TSelected {
+>(
+  opts: UseParamsOptions<
+    Constrain<TFrom, RouteIds<TRouteTree>>,
+    TStrict,
+    TParams,
+    TSelected
+  >,
+): TSelected {
   return useMatch({
     ...opts,
     select: (match) => {

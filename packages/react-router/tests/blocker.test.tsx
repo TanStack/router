@@ -10,12 +10,14 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
   useBlocker,
   useNavigate,
 } from '../src'
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
+  vi.resetAllMocks()
   cleanup()
 })
 
@@ -29,15 +31,16 @@ async function setup({ condition, ignoreBlocker }: BlockerTestOpts) {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => {
+    component: function Setup() {
       const navigate = useNavigate()
       useBlocker({ condition, blockerFn })
       return (
         <React.Fragment>
           <h1>Index</h1>
           <Link to="/posts" ignoreBlocker={ignoreBlocker}>
-            link
+            link to posts
           </Link>
+          <Link to="/foo">link to foo</Link>
           <button onClick={() => navigate({ to: '/posts', ignoreBlocker })}>
             button
           </button>
@@ -56,20 +59,49 @@ async function setup({ condition, ignoreBlocker }: BlockerTestOpts) {
     ),
   })
 
+  const fooRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    beforeLoad: () => {
+      throw redirect({ to: '/bar' })
+    },
+    component: () => (
+      <React.Fragment>
+        <h1>Foo</h1>
+      </React.Fragment>
+    ),
+  })
+
+  const barRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/bar',
+    component: () => (
+      <React.Fragment>
+        <h1>Bar</h1>
+      </React.Fragment>
+    ),
+  })
+
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    routeTree: rootRoute.addChildren([
+      indexRoute,
+      postsRoute,
+      fooRoute,
+      barRoute,
+    ]),
   })
 
   render(<RouterProvider router={router} />)
   expect(window.location.pathname).toBe('/')
 
-  const link = await screen.findByRole('link', { name: 'link' })
+  const postsLink = await screen.findByRole('link', { name: 'link to posts' })
+  const fooLink = await screen.findByRole('link', { name: 'link to foo' })
   const button = await screen.findByRole('button', { name: 'button' })
 
-  return { router, clickable: { link, button }, blockerFn }
+  return { router, clickable: { postsLink, fooLink, button }, blockerFn }
 }
 
-const clickTarget = ['link' as const, 'button' as const]
+const clickTarget = ['postsLink' as const, 'button' as const]
 
 describe('Blocker', () => {
   const doesNotBlockTextMatrix = combinate({
@@ -115,4 +147,17 @@ describe('Blocker', () => {
       expect(blockerFn).toHaveBeenCalledOnce()
     },
   )
+
+  test('blocker function is only called once when navigating to a route that redirects', async () => {
+    const { clickable, blockerFn } = await setup({
+      condition: true,
+      ignoreBlocker: false,
+    })
+    blockerFn.mockImplementationOnce(() => true).mockImplementation(() => false)
+    fireEvent.click(clickable.fooLink)
+    expect(
+      await screen.findByRole('heading', { name: 'Bar' }),
+    ).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/bar')
+  })
 })

@@ -41,6 +41,10 @@ await publish({
       packageDir: 'packages/router-generator',
     },
     {
+      name: '@tanstack/virtual-file-routes',
+      packageDir: 'packages/virtual-file-routes',
+    },
+    {
       name: '@tanstack/router-cli',
       packageDir: 'packages/router-cli',
     },
@@ -63,6 +67,14 @@ await publish({
     {
       name: '@tanstack/start-vite-plugin',
       packageDir: 'packages/start-vite-plugin',
+    },
+    {
+      name: '@tanstack/create-router',
+      packageDir: 'packages/create-router',
+    },
+    {
+      name: '@tanstack/eslint-plugin-router',
+      packageDir: 'packages/eslint-plugin-router',
     },
   ],
   branchConfigs: {

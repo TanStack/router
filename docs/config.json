@@ -73,6 +73,10 @@
               "to": "framework/react/guide/file-based-routing"
             },
             {
+              "label": "Virtual File Routes",
+              "to": "framework/react/guide/virtual-file-routes"
+            },
+            {
               "label": "Code Based Routing",
               "to": "framework/react/guide/code-based-routing"
             },
@@ -188,6 +192,10 @@
               "to": "framework/react/start/server-functions"
             },
             {
+              "label": "API Routes",
+              "to": "framework/react/start/api-routes"
+            },
+            {
               "label": "SSR",
               "to": "framework/react/start/ssr"
             },
@@ -210,6 +218,10 @@
             {
               "label": "Static Prerendering",
               "to": "framework/react/start/static-prerendering"
+            },
+            {
+              "label": "Path Aliases",
+              "to": "framework/react/start/path-aliases"
             }
           ]
         }
@@ -227,6 +239,19 @@
               "to": "framework/react/api/router"
             }
           ]
+        }
+      ]
+    },
+    {
+      "label": "ESLint",
+      "children": [
+        {
+          "label": "ESLint Plugin Router",
+          "to": "eslint/eslint-plugin-router"
+        },
+        {
+          "label": "Create Route Property Order",
+          "to": "eslint/create-route-property-order"
         }
       ]
     },
@@ -339,6 +364,10 @@
             {
               "label": "Basic + DIY Auth",
               "to": "framework/react/examples/start-basic-auth"
+            },
+            {
+              "label": "Basic + Supabase Auth",
+              "to": "framework/react/examples/start-supabase-basic"
             },
             {
               "label": "Trellaux + Convex",

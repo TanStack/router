@@ -114,17 +114,101 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  AuthRoute: AuthRoute.addChildren({
-    AuthDashboardRoute,
-    AuthInvoicesRoute: AuthInvoicesRoute.addChildren({
-      AuthInvoicesInvoiceIdRoute,
-      AuthInvoicesIndexRoute,
-    }),
-  }),
-  LoginRoute,
-})
+interface AuthInvoicesRouteChildren {
+  AuthInvoicesInvoiceIdRoute: typeof AuthInvoicesInvoiceIdRoute
+  AuthInvoicesIndexRoute: typeof AuthInvoicesIndexRoute
+}
+
+const AuthInvoicesRouteChildren: AuthInvoicesRouteChildren = {
+  AuthInvoicesInvoiceIdRoute: AuthInvoicesInvoiceIdRoute,
+  AuthInvoicesIndexRoute: AuthInvoicesIndexRoute,
+}
+
+const AuthInvoicesRouteWithChildren = AuthInvoicesRoute._addFileChildren(
+  AuthInvoicesRouteChildren,
+)
+
+interface AuthRouteChildren {
+  AuthDashboardRoute: typeof AuthDashboardRoute
+  AuthInvoicesRoute: typeof AuthInvoicesRouteWithChildren
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthDashboardRoute: AuthDashboardRoute,
+  AuthInvoicesRoute: AuthInvoicesRouteWithChildren,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '': typeof AuthRouteWithChildren
+  '/login': typeof LoginRoute
+  '/dashboard': typeof AuthDashboardRoute
+  '/invoices': typeof AuthInvoicesRouteWithChildren
+  '/invoices/$invoiceId': typeof AuthInvoicesInvoiceIdRoute
+  '/invoices/': typeof AuthInvoicesIndexRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '': typeof AuthRouteWithChildren
+  '/login': typeof LoginRoute
+  '/dashboard': typeof AuthDashboardRoute
+  '/invoices/$invoiceId': typeof AuthInvoicesInvoiceIdRoute
+  '/invoices': typeof AuthInvoicesIndexRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/_auth': typeof AuthRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_auth/dashboard': typeof AuthDashboardRoute
+  '/_auth/invoices': typeof AuthInvoicesRouteWithChildren
+  '/_auth/invoices/$invoiceId': typeof AuthInvoicesInvoiceIdRoute
+  '/_auth/invoices/': typeof AuthInvoicesIndexRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/login'
+    | '/dashboard'
+    | '/invoices'
+    | '/invoices/$invoiceId'
+    | '/invoices/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '' | '/login' | '/dashboard' | '/invoices/$invoiceId' | '/invoices'
+  id:
+    | '__root__'
+    | '/'
+    | '/_auth'
+    | '/login'
+    | '/_auth/dashboard'
+    | '/_auth/invoices'
+    | '/_auth/invoices/$invoiceId'
+    | '/_auth/invoices/'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRouteWithChildren
+  LoginRoute: typeof LoginRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AuthRoute: AuthRouteWithChildren,
+  LoginRoute: LoginRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

@@ -4,18 +4,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3001",
-    "build": "vite build",
+    "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
     "start": "vite",
     "gen": "node ./src/createRoutes.mjs",
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.51.21",
-    "@tanstack/react-router": "^1.51.2",
-    "@tanstack/router-devtools": "^1.51.2",
-    "@tanstack/router-plugin": "^1.51.0",
-    "immer": "^10.1.1",
+    "@tanstack/react-query": "^5.56.2",
+    "@tanstack/react-router": "^1.58.3",
+    "@tanstack/router-devtools": "^1.58.3",
+    "@tanstack/router-plugin": "^1.58.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1",
@@ -25,6 +24,6 @@
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.3.5"
+    "vite": "^5.4.5"
   }
 }

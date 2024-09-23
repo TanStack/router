@@ -140,16 +140,123 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  BlogRouteRoute: BlogRouteRoute.addChildren({ BlogSlugRoute, BlogIndexRoute }),
-  PostsRouteRoute: PostsRouteRoute.addChildren({
-    PostsIndexRoute,
-    PostsPostIdDeepRoute,
-    PostsPostIdIndexRoute,
-  }),
-  BlogStatsRoute,
-})
+interface BlogRouteRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+  BlogIndexRoute: typeof BlogIndexRoute
+}
+
+const BlogRouteRouteChildren: BlogRouteRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+  BlogIndexRoute: BlogIndexRoute,
+}
+
+const BlogRouteRouteWithChildren = BlogRouteRoute._addFileChildren(
+  BlogRouteRouteChildren,
+)
+
+interface PostsRouteRouteChildren {
+  PostsIndexRoute: typeof PostsIndexRoute
+  PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+  PostsPostIdIndexRoute: typeof PostsPostIdIndexRoute
+}
+
+const PostsRouteRouteChildren: PostsRouteRouteChildren = {
+  PostsIndexRoute: PostsIndexRoute,
+  PostsPostIdDeepRoute: PostsPostIdDeepRoute,
+  PostsPostIdIndexRoute: PostsPostIdIndexRoute,
+}
+
+const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
+  PostsRouteRouteChildren,
+)
+
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
+  '/posts': typeof PostsRouteRouteWithChildren
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/stats': typeof BlogStatsRoute
+  '/blog/': typeof BlogIndexRoute
+  '/posts/': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/posts/$postId': typeof PostsPostIdIndexRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/stats': typeof BlogStatsRoute
+  '/blog': typeof BlogIndexRoute
+  '/posts': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/posts/$postId': typeof PostsPostIdIndexRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/blog': typeof BlogRouteRouteWithChildren
+  '/posts': typeof PostsRouteRouteWithChildren
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/stats': typeof BlogStatsRoute
+  '/blog/': typeof BlogIndexRoute
+  '/posts/': typeof PostsIndexRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/posts/$postId/': typeof PostsPostIdIndexRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/blog'
+    | '/posts'
+    | '/blog/$slug'
+    | '/blog/stats'
+    | '/blog/'
+    | '/posts/'
+    | '/posts/$postId/deep'
+    | '/posts/$postId'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/blog/$slug'
+    | '/blog/stats'
+    | '/blog'
+    | '/posts'
+    | '/posts/$postId/deep'
+    | '/posts/$postId'
+  id:
+    | '__root__'
+    | '/'
+    | '/blog'
+    | '/posts'
+    | '/blog/$slug'
+    | '/blog/stats'
+    | '/blog/'
+    | '/posts/'
+    | '/posts/$postId/deep'
+    | '/posts/$postId/'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  BlogRouteRoute: typeof BlogRouteRouteWithChildren
+  PostsRouteRoute: typeof PostsRouteRouteWithChildren
+  BlogStatsRoute: typeof BlogStatsRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  BlogRouteRoute: BlogRouteRouteWithChildren,
+  PostsRouteRoute: PostsRouteRouteWithChildren,
+  BlogStatsRoute: BlogStatsRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

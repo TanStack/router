@@ -8,10 +8,26 @@ If you're feeling impatient and prefer to skip all of our wonderful documentatio
 
 File based route generation (through Vite, and other supported bundlers) is the recommended way to use TanStack Router as it provides the best experience, performance, and ergonomics for the least amount of effort.
 
-### Install the Vite Plugin and the Router Devtools
+### Scaffolding Your First TanStack Router Project
 
-```bash
-npm i -D @tanstack/router-plugin @tanstack/router-devtools
+```sh
+npm create @tanstack/router@latest
+# or
+pnpm create @tanstack/router
+# or
+yarn create @tanstack/router
+# or
+bun create @tanstack/router
+```
+
+Follow the prompts to setup the project.
+
+### Manual Setup
+
+#### Install the Vite Plugin and the Router Devtools
+
+```sh
+npm install -D @tanstack/router-plugin @tanstack/router-devtools
 # or
 pnpm add -D @tanstack/router-plugin @tanstack/router-devtools
 # or
@@ -20,7 +36,7 @@ yarn add -D @tanstack/router-plugin @tanstack/router-devtools
 bun add -D @tanstack/router-plugin @tanstack/router-devtools
 ```
 
-### Configure the Vite Plugin
+#### Configure the Vite Plugin
 
 ```tsx
 // vite.config.ts
@@ -50,7 +66,7 @@ Create the following files:
 
 > 🧠 Route files with the `.lazy.tsx` extension are lazy loaded via separate bundles to keep the main bundle size as lean as possible.
 
-### `src/routes/__root.tsx`
+#### `src/routes/__root.tsx`
 
 ```tsx
 import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
@@ -75,7 +91,7 @@ export const Route = createRootRoute({
 })
 ```
 
-### `src/routes/index.lazy.tsx`
+#### `src/routes/index.lazy.tsx`
 
 ```tsx
 import { createLazyFileRoute } from '@tanstack/react-router'
@@ -93,7 +109,7 @@ function Index() {
 }
 ```
 
-### `src/routes/about.lazy.tsx`
+#### `src/routes/about.lazy.tsx`
 
 ```tsx
 import { createLazyFileRoute } from '@tanstack/react-router'
@@ -107,7 +123,7 @@ function About() {
 }
 ```
 
-### `src/main.tsx`
+#### `src/main.tsx`
 
 Regardless if you are using the `@tanstack/router-plugin` package or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the following file will be generated for you at `src/routeTree.gen.ts`.
 

@@ -15,13 +15,19 @@ That said, authentication is not something to be taken lightly. After much vetti
 
 ## What is Clerk?
 
-[![Clerk Logo](https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg)](https://go.clerk.com/wOwHtuJ)
+<a href="https://go.clerk.com/wOwHtuJ" alt="Clerk Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" width="280">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" width="280">
+  </picture>
+</a>
 
 Clerk is a modern authentication platform that provides a full suite of authentication APIs and UI components to help you implement authentication in your application. Clerk is designed to be easy to use and provides a seamless user experience. With Clerk, you can implement authentication in your application in minutes and provide your users with a secure and reliable authentication experience.
 
 - To learn more about Clerk, visit the [Clerk website](https://go.clerk.com/wOwHtuJ)
 - To sign up, visit the [Clerk dashboard](https://go.clerk.com/PrSDXti)
-- To get started with Clerk, check out our [official Start + Clerk examples!](../../../../examples/react/start-clerk-basic/)
+- To get started with Clerk, check out our [official Start + Clerk examples!](../../examples/start-clerk-basic/)
 
 ## Documentation & APIs
 

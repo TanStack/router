@@ -72,7 +72,13 @@ const usersQueryOptions = ({
 const userQueryOptions = (userId: number) =>
   queryOptions({
     queryKey: ['users', userId],
-    queryFn: () => fetchUserById(userId),
+    queryFn: async () => {
+      const user = await fetchUserById(userId)
+      if (!user) {
+        throw new Error('User not found.')
+      }
+      return user
+    },
   })
 
 const useCreateInvoiceMutation = () => {
@@ -648,10 +654,9 @@ function UsersComponent() {
                   {user.name}{' '}
                   <MatchRoute
                     to={userRoute.to}
-                    search={(d) => ({
-                      ...d,
+                    search={{
                       userId: user.id,
-                    })}
+                    }}
                     pending
                   >
                     {(match) => <Spinner show={!!match} wait="delay-50" />}

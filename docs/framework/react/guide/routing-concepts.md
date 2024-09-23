@@ -8,8 +8,8 @@ TanStack Router supports a number of powerful routing concepts that allow you to
 - [Static Routes](./routing-concepts.md#static-routes)
 - [Index Routes](./routing-concepts.md#index-routes)
 - [Dynamic Route Segments](./routing-concepts.md#dynamic-route-segments)
-- [Splat / Catch-All Routes](./routing-concept.md#splat--catch-all-routes)
-- [Pathless / Layout Routes](./routing-concepts.md#pathless--layout-routes)
+- [Splat / Catch-All Routes](./routing-concepts.md#splat--catch-all-routes)
+- [Pathless Routes](./routing-concepts.md#pathless--layout-routes)
 - [Non-Nested Routes](./routing-concepts.md#non-nested-routes)
 - [Not-Found Routes](./routing-concepts.md#404--notfoundroutes)
 
@@ -42,7 +42,7 @@ export const Route = createRootRoute()
 
 ## Anatomy of a Route
 
-All other routes other than the root route are configured using the `FileRoute` class. The `FileRoute` class is a wrapper around the `Route` class that provides type safety when using file-based routing:
+All other routes other than the root route are configured using the `createFileRoute` function, which provides type safety when using file-based routing:
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
@@ -64,11 +64,12 @@ Yes! But don't worry, this path is **automatically written and managed by the ro
 
 ## Static Routes
 
-Static routes simply match a specific path. In our example route tree above, the `/about`, `/settings`, `/settings/profile` and `/settings/notifications` routes are all static routes.
+Static routes match a specific path, for example `/about`, `/settings`, `/settings/notifications` are all static routes, as they match the path exactly.
 
-Let's take a look at the `/about` route:
+Let's take a look at an `/about` route:
 
 ```tsx
+// about.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/about')({
@@ -84,13 +85,15 @@ Static routes are simple and straightforward. They match the path exactly and re
 
 ## Index Routes
 
-Index routes specifically target their parent route when it is matched exactly and no child route is matched. We can see this in the above route tree with both the root index route (`index.tsx`) and the posts index route (`posts.index.tsx`).
+Index routes specifically target their parent route when it is **matched exactly and no child route is matched**.
 
-Let's take a look at the posts index route (`posts.index.tsx`):
+Let's take a look at an index route for a `/posts` URL:
 
 ```tsx
+// posts.index.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
+// Note the trailing slash, which is used to target index routes
 export const Route = createFileRoute('/posts/')({
   component: PostsIndexComponent,
 })
@@ -100,13 +103,13 @@ function PostsIndexComponent() {
 }
 ```
 
-In this example, the `posts.index.tsx` file is nested under the `posts` directory, so it will be matched when the URL is `/posts` exactly. When this happens, the `PostsIndexComponent` will be rendered.
+This route will be matched when the URL is `/posts` exactly.
 
 ## Dynamic Route Segments
 
 Route path segments that start with a `$` followed by a label are dynamic and capture that section of the URL into the `params` object for use in your application. For example, a pathname of `/posts/123` would match the `/posts/$postId` route, and the `params` object would be `{ postId: '123' }`.
 
-These params are then usable in your route's configuration and components! Let's look at the `posts.$postId.tsx` route from our example route tree above:
+These params are then usable in your route's configuration and components! Let's look at a `posts.$postId.tsx` route:
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
@@ -119,6 +122,7 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 
 function PostComponent() {
+  // In a component!
   const { postId } = Route.useParams()
   return <div>Post ID: {postId}</div>
 }
@@ -130,7 +134,7 @@ function PostComponent() {
 
 A route with a path of only `$` is called a "splat" route because it _always_ captures _any_ remaining section of the URL pathname from the `$` to the end. The captured pathname is then available in the `params` object under the special `_splat` property.
 
-For example, our route tree above has a `files/$` splat route. If the URL pathname is `/files/documents/hello-world`, the `params` object would contain `documents/hello-world` under the special `_splat` property:
+For example, a route targeting the `files/$` path is a splat route. If the URL pathname is `/files/documents/hello-world`, the `params` object would contain `documents/hello-world` under the special `_splat` property:
 
 ```js
 {
@@ -142,9 +146,9 @@ For example, our route tree above has a `files/$` splat route. If the URL pathna
 
 > 🧠 Why use `$`? Thanks to tools like Remix, we know that despite `*`s being the most common character to represent a wildcard, they do not play nice with filenames or CLI tools, so just like them, we decided to use `$` instead.
 
-## Pathless / Layout Routes
+## Pathless Routes
 
-File routes that are prefixed with an underscore (`_`) are considered "pathless" / a "layout". Pathless/Layout routes can be used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL
+Routes that are prefixed with an underscore (`_`) are considered "pathless". and are used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL
 
 - Wrap child routes with a layout component
 - Enforce a `loader` requirement before displaying any child routes
@@ -154,20 +158,21 @@ File routes that are prefixed with an underscore (`_`) are considered "pathless"
 
 > 🧠 The part of the path after the `_` prefix is used as the route's ID and is required because every route must be uniquely identifiable, especially when using TypeScript so as to avoid type errors and accomplish autocomplete effectively.
 
-In our example route tree above, the `_layout` route is a pathless route that wraps the `layout-a` and `layout-b` routes with a layout component. This means that when the URL is `/layout-a`, the `/_layout/layout-a` route will be matched and the component tree will look like this:
+Let's take a look at an example route called `_pathless.tsx`:
 
-```tsx
-<Layout>
-  <LayoutA />
-</Layout>
+```
+routes/
+├── _pathless.tsx
+├── _pathless.a.tsx
+├── _pathless.b.tsx
 ```
 
-Let's take a look at the `_layout.tsx` route:
+In the tree above, `_pathless.tsx` is a pathless route that wraps two child routes, `_pathless.a.tsx` and `_pathless.b.tsx`. The `_pathless.tsx` route is used to wrap the child routes with a layout component:
 
 ```tsx
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_layout')({
+export const Route = createFileRoute('/_pathless')({
   component: LayoutComponent,
 })
 
@@ -181,29 +186,37 @@ function LayoutComponent() {
 }
 ```
 
+The following table shows which component will be rendered based on the URL:
+
+| URL Path | Component     |
+| -------- | ------------- |
+| `/`      | `<Index>`     |
+| `/a`     | `<Layout><A>` |
+| `/b`     | `<Layout><B>` |
+
 ## Non-Nested Routes
 
-Non-nested routes can be created by suffixing a parent file route segment with a `_`. Non-nested routes are valuable because you don't always want a route to be nested, but instead you need it to "break out" of the parent route's path and render its own completely different component tree.
+Non-nested routes can be created by suffixing a parent file route segment with a `_` and are used to **un-nest** a route from it's parents and render its own component tree.
 
-During path matching, the trailing `_` is ignored, so `/posts` and `/posts_` are considered the same path. However, when constructing the component tree, the `_` is used to denote a non-nested route, so `/posts` and `/posts_` are considered different routes.
+Consider the following flat route tree:
 
-In our example route tree above, `/posts` and `/posts_/$postId/edit` routes are siblings, not parent/child. To make this easier to understand, here's their section of the route tree and a pseudo-code component representation comparison between `/posts/$postId` and `/posts/$postId/edit`:
-
-- `/posts_/$postId/edit`
-- `/posts`
-  - `$postId`
-
-```tsx
-// `posts_.$postId.edit.tsx`
-<EditPost postId={postId} />
-
-// `posts.$postId.tsx`
-<Posts>
-  <Post postId={postId} />
-</Posts>
+```
+routes/
+├── posts.tsx
+├── posts.$postId.tsx
+├── posts_.$postId.edit.tsx
 ```
 
-Notice how the post editor route is considered a sibling of the post route, not a child and would get matched by specificity before the post route. Likewise, the post editor component's parent is the root route, not the posts route, so it is not wrapped in the `<Posts>` component.
+The following table shows which component will be rendered based on the URL:
+
+| URL Path          | Component                    |
+| ----------------- | ---------------------------- |
+| `/posts`          | `<Posts>`                    |
+| `/posts/123`      | `<Posts><Post postId="123">` |
+| `/posts/123/edit` | `<PostEditor postId="123">`  |
+
+- The `posts.$postId.tsx` route is nested as normal under the `posts.tsx` route and will render `<Posts><Post>`.
+- The `posts_.$postId.edit.tsx` route **does not share** the same `posts` prefix as the other routes and therefore will be treated as if it is a top-level route and will render `<PostEditor>`.
 
 ## 404 / `NotFoundRoute`s
 
@@ -234,3 +247,34 @@ They do however still have the ability to:
 - Receive `data` and search params from the root route
 
 We'll cover how to configure a `NotFoundRoute` in the [Route Matching - Not-Found Routes](./route-matching.md#not-found-routes) guide.
+
+## Pathless Route Group Directories
+
+Pathless route group directories use `()` as a way to group routes files together regardless of their path. They are purely organizational and do not affect the route tree or component tree in any way.
+
+```
+routes/
+├── index.tsx
+├── (app)/
+│   ├── dashboard.tsx
+│   ├── settings.tsx
+│   ├── users.tsx
+├── (auth)/
+│   ├── login.tsx
+│   ├── register.tsx
+```
+
+In the example above, the `app` and `auth` directories are purely organizational and do not affect the route tree or component tree in any way. They are used to group related routes together for easier navigation and organization.
+
+The following table shows which component will be rendered based on the URL:
+
+| URL Path     | Component     |
+| ------------ | ------------- |
+| `/`          | `<Index>`     |
+| `/dashboard` | `<Dashboard>` |
+| `/settings`  | `<Settings>`  |
+| `/users`     | `<Users>`     |
+| `/login`     | `<Login>`     |
+| `/register`  | `<Register>`  |
+
+As you can see, the `app` and `auth` directories are purely organizational and do not affect the route tree or component tree in any way.

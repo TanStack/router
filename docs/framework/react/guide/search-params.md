@@ -294,8 +294,8 @@ export const Route = createFileRoute('/shop/products/')({
 
 ### Arktype Adapter
 
-[!WARNING]
-This adapter expects the arktype beta
+> [!WARNING]
+> This adapter expects the arktype 2.0-beta package to be installed.
 
 When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
 
@@ -374,7 +374,7 @@ const ProductList = () => {
 ```
 
 > [!TIP]
-> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
+> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
 
 ### Search Params outside of Route Components
 
@@ -427,7 +427,10 @@ Now that you've learned how to read your route's search params, you'll be happy 
 
 ### `<Link search />`
 
-The best way to update search params is to use the `search` prop on the `<Link />` component. Remember, if a `to` prop is omitted, will update the search for the current page. Here's an example:
+The best way to update search params is to use the `search` prop on the `<Link />` component.
+
+If the search for the current page shall be updated and the `from` prop is specified, the `to` prop can be omitted.  
+Here's an example:
 
 ```tsx
 // /routes/shop.products.tsx
@@ -447,6 +450,42 @@ const ProductList = () => {
     </div>
   )
 }
+```
+
+If you want to update the search params in a generic component that is rendered on multiple routes, specifiying `from` can be challenging.
+
+In this scenario you can set `to="."` which will give you access to loosely typed search params.  
+Here is an example that illustrates this:
+
+```tsx
+// `page` is a search param that is defined in the __root route and hence available on all routes.
+const PageSelector = () => {
+  return (
+    <div>
+      <Link to="." search={(prev) => ({ ...prev, page: prev.page + 1 })}>
+        Next Page
+      </Link>
+    </div>
+  )
+}
+```
+
+If the generic component is only rendered in a specific subtree of the route tree, you can specify that subtree using `from`. Here you can omit `to='.'` if you want.
+
+```tsx
+// `page` is a search param that is defined in the /posts route and hence available on all of its child routes.
+const PageSelector = () => {
+  return (
+    <div>
+      <Link
+        from="/posts"
+        to="."
+        search={(prev) => ({ ...prev, page: prev.page + 1 })}
+      >
+        Next Page
+      </Link>
+    </div>
+  )
 ```
 
 ### `useNavigate(), navigate({ search })`

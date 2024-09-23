@@ -32,7 +32,11 @@ export {
   createLazyRoute,
   createLazyFileRoute,
 } from './fileRoute'
-export type { FileRoutesByPath, LazyRouteOptions } from './fileRoute'
+export type {
+  FileRoutesByPath,
+  FileRouteTypes,
+  LazyRouteOptions,
+} from './fileRoute'
 
 export * from './history'
 
@@ -88,6 +92,8 @@ export type {
   MatchRouteOptions,
   UseMatchRouteOptions,
   MakeMatchRouteOptions,
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
 } from './Matches'
 
 export { matchContext } from './matchContext'
@@ -184,6 +190,40 @@ export type {
   TrimPathRight,
   RootRouteOptions,
   AnyRouteWithContext,
+  ParseSplatParams,
+  SplatParams,
+  StringifyParamsFn,
+  ParamsOptions,
+  FullSearchSchemaOption,
+  RouteContextFn,
+  RouteContextOptions,
+  BeforeLoadFn,
+  BeforeLoadContextOptions,
+  AnySearchValidator,
+  DefaultSearchValidator,
+  ContextOptions,
+  SearchValidatorObj,
+  AnySearchValidatorObj,
+  AnySearchValidatorAdapter,
+  AnySearchValidatorFn,
+  SearchValidatorFn,
+  SearchValidator,
+  InferAllParams,
+  InferAllContext,
+  ResolveSearchSchemaFnInput,
+  ResolveSearchSchemaInput,
+  ResolveSearchSchema,
+  LooseReturnType,
+  LooseAsyncReturnType,
+  ContextReturnType,
+  ContextAsyncReturnType,
+  RouteContextParameter,
+  BeforeLoadContextParameter,
+  ResolveAllContext,
+  ResolveLoaderData,
+  ResolveAllParamsFromParent,
+  ResolveRouteContext,
+  ResolveSearchSchemaFn,
 } from './route'
 
 export type {
@@ -196,6 +236,9 @@ export type {
   RoutePaths,
   FullSearchSchema,
   AllParams,
+  AllLoaderData,
+  FullSearchSchemaInput,
+  AllContext,
 } from './routeInfo'
 
 export {
