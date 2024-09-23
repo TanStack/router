@@ -1,10 +1,10 @@
 {
-  "name": "tanstack-router-react-example-e2e-scroll-restoration-sandbox-vite",
+  "name": "tanstack-router-e2e-react-scroll-restoration-sandbox-vite",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --port=3001",
-    "dev:build": "vite build",
+    "build": "vite build",
     "serve": "vite preview",
     "start": "vite",
     "test:e2e": "playwright test --project=chromium"
