@@ -35,6 +35,8 @@
     "test:types:ts56": "tsc -p tsconfig.legacy.json",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
+    "test:perf": "vitest bench",
+    "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
