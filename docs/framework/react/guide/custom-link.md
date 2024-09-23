@@ -68,3 +68,20 @@ const ButtonLink = createLink(
 ```tsx
 <ButtonLink to="/about" variant="outlined" />
 ```
+
+If using props from `Link` like `to` is needed, you can use `CreateLinkProps`
+
+```tsx
+import { createLink, Link, CreateLinkProps } from '@tanstack/react-router'
+import { Button } from '@mui/material'
+
+const ButtonLink = createLink(
+  React.forwardRef((props: CreateLinkProps & Parameters<typeof Button>[0]) => {
+    return (
+      <Button {...props} component={Link}>
+        Navigate to {props.to}
+      </Button>
+    )
+  }),
+)
+```

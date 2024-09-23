@@ -28,6 +28,7 @@ import type {
 } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type {
+  Constrain,
   Expand,
   MakeDifferenceOptional,
   NoInfer,
@@ -36,6 +37,7 @@ import type {
   Updater,
   WithoutEmpty,
 } from './utils'
+import type { ReactNode } from 'react'
 
 export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
@@ -920,7 +922,7 @@ export interface LinkPropsChildren {
 
 type LinkComponentReactProps<TComp> = Omit<
   UseLinkReactProps<TComp>,
-  'children' | 'preload'
+  keyof CreateLinkProps
 >
 
 export type LinkComponentProps<
@@ -933,6 +935,15 @@ export type LinkComponentProps<
 > = LinkComponentReactProps<TComp> &
   LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
+export type CreateLinkProps = LinkProps<
+  any,
+  any,
+  string,
+  string,
+  string,
+  string
+>
+
 export type LinkComponent<TComp> = <
   TRouter extends RegisteredRouter = RegisteredRouter,
   TFrom extends string = string,
@@ -943,7 +954,9 @@ export type LinkComponent<TComp> = <
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => React.ReactElement
 
-export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
+export function createLink<const TComp>(
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+): LinkComponent<TComp> {
   return React.forwardRef(function CreatedLink(props, ref) {
     return <Link {...(props as any)} _asChild={Comp} ref={ref} />
   }) as any
