@@ -101,13 +101,75 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  testsLazyPageRoute,
-  testsLazyWithLoaderPageRoute,
-  testsNormalPageRoute,
-  testsVirtualPageLazyRoute,
-})
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/lazy-page': typeof testsLazyPageRoute
+  '/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
+  '/normal-page': typeof testsNormalPageRoute
+  '/virtual-page': typeof testsVirtualPageLazyRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/lazy-page': typeof testsLazyPageRoute
+  '/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
+  '/normal-page': typeof testsNormalPageRoute
+  '/virtual-page': typeof testsVirtualPageLazyRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/lazy-page': typeof testsLazyPageRoute
+  '/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
+  '/normal-page': typeof testsNormalPageRoute
+  '/virtual-page': typeof testsVirtualPageLazyRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/lazy-page'
+    | '/lazy-with-loader-page'
+    | '/normal-page'
+    | '/virtual-page'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/lazy-page'
+    | '/lazy-with-loader-page'
+    | '/normal-page'
+    | '/virtual-page'
+  id:
+    | '__root__'
+    | '/'
+    | '/lazy-page'
+    | '/lazy-with-loader-page'
+    | '/normal-page'
+    | '/virtual-page'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  testsLazyPageRoute: typeof testsLazyPageRoute
+  testsLazyWithLoaderPageRoute: typeof testsLazyWithLoaderPageRoute
+  testsNormalPageRoute: typeof testsNormalPageRoute
+  testsVirtualPageLazyRoute: typeof testsVirtualPageLazyRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  testsLazyPageRoute: testsLazyPageRoute,
+  testsLazyWithLoaderPageRoute: testsLazyWithLoaderPageRoute,
+  testsNormalPageRoute: testsNormalPageRoute,
+  testsVirtualPageLazyRoute: testsVirtualPageLazyRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 
