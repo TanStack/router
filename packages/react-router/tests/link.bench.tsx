@@ -1,13 +1,13 @@
-import { render, act } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { bench, describe } from 'vitest'
 import {
+  Link,
+  RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
   interpolatePath,
-  Link,
-  RouterProvider,
   useRouter,
 } from '../src'
 
