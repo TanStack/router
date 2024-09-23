@@ -31,6 +31,7 @@ import type {
 } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
+import type { NitroOptions } from 'nitropack'
 
 /**
  * Not all the deployment presets are fully functional or tested.
@@ -114,6 +115,7 @@ function checkDeploymentPresetInput(preset: string): DeploymentPreset {
 }
 
 const deploymentSchema = z.object({
+  routeRules: z.custom<NitroOptions['routeRules']>().optional(),
   preset: z.custom<DeploymentPreset>().optional(),
   static: z.boolean().optional(),
   prerender: z
