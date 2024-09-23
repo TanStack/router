@@ -294,8 +294,8 @@ export const Route = createFileRoute('/shop/products/')({
 
 ### Arktype Adapter
 
-[!WARNING]
-This adapter expects the arktype beta
+> [!WARNING]
+> This adapter expects the arktype 2.0-beta package to be installed.
 
 When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
 
