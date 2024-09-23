@@ -2,16 +2,15 @@ import { render } from '@testing-library/react'
 import { bench, describe } from 'vitest'
 import {
   Link,
-  
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
   interpolatePath,
-  useRouter
+  useRouter,
 } from '../src'
-import type {LinkProps} from '../src';
+import type { LinkProps } from '../src'
 
 const createRouterRenderer =
   (routesCount: number) => (children: React.ReactNode) => {
