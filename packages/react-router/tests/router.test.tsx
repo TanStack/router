@@ -73,6 +73,38 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => pathSegmentLayoutSplatRoute,
     path: '$',
   })
+  const protectedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '/_protected',
+  }).lazy(() => import('./lazy/normal').then((f) => f.Route('/_protected')))
+  const protectedLayoutRoute = createRoute({
+    getParentRoute: () => protectedRoute,
+    id: '/_layout',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) => f.Route('/_protected/_layout')),
+  )
+  const protectedFileBasedLayoutRoute = createRoute({
+    getParentRoute: () => protectedRoute,
+    id: '/_fileBasedLayout',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) =>
+      f.FileRoute('/_protected/_fileBasedLayout'),
+    ),
+  )
+  const protectedFileBasedLayoutTestRoute = createRoute({
+    getParentRoute: () => protectedFileBasedLayoutRoute,
+    path: '/fileBasedTest',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) =>
+      f.FileRoute('/_protected/_fileBasedLayout/fileBasedTest'),
+    ),
+  )
+  const protectedLayoutTestRoute = createRoute({
+    getParentRoute: () => protectedLayoutRoute,
+    path: '/test',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) => f.Route('/_protected/_layout/test')),
+  )
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
@@ -84,6 +116,12 @@ function createTestRouter(initialHistory?: RouterHistory) {
     pathSegmentLayoutSplatRoute.addChildren([
       pathSegmentLayoutSplatIndexRoute,
       pathSegmentLayoutSplatSplatRoute,
+    ]),
+    protectedRoute.addChildren([
+      protectedLayoutRoute.addChildren([protectedLayoutTestRoute]),
+      protectedFileBasedLayoutRoute.addChildren([
+        protectedFileBasedLayoutTestRoute,
+      ]),
     ]),
   ])
 
@@ -578,5 +616,40 @@ describe('router matches URLs to route definitions', () => {
       '/layout-splat',
       '/layout-splat/',
     ])
+  })
+})
+
+describe('route ids should be consistent after rebuilding the route tree', () => {
+  it('should have the same route ids after rebuilding the route tree', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+    )
+
+    const originalRouteIds = Object.keys(router.routesById)
+
+    await act(() =>
+      router.navigate({
+        to: '/test',
+      }),
+    )
+
+    await act(() =>
+      router.navigate({
+        to: '/fileBasedTest',
+      }),
+    )
+
+    router.buildRouteTree()
+
+    const rebuiltRouteIds = Object.keys(router.routesById)
+
+    console.log(originalRouteIds, rebuiltRouteIds)
+    originalRouteIds.forEach((id) => {
+      expect(rebuiltRouteIds).toContain(id)
+    })
+
+    // rebuiltRouteIds.forEach((id) => {
+    //   expect(originalRouteIds).toContain(id)
+    // })
   })
 })

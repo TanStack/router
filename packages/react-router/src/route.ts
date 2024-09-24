@@ -1029,7 +1029,7 @@ export class Route<
       path = trimPathLeft(path)
     }
 
-    const customId = path || getLastPathSegment(options?.id)
+    const customId = path || options?.id
 
     // Strip the parentId prefix from the first level of children
     let id = isRoot
