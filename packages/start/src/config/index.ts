@@ -134,7 +134,10 @@ const serverSchema = z.object({
 })
 
 const viteSchema = z.object({
-  plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
+  plugins: z
+    .function()
+    .returns(z.array(z.custom<vite.PluginOption>()))
+    .optional(),
 })
 
 const babelSchema = z.object({
