@@ -279,7 +279,7 @@ describe('interpolatePath', () => {
 })
 
 describe('getLastPathSegment', () => {
-  ;[
+  it.each([
     {
       name: 'should return the last segment with leading slash when path ends with a slash',
       path: '/_protected/test/',
@@ -355,10 +355,7 @@ describe('getLastPathSegment', () => {
       path: '/multiple/trailing/slashes///',
       expected: undefined,
     },
-  ].forEach(({ name, path, expected }) => {
-    it(name, () => {
-      const result = getLastPathSegment(path)
-      expect(result).toBe(expected)
-    })
+  ])('$name', ({ path, expected }) => {
+    expect(getLastPathSegment(path)).toBe(expected)
   })
 })
