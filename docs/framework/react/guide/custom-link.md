@@ -4,7 +4,7 @@ title: Custom Link
 
 While repeating yourself can be fine in many cases, you may find yourself repeating yourself too much. Sometimes you may want to make cross cutting components with extra behavior or styles. Or sometimes you may also use third party libraries and combine it with TanStack Router's type safety
 
-# `createLink` for cross cutting concerns
+## `createLink` for cross cutting concerns
 
 `createLink` creates a custom `Link` component with the same type parameters as `Link`. This means you can create your own component which provides the same type safety and typescript performance as `Link`.
 
@@ -41,7 +41,7 @@ You can then use your newly created `Link` component as any other `Link`
 />
 ```
 
-# `createLink` with third party libraries
+## `createLink` with third party libraries
 
 You might want to use third party component libraries with TanStack Router. For example to use `Button` from MUI you can use `createLink` which infers the types from both `Button` and `Link` while keeping type parameters necessary for TanStack Router's type safety
 
