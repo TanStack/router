@@ -114,24 +114,41 @@ function checkDeploymentPresetInput(preset: string): DeploymentPreset {
   return preset
 }
 
-const serverSchema = z.object({
-  routeRules: z.custom<NitroOptions['routeRules']>().optional(),
-  preset: z.custom<DeploymentPreset>().optional(),
-  static: z.boolean().optional(),
-  prerender: z
-    .object({
-      routes: z.array(z.string()),
-      ignore: z
-        .array(
-          z.custom<
-            string | RegExp | ((path: string) => undefined | null | boolean)
-          >(),
-        )
-        .optional(),
-      crawlLinks: z.boolean().optional(),
-    })
-    .optional(),
-})
+type HTTPSOptions = {
+  cert?: string
+  key?: string
+  pfx?: string
+  passphrase?: string
+  validityDays?: number
+  domains?: Array<string>
+}
+type ServerOptions_ = VinxiAppOptions['server'] & {
+  https?: boolean | HTTPSOptions
+}
+type ServerOptions = {
+  [K in keyof ServerOptions_]: ServerOptions_[K]
+}
+
+const serverSchema = z
+  .object({
+    routeRules: z.custom<NitroOptions['routeRules']>().optional(),
+    preset: z.custom<DeploymentPreset>().optional(),
+    static: z.boolean().optional(),
+    prerender: z
+      .object({
+        routes: z.array(z.string()),
+        ignore: z
+          .array(
+            z.custom<
+              string | RegExp | ((path: string) => undefined | null | boolean)
+            >(),
+          )
+          .optional(),
+        crawlLinks: z.boolean().optional(),
+      })
+      .optional(),
+  })
+  .and(z.custom<ServerOptions>())
 
 const viteSchema = z.object({
   plugins: z
