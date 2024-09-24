@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   exactPathTest,
+  getLastPathSegment,
   interpolatePath,
   removeBasepath,
   removeTrailingSlash,
@@ -273,6 +274,91 @@ describe('interpolatePath', () => {
     it(exp.name, () => {
       const result = interpolatePath({ path: exp.path, params: exp.params })
       expect(result).toBe(exp.result)
+    })
+  })
+})
+
+describe('getLastPathSegment', () => {
+  ;[
+    {
+      name: 'should return the last segment with leading slash when path ends with a slash',
+      path: '/_protected/test/',
+      expected: '/test',
+    },
+    {
+      name: 'should return the last segment with leading slash when path does not end with a slash',
+      path: '/_protected/test',
+      expected: '/test',
+    },
+    {
+      name: 'should return the last segment in a longer path with trailing slash',
+      path: '/another/path/example/',
+      expected: '/example',
+    },
+    {
+      name: 'should return the last segment in a longer path without trailing slash',
+      path: '/another/path/example',
+      expected: '/example',
+    },
+    {
+      name: 'should return the only segment with leading slash',
+      path: '/single',
+      expected: '/single',
+    },
+    {
+      name: 'should return the last segment with leading slash in a nested path',
+      path: '/trailing/slash/',
+      expected: '/slash',
+    },
+    {
+      name: 'should return undefined for root path',
+      path: '/',
+      expected: undefined,
+    },
+    {
+      name: 'should return undefined for empty string',
+      path: '',
+      expected: undefined,
+    },
+    {
+      name: 'should handle paths with numbers correctly',
+      path: '/users/123/',
+      expected: '/123',
+    },
+    {
+      name: 'should handle paths with special characters',
+      path: '/path/with-special_chars!',
+      expected: '/with-special_chars!',
+    },
+    {
+      name: 'should handle paths with multiple special characters and trailing slash',
+      path: '/path/with/$pecial-Chars123/',
+      expected: '/$pecial-Chars123',
+    },
+    {
+      name: 'should return undefined when there is no segment after the last slash',
+      path: '/path/to/directory//',
+      expected: undefined,
+    },
+    {
+      name: 'should handle paths without leading slash',
+      path: 'no/leading/slash',
+      expected: '/slash',
+    },
+    {
+      name: 'should handle single slash',
+      path: '/',
+      expected: undefined,
+    },
+    {
+      name: 'should handle path with multiple trailing slashes',
+      path: '/multiple/trailing/slashes///',
+      expected: undefined,
+    },
+  ].forEach(({ name, path, expected }) => {
+    it(name, () => {
+      const result = getLastPathSegment(path)
+      expect(result).toBe(expected)
     })
   })
 })

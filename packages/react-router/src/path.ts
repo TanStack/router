@@ -41,8 +41,8 @@ export function removeTrailingSlash(value: string, basepath: string): string {
   return value
 }
 
-export function getLastPathSegment(path: string | undefined | null) {
-  if (path == null) {
+export function getLastPathSegment(path: string) {
+  if (typeof path !== 'string') {
     return undefined
   }
 
