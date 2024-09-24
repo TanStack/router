@@ -643,13 +643,12 @@ describe('route ids should be consistent after rebuilding the route tree', () =>
 
     const rebuiltRouteIds = Object.keys(router.routesById)
 
-    console.log(originalRouteIds, rebuiltRouteIds)
     originalRouteIds.forEach((id) => {
       expect(rebuiltRouteIds).toContain(id)
     })
 
-    // rebuiltRouteIds.forEach((id) => {
-    //   expect(originalRouteIds).toContain(id)
-    // })
+    rebuiltRouteIds.forEach((id) => {
+      expect(originalRouteIds).toContain(id)
+    })
   })
 })
