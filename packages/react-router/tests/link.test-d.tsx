@@ -6,7 +6,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { SearchSchemaInput } from '../src'
+import type { CreateLinkProps, SearchSchemaInput } from '../src'
 
 const rootRoute = createRootRoute({
   validateSearch: (): { rootPage?: number } => ({ rootPage: 0 }),
@@ -3836,4 +3836,6 @@ test('when passing a component with props to createLink and navigating to the ro
       additionalProps?: number | undefined
       key?: React.Key | null | undefined
     }>()
+
+  createLink((props) => expectTypeOf(props).toEqualTypeOf<CreateLinkProps>())
 })
