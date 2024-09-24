@@ -41,6 +41,15 @@ export function removeTrailingSlash(value: string, basepath: string): string {
   return value
 }
 
+export function getLastPathSegment(path: string | undefined | null) {
+  if (path == null) {
+    return undefined
+  }
+
+  const match = path.match(/(\/[^/]+)\/?$/)
+  return match?.[1]
+}
+
 // intended to only compare path name
 // see the usage in the isActive under useLinkProps
 // /sample/path1 = /sample/path1/

@@ -2,7 +2,7 @@ import invariant from 'tiny-invariant'
 import { useMatch } from './useMatch'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useLoaderData } from './useLoaderData'
-import { joinPaths, trimPathLeft } from './path'
+import { getLastPathSegment, joinPaths, trimPathLeft } from './path'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { notFound } from './not-found'
@@ -1029,7 +1029,7 @@ export class Route<
       path = trimPathLeft(path)
     }
 
-    const customId = path || options?.id
+    const customId = path || getLastPathSegment(options?.id)
 
     // Strip the parentId prefix from the first level of children
     let id = isRoot
