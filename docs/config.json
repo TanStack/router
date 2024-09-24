@@ -105,6 +105,10 @@
               "to": "framework/react/guide/search-params"
             },
             {
+              "label": "Custom Links",
+              "to": "framework/react/guide/custom-link"
+            },
+            {
               "label": "Data Loading",
               "to": "framework/react/guide/data-loading"
             },
