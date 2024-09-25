@@ -91,19 +91,35 @@ function createTestRouter(initialHistory?: RouterHistory) {
       f.FileRoute('/_protected/_fileBasedLayout'),
     ),
   )
-  const protectedFileBasedLayoutTestRoute = createRoute({
+  const protectedFileBasedLayoutParentRoute = createRoute({
     getParentRoute: () => protectedFileBasedLayoutRoute,
-    path: '/fileBasedTest',
+    path: '/fileBasedParent',
   }).lazy(() =>
     import('./lazy/normal').then((f) =>
-      f.FileRoute('/_protected/_fileBasedLayout/fileBasedTest'),
+      f.FileRoute('/_protected/_fileBasedLayout/fileBasedParent'),
     ),
   )
-  const protectedLayoutTestRoute = createRoute({
+  const protectedLayoutParentRoute = createRoute({
     getParentRoute: () => protectedLayoutRoute,
-    path: '/test',
+    path: '/parent',
   }).lazy(() =>
-    import('./lazy/normal').then((f) => f.Route('/_protected/_layout/test')),
+    import('./lazy/normal').then((f) => f.Route('/_protected/_layout/parent')),
+  )
+  const protectedLayoutParentChildRoute = createRoute({
+    getParentRoute: () => protectedLayoutParentRoute,
+    path: '/child',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) =>
+      f.Route('/_protected/_layout/parent/child'),
+    ),
+  )
+  const protectedFileBasedLayoutParentChildRoute = createRoute({
+    getParentRoute: () => protectedFileBasedLayoutParentRoute,
+    path: '/child',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) =>
+      f.FileRoute('/_protected/_fileBasedLayout/fileBasedParent/child'),
+    ),
   )
 
   const routeTree = rootRoute.addChildren([
@@ -118,9 +134,15 @@ function createTestRouter(initialHistory?: RouterHistory) {
       pathSegmentLayoutSplatSplatRoute,
     ]),
     protectedRoute.addChildren([
-      protectedLayoutRoute.addChildren([protectedLayoutTestRoute]),
+      protectedLayoutRoute.addChildren([
+        protectedLayoutParentRoute.addChildren([
+          protectedLayoutParentChildRoute,
+        ]),
+      ]),
       protectedFileBasedLayoutRoute.addChildren([
-        protectedFileBasedLayoutTestRoute,
+        protectedFileBasedLayoutParentRoute.addChildren([
+          protectedFileBasedLayoutParentChildRoute,
+        ]),
       ]),
     ]),
   ])
@@ -629,13 +651,13 @@ describe('route ids should be consistent after rebuilding the route tree', () =>
 
     await act(() =>
       router.navigate({
-        to: '/test',
+        to: '/parent/child',
       }),
     )
 
     await act(() =>
       router.navigate({
-        to: '/fileBasedTest',
+        to: '/filBasedParent/child',
       }),
     )
 
@@ -649,6 +671,46 @@ describe('route ids should be consistent after rebuilding the route tree', () =>
 
     rebuiltRouteIds.forEach((id) => {
       expect(originalRouteIds).toContain(id)
+    })
+  })
+})
+
+describe('route id uniqueness', () => {
+  it('flatRoute should not have routes with duplicated route ids', () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+    )
+    const routeIdSet = new Set<string>()
+
+    router.flatRoutes.forEach((route) => {
+      expect(routeIdSet.has(route.id)).toBe(false)
+      routeIdSet.add(route.id)
+    })
+  })
+
+  it('routesById should not have routes duplicated route ids', () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+    )
+
+    const routeIdSet = new Set<string>()
+
+    Object.values(router.routesById).forEach((route) => {
+      expect(routeIdSet.has(route.id)).toBe(false)
+      routeIdSet.add(route.id)
+    })
+  })
+
+  it('routesByPath should not have routes duplicated route ids', () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+    )
+
+    const routeIdSet = new Set<string>()
+
+    Object.values(router.routesByPath).forEach((route) => {
+      expect(routeIdSet.has(route.id)).toBe(false)
+      routeIdSet.add(route.id)
     })
   })
 })
