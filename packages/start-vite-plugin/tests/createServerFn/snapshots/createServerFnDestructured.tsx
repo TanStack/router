@@ -66,3 +66,16 @@ export const withZodValidator = createServerFn({
     }).apply(this, args);
   }
 });
+export const withValidatorFn = createServerFn({
+  method: 'GET',
+  fn: (...args) => {
+    "use server";
+
+    args[0].payload = (z.number())(args[0].payload);
+    return (async ({
+      payload
+    }) => {
+      return null;
+    })(...args);
+  }
+});

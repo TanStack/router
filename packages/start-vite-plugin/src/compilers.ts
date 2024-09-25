@@ -196,14 +196,6 @@ function handleCreateServerFnCallExpression(
       : importNamespaceSpecifierCondition
 
   if (shouldHandle) {
-    // If the function at createServerFn({
-    //   fn: () => {
-    //      // directive should be here
-    //   },
-    // })
-    // doesn't have a 'use server' directive at the top of the function scope,
-    // then add it.
-
     // The function is the 'fn' property of the object passed to createServerFn
 
     const firstArg = path.node.arguments[0]
@@ -223,38 +215,108 @@ function handleCreateServerFnCallExpression(
     })
 
     if (!t.isObjectProperty(fnProperty)) {
-      throw new Error(
-        'createServerFn must be called with an object with a "fn" property!',
-      )
+      // TODO: move this logic out to eslint or something like
+      // the router generator code that can do autofixes on save.
+
+      // // Stub in a fake fn: () => {} property so we can continue
+
+      // fnProperty = t.objectProperty(
+      //   t.identifier('fn'),
+      //   t.arrowFunctionExpression([], t.blockStatement([])),
+      // )
+
+      // firstArg.properties.push(fnProperty)
+
+      throw new Error('createServerFn must be called with an "fn" property!')
     }
 
-    const fn = fnProperty.value
-
-    fnProperty.value = addUseServerToFunction(fn)
+    fnProperty.value = addUseServerToFunction(fnProperty.value)
 
     // Extract the validator into a function with the `use server` directive
     // that returns the validator value.
 
     const validatorProperty = firstArg.properties.find((prop) => {
-      return t.isIdentifier(prop.key) && prop.key.name === 'serverValidator'
-    })
+      return (
+        t.isObjectProperty(prop) &&
+        t.isIdentifier(prop.key) &&
+        prop.key.name === 'serverValidator'
+      )
+    }) as t.ObjectProperty | undefined
 
-    // The validator won't be a function,  so we literally
-    // just need to wrap it in a function that returns the value, but with
-    // the `use server` directive at the top of the function scope.
+    // If we find a validator property, then we need to use it to validate
+    // the input to the server function before calling the server function.
+
+    // like this:
+    // fn: (...args) => {
+    //    'use server' // directive should be here allready
+    //     args[0].payload = validator(args[0].payload)
+    //    return ((...args) => {
+    //      // original function body
+    //    })(...args)
+    // },
+
+    // Then we need to remove the validator property from the object
 
     if (validatorProperty) {
       const validator = validatorProperty.value
 
-      const wrappedValidator = t.arrowFunctionExpression(
-        [],
+      // Remove the validator property from the object
+      firstArg.properties = firstArg.properties.filter((prop) => {
+        return prop !== validatorProperty
+      })
+
+      // create a new function that wraps the original function
+
+      const payloadExpression = t.memberExpression(
+        t.memberExpression(t.identifier('args'), t.numericLiteral(0), true),
+        t.identifier('payload'),
+      )
+
+      // Walk down fnProperty.value and remove any 'use server' directives.
+      // We only want the top level function to have the 'use server' directive.
+
+      let current = fnProperty.value as any
+
+      while (t.isArrowFunctionExpression(current)) {
+        if (t.isBlockStatement(current.body)) {
+          current.body.directives = current.body.directives.filter(
+            (directive) => {
+              return directive.value.value !== 'use server'
+            },
+          )
+
+          break
+        }
+
+        current = current.body
+      }
+
+      const wrappedFn = t.arrowFunctionExpression(
+        [t.restElement(t.identifier('args'))],
         t.blockStatement(
-          [t.returnStatement(validator)],
+          [
+            //  args[0].payload = (validator)(args[0].payload)
+            t.expressionStatement(
+              t.assignmentExpression(
+                '=',
+                payloadExpression,
+                t.callExpression(t.parenthesizedExpression(validator as any), [
+                  payloadExpression,
+                ]),
+              ),
+            ),
+            t.returnStatement(
+              t.callExpression(
+                t.parenthesizedExpression(fnProperty.value as any),
+                [t.spreadElement(t.identifier('args'))],
+              ),
+            ),
+          ],
           [t.directive(t.directiveLiteral('use server'))],
         ),
       )
 
-      validatorProperty.value = wrappedValidator
+      fnProperty.value = wrappedFn
     }
   }
 }
@@ -278,17 +340,8 @@ function handleCreateServerMiddlewareCallExpression(
       : importNamespaceSpecifierCondition
 
   if (shouldHandle) {
-    // If the function at createServerMiddleware({
-    //   fn: () => {
-    //      // directive should be here
-    //   },
-    // })
-    // doesn't have a 'use server' directive at the top of the function scope,
-    // then add it.
-
-    // The function is the 'fn' property of the object passed to createServerMiddleware
-
     const firstArg = path.node.arguments[0]
+
     if (!t.isObjectExpression(firstArg)) {
       throw new Error(
         'createServerMiddleware must be called with an object of options!',
@@ -296,55 +349,162 @@ function handleCreateServerMiddlewareCallExpression(
     }
 
     const idProperty = firstArg.properties.find((prop) => {
-      return t.isIdentifier(prop.key) && prop.key.name === 'id'
+      return (
+        t.isObjectProperty(prop) &&
+        t.isIdentifier(prop.key) &&
+        prop.key.name === 'id'
+      )
     })
 
-    if (!t.isStringLiteral(idProperty.value)) {
+    if (
+      !idProperty ||
+      !t.isObjectProperty(idProperty) ||
+      !t.isStringLiteral(idProperty.value)
+    ) {
       throw new Error(
         'createServerMiddleware must be called with an "id" property!',
       )
     }
 
+    // Check if the call is assigned to a variable
+    if (!path.parentPath.isVariableDeclarator()) {
+      // TODO: move this logic out to eslint or something like
+      // the router generator code that can do autofixes on save.
+
+      // // If not assigned to a variable, wrap the call in a variable declaration
+      // const variableDeclaration = t.variableDeclaration('const', [
+      //   t.variableDeclarator(t.identifier(middlewareName), path.node),
+      // ])
+
+      // // The parent could be an expression statement, if it is, we need to replace
+      // // it with the variable declaration
+      // if (path.parentPath.isExpressionStatement()) {
+      //   path.parentPath.replaceWith(variableDeclaration)
+      // } else {
+      //   // If the parent is not an expression statement, then it is a statement
+      //   // that is not an expression, like a variable declaration or a return statement.
+      //   // In this case, we need to insert the variable declaration before the statement
+      //   path.parentPath.insertBefore(variableDeclaration)
+      // }
+
+      // // Now we need to export it. Just add an export statement
+      // // to the program body
+      // path.findParent((parentPath) => {
+      //   if (parentPath.isProgram()) {
+      //     parentPath.node.body.push(
+      //       t.exportNamedDeclaration(null, [
+      //         t.exportSpecifier(
+      //           t.identifier(middlewareName),
+      //           t.identifier(middlewareName),
+      //         ),
+      //       ]),
+      //     )
+      //   }
+      //   return false
+      // })
+
+      throw new Error(
+        'createServerMiddleware must be assigned to a variable and exported!',
+      )
+    }
+
+    const variableDeclarator = path.parentPath.node
+    const existingVariableName = (variableDeclarator.id as t.Identifier).name
+
+    const program = path.findParent((parentPath) => {
+      return parentPath.isProgram()
+    }) as babel.NodePath<t.Program>
+
+    let isExported = false as boolean
+
+    program.traverse({
+      ExportNamedDeclaration: (path) => {
+        //         {
+        //   type: 'ExportNamedDeclaration',
+        //   start: 82,
+        //   end: 405,
+        //   loc: SourceLocation {
+        //     start: Position { line: 4, column: 0, index: 82 },
+        //     end: Position { line: 13, column: 2, index: 405 },
+        //     filename: undefined,
+        //     identifierName: undefined
+        //   },
+        //   exportKind: 'value',
+        //   specifiers: [],
+        //   source: null,
+        //   declaration: Node {
+        //     type: 'VariableDeclaration',
+        //     start: 89,
+        //     end: 405,
+        //     loc: SourceLocation {
+        //       start: [Position],
+        //       end: [Position],
+        //       filename: undefined,
+        //       identifierName: undefined
+        //     },
+        //     declarations: [ [Node] ],
+        //     kind: 'const'
+        //   }
+        // }
+
+        if (
+          path.isExportNamedDeclaration() &&
+          path.node.declaration &&
+          t.isVariableDeclaration(path.node.declaration) &&
+          path.node.declaration.declarations.some((decl) => {
+            return (
+              t.isVariableDeclarator(decl) &&
+              t.isIdentifier(decl.id) &&
+              decl.id.name === existingVariableName
+            )
+          })
+        ) {
+          isExported = true
+        }
+      },
+    })
+
+    // If not exported, export it
+    if (!isExported) {
+      // TODO: move this logic out to eslint or something like
+      // the router generator code that can do autofixes on save.
+
+      // path.parentPath.parentPath.insertAfter(
+      //   t.exportNamedDeclaration(null, [
+      //     t.exportSpecifier(
+      //       t.identifier(existingVariableName),
+      //       t.identifier(existingVariableName),
+      //     ),
+      //   ]),
+      // )
+
+      throw new Error(
+        'createServerMiddleware must be exported as a named export!',
+      )
+    }
+
     // Extract the server function
     const beforeProperty = firstArg.properties.find((prop) => {
-      return t.isIdentifier(prop.key) && prop.key.name === 'before'
+      return (
+        t.isObjectProperty(prop) &&
+        t.isIdentifier(prop.key) &&
+        prop.key.name === 'before'
+      )
     })
 
     const afterProperty = firstArg.properties.find((prop) => {
-      return t.isIdentifier(prop.key) && prop.key.name === 'after'
+      return (
+        t.isObjectProperty(prop) &&
+        t.isIdentifier(prop.key) &&
+        prop.key.name === 'after'
+      )
     })
 
-    //
-    ;[beforeProperty, afterProperty]
-      .filter(Boolean)
-      .forEach((fnProperty: t.ObjectProperty) => {
+    ;[beforeProperty, afterProperty].filter(Boolean).forEach((fnProperty) => {
+      if (t.isObjectProperty(fnProperty)) {
         const fn = fnProperty.value
         fnProperty.value = addUseServerToFunction(fn)
-      })
-
-    // Extract the validator into a function with the `use server` directive
-    // that returns the validator value.
-
-    const validatorProperty = firstArg.properties.find((prop) => {
-      return t.isIdentifier(prop.key) && prop.key.name === 'serverValidator'
+      }
     })
-
-    // The validator won't be a function,  so we literally
-    // just need to wrap it in a function that returns the value, but with
-    // the `use server` directive at the top of the function scope.
-
-    if (validatorProperty) {
-      const validator = validatorProperty.value
-
-      const wrappedValidator = t.arrowFunctionExpression(
-        [],
-        t.blockStatement(
-          [t.returnStatement(validator)],
-          [t.directive(t.directiveLiteral('use server'))],
-        ),
-      )
-
-      validatorProperty.value = wrappedValidator
-    }
   }
 }

@@ -27,4 +27,16 @@ describe('createServerFn compiles correctly', async () => {
       `./snapshots/${filename}`,
     )
   })
+
+  test('should error if createServerFn is called without a fn property', () => {
+    expect(() => {
+      compileCreateServerFnOutput({
+        code: `
+        import { createServerFn } from '@tanstack/start'
+        createServerFn({})`,
+        root: './test-files',
+        filename: 'no-fn.ts',
+      })
+    }).toThrowErrorMatchingSnapshot()
+  })
 })

@@ -23,7 +23,6 @@ export {
   type ExtractMiddleware,
   type FetcherImpl,
   type FetcherPayloadOptions,
-  type FetcherSearchOptions,
   type ResolveMiddlewareContext,
   type ResolveMiddlewareContextInner,
   type ServerMiddlewarePreFnReturn,

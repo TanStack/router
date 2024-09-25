@@ -61,3 +61,11 @@ export const withZodValidator = createServerFn({
     return { 'you gave': input }
   }),
 })
+
+export const withValidatorFn = createServerFn({
+  method: 'GET',
+  serverValidator: z.number(),
+  fn: async ({ payload }) => {
+    return null
+  },
+})

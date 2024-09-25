@@ -28,3 +28,43 @@ describe('createServerMiddleware compiles correctly', async () => {
     )
   })
 })
+
+test('throws an error if createServerMiddleware is not assigned a variable', () => {
+  expect(() =>
+    compileCreateServerFnOutput({
+      code: `
+        import { createServerMiddleware } from '@tanstack/start'
+
+        createServerMiddleware({
+          id: 'test',
+          before: async function () {
+            console.info('Fetching posts...')
+          },
+        })`,
+      root: './test-files',
+      filename: 'no-named-exports.js',
+    }),
+  ).toThrowErrorMatchingInlineSnapshot(
+    `[Error: createServerMiddleware must be assigned to a variable and exported!]`,
+  )
+})
+
+test('throws an error if createServerMiddleware is not exported as a named export', () => {
+  expect(() =>
+    compileCreateServerFnOutput({
+      code: `
+        import { createServerMiddleware } from '@tanstack/start'
+
+        const testMiddleware = createServerMiddleware({
+          id: 'test',
+          before: async function () {
+            console.info('Fetching posts...')
+          },
+        })`,
+      root: './test-files',
+      filename: 'no-named-exports.js',
+    }),
+  ).toThrowErrorMatchingInlineSnapshot(
+    `[Error: createServerMiddleware must be exported as a named export!]`,
+  )
+})

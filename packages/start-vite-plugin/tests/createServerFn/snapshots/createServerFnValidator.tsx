@@ -2,14 +2,14 @@ import { createServerFn } from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = createServerFn({
   method: 'GET',
-  serverValidator: () => {
+  fn: (...args) => {
     "use server";
 
-    return z.number();
-  },
-  fn: num => {
-    "use server";
-
-    return num + 1;
+    args[0].payload = (z.number())(args[0].payload);
+    return (({
+      payload
+    }) => {
+      return payload + 1;
+    })(...args);
   }
 });
