@@ -1,9 +1,8 @@
 import invariant from 'tiny-invariant'
 import { createServerMiddleware } from './createServerMiddleware'
-import { middleware1, zodMiddleware } from './middleware'
 import type {
+  AnyServerMiddleware,
   ResolveMiddlewareContext,
-  ServerMiddleware,
 } from './createServerMiddleware'
 import type {
   AnySearchValidator,
@@ -23,7 +22,7 @@ export type CompiledFetcherFnOptions = {
   method: Method
   data: unknown
   requestInit?: RequestInit
-  middleware: Array<ServerMiddleware<any, any>>
+  middleware: Array<AnyServerMiddleware>
 }
 
 export type IsOptional<T> = [T] extends [undefined] ? true : false
@@ -109,9 +108,7 @@ export type CompiledFetcherFn<TResponse> = {
 type ServerFnBaseOptions<
   TMethod extends Method = 'GET',
   TResponse = unknown,
-  TMiddlewares extends Array<ServerMiddleware<any, any>> = Array<
-    ServerMiddleware<any, any>
-  >,
+  TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
   TServerValidator extends AnySearchValidator = SearchValidator<
     unknown,
     unknown
@@ -131,9 +128,7 @@ type ServerFnBaseOptions<
 type ServerFnBase<
   TMethod extends Method = 'GET',
   TResponse = unknown,
-  TMiddlewares extends Array<ServerMiddleware<any, any>> = Array<
-    ServerMiddleware<any, any>
-  >,
+  TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
   TServerValidator extends AnySearchValidator = SearchValidator<
     unknown,
     unknown
@@ -151,7 +146,7 @@ type ServerFnBase<
     ServerFnBase<TNewMethod, TResponse, TMiddlewares, TServerValidator>,
     'middleware' | 'serverValidator' | 'fn'
   >
-  middleware: <TNewMiddlewares extends Array<ServerMiddleware<any, any>>>(
+  middleware: <TNewMiddlewares extends Array<AnyServerMiddleware>>(
     middlewares: TNewMiddlewares,
   ) => Pick<
     ServerFnBase<TMethod, TResponse, TNewMiddlewares, TServerValidator>,
@@ -176,15 +171,15 @@ type ServerFnBase<
 export function createServerFn<
   TMethod extends Method = 'GET',
   TResponse = unknown,
-  TMiddlewares extends Array<ServerMiddleware<any, any>> = Array<
-    ServerMiddleware<any, any>
-  >,
+  TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
   TServerValidator extends AnySearchValidator = SearchValidator<
     unknown,
     unknown
   >,
 >(
-  _?: never,
+  options?: {
+    method: TMethod
+  },
   __opts?: ServerFnBaseOptions<
     TMethod,
     TResponse,
@@ -193,7 +188,7 @@ export function createServerFn<
   >,
 ): ServerFnBase<TMethod, TResponse, TMiddlewares, TServerValidator> {
   return {
-    options: __opts as any,
+    options: options as any,
     setMethod: (method) => {
       return createServerFn<TMethod, TResponse, TMiddlewares, TServerValidator>(
         undefined,
@@ -238,7 +233,7 @@ export function createServerFn<
 function createServerFnFetcher<
   TMethod extends Method,
   TResponse,
-  TMiddlewares extends Array<ServerMiddleware<any, any>>,
+  TMiddlewares extends Array<AnyServerMiddleware>,
   TServerValidator extends AnySearchValidator,
 >(
   options: ServerFnBaseOptions<
@@ -290,7 +285,9 @@ export const zodMiddleware = createRootMiddleware().validationImpl(zodAdapter)
 
 export const loggingMiddleware = createRootMiddleware().use(logger)
 
-export const middleware1 = createServerMiddleware('auth')
+export const middleware1 = createServerMiddleware({
+  id: 'auth',
+})
   .middleware(['logging'])
   .use(async ({ next }) => {
     const user = await getUser()
@@ -304,12 +301,15 @@ export const middleware1 = createServerMiddleware('auth')
     })
   })
 
-export const workspaceMiddleware = createServerMiddleware('workspace')
+export const workspaceMiddleware = createServerMiddleware({
+  id: 'workspace',
+})
   .middleware(['auth'])
   .serverValidator(z.object({ workspaceId: z.string() }))
 
-const sayHello = createServerFn()
-  .setMethod('GET') // Browser Cached!
+const sayHello = createServerFn({
+  method: 'GET',
+})
   .middleware(['workspace'])
   .serverValidator(
     z.object({
@@ -318,6 +318,7 @@ const sayHello = createServerFn()
   ) // Type/Runtime Safety
   .fn(({ data, context }) => {
     context.user
+    context.workspaceId
 
     return `Hello, ${data}!`
   })
@@ -329,14 +330,12 @@ sayHello({
   },
 })
 
-interface MiddlewareById {
-  auth: typeof zodMiddleware
-}
-
 // - Crawl all user files for `createServerFn`, `createServerMiddleware`, `createRootMiddleware`
 // - Is it exported? Error
 // - Sort middleware based on dependencies.
 // - Detect circular middlewares? Error
 // - Write middleware maps/types to a generated file
 
-//
+// interface MiddlewareById {
+//   auth: typeof zodMiddleware
+// }

@@ -162,19 +162,21 @@ export function createServerMiddleware<
   >,
   TContext = unknown,
 >(
-  id: TId,
+  options: {
+    id: TId
+  },
   _?: never,
   __opts?: ServerMiddlewareOptions<TMiddlewares, TServerValidator, TContext>,
 ): ServerMiddleware<TMiddlewares, TServerValidator, TContext> {
   return {
-    options: __opts as any,
+    options: options as any,
     middleware: (middleware) => {
       return createServerMiddleware<
         TId,
         TMiddlewares,
         TServerValidator,
         TContext
-      >(id, undefined, {
+      >(options, undefined, {
         ...(__opts as any),
         middleware,
       }) as any
@@ -185,7 +187,7 @@ export function createServerMiddleware<
         TMiddlewares,
         TServerValidator,
         TContext
-      >(id, undefined, {
+      >(options, undefined, {
         ...(__opts as any),
         serverValidator,
       }) as any
@@ -197,7 +199,7 @@ export function createServerMiddleware<
         TMiddlewares,
         TServerValidator,
         TContext
-      >(id, undefined, {
+      >(options, undefined, {
         ...(__opts as any),
         useFn,
       }) as any
@@ -205,16 +207,18 @@ export function createServerMiddleware<
   }
 }
 
-const middleware1 = createServerMiddleware('test1').use(
-  async ({ context, next }) => {
-    console.log('middleware1', context)
-    const res = await next({ context: { a: true } })
-    console.log('middleware1 after', res)
-    return res
-  },
-)
+const middleware1 = createServerMiddleware({
+  id: 'test1',
+}).use(async ({ context, next }) => {
+  console.log('middleware1', context)
+  const res = await next({ context: { a: true } })
+  console.log('middleware1 after', res)
+  return res
+})
 
-const middleware2 = createServerMiddleware('test2')
+const middleware2 = createServerMiddleware({
+  id: 'test2',
+})
   .middleware([middleware1])
   .use(({ context, next }) => {
     console.log('middleware2', context)
