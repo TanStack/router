@@ -103,6 +103,14 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
           .on('add', async () => {
             await run(generate)
           })
+
+        let generated = false
+        compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
+          if (!generated) {
+            generated = true
+            return run(generate)
+          }
+        })
       }
     },
     async webpack(compiler) {
@@ -119,6 +127,14 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
           .on('add', async () => {
             await run(generate)
           })
+
+        let generated = false
+        compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
+          if (!generated) {
+            generated = true
+            return run(generate)
+          }
+        })
       }
 
       if (compiler.options.mode === 'production') {
