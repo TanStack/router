@@ -84,24 +84,21 @@ export type MiddlewareOptions<
 
 export type ServerMiddlewareOptions<
   TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TServerValidator extends AnySearchValidator = SearchValidator<
-    unknown,
-    unknown
-  >,
+  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
   TContext = unknown,
 > = {
   middleware?: TMiddlewares
-  serverValidator?: TServerValidator
-  useFn?: ServerMiddlewareUseFn<TMiddlewares, TServerValidator, TContext>
+  input?: TInput
+  useFn?: ServerMiddlewareUseFn<TMiddlewares, TInput, TContext>
 }
 
 export type ServerMiddlewareUseFn<
   TMiddlewares extends Array<AnyServerMiddleware>,
-  TServerValidator extends AnySearchValidator,
+  TInput extends AnySearchValidator,
   TContext,
   TResult = unknown,
 > = (options: {
-  data: ResolveServerValidatorInput<TServerValidator>
+  data: ResolveServerValidatorInput<TInput>
   context: ResolveMiddlewareContext<TMiddlewares>
   next: <TContext>(opts?: {
     context: TContext
@@ -117,35 +114,28 @@ export type AnyServerMiddleware = Partial<ServerMiddleware<any, any, any>>
 
 type ServerMiddleware<
   TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TServerValidator extends AnySearchValidator = SearchValidator<
-    unknown,
-    unknown
-  >,
+  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
   TContext = unknown,
 > = {
-  options: ServerMiddlewareOptions<TMiddlewares, TServerValidator, TContext>
+  options: ServerMiddlewareOptions<TMiddlewares, TInput, TContext>
   middleware: <TNewMiddlewares extends Array<AnyServerMiddleware>>(
     middlewares: TNewMiddlewares,
   ) => Pick<
-    ServerMiddleware<TNewMiddlewares, TServerValidator, TContext>,
-    'serverValidator' | 'use'
+    ServerMiddleware<TNewMiddlewares, TInput, TContext>,
+    'input' | 'use'
   >
-  serverValidator: <TNewServerValidator extends AnySearchValidator>(
-    serverValidator: TNewServerValidator,
+  input: <TNewServerValidator extends AnySearchValidator>(
+    input: TNewServerValidator,
   ) => Pick<
-    ServerMiddleware<
-      TMiddlewares,
-      TServerValidator & TNewServerValidator,
-      TContext
-    >,
-    'serverValidator' | 'use'
+    ServerMiddleware<TMiddlewares, TInput & TNewServerValidator, TContext>,
+    'input' | 'use'
   >
   use: <TNewContext>(
-    useFn: ServerMiddlewareUseFn<TMiddlewares, TServerValidator, TNewContext>,
+    useFn: ServerMiddlewareUseFn<TMiddlewares, TInput, TNewContext>,
   ) => Pick<
     ServerMiddleware<
       TMiddlewares,
-      TServerValidator,
+      TInput,
       // Merge the current context with the new context
       TContext & TNewContext
     >,
@@ -156,53 +146,47 @@ type ServerMiddleware<
 export function createServerMiddleware<
   TId,
   TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TServerValidator extends AnySearchValidator = SearchValidator<
-    unknown,
-    unknown
-  >,
+  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
   TContext = unknown,
 >(
   options: {
     id: TId
   },
   _?: never,
-  __opts?: ServerMiddlewareOptions<TMiddlewares, TServerValidator, TContext>,
-): ServerMiddleware<TMiddlewares, TServerValidator, TContext> {
+  __opts?: ServerMiddlewareOptions<TMiddlewares, TInput, TContext>,
+): ServerMiddleware<TMiddlewares, TInput, TContext> {
   return {
     options: options as any,
     middleware: (middleware) => {
-      return createServerMiddleware<
-        TId,
-        TMiddlewares,
-        TServerValidator,
-        TContext
-      >(options, undefined, {
-        ...(__opts as any),
-        middleware,
-      }) as any
+      return createServerMiddleware<TId, TMiddlewares, TInput, TContext>(
+        options,
+        undefined,
+        {
+          ...(__opts as any),
+          middleware,
+        },
+      ) as any
     },
-    serverValidator: (serverValidator) => {
-      return createServerMiddleware<
-        TId,
-        TMiddlewares,
-        TServerValidator,
-        TContext
-      >(options, undefined, {
-        ...(__opts as any),
-        serverValidator,
-      }) as any
+    input: (input) => {
+      return createServerMiddleware<TId, TMiddlewares, TInput, TContext>(
+        options,
+        undefined,
+        {
+          ...(__opts as any),
+          input,
+        },
+      ) as any
     },
     // eslint-disable-next-line @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks
     use: (useFn) => {
-      return createServerMiddleware<
-        TId,
-        TMiddlewares,
-        TServerValidator,
-        TContext
-      >(options, undefined, {
-        ...(__opts as any),
-        useFn,
-      }) as any
+      return createServerMiddleware<TId, TMiddlewares, TInput, TContext>(
+        options,
+        undefined,
+        {
+          ...(__opts as any),
+          useFn,
+        },
+      ) as any
     },
   }
 }

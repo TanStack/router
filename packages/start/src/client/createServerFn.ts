@@ -27,21 +27,17 @@ export type CompiledFetcherFnOptions = {
 
 export type IsOptional<T> = [T] extends [undefined] ? true : false
 
-export type Fetcher<TServerValidator, TResponse> = {
+export type Fetcher<TInput, TResponse> = {
   url: string
-} & FetcherImpl<TServerValidator, TResponse>
+} & FetcherImpl<TInput, TResponse>
 
-export type FetcherImpl<TServerValidator, TResponse> =
-  IsOptional<TServerValidator> extends true
-    ? (
-        opts?: FetcherOptions<TServerValidator>,
-      ) => Promise<FetcherPayload<TResponse>>
-    : (
-        opts: FetcherOptions<TServerValidator>,
-      ) => Promise<FetcherPayload<TResponse>>
+export type FetcherImpl<TInput, TResponse> =
+  IsOptional<TInput> extends true
+    ? (opts?: FetcherOptions<TInput>) => Promise<FetcherPayload<TResponse>>
+    : (opts: FetcherOptions<TInput>) => Promise<FetcherPayload<TResponse>>
 
-export type FetcherOptions<TServerValidator> = FetcherBaseOptions &
-  FetcherPayloadOptions<TServerValidator>
+export type FetcherOptions<TInput> = FetcherBaseOptions &
+  FetcherPayloadOptions<TInput>
 
 export type FetcherBaseOptions = {
   requestInit?: RequestInit
@@ -61,13 +57,13 @@ export type ResolveServerValidatorInput<TSearchValidator> =
       ? ResolveServerValidatorSchemaFnInput<TSearchValidator['parse']>
       : ResolveServerValidatorSchemaFnInput<TSearchValidator>
 
-export type FetcherPayloadOptions<TServerValidator> =
-  IsOptional<TServerValidator> extends true
+export type FetcherPayloadOptions<TInput> =
+  IsOptional<TInput> extends true
     ? {
-        data?: ResolveServerValidatorInput<TServerValidator>
+        data?: ResolveServerValidatorInput<TInput>
       }
     : {
-        data: ResolveServerValidatorInput<TServerValidator>
+        data: ResolveServerValidatorInput<TInput>
       }
 
 export type FetcherPayload<TResponse> = WrapRSCs<
@@ -90,13 +86,13 @@ export type RscStream<T> = {
 
 type Method = 'GET' | 'POST'
 
-export type ServerFn<TMethod, TServerValidator, TResponse, TContextIn> = (
-  ctx: ServerFnCtx<TMethod, TServerValidator, TContextIn>,
+export type ServerFn<TMethod, TInput, TResponse, TContextIn> = (
+  ctx: ServerFnCtx<TMethod, TInput, TContextIn>,
 ) => Promise<TResponse> | TResponse
 
-export type ServerFnCtx<TMethod, TServerValidator, TContextIn> = {
+export type ServerFnCtx<TMethod, TInput, TContextIn> = {
   method: TMethod
-  data: ResolveSearchSchema<TServerValidator>
+  data: ResolveSearchSchema<TInput>
   context: TContextIn
 }
 
@@ -109,17 +105,14 @@ type ServerFnBaseOptions<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TServerValidator extends AnySearchValidator = SearchValidator<
-    unknown,
-    unknown
-  >,
+  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
 > = {
   method?: TMethod
   middleware?: TMiddlewares
-  serverValidator?: TServerValidator
+  input?: TInput
   fn?: ServerFn<
     TMethod,
-    TServerValidator,
+    TInput,
     TResponse,
     ResolveMiddlewareContext<TMiddlewares>
   >
@@ -129,77 +122,46 @@ type ServerFnBase<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TServerValidator extends AnySearchValidator = SearchValidator<
-    unknown,
-    unknown
-  >,
+  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
 > = {
-  options: ServerFnBaseOptions<
-    TMethod,
-    TResponse,
-    TMiddlewares,
-    TServerValidator
-  >
-  setMethod: <TNewMethod extends Method>(
-    method: TNewMethod,
-  ) => Pick<
-    ServerFnBase<TNewMethod, TResponse, TMiddlewares, TServerValidator>,
-    'middleware' | 'serverValidator' | 'fn'
-  >
+  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>
   middleware: <TNewMiddlewares extends Array<AnyServerMiddleware>>(
     middlewares: TNewMiddlewares,
   ) => Pick<
-    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TServerValidator>,
-    'serverValidator' | 'fn'
+    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TInput>,
+    'input' | 'handler'
   >
-  serverValidator: <TNewServerValidator extends AnySearchValidator>(
-    serverValidator: TNewServerValidator,
+  input: <TNewServerValidator extends AnySearchValidator>(
+    input: TNewServerValidator,
   ) => Pick<
     ServerFnBase<TMethod, TResponse, TMiddlewares, TNewServerValidator>,
-    'fn' | 'middleware'
+    'handler' | 'middleware'
   >
-  fn: (
+  handler: (
     fn: ServerFn<
       TMethod,
-      TServerValidator,
+      TInput,
       TResponse,
       ResolveMiddlewareContext<TMiddlewares>
     >,
-  ) => Fetcher<TServerValidator, TResponse>
+  ) => Fetcher<TInput, TResponse>
 }
 
 export function createServerFn<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TServerValidator extends AnySearchValidator = SearchValidator<
-    unknown,
-    unknown
-  >,
+  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
 >(
   options?: {
     method: TMethod
   },
-  __opts?: ServerFnBaseOptions<
-    TMethod,
-    TResponse,
-    TMiddlewares,
-    TServerValidator
-  >,
-): ServerFnBase<TMethod, TResponse, TMiddlewares, TServerValidator> {
+  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>,
+): ServerFnBase<TMethod, TResponse, TMiddlewares, TInput> {
   return {
     options: options as any,
-    setMethod: (method) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TServerValidator>(
-        undefined,
-        {
-          ...(__opts as any),
-          method,
-        },
-      ) as any
-    },
     middleware: (middleware) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TServerValidator>(
+      return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
         undefined,
         {
           ...(__opts as any),
@@ -207,22 +169,17 @@ export function createServerFn<
         },
       ) as any
     },
-    serverValidator: (serverValidator) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TServerValidator>(
+    input: (input) => {
+      return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
         undefined,
         {
           ...(__opts as any),
-          serverValidator,
+          input,
         },
       ) as any
     },
-    fn: (fn) => {
-      return createServerFnFetcher<
-        TMethod,
-        TResponse,
-        TMiddlewares,
-        TServerValidator
-      >({
+    handler: (fn) => {
+      return createServerFnFetcher<TMethod, TResponse, TMiddlewares, TInput>({
         ...(__opts as any),
         fn,
       }) as any
@@ -234,17 +191,12 @@ function createServerFnFetcher<
   TMethod extends Method,
   TResponse,
   TMiddlewares extends Array<AnyServerMiddleware>,
-  TServerValidator extends AnySearchValidator,
+  TInput extends AnySearchValidator,
 >(
-  options: ServerFnBaseOptions<
-    TMethod,
-    TResponse,
-    TMiddlewares,
-    TServerValidator
-  >,
+  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>,
 ): CompiledFetcherFn<TResponse> {
   // Cast the compiled function that will be injected by vinxi
-  // The `serverValidator` will be
+  // The `input` will be
   const compiledFn = options as unknown as CompiledFetcherFn<TResponse>
 
   invariant(
@@ -252,7 +204,7 @@ function createServerFnFetcher<
     `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/router-plugin/vite ?`,
   )
 
-  return Object.assign((opts: FetcherOptions<TServerValidator>) => {
+  return Object.assign((opts: FetcherOptions<TInput>) => {
     return (
       compiledFn({
         method: options.method || 'GET',
@@ -305,18 +257,18 @@ export const workspaceMiddleware = createServerMiddleware({
   id: 'workspace',
 })
   .middleware(['auth'])
-  .serverValidator(z.object({ workspaceId: z.string() }))
+  .input(z.object({ workspaceId: z.string() }))
 
 const sayHello = createServerFn({
   method: 'GET',
 })
   .middleware(['workspace'])
-  .serverValidator(
+  .input(
     z.object({
       name: z.string(),
     }),
   ) // Type/Runtime Safety
-  .fn(({ data, context }) => {
+  .handler(({ data, context }) => {
     context.user
     context.workspaceId
 
