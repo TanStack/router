@@ -1,4 +1,4 @@
-import crypto from 'crypto'
+import crypto from 'node:crypto'
 import { createServerFn } from '@tanstack/start'
 import invariant from 'tiny-invariant'
 import {
@@ -28,20 +28,21 @@ const boards: Array<Board> = [
 const delay = (ms: number = 1000) =>
   new Promise((resolve) => setTimeout(resolve, ms))
 
-export const getBoards = createServerFn('GET', async () => {
+export const getBoards = createServerFn({ method: 'GET' }).handler(async () => {
   await delay(DELAY)
   return boards
 })
 
-export const getBoard = createServerFn('GET', async (boardId: string) => {
-  await delay(DELAY)
-  const board = boards.find((b) => b.id === boardId)
-  invariant(board, 'missing board')
-  return board
-})
+export const getBoard = createServerFn({ method: 'GET' }).handler(
+  async (boardId: string) => {
+    await delay(DELAY)
+    const board = boards.find((b) => b.id === boardId)
+    invariant(board, 'missing board')
+    return board
+  },
+)
 
-export const createColumn = createServerFn(
-  'POST',
+export const createColumn = createServerFn().handler(
   async (payload: z.infer<typeof newColumnSchema>) => {
     await delay(DELAY)
     const newColumn = newColumnSchema.parse(payload)
@@ -61,8 +62,7 @@ export const createColumn = createServerFn(
   },
 )
 
-export const createItem = createServerFn(
-  'POST',
+export const createItem = createServerFn().handler(
   async (payload: z.infer<typeof itemSchema>) => {
     await delay(DELAY)
     const item = itemSchema.parse(payload)
@@ -75,8 +75,7 @@ export const createItem = createServerFn(
   },
 )
 
-export const deleteItem = createServerFn(
-  'GET',
+export const deleteItem = createServerFn({ method: 'GET' }).handler(
   async (payload: z.infer<typeof deleteItemSchema>) => {
     await delay(DELAY)
     const { id } = deleteItemSchema.parse(payload)
@@ -86,8 +85,7 @@ export const deleteItem = createServerFn(
   },
 )
 
-export const updateItem = createServerFn(
-  'POST',
+export const updateItem = createServerFn().handler(
   async (payload: z.infer<typeof itemSchema>) => {
     await delay(DELAY)
     const item = itemSchema.parse(payload)
@@ -99,8 +97,7 @@ export const updateItem = createServerFn(
   },
 )
 
-export const updateColumn = createServerFn(
-  'POST',
+export const updateColumn = createServerFn().handler(
   async (payload: z.infer<typeof updateColumnSchema>) => {
     await delay(DELAY)
     const column = updateColumnSchema.parse(payload)
@@ -112,8 +109,7 @@ export const updateColumn = createServerFn(
   },
 )
 
-export const updateBoard = createServerFn(
-  'POST',
+export const updateBoard = createServerFn().handler(
   async (payload: z.infer<typeof updateBoardSchema>) => {
     await delay(DELAY)
     const update = updateBoardSchema.parse(payload)
@@ -123,8 +119,7 @@ export const updateBoard = createServerFn(
   },
 )
 
-export const deleteColumn = createServerFn(
-  'GET',
+export const deleteColumn = createServerFn({ method: 'GET' }).handler(
   async (payload: z.infer<typeof deleteColumnSchema>) => {
     await delay(DELAY)
     const { id } = deleteColumnSchema.parse(payload)

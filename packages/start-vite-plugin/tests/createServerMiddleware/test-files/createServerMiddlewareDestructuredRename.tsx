@@ -3,24 +3,22 @@ import { z } from 'zod'
 
 export const withUseServer = middlewareFn({
   id: 'test',
-  before: async function () {
-    console.info('Fetching posts...')
-    await new Promise((r) => setTimeout(r, 500))
-    return axios
-      .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
-      .then((r) => r.data.slice(0, 10))
-  },
+}).use(async function () {
+  console.info('Fetching posts...')
+  await new Promise((r) => setTimeout(r, 500))
+  return axios
+    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
+    .then((r) => r.data.slice(0, 10))
 })
 
 export const withoutUseServer = middlewareFn({
   id: 'test',
-  after: async () => {
-    console.info('Fetching posts...')
-    await new Promise((r) => setTimeout(r, 500))
-    return axios
-      .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
-      .then((r) => r.data.slice(0, 10))
-  },
+}).use(async () => {
+  console.info('Fetching posts...')
+  await new Promise((r) => setTimeout(r, 500))
+  return axios
+    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
+    .then((r) => r.data.slice(0, 10))
 })
 
 export const withVariable = middlewareFn({
@@ -48,7 +46,8 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(
 
 export const withZodValidator = middlewareFn({
   id: 'test',
-  before: zodValidator(z.number(), (input) => {
+}).use(
+  zodValidator(z.number(), (input) => {
     return { 'you gave': input }
   }),
-})
+)

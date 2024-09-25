@@ -2,7 +2,7 @@ import { createServerMiddleware } from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = createServerMiddleware({
   id: 'test',
-  before: async function () {
+}).use(async ({ next }) {
     "use server";
 
     console.info('Fetching posts...');

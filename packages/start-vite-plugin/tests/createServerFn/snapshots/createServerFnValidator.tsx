@@ -1,8 +1,7 @@
 import { createServerFn } from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = createServerFn({
-  method: 'GET',
-  fn: (...args) => {
+  method: 'GET' }).handler( (...args) => {
     "use server";
 
     args[0].payload = (z.number())(args[0].payload);

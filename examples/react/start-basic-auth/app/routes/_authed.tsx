@@ -5,15 +5,8 @@ import { hashPassword, prismaClient } from '~/utils/prisma'
 import { Login } from '~/components/Login'
 import { useAppSession } from '~/utils/session'
 
-export const loginFn = createServerFn(
-  'POST',
-  async (
-    payload: {
-      email: string
-      password: string
-    },
-    { request },
-  ) => {
+export const loginFn = createServerFn().handler(
+  async (payload: { email: string; password: string }) => {
     // Find the user
     const user = await prismaClient.user.findUnique({
       where: {

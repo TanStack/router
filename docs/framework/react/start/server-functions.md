@@ -22,7 +22,9 @@ Server functions are defined using the `createServerFn` function, exported from 
 // getServerTime.ts
 import { createServerFn } from '@tanstack/start'
 
-export const getServerTime = createServerFn('GET', async () => {
+export const getServerTime = createServerFn({
+  method: 'GET',
+}).handler(async () => {
   // Wait for 1 second
   await new Promise((resolve) => setTimeout(resolve, 1000))
   // Return the current time
@@ -57,7 +59,9 @@ Here's an example of a server function that accepts a simple string parameter:
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const greet = createServerFn('GET', async (name: string) => {
+export const greet = createServerFn({
+  method: 'GET',
+}).handler(async (name: string) => {
   return `Hello, ${name}!`
 })
 ```
@@ -73,9 +77,11 @@ type Person = {
   name: string
 }
 
-export const greet = createServerFn('GET', async (person: Person) => {
-  return `Hello, ${person.name}!`
-})
+export const greet = createServerFn({ method: 'GET' }).handler(
+  async (person: Person) => {
+    return `Hello, ${person.name}!`
+  },
+)
 
 function test() {
   greet({ name: 'John' }) // OK
@@ -95,9 +101,11 @@ type Person = {
   age: number
 }
 
-export const greet = createServerFn('GET', async (person: Person) => {
-  return `Hello, ${person.name}! You are ${person.age} years old.`
-})
+export const greet = createServerFn({ method: 'GET' }).handler(
+  async (person: Person) => {
+    return `Hello, ${person.name}! You are ${person.age} years old.`
+  },
+)
 ```
 
 ## FormData Parameters
@@ -107,12 +115,14 @@ Server functions can accept `FormData` objects as parameters
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const greetUser = createServerFn('POST', async (formData: FormData) => {
-  const name = formData.get('name')
-  const age = formData.get('age')
+export const greetUser = createServerFn().handler(
+  async (formData: FormData) => {
+    const name = formData.get('name')
+    const age = formData.get('age')
 
-  return `Hello, ${name}! You are ${age} years old.`
-})
+    return `Hello, ${name}! You are ${age} years old.`
+  },
+)
 
 // Usage
 function Test() {
@@ -158,13 +168,15 @@ Let's use Vinxi's `getWebRequest` function to access the request itself from wit
 import { createServerFn } from '@tanstack/start'
 import { getWebRequest } from 'vinxi/http'
 
-export const getServerTime = createServerFn('GET', async () => {
-  const { method } = getWebRequest()
+export const getServerTime = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const { method } = getWebRequest()
 
-  console.log(method) // GET
+    console.log(method) // GET
 
-  console.log(context.request.headers.get('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
-})
+    console.log(context.request.headers.get('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
+  },
+)
 ```
 
 ## Accessing Headers
@@ -175,17 +187,19 @@ Use Vinxi's `getHeaders` function to access all headers from within a server fun
 import { createServerFn } from '@tanstack/start'
 import { getHeaders } from 'vinxi/http'
 
-export const getServerTime = createServerFn('GET', async () => {
-  console.log(getHeaders())
-  // {
-  //   "accept": "*/*",
-  //   "accept-encoding": "gzip, deflate, br",
-  //   "accept-language": "en-US,en;q=0.9",
-  //   "connection": "keep-alive",
-  //   "host": "localhost:3000",
-  //   ...
-  // }
-})
+export const getServerTime = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    console.log(getHeaders())
+    // {
+    //   "accept": "*/*",
+    //   "accept-encoding": "gzip, deflate, br",
+    //   "accept-language": "en-US,en;q=0.9",
+    //   "connection": "keep-alive",
+    //   "host": "localhost:3000",
+    //   ...
+    // }
+  },
+)
 ```
 
 You can also access individual headers using the `getHeader` function:
@@ -194,9 +208,11 @@ You can also access individual headers using the `getHeader` function:
 import { createServerFn } from '@tanstack/start'
 import { getHeader } from 'vinxi/http'
 
-export const getServerTime = createServerFn('GET', async () => {
-  console.log(getHeader('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
-})
+export const getServerTime = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    console.log(getHeader('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
+  },
+)
 ```
 
 ## Returning Values
@@ -216,15 +232,19 @@ To return any primitive or JSON-serializable object, simply return the value fro
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const getServerTime = createServerFn('GET', async () => {
-  return new Date().toISOString()
-})
+export const getServerTime = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    return new Date().toISOString()
+  },
+)
 
-export const getServerData = createServerFn('GET', async () => {
-  return {
-    message: 'Hello, World!',
-  }
-})
+export const getServerData = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    return {
+      message: 'Hello, World!',
+    }
+  },
+)
 ```
 
 By default, server functions assume that any non-Response object returned is either a primitive or JSON-serializable object.
@@ -237,10 +257,12 @@ To respond with custom headers, you can use Vinxi's `setHeader` function:
 import { createServerFn } from '@tanstack/start'
 import { setHeader } from 'vinxi/http'
 
-export const getServerTime = createServerFn('GET', async () => {
-  setHeader('X-Custom-Header', 'value')
-  return new Date().toISOString()
-})
+export const getServerTime = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    setHeader('X-Custom-Header', 'value')
+    return new Date().toISOString()
+  },
+)
 ```
 
 ## Responding with Custom Status Codes
@@ -251,10 +273,12 @@ To respond with a custom status code, you can use Vinxi's `setStatus` function:
 import { createServerFn } from '@tanstack/start'
 import { setStatus } from 'vinxi/http'
 
-export const getServerTime = createServerFn('GET', async () => {
-  setStatus(201)
-  return new Date().toISOString()
-})
+export const getServerTime = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    setStatus(201)
+    return new Date().toISOString()
+  },
+)
 ```
 
 ## Returning Raw Response objects
@@ -264,10 +288,12 @@ To return a raw Response object, simply return a Response object from the server
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const getServerTime = createServerFn('GET', async () => {
-  // Read a file from s3
-  return fetch('https://example.com/time.txt')
-})
+export const getServerTime = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    // Read a file from s3
+    return fetch('https://example.com/time.txt')
+  },
+)
 ```
 
 ## Throwing Errors
@@ -277,7 +303,7 @@ Aside from special `redirect` and `notFound` errors, server functions can throw 
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const doStuff = createServerFn('GET', async () => {
+export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
   throw new Error('Something went wrong!')
 })
 
@@ -348,7 +374,7 @@ To throw a redirect, you can use the `redirect` function exported from the `@tan
 ```tsx
 import { createServerFn, redirect } from '@tanstack/start'
 
-export const doStuff = createServerFn('GET', async () => {
+export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Redirect the user to the home page
   throw redirect({
     to: '/',
@@ -367,7 +393,7 @@ Redirects can also set the status code of the response by passing a `status` opt
 ```tsx
 import { createServerFn, redirect } from '@tanstack/start'
 
-export const doStuff = createServerFn('GET', async () => {
+export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Redirect the user to the home page with a 301 status code
   throw redirect({
     to: '/',
@@ -385,7 +411,7 @@ You can also set custom headers on a redirect by passing a `headers` option:
 ```tsx
 import { createServerFn, redirect } from '@tanstack/start'
 
-export const doStuff = createServerFn('GET', async () => {
+export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Redirect the user to the home page with a custom header
   throw redirect({
     to: '/',
@@ -405,7 +431,7 @@ To throw a notFound, you can use the `notFound` function exported from the `@tan
 ```tsx
 import { createServerFn, notFound } from '@tanstack/start'
 
-const getStuff = createServerFn('GET', async () => {
+const getStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Randomly return a not found error
   if (Math.random() < 0.5) {
     throw notFound()
@@ -437,7 +463,7 @@ If a server function throws a (non-redirect/non-notFound) error, it will be seri
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const doStuff = createServerFn('GET', async () => {
+export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
   undefined.foo()
 })
 
@@ -476,7 +502,7 @@ to send the form data to the server function.
 To do this, we can utilize the `url` property of the server function:
 
 ```typescript
-const yourFn = createServerFn('POST', async () => {
+const yourFn = createServerFn().handler(async () => {
   // Server-side code lives here
 })
 
@@ -504,7 +530,7 @@ to attach the argument to the [`FormData`](https://developer.mozilla.org/en-US/d
 server function:
 
 ```tsx
-const yourFn = createServerFn('POST', async (formData: FormData) => {
+const yourFn = createServerFn().handler(async (formData: FormData) => {
   // `val` will be '123'
   const val = formData.get('val')
   // ...
@@ -532,7 +558,7 @@ When JavaScript is enabled, this response can be accessed as the return value of
 JavaScript code.
 
 ```typescript
-const yourFn = createServerFn('POST', async () => {
+const yourFn = createServerFn().handler(async () => {
   return 'Hello, world!'
 })
 
@@ -562,11 +588,13 @@ async function readCount() {
   )
 }
 
-const getCount = createServerFn('GET', () => {
+const getCount = createServerFn({
+  method: 'GET',
+}).handler(() => {
   return readCount()
 })
 
-const updateCount = createServerFn('POST', async (formData: FormData) => {
+const updateCount = createServerFn().handler(async (formData: FormData) => {
   const count = await readCount()
   const addBy = Number(formData.get('addBy'))
   await fs.promises.writeFile(filePath, `${count + addBy}`)

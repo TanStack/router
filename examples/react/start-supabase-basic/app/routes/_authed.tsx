@@ -3,8 +3,9 @@ import { createServerFn } from '@tanstack/start'
 import { Login } from '../components/Login'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-export const loginFn = createServerFn(
+export const loginFn = createServerFn({
   'POST',
+}).handler(
   async (
     payload: {
       email: string

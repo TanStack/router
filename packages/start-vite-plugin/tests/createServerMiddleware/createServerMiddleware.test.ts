@@ -37,9 +37,8 @@ test('throws an error if createServerMiddleware is not assigned a variable', () 
 
         createServerMiddleware({
           id: 'test',
-          before: async function () {
-            console.info('Fetching posts...')
-          },
+        }).use(async function () {
+          console.info('Fetching posts...')
         })`,
       root: './test-files',
       filename: 'no-named-exports.js',
@@ -57,9 +56,8 @@ test('throws an error if createServerMiddleware is not exported as a named expor
 
         const testMiddleware = createServerMiddleware({
           id: 'test',
-          before: async function () {
-            console.info('Fetching posts...')
-          },
+        }).use(async function () {
+          console.info('Fetching posts...')
         })`,
       root: './test-files',
       filename: 'no-named-exports.js',

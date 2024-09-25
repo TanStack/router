@@ -1,8 +1,7 @@
 import * as TanStackStart from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = TanStackStart.createServerFn({
-  method: 'GET',
-  fn: async function () {
+  method: 'GET' }).handler( async function () {
     'use server';
 
     console.info('Fetching posts...');
@@ -11,8 +10,7 @@ export const withUseServer = TanStackStart.createServerFn({
   }
 });
 export const withoutUseServer = TanStackStart.createServerFn({
-  method: 'GET',
-  fn: async () => {
+  method: 'GET' }).handler( async () => {
     "use server";
 
     console.info('Fetching posts...');
@@ -21,8 +19,7 @@ export const withoutUseServer = TanStackStart.createServerFn({
   }
 });
 export const withVariable = TanStackStart.createServerFn({
-  method: 'GET',
-  fn: (...args) => {
+  method: 'GET' }).handler( (...args) => {
     "use server";
 
     return abstractedFunction.apply(this, args);
@@ -39,8 +36,7 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
   };
 }
 export const withZodValidator = TanStackStart.createServerFn({
-  method: 'GET',
-  fn: (...args) => {
+  method: 'GET' }).handler( (...args) => {
     "use server";
 
     return zodValidator(z.number(), input => {

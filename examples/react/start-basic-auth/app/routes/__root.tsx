@@ -20,7 +20,7 @@ import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo.js'
 import { useAppSession } from '~/utils/session.js'
 
-const fetchUser = createServerFn('GET', async () => {
+const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   // We need to auth on the server so we have access to secure cookies
   const session = await useAppSession()
 

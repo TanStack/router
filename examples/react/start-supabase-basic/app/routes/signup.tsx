@@ -4,8 +4,7 @@ import { useMutation } from '../hooks/useMutation'
 import { Auth } from '../components/Auth'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-export const signupFn = createServerFn(
-  'POST',
+export const signupFn = createServerFn().handler(
   async (payload: {
     email: string
     password: string
@@ -29,10 +28,6 @@ export const signupFn = createServerFn(
     })
   },
 )
-
-export const Route = createFileRoute('/signup')({
-  component: SignupComp,
-})
 
 function SignupComp() {
   const signupMutation = useMutation({

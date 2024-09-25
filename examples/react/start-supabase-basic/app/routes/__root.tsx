@@ -20,7 +20,7 @@ import appCss from '../styles/app.css?url'
 import { seo } from '../utils/seo'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-const fetchUser = createServerFn('GET', async () => {
+const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = await getSupabaseServerClient()
   const { data, error } = await supabase.auth.getUser()
 

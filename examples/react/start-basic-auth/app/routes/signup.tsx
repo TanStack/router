@@ -6,8 +6,7 @@ import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
 import { useAppSession } from '~/utils/session'
 
-export const signupFn = createServerFn(
-  'POST',
+export const signupFn = createServerFn().handler(
   async (payload: {
     email: string
     password: string

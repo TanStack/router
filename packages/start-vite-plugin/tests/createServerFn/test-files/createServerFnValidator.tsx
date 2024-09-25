@@ -3,6 +3,6 @@ import { z } from 'zod'
 
 export const withUseServer = createServerFn({
   method: 'GET',
-  serverValidator: z.number(),
-  fn: ({ payload }) => payload + 1,
 })
+  .input(z.number())
+  .handler(({ payload }) => payload + 1)

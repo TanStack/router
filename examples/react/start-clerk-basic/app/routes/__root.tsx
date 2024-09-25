@@ -27,13 +27,15 @@ import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
-const fetchClerkAuth = createServerFn('GET', async (_, ctx) => {
-  const user = await getAuth(ctx.request)
+const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(
+  async (_, ctx) => {
+    const user = await getAuth(ctx.request)
 
-  return {
-    user,
-  }
-})
+    return {
+      user,
+    }
+  },
+)
 
 export const Route = createRootRoute({
   meta: () => [
