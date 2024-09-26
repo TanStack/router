@@ -33,11 +33,11 @@ export type Fetcher<TInput, TResponse> = {
 
 export type FetcherImpl<TInput, TResponse> =
   IsOptional<TInput> extends true
-    ? (opts?: FetcherOptions<TInput>) => Promise<FetcherPayload<TResponse>>
-    : (opts: FetcherOptions<TInput>) => Promise<FetcherPayload<TResponse>>
+    ? (opts?: FetcherOptions<TInput>) => Promise<FetcherData<TResponse>>
+    : (opts: FetcherOptions<TInput>) => Promise<FetcherData<TResponse>>
 
 export type FetcherOptions<TInput> = FetcherBaseOptions &
-  FetcherPayloadOptions<TInput>
+  FetcherDataOptions<TInput>
 
 export type FetcherBaseOptions = {
   requestInit?: RequestInit
@@ -57,7 +57,7 @@ export type ResolveServerValidatorInput<TSearchValidator> =
       ? ResolveServerValidatorSchemaFnInput<TSearchValidator['parse']>
       : ResolveServerValidatorSchemaFnInput<TSearchValidator>
 
-export type FetcherPayloadOptions<TInput> =
+export type FetcherDataOptions<TInput> =
   IsOptional<TInput> extends true
     ? {
         data?: ResolveServerValidatorInput<TInput>
@@ -66,7 +66,7 @@ export type FetcherPayloadOptions<TInput> =
         data: ResolveServerValidatorInput<TInput>
       }
 
-export type FetcherPayload<TResponse> = WrapRSCs<
+export type FetcherData<TResponse> = WrapRSCs<
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 >
 
@@ -92,7 +92,7 @@ export type ServerFn<TMethod, TInput, TResponse, TContextIn> = (
 
 export type ServerFnCtx<TMethod, TInput, TContextIn> = {
   method: TMethod
-  data: ResolveSearchSchema<TInput>
+  input: ResolveSearchSchema<TInput>
   context: TContextIn
 }
 
@@ -233,54 +233,54 @@ function createServerFnFetcher<
 // }
 
 // Composed
-export const zodMiddleware = createRootMiddleware().validationImpl(zodAdapter)
+// export const zodMiddleware = createRootMiddleware().validationImpl(zodAdapter)
 
-export const loggingMiddleware = createRootMiddleware().use(logger)
+// export const loggingMiddleware = createRootMiddleware().use(logger)
 
-export const middleware1 = createServerMiddleware({
-  id: 'auth',
-})
-  .middleware(['logging'])
-  .use(async ({ next }) => {
-    const user = await getUser()
+// export const middleware1 = createServerMiddleware({
+//   id: 'auth',
+// })
+//   .middleware(['logging'])
+//   .use(async ({ next }) => {
+//     const user = await getUser()
 
-    if (!user) {
-      throw new Error('User not found')
-    }
+//     if (!user) {
+//       throw new Error('User not found')
+//     }
 
-    return next({
-      user,
-    })
-  })
+//     return next({
+//       user,
+//     })
+//   })
 
-export const workspaceMiddleware = createServerMiddleware({
-  id: 'workspace',
-})
-  .middleware(['auth'])
-  .input(z.object({ workspaceId: z.string() }))
+// export const workspaceMiddleware = createServerMiddleware({
+//   id: 'workspace',
+// })
+//   .middleware(['auth'])
+//   .input(z.object({ workspaceId: z.string() }))
 
-const sayHello = createServerFn({
-  method: 'GET',
-})
-  .middleware(['workspace'])
-  .input(
-    z.object({
-      name: z.string(),
-    }),
-  ) // Type/Runtime Safety
-  .handler(({ data, context }) => {
-    context.user
-    context.workspaceId
+// const sayHello = createServerFn({
+//   method: 'GET',
+// })
+//   .middleware(['workspace'])
+//   .input(
+//     z.object({
+//       name: z.string(),
+//     }),
+//   ) // Type/Runtime Safety
+//   .handler(({ data, context }) => {
+//     context.user
+//     context.workspaceId
 
-    return `Hello, ${data}!`
-  })
+//     return `Hello, ${data}!`
+//   })
 
-sayHello({
-  data: {
-    workspaceId: '123',
-    name: 'world',
-  },
-})
+// sayHello({
+//   data: {
+//     workspaceId: '123',
+//     name: 'world',
+//   },
+// })
 
 // - Crawl all user files for `createServerFn`, `createServerMiddleware`, `createRootMiddleware`
 // - Is it exported? Error

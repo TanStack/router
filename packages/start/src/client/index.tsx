@@ -2,7 +2,6 @@
 export { Asset } from './Asset'
 export {
   createServerFn,
-  createServerMiddleware,
   type JsonResponse,
   type FetcherOptions,
   type ServerFn as FetchFn,
@@ -10,23 +9,35 @@ export {
   type CompiledFetcherFnOptions,
   type CompiledFetcherFn,
   type Fetcher,
-  type FetcherPayload,
   type RscStream,
-  type FlattenMiddleware,
   type IsOptional,
+  type WrapRSCs,
+  type FetcherImpl,
+  type FetcherData,
+  type FetcherDataOptions,
+  type FetcherBaseOptions,
+  type ResolveServerValidatorSchemaFnInput,
+  type ResolveServerValidatorInput,
+  type ServerFn,
+  type ServerFnCtx,
+} from './createServerFn'
+export {
+  createServerMiddleware,
+  type AnyServerMiddleware,
+  type ResultWithContext,
+  type testMiddleware,
+  type ServerMiddlewareOptions,
+  type ServerMiddlewareUseFn,
+  type FlattenMiddleware,
   type MiddlewareOptions,
-  type ServerMiddleware,
   type ServerMiddlewarePostFn,
   type ServerMiddlewarePreFn,
-  type WrapRSCs,
   type ExtractContext,
   type ExtractMiddleware,
-  type FetcherImpl,
-  type FetcherPayloadOptions,
   type ResolveMiddlewareContext,
   type ResolveMiddlewareContextInner,
   type ServerMiddlewarePreFnReturn,
-} from './createServerFn'
+} from './createServerMiddleware'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'
 export { Meta, Html, Head, Body } from './Meta'

@@ -22,10 +22,8 @@ export const withoutUseServer = middlewareFn({
 })
 
 export const withVariable = middlewareFn({
-  method: 'GET',
   id: 'test',
-  before: abstractedFunction,
-})
+}).use(abstractedFunction)
 
 async function abstractedFunction() {
   console.info('Fetching posts...')

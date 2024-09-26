@@ -5,12 +5,13 @@ import { hashPassword, prismaClient } from '~/utils/prisma'
 import { Login } from '~/components/Login'
 import { useAppSession } from '~/utils/session'
 
-export const loginFn = createServerFn().handler(
-  async (payload: { email: string; password: string }) => {
+export const loginFn = createServerFn()
+  .input((d) => d as { email: string; password: string })
+  .handler(async ({ input }) => {
     // Find the user
     const user = await prismaClient.user.findUnique({
       where: {
-        email: payload.email,
+        email: input.email,
       },
     })
 
@@ -24,7 +25,7 @@ export const loginFn = createServerFn().handler(
     }
 
     // Check if the password is correct
-    const hashedPassword = await hashPassword(payload.password)
+    const hashedPassword = await hashPassword(input.password)
 
     if (user.password !== hashedPassword) {
       return {
@@ -40,8 +41,7 @@ export const loginFn = createServerFn().handler(
     await session.update({
       userEmail: user.email,
     })
-  },
-)
+  })
 
 export const Route = createFileRoute('/_authed')({
   beforeLoad: ({ context }) => {

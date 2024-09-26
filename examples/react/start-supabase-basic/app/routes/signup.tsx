@@ -4,16 +4,13 @@ import { useMutation } from '../hooks/useMutation'
 import { Auth } from '../components/Auth'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-export const signupFn = createServerFn().handler(
-  async (payload: {
-    email: string
-    password: string
-    redirectUrl?: string
-  }) => {
+export const signupFn = createServerFn()
+  .input((d) => d as { email: string; password: string; redirectUrl?: string })
+  .handler(async ({ input }) => {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase.auth.signUp({
-      email: payload.email,
-      password: payload.password,
+      email: input.email,
+      password: input.password,
     })
     if (error) {
       return {
@@ -24,10 +21,9 @@ export const signupFn = createServerFn().handler(
 
     // Redirect to the prev page stored in the "redirect" search param
     throw redirect({
-      href: payload.redirectUrl || '/',
+      href: input.redirectUrl || '/',
     })
-  },
-)
+  })
 
 function SignupComp() {
   const signupMutation = useMutation({

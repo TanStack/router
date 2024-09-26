@@ -1,3 +1,3 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`createServerFn compiles correctly > should error if createServerFn is created without a handler 1`] = `[Error: createServerFn must be called with an object of options!]`;
+exports[`createServerFn compiles correctly > should error if createServerFn is created without a handler 1`] = `[Error: createServerFn must be called with a "handler" property!]`;

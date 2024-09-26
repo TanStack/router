@@ -23,6 +23,7 @@ type IdentifierConfig = {
     path: babel.NodePath<t.CallExpression>,
     identifier: IdentifierConfig,
   ) => void
+  paths: Array<babel.NodePath>
 }
 
 export function compileCreateServerFnOutput(opts: ParseAstOptions) {
@@ -46,12 +47,14 @@ export function compileCreateServerFnOutput(opts: ParseAstOptions) {
             type: 'ImportSpecifier',
             namespaceId: '',
             handleCallExpression: handleCreateServerFnCallExpression,
+            paths: [],
           },
           createServerMiddleware: {
             name: 'createServerMiddleware',
             type: 'ImportSpecifier',
             namespaceId: '',
             handleCallExpression: handleCreateServerMiddlewareCallExpression,
+            paths: [],
           },
         } as const
 
@@ -91,12 +94,25 @@ export function compileCreateServerFnOutput(opts: ParseAstOptions) {
           },
           CallExpression: (path) => {
             identifierKeys.forEach((identifierKey) => {
-              identifiers[identifierKey].handleCallExpression(
-                path,
-                identifiers[identifierKey],
-              )
+              // Check to see if the call expression is a call to the
+              // identifiers[identifierKey].name
+              if (
+                t.isIdentifier(path.node.callee) &&
+                path.node.callee.name === identifiers[identifierKey].name
+              ) {
+                identifiers[identifierKey].paths.push(path)
+              }
             })
           },
+        })
+
+        identifierKeys.forEach((identifierKey) => {
+          identifiers[identifierKey].paths.forEach((path) => {
+            identifiers[identifierKey].handleCallExpression(
+              path as babel.NodePath<t.CallExpression>,
+              identifiers[identifierKey],
+            )
+          })
         })
       },
     },
@@ -108,74 +124,96 @@ export function compileCreateServerFnOutput(opts: ParseAstOptions) {
   })
 }
 
-function addUseServerToFunction(fn: t.Node) {
-  if (t.isFunctionExpression(fn) || t.isArrowFunctionExpression(fn)) {
-    if (t.isBlockStatement(fn.body)) {
-      const hasUseServerDirective = fn.body.directives.some((directive) => {
-        return directive.value.value === 'use server'
-      })
+// function addUseServerToFunction(fn: t.Node) {
+//   if (t.isFunctionExpression(fn) || t.isArrowFunctionExpression(fn)) {
+//     if (t.isBlockStatement(fn.body)) {
+//       const hasUseServerDirective = fn.body.directives.some((directive) => {
+//         return directive.value.value === 'use server'
+//       })
 
-      if (!hasUseServerDirective) {
-        fn.body.directives.unshift(
-          t.directive(t.directiveLiteral('use server')),
-        )
-      }
+//       if (!hasUseServerDirective) {
+//         fn.body.directives.unshift(
+//           t.directive(t.directiveLiteral('use server')),
+//         )
+//       }
 
-      return fn
-    }
+//       return fn
+//     }
 
-    if (t.isExpression(fn.body)) {
-      // If the function is an arrow function expression without a block
-      // statement, then we need to wrap the expression in a block
-      // statement with the `use server` directive at the top of the function
-      // scope.
+//     if (t.isExpression(fn.body)) {
+//       // If the function is an arrow function expression without a block
+//       // statement, then we need to wrap the expression in a block
+//       // statement with the `use server` directive at the top of the function
+//       // scope.
 
-      const wrappedFn = t.arrowFunctionExpression(
-        fn.params,
-        t.blockStatement(
-          [t.returnStatement(fn.body)],
-          [t.directive(t.directiveLiteral('use server'))],
-        ),
-      )
+//       const wrappedFn = t.arrowFunctionExpression(
+//         fn.params,
+//         t.blockStatement(
+//           [t.returnStatement(fn.body)],
+//           [t.directive(t.directiveLiteral('use server'))],
+//         ),
+//       )
 
-      return wrappedFn
-    }
-  } else if (t.isIdentifier(fn) || t.isCallExpression(fn)) {
-    // A function was passed to createServerFn in the form of an
-    // identifier or a call expression that returns a function.
+//       return wrappedFn
+//     }
+//   } else if (t.isIdentifier(fn) || t.isCallExpression(fn)) {
+//     // A function was passed to createServerFn in the form of an
+//     // identifier or a call expression that returns a function.
 
-    // We wrap the identifier/call expression in a function
-    // expression that accepts the same arguments as the original
-    // function with the "use server" directive at the top of the
-    // function scope.
+//     // We wrap the identifier/call expression in a function
+//     // expression that accepts the same arguments as the original
+//     // function with the "use server" directive at the top of the
+//     // function scope.
 
-    const args = t.restElement(t.identifier('args'))
+//     const args = t.restElement(t.identifier('args'))
 
-    const wrappedFn = t.arrowFunctionExpression(
-      [args],
-      t.blockStatement(
-        [
-          t.returnStatement(
-            t.callExpression(t.memberExpression(fn, t.identifier('apply')), [
-              t.identifier('this'),
-              t.identifier('args'),
-            ]),
-          ),
-        ],
-        [t.directive(t.directiveLiteral('use server'))],
-      ),
-    )
+//     const wrappedFn = t.arrowFunctionExpression(
+//       [args],
+//       t.blockStatement(
+//         [
+//           t.returnStatement(
+//             t.callExpression(t.memberExpression(fn, t.identifier('apply')), [
+//               t.identifier('this'),
+//               t.identifier('args'),
+//             ]),
+//           ),
+//         ],
+//         [t.directive(t.directiveLiteral('use server'))],
+//       ),
+//     )
 
-    return wrappedFn
-  } else {
-    invariant(
-      false,
-      `Unexpected function type passed to createServerFn: ${fn.type}`,
-    )
-  }
+//     return wrappedFn
+//   } else {
+//     invariant(
+//       false,
+//       `Unexpected function type passed to createServerFn: ${fn.type}`,
+//     )
+//   }
 
-  return fn
-}
+//   return fn
+// }
+
+// Server functions are created using a builder style API, chained off of createServerFn.
+// e.g.
+// const fn = createServerFn({
+//   // optional options
+//   method: 'GET', // defaults to 'POST'
+// })
+//   .input(validatorExpression) // optional input validator
+//   .handler(handlerFn)
+
+// After it has been processed it should look like this:
+
+// const fn = createServerFn({
+//   // optional options
+//   method: 'GET', // defaults to 'POST'
+// })
+//   .handler((...args) => {
+//     'use server'
+//     // The validation is optional
+//     args[0].input = validatorExpression(args[0].input)
+//     return handlerFn.apply(this, args)
+//   })
 
 function handleCreateServerFnCallExpression(
   path: babel.NodePath<t.CallExpression>,
@@ -198,126 +236,122 @@ function handleCreateServerFnCallExpression(
   if (shouldHandle) {
     // The function is the 'fn' property of the object passed to createServerFn
 
-    const firstArg = path.node.arguments[0]
-    if (!t.isObjectExpression(firstArg)) {
-      throw new Error(
-        'createServerFn must be called with an object of options!',
-      )
+    // const firstArg = path.node.arguments[0]
+    // if (t.isObjectExpression(firstArg)) {
+    //   // Was called with some options
+    // }
+
+    // Traverse the member expression and find the call expressions for
+    // the input, handler, and middleware methods. Check to make sure they
+    // are children of the createServerFn call expression.
+
+    const callExpressionPaths = {
+      input: null as babel.NodePath<t.CallExpression> | null,
+      handler: null as babel.NodePath<t.CallExpression> | null,
+      middleware: null as babel.NodePath<t.CallExpression> | null,
     }
 
-    // Extract the server function
-    const fnProperty = firstArg.properties.find((prop) => {
-      return (
-        t.isObjectProperty(prop) &&
-        t.isIdentifier(prop.key) &&
-        prop.key.name === 'fn'
-      )
+    const validMethods = Object.keys(callExpressionPaths)
+
+    const rootCallExpression = getRootCallExpression(path)
+
+    rootCallExpression.traverse({
+      MemberExpression(memberExpressionPath) {
+        if (t.isIdentifier(memberExpressionPath.node.property)) {
+          const name = memberExpressionPath.node.property
+            .name as keyof typeof callExpressionPaths
+
+          if (
+            validMethods.includes(name) &&
+            memberExpressionPath.parentPath.isCallExpression()
+          ) {
+            callExpressionPaths[name] = memberExpressionPath.parentPath
+          }
+        }
+      },
     })
 
-    if (!t.isObjectProperty(fnProperty)) {
-      // TODO: move this logic out to eslint or something like
-      // the router generator code that can do autofixes on save.
+    let inputExpression: t.Expression | null = null
 
-      // // Stub in a fake fn: () => {} property so we can continue
+    if (callExpressionPaths.input) {
+      const innerInputExpression = callExpressionPaths.input.node.arguments[0]
 
-      // fnProperty = t.objectProperty(
-      //   t.identifier('fn'),
-      //   t.arrowFunctionExpression([], t.blockStatement([])),
-      // )
-
-      // firstArg.properties.push(fnProperty)
-
-      throw new Error('createServerFn must be called with an "fn" property!')
-    }
-
-    fnProperty.value = addUseServerToFunction(fnProperty.value)
-
-    // Extract the validator into a function with the `use server` directive
-    // that returns the validator value.
-
-    const validatorProperty = firstArg.properties.find((prop) => {
-      return (
-        t.isObjectProperty(prop) &&
-        t.isIdentifier(prop.key) &&
-        prop.key.name === 'serverValidator'
-      )
-    }) as t.ObjectProperty | undefined
-
-    // If we find a validator property, then we need to use it to validate
-    // the input to the server function before calling the server function.
-
-    // like this:
-    // fn: (...args) => {
-    //    'use server' // directive should be here allready
-    //     args[0].payload = validator(args[0].payload)
-    //    return ((...args) => {
-    //      // original function body
-    //    })(...args)
-    // },
-
-    // Then we need to remove the validator property from the object
-
-    if (validatorProperty) {
-      const validator = validatorProperty.value
-
-      // Remove the validator property from the object
-      firstArg.properties = firstArg.properties.filter((prop) => {
-        return prop !== validatorProperty
-      })
-
-      // create a new function that wraps the original function
-
-      const payloadExpression = t.memberExpression(
-        t.memberExpression(t.identifier('args'), t.numericLiteral(0), true),
-        t.identifier('payload'),
-      )
-
-      // Walk down fnProperty.value and remove any 'use server' directives.
-      // We only want the top level function to have the 'use server' directive.
-
-      let current = fnProperty.value as any
-
-      while (t.isArrowFunctionExpression(current)) {
-        if (t.isBlockStatement(current.body)) {
-          current.body.directives = current.body.directives.filter(
-            (directive) => {
-              return directive.value.value !== 'use server'
-            },
-          )
-
-          break
-        }
-
-        current = current.body
+      if (!innerInputExpression) {
+        throw new Error(
+          'createServerFn().input() must be called with an input validator!',
+        )
       }
 
-      const wrappedFn = t.arrowFunctionExpression(
+      inputExpression = t.parenthesizedExpression(innerInputExpression as any)
+
+      if (t.isMemberExpression(callExpressionPaths.input.node.callee)) {
+        callExpressionPaths.input.replaceWith(
+          callExpressionPaths.input.node.callee.object,
+        )
+      }
+    }
+
+    // First, we need to move the handler function to a nested function call
+    // that is applied to the arguments passed to the server function.
+
+    const handlerFnPath = callExpressionPaths.handler?.get(
+      'arguments.0',
+    ) as babel.NodePath<any>
+
+    if (!callExpressionPaths.handler || !handlerFnPath.node) {
+      throw new Error(
+        'createServerFn must be called with a "handler" property!',
+      )
+    }
+
+    const handlerFn = handlerFnPath.node
+
+    // Then, if there was an input validator, we need to validate the input
+    // and assign it back to the args[0].input property before calling the
+    // nested handler function.
+
+    handlerFnPath.replaceWith(
+      t.arrowFunctionExpression(
         [t.restElement(t.identifier('args'))],
         t.blockStatement(
           [
-            //  args[0].payload = (validator)(args[0].payload)
-            t.expressionStatement(
-              t.assignmentExpression(
-                '=',
-                payloadExpression,
-                t.callExpression(t.parenthesizedExpression(validator as any), [
-                  payloadExpression,
-                ]),
-              ),
-            ),
+            inputExpression
+              ? t.expressionStatement(
+                  t.assignmentExpression(
+                    '=',
+                    t.memberExpression(
+                      t.memberExpression(
+                        t.identifier('args'),
+                        t.numericLiteral(0),
+                        true,
+                      ),
+                      t.identifier('input'),
+                    ),
+                    t.callExpression(inputExpression, [
+                      t.memberExpression(
+                        t.memberExpression(
+                          t.identifier('args'),
+                          t.numericLiteral(0),
+                          true,
+                        ),
+                        t.identifier('input'),
+                      ),
+                    ]),
+                  ),
+                )
+              : (null as any),
             t.returnStatement(
-              t.callExpression(
-                t.parenthesizedExpression(fnProperty.value as any),
-                [t.spreadElement(t.identifier('args'))],
-              ),
+              t.callExpression(t.parenthesizedExpression(handlerFn), [
+                t.spreadElement(t.identifier('args')),
+              ]),
             ),
-          ],
+          ].filter(Boolean),
+          // Finally, we need to ensure that our top level (...args) => {} function has a 'use server'
+          // directive at the top of the function scope.
           [t.directive(t.directiveLiteral('use server'))],
         ),
-      )
-
-      fnProperty.value = wrappedFn
-    }
+      ),
+    )
   }
 }
 
@@ -366,8 +400,10 @@ function handleCreateServerMiddlewareCallExpression(
       )
     }
 
+    const rootCallExpression = getRootCallExpression(path)
+
     // Check if the call is assigned to a variable
-    if (!path.parentPath.isVariableDeclarator()) {
+    if (!rootCallExpression.parentPath.isVariableDeclarator()) {
       // TODO: move this logic out to eslint or something like
       // the router generator code that can do autofixes on save.
 
@@ -408,10 +444,10 @@ function handleCreateServerMiddlewareCallExpression(
       )
     }
 
-    const variableDeclarator = path.parentPath.node
+    const variableDeclarator = rootCallExpression.parentPath.node
     const existingVariableName = (variableDeclarator.id as t.Identifier).name
 
-    const program = path.findParent((parentPath) => {
+    const program = rootCallExpression.findParent((parentPath) => {
       return parentPath.isProgram()
     }) as babel.NodePath<t.Program>
 
@@ -419,34 +455,6 @@ function handleCreateServerMiddlewareCallExpression(
 
     program.traverse({
       ExportNamedDeclaration: (path) => {
-        //         {
-        //   type: 'ExportNamedDeclaration',
-        //   start: 82,
-        //   end: 405,
-        //   loc: SourceLocation {
-        //     start: Position { line: 4, column: 0, index: 82 },
-        //     end: Position { line: 13, column: 2, index: 405 },
-        //     filename: undefined,
-        //     identifierName: undefined
-        //   },
-        //   exportKind: 'value',
-        //   specifiers: [],
-        //   source: null,
-        //   declaration: Node {
-        //     type: 'VariableDeclaration',
-        //     start: 89,
-        //     end: 405,
-        //     loc: SourceLocation {
-        //       start: [Position],
-        //       end: [Position],
-        //       filename: undefined,
-        //       identifierName: undefined
-        //     },
-        //     declarations: [ [Node] ],
-        //     kind: 'const'
-        //   }
-        // }
-
         if (
           path.isExportNamedDeclaration() &&
           path.node.declaration &&
@@ -483,28 +491,141 @@ function handleCreateServerMiddlewareCallExpression(
       )
     }
 
-    // Extract the server function
-    const beforeProperty = firstArg.properties.find((prop) => {
-      return (
-        t.isObjectProperty(prop) &&
-        t.isIdentifier(prop.key) &&
-        prop.key.name === 'before'
-      )
+    // The function is the 'fn' property of the object passed to createServerFn
+
+    // const firstArg = path.node.arguments[0]
+    // if (t.isObjectExpression(firstArg)) {
+    //   // Was called with some options
+    // }
+
+    // Traverse the member expression and find the call expressions for
+    // the input, handler, and middleware methods. Check to make sure they
+    // are children of the createServerFn call expression.
+
+    const callExpressionPaths = {
+      input: null as babel.NodePath<t.CallExpression> | null,
+      use: null as babel.NodePath<t.CallExpression> | null,
+      middleware: null as babel.NodePath<t.CallExpression> | null,
+    }
+
+    const validMethods = Object.keys(callExpressionPaths)
+
+    rootCallExpression.traverse({
+      MemberExpression(memberExpressionPath) {
+        if (t.isIdentifier(memberExpressionPath.node.property)) {
+          const name = memberExpressionPath.node.property
+            .name as keyof typeof callExpressionPaths
+
+          if (
+            validMethods.includes(name) &&
+            memberExpressionPath.parentPath.isCallExpression()
+          ) {
+            callExpressionPaths[name] = memberExpressionPath.parentPath
+          }
+        }
+      },
     })
 
-    const afterProperty = firstArg.properties.find((prop) => {
-      return (
-        t.isObjectProperty(prop) &&
-        t.isIdentifier(prop.key) &&
-        prop.key.name === 'after'
-      )
-    })
+    let inputExpression: t.Expression | null = null
 
-    ;[beforeProperty, afterProperty].filter(Boolean).forEach((fnProperty) => {
-      if (t.isObjectProperty(fnProperty)) {
-        const fn = fnProperty.value
-        fnProperty.value = addUseServerToFunction(fn)
+    if (callExpressionPaths.input) {
+      const innerInputExpression = callExpressionPaths.input.node.arguments[0]
+
+      if (!innerInputExpression) {
+        throw new Error(
+          'createServerFn().input() must be called with an input validator!',
+        )
       }
-    })
+
+      inputExpression = t.parenthesizedExpression(innerInputExpression as any)
+
+      if (t.isMemberExpression(callExpressionPaths.input.node.callee)) {
+        callExpressionPaths.input.replaceWith(
+          callExpressionPaths.input.node.callee.object,
+        )
+      }
+    }
+
+    // First, we need to move the use function to a nested function call
+    // that is applied to the arguments passed to the server function.
+
+    const useFnPath = callExpressionPaths.use?.get(
+      'arguments.0',
+    ) as babel.NodePath<any>
+
+    if (!callExpressionPaths.use || !useFnPath.node) {
+      throw new Error('createServerFn must be called with a "use" property!')
+    }
+
+    const useFn = useFnPath.node
+
+    // Then, if there was an input validator, we need to validate the input
+    // and assign it back to the args[0].input property before calling the
+    // nested use function.
+    // The assignment needs to be a bit different and use
+    // Object.assign(args[0].input, inputExpression(args[0].input))
+
+    useFnPath.replaceWith(
+      t.arrowFunctionExpression(
+        [t.restElement(t.identifier('args'))],
+        t.blockStatement(
+          [
+            inputExpression
+              ? t.expressionStatement(
+                  t.callExpression(
+                    t.memberExpression(
+                      t.identifier('Object'),
+                      t.identifier('assign'),
+                    ),
+                    [
+                      t.memberExpression(
+                        t.memberExpression(
+                          t.identifier('args'),
+                          t.numericLiteral(0),
+                          true,
+                        ),
+                        t.identifier('input'),
+                      ),
+                      t.callExpression(inputExpression, [
+                        t.memberExpression(
+                          t.memberExpression(
+                            t.identifier('args'),
+                            t.numericLiteral(0),
+                            true,
+                          ),
+                          t.identifier('input'),
+                        ),
+                      ]),
+                    ],
+                  ),
+                )
+              : (null as any),
+            t.returnStatement(
+              t.callExpression(t.parenthesizedExpression(useFn), [
+                t.spreadElement(t.identifier('args')),
+              ]),
+            ),
+          ].filter(Boolean),
+          // Finally, we need to ensure that our top level (...args) => {} function has a 'use server'
+          // directive at the top of the function scope.
+          [t.directive(t.directiveLiteral('use server'))],
+        ),
+      ),
+    )
   }
+}
+
+function getRootCallExpression(path: babel.NodePath<t.CallExpression>) {
+  // Find the highest callExpression parent
+  let rootCallExpression: babel.NodePath<t.CallExpression> = path
+
+  // Traverse up the chain of CallExpressions
+  while (rootCallExpression.parentPath.isMemberExpression()) {
+    const parent = rootCallExpression.parentPath
+    if (parent.parentPath.isCallExpression()) {
+      rootCallExpression = parent.parentPath
+    }
+  }
+
+  return rootCallExpression
 }

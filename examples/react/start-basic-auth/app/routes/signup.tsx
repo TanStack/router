@@ -6,21 +6,25 @@ import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
 import { useAppSession } from '~/utils/session'
 
-export const signupFn = createServerFn().handler(
-  async (payload: {
-    email: string
-    password: string
-    redirectUrl?: string
-  }) => {
+export const signupFn = createServerFn()
+  .input(
+    (d) =>
+      d as {
+        email: string
+        password: string
+        redirectUrl?: string
+      },
+  )
+  .handler(async ({ input }) => {
     // Check if the user already exists
     const found = await prismaClient.user.findUnique({
       where: {
-        email: payload.email,
+        email: input.email,
       },
     })
 
     // Encrypt the password using Sha256 into plaintext
-    const password = await hashPassword(payload.password)
+    const password = await hashPassword(input.password)
 
     // Create a session
     const session = await useAppSession()
@@ -41,14 +45,14 @@ export const signupFn = createServerFn().handler(
 
       // Redirect to the prev page stored in the "redirect" search param
       throw redirect({
-        href: payload.redirectUrl || '/',
+        href: input.redirectUrl || '/',
       })
     }
 
     // Create the user
     const user = await prismaClient.user.create({
       data: {
-        email: payload.email,
+        email: input.email,
         password,
       },
     })
@@ -60,10 +64,9 @@ export const signupFn = createServerFn().handler(
 
     // Redirect to the prev page stored in the "redirect" search param
     throw redirect({
-      href: payload.redirectUrl || '/',
+      href: input.redirectUrl || '/',
     })
-  },
-)
+  })
 
 export const Route = createFileRoute('/signup')({
   component: SignupComp,

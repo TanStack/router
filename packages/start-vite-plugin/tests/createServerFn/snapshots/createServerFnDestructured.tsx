@@ -1,39 +1,48 @@
 import { createServerFn } from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = createServerFn({
-  method: 'GET' }).handler( async function () {
-    "use server";
+  method: 'GET'
+}).handler((...args) => {
+  "use server";
 
+  return (async function () {
     console.info('Fetching posts...');
     await new Promise(r => setTimeout(r, 500));
     return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
-  });
+  })(...args);
+});
 export const withArrowFunction = createServerFn({
-  method: 'GET' }).handler( () => {
-    "use server";
+  method: 'GET'
+}).handler((...args) => {
+  "use server";
 
-    return null;
-  });
+  return (async () => null)(...args);
+});
 export const withArrowFunctionAndFunction = createServerFn({
-  method: 'GET' }).handler( () => {
-    "use server";
+  method: 'GET'
+}).handler((...args) => {
+  "use server";
 
-    return test();
-  });
+  return (async () => test())(...args);
+});
 export const withoutUseServer = createServerFn({
-  method: 'GET' }).handler( async () => {
-    "use server";
+  method: 'GET'
+}).handler((...args) => {
+  "use server";
 
+  return (async () => {
     console.info('Fetching posts...');
     await new Promise(r => setTimeout(r, 500));
     return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
-  });
+  })(...args);
+});
 export const withVariable = createServerFn({
-  method: 'GET' }).handler( (...args) => {
-    "use server";
+  method: 'GET'
+}).handler((...args) => {
+  "use server";
 
-    return abstractedFunction.apply(this, args);
-  });
+  return (abstractedFunction)(...args);
+});
 async function abstractedFunction() {
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
@@ -45,23 +54,25 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
   };
 }
 export const withZodValidator = createServerFn({
-  method: 'GET' }).handler( (...args) => {
-    "use server";
+  method: 'GET'
+}).handler((...args) => {
+  "use server";
 
-    return zodValidator(z.number(), input => {
-      return {
-        'you gave': input
-      };
-    }).apply(this, args);
-  });
+  return (zodValidator(z.number(), input => {
+    return {
+      'you gave': input
+    };
+  }))(...args);
+});
 export const withValidatorFn = createServerFn({
-  method: 'GET' }).handler( (...args) => {
-    "use server";
+  method: 'GET'
+}).handler((...args) => {
+  "use server";
 
-    args[0].payload = (z.number())(args[0].payload);
-    return (async ({
-      payload
-    }) => {
-      return null;
-    })(...args);
-  });
+  args[0].input = (z.number())(args[0].input);
+  return (async ({
+    payload
+  }) => {
+    return null;
+  })(...args);
+});

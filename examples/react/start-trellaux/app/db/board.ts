@@ -42,10 +42,11 @@ export const getBoard = createServerFn({ method: 'GET' }).handler(
   },
 )
 
-export const createColumn = createServerFn().handler(
-  async (payload: z.infer<typeof newColumnSchema>) => {
+export const createColumn = createServerFn()
+  .input(newColumnSchema)
+  .handler(async ({ input }) => {
     await delay(DELAY)
-    const newColumn = newColumnSchema.parse(payload)
+    const newColumn = newColumnSchema.parse(input)
 
     const board = boards.find((b) => b.id === newColumn.boardId)
 
@@ -59,73 +60,72 @@ export const createColumn = createServerFn().handler(
         id: crypto.randomUUID(),
       },
     ]
-  },
-)
+  })
 
-export const createItem = createServerFn().handler(
-  async (payload: z.infer<typeof itemSchema>) => {
+export const createItem = createServerFn()
+  .input(itemSchema)
+  .handler(async ({ input }) => {
     await delay(DELAY)
-    const item = itemSchema.parse(payload)
+    const item = itemSchema.parse(input)
 
     const board = boards.find((b) => b.id === item.boardId)
 
     invariant(board, 'missing board')
 
     board.items.push(item)
-  },
-)
+  })
 
-export const deleteItem = createServerFn({ method: 'GET' }).handler(
-  async (payload: z.infer<typeof deleteItemSchema>) => {
+export const deleteItem = createServerFn({ method: 'GET' })
+  .input(deleteItemSchema)
+  .handler(async ({ input }) => {
     await delay(DELAY)
-    const { id } = deleteItemSchema.parse(payload)
+    const { id } = deleteItemSchema.parse(input)
     const board = boards.find((b) => b.items.some((i) => i.id === id))
     invariant(board, 'missing board')
     board.items = board.items.filter((item) => item.id !== id)
-  },
-)
+  })
 
-export const updateItem = createServerFn().handler(
-  async (payload: z.infer<typeof itemSchema>) => {
+export const updateItem = createServerFn()
+  .input(itemSchema)
+  .handler(async ({ input }) => {
     await delay(DELAY)
-    const item = itemSchema.parse(payload)
+    const item = itemSchema.parse(input)
     const board = boards.find((b) => b.id === item.boardId)
     invariant(board, 'missing board')
     const existingItem = board.items.find((i) => i.id === item.id)
     invariant(existingItem, 'missing item')
     Object.assign(existingItem, item)
-  },
-)
+  })
 
-export const updateColumn = createServerFn().handler(
-  async (payload: z.infer<typeof updateColumnSchema>) => {
+export const updateColumn = createServerFn()
+  .input(updateColumnSchema)
+  .handler(async ({ input }) => {
     await delay(DELAY)
-    const column = updateColumnSchema.parse(payload)
+    const column = updateColumnSchema.parse(input)
     const board = boards.find((b) => b.id === column.boardId)
     invariant(board, 'missing board')
     const existingColumn = board.columns.find((c) => c.id === column.id)
     invariant(existingColumn, 'missing column')
     Object.assign(existingColumn, column)
-  },
-)
+  })
 
-export const updateBoard = createServerFn().handler(
-  async (payload: z.infer<typeof updateBoardSchema>) => {
+export const updateBoard = createServerFn()
+  .input(updateBoardSchema)
+  .handler(async ({ input }) => {
     await delay(DELAY)
-    const update = updateBoardSchema.parse(payload)
+    const update = updateBoardSchema.parse(input)
     const board = boards.find((b) => b.id === update.id)
     invariant(board, 'missing board')
     Object.assign(board, update)
-  },
-)
+  })
 
-export const deleteColumn = createServerFn({ method: 'GET' }).handler(
-  async (payload: z.infer<typeof deleteColumnSchema>) => {
+export const deleteColumn = createServerFn({ method: 'GET' })
+  .input(deleteColumnSchema)
+  .handler(async ({ input }) => {
     await delay(DELAY)
-    const { id } = deleteColumnSchema.parse(payload)
+    const { id } = deleteColumnSchema.parse(input)
     const board = boards.find((b) => b.columns.some((c) => c.id === id))
     invariant(board, 'missing board')
     board.columns = board.columns.filter((column) => column.id !== id)
     board.items = board.items.filter((item) => item.columnId !== id)
-  },
-)
+  })

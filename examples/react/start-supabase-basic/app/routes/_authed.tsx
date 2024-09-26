@@ -3,20 +3,13 @@ import { createServerFn } from '@tanstack/start'
 import { Login } from '../components/Login'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-export const loginFn = createServerFn({
-  'POST',
-}).handler(
-  async (
-    payload: {
-      email: string
-      password: string
-    },
-    { request },
-  ) => {
+export const loginFn = createServerFn()
+  .input((d) => d as { email: string; password: string })
+  .handler(async ({ input }) => {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: payload.email,
-      password: payload.password,
+      email: input.email,
+      password: input.password,
     })
     if (error) {
       return {
@@ -24,8 +17,7 @@ export const loginFn = createServerFn({
         message: error.message,
       }
     }
-  },
-)
+  })
 
 export const Route = createFileRoute('/_authed')({
   beforeLoad: ({ context }) => {
