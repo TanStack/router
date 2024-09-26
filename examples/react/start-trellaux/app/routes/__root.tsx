@@ -14,7 +14,6 @@ import type { QueryClient } from '@tanstack/react-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { IconLink } from '~/components/IconLink'
 import { NotFound } from '~/components/NotFound'
-// @ts-expect-error
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 import { Loader } from '~/components/Loader'
