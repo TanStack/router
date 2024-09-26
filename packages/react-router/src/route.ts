@@ -1555,7 +1555,7 @@ export type RouteMask<TRouteTree extends AnyRoute> = {
 
 export function createRouteMask<
   TRouteTree extends AnyRoute,
-  TFrom extends RoutePaths<TRouteTree> | string,
+  TFrom extends string,
   TTo extends string,
 >(
   opts: {

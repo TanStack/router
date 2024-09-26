@@ -294,8 +294,8 @@ export const Route = createFileRoute('/shop/products/')({
 
 ### Arktype Adapter
 
-[!WARNING]
-This adapter expects the arktype beta
+> [!WARNING]
+> This adapter expects the arktype 2.0-beta package to be installed.
 
 When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
 
@@ -374,7 +374,7 @@ const ProductList = () => {
 ```
 
 > [!TIP]
-> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
+> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
 
 ### Search Params outside of Route Components
 

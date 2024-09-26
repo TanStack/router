@@ -15,7 +15,7 @@ Follow this guide to build a basic TanStack Start web application. Together, we 
 - Which displays a counter...
 - With a button to increment the counter persistently.
 
-[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-basic-counter)
+[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-counter)
 
 Create a new project if you're starting fresh.
 
@@ -147,6 +147,7 @@ information to our server entry point:
 
 ```tsx
 // app/ssr.tsx
+/// <reference types="vinxi/types/server" />
 import {
   createStartHandler,
   defaultStreamHandler,
@@ -170,6 +171,7 @@ router information to our client entry point:
 
 ```tsx
 // app/client.tsx
+/// <reference types="vinxi/types/client" />
 import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/start'
 import { createRouter } from './router'

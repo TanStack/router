@@ -22,3 +22,10 @@ export const checkedProperties = [
   'loaderDeps',
   'loader',
 ] as const
+
+export const sortRules = [
+  [['params', 'validateSearch'], ['context']],
+  [['context'], ['beforeLoad']],
+  [['beforeLoad'], ['loaderDeps']],
+  [['loaderDeps'], ['loader']],
+] as const

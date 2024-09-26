@@ -73,6 +73,7 @@ export type {
   ActiveLinkOptions,
   LinkProps,
   LinkComponent,
+  CreateLinkProps,
 } from './link'
 
 export type { ParsedLocation } from './location'

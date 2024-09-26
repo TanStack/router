@@ -30,6 +30,7 @@ import type {
   RouterSchemaInput as VinxiRouterSchemaInput,
 } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
+import type { NitroOptions } from 'nitropack'
 
 /**
  * Not all the deployment presets are fully functional or tested.
@@ -112,26 +113,47 @@ function checkDeploymentPresetInput(preset: string): DeploymentPreset {
   return preset
 }
 
-const deploymentSchema = z.object({
-  preset: z.custom<DeploymentPreset>().optional(),
-  static: z.boolean().optional(),
-  prerender: z
-    .object({
-      routes: z.array(z.string()),
-      ignore: z
-        .array(
-          z.custom<
-            string | RegExp | ((path: string) => undefined | null | boolean)
-          >(),
-        )
-        .optional(),
-      crawlLinks: z.boolean().optional(),
-    })
-    .optional(),
-})
+type HTTPSOptions = {
+  cert?: string
+  key?: string
+  pfx?: string
+  passphrase?: string
+  validityDays?: number
+  domains?: Array<string>
+}
+type ServerOptions_ = VinxiAppOptions['server'] & {
+  https?: boolean | HTTPSOptions
+}
+type ServerOptions = {
+  [K in keyof ServerOptions_]: ServerOptions_[K]
+}
+
+const serverSchema = z
+  .object({
+    routeRules: z.custom<NitroOptions['routeRules']>().optional(),
+    preset: z.custom<DeploymentPreset>().optional(),
+    static: z.boolean().optional(),
+    prerender: z
+      .object({
+        routes: z.array(z.string()),
+        ignore: z
+          .array(
+            z.custom<
+              string | RegExp | ((path: string) => undefined | null | boolean)
+            >(),
+          )
+          .optional(),
+        crawlLinks: z.boolean().optional(),
+      })
+      .optional(),
+  })
+  .and(z.custom<ServerOptions>())
 
 const viteSchema = z.object({
-  plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
+  plugins: z
+    .function()
+    .returns(z.array(z.custom<vite.PluginOption>()))
+    .optional(),
 })
 
 const babelSchema = z.object({
@@ -182,7 +204,7 @@ const inlineConfigSchema = z.object({
   vite: viteSchema.optional(),
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
-  deployment: deploymentSchema.optional(),
+  server: serverSchema.optional(),
 })
 
 export type TanStackStartDefineConfigOptions = z.infer<
@@ -209,8 +231,8 @@ export function defineConfig(
 ) {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
-  const { preset: configDeploymentPreset, ...deploymentOptions } =
-    deploymentSchema.parse(opts.deployment || {})
+  const { preset: configDeploymentPreset, ...serverOptions } =
+    serverSchema.parse(opts.server || {})
 
   const deploymentPreset = checkDeploymentPresetInput(
     configDeploymentPreset || 'vercel',
@@ -230,8 +252,7 @@ export function defineConfig(
 
   return createApp({
     server: {
-      ...deploymentOptions,
-      static: deploymentOptions.static,
+      ...serverOptions,
       preset: deploymentPreset,
       experimental: {
         asyncContext: true,

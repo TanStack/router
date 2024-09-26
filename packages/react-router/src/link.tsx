@@ -28,6 +28,7 @@ import type {
 } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type {
+  Constrain,
   Expand,
   MakeDifferenceOptional,
   NoInfer,
@@ -36,6 +37,7 @@ import type {
   Updater,
   WithoutEmpty,
 } from './utils'
+import type { ReactNode } from 'react'
 
 export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
   ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
@@ -413,7 +415,7 @@ export type IsRequired<
   TTo,
 > =
   ResolveRelativePath<TFrom, TTo> extends infer TPath
-    ? string extends TPath
+    ? undefined extends TPath
       ? never
       : TPath extends CatchAllPaths<TrailingSlashOptionByRouter<TRouter>>
         ? never
@@ -820,9 +822,9 @@ export function useLinkProps<
   }
 
   return {
+    ...rest,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
-    ...rest,
     href: disabled
       ? undefined
       : next.maskedLocation
@@ -847,50 +849,65 @@ export function useLinkProps<
   }
 }
 
+type UseLinkReactProps<TComp> = TComp extends keyof JSX.IntrinsicElements
+  ? JSX.IntrinsicElements[TComp]
+  : React.PropsWithoutRef<
+      TComp extends React.ComponentType<infer TProps> ? TProps : never
+    > &
+      React.RefAttributes<
+        TComp extends
+          | React.FC<{ ref: infer TRef }>
+          | React.Component<{ ref: infer TRef }>
+          ? TRef
+          : never
+      >
+
 export type UseLinkPropsOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
-> = ActiveLinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
-  React.AnchorHTMLAttributes<HTMLAnchorElement>
+> = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+  UseLinkReactProps<'a'>
 
 export type ActiveLinkOptions<
+  TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & ActiveLinkOptionProps
+> = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+  ActiveLinkOptionProps<TComp>
 
-type ActiveLinkAnchorProps = Omit<
-  React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+type ActiveLinkProps<TComp> = Partial<
+  LinkComponentReactProps<TComp> & {
     [key: `data-${string}`]: unknown
-  },
-  'children'
+  }
 >
 
-export interface ActiveLinkOptionProps {
+export interface ActiveLinkOptionProps<TComp = 'a'> {
   /**
    * A function that returns additional props for the `active` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  activeProps?: ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
+  activeProps?: ActiveLinkProps<TComp> | (() => ActiveLinkProps<TComp>)
   /**
    * A function that returns additional props for the `inactive` state of this link.
    * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
    */
-  inactiveProps?: ActiveLinkAnchorProps | (() => ActiveLinkAnchorProps)
+  inactiveProps?: ActiveLinkProps<TComp> | (() => ActiveLinkProps<TComp>)
 }
 
 export type LinkProps<
+  TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = ActiveLinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ActiveLinkOptions<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
   LinkPropsChildren
 
 export interface LinkPropsChildren {
@@ -903,32 +920,29 @@ export interface LinkPropsChildren {
       }) => React.ReactNode)
 }
 
-type LinkComponentReactProps<TComp> = React.PropsWithoutRef<
-  TComp extends React.FC<infer TProps> | React.Component<infer TProps>
-    ? TProps
-    : TComp extends keyof React.JSX.IntrinsicElements
-      ? Omit<React.HTMLProps<TComp>, 'children' | 'preload'>
-      : never
-> &
-  React.RefAttributes<
-    TComp extends
-      | React.FC<{ ref: infer TRef }>
-      | React.Component<{ ref: infer TRef }>
-      ? TRef
-      : TComp extends keyof React.JSX.IntrinsicElements
-        ? React.ComponentRef<TComp>
-        : never
-  >
+type LinkComponentReactProps<TComp> = Omit<
+  UseLinkReactProps<TComp>,
+  keyof CreateLinkProps
+>
 
 export type LinkComponentProps<
-  TComp,
+  TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = LinkComponentReactProps<TComp> &
-  LinkProps<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+
+export type CreateLinkProps = LinkProps<
+  any,
+  any,
+  string,
+  string,
+  string,
+  string
+>
 
 export type LinkComponent<TComp> = <
   TRouter extends RegisteredRouter = RegisteredRouter,
@@ -940,7 +954,9 @@ export type LinkComponent<TComp> = <
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => React.ReactElement
 
-export function createLink<const TComp>(Comp: TComp): LinkComponent<TComp> {
+export function createLink<const TComp>(
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+): LinkComponent<TComp> {
   return React.forwardRef(function CreatedLink(props, ref) {
     return <Link {...(props as any)} _asChild={Comp} ref={ref} />
   }) as any

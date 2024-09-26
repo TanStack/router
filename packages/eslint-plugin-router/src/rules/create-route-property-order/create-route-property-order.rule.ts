@@ -4,9 +4,9 @@ import { getDocsUrl } from '../../utils/get-docs-url'
 import { detectTanstackRouterImports } from '../../utils/detect-router-imports'
 import { sortDataByOrder } from './create-route-property-order.utils'
 import {
-  checkedProperties,
   createRouteFunctions,
   createRouteFunctionsIndirect,
+  sortRules,
 } from './constants'
 import type { CreateRouteFunction } from './constants'
 import type { ExtraRuleDocs } from '../../types'
@@ -63,8 +63,11 @@ export const rule = createRule({
         }
 
         const allProperties = argument.properties
+        // no need to sort if there is at max 1 property
+        if (allProperties.length < 2) {
+          return
+        }
 
-        // TODO we need to support spread elements, they would be discarded here
         const properties = allProperties.flatMap((p) => {
           if (
             p.type === AST_NODE_TYPES.Property &&
@@ -81,11 +84,7 @@ export const rule = createRule({
           return []
         })
 
-        const sortedProperties = sortDataByOrder(
-          properties,
-          checkedProperties,
-          'name',
-        )
+        const sortedProperties = sortDataByOrder(properties, sortRules, 'name')
         if (sortedProperties === null) {
           return
         }
