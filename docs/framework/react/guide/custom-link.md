@@ -11,10 +11,11 @@ While repeating yourself can be fine in many cases, you may find yourself repeat
 If you want to create a component which wraps `Link` with some additional styles or behavior then you can do so with the following
 
 ```tsx
+import * as React from 'react'
 import { Link, createLink } from '@tanstack/react-router'
 
 export const NavigationLink = createLink(
-  React.forwardRef((props: {}, ref: React.Ref<HTMLAnchorElement>) => {
+  React.forwardRef((props: {}, ref: React.ForwardedRef<HTMLAnchorElement>) => {
     return (
       <Link
         {...props}
@@ -46,15 +47,13 @@ You can then use your newly created `Link` component as any other `Link`
 You might want to use third party component libraries with TanStack Router. For example to use `Button` from MUI you can use `createLink` which infers the types from both `Button` and `Link` while keeping type parameters necessary for TanStack Router's type safety
 
 ```tsx
-import { createLink, Link } from '@tanstack/react-router'
-import { Button } from '@mui/material'
+import * as React from 'react'
+import { createLink, Link, CreateLinkProps } from '@tanstack/react-router'
+import { Button, ButtonProps } from '@mui/material'
 
 const ButtonLink = createLink(
   React.forwardRef(
-    (
-      props: Parameters<typeof Button>[0],
-      ref: React.Ref<HTMLButtonElement>,
-    ) => {
+    (props: ButtonProps<'a'>, ref: React.ForwardedRef<HTMLAnchorElement>) => {
       return <Button {...props} ref={ref} component={Link} />
     },
   ),
@@ -72,16 +71,22 @@ const ButtonLink = createLink(
 If using props from `Link` like `to` is needed, you can use `CreateLinkProps`
 
 ```tsx
+import * as React from 'react'
 import { createLink, Link, CreateLinkProps } from '@tanstack/react-router'
-import { Button } from '@mui/material'
+import { Button, ButtonProps } from '@mui/material'
 
 const ButtonLink = createLink(
-  React.forwardRef((props: CreateLinkProps & Parameters<typeof Button>[0]) => {
-    return (
-      <Button {...props} component={Link}>
-        Navigate to {props.to}
-      </Button>
-    )
-  }),
+  React.forwardRef(
+    (
+      props: CreateLinkProps & ButtonProps<'a'>,
+      ref: React.ForwardedRef<HTMLAnchorElement>,
+    ) => {
+      return (
+        <Button {...props} ref={ref} component={Link}>
+          Navigate to {props.to}
+        </Button>
+      )
+    },
+  ),
 )
 ```
