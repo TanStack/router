@@ -2,7 +2,7 @@ import { useMatch } from './useMatch'
 import type { AnyRoute } from './route'
 import type { AllParams, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
-import type { Constrain, StrictOrFrom } from './utils'
+import type { Constrain, ConstrainLiteral, StrictOrFrom } from './utils'
 
 export type UseParamsOptions<
   TFrom,
@@ -23,7 +23,7 @@ export function useParams<
   TSelected = TParams,
 >(
   opts: UseParamsOptions<
-    Constrain<TFrom, RouteIds<TRouteTree>>,
+    ConstrainLiteral<TFrom, RouteIds<TRouteTree>>,
     TStrict,
     TParams,
     TSelected

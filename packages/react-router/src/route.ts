@@ -16,7 +16,14 @@ import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, Router } from './router'
-import type { Assign, Constrain, Expand, NoInfer, PickRequired } from './utils'
+import type {
+  Assign,
+  Constrain,
+  ConstrainLiteral,
+  Expand,
+  NoInfer,
+  PickRequired,
+} from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
@@ -752,20 +759,17 @@ export type RouteConstraints = {
 
 export type RouteTypesById<
   TRouter extends RegisteredRouter,
-  TId extends RouteIds<TRouter['routeTree']>,
+  TId extends string,
 > = RouteById<TRouter['routeTree'], TId>['types']
 
 export function getRouteApi<
   TRouter extends RegisteredRouter,
-  TId extends RouteIds<TRouter['routeTree']>,
->(id: TId) {
+  TId extends string,
+>(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
   return new RouteApi<TRouter, TId>({ id })
 }
 
-export class RouteApi<
-  TRouter extends RegisteredRouter,
-  TId extends RouteIds<TRouter['routeTree']>,
-> {
+export class RouteApi<TRouter extends RegisteredRouter, TId extends string> {
   id: TId
 
   /**

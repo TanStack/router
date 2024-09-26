@@ -99,8 +99,12 @@ export type MergeUnion<TUnion> =
   | MergeUnionPrimitives<TUnion>
   | MergeUnionObject<TUnion>
 
-export type Constrain<T, TConstaint, TDefault = TConstaint> =
-  | (T extends TConstaint ? T : never)
+export type Constrain<T, TConstraint, TDefault = TConstraint> =
+  | (T extends TConstraint ? T : never)
+  | TDefault
+
+export type ConstrainLiteral<T, TConstraint, TDefault = TConstraint> =
+  | (T & TConstraint)
   | TDefault
 
 export function last<T>(arr: Array<T>) {

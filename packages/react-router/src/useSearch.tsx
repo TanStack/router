@@ -2,8 +2,7 @@ import { useMatch } from './useMatch'
 import type { AnyRoute } from './route'
 import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
-import type { MakeRouteMatch } from './Matches'
-import type { Constrain, Expand, StrictOrFrom } from './utils'
+import type { ConstrainLiteral, Expand, StrictOrFrom } from './utils'
 
 export type UseSearchOptions<
   TFrom,
@@ -24,7 +23,7 @@ export function useSearch<
   TSelected = TSearch,
 >(
   opts: UseSearchOptions<
-    Constrain<TFrom, RouteIds<TRouteTree>>,
+    ConstrainLiteral<TFrom, RouteIds<TRouteTree>>,
     TStrict,
     TSearch,
     TSelected

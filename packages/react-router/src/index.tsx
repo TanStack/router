@@ -67,7 +67,6 @@ export type {
   ToPathOption,
   ActiveOptions,
   LinkOptions,
-  CheckPath,
   ResolveRelativePath,
   UseLinkPropsOptions,
   ActiveLinkOptions,
