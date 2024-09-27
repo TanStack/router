@@ -1217,7 +1217,6 @@ export class Router<
           loaderDeps,
           invalid: false,
           preload: false,
-          links: route.options.links?.(),
           scripts: route.options.scripts?.(),
           staticData: route.options.staticData || {},
           loadPromise: createControlledPromise(),
@@ -1225,13 +1224,18 @@ export class Router<
         }
       }
 
-      // If it's already a success, update the meta and headers
+      // If it's already a success, update the meta, links, and headers
       // These may get updated again if the match is refreshed
       // due to being stale
       if (match.status === 'success') {
         match.meta = route.options.meta?.({
           matches,
           match,
+          params: match.params,
+          loaderData: match.loaderData,
+        })
+
+        match.links = route.options.links?.({
           params: match.params,
           loaderData: match.loaderData,
         })

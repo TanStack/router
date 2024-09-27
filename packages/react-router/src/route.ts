@@ -434,7 +434,10 @@ export interface UpdatableRouteOptions<
     params: ResolveAllParamsFromParent<TParentRoute, TParams>
     loaderData: ResolveLoaderData<TLoaderFn>
   }) => Array<React.JSX.IntrinsicElements['meta']>
-  links?: () => Array<React.JSX.IntrinsicElements['link']>
+  links?: (ctx: {
+    params: ResolveAllParamsFromParent<TParentRoute, TParams>
+    loaderData: ResolveLoaderData<TLoaderFn>
+  }) => Array<React.JSX.IntrinsicElements['link']>
   scripts?: () => Array<React.JSX.IntrinsicElements['script']>
   headers?: (ctx: {
     loaderData: ResolveLoaderData<TLoaderFn>
