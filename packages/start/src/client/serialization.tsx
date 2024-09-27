@@ -123,6 +123,8 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
     const links =
       match.status === 'success'
         ? route.options.links?.({
+            matches: router.state.matches,
+            match,
             params: match.params,
             loaderData: match.loaderData,
           })

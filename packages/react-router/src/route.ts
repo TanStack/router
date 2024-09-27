@@ -435,6 +435,36 @@ export interface UpdatableRouteOptions<
     loaderData: ResolveLoaderData<TLoaderFn>
   }) => Array<React.JSX.IntrinsicElements['meta']>
   links?: (ctx: {
+    matches: Array<
+      RouteMatch<
+        TRouteId,
+        TFullPath,
+        ResolveAllParamsFromParent<TParentRoute, TParams>,
+        ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+        ResolveLoaderData<TLoaderFn>,
+        ResolveAllContext<
+          TParentRoute,
+          TRouterContext,
+          TRouteContextFn,
+          TBeforeLoadFn
+        >,
+        TLoaderDeps
+      >
+    >
+    match: RouteMatch<
+      TRouteId,
+      TFullPath,
+      ResolveAllParamsFromParent<TParentRoute, TParams>,
+      ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveLoaderData<TLoaderFn>,
+      ResolveAllContext<
+        TParentRoute,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn
+      >,
+      TLoaderDeps
+    >
     params: ResolveAllParamsFromParent<TParentRoute, TParams>
     loaderData: ResolveLoaderData<TLoaderFn>
   }) => Array<React.JSX.IntrinsicElements['link']>

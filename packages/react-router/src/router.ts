@@ -1236,6 +1236,8 @@ export class Router<
         })
 
         match.links = route.options.links?.({
+          matches,
+          match,
           params: match.params,
           loaderData: match.loaderData,
         })
