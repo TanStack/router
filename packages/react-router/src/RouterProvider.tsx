@@ -37,7 +37,7 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => Promise<void>
+) => Promise<void> | void
 
 export type BuildLocationFn = <
   TRouter extends RegisteredRouter,

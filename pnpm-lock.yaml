@@ -179,6 +179,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
         version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
       vite:
         specifier: ^5.4.5
         version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
@@ -397,6 +400,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
       postcss:
         specifier: ^8.4.47
         version: 8.4.47

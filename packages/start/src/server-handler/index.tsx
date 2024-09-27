@@ -3,6 +3,7 @@ import {
   defaultParseSearch,
   isNotFound,
   isRedirect,
+  isResolvedRedirect,
 } from '@tanstack/react-router'
 import invariant from 'tiny-invariant'
 import { eventHandler, toWebRequest } from 'vinxi/http'
@@ -181,7 +182,7 @@ function redirectOrNotFoundResponse(error: any) {
     headers: {
       'Content-Type': 'application/json',
       [serverFnReturnTypeHeader]: 'json',
-      ...(error.headers || {}),
+      ...(headers || {}),
     },
   })
 }

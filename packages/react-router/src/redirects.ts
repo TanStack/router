@@ -12,14 +12,12 @@ export type Redirect<
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
 > = {
-  /**
-   * @deprecated Use `statusCode` instead
-   **/
   href?: string
   code?: number
   statusCode?: number
   throw?: any
   headers?: HeadersInit
+  _type?: 'internal' | 'external'
 } & NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type ResolvedRedirect<
@@ -47,6 +45,13 @@ export function redirect<
   ;(opts as any).isRedirect = true
   opts.statusCode = opts.statusCode || opts.code || 307
   opts.headers = opts.headers || {}
+
+  opts._type = 'internal'
+  try {
+    new URL(`${opts.href}`)
+    opts._type = 'external'
+  } catch {}
+
   if (opts.throw) {
     throw opts
   }

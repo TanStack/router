@@ -14,9 +14,14 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as PostsImport } from './routes/posts'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
+import { Route as RedirectIndexImport } from './routes/redirect/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as RedirectTargetImport } from './routes/redirect/$target'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
+import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
+import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
+import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 
@@ -37,9 +42,19 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const RedirectIndexRoute = RedirectIndexImport.update({
+  path: '/redirect/',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const PostsIndexRoute = PostsIndexImport.update({
   path: '/',
   getParentRoute: () => PostsRoute,
+} as any)
+
+const RedirectTargetRoute = RedirectTargetImport.update({
+  path: '/redirect/$target',
+  getParentRoute: () => rootRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
@@ -51,6 +66,22 @@ const LayoutLayout2Route = LayoutLayout2Import.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
+
+const RedirectTargetIndexRoute = RedirectTargetIndexImport.update({
+  path: '/',
+  getParentRoute: () => RedirectTargetRoute,
+} as any)
+
+const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderImport.update({
+  path: '/via-loader',
+  getParentRoute: () => RedirectTargetRoute,
+} as any)
+
+const RedirectTargetViaBeforeLoadRoute =
+  RedirectTargetViaBeforeLoadImport.update({
+    path: '/via-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
 
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
   path: '/layout-b',
@@ -101,12 +132,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdImport
       parentRoute: typeof PostsImport
     }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: typeof RedirectTargetImport
+      parentRoute: typeof rootRoute
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectIndexImport
+      parentRoute: typeof rootRoute
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
@@ -121,6 +166,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/layout-b'
       preLoaderRoute: typeof LayoutLayout2LayoutBImport
       parentRoute: typeof LayoutLayout2Import
+    }
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: typeof RedirectTargetViaLoaderImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
+      path: '/'
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: typeof RedirectTargetIndexImport
+      parentRoute: typeof RedirectTargetImport
     }
   }
 }
@@ -164,14 +230,35 @@ const PostsRouteChildren: PostsRouteChildren = {
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
+interface RedirectTargetRouteChildren {
+  RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
+  RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
+  RedirectTargetIndexRoute: typeof RedirectTargetIndexRoute
+}
+
+const RedirectTargetRouteChildren: RedirectTargetRouteChildren = {
+  RedirectTargetViaBeforeLoadRoute: RedirectTargetViaBeforeLoadRoute,
+  RedirectTargetViaLoaderRoute: RedirectTargetViaLoaderRoute,
+  RedirectTargetIndexRoute: RedirectTargetIndexRoute,
+}
+
+const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
+  RedirectTargetRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/posts/': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -179,8 +266,12 @@ export interface FileRoutesByTo {
   '': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target': typeof RedirectTargetIndexRoute
 }
 
 export interface FileRoutesById {
@@ -190,9 +281,14 @@ export interface FileRoutesById {
   '/posts': typeof PostsRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/posts/': typeof PostsIndexRoute
+  '/redirect/': typeof RedirectIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -202,11 +298,26 @@ export interface FileRouteTypes {
     | ''
     | '/posts'
     | '/posts/$postId'
+    | '/redirect/$target'
     | '/posts/'
+    | '/redirect'
     | '/layout-a'
     | '/layout-b'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/$target/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
+  to:
+    | '/'
+    | ''
+    | '/posts/$postId'
+    | '/posts'
+    | '/redirect'
+    | '/layout-a'
+    | '/layout-b'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/$target'
   id:
     | '__root__'
     | '/'
@@ -214,9 +325,14 @@ export interface FileRouteTypes {
     | '/posts'
     | '/_layout/_layout-2'
     | '/posts/$postId'
+    | '/redirect/$target'
     | '/posts/'
+    | '/redirect/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/$target/'
   fileRoutesById: FileRoutesById
 }
 
@@ -224,12 +340,16 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren
+  RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
+  RedirectIndexRoute: typeof RedirectIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
+  RedirectTargetRoute: RedirectTargetRouteWithChildren,
+  RedirectIndexRoute: RedirectIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -246,7 +366,9 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/_layout",
-        "/posts"
+        "/posts",
+        "/redirect/$target",
+        "/redirect/"
       ]
     },
     "/": {
@@ -277,9 +399,20 @@ export const routeTree = rootRoute
       "filePath": "posts.$postId.tsx",
       "parent": "/posts"
     },
+    "/redirect/$target": {
+      "filePath": "redirect/$target.tsx",
+      "children": [
+        "/redirect/$target/via-beforeLoad",
+        "/redirect/$target/via-loader",
+        "/redirect/$target/"
+      ]
+    },
     "/posts/": {
       "filePath": "posts.index.tsx",
       "parent": "/posts"
+    },
+    "/redirect/": {
+      "filePath": "redirect/index.tsx"
     },
     "/_layout/_layout-2/layout-a": {
       "filePath": "_layout/_layout-2/layout-a.tsx",
@@ -288,6 +421,18 @@ export const routeTree = rootRoute
     "/_layout/_layout-2/layout-b": {
       "filePath": "_layout/_layout-2/layout-b.tsx",
       "parent": "/_layout/_layout-2"
+    },
+    "/redirect/$target/via-beforeLoad": {
+      "filePath": "redirect/$target/via-beforeLoad.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/via-loader": {
+      "filePath": "redirect/$target/via-loader.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/": {
+      "filePath": "redirect/$target/index.tsx",
+      "parent": "/redirect/$target"
     }
   }
 }
