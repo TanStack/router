@@ -1,11 +1,12 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
 import type { FromPathOption, NavigateOptions } from './link'
-import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
-export type UseNavigateResult<TDefaultFrom extends string> = <
-  TRouter extends RegisteredRouter,
+export type UseNavigateResult<
+  TDefaultFrom extends string,
+  TRouter extends AnyRouter = RegisteredRouter,
+> = <
   TTo extends string | undefined,
   TFrom extends string = TDefaultFrom,
   TMaskFrom extends string = TFrom,
@@ -20,7 +21,7 @@ export function useNavigate<
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
-}): UseNavigateResult<TDefaultFrom> {
+}): UseNavigateResult<TDefaultFrom, TRouter> {
   const { navigate } = useRouter()
 
   return React.useCallback(
@@ -30,7 +31,7 @@ export function useNavigate<
       })
     },
     [navigate],
-  ) as UseNavigateResult<TDefaultFrom>
+  ) as UseNavigateResult<TDefaultFrom, TRouter>
 }
 
 // NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it

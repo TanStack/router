@@ -944,8 +944,10 @@ export type CreateLinkProps = LinkProps<
   string
 >
 
-export type LinkComponent<TComp> = <
-  TRouter extends RegisteredRouter = RegisteredRouter,
+export type LinkComponent<
+  TComp,
+  TRouter extends AnyRouter = RegisteredRouter,
+> = <
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
@@ -954,9 +956,13 @@ export type LinkComponent<TComp> = <
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => React.ReactElement
 
-export function createLink<const TComp>(
+export function createLink<
+  const TComp,
+  TRouter extends AnyRouter = RegisteredRouter,
+>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
-): LinkComponent<TComp> {
+  router?: TRouter,
+): LinkComponent<TComp, TRouter> {
   return React.forwardRef(function CreatedLink(props, ref) {
     return <Link {...(props as any)} _asChild={Comp} ref={ref} />
   }) as any

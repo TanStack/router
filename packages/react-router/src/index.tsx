@@ -74,6 +74,7 @@ export type {
   LinkProps,
   LinkComponent,
   CreateLinkProps,
+  FromPathOption,
 } from './link'
 
 export type { ParsedLocation } from './location'
