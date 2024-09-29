@@ -7,7 +7,7 @@ export interface NavigateOptions {
 }
 export interface RouterHistory {
   location: HistoryLocation
-  length: number;
+  length: number
   subscribers: Set<() => void>
   subscribe: (cb: () => void) => () => void
   push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
