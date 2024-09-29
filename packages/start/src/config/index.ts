@@ -192,6 +192,7 @@ const routersSchema = z.object({
   api: z
     .object({
       entry: z.string().optional(),
+      vite: viteSchema.optional(),
     })
     .optional(),
 })
@@ -314,7 +315,7 @@ export function defineConfig(
               routes: tsrFileRouter({ tsrConfig, apiBase }),
               plugins: () => [
                 ...(opts.vite?.plugins?.() || []),
-                ...(opts.routers?.ssr?.vite?.plugins?.() || []),
+                ...(opts.routers?.api?.vite?.plugins?.() || []),
                 // serverTransform({
                 //   runtime: '@tanstack/start/server-runtime',
                 // }),
