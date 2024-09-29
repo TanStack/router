@@ -756,9 +756,10 @@ export type RouteTypesById<
 > = RouteById<TRouter['routeTree'], TId>['types']
 
 export function getRouteApi<
-  TRouter extends RegisteredRouter,
-  TId extends RouteIds<TRouter['routeTree']>,
->(id: TId) {
+  TId extends RouteIds<TRouteTree>,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRouteTree extends AnyRoute = TRouter['routeTree'],
+>(id: Constrain<TId, RouteIds<TRouteTree>>) {
   return new RouteApi<TRouter, TId>({ id })
 }
 
