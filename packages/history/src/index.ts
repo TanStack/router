@@ -360,38 +360,34 @@ export function createMemoryHistory(
 ): RouterHistory {
   const entries = opts.initialEntries
   let index = opts.initialIndex ?? entries.length - 1
-  let currentState = {
-    key: createRandomKey(),
-  } as HistoryState
+  const states = entries.map(() => ({}) as HistoryState);
 
-  const getLocation = () => parseHref(entries[index]!, currentState)
+  const getLocation = () => parseHref(entries[index]!, states[index])
 
   return createHistory({
     getLocation,
 
     pushState: (path, state) => {
-      currentState = state
       // Removes all subsequent entries after the current index to start a new branch
       if (index < entries.length - 1) {
         entries.splice(index + 1)
+        states.splice(index + 1)
       }
+      states.push(state)
       entries.push(path)
       index = Math.max(entries.length - 1, 0)
     },
     replaceState: (path, state) => {
-      currentState = state
+      states[index] = state
       entries[index] = path
     },
     back: () => {
-      currentState = assignKey(currentState)
       index = Math.max(index - 1, 0)
     },
     forward: () => {
-      currentState = assignKey(currentState)
       index = Math.min(index + 1, entries.length - 1)
     },
     go: (n) => {
-      currentState = assignKey(currentState)
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
     createHref: (path) => path,
