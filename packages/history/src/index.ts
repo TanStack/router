@@ -371,7 +371,6 @@ export function createMemoryHistory(
 
     pushState: (path, state) => {
       currentState = state
-      entries.splice
       // Removes all subsequent entries after the current index to start a new branch
       if (index < entries.length - 1) {
         entries.splice(index + 1)
