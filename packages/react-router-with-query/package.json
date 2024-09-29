@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router-with-query",
-  "version": "1.58.12",
+  "version": "1.58.15",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
