@@ -360,7 +360,7 @@ export function createMemoryHistory(
 ): RouterHistory {
   const entries = opts.initialEntries
   let index = opts.initialIndex ?? entries.length - 1
-  const states = entries.map(() => ({}) as HistoryState);
+  const states = entries.map(() => ({}) as HistoryState)
 
   const getLocation = () => parseHref(entries[index]!, states[index])
 
