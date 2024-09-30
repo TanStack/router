@@ -298,6 +298,10 @@ export function matchByPath(
   from: string,
   matchLocation: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
 ): Record<string, string> | undefined {
+  // check basepath first
+  if (basepath !== '/' && !from.startsWith(basepath)) {
+    return undefined
+  }
   // Remove the base path from the pathname
   from = removeBasepath(basepath, from)
   // Default to to $ (wildcard)
