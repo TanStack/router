@@ -43,7 +43,7 @@ type ExtractDefaultFrom<T> =
   T extends UseNavigateResult<infer DefaultFrom> ? DefaultFrom : never
 
 describe('getRouteApi', () => {
-  const invoiceRouteApi = getRouteApi<DefaultRouter, '/invoices/$invoiceId'>(
+  const invoiceRouteApi = getRouteApi<'/invoices/$invoiceId', DefaultRouter>(
     '/invoices/$invoiceId',
   )
   describe('useNavigate', () => {
