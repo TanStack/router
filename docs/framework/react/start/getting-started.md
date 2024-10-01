@@ -35,6 +35,7 @@ Create a `tsconfig.json` file with at least the following settings:
     "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
+    "types": ["vite/client"]
   },
 }
 ```
@@ -46,7 +47,7 @@ TanStack Start is powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Ro
 To install them, run:
 
 ```shell
-npm i @tanstack/start @tanstack/react-router vinxi
+npm i @tanstack/start @tanstack/react-router vinxi vite
 ```
 
 You'll also need React and the Vite React plugin, so install them too:
