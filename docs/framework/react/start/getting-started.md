@@ -47,7 +47,7 @@ TanStack Start is powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Ro
 To install them, run:
 
 ```shell
-npm i @tanstack/start @tanstack/react-router vinxi vite
+npm i @tanstack/start @tanstack/react-router vinxi
 ```
 
 You'll also need React and the Vite React plugin, so install them too:
@@ -59,7 +59,7 @@ npm i react react-dom @vitejs/plugin-react
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom
+npm i -D typescript @types/react @types/react-dom vite
 ```
 
 ## Update Configuration Files
