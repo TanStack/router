@@ -35,7 +35,7 @@ Create a `tsconfig.json` file with at least the following settings:
     "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
   },
 }
 ```
