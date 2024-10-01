@@ -406,6 +406,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -476,6 +479,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -543,6 +549,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -592,6 +601,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -659,6 +671,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -1732,6 +1747,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -1799,6 +1817,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -1863,6 +1884,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -1912,6 +1936,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -1976,6 +2003,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -2061,6 +2091,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
@@ -2095,6 +2128,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/start-supabase-basic:
     dependencies:
@@ -2144,6 +2180,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/start-trellaux:
     dependencies:
@@ -2217,6 +2256,9 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))

@@ -11,7 +11,6 @@ import * as React from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
-// @ts-expect-error
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 

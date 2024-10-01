@@ -9,7 +9,6 @@ import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
-// @ts-expect-error
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 
