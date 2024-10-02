@@ -757,19 +757,18 @@ export type RouteConstraints = {
   TRouteTree: AnyRoute
 }
 
-export type RouteTypesById<
-  TRouter extends RegisteredRouter,
-  TId extends string,
-> = RouteById<TRouter['routeTree'], TId>['types']
+export type RouteTypesById<TRouter extends AnyRouter, TId> = RouteById<
+  TRouter['routeTree'],
+  TId
+>['types']
 
-export function getRouteApi<
-  TRouter extends RegisteredRouter,
-  TId extends string,
->(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
-  return new RouteApi<TRouter, TId>({ id })
+export function getRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter>(
+  id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>,
+) {
+  return new RouteApi<TId, TRouter>({ id })
 }
 
-export class RouteApi<TRouter extends RegisteredRouter, TId extends string> {
+export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   id: TId
 
   /**

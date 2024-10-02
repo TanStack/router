@@ -22,7 +22,7 @@ const createRouterRenderer =
     })
     const paramRoutes = Array.from({ length: routesCount }).map((_, i) =>
       createRoute({
-        getParentRoute: () => indexRoute,
+        getParentRoute: () => rootRoute,
         path: `/params/$param${i}`,
       }),
     )
