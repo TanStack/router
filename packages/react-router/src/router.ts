@@ -42,7 +42,6 @@ import type {
   AnyContext,
   AnyRoute,
   AnyRouteWithContext,
-  AnySearchSchema,
   BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
@@ -81,6 +80,7 @@ import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { RouterTransformer } from './transformer'
+import type { AnySchema } from './validators'
 
 //
 
@@ -963,7 +963,7 @@ export class Router<
 */
   public matchRoutes(
     pathname: string,
-    locationSearch: AnySearchSchema,
+    locationSearch: AnySchema,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch>
   public matchRoutes(
@@ -974,7 +974,7 @@ export class Router<
   public matchRoutes(
     pathnameOrNext: string | ParsedLocation,
     locationSearchOrOpts?:
-      | AnySearchSchema
+      | AnySchema
       | { preload?: boolean; throwOnError?: boolean },
     opts?: { preload?: boolean; throwOnError?: boolean },
   ) {

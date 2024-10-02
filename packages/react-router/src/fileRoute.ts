@@ -11,7 +11,6 @@ import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
-  AnySearchValidator,
   FileBaseRouteOptions,
   ResolveParams,
   RootRoute,
@@ -21,8 +20,9 @@ import type {
   UpdatableRouteOptions,
 } from './route'
 import type { MakeRouteMatch } from './Matches'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
+import type { AnyValidator } from './validators'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -182,7 +182,7 @@ export type LazyRouteOptions = Pick<
     string,
     string,
     AnyPathParams,
-    AnySearchValidator,
+    AnyValidator,
     {},
     AnyContext,
     AnyContext,

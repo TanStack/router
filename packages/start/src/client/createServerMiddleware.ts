@@ -1,7 +1,9 @@
-import type { ResolveServerValidatorInput } from './createServerFn'
 import type {
-  AnySearchValidator,
-  SearchValidator,
+  AnyValidator,
+  Constrain,
+  Expand,
+  ResolveValidatorInput,
+  ResolveValidatorOutput,
 } from '@tanstack/react-router'
 
 /**
@@ -28,50 +30,55 @@ type MergeAll<T> = {
  * Turns all middleware into a union
  */
 export type ParseMiddlewares<
-  TMiddlewares extends Array<AnyServerMiddleware>,
-  TAcc extends AnyServerMiddleware = never,
-  TMiddleware extends AnyServerMiddleware = TMiddlewares[number],
-> = unknown extends TMiddleware
+  TMiddlewares,
+  TAcc = never,
+> = unknown extends TMiddlewares
   ? TAcc
-  : TMiddlewares['length'] extends 0
+  : [] extends TMiddlewares
     ? TAcc
-    : TMiddleware extends any
-      ? ParseMiddlewares<
-          NonNullable<TMiddleware['_types']>['middleware'],
-          TAcc | TMiddleware
-        >
+    : TMiddlewares extends ReadonlyArray<AnyServerMiddleware>
+      ? TMiddlewares[number] extends infer TMiddleware extends
+          AnyServerMiddleware
+        ? TMiddleware extends any
+          ? ParseMiddlewares<
+              TMiddleware['_types']['middleware'],
+              TAcc | TMiddleware
+            >
+          : TAcc
+        : TAcc
       : TAcc
 
 /**
  * Recursively resolve the context type produced by a sequence of middleware
  */
-export type ResolveMiddlewareContext<
-  TMiddlewares extends Array<AnyServerMiddleware>,
-> =
-  ParseMiddlewares<TMiddlewares> extends infer TMiddleware extends
-    AnyServerMiddleware
-    ? MergeAll<NonNullable<TMiddleware['_types']>['context']>
-    : never
+export type ResolveAllMiddlewareContext<
+  TMiddlewares,
+  TContext = never,
+> = Expand<
+  MergeAll<
+    NonNullable<ParseMiddlewares<TMiddlewares>['_types']['context']> | TContext
+  >
+>
 
-export type testMiddleware = [
-  ServerMiddleware<
-    'id1',
-    [
-      ServerMiddleware<
-        'id2',
-        [ServerMiddleware<'id5', [], () => string, { a: boolean }>],
-        () => string,
-        { b: number }
-      >,
-      ServerMiddleware<'id3', [], () => string, { c: boolean }>,
-    ],
-    () => string,
-    { d: string }
-  >,
-  ServerMiddleware<'id4', [], () => string, { e: number }>,
-]
+/**
+ * Recursively resolve the input type produced by a sequence of middleware
+ */
+export type ResolveAllMiddlewareInput<TMiddlewares, TValidator> = Expand<
+  MergeAll<
+    | ParseMiddlewares<TMiddlewares>['_types']['input']
+    | ResolveValidatorInput<TValidator>
+  >
+>
 
-type testResolved = ResolveMiddlewareContext<testMiddleware>
+/**
+ * Recursively resolve the output type produced by a sequence of middleware
+ */
+export type ResolveAllMiddlewareOutput<TMiddlewares, TValidator> = Expand<
+  MergeAll<
+    | ParseMiddlewares<TMiddlewares>['_types']['output']
+    | ResolveValidatorOutput<TValidator>
+  >
+>
 
 export type ServerMiddlewarePreFn<TContextIn, TContextOut> = (options: {
   context: TContextIn
@@ -87,15 +94,11 @@ export type ServerMiddlewarePostFn<TContextOut> = (options: {
   context: TContextOut
 }) => void
 
-export interface MiddlewareOptions<
-  TId,
-  TContextOut,
-  TMiddlewares extends Array<AnyServerMiddleware> = any,
-> {
+export interface MiddlewareOptions<TId, TContextOut, TMiddlewares> {
   id: TId
   middleware?: TMiddlewares
   before?: ServerMiddlewarePreFn<
-    ResolveMiddlewareContext<TMiddlewares>,
+    ResolveAllMiddlewareContext<TMiddlewares>,
     TContextOut
   >
   after?: ServerMiddlewarePostFn<TContextOut>
@@ -103,88 +106,118 @@ export interface MiddlewareOptions<
 
 export interface ServerMiddlewareOptions<
   TId,
-  TMiddlewares extends Array<AnyServerMiddleware> = [],
-  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
-  TContext = unknown,
+  TMiddlewares,
+  TValidator,
+  TContext,
 > extends MiddlewareOptions<TId, TContext, TMiddlewares> {
-  input?: TInput
-  useFn?: ServerMiddlewareUseFn<TMiddlewares, TInput, TContext>
+  input?: Constrain<TValidator, AnyValidator>
+  useFn?: ServerMiddlewareUseFn<TMiddlewares, TValidator, TContext>
 }
 
-export type ServerMiddlewareUseFn<
-  TMiddlewares extends Array<AnyServerMiddleware>,
-  TInput extends AnySearchValidator,
-  TContext,
-> = (options: {
-  data: ResolveServerValidatorInput<TInput>
-  context: ResolveMiddlewareContext<TMiddlewares>
-  next: <TContext>(opts?: {
-    context: TContext
-  }) => Promise<ResultWithContext<TContext>>
-}) => Promise<ResultWithContext<TContext>> | ResultWithContext<TContext>
+export type ServerMiddlewareUseFn<TMiddlewares, TValidator, TContext> =
+  (options: {
+    data: ResolveAllMiddlewareOutput<TMiddlewares, NonNullable<TValidator>>
+    context: ResolveAllMiddlewareContext<TMiddlewares>
+    next: <TContext>(opts?: {
+      context: TContext
+    }) => Promise<ResultWithContext<TContext>>
+  }) => Promise<ResultWithContext<TContext>> | ResultWithContext<TContext>
 
 export type ResultWithContext<TContext> = {
   'use functions must return the result of next()': true
   context: TContext
 }
 
-export type AnyServerMiddleware = Partial<ServerMiddleware<any, any, any, any>>
+export type AnyServerMiddleware = ServerMiddlewareTypes<any, any, any, any>
 
-type ServerMiddleware<
+export interface ServerMiddlewareTypes<
   TId,
-  TMiddlewares extends Array<AnyServerMiddleware> = [],
-  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
-  TContext = unknown,
-> = {
+  TMiddlewares,
+  TValidator,
+  TContext,
+> {
   _types: {
     id: TId
     middleware: TMiddlewares
-    input: TInput
+    input: ResolveValidatorInput<TValidator>
+    output: ResolveValidatorOutput<TValidator>
     context: TContext
   }
-  options: ServerMiddlewareOptions<TId, TMiddlewares, TInput, TContext>
-  middleware: <TNewMiddlewares extends Array<AnyServerMiddleware>>(
-    middlewares: TNewMiddlewares,
-  ) => Pick<
-    ServerMiddleware<TId, TNewMiddlewares, TInput, TContext>,
-    'input' | 'use' | '_types'
+  options: ServerMiddlewareOptions<TId, TMiddlewares, TValidator, TContext>
+}
+
+export interface ServerMiddlewareInput<TId, TMiddlewares, TInput, TContext> {
+  input: <TNewServerValidator>(
+    input: Constrain<TNewServerValidator, AnyValidator>,
+  ) => ServerMiddlewareWithMiddleware<
+    TId,
+    TMiddlewares,
+    NonNullable<TInput> | TNewServerValidator,
+    TContext
   >
-  input: <TNewServerValidator extends AnySearchValidator>(
-    input: TNewServerValidator,
-  ) => Pick<
-    ServerMiddleware<TId, TMiddlewares, TInput & TNewServerValidator, TContext>,
-    'input' | 'use' | '_types'
-  >
+}
+
+export interface ServerMiddlewareUse<TId, TMiddlewares, TValidator, TContext> {
   use: <TNewContext>(
-    useFn: ServerMiddlewareUseFn<TMiddlewares, TInput, TNewContext>,
-  ) => Pick<
-    ServerMiddleware<
-      TId,
-      TMiddlewares,
-      TInput,
-      // Merge the current context with the new context
-      TContext & TNewContext
-    >,
-    'use' | '_types'
+    useFn: ServerMiddlewareUseFn<TMiddlewares, TValidator, TNewContext>,
+  ) => ServerMiddlewareWithUse<
+    TId,
+    TMiddlewares,
+    TValidator,
+    // Merge the current context with the new context
+    NonNullable<TContext> | TNewContext
+  >
+}
+
+export interface ServerMiddlewareWithUse<
+  TId,
+  TMiddlewares,
+  TValidator,
+  TContext,
+> extends ServerMiddlewareTypes<TId, TMiddlewares, TValidator, TContext>,
+    ServerMiddlewareUse<TId, TMiddlewares, TValidator, TContext> {}
+
+export interface ServerMiddlewareWithMiddleware<
+  TId,
+  TMiddlewares,
+  TValidator,
+  TContext,
+> extends ServerMiddlewareWithUse<TId, TMiddlewares, TValidator, TContext>,
+    ServerMiddlewareInput<TId, TMiddlewares, TValidator, TContext> {}
+
+export interface ServerMiddleware<TId, TMiddlewares, TValidator, TContext>
+  extends ServerMiddlewareWithMiddleware<
+    TId,
+    TMiddlewares,
+    TValidator,
+    TContext
+  > {
+  middleware: <const TNewMiddlewares>(
+    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyServerMiddleware>>,
+  ) => ServerMiddlewareWithMiddleware<
+    TId,
+    TNewMiddlewares,
+    TValidator,
+    TContext
   >
 }
 
 export function createServerMiddleware<
-  TId,
-  TMiddlewares extends Array<AnyServerMiddleware> = [],
-  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
-  TContext = unknown,
+  const TId,
+  const TMiddlewares,
+  TValidator = undefined,
+  TContext = undefined,
 >(
   options: {
     id: TId
   },
   _?: never,
-  __opts?: ServerMiddlewareOptions<TId, TMiddlewares, TInput, TContext>,
-): ServerMiddleware<TId, TMiddlewares, TInput, TContext> {
+  __opts?: ServerMiddlewareOptions<TId, TMiddlewares, TValidator, TContext>,
+): ServerMiddleware<TId, TMiddlewares, TValidator, TContext> {
   return {
     options: options as any,
     middleware: (middleware) => {
-      return createServerMiddleware<TId, TMiddlewares, TInput, TContext>(
+      return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
         options,
         undefined,
         {
@@ -194,7 +227,7 @@ export function createServerMiddleware<
       ) as any
     },
     input: (input) => {
-      return createServerMiddleware<TId, TMiddlewares, TInput, TContext>(
+      return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
         options,
         undefined,
         {
@@ -205,7 +238,7 @@ export function createServerMiddleware<
     },
     // eslint-disable-next-line @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks
     use: (useFn) => {
-      return createServerMiddleware<TId, TMiddlewares, TInput, TContext>(
+      return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
         options,
         undefined,
         {
@@ -214,7 +247,7 @@ export function createServerMiddleware<
         },
       ) as any
     },
-  } as ServerMiddleware<TId, TMiddlewares, TInput, TContext>
+  } as ServerMiddleware<TId, TMiddlewares, TValidator, TContext>
 }
 
 const middleware1 = createServerMiddleware({

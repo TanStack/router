@@ -1,15 +1,13 @@
 import invariant from 'tiny-invariant'
-import { createServerMiddleware } from './createServerMiddleware'
 import type {
   AnyServerMiddleware,
-  ResolveMiddlewareContext,
+  ResolveAllMiddlewareContext,
+  ResolveAllMiddlewareOutput,
 } from './createServerMiddleware'
 import type {
-  AnySearchValidator,
-  AnySearchValidatorAdapter,
-  AnySearchValidatorObj,
-  ResolveSearchSchema,
-  SearchValidator,
+  AnyValidator,
+  Constrain,
+  ResolveValidatorInput,
 } from '@tanstack/react-router'
 
 //
@@ -22,7 +20,7 @@ export type CompiledFetcherFnOptions = {
   method: Method
   data: unknown
   requestInit?: RequestInit
-  middleware: Array<AnyServerMiddleware>
+  middleware: ReadonlyArray<AnyServerMiddleware>
 }
 
 export type IsOptional<T> = [T] extends [undefined] ? true : false
@@ -43,27 +41,13 @@ export type FetcherBaseOptions = {
   requestInit?: RequestInit
 }
 
-export type ResolveServerValidatorSchemaFnInput<TSearchValidator> =
-  TSearchValidator extends (input: infer TSearchSchemaInput) => any
-    ? unknown extends TSearchSchemaInput
-      ? ResolveSearchSchema<TSearchValidator>
-      : TSearchSchemaInput
-    : ResolveSearchSchema<TSearchValidator>
-
-export type ResolveServerValidatorInput<TSearchValidator> =
-  TSearchValidator extends AnySearchValidatorAdapter
-    ? TSearchValidator['types']['input']
-    : TSearchValidator extends AnySearchValidatorObj
-      ? ResolveServerValidatorSchemaFnInput<TSearchValidator['parse']>
-      : ResolveServerValidatorSchemaFnInput<TSearchValidator>
-
 export type FetcherDataOptions<TInput> =
   IsOptional<TInput> extends true
     ? {
-        data?: ResolveServerValidatorInput<TInput>
+        data?: ResolveValidatorInput<TInput>
       }
     : {
-        data: ResolveServerValidatorInput<TInput>
+        data: ResolveValidatorInput<TInput>
       }
 
 export type FetcherData<TResponse> = WrapRSCs<
@@ -86,14 +70,14 @@ export type RscStream<T> = {
 
 type Method = 'GET' | 'POST'
 
-export type ServerFn<TMethod, TInput, TResponse, TContextIn> = (
-  ctx: ServerFnCtx<TMethod, TInput, TContextIn>,
+export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
+  ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
 ) => Promise<TResponse> | TResponse
 
-export type ServerFnCtx<TMethod, TInput, TContextIn> = {
+export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
   method: TMethod
-  input: ResolveSearchSchema<TInput>
-  context: TContextIn
+  input: ResolveAllMiddlewareOutput<TMiddlewares, TValidator>
+  context: ResolveAllMiddlewareContext<TMiddlewares>
 }
 
 export type CompiledFetcherFn<TResponse> = {
@@ -104,64 +88,54 @@ export type CompiledFetcherFn<TResponse> = {
 type ServerFnBaseOptions<
   TMethod extends Method = 'GET',
   TResponse = unknown,
-  TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
+  TMiddlewares = unknown,
+  TValidator = unknown,
 > = {
   method?: TMethod
-  middleware?: TMiddlewares
-  input?: TInput
-  fn?: ServerFn<
-    TMethod,
-    TInput,
-    TResponse,
-    ResolveMiddlewareContext<TMiddlewares>
-  >
+  middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyServerMiddleware>>
+  input?: Constrain<TValidator, AnyValidator>
+  fn?: ServerFn<TMethod, TMiddlewares, TValidator, TResponse>
 }
 
 type ServerFnBase<
   TMethod extends Method = 'GET',
   TResponse = unknown,
-  TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
+  TMiddlewares = unknown,
+  TValidator = unknown,
 > = {
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>
-  middleware: <TNewMiddlewares extends Array<AnyServerMiddleware>>(
-    middlewares: TNewMiddlewares,
+  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
+  middleware: <const TNewMiddlewares>(
+    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyServerMiddleware>>,
   ) => Pick<
-    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TInput>,
+    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TValidator>,
     'input' | 'handler'
   >
-  input: <TNewServerValidator extends AnySearchValidator>(
-    input: TNewServerValidator,
+  input: <TNewServerValidator>(
+    input: Constrain<TNewServerValidator, AnyValidator>,
   ) => Pick<
     ServerFnBase<TMethod, TResponse, TMiddlewares, TNewServerValidator>,
     'handler' | 'middleware'
   >
   handler: (
-    fn: ServerFn<
-      TMethod,
-      TInput,
-      TResponse,
-      ResolveMiddlewareContext<TMiddlewares>
-    >,
-  ) => Fetcher<TInput, TResponse>
+    fn: ServerFn<TMethod, TMiddlewares, TValidator, TResponse>,
+  ) => Fetcher<TValidator, TResponse>
 }
 
 export function createServerFn<
   TMethod extends Method = 'GET',
   TResponse = unknown,
-  TMiddlewares extends Array<AnyServerMiddleware> = Array<AnyServerMiddleware>,
-  TInput extends AnySearchValidator = SearchValidator<unknown, unknown>,
+  TMiddlewares = unknown,
+  TValidator = undefined,
 >(
   options?: {
     method: TMethod
   },
-  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>,
-): ServerFnBase<TMethod, TResponse, TMiddlewares, TInput> {
+  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
+): ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator> {
   return {
     options: options as any,
     middleware: (middleware) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
+      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
         undefined,
         {
           ...(__opts as any),
@@ -170,7 +144,7 @@ export function createServerFn<
       ) as any
     },
     input: (input) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
+      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
         undefined,
         {
           ...(__opts as any),
@@ -179,7 +153,12 @@ export function createServerFn<
       ) as any
     },
     handler: (fn) => {
-      return createServerFnFetcher<TMethod, TResponse, TMiddlewares, TInput>({
+      return createServerFnFetcher<
+        TMethod,
+        TResponse,
+        TMiddlewares,
+        TValidator
+      >({
         ...(__opts as any),
         fn,
       }) as any
@@ -190,10 +169,10 @@ export function createServerFn<
 function createServerFnFetcher<
   TMethod extends Method,
   TResponse,
-  TMiddlewares extends Array<AnyServerMiddleware>,
-  TInput extends AnySearchValidator,
+  TMiddlewares,
+  TValidator,
 >(
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>,
+  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
 ): CompiledFetcherFn<TResponse> {
   // Cast the compiled function that will be injected by vinxi
   // The `input` will be
@@ -204,7 +183,7 @@ function createServerFnFetcher<
     `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/router-plugin/vite ?`,
   )
 
-  return Object.assign((opts: FetcherOptions<TInput>) => {
+  return Object.assign((opts: FetcherOptions<TValidator>) => {
     return (
       compiledFn({
         method: options.method || 'GET',
