@@ -74,6 +74,7 @@ export type {
   LinkProps,
   LinkComponent,
   CreateLinkProps,
+  MakeOptionalPathParams,
 } from './link'
 
 export type { ParsedLocation } from './location'
