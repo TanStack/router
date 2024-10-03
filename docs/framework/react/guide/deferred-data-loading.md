@@ -53,14 +53,12 @@ function PostIdComponent() {
   const { deferredSlowData } = Route.useLoaderData()
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <Await promise={deferredSlowData}>
-        {(data) => {
-          return <div>{data}</div>
-        }}
-      </Await>
-    </Suspense>
-  )
+    <Await promise={deferredSlowData} fallback={<div>Loading...</div>}>
+      {(data) => {
+        return <div>{data}</div>;
+      }}
+    </Await>
+  );
 }
 ```
 
