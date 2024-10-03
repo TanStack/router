@@ -594,18 +594,19 @@ describe('router matches URLs to route definitions', () => {
   })
 })
 
-
 describe('matchRoute', () => {
   it('should match route with custom parse/stringify functions', async () => {
-
     const { router } = createTestRouter(
       createMemoryHistory({
         initialEntries: ['/paramsParseStringify/123'],
       }),
     )
     await act(() => router.load())
-    const result = router.matchRoute({to: '/paramsParseStringify/$id', params: { id: 123 }})
-    expect(result).toBeTruthy();
-    expect((result as any).id).toBe(123);
+    const result = router.matchRoute({
+      to: '/paramsParseStringify/$id',
+      params: { id: 123 },
+    })
+    expect(result).toBeTruthy()
+    expect((result as any).id).toBe(123)
   })
 })
