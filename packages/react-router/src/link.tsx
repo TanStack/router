@@ -40,36 +40,6 @@ import type {
 } from './utils'
 import type { ReactNode } from 'react'
 
-export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
-  ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
-  : T extends `${infer L}//`
-    ? `${CleanPath<L>}/`
-    : T extends `//${infer L}`
-      ? `/${CleanPath<L>}`
-      : T
-
-export type Split<TValue, TIncludeTrailingSlash = true> = TValue extends unknown
-  ? string extends TValue
-    ? Array<string>
-    : TValue extends string
-      ? CleanPath<TValue> extends ''
-        ? []
-        : TIncludeTrailingSlash extends true
-          ? CleanPath<TValue> extends `${infer T}/`
-            ? [...Split<T>, '/']
-            : CleanPath<TValue> extends `/${infer U}`
-              ? Split<U>
-              : CleanPath<TValue> extends `${infer T}/${infer U}`
-                ? [...Split<T>, ...Split<U>]
-                : [TValue]
-          : CleanPath<TValue> extends `${infer T}/${infer U}`
-            ? [...Split<T>, ...Split<U>]
-            : TValue extends string
-              ? [TValue]
-              : never
-      : never
-  : never
-
 export type ParsePathParams<
   T extends string,
   TAcc = never,
@@ -85,26 +55,25 @@ export type ParsePathParams<
     : TAcc
   : TAcc
 
-export type Join<T, TDelimiter extends string = '/'> = T extends []
-  ? ''
-  : T extends [infer L extends string]
-    ? L
-    : T extends [
-          infer L extends string,
-          ...infer Tail extends [...Array<string>],
-        ]
-      ? CleanPath<`${L}${TDelimiter}${Join<Tail>}`>
-      : never
-
 export type Last<T extends Array<any>> = T extends [...infer _, infer L]
   ? L
   : never
 
-export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
+export type AddTrailingSlash<T> = T & `${string}/` extends never
+  ? `${T & string}/`
+  : T
 
-export type RemoveTrailingSlashes<T> = T extends `${infer R}/` ? R : T
+export type RemoveTrailingSlashes<T> = T & `${string}/` extends never
+  ? T
+  : T extends `${infer R}/`
+    ? R
+    : T
 
-export type RemoveLeadingSlashes<T> = T extends `/${infer R}` ? R : T
+export type RemoveLeadingSlashes<T> = T & `/${string}` extends never
+  ? T
+  : T extends `/${infer R}`
+    ? R
+    : T
 
 export type FindDescendantPaths<
   TRouter extends AnyRouter,
@@ -176,19 +145,21 @@ export type RelativeToPathAutoComplete<
   TTo extends string,
 > = string extends TFrom
   ? AbsolutePathAutoComplete<TRouter, TFrom>
-  : TTo extends `..${string}`
-    ? RelativeToParentPathAutoComplete<
-        TRouter,
-        TFrom,
-        RemoveTrailingSlashes<TTo>
-      >
-    : TTo extends `.${string}`
-      ? RelativeToCurrentPathAutoComplete<
+  : string extends TTo
+    ? AbsolutePathAutoComplete<TRouter, TFrom>
+    : TTo & `..${string}` extends never
+      ? TTo & `.${string}` extends never
+        ? AbsolutePathAutoComplete<TRouter, TFrom>
+        : RelativeToCurrentPathAutoComplete<
+            TRouter,
+            TFrom,
+            RemoveTrailingSlashes<TTo>
+          >
+      : RelativeToParentPathAutoComplete<
           TRouter,
           TFrom,
           RemoveTrailingSlashes<TTo>
         >
-      : AbsolutePathAutoComplete<TRouter, TFrom>
 
 export type NavigateOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -501,10 +472,30 @@ type RemoveLastSegment<
   T extends string,
   TAcc extends string = '',
 > = T extends `${infer TSegment}/${infer TRest}`
-  ? TRest extends `${string}/${string}`
-    ? RemoveLastSegment<TRest, `${TAcc}${TSegment}/`>
-    : `${TAcc}${TSegment}`
+  ? TRest & `${string}/${string}` extends never
+    ? `${TAcc}${TSegment}`
+    : RemoveLastSegment<TRest, `${TAcc}${TSegment}/`>
   : TAcc
+
+export type ResolveCurrentPath<TFrom, TTo> = TTo extends '.'
+  ? TFrom
+  : TTo extends './'
+    ? AddTrailingSlash<TFrom>
+    : TTo extends `./${infer TRest}`
+      ? ResolveRelativePath<TFrom, TRest>
+      : never
+
+export type ResolveParentPath<
+  TFrom extends string,
+  TTo,
+> = TTo extends `..${infer ToRest}`
+  ? ToRest extends '/'
+    ? RemoveLastSegment<TFrom>
+    : ResolveRelativePath<
+        RemoveLastSegment<TFrom>,
+        RemoveLeadingSlashes<ToRest>
+      >
+  : never
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
   ? TTo
@@ -514,29 +505,13 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
       ? TFrom
       : TFrom extends string
         ? TTo extends string
-          ? TTo extends '.'
-            ? TFrom
-            : TTo extends `./`
-              ? AddTrailingSlash<TFrom>
-              : TTo extends `./${infer TRest}`
-                ? ResolveRelativePath<TFrom, TRest>
-                : TTo extends `/${string}`
-                  ? TTo
-                  : TTo extends `..${infer ToRest}`
-                    ? ToRest extends '/'
-                      ? RemoveLastSegment<TFrom>
-                      : ResolveRelativePath<
-                          RemoveLastSegment<TFrom>,
-                          RemoveLeadingSlashes<ToRest>
-                        >
-                    : TTo extends `.${infer ToRest}`
-                      ? ToRest extends '/'
-                        ? AddTrailingSlash<TFrom>
-                        : ResolveRelativePath<
-                            TFrom,
-                            RemoveLeadingSlashes<ToRest>
-                          >
-                      : `/${RemoveLeadingSlashes<JoinPath<TFrom, TTo>>}`
+          ? TTo & `..${string}` extends never
+            ? TTo & `.${string}` extends never
+              ? TTo & `/${string}` extends never
+                ? `/${RemoveLeadingSlashes<JoinPath<TFrom, TTo>>}`
+                : TTo
+              : ResolveCurrentPath<TFrom, TTo>
+            : ResolveParentPath<TFrom, TTo>
           : never
         : never
 

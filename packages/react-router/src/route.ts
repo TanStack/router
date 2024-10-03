@@ -94,11 +94,12 @@ export type RouteOptions<
     NoInfer<TBeforeLoadFn>
   >
 
-export type ParseSplatParams<TPath extends string> = TPath extends `${string}$`
-  ? '_splat'
-  : TPath extends `${string}$/${string}`
-    ? '_splat'
-    : never
+export type ParseSplatParams<TPath extends string> = TPath &
+  `${string}$` extends never
+  ? TPath & `${string}$/${string}` extends never
+    ? never
+    : '_splat'
+  : '_splat'
 
 export interface SplatParams {
   _splat?: string
