@@ -144,9 +144,11 @@ export type RelativeToPathAutoComplete<
   TFrom extends string,
   TTo extends string,
 > = string extends TFrom
-  ? AbsolutePathAutoComplete<TRouter, TFrom>
+  ? string extends TTo
+    ? string
+    : AbsolutePathAutoComplete<TRouter, TFrom>
   : string extends TTo
-    ? AbsolutePathAutoComplete<TRouter, TFrom>
+    ? string
     : TTo & `..${string}` extends never
       ? TTo & `.${string}` extends never
         ? AbsolutePathAutoComplete<TRouter, TFrom>
