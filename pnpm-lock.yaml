@@ -2541,8 +2541,8 @@ importers:
         specifier: ^16.0.1
         version: 16.0.1(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       arktype:
-        specifier: ^2.0.0-rc.8
-        version: 2.0.0-rc.8
+        specifier: ^2.0.0-rc.14
+        version: 2.0.0-rc.14
 
   packages/router-cli:
     dependencies:
@@ -2845,8 +2845,14 @@ packages:
   '@ark/schema@0.10.0':
     resolution: {integrity: sha512-zpfXwWLOzj9aUK+dXQ6aleJAOgle4/WrHDop5CMX2M88dFQ85NdH8O0v0pvMAQnfFcaQAZ/nVDYLlBJsFc09XA==}
 
+  '@ark/schema@0.16.0':
+    resolution: {integrity: sha512-Zn+zaMdteyQF73pSVw9OU1M3fMmhSemCAdwYGhxJ302DqnqvVEeEDlB03plSKTCV98zYAMA6gYcEvqxDTpfIDg==}
+
   '@ark/util@0.10.0':
     resolution: {integrity: sha512-uK+9VU5doGMYOoOZVE+XaSs1vYACoaEJdrDkuBx26S4X7y3ChyKsPnIg/9pIw2vUySph1GkAXbvBnfVE2GmXgQ==}
+
+  '@ark/util@0.16.0':
+    resolution: {integrity: sha512-CnNzu0vLO3/y1Kml4mDNFnhk9r9uulfXDjYhrLNyOMpC4oUHeTL1ZLBuuevPTN0UovOMZA9uG9aMXLm7YWQ/4A==}
 
   '@babel/code-frame@7.24.7':
     resolution: {integrity: sha512-BcYH1CVJBO9tvyIZ2jVeXgSIMvGZ2FDRvDdOIVQyuklNKSsx+eppDEBq/g47Ayw+RqNFE+URvOShmf+f/qwAlA==}
@@ -5518,6 +5524,9 @@ packages:
 
   aria-query@5.3.0:
     resolution: {integrity: sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A==}
+
+  arktype@2.0.0-rc.14:
+    resolution: {integrity: sha512-kvXsdfNs9r+QFs2iXvdJ4lsymi62JysWoMyE7DxtNq1ojgDgRecn6FEkMh8tHUxlgru5lIm0Qsia3h1xv7uUzg==}
 
   arktype@2.0.0-rc.8:
     resolution: {integrity: sha512-ByrqjptsavUCUL9ptts6BUL2LCNkVZyniOdaBw76dlBQ6gYIhYSeycuuj4gRFwcAafszOnAPD2fAqHK7bbo/Zw==}
@@ -9946,7 +9955,13 @@ snapshots:
     dependencies:
       '@ark/util': 0.10.0
 
+  '@ark/schema@0.16.0':
+    dependencies:
+      '@ark/util': 0.16.0
+
   '@ark/util@0.10.0': {}
+
+  '@ark/util@0.16.0': {}
 
   '@babel/code-frame@7.24.7':
     dependencies:
@@ -12641,6 +12656,11 @@ snapshots:
   aria-query@5.3.0:
     dependencies:
       dequal: 2.0.3
+
+  arktype@2.0.0-rc.14:
+    dependencies:
+      '@ark/schema': 0.16.0
+      '@ark/util': 0.16.0
 
   arktype@2.0.0-rc.8:
     dependencies:
