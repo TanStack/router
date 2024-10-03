@@ -581,12 +581,14 @@ export function createRouter<
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 >(
-  options: RouterConstructorOptions<
-    TRouteTree,
-    TTrailingSlashOption,
-    TDehydrated,
-    TSerializedError
-  >,
+  options: undefined extends number
+    ? 'strictNullChecks must be enabled in tsconfig.json'
+    : RouterConstructorOptions<
+        TRouteTree,
+        TTrailingSlashOption,
+        TDehydrated,
+        TSerializedError
+      >,
 ) {
   return new Router<
     TRouteTree,
