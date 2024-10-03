@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import { z } from 'zod'
 import {
   Link,
   Outlet,
@@ -74,6 +75,17 @@ function createTestRouter(initialHistory?: RouterHistory) {
     path: '$',
   })
 
+  const routeWithParamsParseStringify = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/paramsParseStringify/$id',
+    params: {
+      parse: (params) => ({
+        id: z.number().int().parse(Number(params.id)),
+      }),
+      stringify: ({ id }) => ({ id: `${id}` }),
+    },
+  })
+
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
@@ -85,6 +97,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
       pathSegmentLayoutSplatIndexRoute,
       pathSegmentLayoutSplatSplatRoute,
     ]),
+    routeWithParamsParseStringify,
   ])
 
   const router = createRouter({ routeTree, history })
@@ -578,5 +591,21 @@ describe('router matches URLs to route definitions', () => {
       '/layout-splat',
       '/layout-splat/',
     ])
+  })
+})
+
+
+describe('matchRoute', () => {
+  it('should match route with custom parse/stringify functions', async () => {
+
+    const { router } = createTestRouter(
+      createMemoryHistory({
+        initialEntries: ['/paramsParseStringify/123'],
+      }),
+    )
+    await act(() => router.load())
+    const result = router.matchRoute({to: '/paramsParseStringify/$id', params: { id: 123 }})
+    expect(result).toBeTruthy();
+    expect((result as any).id).toBe(123);
   })
 })
