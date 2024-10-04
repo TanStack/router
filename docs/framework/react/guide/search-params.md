@@ -452,7 +452,7 @@ const ProductList = () => {
 }
 ```
 
-If you want to update the search params in a generic component that is rendered on multiple routes, specifiying `from` can be challenging.
+If you want to update the search params in a generic component that is rendered on multiple routes, specifying `from` can be challenging.
 
 In this scenario you can set `to="."` which will give you access to loosely typed search params.  
 Here is an example that illustrates this:
