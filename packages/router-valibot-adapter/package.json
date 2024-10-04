@@ -64,13 +64,13 @@
     "node": ">=12"
   },
   "devDependencies": {
+    "@tanstack/react-router": "workspace:*",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
-    "@tanstack/react-router": "workspace:*",
-    "valibot": "^0.42.0"
+    "valibot": "1.0.0-beta.0"
   },
   "peerDependencies": {
-    "valibot": ">=0.36.0",
-    "@tanstack/react-router": ">=1.43.2"
+    "@tanstack/react-router": ">=1.43.2",
+    "valibot": "^1.0.0"
   }
 }
