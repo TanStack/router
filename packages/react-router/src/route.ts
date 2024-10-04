@@ -321,7 +321,6 @@ export interface UpdatableRouteOptions<
   in out TRouteContextFn,
   in out TBeforeLoadFn,
 > extends UpdatableStaticRouteOption {
-  // test?: (args: TAllContext) => void
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
   // If true, this route will be forcefully wrapped in a suspense boundary
@@ -439,6 +438,7 @@ export interface UpdatableRouteOptions<
   headers?: (ctx: {
     loaderData: ResolveLoaderData<TLoaderFn>
   }) => Record<string, string>
+  ssr?: boolean
 }
 
 interface RequiredStaticDataRouteOption {
