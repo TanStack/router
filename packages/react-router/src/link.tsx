@@ -212,6 +212,8 @@ export interface NavigateOptionProps {
   // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
   viewTransition?: boolean
   ignoreBlocker?: boolean
+  _type?: 'internal' | 'external'
+  href?: string
 }
 
 export type ToOptions<

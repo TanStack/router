@@ -547,7 +547,7 @@ export interface LoaderFnContext<
   /**
    * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
    **/
-  navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+  navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
   parentMatchPromise?: Promise<void>
   cause: 'preload' | 'enter' | 'stay'
   route: Route
