@@ -64,4 +64,16 @@ describe('createMemoryHistory', () => {
     history.push('/c')
     expect(history.length).toBe(2)
   })
+
+  test('state', () => {
+    const history = createMemoryHistory()
+    history.push('/a', { i: 1 })
+    expect((history.location.state as any).i).toBe(1)
+    history.replace('/b', { i: 2 })
+    expect((history.location.state as any).i).toBe(2)
+    history.back()
+    expect((history.location.state as any).i).toBeUndefined()
+    history.push('/c', { i: 3 })
+    expect((history.location.state as any).i).toBe(3)
+  })
 })
