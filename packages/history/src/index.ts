@@ -7,6 +7,7 @@ export interface NavigateOptions {
 }
 export interface RouterHistory {
   location: HistoryLocation
+  length: number
   subscribers: Set<() => void>
   subscribe: (cb: () => void) => () => void
   push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
@@ -61,6 +62,7 @@ const stopBlocking = () => {
 
 export function createHistory(opts: {
   getLocation: () => HistoryLocation
+  getLength: () => number
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
   go: (n: number) => void
@@ -101,6 +103,9 @@ export function createHistory(opts: {
   return {
     get location() {
       return location
+    },
+    get length() {
+      return opts.getLength()
     },
     subscribers,
     subscribe: (cb: () => void) => {
@@ -293,6 +298,7 @@ export function createBrowserHistory(opts?: {
 
   const history = createHistory({
     getLocation,
+    getLength: () => win.history.length,
     pushState: (href, state) => queueHistoryAction('push', href, state),
     replaceState: (href, state) => queueHistoryAction('replace', href, state),
     back: () => win.history.back(),
@@ -368,7 +374,7 @@ export function createMemoryHistory(
 
   return createHistory({
     getLocation,
-
+    getLength: () => entries.length,
     pushState: (path, state) => {
       currentState = state
       // Removes all subsequent entries after the current index to start a new branch
