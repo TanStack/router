@@ -22,7 +22,7 @@ Feature/Capability Key:
 | History, Memory & Hash Routers                 | ✅                                               | ✅                                                    | 🛑                                                    |
 | Nested / Layout Routes                         | ✅                                               | ✅                                                    | ✅                                                    |
 | Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
-| Typesafe Routes                                | ✅                                               | 🛑                                                    | 🟡                                                    |
+| Typesafe Routes                                | ✅                                               | ✅                                                    | 🟡                                                    |
 | Code-based Routes                              | ✅                                               | ✅                                                    | 🛑                                                    |
 | File-based Routes                              | ✅                                               | ✅                                                    | ✅                                                    |
 | Virtual/Programmatic File-based Routes         | ✅                                               | ✅                                                    | 🛑                                                    |
@@ -32,7 +32,7 @@ Feature/Capability Key:
 | Auto Route Prefetching                         | ✅                                               | 🔵 (via Remix)                                        | ✅                                                    |
 | Route Prefetching Delay                        | ✅                                               | 🔶                                                    | 🛑                                                    |
 | Path Params                                    | ✅                                               | ✅                                                    | ✅                                                    |
-| Typesafe Path Params                           | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Typesafe Path Params                           | ✅                                               | ✅                                                    | 🛑                                                    |
 | Path Param Validation                          | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Custom Path Param Parsing/Serialization        | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Ranked Routes                                  | ✅                                               | ✅                                                    | ✅                                                    |
