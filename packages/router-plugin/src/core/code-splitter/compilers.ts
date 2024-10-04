@@ -148,7 +148,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             }
 
                             prop.value = template.expression(
-                              `lazyRouteComponent($$splitComponentImporter, 'component')`,
+                              `lazyRouteComponent($$splitComponentImporter, 'component', () => Route.options.ssr)`,
                             )()
 
                             programPath.pushContainer('body', [

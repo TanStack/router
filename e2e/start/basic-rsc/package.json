@@ -9,21 +9,21 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@babel/plugin-syntax-typescript": "^7.25.4",
+    "@babel/plugin-syntax-typescript": "^7.25.7",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/start": "workspace:^",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.5.2",
+    "tailwind-merge": "^2.5.3",
     "vinxi": "0.4.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.11",
+    "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
     "vite-tsconfig-paths": "^5.0.1"
   },
