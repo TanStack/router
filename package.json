@@ -54,7 +54,7 @@
     "typescript53": "npm:typescript@5.3",
     "typescript54": "npm:typescript@5.4",
     "typescript55": "npm:typescript@5.5",
-    "vite": "^5.4.5",
+    "vite": "^5.4.6",
     "vitest": "^1.6.0"
   },
   "resolutions": {

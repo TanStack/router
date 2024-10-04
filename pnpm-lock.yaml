@@ -41,7 +41,7 @@ importers:
         version: 1.47.1
       '@tanstack/config':
         specifier: ^0.13.4
-        version: 0.13.4(@types/node@22.5.4)(esbuild@0.23.1)(eslint@9.10.0(jiti@1.21.6))(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 0.13.4(@types/node@22.5.4)(esbuild@0.23.1)(eslint@9.10.0(jiti@1.21.6))(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       '@types/node':
         specifier: ^22.5.4
         version: 22.5.4
@@ -103,8 +103,8 @@ importers:
         specifier: npm:typescript@5.5
         version: typescript@5.5.4
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
       vitest:
         specifier: ^1.6.0
         version: 1.6.0(@types/node@22.5.4)(jsdom@25.0.0)(terser@5.31.1)
@@ -138,10 +138,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   e2e/react-router/basic-file-based:
     dependencies:
@@ -178,10 +178,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   e2e/react-router/basic-file-based-code-splitting:
     dependencies:
@@ -215,10 +215,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   e2e/react-router/basic-react-query:
     dependencies:
@@ -255,10 +255,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   e2e/react-router/basic-react-query-file-based:
     dependencies:
@@ -301,10 +301,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   e2e/react-router/basic-virtual-file-based:
     dependencies:
@@ -344,10 +344,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   e2e/start/basic:
     dependencies:
@@ -393,7 +393,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -408,7 +408,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   e2e/start/basic-auth:
     dependencies:
@@ -463,7 +463,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -478,7 +478,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   e2e/start/basic-react-query:
     dependencies:
@@ -530,7 +530,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -545,7 +545,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   e2e/start/basic-rsc:
     dependencies:
@@ -579,7 +579,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -594,7 +594,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   e2e/start/clerk-basic:
     dependencies:
@@ -646,7 +646,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -661,7 +661,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/authenticated-routes:
     dependencies:
@@ -695,10 +695,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/basic:
     dependencies:
@@ -726,10 +726,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/basic-default-search-params:
     dependencies:
@@ -763,10 +763,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/basic-file-based:
     dependencies:
@@ -800,10 +800,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/basic-file-based-codesplitting:
     dependencies:
@@ -837,10 +837,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/basic-react-query:
     dependencies:
@@ -874,10 +874,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/basic-react-query-file-based:
     dependencies:
@@ -920,10 +920,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/basic-ssr-file-based:
     dependencies:
@@ -966,7 +966,7 @@ importers:
         version: 4.17.21
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       compression:
         specifier: ^1.7.4
         version: 1.7.4
@@ -983,11 +983,11 @@ importers:
         specifier: ^1.16.2
         version: 1.16.2
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
       vite-plugin-babel:
         specifier: ^1.2.0
-        version: 1.2.0(@babel/core@7.25.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 1.2.0(@babel/core@7.25.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/basic-ssr-streaming-file-based:
     dependencies:
@@ -1033,7 +1033,7 @@ importers:
         version: 4.17.21
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       compression:
         specifier: ^1.7.4
         version: 1.7.4
@@ -1050,11 +1050,11 @@ importers:
         specifier: ^1.16.2
         version: 1.16.2
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
       vite-plugin-babel:
         specifier: ^1.2.0
-        version: 1.2.0(@babel/core@7.25.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 1.2.0(@babel/core@7.25.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/basic-virtual-file-based:
     dependencies:
@@ -1094,10 +1094,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/basic-virtual-inside-file-based:
     dependencies:
@@ -1137,10 +1137,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/deferred-data:
     dependencies:
@@ -1171,10 +1171,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/kitchen-sink:
     dependencies:
@@ -1208,10 +1208,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/kitchen-sink-file-based:
     dependencies:
@@ -1248,10 +1248,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/kitchen-sink-react-query:
     dependencies:
@@ -1291,10 +1291,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/kitchen-sink-react-query-file-based:
     dependencies:
@@ -1337,10 +1337,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/large-file-based:
     dependencies:
@@ -1377,10 +1377,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/location-masking:
     dependencies:
@@ -1414,10 +1414,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/navigation-blocking:
     dependencies:
@@ -1448,10 +1448,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/quickstart:
     dependencies:
@@ -1476,10 +1476,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/quickstart-file-based:
     dependencies:
@@ -1513,10 +1513,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/quickstart-rspack-file-based:
     dependencies:
@@ -1624,10 +1624,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/search-validator-adapters:
     dependencies:
@@ -1676,10 +1676,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/start-basic:
     dependencies:
@@ -1719,7 +1719,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -1734,7 +1734,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/start-basic-auth:
     dependencies:
@@ -1786,7 +1786,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -1801,7 +1801,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/start-basic-react-query:
     dependencies:
@@ -1850,7 +1850,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -1865,7 +1865,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/start-basic-rsc:
     dependencies:
@@ -1899,7 +1899,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -1914,7 +1914,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/start-clerk-basic:
     dependencies:
@@ -1963,7 +1963,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -1978,7 +1978,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/start-convex-trellaux:
     dependencies:
@@ -2048,7 +2048,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -2063,7 +2063,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/start-counter:
     dependencies:
@@ -2115,7 +2115,7 @@ importers:
         version: link:../../../packages/start
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2204,7 +2204,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -2219,7 +2219,7 @@ importers:
         version: 5.6.2
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/with-framer-motion:
     dependencies:
@@ -2253,10 +2253,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       vite:
-        specifier: ^5.4.5
-        version: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+        specifier: ^5.4.6
+        version: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   examples/react/with-trpc:
     dependencies:
@@ -2299,7 +2299,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   examples/react/with-trpc-react-query:
     dependencies:
@@ -2351,7 +2351,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
 
   packages/create-router:
     dependencies:
@@ -2463,7 +2463,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -2497,7 +2497,7 @@ importers:
         version: 16.0.1(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
@@ -2521,7 +2521,7 @@ importers:
         version: link:../react-router
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       react:
         specifier: '>=18'
         version: 18.3.1
@@ -2574,7 +2574,7 @@ importers:
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -2724,7 +2724,7 @@ importers:
         version: 0.2.5
       '@vinxi/react-server-dom':
         specifier: ^0.0.3
-        version: 0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       '@vinxi/server-components':
         specifier: ^0.4.3
         version: 0.4.3(vinxi@0.4.3(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)(webpack-sources@3.2.3))
@@ -2748,7 +2748,7 @@ importers:
         version: 0.4.3(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)(webpack-sources@3.2.3)
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -2758,7 +2758,7 @@ importers:
         version: 16.0.1(@testing-library/dom@10.0.0)(@types/react-dom@18.3.0)(@types/react@18.3.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.1(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+        version: 4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
       nitropack:
         specifier: ^2.9.7
         version: 2.9.7(webpack-sources@3.2.3)
@@ -9643,6 +9643,37 @@ packages:
       terser:
         optional: true
 
+  vite@5.4.6:
+    resolution: {integrity: sha512-IeL5f8OO5nylsgzd9tq4qD2QqI0k2CQLGrWD0rCN0EQJZpBK5vJAx0I+GDkMOXxQX/OfFHMuLIx6ddAxGX/k+Q==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^18.0.0 || >=20.0.0
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      sass-embedded: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.4.0
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+
   vitest@1.6.0:
     resolution: {integrity: sha512-H5r/dN06swuFnzNFhq/dnz37bPXnq8xB2xB5JOVk8K09rUtoeNN+LHWkoQ0A/i3hvbUKKcCei9KpbxqHMLhLLA==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -11731,7 +11762,7 @@ snapshots:
     dependencies:
       '@swc/counter': 0.1.3
 
-  '@tanstack/config@0.13.4(@types/node@22.5.4)(esbuild@0.23.1)(eslint@9.10.0(jiti@1.21.6))(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))':
+  '@tanstack/config@0.13.4(@types/node@22.5.4)(esbuild@0.23.1)(eslint@9.10.0(jiti@1.21.6))(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))':
     dependencies:
       '@commitlint/parse': 19.5.0
       '@eslint/js': 9.11.1
@@ -11754,9 +11785,9 @@ snapshots:
       typedoc-plugin-markdown: 4.2.9(typedoc@0.26.7(typescript@5.6.2))
       typescript-eslint: 8.8.0(eslint@9.10.0(jiti@1.21.6))(typescript@5.6.2)
       v8flags: 4.0.1
-      vite-plugin-dts: 4.0.3(@types/node@22.5.4)(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
-      vite-plugin-externalize-deps: 0.8.0(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
-      vite-tsconfig-paths: 5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))
+      vite-plugin-dts: 4.0.3(@types/node@22.5.4)(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
+      vite-plugin-externalize-deps: 0.8.0(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
+      vite-tsconfig-paths: 5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))
     transitivePeerDependencies:
       - '@types/node'
       - esbuild
@@ -12257,12 +12288,12 @@ snapshots:
       tslib: 2.7.0
       vinxi: 0.4.3(@types/node@22.5.4)(ioredis@5.4.1)(terser@5.31.1)(webpack-sources@3.2.3)
 
-  '@vinxi/react-server-dom@0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1))':
+  '@vinxi/react-server-dom@0.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))':
     dependencies:
       acorn-loose: 8.3.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-      vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
   '@vinxi/react@0.2.5': {}
 
@@ -12296,6 +12327,17 @@ snapshots:
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
       vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@vitejs/plugin-react@4.3.1(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1))':
+    dependencies:
+      '@babel/core': 7.25.2
+      '@babel/plugin-transform-react-jsx-self': 7.24.7(@babel/core@7.25.2)
+      '@babel/plugin-transform-react-jsx-source': 7.24.7(@babel/core@7.25.2)
+      '@types/babel__core': 7.20.5
+      react-refresh: 0.14.2
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -17099,7 +17141,7 @@ snapshots:
       unctx: 2.3.1(webpack-sources@3.2.3)
       unenv: 1.9.0
       unstorage: 1.10.2(ioredis@5.4.1)
-      vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
       zod: 3.23.8
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -17140,7 +17182,7 @@ snapshots:
       debug: 4.3.6
       pathe: 1.1.2
       picocolors: 1.1.0
-      vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -17152,12 +17194,12 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-babel@1.2.0(@babel/core@7.25.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1)):
+  vite-plugin-babel@1.2.0(@babel/core@7.25.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1)):
     dependencies:
       '@babel/core': 7.25.2
-      vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
-  vite-plugin-dts@4.0.3(@types/node@22.5.4)(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1)):
+  vite-plugin-dts@4.0.3(@types/node@22.5.4)(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1)):
     dependencies:
       '@microsoft/api-extractor': 7.47.4(@types/node@22.5.4)
       '@rollup/pluginutils': 5.1.0(rollup@4.21.2)
@@ -17171,28 +17213,38 @@ snapshots:
       typescript: 5.6.2
       vue-tsc: 2.0.29(typescript@5.6.2)
     optionalDependencies:
-      vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
     transitivePeerDependencies:
       - '@types/node'
       - rollup
       - supports-color
 
-  vite-plugin-externalize-deps@0.8.0(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1)):
+  vite-plugin-externalize-deps@0.8.0(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1)):
     dependencies:
-      vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
 
-  vite-tsconfig-paths@5.0.1(typescript@5.6.2)(vite@5.4.5(@types/node@22.5.4)(terser@5.31.1)):
+  vite-tsconfig-paths@5.0.1(typescript@5.6.2)(vite@5.4.6(@types/node@22.5.4)(terser@5.31.1)):
     dependencies:
       debug: 4.3.6
       globrex: 0.1.2
       tsconfck: 3.0.3(typescript@5.6.2)
     optionalDependencies:
-      vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
     transitivePeerDependencies:
       - supports-color
       - typescript
 
   vite@5.4.5(@types/node@22.5.4)(terser@5.31.1):
+    dependencies:
+      esbuild: 0.21.5
+      postcss: 8.4.47
+      rollup: 4.21.2
+    optionalDependencies:
+      '@types/node': 22.5.4
+      fsevents: 2.3.3
+      terser: 5.31.1
+
+  vite@5.4.6(@types/node@22.5.4)(terser@5.31.1):
     dependencies:
       esbuild: 0.21.5
       postcss: 8.4.47
@@ -17221,7 +17273,7 @@ snapshots:
       strip-literal: 2.1.0
       tinybench: 2.8.0
       tinypool: 0.8.4
-      vite: 5.4.5(@types/node@22.5.4)(terser@5.31.1)
+      vite: 5.4.6(@types/node@22.5.4)(terser@5.31.1)
       vite-node: 1.6.0(@types/node@22.5.4)(terser@5.31.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
