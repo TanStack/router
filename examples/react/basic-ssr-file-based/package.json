@@ -31,7 +31,7 @@
     "isbot": "^5.1.17",
     "node-fetch": "^3.3.2",
     "serve-static": "^1.16.2",
-    "vite": "^5.4.5",
+    "vite": "^5.4.8",
     "vite-plugin-babel": "^1.2.0"
   }
 }
