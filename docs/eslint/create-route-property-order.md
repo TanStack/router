@@ -14,9 +14,9 @@ The correct property order is as follows:
 
 - `params`
 - `validateSearch`
+- `loaderDeps`
 - `context`
 - `beforeLoad`
-- `loaderDeps`
 - `loader`
 
 All other properties are insensitive to the order as they do not depend on type inference.

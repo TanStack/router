@@ -17,15 +17,15 @@ export type CreateRouteFunction = (typeof createRouteFunctions)[number]
 export const checkedProperties = [
   'params',
   'validateSearch',
+  'loaderDeps',
   'context',
   'beforeLoad',
-  'loaderDeps',
   'loader',
 ] as const
 
 export const sortRules = [
-  [['params', 'validateSearch'], ['context']],
+  [['params', 'validateSearch'], ['loaderDeps']],
+  [['loaderDeps'], ['context']],
   [['context'], ['beforeLoad']],
-  [['beforeLoad'], ['loaderDeps']],
-  [['loaderDeps'], ['loader']],
+  [['beforeLoad'], ['loader']],
 ] as const
