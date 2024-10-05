@@ -1095,6 +1095,34 @@ describe('Link', () => {
     expect(errorText).toBeInTheDocument()
   })
 
+  test('when navigating to the root with an error in component', async () => {
+    const notFoundComponent = vi.fn();
+
+    const rootRoute = createRootRoute({
+      errorComponent: () => <span>Oops! Something went wrong!</span>,
+      notFoundComponent
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        throw new Error('Oops. Something went wrong!')
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const errorText = await screen.findByText('Oops! Something went wrong!')
+    expect(errorText).toBeInTheDocument()
+    expect(notFoundComponent).not.toBeCalled();
+  })
+
+
   test('when navigating to /posts with params', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
