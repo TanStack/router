@@ -1,5 +1,5 @@
 {
-  "name": "@router-mono-react-query/app",
+  "name": "@router-mono-simple/app",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,9 +9,8 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.56.2",
-    "@router-mono-react-query/post-feature": "workspace:*",
-    "@router-mono-react-query/router": "workspace:*",
+    "@router-mono-simple/post-feature": "workspace:*",
+    "@router-mono-simple/router": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

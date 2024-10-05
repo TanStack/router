@@ -1665,6 +1665,9 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../../../packages/router-devtools
       '@types/react':
         specifier: ^18.2.47
         version: 18.3.5
@@ -1745,6 +1748,172 @@ importers:
       '@router-mono-react-query/post-query':
         specifier: workspace:*
         version: link:../post-query
+      '@tanstack/react-query':
+        specifier: ^5.56.2
+        version: 5.56.2(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../../../packages/react-router
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../../../packages/router-plugin
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.7.4)(terser@5.31.1))
+      typescript:
+        specifier: 5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.7.4)(terser@5.31.1)
+      vite-plugin-dts:
+        specifier: ^4.2.3
+        version: 4.2.3(@types/node@22.7.4)(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.5(@types/node@22.7.4)(terser@5.31.1))
+
+  examples/react/router-monorepo-simple:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.56.2
+        version: 5.56.2(react@18.3.1)
+      '@tanstack/react-query-devtools':
+        specifier: ^5.56.2
+        version: 5.56.2(@tanstack/react-query@5.56.2(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.7.4
+        version: 22.7.4
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.7.4)(terser@5.31.1))
+      typescript:
+        specifier: 5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.7.4)(terser@5.31.1)
+      vite-plugin-dts:
+        specifier: ^4.2.3
+        version: 4.2.3(@types/node@22.7.4)(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.5(@types/node@22.7.4)(terser@5.31.1))
+
+  examples/react/router-monorepo-simple/packages/app:
+    dependencies:
+      '@router-mono-simple/post-feature':
+        specifier: workspace:*
+        version: link:../post-feature
+      '@router-mono-simple/router':
+        specifier: workspace:*
+        version: link:../router
+      '@tanstack/react-query':
+        specifier: ^5.56.2
+        version: 5.56.2(react@18.3.1)
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../../../packages/router-devtools
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.7.4)(terser@5.31.1))
+      typescript:
+        specifier: 5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.7.4)(terser@5.31.1)
+      vite-plugin-dts:
+        specifier: ^4.2.3
+        version: 4.2.3(@types/node@22.7.4)(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.5(@types/node@22.7.4)(terser@5.31.1))
+
+  examples/react/router-monorepo-simple/packages/post-feature:
+    dependencies:
+      '@router-mono-simple/router':
+        specifier: workspace:*
+        version: link:../router
+      '@tanstack/react-query':
+        specifier: ^5.56.2
+        version: 5.56.2(react@18.3.1)
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.1(vite@5.4.5(@types/node@22.7.4)(terser@5.31.1))
+      typescript:
+        specifier: 5.6.2
+        version: 5.6.2
+      vite:
+        specifier: ^5.4.5
+        version: 5.4.5(@types/node@22.7.4)(terser@5.31.1)
+      vite-plugin-dts:
+        specifier: ^4.2.3
+        version: 4.2.3(@types/node@22.7.4)(rollup@4.21.2)(typescript@5.6.2)(vite@5.4.5(@types/node@22.7.4)(terser@5.31.1))
+
+  examples/react/router-monorepo-simple/packages/router:
+    dependencies:
       '@tanstack/react-query':
         specifier: ^5.56.2
         version: 5.56.2(react@18.3.1)

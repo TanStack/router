@@ -1,17 +1,14 @@
 {
-  "name": "router-monorepo-react-query",
+  "name": "router-mono-simple",
   "version": "1.0.0",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "post-query": "pnpm --filter @router-mono-react-query/post-query",
-    "post-feature": "pnpm --filter @router-mono-react-query/post-feature",
-    "router": "pnpm --filter @router-mono-react-query/router",
-    "app": "pnpm --filter @router-mono-react-query/app",
-    "dev": "pnpm post-query build && pnpm router build && pnpm post-feature build && pnpm app dev"
+    "post-feature": "pnpm --filter @router-mono-simple/post-feature",
+    "router": "pnpm --filter @router-mono-simple/router",
+    "app": "pnpm --filter @router-mono-simple/app",
+    "dev": "pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.56.2",
-    "@tanstack/react-query-devtools": "^5.56.2",
     "@tanstack/react-router": "^1.58.17",
     "@tanstack/router-devtools": "^1.58.17",
     "@tanstack/router-plugin": "^1.58.12",
