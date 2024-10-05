@@ -1,5 +1,6 @@
 packages:
   - 'packages/*'
   - 'examples/react/*'
+  - 'examples/react/router-monorepo-react-query/packages/*'
   - 'e2e/react-router/*'
   - 'e2e/start/*'
