@@ -11,7 +11,7 @@ import {
 import { PostIdComponent, PostsListComponent, PostErrorComponent } from '@router-mono-react-query/post-feature' 
 import { RootComponent} from './rootComponent'
 
-// Lazy loaded for simplicity, but you could expose from your library component
+// Not lazy loaded for simplicity, but you could expose from your library component
 // individually, and enforce here to use react lazy components via typings
 // so that you have code splitting
 const routerMap = {

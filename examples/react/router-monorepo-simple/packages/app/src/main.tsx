@@ -9,7 +9,7 @@ import { PostErrorComponent, PostIdComponent, PostsListComponent } from '@router
 import { RootComponent} from './rootComponent'
 import type { RouterIds } from '@router-mono-simple/router';
 
-// Lazy loaded for simplicity, but you could expose from your library component
+// Not lazy loaded for simplicity, but you could expose from your library component
 // individually, and enforce here to use react lazy components via typings
 // so that you have code splitting
 const routerMap = {
