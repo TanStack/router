@@ -1096,11 +1096,11 @@ describe('Link', () => {
   })
 
   test('when navigating to the root with an error in component', async () => {
-    const notFoundComponent = vi.fn();
+    const notFoundComponent = vi.fn()
 
     const rootRoute = createRootRoute({
       errorComponent: () => <span>Oops! Something went wrong!</span>,
-      notFoundComponent
+      notFoundComponent,
     })
 
     const indexRoute = createRoute({
@@ -1119,9 +1119,8 @@ describe('Link', () => {
 
     const errorText = await screen.findByText('Oops! Something went wrong!')
     expect(errorText).toBeInTheDocument()
-    expect(notFoundComponent).not.toBeCalled();
+    expect(notFoundComponent).not.toBeCalled()
   })
-
 
   test('when navigating to /posts with params', async () => {
     const rootRoute = createRootRoute()
