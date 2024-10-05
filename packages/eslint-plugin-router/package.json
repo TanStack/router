@@ -27,7 +27,7 @@
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --typecheck",
     "test:build": "publint --strict && attw --pack .",
-    "build": "vite build"
+    "build": "vite build && tsc --noEmit"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
