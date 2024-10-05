@@ -7,6 +7,7 @@ export interface NavigateOptions {
 }
 export interface RouterHistory {
   location: HistoryLocation
+  length: number
   subscribers: Set<() => void>
   subscribe: (cb: () => void) => () => void
   push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
@@ -61,6 +62,7 @@ const stopBlocking = () => {
 
 export function createHistory(opts: {
   getLocation: () => HistoryLocation
+  getLength: () => number
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
   go: (n: number) => void
@@ -101,6 +103,9 @@ export function createHistory(opts: {
   return {
     get location() {
       return location
+    },
+    get length() {
+      return opts.getLength()
     },
     subscribers,
     subscribe: (cb: () => void) => {
@@ -293,6 +298,7 @@ export function createBrowserHistory(opts?: {
 
   const history = createHistory({
     getLocation,
+    getLength: () => win.history.length,
     pushState: (href, state) => queueHistoryAction('push', href, state),
     replaceState: (href, state) => queueHistoryAction('replace', href, state),
     back: () => win.history.back(),
@@ -360,39 +366,34 @@ export function createMemoryHistory(
 ): RouterHistory {
   const entries = opts.initialEntries
   let index = opts.initialIndex ?? entries.length - 1
-  let currentState = {
-    key: createRandomKey(),
-  } as HistoryState
+  const states = entries.map(() => ({}) as HistoryState)
 
-  const getLocation = () => parseHref(entries[index]!, currentState)
+  const getLocation = () => parseHref(entries[index]!, states[index])
 
   return createHistory({
     getLocation,
-
+    getLength: () => entries.length,
     pushState: (path, state) => {
-      currentState = state
-      entries.splice
       // Removes all subsequent entries after the current index to start a new branch
       if (index < entries.length - 1) {
         entries.splice(index + 1)
+        states.splice(index + 1)
       }
+      states.push(state)
       entries.push(path)
       index = Math.max(entries.length - 1, 0)
     },
     replaceState: (path, state) => {
-      currentState = state
+      states[index] = state
       entries[index] = path
     },
     back: () => {
-      currentState = assignKey(currentState)
       index = Math.max(index - 1, 0)
     },
     forward: () => {
-      currentState = assignKey(currentState)
       index = Math.min(index + 1, entries.length - 1)
     },
     go: (n) => {
-      currentState = assignKey(currentState)
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
     createHref: (path) => path,

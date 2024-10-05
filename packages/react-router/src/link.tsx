@@ -356,7 +356,7 @@ type ResolveRelativeToParams<
         TToParams
       >
 
-interface MakeOptionalSearchParams<
+export interface MakeOptionalSearchParams<
   in out TRouter extends AnyRouter,
   in out TFrom,
   in out TTo,
@@ -364,7 +364,7 @@ interface MakeOptionalSearchParams<
   search?: true | (ParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {})
 }
 
-interface MakeOptionalPathParams<
+export interface MakeOptionalPathParams<
   in out TRouter extends AnyRouter,
   in out TFrom,
   in out TTo,

@@ -7,7 +7,7 @@ export function loaderFn() {
   };
 }
 export const Route = createFileRoute('/_layout')({
-  component: lazyRouteComponent($$splitComponentImporter, 'component'),
+  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.options.ssr),
   loader: loaderFn
 });
 export const SIDEBAR_WIDTH = '150px';

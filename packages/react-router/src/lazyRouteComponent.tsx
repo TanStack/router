@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Outlet } from './Match'
 import type { AsyncRouteComponent } from './route'
 
 // If the load fails due to module not found, it may mean a new version of
@@ -13,12 +14,32 @@ function isModuleNotFoundError(error: any): boolean {
   )
 }
 
+export function ClientOnly({
+  children,
+  fallback = null,
+}: React.PropsWithChildren<{ fallback?: React.ReactNode }>) {
+  return useHydrated() ? <>{children}</> : <>{fallback}</>
+}
+
+function subscribe() {
+  return () => {}
+}
+
+export function useHydrated() {
+  return React.useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  )
+}
+
 export function lazyRouteComponent<
   T extends Record<string, any>,
   TKey extends keyof T = 'default',
 >(
   importer: () => Promise<T>,
   exportName?: TKey,
+  ssr?: () => boolean,
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
@@ -27,6 +48,10 @@ export function lazyRouteComponent<
   let error: any
 
   const load = () => {
+    if (typeof document === 'undefined' && ssr?.() === false) {
+      comp = (() => null) as any
+      return Promise.resolve()
+    }
     if (!loadPromise) {
       loadPromise = importer()
         .then((res) => {
@@ -81,6 +106,13 @@ export function lazyRouteComponent<
       throw load()
     }
 
+    if (ssr?.() === false) {
+      return (
+        <ClientOnly fallback={<Outlet />}>
+          {React.createElement(comp, props)}
+        </ClientOnly>
+      )
+    }
     return React.createElement(comp, props)
   }
 
