@@ -8,11 +8,11 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.59.0",
-    "@tanstack/router-devtools": "^1.59.0",
-    "@tanstack/router-plugin": "^1.59.0",
-    "@trpc/client": "11.0.0-rc.502",
-    "@trpc/server": "11.0.0-rc.502",
+    "@tanstack/react-router": "^1.61.1",
+    "@tanstack/router-devtools": "^1.61.1",
+    "@tanstack/router-plugin": "^1.60.0",
+    "@trpc/client": "11.0.0-rc.553",
+    "@trpc/server": "11.0.0-rc.553",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1",
@@ -22,6 +22,6 @@
   "devDependencies": {
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.3.1"
+    "@vitejs/plugin-react": "^4.3.2"
   }
 }
