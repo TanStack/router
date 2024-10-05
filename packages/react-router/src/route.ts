@@ -201,9 +201,9 @@ export type FileBaseRouteOptions<
     (
       ctx: RouteContextOptions<
         TParentRoute,
-        TSearchValidator,
         TParams,
-        TRouterContext
+        TRouterContext,
+        TLoaderDeps
       >,
     ) => any
   >
@@ -272,9 +272,8 @@ export type BaseRouteOptions<
 
 export interface ContextOptions<
   in out TParentRoute extends AnyRoute,
-  in out TSearchValidator,
   in out TParams,
-> extends FullSearchSchemaOption<TParentRoute, TSearchValidator> {
+> {
   abortController: AbortController
   preload: boolean
   params: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
@@ -290,10 +289,11 @@ export interface ContextOptions<
 
 export interface RouteContextOptions<
   in out TParentRoute extends AnyRoute,
-  in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
-> extends ContextOptions<TParentRoute, TSearchValidator, TParams> {
+  in out TLoaderDeps,
+> extends ContextOptions<TParentRoute, TParams> {
+  deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
 
@@ -303,7 +303,8 @@ export interface BeforeLoadContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
-> extends ContextOptions<TParentRoute, TSearchValidator, TParams> {
+> extends ContextOptions<TParentRoute, TParams>,
+    FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
     BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
   >

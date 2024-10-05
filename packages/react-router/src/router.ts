@@ -1274,28 +1274,30 @@ export class Router<
         ...match.__beforeLoadContext,
       }
 
-      // Update the match's context
-      const contextFnContext: RouteContextOptions<any, any, any, any> = {
-        search: match.search,
-        params: match.params,
-        context: match.context,
-        location: next,
-        navigate: (opts: any) =>
-          this.navigate({ ...opts, _fromLocation: next }),
-        buildLocation: this.buildLocation,
-        cause: match.cause,
-        abortController: match.abortController,
-        preload: !!match.preload,
-        matches,
-      }
+      if (!existingMatch) {
+        // Update the match's context
+        const contextFnContext: RouteContextOptions<any, any, any, any> = {
+          deps: loaderDeps,
+          params: match.params,
+          context: match.context,
+          location: next,
+          navigate: (opts: any) =>
+            this.navigate({ ...opts, _fromLocation: next }),
+          buildLocation: this.buildLocation,
+          cause: match.cause,
+          abortController: match.abortController,
+          preload: !!match.preload,
+          matches,
+        }
 
-      // Get the route context
-      match.__routeContext = route.options.context?.(contextFnContext) ?? {}
+        // Get the route context
+        match.__routeContext = route.options.context?.(contextFnContext) ?? {}
 
-      match.context = {
-        ...parentContext,
-        ...match.__routeContext,
-        ...match.__beforeLoadContext,
+        match.context = {
+          ...parentContext,
+          ...match.__routeContext,
+          ...match.__beforeLoadContext,
+        }
       }
 
       matches.push(match)
