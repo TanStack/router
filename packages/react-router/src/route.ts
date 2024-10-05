@@ -882,6 +882,7 @@ export class Route<
   private _path!: TPath
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
+  private _ssr!: boolean
 
   public get to() {
     /* invariant(
@@ -914,6 +915,10 @@ export class Route<
       `trying to access property 'fullPath' on a route which is not initialized yet. Route properties are only available after 'createRouter' completed.`,
     )*/
     return this._fullPath
+  }
+
+  public get ssr() {
+    return this._ssr
   }
 
   // Optional
@@ -984,7 +989,7 @@ export class Route<
     loaderDeps: TLoaderDeps
   }
 
-  init = (opts: { originalIndex: number }): void => {
+  init = (opts: { originalIndex: number; defaultSsr?: boolean }): void => {
     this.originalIndex = opts.originalIndex
 
     const options = this.options as
@@ -1051,6 +1056,7 @@ export class Route<
     // this.customId = customId as TCustomId
     this._fullPath = fullPath as TFullPath
     this._to = fullPath as TrimPathRight<TFullPath>
+    this._ssr = options?.ssr ?? opts.defaultSsr ?? true
   }
 
   addChildren<
