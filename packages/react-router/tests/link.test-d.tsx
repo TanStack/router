@@ -5,6 +5,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  linkOptions,
 } from '../src'
 import type { CreateLinkProps, SearchSchemaInput } from '../src'
 
@@ -3838,4 +3839,289 @@ test('when passing a component with props to createLink and navigating to the ro
     }>()
 
   createLink((props) => expectTypeOf(props).toEqualTypeOf<CreateLinkProps>())
+})
+
+test('linkOptions', () => {
+  const defaultRouterLinkOptions = linkOptions<
+    { label: string },
+    DefaultRouter,
+    string,
+    '/'
+  >
+  const defaultRouterObjectsLinkOptions = linkOptions<
+    { label: string },
+    DefaultRouter,
+    string,
+    '/'
+  >
+
+  const routerAlwaysTrailingSlashLinkOptions = linkOptions<
+    { label: string },
+    RouterAlwaysTrailingSlashes,
+    string,
+    '/'
+  >
+
+  const routerNeverTrailingSlashLinkOptions = linkOptions<
+    { label: string },
+    RouterNeverTrailingSlashes,
+    string,
+    '/'
+  >
+  const routerPreserveTrailingSlashLinkOptions = linkOptions<
+    { label: string },
+    RouterPreserveTrailingSlashes,
+    string,
+    '/'
+  >
+
+  expectTypeOf(defaultRouterLinkOptions)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '..'
+      | '.'
+      | '/'
+      | '/invoices'
+      | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/edit'
+      | '/posts'
+      | '/posts/$postId'
+      | undefined
+    >()
+
+  expectTypeOf(defaultRouterObjectsLinkOptions)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '..'
+      | '.'
+      | '/'
+      | '/invoices'
+      | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/edit'
+      | '/posts'
+      | '/posts/$postId'
+      | undefined
+    >()
+
+  expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | '/'
+      | '/invoices/'
+      | '/invoices/$invoiceId/'
+      | '/invoices/$invoiceId/details/$detailId/'
+      | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/'
+      | '/invoices/$invoiceId/edit/'
+      | '/posts/'
+      | '/posts/$postId/'
+      | undefined
+    >()
+
+  expectTypeOf(routerNeverTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '..'
+      | '.'
+      | '/'
+      | '/invoices'
+      | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/edit'
+      | '/posts'
+      | '/posts/$postId'
+      | undefined
+    >()
+
+  expectTypeOf(routerPreserveTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '..'
+      | '.'
+      | './'
+      | '../'
+      | '/'
+      | '/invoices'
+      | '/invoices/'
+      | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/details/$detailId/'
+      | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/details/'
+      | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/edit/'
+      | '/posts'
+      | '/posts/'
+      | '/posts/$postId'
+      | '/posts/$postId/'
+      | undefined
+    >()
+
+  expectTypeOf(defaultRouterLinkOptions)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(defaultRouterObjectsLinkOptions)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(routerNeverTrailingSlashLinkOptions)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(routerPreserveTrailingSlashLinkOptions)
+    .parameter(0)
+    .toMatchTypeOf<{ search: unknown }>()
+
+  expectTypeOf(defaultRouterLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(defaultRouterObjectsLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(routerNeverTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(routerPreserveTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(defaultRouterLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+      linesPage?: number
+    }>()
+
+  expectTypeOf(defaultRouterObjectsLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+      linesPage?: number
+    }>()
+
+  expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+      linesPage?: number
+    }>()
+
+  expectTypeOf(routerNeverTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+      linesPage?: number
+    }>()
+
+  expectTypeOf(routerPreserveTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .parameter(0)
+    .toEqualTypeOf<{
+      page?: number
+      rootIndexPage?: number
+      rootPage?: number
+      linesPage?: number
+    }>()
+
+  expectTypeOf(defaultRouterLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(defaultRouterObjectsLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(routerNeverTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(routerPreserveTrailingSlashLinkOptions)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ rootPage?: number; rootIndexPage: number }>()
+
+  expectTypeOf(defaultRouterLinkOptions).returns.toEqualTypeOf<{
+    label: string
+  }>()
+
+  expectTypeOf(defaultRouterObjectsLinkOptions).returns.toEqualTypeOf<{
+    label: string
+  }>()
+
+  expectTypeOf(routerAlwaysTrailingSlashLinkOptions).returns.toEqualTypeOf<{
+    label: string
+  }>()
+
+  expectTypeOf(routerNeverTrailingSlashLinkOptions).returns.toEqualTypeOf<{
+    label: string
+  }>()
+
+  expectTypeOf(routerPreserveTrailingSlashLinkOptions).returns.toEqualTypeOf<{
+    label: string
+  }>()
 })
