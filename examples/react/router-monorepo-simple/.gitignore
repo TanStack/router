@@ -8,3 +8,5 @@ dist-ssr
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+pnpm-workspace.yaml

@@ -2,11 +2,11 @@
   "name": "router-mono-simple",
   "version": "1.0.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "post-feature": "pnpm --filter @router-mono-simple/post-feature",
     "router": "pnpm --filter @router-mono-simple/router",
     "app": "pnpm --filter @router-mono-simple/app",
-    "dev": "pnpm router build && pnpm post-feature build && pnpm app dev"
+    "dev": "node ./setup-stackblitz.mjs && pnpm install && pnpm dev-run",
+    "dev-run": "pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.58.17",
