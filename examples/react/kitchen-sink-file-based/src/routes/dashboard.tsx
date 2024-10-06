@@ -1,5 +1,10 @@
 import * as React from 'react'
-import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  linkOptions,
+} from '@tanstack/react-router'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardComponent,
@@ -7,6 +12,22 @@ export const Route = createFileRoute('/dashboard')({
     crumb: 'Dashboard',
   }),
 })
+
+const options = [
+  linkOptions({
+    to: '/dashboard',
+    label: 'Summary',
+    activeOptions: { exact: true },
+  }),
+  linkOptions({
+    to: '/dashboard/invoices',
+    label: 'Invoices',
+  }),
+  linkOptions({
+    to: '/dashboard/users',
+    label: 'Users',
+  }),
+]
 
 function DashboardComponent() {
   return (
@@ -16,22 +37,15 @@ function DashboardComponent() {
       </div>
 
       <div className="flex flex-wrap divide-x">
-        {(
-          [
-            ['/dashboard', 'Summary', true],
-            ['/dashboard/invoices', 'Invoices'],
-            ['/dashboard/users', 'Users'],
-          ] as const
-        ).map(([to, label, exact]) => {
+        {options.map((option) => {
           return (
             <Link
-              key={to}
-              to={to}
-              activeOptions={{ exact }}
+              key={option.to}
+              {...option}
               activeProps={{ className: `font-bold` }}
               className="p-2"
             >
-              {label}
+              {option.label}
             </Link>
           )
         })}

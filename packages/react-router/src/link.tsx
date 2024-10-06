@@ -1005,7 +1005,7 @@ export type LinkOptionsFn<TComp> = <
 >(
   options: Constrain<
     TProps,
-    LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+    LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
   >,
 ) => TProps
 
