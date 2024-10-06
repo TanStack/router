@@ -233,9 +233,9 @@ import { fallback, zodSearchValidator } from '@tanstack/router-zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
-  page: fallback(z.number(), 1).default(1),
-  filter: fallback(z.string(), '').default(''),
-  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
+  page: fallback(z.number(), 1).catch(1),
+  filter: fallback(z.string(), '').catch(''),
+  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').catch(
     'newest',
   ),
 })
