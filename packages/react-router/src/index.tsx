@@ -42,7 +42,7 @@ export * from './history'
 
 export { lazyRouteComponent } from './lazyRouteComponent'
 
-export { useLinkProps, createLink, Link } from './link'
+export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {
   CleanPath,
   Split,
