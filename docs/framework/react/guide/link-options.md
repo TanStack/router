@@ -2,7 +2,7 @@
 title: Link Options
 ---
 
-You may want to re-use options that are intended to be passed to `Link`, `redirect` or `navigate`. In which case you may decide an object literal is a good way to represent options passed to `Link`.
+You may want to reuse options that are intended to be passed to `Link`, `redirect` or `navigate`. In which case you may decide an object literal is a good way to represent options passed to `Link`.
 
 ```tsx
 const dashboardLinkOptions = {
