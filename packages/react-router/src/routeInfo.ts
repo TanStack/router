@@ -114,9 +114,7 @@ export type RouteToPathNeverTrailingSlash<TRoute extends AnyRoute> =
   TRoute['path'] extends '/'
     ? TRoute['fullPath'] extends '/'
       ? TRoute['fullPath']
-      : TRoute['fullPath'] extends `${infer TRest}/`
-        ? TRest
-        : TRoute['fullPath']
+      : RemoveTrailingSlashes<TRoute['fullPath']>
     : TRoute['fullPath']
 
 export type RouteToPathPreserveTrailingSlash<TRoute extends AnyRoute> =

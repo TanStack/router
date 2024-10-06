@@ -45,7 +45,6 @@ export { lazyRouteComponent } from './lazyRouteComponent'
 export { useLinkProps, createLink, Link } from './link'
 export type {
   ParsePathParams,
-  Last,
   RemoveTrailingSlashes,
   RemoveLeadingSlashes,
   SearchPaths,
