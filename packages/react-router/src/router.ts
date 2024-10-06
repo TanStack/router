@@ -2394,6 +2394,7 @@ export class Router<
                     ...prev,
                     isFetching: loaderRunningAsync ? prev.isFetching : false,
                     loaderPromise: undefined,
+                    invalid: false,
                   }))
                 })(),
               )
