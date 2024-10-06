@@ -14,5 +14,5 @@ if (isRunningOnStackBlitz()) {
   writeFileSync('./pnpm-workspace.yaml', pnpmWorkspaceContent, { encoding: 'utf-8' })
 
   // Then re-run pnpm install
-  execSync('pnpm install');
+  execSync('pnpm install', {stdio: 'inherit'});
 }
