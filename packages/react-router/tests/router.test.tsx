@@ -580,3 +580,29 @@ describe('router matches URLs to route definitions', () => {
     ])
   })
 })
+
+describe('invalidate', () => {
+  it('after router.invalid(), routes should be `valid` again after loading', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+    )
+
+    await act(() => router.load())
+
+    router.state.matches.forEach((match) => {
+      expect(match.invalid).toBe(false)
+    })
+
+    await act(() => router.invalidate())
+
+    router.state.matches.forEach((match) => {
+      expect(match.invalid).toBe(false)
+    })
+
+    await act(() => router.load())
+
+    router.state.matches.forEach((match) => {
+      expect(match.invalid).toBe(false)
+    })
+  })
+})

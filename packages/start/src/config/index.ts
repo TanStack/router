@@ -485,7 +485,7 @@ function tsrRoutesManifest(opts: {
 
         const clientViteManifestPath = path.resolve(
           config.build.outDir,
-          '../client/_build/.vite/manifest.json',
+          `../client/${opts.clientBase}/.vite/manifest.json`,
         )
 
         type ViteManifest = Record<

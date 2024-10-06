@@ -451,6 +451,8 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#isserver property)
    */
   isServer?: boolean
+
+  defaultSsr?: boolean
 }
 
 export interface RouterErrorSerializer<TSerializedError> {
@@ -581,12 +583,14 @@ export function createRouter<
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 >(
-  options: RouterConstructorOptions<
-    TRouteTree,
-    TTrailingSlashOption,
-    TDehydrated,
-    TSerializedError
-  >,
+  options: undefined extends number
+    ? 'strictNullChecks must be enabled in tsconfig.json'
+    : RouterConstructorOptions<
+        TRouteTree,
+        TTrailingSlashOption,
+        TDehydrated,
+        TSerializedError
+      >,
 ) {
   return new Router<
     TRouteTree,
@@ -771,13 +775,19 @@ export class Router<
 
     const notFoundRoute = this.options.notFoundRoute
     if (notFoundRoute) {
-      notFoundRoute.init({ originalIndex: 99999999999 })
+      notFoundRoute.init({
+        originalIndex: 99999999999,
+        defaultSsr: this.options.defaultSsr,
+      })
       ;(this.routesById as any)[notFoundRoute.id] = notFoundRoute
     }
 
     const recurseRoutes = (childRoutes: Array<AnyRoute>) => {
       childRoutes.forEach((childRoute, i) => {
-        childRoute.init({ originalIndex: i })
+        childRoute.init({
+          originalIndex: i,
+          defaultSsr: this.options.defaultSsr,
+        })
 
         const existingRoute = (this.routesById as any)[childRoute.id]
 
@@ -2384,6 +2394,7 @@ export class Router<
                     ...prev,
                     isFetching: loaderRunningAsync ? prev.isFetching : false,
                     loaderPromise: undefined,
+                    invalid: false,
                   }))
                 })(),
               )
