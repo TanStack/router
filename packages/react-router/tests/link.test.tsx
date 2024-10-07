@@ -1095,6 +1095,37 @@ describe('Link', () => {
     expect(errorText).toBeInTheDocument()
   })
 
+  test('when navigating to the root with an error in component', async () => {
+    const notFoundComponent = vi.fn()
+
+    const rootRoute = createRootRoute({
+      errorComponent: () => <span>Expected rendering error message</span>,
+      notFoundComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        throw new Error(
+          'Error from component should not render notFoundComponent',
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const errorText = await screen.findByText(
+      'Expected rendering error message',
+    )
+    expect(errorText).toBeInTheDocument()
+    expect(notFoundComponent).not.toBeCalled()
+  })
+
   test('when navigating to /posts with params', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
