@@ -82,8 +82,6 @@ import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { RouterTransformer } from './transformer'
 
-//
-
 declare global {
   interface Window {
     __TSR__?: {
@@ -600,7 +598,11 @@ export function createRouter<
   >(options)
 }
 
-type MatchRoutesOpts = { preload?: boolean; throwOnError?: boolean }
+type MatchRoutesOpts = {
+  preload?: boolean
+  throwOnError?: boolean
+  _buildLocation?: boolean
+}
 
 export class Router<
   in out TRouteTree extends AnyRoute,
@@ -991,10 +993,8 @@ export class Router<
 
   public matchRoutes(
     pathnameOrNext: string | ParsedLocation,
-    locationSearchOrOpts?:
-      | AnySearchSchema
-      | { preload?: boolean; throwOnError?: boolean },
-    opts?: { preload?: boolean; throwOnError?: boolean },
+    locationSearchOrOpts?: AnySearchSchema | MatchRoutesOpts,
+    opts?: MatchRoutesOpts,
   ) {
     if (typeof pathnameOrNext === 'string') {
       return this.matchRoutesInternal(
@@ -1011,7 +1011,7 @@ export class Router<
 
   private matchRoutesInternal(
     next: ParsedLocation,
-    opts?: { preload?: boolean; throwOnError?: boolean },
+    opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
     let routeParams: Record<string, string> = {}
 
@@ -1080,9 +1080,6 @@ export class Router<
 
       return rootRouteId
     })()
-
-    // Existing matches are matches that are already loaded along with
-    // pending matches that are still loading
 
     const parseErrors = matchedRoutes.map((route) => {
       let parsedParamsError
@@ -1182,6 +1179,9 @@ export class Router<
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
       // around between navigation actions that only change leaf routes.
+
+      // Existing matches are matches that are already loaded along with
+      // pending matches that are still loading
       const existingMatch = this.getMatch(matchId)
 
       const cause = this.state.matches.find((d) => d.id === matchId)
@@ -1274,7 +1274,8 @@ export class Router<
         ...match.__beforeLoadContext,
       }
 
-      if (!existingMatch) {
+      // only execute `context` if we are not just building a location
+      if (!existingMatch && opts?._buildLocation !== true) {
         // Update the match's context
         const contextFnContext: RouteContextOptions<any, any, any, any> = {
           deps: loaderDeps,
@@ -1329,7 +1330,7 @@ export class Router<
       matches?: Array<MakeRouteMatch<TRouteTree>>,
     ): ParsedLocation => {
       const fromMatches = dest._fromLocation
-        ? this.matchRoutes(dest._fromLocation)
+        ? this.matchRoutes(dest._fromLocation, { _buildLocation: true })
         : this.state.matches
 
       const fromMatch =
@@ -1508,9 +1509,9 @@ export class Router<
         }
       }
 
-      const nextMatches = this.matchRoutes(next)
+      const nextMatches = this.matchRoutes(next, { _buildLocation: true })
       const maskedMatches = maskedNext
-        ? this.matchRoutes(maskedNext)
+        ? this.matchRoutes(maskedNext, { _buildLocation: true })
         : undefined
       const maskedFinal = maskedNext
         ? build(maskedDest, maskedMatches)
