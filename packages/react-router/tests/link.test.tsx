@@ -1107,7 +1107,9 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => {
-        throw new Error('Error from component should not render notFoundComponent')
+        throw new Error(
+          'Error from component should not render notFoundComponent',
+        )
       },
     })
 
@@ -1117,7 +1119,9 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const errorText = await screen.findByText('Expected rendering error message')
+    const errorText = await screen.findByText(
+      'Expected rendering error message',
+    )
     expect(errorText).toBeInTheDocument()
     expect(notFoundComponent).not.toBeCalled()
   })
