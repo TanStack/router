@@ -3,7 +3,7 @@ import type { MakeRouteMatch } from './Matches'
 import type { AnyRoute } from './route'
 import type { AllContext, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
-import type { Constrain, Expand, StrictOrFrom } from './utils'
+import type { ConstrainLiteral, Expand, StrictOrFrom } from './utils'
 
 export type UseRouteContextOptions<
   TFrom,
@@ -24,7 +24,7 @@ export function useRouteContext<
   TSelected = TRouteContext,
 >(
   opts: UseRouteContextOptions<
-    Constrain<TFrom, RouteIds<TRouteTree>>,
+    ConstrainLiteral<TFrom, RouteIds<TRouteTree>>,
     TStrict,
     TRouteContext,
     TSelected

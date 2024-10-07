@@ -3,7 +3,7 @@ import type { RegisteredRouter } from './router'
 import type { AnyRoute } from './route'
 import type { MakeRouteMatch } from './Matches'
 import type { RouteIds } from './routeInfo'
-import type { Constrain, StrictOrFrom } from './utils'
+import type { Constrain, ConstrainLiteral, StrictOrFrom } from './utils'
 
 export function useLoaderDeps<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
@@ -14,7 +14,7 @@ export function useLoaderDeps<
   >,
   TSelected = Required<TRouteMatch>['loaderDeps'],
 >(
-  opts: StrictOrFrom<Constrain<TFrom, RouteIds<TRouteTree>>> & {
+  opts: StrictOrFrom<ConstrainLiteral<TFrom, RouteIds<TRouteTree>>> & {
     select?: (match: TRouteMatch) => TSelected
   },
 ): TSelected {

@@ -6,7 +6,7 @@ import type { RegisteredRouter } from './router'
 import type { AnyRoute } from './route'
 import type { MakeRouteMatch } from './Matches'
 import type { RouteIds } from './routeInfo'
-import type { Constrain, StrictOrFrom } from './utils'
+import type { Constrain, ConstrainLiteral, StrictOrFrom } from './utils'
 
 export type UseMatchOptions<
   TFrom,
@@ -28,7 +28,7 @@ export function useMatch<
   TThrow extends boolean = true,
 >(
   opts: UseMatchOptions<
-    Constrain<TFrom, RouteIds<TRouteTree>>,
+    ConstrainLiteral<TFrom, RouteIds<TRouteTree>>,
     TStrict,
     TRouteMatch,
     TSelected,
