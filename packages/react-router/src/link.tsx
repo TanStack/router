@@ -996,7 +996,7 @@ function isCtrlEvent(e: MouseEvent) {
 }
 
 export type LinkOptionsFn<TComp> = <
-  TProps,
+  const TProps,
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
