@@ -1099,7 +1099,7 @@ describe('Link', () => {
     const notFoundComponent = vi.fn()
 
     const rootRoute = createRootRoute({
-      errorComponent: () => <span>Oops! Something went wrong!</span>,
+      errorComponent: () => <span>Expected rendering error message</span>,
       notFoundComponent,
     })
 
@@ -1107,7 +1107,7 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => {
-        throw new Error('Oops. Something went wrong!')
+        throw new Error('Error from component should not render notFoundComponent')
       },
     })
 
@@ -1117,7 +1117,7 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const errorText = await screen.findByText('Oops! Something went wrong!')
+    const errorText = await screen.findByText('Expected rendering error message')
     expect(errorText).toBeInTheDocument()
     expect(notFoundComponent).not.toBeCalled()
   })
