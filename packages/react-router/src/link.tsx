@@ -994,3 +994,21 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
 }
+
+export type LinkOptionsFn<TComp> = <
+  const TProps,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '',
+>(
+  options: Constrain<
+    TProps,
+    LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  >,
+) => TProps
+
+export const linkOptions: LinkOptionsFn<'a'> = (options) => {
+  return options as any
+}
