@@ -2254,10 +2254,8 @@ export class Router<
                             route._lazyPromise ||
                             (route.lazyFn
                               ? route.lazyFn().then((lazyRoute) => {
-                                  Object.assign(
-                                    route.options,
-                                    lazyRoute.options,
-                                  )
+                                  const { id, ...options } = lazyRoute.options
+                                  Object.assign(route.options, options)
                                 })
                               : Promise.resolve())
 
