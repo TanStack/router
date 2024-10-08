@@ -257,6 +257,7 @@ export function defineConfig(
       ...serverOptions,
       preset: deploymentPreset,
       experimental: {
+        ...serverOptions.experimental,
         asyncContext: true,
       },
     },
