@@ -70,18 +70,18 @@ export type RscStream<T> = {
 
 type Method = 'GET' | 'POST'
 
-export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
-  ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
+export type ServerFn<TMethod, TMiddlewares, TInput, TResponse> = (
+  ctx: ServerFnCtx<TMethod, TMiddlewares, TInput>,
 ) => Promise<TResponse> | TResponse
 
-export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
+export type ServerFnCtx<TMethod, TMiddlewares, TInput> = {
   method: TMethod
-  input: ResolveAllMiddlewareOutput<TMiddlewares, TValidator>
+  input: ResolveAllMiddlewareOutput<TMiddlewares, TInput>
   context: ResolveAllMiddlewareContext<TMiddlewares>
 }
 
-export type CompiledFetcherFn<TResponse> = {
-  (opts: CompiledFetcherFnOptions): Promise<TResponse>
+export type CompiledFetcherFn<TInput, TResponse> = {
+  (opts: FetcherOptions<TInput>): Promise<TResponse>
   url: string
 }
 
@@ -89,25 +89,25 @@ type ServerFnBaseOptions<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares = unknown,
-  TValidator = unknown,
+  TInput = unknown,
 > = {
   method?: TMethod
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyServerMiddleware>>
-  input?: Constrain<TValidator, AnyValidator>
-  fn?: ServerFn<TMethod, TMiddlewares, TValidator, TResponse>
+  input?: Constrain<TInput, AnyValidator>
+  fn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
 }
 
 type ServerFnBase<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares = unknown,
-  TValidator = unknown,
+  TInput = unknown,
 > = {
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
+  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>
   middleware: <const TNewMiddlewares>(
     middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyServerMiddleware>>,
   ) => Pick<
-    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TValidator>,
+    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TInput>,
     'input' | 'handler'
   >
   input: <TNewServerValidator>(
@@ -117,25 +117,25 @@ type ServerFnBase<
     'handler' | 'middleware'
   >
   handler: (
-    fn: ServerFn<TMethod, TMiddlewares, TValidator, TResponse>,
-  ) => Fetcher<TValidator, TResponse>
+    fn: ServerFn<TMethod, TMiddlewares, TInput, TResponse>,
+  ) => Fetcher<TInput, TResponse>
 }
 
 export function createServerFn<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares = unknown,
-  TValidator = undefined,
+  TInput = undefined,
 >(
   options?: {
     method: TMethod
   },
-  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
-): ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator> {
+  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>,
+): ServerFnBase<TMethod, TResponse, TMiddlewares, TInput> {
   return {
     options: options as any,
     middleware: (middleware) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
+      return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
         undefined,
         {
           ...(__opts as any),
@@ -144,7 +144,7 @@ export function createServerFn<
       ) as any
     },
     input: (input) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
+      return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
         undefined,
         {
           ...(__opts as any),
@@ -152,50 +152,26 @@ export function createServerFn<
         },
       ) as any
     },
-    handler: (fn) => {
-      return createServerFnFetcher<
-        TMethod,
-        TResponse,
-        TMiddlewares,
-        TValidator
-      >({
-        ...(__opts as any),
-        fn,
-      }) as any
+    handler: (fn): Fetcher<TInput, TResponse> => {
+      // Cast the compiled function that will be injected by vinxi
+      // The `input` will be
+      const compiledFn = fn as unknown as CompiledFetcherFn<TInput, TResponse>
+
+      invariant(
+        compiledFn.url,
+        `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/start-vite-plugin ?`,
+      )
+
+      return Object.assign((opts?: FetcherOptions<TInput>) => {
+        return compiledFn({
+          method: __opts?.method || 'GET',
+          middleware: __opts?.middleware || [],
+          data: opts?.data as any,
+          requestInit: opts?.requestInit,
+        })
+      }, compiledFn) as Fetcher<TInput, TResponse>
     },
   }
-}
-
-function createServerFnFetcher<
-  TMethod extends Method,
-  TResponse,
-  TMiddlewares,
-  TValidator,
->(
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
-): CompiledFetcherFn<TResponse> {
-  // Cast the compiled function that will be injected by vinxi
-  // The `input` will be
-  const compiledFn = options as unknown as CompiledFetcherFn<TResponse>
-
-  invariant(
-    compiledFn.url,
-    `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/router-plugin/vite ?`,
-  )
-
-  return Object.assign((opts: FetcherOptions<TValidator>) => {
-    return (
-      compiledFn({
-        method: options.method || 'GET',
-        middleware: options.middleware || [],
-        data: opts.data!,
-        requestInit: opts.requestInit,
-      }),
-      {
-        url: compiledFn.url,
-      }
-    )
-  })
 }
 
 // // Implicit

@@ -71,7 +71,7 @@ export const withValidatorFn = createServerFn({
 
   args[0].input = (z.number())(args[0].input);
   return (async ({
-    payload
+    input
   }) => {
     return null;
   })(...args);

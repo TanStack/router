@@ -116,7 +116,7 @@ export interface ServerMiddlewareOptions<
 
 export type ServerMiddlewareUseFn<TMiddlewares, TValidator, TContext> =
   (options: {
-    data: ResolveAllMiddlewareOutput<TMiddlewares, NonNullable<TValidator>>
+    input: ResolveAllMiddlewareOutput<TMiddlewares, NonNullable<TValidator>>
     context: ResolveAllMiddlewareContext<TMiddlewares>
     next: <TContext>(opts?: {
       context: TContext

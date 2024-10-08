@@ -7,6 +7,6 @@ export const withUseServer = createServerFn({
 
   args[0].input = (z.number())(args[0].input);
   return (({
-    payload
-  }) => payload + 1)(...args);
+    input
+  }) => input + 1)(...args);
 });

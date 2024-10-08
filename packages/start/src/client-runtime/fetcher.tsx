@@ -20,11 +20,11 @@ export async function fetcher<TPayload>(
   // If createServerFn was used to wrap the fetcher,
   // We need to handle the arguments differently
   if (isPlainObject(first) && first.method) {
-    const opts = first as CompiledFetcherFnOptions<TPayload>
+    const opts = first as CompiledFetcherFnOptions
     const type =
-      opts.payload instanceof FormData
+      opts.data instanceof FormData
         ? 'formData'
-        : opts.payload instanceof Request
+        : opts.data instanceof Request
           ? 'request'
           : 'payload'
 
@@ -46,9 +46,9 @@ export async function fetcher<TPayload>(
     if (opts.method === 'GET') {
       // If the method is GET, we need to move the payload to the query string
       const encodedPayload =
-        opts.payload !== undefined
+        opts.data !== undefined
           ? defaultStringifySearch({
-              payload: opts.payload,
+              payload: opts.data,
             }).substring(1)
           : ''
 
@@ -64,8 +64,8 @@ export async function fetcher<TPayload>(
         ? {
             body:
               type === 'formData'
-                ? opts.payload
-                : (JSON.stringify(opts.payload ?? null) as any),
+                ? opts.data
+                : (JSON.stringify(opts.data ?? null) as any),
           }
         : {}),
     })

@@ -57,7 +57,6 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
                   return (defaultParseSearch(url.search) as any)?.payload
                 })()
               : await request.json(),
-            { method, request },
           ] as const
         }
 
@@ -72,12 +71,11 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
                   return payload
                 })()
               : await request.formData(),
-            { method, request },
           ] as const
         }
 
         if (request.headers.get(serverFnPayloadTypeHeader) === 'request') {
-          return [request, { method, request }] as const
+          return [request] as const
         }
 
         // payload type === 'args'

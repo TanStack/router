@@ -5,4 +5,4 @@ export const withUseServer = createServerMiddleware({
   id: 'test',
 })
   .input(z.number())
-  .use(({ payload }) => payload + 1)
+  .use(({ input }) => input + 1)

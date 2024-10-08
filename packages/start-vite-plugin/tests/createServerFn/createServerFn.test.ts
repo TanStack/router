@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { compileCreateServerFnOutput } from '../../src/compilers'
+import { compileStartOutput } from '../../src/compilers'
 
 async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
@@ -17,10 +17,11 @@ describe('createServerFn compiles correctly', async () => {
     )
     const code = file.toString()
 
-    const compiledResult = compileCreateServerFnOutput({
+    const compiledResult = compileStartOutput({
       code,
       root: './test-files',
       filename,
+      env: 'client',
     })
 
     await expect(compiledResult.code).toMatchFileSnapshot(
@@ -30,7 +31,8 @@ describe('createServerFn compiles correctly', async () => {
 
   test('should error if createServerFn is created without a handler', () => {
     expect(() => {
-      compileCreateServerFnOutput({
+      compileStartOutput({
+        env: 'client',
         code: `
         import { createServerFn } from '@tanstack/start'
         createServerFn()`,

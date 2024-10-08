@@ -120,23 +120,26 @@ function checkDeploymentPresetInput(preset: string): DeploymentPreset {
   return preset
 }
 
-const deploymentSchema = z.object({
-  preset: z.custom<DeploymentPreset>().optional(),
-  static: z.boolean().optional(),
-  prerender: z
-    .object({
-      routes: z.array(z.string()),
-      ignore: z
-        .array(
-          z.custom<
-            string | RegExp | ((path: string) => undefined | null | boolean)
-          >(),
-        )
-        .optional(),
-      crawlLinks: z.boolean().optional(),
-    })
-    .optional(),
-})
+const deploymentSchema = z
+  .object({
+    preset: z.custom<DeploymentPreset>().optional(),
+    static: z.boolean().optional(),
+    prerender: z
+      .object({
+        routes: z.array(z.string()),
+        ignore: z
+          .array(
+            z.custom<
+              string | RegExp | ((path: string) => undefined | null | boolean)
+            >(),
+          )
+          .optional(),
+        crawlLinks: z.boolean().optional(),
+      })
+      .optional(),
+  })
+  .optional()
+  .default({})
 
 const viteSchema = z.object({
   plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
@@ -239,20 +242,6 @@ export function defineConfig(
 
   const apiEntryExists = existsSync(apiEntry)
 
-  const testClientPlugin = () =>
-    ({
-      name: 'custom-hot-update-client',
-      configResolved(resolvedConfig: any) {
-        console.log(resolvedConfig)
-        throw new Error('test')
-      },
-      handleHotUpdate(ctx: any) {
-        console.log('client hot', ctx)
-
-        return []
-      },
-    }) as const
-
   return createApp({
     server: {
       ...deploymentOptions,
@@ -274,7 +263,6 @@ export function defineConfig(
           ssr: {
             noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
           },
-          plugins: [testClientPlugin()],
           // optimizeDeps: {
           //   include: ['@tanstack/start/server-runtime'],
           // },
@@ -286,7 +274,9 @@ export function defineConfig(
             ...tsrConfig.experimental,
           },
         }),
-        // TanStackStartVite(),
+        TanStackStartVite({
+          env: 'client',
+        }),
       ])({
         name: 'client',
         type: 'client',
@@ -371,7 +361,9 @@ export function defineConfig(
             ...tsrConfig.experimental,
           },
         }),
-        // TanStackStartVite(),
+        TanStackStartVite({
+          env: 'server',
+        }),
       ])({
         name: 'ssr',
         type: 'http',
@@ -424,7 +416,9 @@ export function defineConfig(
             ...tsrConfig.experimental,
           },
         }),
-        // TanStackStartVite(),
+        TanStackStartVite({
+          env: 'server',
+        }),
       ])({
         name: 'server',
         type: 'http',

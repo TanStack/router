@@ -62,6 +62,6 @@ export const withValidatorFn = createServerFn({
   method: 'GET',
 })
   .input(z.number())
-  .handler(async ({ payload }) => {
+  .handler(async ({ input }) => {
     return null
   })
