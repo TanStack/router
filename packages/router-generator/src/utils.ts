@@ -41,21 +41,37 @@ export function trimPathLeft(path: string) {
 }
 
 export function logging(config: { disabled: boolean }) {
+  function stripEmojis(str: string) {
+    return str.replace(
+      /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu,
+      '',
+    )
+  }
+
+  function formatLogArgs(args: Array<any>): Array<any> {
+    if (process.env.CI) {
+      return args.map((arg) =>
+        typeof arg === 'string' ? stripEmojis(arg) : arg,
+      )
+    }
+    return args
+  }
+
   return {
     log: (...args: Array<any>) => {
-      if (!config.disabled) console['log'](...args)
+      if (!config.disabled) console.log(...formatLogArgs(args))
     },
     debug: (...args: Array<any>) => {
-      if (!config.disabled) console.debug(...args)
+      if (!config.disabled) console.debug(...formatLogArgs(args))
     },
     info: (...args: Array<any>) => {
-      if (!config.disabled) console.info(...args)
+      if (!config.disabled) console.info(...formatLogArgs(args))
     },
     warn: (...args: Array<any>) => {
-      if (!config.disabled) console.warn(...args)
+      if (!config.disabled) console.warn(...formatLogArgs(args))
     },
     error: (...args: Array<any>) => {
-      if (!config.disabled) console.error(...args)
+      if (!config.disabled) console.error(...formatLogArgs(args))
     },
   }
 }
