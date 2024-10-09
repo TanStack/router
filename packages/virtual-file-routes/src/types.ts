@@ -18,7 +18,7 @@ export type PhysicalSubtree = {
 
 export type Route = {
   type: 'route'
-  file: string
+  file?: string
   path: string
   children?: Array<VirtualRouteNode>
 }

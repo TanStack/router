@@ -1,4 +1,4 @@
-import { join, resolve } from 'node:path'
+import path, { join, resolve } from 'node:path'
 import {
   removeExt,
   removeLeadingSlash,
@@ -6,7 +6,7 @@ import {
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesPhysical } from '../physical/getRouteNodes'
-import type { VirtualRouteNode } from '@tanstack/virtual-file-routes'
+import type { Route, VirtualRouteNode } from '@tanstack/virtual-file-routes'
 import type { GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 
@@ -83,13 +83,17 @@ export async function getRouteNodesRecursive(
         return routeNodes
       }
 
-      const filePath = node.file
-      const variableName = routePathToVariable(removeExt(filePath))
-      const fullPath = join(fullDir, filePath)
+      function getFile(file: string) {
+        const filePath = file.split('/').join(path.sep)
+        const variableName = routePathToVariable(removeExt(filePath))
+        const fullPath = join(fullDir, filePath)
+        return { filePath, variableName, fullPath }
+      }
       const parentRoutePath = removeTrailingSlash(parent?.routePath ?? '/')
       const isLayout = node.type === 'layout'
       switch (node.type) {
         case 'index': {
+          const { filePath, variableName, fullPath } = getFile(node.file)
           const routePath = `${parentRoutePath}/`
           return {
             filePath,
@@ -100,19 +104,53 @@ export async function getRouteNodesRecursive(
           } satisfies RouteNode
         }
 
-        case 'route':
-        case 'layout': {
-          let lastSegment: string
-          if (node.type === 'layout') {
-            if (node.id !== undefined) {
-              node.id = ensureLeadingUnderScore(node.id)
-            } else {
-              node.id = '_layout'
+        case 'route': {
+          const lastSegment = node.path
+          let routeNode: RouteNode
+
+          const routePath = `${parentRoutePath}/${removeLeadingSlash(lastSegment)}`
+          if (node.file) {
+            const { filePath, variableName, fullPath } = getFile(node.file)
+            routeNode = {
+              filePath,
+              fullPath,
+              variableName,
+              routePath,
+              isLayout,
             }
-            lastSegment = node.id
           } else {
-            lastSegment = node.path
+            routeNode = {
+              filePath: '',
+              fullPath: '',
+              variableName: '',
+              routePath,
+              isLayout,
+              isVirtual: true,
+            }
           }
+
+          if (node.children !== undefined) {
+            const children = await getRouteNodesRecursive(
+              tsrConfig,
+              fullDir,
+              node.children,
+              routeNode,
+            )
+            routeNode.children = children
+          }
+          return routeNode
+        }
+        case 'layout': {
+          const { filePath, variableName, fullPath } = getFile(node.file)
+
+          if (node.id !== undefined) {
+            node.id = ensureLeadingUnderScore(node.id)
+          } else {
+            const baseName = path.basename(filePath)
+            const fileNameWithoutExt = path.parse(baseName).name
+            node.id = ensureLeadingUnderScore(fileNameWithoutExt)
+          }
+          const lastSegment = node.id
           const routePath = `${parentRoutePath}/${removeLeadingSlash(lastSegment)}`
 
           const routeNode: RouteNode = {

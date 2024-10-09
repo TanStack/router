@@ -13,14 +13,14 @@ const indexRouteSchema = z.object({
 
 const layoutRouteSchema: z.ZodType<LayoutRoute> = z.object({
   type: z.literal('layout'),
-  id: z.string(),
+  id: z.string().optional(),
   file: z.string(),
   children: z.array(z.lazy(() => virtualRouteNodeSchema)).optional(),
 })
 
 const routeSchema: z.ZodType<Route> = z.object({
   type: z.literal('route'),
-  file: z.string(),
+  file: z.string().optional(),
   path: z.string(),
   children: z.array(z.lazy(() => virtualRouteNodeSchema)).optional(),
 })
