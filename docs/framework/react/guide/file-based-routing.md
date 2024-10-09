@@ -87,43 +87,8 @@ It's extremely likely that a 100% directory or flat route structure won't be the
 
 Both flat and directory routes can be mixed together to create a route tree that uses the best of both worlds where it makes sense.
 
-## Virtual File Routes
-
-> We'd like to thank the Remix team for [pioneering the concept of virtual file routes](https://www.youtube.com/watch?v=fjTX8hQTlEc&t=730s). We've taken inspiration from their work and adapted it to work with TanStack Router's existing file-based route-tree generation.
-
-Virtual file routes are a powerful concept that allows you to build a route tree programmatically using code that references real files in your project. This can be useful if:
-
-- You have an existing route organization that you want to keep.
-- You want to customize the location of your route files.
-- You want to completely override TanStack Router's file-based route generation and build your own convention.
-
-Here's a quick example of using virtual file routes to map a route tree to a set of real files in your project:
-
-```tsx
-import {
-  rootRoute,
-  route,
-  index,
-  layout,
-  physical,
-} from '@tanstack/virtual-file-routes'
-
-const virtualRouteConfig = rootRoute('root.tsx', [
-  index('index.tsx'),
-  layout('layout.tsx', [
-    route('/dashboard', 'app/dashboard.tsx', [
-      index('app/dashboard-index.tsx'),
-      route('/invoices', 'app/dashboard-invoices.tsx', [
-        index('app/invoices-index.tsx'),
-        route('$id', 'app/invoice-detail.tsx'),
-      ]),
-    ]),
-    physical('/posts', 'posts'),
-  ]),
-])
-```
-
-For more information on how to configure virtual file routes, see the [Virtual File Routes](./virtual-file-routes.md) guide.
+> [!TIP]
+> If you find the need to customize the location of your route files or completely override the discovery of routes, you can use [Virtual File Routes](./virtual-file-routes.md) to programmatically build your route tree while still getting the awesome benefits of file-based routing.
 
 ## Dynamic Path Params
 
