@@ -135,45 +135,23 @@ To use `Button` from MUI, you can utilize `createLink`, which infers types from 
 
 ```tsx
 import * as React from 'react'
-import { createLink, Link, CreateLinkProps } from '@tanstack/react-router'
+import { createLink, LinkComponent, LinkProps } from '@tanstack/react-router'
 import { Button, ButtonProps } from '@mui/material'
 
-const ButtonLink = createLink(
-  React.forwardRef(
-    (props: ButtonProps<'a'>, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      return <Button {...props} ref={ref} component={Link} />
-    },
-  ),
-)
-```
+type ButtonLinkProps = Omit<ButtonProps, 'href'>
 
-`createLink` infers types from the component passed to it and generates a new `Link` component. This new component includes TanStack Router’s type parameters for type safety and additional props from `Button`.
+const ButtonLinkComponent = React.forwardRef<
+  HTMLAnchorElement,
+  ButtonLinkProps
+>((props, ref) => {
+  return <Button component="a" ref={ref} {...props} />
+})
 
-`ButtonLink` can then be used with props from both
+const CreatedButtonLink = createLink(ButtonLinkComponent)
 
-```tsx
-<ButtonLink to="/about" variant="outlined" />
-```
-
-If using props from `Link` like `to` is needed, you can use `CreateLinkProps`
-
-```tsx
-import * as React from 'react'
-import { createLink, Link, CreateLinkProps } from '@tanstack/react-router'
-import { Button, ButtonProps } from '@mui/material'
-
-const ButtonLink = createLink(
-  React.forwardRef(
-    (
-      props: CreateLinkProps & ButtonProps<'a'>,
-      ref: React.ForwardedRef<HTMLAnchorElement>,
-    ) => {
-      return (
-        <Button {...props} ref={ref} component={Link}>
-          Navigate to {props.to}
-        </Button>
-      )
-    },
-  ),
-)
+export const ButtonLink: LinkComponent<typeof ButtonLinkComponent> = (
+  props,
+) => {
+  return <CreatedButtonLink preload="intent" {...props} />
+}
 ```
