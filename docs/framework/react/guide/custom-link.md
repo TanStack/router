@@ -131,8 +131,6 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 ### MUI example
 
-To use `Button` from MUI, you can utilize `createLink`, which infers types from both `Button` and `Link` while maintaining the type parameters necessary for TanStack Router’s type safety.
-
 ```tsx
 import * as React from 'react'
 import { createLink, LinkComponent, LinkProps } from '@tanstack/react-router'
