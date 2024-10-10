@@ -21,9 +21,11 @@ interface BasicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
 }
 
 const BasicLinkComponent = React.forwardRef<HTMLAnchorElement, BasicLinkProps>(
-  (props, ref) => (
-    <a ref={ref} {...props} className={'block px-3 py-2 text-blue-700'} />
-  ),
+  (props, ref) => {
+    return (
+      <a ref={ref} {...props} className={'block px-3 py-2 text-blue-700'} />
+    )
+  },
 )
 
 const CreatedLinkComponent = createLink(BasicLinkComponent)
@@ -36,7 +38,7 @@ export const CustomLink: LinkComponent<typeof BasicLinkComponent> = (props) => {
 You can then use your newly created `Link` component as any other `Link`
 
 ```tsx
-<CustomLink to="/dashboard/invoices/$invoiceId" params={{ invoiceId: 0 }} />
+<CustomLink to={'/dashboard/invoices/$invoiceId'} params={{ invoiceId: 0 }} />
 ```
 
 ## `createLink` with third party libraries
@@ -113,21 +115,25 @@ interface ChakraLinkProps
 const ChakraLinkComponent = React.forwardRef<
   HTMLAnchorElement,
   ChakraLinkProps
->((props, ref) => <Link ref={ref} {...props} />)
+>((props, ref) => {
+  return <Link ref={ref} {...props} />
+})
 
 const CreatedLinkComponent = createLink(ChakraLinkComponent)
 
 export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
   props,
-) => (
-  <CreatedLinkComponent
-    textDecoration="underline"
-    _hover={{ textDecoration: 'none' }}
-    _focus={{ textDecoration: 'none' }}
-    preload={'intent'}
-    {...props}
-  />
-)
+) => {
+  return (
+    <CreatedLinkComponent
+      textDecoration={'underline'}
+      _hover={{ textDecoration: 'none' }}
+      _focus={{ textDecoration: 'none' }}
+      preload={'intent'}
+      {...props}
+    />
+  )
+}
 ```
 
 ### MUI example
@@ -137,20 +143,19 @@ import * as React from 'react'
 import { createLink, LinkComponent } from '@tanstack/react-router'
 import { Button, ButtonProps } from '@mui/material'
 
-interface ButtonLinkProps extends Omit<ButtonProps, 'href'> {
+interface MUILinkProps extends Omit<ButtonProps, 'href'> {
   // Add any additional props you want to pass to the button
 }
 
-const ButtonLinkComponent = React.forwardRef<
-  HTMLAnchorElement,
-  ButtonLinkProps
->((props, ref) => <Button component="a" ref={ref} {...props} />)
+const MUILinkComponent = React.forwardRef<HTMLAnchorElement, MUILinkProps>(
+  (props, ref) => {
+    return <Button component={'a'} ref={ref} {...props} />
+  },
+)
 
-const CreatedLinkComponent = createLink(ButtonLinkComponent)
+const CreatedLinkComponent = createLink(MUILinkComponent)
 
-export const CustomLink: LinkComponent<typeof ButtonLinkComponent> = (
-  props,
-) => {
+export const CustomLink: LinkComponent<typeof MUILinkComponent> = (props) => {
   return <CreatedLinkComponent preload={'intent'} {...props} />
 }
 ```
