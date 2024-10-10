@@ -124,7 +124,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
     textDecoration="underline"
     _hover={{ textDecoration: 'none' }}
     _focus={{ textDecoration: 'none' }}
-    preload="intent"
+    preload={'intent'}
     {...props}
   />
 )
@@ -134,7 +134,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 ```tsx
 import * as React from 'react'
-import { createLink, LinkComponent, LinkProps } from '@tanstack/react-router'
+import { createLink, LinkComponent } from '@tanstack/react-router'
 import { Button, ButtonProps } from '@mui/material'
 
 interface ButtonLinkProps extends Omit<ButtonProps, 'href'> {
@@ -151,6 +151,6 @@ const CreatedLinkComponent = createLink(ButtonLinkComponent)
 export const CustomLink: LinkComponent<typeof ButtonLinkComponent> = (
   props,
 ) => {
-  return <CreatedLinkComponent preload="intent" {...props} />
+  return <CreatedLinkComponent preload={'intent'} {...props} />
 }
 ```
