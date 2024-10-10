@@ -141,15 +141,13 @@ type ButtonLinkProps = Omit<ButtonProps, 'href'>
 const ButtonLinkComponent = React.forwardRef<
   HTMLAnchorElement,
   ButtonLinkProps
->((props, ref) => {
-  return <Button component="a" ref={ref} {...props} />
-})
+>((props, ref) => <Button component="a" ref={ref} {...props} />)
 
-const CreatedButtonLink = createLink(ButtonLinkComponent)
+const CreatedLinkComponent = createLink(ButtonLinkComponent)
 
-export const ButtonLink: LinkComponent<typeof ButtonLinkComponent> = (
+export const CustomLink: LinkComponent<typeof ButtonLinkComponent> = (
   props,
 ) => {
-  return <CreatedButtonLink preload="intent" {...props} />
+  return <CreatedLinkComponent preload="intent" {...props} />
 }
 ```
