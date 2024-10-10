@@ -45,15 +45,16 @@ You can then use your newly created `Link` component as any other `Link`
 
 ### React Aria Components example
 
-React Aria Components’ [Link](https://react-spectrum.adobe.com/react-aria/Link.html) component doesn’t support the standard `onMouseEnter` and `onMouseLeave` events, so you can’t use them directly with TanStack Router’s `preload` prop.
+React Aria Components’
+[Link](https://react-spectrum.adobe.com/react-aria/Link.html) component does not support the standard `onMouseEnter` and `onMouseLeave` events.
+Therefore, you cannot use it directly with TanStack Router’s `preload (intent)` prop.
 
 Explanation for this can be found here:
 
 - [https://react-spectrum.adobe.com/react-aria/interactions.html](https://react-spectrum.adobe.com/react-aria/interactions.html)
 - [https://react-spectrum.adobe.com/blog/building-a-button-part-2.html](https://react-spectrum.adobe.com/blog/building-a-button-part-2.html)
 
-It is, however, possible to get around this by dropping down to the [useLink](https://react-spectrum.adobe.com/react-aria/useLink.html) hook from
-[React Aria Hooks](https://react-spectrum.adobe.com/react-aria/hooks.html) and use it with a normal anchor element.
+It is possible to work around this by using the [useLink](https://react-spectrum.adobe.com/react-aria/useLink.html) hook from [React Aria Hooks](https://react-spectrum.adobe.com/react-aria/hooks.html) with a standard anchor element.
 
 ```tsx
 import * as React from 'react'
@@ -130,7 +131,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 ### MUI example
 
-You might want to use third party component libraries with TanStack Router. For example to use `Button` from MUI you can use `createLink` which infers the types from both `Button` and `Link` while keeping type parameters necessary for TanStack Router's type safety
+To use `Button` from MUI, you can utilize `createLink`, which infers types from both `Button` and `Link` while maintaining the type parameters necessary for TanStack Router’s type safety.
 
 ```tsx
 import * as React from 'react'
@@ -146,7 +147,7 @@ const ButtonLink = createLink(
 )
 ```
 
-`createLink` will infer types from the component passed to `createLink` and create a new `Link` component with TanStack Router's type parameters necessary for type safety and the additional props from `Button`
+`createLink` infers types from the component passed to it and generates a new `Link` component. This new component includes TanStack Router’s type parameters for type safety and additional props from `Button`.
 
 `ButtonLink` can then be used with props from both
 
