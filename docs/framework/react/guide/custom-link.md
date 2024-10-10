@@ -16,21 +16,19 @@ If you want to create a basic custom link component, you can do so with the foll
 import * as React from 'react'
 import { createLink, LinkComponent } from '@tanstack/react-router'
 
-interface OwnLinkComponentProps
-  extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+interface BasicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   // Add any additional props you want to pass to the anchor element
 }
 
-const OwnLinkComponent = React.forwardRef<
-  HTMLAnchorElement,
-  OwnLinkComponentProps
->((props, ref) => (
-  <a ref={ref} {...props} className={'block px-3 py-2 text-blue-700'} />
-))
+const BasicLinkComponent = React.forwardRef<HTMLAnchorElement, BasicLinkProps>(
+  (props, ref) => (
+    <a ref={ref} {...props} className={'block px-3 py-2 text-blue-700'} />
+  ),
+)
 
-const CreatedLinkComponent = createLink(OwnLinkComponent)
+const CreatedLinkComponent = createLink(BasicLinkComponent)
 
-export const CustomLink: LinkComponent<typeof OwnLinkComponent> = (props) => {
+export const CustomLink: LinkComponent<typeof BasicLinkComponent> = (props) => {
   return <CreatedLinkComponent preload={'intent'} {...props} />
 }
 ```
@@ -68,35 +66,34 @@ import {
 } from 'react-aria'
 import type { AriaLinkOptions } from 'react-aria'
 
-interface OwnLinkComponentProps extends Omit<AriaLinkOptions, 'href'> {
+interface RACLinkProps extends Omit<AriaLinkOptions, 'href'> {
   children?: React.ReactNode
 }
 
-const OwnLinkComponent = React.forwardRef<
-  HTMLAnchorElement,
-  OwnLinkComponentProps
->((props, forwardedRef) => {
-  const ref = useObjectRef(forwardedRef)
+const RACLinkComponent = React.forwardRef<HTMLAnchorElement, RACLinkProps>(
+  (props, forwardedRef) => {
+    const ref = useObjectRef(forwardedRef)
 
-  const { isPressed, linkProps } = useLink(props, ref)
-  const { isHovered, hoverProps } = useHover(props)
-  const { isFocusVisible, isFocused, focusProps } = useFocusRing(props)
+    const { isPressed, linkProps } = useLink(props, ref)
+    const { isHovered, hoverProps } = useHover(props)
+    const { isFocusVisible, isFocused, focusProps } = useFocusRing(props)
 
-  return (
-    <a
-      {...mergeProps(linkProps, hoverProps, focusProps, props)}
-      ref={ref}
-      data-hovered={isHovered || undefined}
-      data-pressed={isPressed || undefined}
-      data-focus-visible={isFocusVisible || undefined}
-      data-focused={isFocused || undefined}
-    />
-  )
-})
+    return (
+      <a
+        {...mergeProps(linkProps, hoverProps, focusProps, props)}
+        ref={ref}
+        data-hovered={isHovered || undefined}
+        data-pressed={isPressed || undefined}
+        data-focus-visible={isFocusVisible || undefined}
+        data-focused={isFocused || undefined}
+      />
+    )
+  },
+)
 
-const CreatedLinkComponent = createLink(OwnLinkComponent)
+const CreatedLinkComponent = createLink(RACLinkComponent)
 
-export const CustomLink: LinkComponent<typeof OwnLinkComponent> = (props) => {
+export const CustomLink: LinkComponent<typeof RACLinkComponent> = (props) => {
   return <CreatedLinkComponent preload={'intent'} {...props} />
 }
 ```
@@ -108,25 +105,29 @@ import * as React from 'react'
 import { createLink, LinkComponent } from '@tanstack/react-router'
 import { Link } from '@chakra-ui/react'
 
-const ChakraLinkComponent = (
-  props: Omit<React.ComponentPropsWithoutRef<typeof Link>, 'href'>,
-) => <Link {...props} />
+interface ChakraLinkProps
+  extends Omit<React.ComponentPropsWithoutRef<typeof Link>, 'href'> {
+  // Add any additional props you want to pass to the link
+}
+
+const ChakraLinkComponent = React.forwardRef<
+  HTMLAnchorElement,
+  ChakraLinkProps
+>((props, ref) => <Link ref={ref} {...props} />)
 
 const CreatedLinkComponent = createLink(ChakraLinkComponent)
 
 export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
   props,
-) => {
-  return (
-    <CreatedLinkComponent
-      textDecoration="underline"
-      _hover={{ textDecoration: 'none' }}
-      _focus={{ textDecoration: 'none' }}
-      preload="intent"
-      {...props}
-    />
-  )
-}
+) => (
+  <CreatedLinkComponent
+    textDecoration="underline"
+    _hover={{ textDecoration: 'none' }}
+    _focus={{ textDecoration: 'none' }}
+    preload="intent"
+    {...props}
+  />
+)
 ```
 
 ### MUI example
@@ -136,7 +137,9 @@ import * as React from 'react'
 import { createLink, LinkComponent, LinkProps } from '@tanstack/react-router'
 import { Button, ButtonProps } from '@mui/material'
 
-type ButtonLinkProps = Omit<ButtonProps, 'href'>
+interface ButtonLinkProps extends Omit<ButtonProps, 'href'> {
+  // Add any additional props you want to pass to the button
+}
 
 const ButtonLinkComponent = React.forwardRef<
   HTMLAnchorElement,
