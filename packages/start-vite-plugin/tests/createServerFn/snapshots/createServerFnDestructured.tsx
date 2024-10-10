@@ -2,47 +2,47 @@ import { createServerFn } from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = createServerFn({
   method: 'GET'
-}).handler((...args) => {
+}).handler(opts => {
   "use server";
 
-  return (async function () {
-    console.info('Fetching posts...');
-    await new Promise(r => setTimeout(r, 500));
-    return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
-  })(...args);
+  return withUseServer.__execute(opts);
+}, async function () {
+  console.info('Fetching posts...');
+  await new Promise(r => setTimeout(r, 500));
+  return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 });
 export const withArrowFunction = createServerFn({
   method: 'GET'
-}).handler((...args) => {
+}).handler(opts => {
   "use server";
 
-  return (async () => null)(...args);
-});
+  return withArrowFunction.__execute(opts);
+}, async () => null);
 export const withArrowFunctionAndFunction = createServerFn({
   method: 'GET'
-}).handler((...args) => {
+}).handler(opts => {
   "use server";
 
-  return (async () => test())(...args);
-});
+  return withArrowFunctionAndFunction.__execute(opts);
+}, async () => test());
 export const withoutUseServer = createServerFn({
   method: 'GET'
-}).handler((...args) => {
+}).handler(opts => {
   "use server";
 
-  return (async () => {
-    console.info('Fetching posts...');
-    await new Promise(r => setTimeout(r, 500));
-    return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
-  })(...args);
+  return withoutUseServer.__execute(opts);
+}, async () => {
+  console.info('Fetching posts...');
+  await new Promise(r => setTimeout(r, 500));
+  return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 });
 export const withVariable = createServerFn({
   method: 'GET'
-}).handler((...args) => {
+}).handler(opts => {
   "use server";
 
-  return (abstractedFunction)(...args);
-});
+  return withVariable.__execute(opts);
+}, abstractedFunction);
 async function abstractedFunction() {
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
@@ -55,24 +55,23 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
 }
 export const withZodValidator = createServerFn({
   method: 'GET'
-}).handler((...args) => {
+}).handler(opts => {
   "use server";
 
-  return (zodValidator(z.number(), input => {
-    return {
-      'you gave': input
-    };
-  }))(...args);
-});
+  return withZodValidator.__execute(opts);
+}, zodValidator(z.number(), input => {
+  return {
+    'you gave': input
+  };
+}));
 export const withValidatorFn = createServerFn({
   method: 'GET'
-}).handler((...args) => {
+}).handler(opts => {
   "use server";
 
-  args[0].input = (z.number())(args[0].input);
-  return (async ({
-    input
-  }) => {
-    return null;
-  })(...args);
+  return withValidatorFn.__execute(opts);
+}, async ({
+  input
+}) => {
+  return null;
 });

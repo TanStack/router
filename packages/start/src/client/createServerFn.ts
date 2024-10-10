@@ -27,6 +27,10 @@ export type IsOptional<T> = [T] extends [undefined] ? true : false
 
 export type Fetcher<TInput, TResponse> = {
   url: string
+  __execute: (input: any) => Promise<{
+    input: any
+    context: Record<string, any>
+  }>
 } & FetcherImpl<TInput, TResponse>
 
 export type FetcherImpl<TInput, TResponse> =
@@ -81,7 +85,10 @@ export type ServerFnCtx<TMethod, TMiddlewares, TInput> = {
 }
 
 export type CompiledFetcherFn<TInput, TResponse> = {
-  (opts: FetcherOptions<TInput>): Promise<TResponse>
+  (
+    opts: FetcherOptions<TInput>,
+    ctx: { options: ServerFnBaseOptions },
+  ): Promise<TResponse>
   url: string
 }
 
@@ -91,10 +98,12 @@ type ServerFnBaseOptions<
   TMiddlewares = unknown,
   TInput = unknown,
 > = {
-  method?: TMethod
+  method: TMethod
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyServerMiddleware>>
   input?: Constrain<TInput, AnyValidator>
-  fn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
+  handlerFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
+  filename: string
+  functionId: string
 }
 
 type ServerFnBase<
@@ -117,7 +126,7 @@ type ServerFnBase<
     'handler' | 'middleware'
   >
   handler: (
-    fn: ServerFn<TMethod, TMiddlewares, TInput, TResponse>,
+    fn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>,
   ) => Fetcher<TInput, TResponse>
 }
 
@@ -132,117 +141,194 @@ export function createServerFn<
   },
   __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>,
 ): ServerFnBase<TMethod, TResponse, TMiddlewares, TInput> {
+  const resolvedOptions = (__opts || options) as ServerFnBaseOptions<
+    TMethod,
+    TResponse,
+    TMiddlewares,
+    TInput
+  >
+
   return {
-    options: options as any,
+    options: resolvedOptions as any,
     middleware: (middleware) => {
       return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
         undefined,
-        {
-          ...(__opts as any),
-          middleware,
-        },
+        Object.assign(resolvedOptions, { middleware }),
       ) as any
     },
     input: (input) => {
       return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
         undefined,
-        {
-          ...(__opts as any),
-          input,
-        },
+        Object.assign(resolvedOptions, { input }),
       ) as any
     },
-    handler: (fn): Fetcher<TInput, TResponse> => {
-      // Cast the compiled function that will be injected by vinxi
-      // The `input` will be
-      const compiledFn = fn as unknown as CompiledFetcherFn<TInput, TResponse>
+    handler: (...args): Fetcher<TInput, TResponse> => {
+      // This function signature changes due to AST transformations
+      // in the babel plugin. We need to cast it to the correct
+      // function signature post-transformation
+      const [extractedFn, __serverOnlyOriginalFn] = args as unknown as [
+        CompiledFetcherFn<TInput, TResponse>,
+        ServerFn<TMethod, TMiddlewares, TInput, TResponse>,
+      ]
+
+      // Keep the original function around so we can use it
+      // in the server environment
+      Object.assign(resolvedOptions, {
+        ...extractedFn,
+        handlerFn: __serverOnlyOriginalFn,
+      })
 
       invariant(
-        compiledFn.url,
+        extractedFn.url,
         `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/start-vite-plugin ?`,
       )
 
-      return Object.assign((opts?: FetcherOptions<TInput>) => {
-        return compiledFn({
-          method: __opts?.method || 'GET',
-          middleware: __opts?.middleware || [],
-          data: opts?.data as any,
-          requestInit: opts?.requestInit,
-        })
-      }, compiledFn) as Fetcher<TInput, TResponse>
+      // We want to make sure the new function has the same
+      // properties as the original function
+      return Object.assign(
+        (opts?: FetcherOptions<TInput>) => {
+          // Execute the extracted function. This may be a direct
+          // call to handle the server function, or it may be a call
+          // to make a fetch request from the client to the server
+          // This depends on the runtime environment for `use server`
+          return extractedFn(
+            {
+              method: resolvedOptions.method,
+              data: opts?.data as any,
+              requestInit: opts?.requestInit,
+            },
+            {
+              options: resolvedOptions as any,
+            },
+          )
+        },
+        {
+          ...extractedFn,
+          __execute: makeExecuterFn(resolvedOptions),
+        },
+      ) as Fetcher<TInput, TResponse>
     },
   }
 }
 
-// // Implicit
-// import autoZodAdapter from '@tanstack/auto-zod-adapter'
+function makeExecuterFn(options: ServerFnBaseOptions<any, any, any, any>) {
+  // This is a private method that is only called from the server to execute the middleware
+  // chain. It is used in the server environment. It's passed the input
+  // and uses the resolved server function options to create
+  // a final middleware chain to be executed and returned
+  return async (input: any) => {
+    const middleware = [
+      ...(options.middleware || []),
+      serverFnBaseToMiddleware(options),
+    ]
 
-// registerGlobalMiddleware({
-//   validationImpl: autoZodAdapter
-// })
+    return executeMiddleware(middleware, input)
+  }
+}
 
-// declare module '@tanstack/start' {
-//   interface MiddlewareOptions {
-//     validationImpl: autoZodAdapter.Type
-//   }
-// }
+function flattenMiddlewares(
+  middlewares: Array<AnyServerMiddleware>,
+): Array<AnyServerMiddleware> {
+  const flattened: Array<AnyServerMiddleware> = []
 
-// Composed
-// export const zodMiddleware = createRootMiddleware().validationImpl(zodAdapter)
+  const recurse = (middleware: Array<AnyServerMiddleware>) => {
+    middleware.forEach((m) => {
+      if (m.options.middleware) {
+        recurse(m.options.middleware)
+      }
+      flattened.push(m)
+    })
+  }
 
-// export const loggingMiddleware = createRootMiddleware().use(logger)
+  recurse(middlewares)
 
-// export const middleware1 = createServerMiddleware({
-//   id: 'auth',
-// })
-//   .middleware(['logging'])
-//   .use(async ({ next }) => {
-//     const user = await getUser()
+  return flattened
+}
 
-//     if (!user) {
-//       throw new Error('User not found')
-//     }
+async function executeMiddleware(
+  middlewares: Array<AnyServerMiddleware>,
+  input: any,
+): Promise<unknown> {
+  const flattenedMiddlewares = flattenMiddlewares(middlewares)
 
-//     return next({
-//       user,
-//     })
-//   })
+  const next = async (ctx: {
+    input: any
+    context: any
+  }): Promise<{
+    context: any
+    input: any
+    result: unknown
+  }> => {
+    // Get the next middleware
+    const nextMiddleware = flattenedMiddlewares.shift()
 
-// export const workspaceMiddleware = createServerMiddleware({
-//   id: 'workspace',
-// })
-//   .middleware(['auth'])
-//   .input(z.object({ workspaceId: z.string() }))
+    // If there are no more middlewares, return the context
+    if (!nextMiddleware) {
+      return ctx as any
+    }
 
-// const sayHello = createServerFn({
-//   method: 'GET',
-// })
-//   .middleware(['workspace'])
-//   .input(
-//     z.object({
-//       name: z.string(),
-//     }),
-//   ) // Type/Runtime Safety
-//   .handler(({ data, context }) => {
-//     context.user
-//     context.workspaceId
+    if (nextMiddleware.options.input) {
+      // Execute the middleware's input function
+      ctx.input = await nextMiddleware.options.input(ctx.input)
+    }
 
-//     return `Hello, ${data}!`
-//   })
+    if (nextMiddleware.options.useFn) {
+      // Execute the middleware's useFn
+      return nextMiddleware.options.useFn({
+        input: ctx.input,
+        context: ctx.context,
+        next: (userResult) => {
+          // Take the user provided context
+          // and merge it with the current context
+          const context = {
+            ...ctx.context,
+            ...userResult?.context,
+          }
 
-// sayHello({
-//   data: {
-//     workspaceId: '123',
-//     name: 'world',
-//   },
-// })
+          // Return the next middleware
+          return next({
+            input: ctx.input,
+            context,
+            result: (userResult as any)?.result,
+          } as {
+            context: any
+            input: any
+            result: unknown
+          }) as any
+        },
+      }) as any
+    }
 
-// - Crawl all user files for `createServerFn`, `createServerMiddleware`, `createRootMiddleware`
-// - Is it exported? Error
-// - Sort middleware based on dependencies.
-// - Detect circular middlewares? Error
-// - Write middleware maps/types to a generated file
+    // If the middleware doesn't have a useFn, just continue
+    // to the next middleware
+    return next(ctx)
+  }
 
-// interface MiddlewareById {
-//   auth: typeof zodMiddleware
-// }
+  // Start the middleware chain
+  const res = await next({
+    input,
+    context: {},
+  })
+
+  return res.result
+}
+
+function serverFnBaseToMiddleware(
+  options: ServerFnBaseOptions<any, any, any, any>,
+): AnyServerMiddleware {
+  return {
+    _types: undefined!,
+    options: {
+      id: undefined!,
+      input: options.input,
+      // eslint-disable-next-line @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks
+      useFn: async ({ next, ...ctx }) => {
+        const result = await options.handlerFn?.(ctx as any)
+
+        return next({
+          result,
+        } as any)
+      },
+    },
+  }
+}

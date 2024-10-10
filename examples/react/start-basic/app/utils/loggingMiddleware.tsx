@@ -1,10 +1,25 @@
-// import { createServerMiddleware } from '@tanstack/start'
+import { createServerMiddleware } from '@tanstack/start'
 
-// createServerMiddleware({
-//   id: 'logs',
-// }).use(async (ctx) => {
-//   console.log('Request:', ctx.data)
-//   const res = await ctx.next()
-//   console.log('Response:', res)
-//   return res
-// })
+export const logMiddleware = createServerMiddleware({
+  id: 'logMiddleware',
+}).use(async (ctx) => {
+  const requestedAt = new Date()
+
+  const res = await ctx.next({
+    context: {
+      requestedAt,
+    },
+  })
+
+  const duration = new Date().getTime() - requestedAt.getTime()
+
+  console.log('Response:', {
+    ...res,
+    context: {
+      ...res.context,
+      duration,
+    },
+  })
+
+  return res
+})

@@ -80,36 +80,14 @@ export type ResolveAllMiddlewareOutput<TMiddlewares, TValidator> = Expand<
   >
 >
 
-export type ServerMiddlewarePreFn<TContextIn, TContextOut> = (options: {
-  context: TContextIn
-}) =>
-  | ServerMiddlewarePreFnReturn<TContextOut>
-  | Promise<ServerMiddlewarePreFnReturn<TContextOut>>
-
-export type ServerMiddlewarePreFnReturn<TContextOut> = {
-  context: TContextOut
-}
-
-export type ServerMiddlewarePostFn<TContextOut> = (options: {
-  context: TContextOut
-}) => void
-
-export interface MiddlewareOptions<TId, TContextOut, TMiddlewares> {
-  id: TId
-  middleware?: TMiddlewares
-  before?: ServerMiddlewarePreFn<
-    ResolveAllMiddlewareContext<TMiddlewares>,
-    TContextOut
-  >
-  after?: ServerMiddlewarePostFn<TContextOut>
-}
-
 export interface ServerMiddlewareOptions<
   TId,
   TMiddlewares,
   TValidator,
   TContext,
-> extends MiddlewareOptions<TId, TContext, TMiddlewares> {
+> {
+  id: TId
+  middleware?: TMiddlewares
   input?: Constrain<TValidator, AnyValidator>
   useFn?: ServerMiddlewareUseFn<TMiddlewares, TValidator, TContext>
 }
@@ -118,7 +96,7 @@ export type ServerMiddlewareUseFn<TMiddlewares, TValidator, TContext> =
   (options: {
     input: ResolveAllMiddlewareOutput<TMiddlewares, NonNullable<TValidator>>
     context: ResolveAllMiddlewareContext<TMiddlewares>
-    next: <TContext>(opts?: {
+    next: <TContext>(ctx?: {
       context: TContext
     }) => Promise<ResultWithContext<TContext>>
   }) => Promise<ResultWithContext<TContext>> | ResultWithContext<TContext>
@@ -211,40 +189,34 @@ export function createServerMiddleware<
   options: {
     id: TId
   },
-  _?: never,
   __opts?: ServerMiddlewareOptions<TId, TMiddlewares, TValidator, TContext>,
 ): ServerMiddleware<TId, TMiddlewares, TValidator, TContext> {
+  const resolvedOptions = (__opts || options) as ServerMiddlewareOptions<
+    TId,
+    TMiddlewares,
+    TValidator,
+    TContext
+  >
+
   return {
-    options: options as any,
+    options: resolvedOptions as any,
     middleware: (middleware) => {
       return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
         options,
-        undefined,
-        {
-          ...(__opts as any),
-          middleware,
-        },
+        Object.assign(resolvedOptions, { middleware }),
       ) as any
     },
     input: (input) => {
       return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
         options,
-        undefined,
-        {
-          ...(__opts as any),
-          input,
-        },
+        Object.assign(resolvedOptions, { input }),
       ) as any
     },
     // eslint-disable-next-line @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks
     use: (useFn) => {
       return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
         options,
-        undefined,
-        {
-          ...(__opts as any),
-          useFn,
-        },
+        Object.assign(resolvedOptions, { useFn }),
       ) as any
     },
   } as ServerMiddleware<TId, TMiddlewares, TValidator, TContext>

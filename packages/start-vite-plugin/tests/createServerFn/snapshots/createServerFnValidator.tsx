@@ -2,11 +2,10 @@ import { createServerFn } from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = createServerFn({
   method: 'GET'
-}).handler((...args) => {
+}).handler(opts => {
   "use server";
 
-  args[0].input = (z.number())(args[0].input);
-  return (({
-    input
-  }) => input + 1)(...args);
-});
+  return withUseServer.__execute(opts);
+}, ({
+  input
+}) => input + 1);

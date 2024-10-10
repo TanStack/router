@@ -188,6 +188,15 @@ function handleCreateServerFnCallExpression(
       rootCallExpression.toString(),
     )
 
+  // Check if the call is assigned to a variable
+  if (!rootCallExpression.parentPath.isVariableDeclarator()) {
+    throw new Error('createServerFn must be assigned to a variable!')
+  }
+
+  // Get the identifier name of the variable
+  const variableDeclarator = rootCallExpression.parentPath.node
+  const existingVariableName = (variableDeclarator.id as t.Identifier).name
+
   rootCallExpression.traverse({
     MemberExpression(memberExpressionPath) {
       if (t.isIdentifier(memberExpressionPath.node.property)) {
@@ -241,52 +250,49 @@ function handleCreateServerFnCallExpression(
 
   const handlerFn = handlerFnPath.node
 
-  // Then, if there was an input validator, we need to validate the input
-  // and assign it back to the args[0].input property before calling the
-  // nested handler function.
+  // So, the way we do this is we give the handler function a way
+  // to access the serverFn ctx on the server via function scope.
+  // The 'use server' extracted function will be called with the
+  // payload from the client, then use the scoped serverFn ctx
+  // to execute the handler function.
+  // This way, we can do things like input and middleware validation
+  // in the __execute function without having to AST transform the
+  // handler function too much itself.
+
+  // .handler((optsOut, ctx) => {
+  //   return ((optsIn) => {
+  //     'use server'
+  //     ctx.__execute(handlerFn, optsIn)
+  //   })(optsOut)
+  // })
 
   removeUseServerDirective(handlerFnPath)
 
   handlerFnPath.replaceWith(
     t.arrowFunctionExpression(
-      [t.restElement(t.identifier('args'))],
+      [t.identifier('opts')],
       t.blockStatement(
+        // Everything in here is server-only, since the client
+        // will strip out anything in the 'use server' directive.
         [
-          // let input = args[0]
-          t.variableDeclaration('let', [
-            t.variableDeclarator(
-              t.identifier('input'),
-              t.memberExpression(
-                t.identifier('args'),
-                t.numericLiteral(0),
-                true,
-              ),
-            ),
-          ]),
-          inputExpression
-            ? t.expressionStatement(
-                t.assignmentExpression(
-                  '=',
-                  t.identifier('input'),
-                  t.callExpression(inputExpression, [t.identifier('input')]),
-                ),
-              )
-            : (null as any),
           t.returnStatement(
-            t.callExpression(t.parenthesizedExpression(handlerFn), [
-              // { input }
-              t.objectExpression([
-                t.objectProperty(t.identifier('input'), t.identifier('input')),
-              ]),
-            ]),
+            t.callExpression(
+              t.identifier(`${existingVariableName}.__execute`),
+              [t.identifier('opts')],
+            ),
           ),
-        ].filter(Boolean),
-        // Finally, we need to ensure that our top level (...args) => {} function has a 'use server'
-        // directive at the top of the function scope.
+        ],
         [t.directive(t.directiveLiteral('use server'))],
       ),
     ),
   )
+
+  // If we're on the server, add the original handler function to the
+  // arguments of the handler function call.
+
+  if (opts.env === 'server') {
+    callExpressionPaths.handler.node.arguments.push(handlerFn)
+  }
 }
 
 function removeUseServerDirective(path: babel.NodePath<any>) {

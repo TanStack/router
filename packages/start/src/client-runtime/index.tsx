@@ -14,6 +14,8 @@ export function createServerReference(
 
   return Object.assign(proxyFn, {
     url: base,
+    filename: id,
+    functionId: name,
   })
 }
 

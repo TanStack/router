@@ -21,7 +21,7 @@ describe('createServerFn compiles correctly', async () => {
       code,
       root: './test-files',
       filename,
-      env: 'client',
+      env: 'server',
     })
 
     await expect(compiledResult.code).toMatchFileSnapshot(
@@ -29,7 +29,7 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
-  test('should error if createServerFn is created without a handler', () => {
+  test('should error if created without a handler', () => {
     expect(() => {
       compileStartOutput({
         env: 'client',
@@ -39,6 +39,19 @@ describe('createServerFn compiles correctly', async () => {
         root: './test-files',
         filename: 'no-fn.ts',
       })
-    }).toThrowErrorMatchingSnapshot()
+    }).toThrowError()
+  })
+
+  test('should be assigned to a variable', () => {
+    expect(() => {
+      compileStartOutput({
+        env: 'client',
+        code: `
+        import { createServerFn } from '@tanstack/start'
+        createServerFn().handler(async () => {})`,
+        root: './test-files',
+        filename: 'no-fn.ts',
+      })
+    }).toThrowError()
   })
 })

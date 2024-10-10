@@ -149,5 +149,7 @@ export function createServerReference<TPayload, TResponse>(
 
   return Object.assign(proxyFn, {
     url: functionUrl,
+    filename: id,
+    functionId: name,
   })
 }
