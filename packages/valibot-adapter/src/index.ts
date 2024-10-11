@@ -8,7 +8,7 @@ export type ValibotValidatorAdapter<TOptions extends GenericSchema> =
     NonNullable<TOptions['_types']>['output']
   >
 
-export const valibotSearchValidator = <TOptions extends GenericSchema>(
+export const valibotValidator = <TOptions extends GenericSchema>(
   options: TOptions,
 ): ValibotValidatorAdapter<TOptions> => {
   return {

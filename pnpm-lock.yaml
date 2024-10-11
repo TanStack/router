@@ -17,9 +17,9 @@ overrides:
   '@tanstack/router-plugin': workspace:*
   '@tanstack/router-vite-plugin': workspace:*
   '@tanstack/react-router-with-query': workspace:*
-  '@tanstack/router-zod-adapter': workspace:*
-  '@tanstack/router-valibot-adapter': workspace:*
-  '@tanstack/router-arktype-adapter': workspace:*
+  '@tanstack/zod-adapter': workspace:*
+  '@tanstack/valibot-adapter': workspace:*
+  '@tanstack/arktype-adapter': workspace:*
   '@tanstack/start': workspace:*
   '@tanstack/start-vite-plugin': workspace:*
   temp-react: 0.0.0-experimental-035a41c4e-20230704
@@ -1118,21 +1118,21 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-arktype-adapter':
+      '@tanstack/arktype-adapter':
         specifier: workspace:*
-        version: link:../../../packages/router-arktype-adapter
+        version: link:../../../packages/arktype-adapter
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      '@tanstack/router-valibot-adapter':
+      '@tanstack/valibot-adapter':
         specifier: workspace:*
-        version: link:../../../packages/router-valibot-adapter
-      '@tanstack/router-zod-adapter':
+        version: link:../../../packages/valibot-adapter
+      '@tanstack/zod-adapter':
         specifier: workspace:*
-        version: link:../../../packages/router-zod-adapter
+        version: link:../../../packages/zod-adapter
       arktype:
         specifier: ^2.0.0-beta.5
         version: 2.0.0-beta.5
@@ -2105,7 +2105,7 @@ importers:
         specifier: '>=18'
         version: 18.3.1(react@18.3.1)
 
-  packages/router-arktype-adapter:
+  packages/arktype-adapter:
     devDependencies:
       '@tanstack/react-router':
         specifier: workspace:*
@@ -2239,7 +2239,7 @@ importers:
         specifier: ^3.23.8
         version: 3.23.8
 
-  packages/router-valibot-adapter:
+  packages/valibot-adapter:
     devDependencies:
       '@tanstack/react-router':
         specifier: workspace:*
@@ -2260,7 +2260,7 @@ importers:
         specifier: workspace:*
         version: link:../router-plugin
 
-  packages/router-zod-adapter:
+  packages/zod-adapter:
     devDependencies:
       '@tanstack/react-router':
         specifier: workspace:*

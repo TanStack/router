@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-router'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
-import { valibotSearchValidator } from '../src'
+import { valibotValidator } from '../src'
 import '@testing-library/jest-dom/vitest'
 
 afterEach(() => {
@@ -17,7 +17,7 @@ afterEach(() => {
   cleanup()
 })
 
-test('when navigating to a route with valibotSearchValidator', async () => {
+test('when navigating to a route with valibotValidator', async () => {
   const rootRoute = createRootRoute()
 
   const Index = () => {
@@ -56,7 +56,7 @@ test('when navigating to a route with valibotSearchValidator', async () => {
   const invoicesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'invoices',
-    validateSearch: valibotSearchValidator(
+    validateSearch: valibotValidator(
       v.object({
         page: v.number(),
       }),

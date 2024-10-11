@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/router-arktype-adapter",
+  "name": "@tanstack/zod-adapter",
   "version": "1.57.13",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/router-arktype-adapter"
+    "directory": "packages/zod-adapter"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
@@ -67,10 +67,10 @@
     "@testing-library/jest-dom": "^6.4.6",
     "@testing-library/react": "^16.0.0",
     "@tanstack/react-router": "workspace:*",
-    "arktype": "^2.0.0-beta.2"
+    "zod": "^3.23.8"
   },
   "peerDependencies": {
-    "arktype": ">=2.0.0-beta <3",
+    "zod": ">=3",
     "@tanstack/react-router": ">=1.43.2"
   }
 }

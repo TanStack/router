@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { arkTypeValidator } from '@tanstack/router-arktype-adapter'
+import { arkTypeValidator } from '@tanstack/arktype-adapter'
 import { type } from 'arktype'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'

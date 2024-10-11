@@ -6,11 +6,11 @@ import {
 } from '@tanstack/react-router'
 import { expectTypeOf, test } from 'vitest'
 import * as v from 'valibot'
-import { valibotSearchValidator } from '../src'
+import { valibotValidator } from '../src'
 
 test('when creating a route with valibot validation', () => {
   const rootRoute = createRootRoute({
-    validateSearch: valibotSearchValidator(
+    validateSearch: valibotValidator(
       v.object({
         page: v.optional(v.number(), 0),
       }),
@@ -20,7 +20,7 @@ test('when creating a route with valibot validation', () => {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    validateSearch: valibotSearchValidator(
+    validateSearch: valibotValidator(
       v.object({
         indexPage: v.optional(v.number(), 0),
       }),

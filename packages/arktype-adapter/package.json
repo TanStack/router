@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/router-valibot-adapter",
+  "name": "@tanstack/arktype-adapter",
   "version": "1.57.13",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/router-valibot-adapter"
+    "directory": "packages/arktype-adapter"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
@@ -67,10 +67,10 @@
     "@testing-library/jest-dom": "^6.4.6",
     "@testing-library/react": "^16.0.0",
     "@tanstack/react-router": "workspace:*",
-    "valibot": "^0.36.0"
+    "arktype": "^2.0.0-beta.2"
   },
   "peerDependencies": {
-    "valibot": ">=0.36.0",
+    "arktype": ">=2.0.0-beta <3",
     "@tanstack/react-router": ">=1.43.2"
   }
 }

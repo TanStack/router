@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/router-zod-adapter",
+  "name": "@tanstack/valibot-adapter",
   "version": "1.57.13",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/router-zod-adapter"
+    "directory": "packages/valibot-adapter"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
@@ -67,10 +67,10 @@
     "@testing-library/jest-dom": "^6.4.6",
     "@testing-library/react": "^16.0.0",
     "@tanstack/react-router": "workspace:*",
-    "zod": "^3.23.8"
+    "valibot": "^0.36.0"
   },
   "peerDependencies": {
-    "zod": ">=3",
+    "valibot": ">=0.36.0",
     "@tanstack/react-router": ">=1.43.2"
   }
 }

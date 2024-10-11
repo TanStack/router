@@ -205,7 +205,7 @@ An adapter is provided for [Zod](https://zod.dev/) which will pipe through the c
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -229,7 +229,7 @@ However the use of `catch` here overrides the types and makes `page`, `filter` a
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { fallback, zodValidator } from '@tanstack/router-zod-adapter'
+import { fallback, zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -274,7 +274,7 @@ This provides flexibility in which type you want to infer for navigation and whi
 When using [Valibot](https://valibot.dev/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
 
 ```tsx
-import { valibotSearchValidator } from '@tanstack/router-valibot-adapter'
+import { valibotValidator } from '@tanstack/valibot-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import * as v from 'valibot'
 
@@ -288,7 +288,7 @@ const productSearchSchema = v.object({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: valibotSearchValidator(productSearchSchema),
+  validateSearch: valibotValidator(productSearchSchema),
 })
 ```
 
@@ -300,7 +300,7 @@ This adapter expects the arktype beta
 When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
 
 ```tsx
-import { arkTypeValidator } from '@tanstack/router-arktype-adapter'
+import { arkTypeValidator } from '@tanstack/arktype-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import * as v from 'valibot'
 import { type } from 'arktype'
