@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { arkTypeSearchValidator } from '@tanstack/router-arktype-adapter'
+import { arkTypeValidator } from '@tanstack/router-arktype-adapter'
 import { type } from 'arktype'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
@@ -30,7 +30,7 @@ const ArkType = () => {
 }
 
 export const Route = createFileRoute('/users/arktype/')({
-  validateSearch: arkTypeSearchValidator(
+  validateSearch: arkTypeValidator(
     type({
       'search?': 'string',
     }),

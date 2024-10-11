@@ -1,4 +1,4 @@
-import type { SearchValidatorAdapter } from '@tanstack/react-router'
+import type { ValidatorAdapter } from '@tanstack/react-router'
 
 export interface ArkTypeLike {
   infer: any
@@ -6,12 +6,12 @@ export interface ArkTypeLike {
   assert: (input: any) => any
 }
 
-export type ArkTypeSearchValidatorAdapter<TOptions extends ArkTypeLike> =
-  SearchValidatorAdapter<TOptions['inferIn'], TOptions['infer']>
+export type ArkTypeValidatorAdapter<TOptions extends ArkTypeLike> =
+  ValidatorAdapter<TOptions['inferIn'], TOptions['infer']>
 
-export const arkTypeSearchValidator = <TOptions extends ArkTypeLike>(
+export const arkTypeValidator = <TOptions extends ArkTypeLike>(
   options: TOptions,
-): ArkTypeSearchValidatorAdapter<TOptions> => {
+): ArkTypeValidatorAdapter<TOptions> => {
   return {
     types: {
       input: options.inferIn,

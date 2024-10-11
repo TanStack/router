@@ -205,7 +205,7 @@ An adapter is provided for [Zod](https://zod.dev/) which will pipe through the c
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/router-zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -215,7 +215,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: zodSearchValidator(productSearchSchema),
+  validateSearch: zodValidator(productSearchSchema),
 })
 ```
 
@@ -229,7 +229,7 @@ However the use of `catch` here overrides the types and makes `page`, `filter` a
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { fallback, zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { fallback, zodValidator } from '@tanstack/router-zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -241,7 +241,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: zodSearchValidator(productSearchSchema),
+  validateSearch: zodValidator(productSearchSchema),
 })
 ```
 
@@ -259,7 +259,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: zodSearchValidator({
+  validateSearch: zodValidator({
     schema: productSearchSchema,
     input: 'output',
     output: 'input',
@@ -300,7 +300,7 @@ This adapter expects the arktype beta
 When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
 
 ```tsx
-import { arkTypeSearchValidator } from '@tanstack/router-arktype-adapter'
+import { arkTypeValidator } from '@tanstack/router-arktype-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import * as v from 'valibot'
 import { type } from 'arktype'
@@ -312,7 +312,7 @@ const productSearchSchema = type({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: arkTypeSearchValidator(productSearchSchema),
+  validateSearch: arkTypeValidator(productSearchSchema),
 })
 ```
 

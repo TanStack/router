@@ -14,6 +14,8 @@ Server functions can be defined anywhere in your application, but must be define
 - On the server bundle, server functions are left alone. Nothing needs to be done since they are already in the correct place.
 - On the client however, server functions are removed out of the client bundle and replaced with a function that, when called, makes a `fetch` request to the server instructing it to execute the server function in the server bundle and then send the response back to the client.
 
+> We'd like to thank the [tRPC](https://trpc.io/) team for both the inspiration of TanStack Start's server function design and guidance while implementing it. We love (and recommend) using tRPC for API routes so much that we insisted on server functions getting the same 1st class treatment and developer experience. Thank you!
+
 ## Defining Server Functions
 
 Server functions are defined using the `createServerFn` function, exported from the `@tanstack/start` package. This function must be called with an HTTP verb, and an async function that will be executed on the server. Here's an example:
@@ -87,6 +89,67 @@ function test() {
   greet({ name: 'John' }) // OK
   greet({ name: 123 }) // Error: Argument of type '{ name: number; }' is not assignable to parameter of type 'Person'.
 }
+```
+
+## Validation / Runtime Type Safety
+
+Server functions can be configured to validate the input parameter at runtime. This is useful for ensuring that the input is of the correct type before executing the server function, can provide more friendly error messages, and even power type-safety if configured correctly.
+
+To enable validation, call the `input` method on the server function. You can pass a variety of things:
+
+- A function that returns the valid value and type
+- A thrown error, to indicate that the input is invalid
+- Schema objects that define the shape of the input (the exact shape of the schema object depends on the validation library you choose to use)
+
+### Basic Validation
+
+Here's a simple example of a server function that validates the input parameter:
+
+```tsx
+import { createServerFn } from '@tanstack/start'
+
+type Person = {
+  name: string
+}
+
+export const greet = createServerFn({ method: 'GET' })
+  .input((person: unknown): Person => {
+    if (typeof person !== 'object' || person === null) {
+      throw new Error('Person must be an object')
+    }
+
+    if (typeof person.name !== 'string') {
+      throw new Error('Person.name must be a string')
+    }
+
+    return person as Person
+  })
+  .handler(async (person: Person) => {
+    return `Hello, ${person.name}!`
+  })
+```
+
+### Using a Validation Library
+
+You can also use a validation library like Zod to validate the input parameter:
+
+```tsx
+import { createServerFn } from '@tanstack/start'
+
+import { z } from 'zod'
+
+const Person = z.object({
+  name: z.string(),
+})
+
+export const greet = createServerFn({ method: 'GET' })
+  .validator(zodValidator)
+  .input((person: unknown) => {
+    return Person.parse(person)
+  })
+  .handler(async (person: z.infer<typeof Person>) => {
+    return `Hello, ${person.name}!`
+  })
 ```
 
 ## JSON Parameters

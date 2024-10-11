@@ -5,12 +5,12 @@ import {
   Link,
 } from '@tanstack/react-router'
 import { test, expectTypeOf } from 'vitest'
-import { zodSearchValidator } from '../src'
+import { zodValidator } from '../src'
 import { z } from 'zod'
 
 test('when creating a route with zod validation', () => {
   const rootRoute = createRootRoute({
-    validateSearch: zodSearchValidator(
+    validateSearch: zodValidator(
       z.object({
         page: z.number().optional().default(0),
       }),
@@ -20,7 +20,7 @@ test('when creating a route with zod validation', () => {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    validateSearch: zodSearchValidator(
+    validateSearch: zodValidator(
       z.object({
         indexPage: z.number().optional().default(0),
       }),
@@ -54,7 +54,7 @@ test('when creating a route with zod validation', () => {
 
 test('when creating a route with zod validation where input is output', () => {
   const rootRoute = createRootRoute({
-    validateSearch: zodSearchValidator(
+    validateSearch: zodValidator(
       z.object({
         page: z.number().optional().default(0),
       }),
@@ -64,7 +64,7 @@ test('when creating a route with zod validation where input is output', () => {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    validateSearch: zodSearchValidator({
+    validateSearch: zodValidator({
       schema: z.object({
         indexPage: z.number().optional().default(0),
       }),
@@ -99,7 +99,7 @@ test('when creating a route with zod validation where input is output', () => {
 
 test('when creating a route with zod validation where output is input', () => {
   const rootRoute = createRootRoute({
-    validateSearch: zodSearchValidator({
+    validateSearch: zodValidator({
       schema: z.object({
         page: z.number().optional().default(0),
       }),
@@ -110,7 +110,7 @@ test('when creating a route with zod validation where output is input', () => {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    validateSearch: zodSearchValidator({
+    validateSearch: zodValidator({
       schema: z.object({
         indexPage: z.number().optional().default(0),
       }),

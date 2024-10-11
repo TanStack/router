@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { SearchValidatorAdapter } from '@tanstack/react-router'
+import type { ValidatorAdapter } from '@tanstack/react-router'
 
 export interface ZodTypeLike {
   _input: any
@@ -9,15 +9,15 @@ export interface ZodTypeLike {
 
 export type InputOutputOption = 'input' | 'output'
 
-export interface ZodSearchValidatorOptions {
+export interface zodValidatorOptions {
   readonly schema: ZodTypeLike
   readonly input?: InputOutputOption
   readonly output?: InputOutputOption
 }
 
-export type ZodSearchValidatorInput<
-  TOptions extends ZodTypeLike | ZodSearchValidatorOptions,
-> = TOptions extends ZodSearchValidatorOptions
+export type zodValidatorInput<
+  TOptions extends ZodTypeLike | zodValidatorOptions,
+> = TOptions extends zodValidatorOptions
   ? 'input' extends TOptions['input']
     ? TOptions['schema']['_input']
     : TOptions['schema']['_output']
@@ -25,9 +25,9 @@ export type ZodSearchValidatorInput<
     ? TOptions['_input']
     : never
 
-export type ZodSearchValidatorOutput<
-  TOptions extends ZodTypeLike | ZodSearchValidatorOptions,
-> = TOptions extends ZodSearchValidatorOptions
+export type zodValidatorOutput<
+  TOptions extends ZodTypeLike | zodValidatorOptions,
+> = TOptions extends zodValidatorOptions
   ? 'output' extends TOptions['output']
     ? TOptions['schema']['_output']
     : TOptions['schema']['_input']
@@ -35,18 +35,15 @@ export type ZodSearchValidatorOutput<
     ? TOptions['_output']
     : never
 
-export type ZodSearchValidatorAdapter<
-  TOptions extends ZodTypeLike | ZodSearchValidatorOptions,
-> = SearchValidatorAdapter<
-  ZodSearchValidatorInput<TOptions>,
-  ZodSearchValidatorOutput<TOptions>
->
+export type zodValidatorAdapter<
+  TOptions extends ZodTypeLike | zodValidatorOptions,
+> = ValidatorAdapter<zodValidatorInput<TOptions>, zodValidatorOutput<TOptions>>
 
-export const zodSearchValidator = <
-  TOptions extends ZodTypeLike | ZodSearchValidatorOptions,
+export const zodValidator = <
+  TOptions extends ZodTypeLike | zodValidatorOptions,
 >(
   options: TOptions,
-): ZodSearchValidatorAdapter<TOptions> => {
+): zodValidatorAdapter<TOptions> => {
   const input = 'input' in options ? options.input : 'input'
   const output = 'output' in options ? options.output : 'output'
   const _input = 'schema' in options ? options.schema._input : options._input

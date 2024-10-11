@@ -6,11 +6,11 @@ import {
 } from '@tanstack/react-router'
 import { expectTypeOf, test } from 'vitest'
 import { type } from 'arktype'
-import { arkTypeSearchValidator } from '../src'
+import { arkTypeValidator } from '../src'
 
 test('when creating a route with arktype validation', () => {
   const rootRoute = createRootRoute({
-    validateSearch: arkTypeSearchValidator(
+    validateSearch: arkTypeValidator(
       type({
         page: 'number = 0',
       }),
@@ -20,7 +20,7 @@ test('when creating a route with arktype validation', () => {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    validateSearch: arkTypeSearchValidator(
+    validateSearch: arkTypeValidator(
       type({
         indexPage: 'number = 0',
       }),

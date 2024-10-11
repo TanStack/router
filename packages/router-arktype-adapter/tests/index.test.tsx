@@ -8,7 +8,7 @@ import {
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { type } from 'arktype'
-import { arkTypeSearchValidator } from '../src'
+import { arkTypeValidator } from '../src'
 import '@testing-library/jest-dom/vitest'
 
 afterEach(() => {
@@ -17,7 +17,7 @@ afterEach(() => {
   cleanup()
 })
 
-test('when navigating to a route with arkTypeSearchValidator', async () => {
+test('when navigating to a route with arkTypeValidator', async () => {
   const rootRoute = createRootRoute()
 
   const Index = () => {
@@ -56,7 +56,7 @@ test('when navigating to a route with arkTypeSearchValidator', async () => {
   const invoicesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'invoices',
-    validateSearch: arkTypeSearchValidator(
+    validateSearch: arkTypeValidator(
       type({
         page: 'number',
       }),

@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { zodSearchValidator } from '../src'
+import { zodValidator } from '../src'
 import { z } from 'zod'
 import {
   createRootRoute,
@@ -17,7 +17,7 @@ afterEach(() => {
   cleanup()
 })
 
-test('when navigating to a route with zodSearchValidator', async () => {
+test('when navigating to a route with zodValidator', async () => {
   const rootRoute = createRootRoute()
 
   const Index = () => {
@@ -56,7 +56,7 @@ test('when navigating to a route with zodSearchValidator', async () => {
   const invoicesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'invoices',
-    validateSearch: zodSearchValidator(
+    validateSearch: zodValidator(
       z.object({
         page: z.number(),
       }),
@@ -78,7 +78,7 @@ test('when navigating to a route with zodSearchValidator', async () => {
   expect(await screen.findByText('Page: 0')).toBeInTheDocument()
 })
 
-test('when navigating to a route with zodSearchValidator input set to output', async () => {
+test('when navigating to a route with zodValidator input set to output', async () => {
   const rootRoute = createRootRoute()
 
   const Index = () => {
@@ -117,7 +117,7 @@ test('when navigating to a route with zodSearchValidator input set to output', a
   const invoicesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'invoices',
-    validateSearch: zodSearchValidator({
+    validateSearch: zodValidator({
       schema: z.object({
         page: z.number(),
       }),

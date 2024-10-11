@@ -342,4 +342,13 @@ export type {
   AnyValidator,
   DefaultValidator,
   ValidatorFn,
+  AnySchema,
+  AnyValidatorAdapter,
+  AnyValidatorFn,
+  AnyValidatorObj,
+  ResolveValidatorInputFn,
+  ResolveValidatorOutputFn,
+  Validator,
+  ValidatorAdapter,
+  ValidatorObj,
 } from './validators'
