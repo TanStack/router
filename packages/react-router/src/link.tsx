@@ -757,8 +757,9 @@ export function useLinkProps<
       })
 
       // All is well? Navigate!
-      router.commitLocation({
-        ...next,
+      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
+      router.buildAndCommitLocation({
+        ...options,
         replace,
         resetScroll,
         startTransition,
