@@ -29,7 +29,11 @@ import {
   useRouterState,
   useSearch,
 } from '../src'
-import { getIntersectionObserverMock, sleep } from './utils'
+import {
+  getIntersectionObserverMock,
+  getSearchParamsFromURI,
+  sleep,
+} from './utils'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -3834,11 +3838,6 @@ describe('createLink', () => {
 })
 
 describe('search middleware', () => {
-  function getSearchParamsFromURI(uri: string) {
-    const [, paramString] = uri.split('?')
-    return new URLSearchParams(paramString)
-  }
-
   test('legacy search filters still work', async () => {
     const rootRoute = createRootRoute({
       validateSearch: (input) => {
