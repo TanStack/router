@@ -344,9 +344,16 @@ export const Route = createRootRoute({
   for (const node of preRouteNodes.filter((d) => !d.isAPIRoute)) {
     await handleNode(node)
   }
+  checkRouteFullPathUniqueness(
+    preRouteNodes.filter(
+      (d) => !d.isAPIRoute && d.children === undefined && d.isLazy !== true,
+    ),
+    config,
+  )
 
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
     preRouteNodes.filter((d) => d.isAPIRoute),
+    config,
   )
 
   const handleAPINode = async (node: RouteNode) => {
@@ -928,7 +935,43 @@ function getFilePathIdAndRouteIdFromPath(pathname?: string) {
   return [filePathId, id] as const
 }
 
-function checkStartAPIRoutes(_routes: Array<RouteNode>) {
+function checkUnique<TElement>(routes: Array<TElement>, key: keyof TElement) {
+  // Check no two routes have the same `key`
+  // if they do, throw an error with the conflicting filePaths
+  const keys = routes.map((d) => d[key])
+  const uniqueKeys = new Set(keys)
+  if (keys.length !== uniqueKeys.size) {
+    const duplicateKeys = keys.filter((d, i) => keys.indexOf(d) !== i)
+    const conflictingFiles = routes.filter((d) =>
+      duplicateKeys.includes(d[key]),
+    )
+    return conflictingFiles
+  }
+  return undefined
+}
+
+function checkRouteFullPathUniqueness(
+  _routes: Array<RouteNode>,
+  config: Config,
+) {
+  const routes = _routes.map((d) => {
+    const inferredFullPath = inferFullPath(d)
+    return { ...d, inferredFullPath }
+  })
+
+  const conflictingFiles = checkUnique(routes, 'inferredFullPath')
+
+  if (conflictingFiles !== undefined) {
+    const errorMessage = `Conflicting configuration paths were found for the following route${conflictingFiles.length > 1 ? 's' : ''}: ${conflictingFiles
+      .map((p) => `"${p.inferredFullPath}"`)
+      .join(', ')}.
+Please ensure each route has a unique full path.
+Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+}
+
+function checkStartAPIRoutes(_routes: Array<RouteNode>, config: Config) {
   if (_routes.length === 0) {
     return []
   }
@@ -942,22 +985,14 @@ function checkStartAPIRoutes(_routes: Array<RouteNode>) {
     return { ...d, routePath }
   })
 
-  // Check no two API routes have the same routePath
-  // if they do, throw an error with the conflicting filePaths
-  const routePaths = routes.map((d) => d.routePath)
-  const uniqueRoutePaths = new Set(routePaths)
-  if (routePaths.length !== uniqueRoutePaths.size) {
-    const duplicateRoutePaths = routePaths.filter(
-      (d, i) => routePaths.indexOf(d) !== i,
-    )
-    const conflictingFiles = routes
-      .filter((d) => duplicateRoutePaths.includes(d.routePath))
-      .map((d) => `${d.fullPath}`)
-    const errorMessage = `Conflicting configuration paths was for found for the following API route${duplicateRoutePaths.length > 1 ? 's' : ''}: ${duplicateRoutePaths
+  const conflictingFiles = checkUnique(routes, 'routePath')
+
+  if (conflictingFiles !== undefined) {
+    const errorMessage = `Conflicting configuration paths were found for the following API route${conflictingFiles.length > 1 ? 's' : ''}: ${conflictingFiles
       .map((p) => `"${p}"`)
       .join(', ')}.
-Please ensure each API route has a unique route path.
-Conflicting files: \n ${conflictingFiles.join('\n ')}\n`
+  Please ensure each API route has a unique route path.
+Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
     throw new Error(errorMessage)
   }
 
