@@ -1460,8 +1460,24 @@ export class Router<
         ? postSearchFilters.reduce((prev, next) => next(prev), destSearch)
         : destSearch
 
-      const search = replaceEqualDeep(fromSearch, postFilteredSearch)
+      let search = postFilteredSearch
 
+      if (opts._includeValidateSearch) {
+        matchedRoutesResult?.matchedRoutes.forEach((route) => {
+          try {
+            if (route.options.validateSearch) {
+              const validator =
+                typeof route.options.validateSearch === 'object'
+                  ? route.options.validateSearch.parse
+                  : route.options.validateSearch
+              search = { ...search, ...validator(search) }
+            }
+          } catch (e) {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        })
+      }
+      search = replaceEqualDeep(fromSearch, search)
       const searchStr = this.options.stringifySearch(search)
 
       const hash =
@@ -1644,7 +1660,10 @@ export class Router<
       rest.hash = parsed.hash
     }
 
-    const location = this.buildLocation(rest as any)
+    const location = this.buildLocation({
+      ...(rest as any),
+      _includeValidateSearch: true,
+    })
     return this.commitLocation({
       ...location,
       viewTransition,
