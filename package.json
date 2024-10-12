@@ -39,6 +39,7 @@
     "@types/react-dom": "^18.3.0",
     "eslint": "^9.12.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
+    "eslint-plugin-unused-imports": "^4.1.4",
     "glob": "^11.0.0",
     "jsdom": "^25.0.1",
     "nx": "^19.8.4",

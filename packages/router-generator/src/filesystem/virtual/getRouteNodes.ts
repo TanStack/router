@@ -6,7 +6,7 @@ import {
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesPhysical } from '../physical/getRouteNodes'
-import type { Route, VirtualRouteNode } from '@tanstack/virtual-file-routes'
+import type { VirtualRouteNode } from '@tanstack/virtual-file-routes'
 import type { GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 

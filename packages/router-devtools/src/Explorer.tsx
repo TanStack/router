@@ -2,7 +2,7 @@ import * as React from 'react'
 import { clsx as cx } from 'clsx'
 import * as goober from 'goober'
 import { tokens } from './tokens'
-import { displayValue, styled } from './utils'
+import { displayValue } from './utils'
 import { ShadowDomTargetContext } from './context'
 
 type ExpanderProps = {

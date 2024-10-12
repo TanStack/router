@@ -21,7 +21,7 @@ import type {
   UpdatableRouteOptions,
 } from './route'
 import type { MakeRouteMatch } from './Matches'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
