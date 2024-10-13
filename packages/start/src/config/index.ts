@@ -151,6 +151,7 @@ const serverSchema = z
   .and(z.custom<ServerOptions>())
 
 const viteSchema = z.object({
+  optimizeDeps: z.custom<vite.UserConfig['optimizeDeps']>().optional(),
   plugins: z
     .function()
     .returns(z.array(z.custom<vite.PluginOption>()))
@@ -268,7 +269,10 @@ export function defineConfig(
         dir: './public',
         base: '/',
       },
-      withStartPlugins(tsrConfig)({
+      withStartPlugins(
+        opts,
+        'client',
+      )({
         name: 'client',
         type: 'client',
         target: 'browser',
@@ -298,6 +302,10 @@ export function defineConfig(
               config('start-vite', {
                 ssr: {
                   noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+                },
+                optimizeDeps: {
+                  ...opts.vite?.optimizeDeps,
+                  ...opts.routers?.api?.vite?.optimizeDeps,
                 },
               }),
               TanStackRouterVite({
@@ -332,7 +340,10 @@ export function defineConfig(
             }),
           ]
         : []),
-      withStartPlugins(tsrConfig)({
+      withStartPlugins(
+        opts,
+        'ssr',
+      )({
         name: 'ssr',
         type: 'http',
         target: 'server',
@@ -357,7 +368,10 @@ export function defineConfig(
           client: 'client',
         },
       }),
-      withStartPlugins(tsrConfig)({
+      withStartPlugins(
+        opts,
+        'server',
+      )({
         name: 'server',
         type: 'http',
         target: 'server',
@@ -419,11 +433,19 @@ function withPlugins(plugins: Array<any>) {
   }
 }
 
-function withStartPlugins(tsrConfig: z.infer<typeof configSchema>) {
+function withStartPlugins(
+  opts: TanStackStartDefineConfigOptions,
+  router: 'client' | 'server' | 'ssr',
+) {
+  const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
   return withPlugins([
     config('start-vite', {
       ssr: {
         noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+      },
+      optimizeDeps: {
+        ...opts.vite?.optimizeDeps,
+        ...opts.routers?.[router]?.vite?.optimizeDeps,
       },
       // optimizeDeps: {
       //   include: ['@tanstack/start/server-runtime'],
