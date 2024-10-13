@@ -13,7 +13,7 @@
     "@prisma/client": "5.20.0",
     "@tanstack/react-router": "^1.65.0",
     "@tanstack/router-devtools": "^1.65.0",
-    "@tanstack/start": "^1.65.0",
+    "@tanstack/start": "^1.66.0",
     "dotenv": "^16.4.5",
     "prisma": "^5.20.0",
     "react": "^18.3.1",
