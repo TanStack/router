@@ -8,6 +8,11 @@ export function TanStackStartVite(): Array<Plugin> {
   return [TanStackStartViteCreateServerFn()]
 }
 
+const excluded = [
+  '@tanstack/start/dist',
+  '@tanstack/react-cross-context/dist',
+  '.vinxi/cache/client/deps/@tanstack_start',
+]
 export function TanStackStartViteCreateServerFn(): Plugin {
   let ROOT: string = process.cwd()
 
@@ -21,7 +26,9 @@ export function TanStackStartViteCreateServerFn(): Plugin {
       const url = pathToFileURL(id)
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
-
+      if (excluded.some((e) => id.includes(e))) {
+        return null
+      }
       if (code.includes('createServerFn')) {
         if (code.includes('@react-refresh')) {
           throw new Error(
