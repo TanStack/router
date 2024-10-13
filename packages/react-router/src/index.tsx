@@ -226,8 +226,6 @@ export type {
   ResolveAllParamsFromParent,
   ResolveRouteContext,
   ResolveSearchSchemaFn,
-  SearchMiddlewareContext,
-  SearchMiddleware,
 } from './route'
 
 export type {

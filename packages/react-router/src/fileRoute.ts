@@ -13,14 +13,12 @@ import type {
   AnyRoute,
   AnySearchValidator,
   FileBaseRouteOptions,
-  ResolveFullSearchSchema,
   ResolveParams,
   RootRoute,
   Route,
   RouteConstraints,
   RouteLoaderFn,
   UpdatableRouteOptions,
-  UpdatableSearchOptions,
 } from './route'
 import type { MakeRouteMatch } from './Matches'
 import type { RegisteredRouter } from './router'
@@ -122,9 +120,6 @@ export class FileRoute<
         AnyContext,
         TRouteContextFn,
         TBeforeLoadFn
-      > &
-      UpdatableSearchOptions<
-        ResolveFullSearchSchema<TParentRoute, TSearchValidator>
       >,
   ): Route<
     TParentRoute,

@@ -85,9 +85,6 @@ export type RouteOptions<
     NoInfer<TRouterContext>,
     NoInfer<TRouteContextFn>,
     NoInfer<TBeforeLoadFn>
-  > &
-  UpdatableSearchOptions<
-    ResolveFullSearchSchema<NoInfer<TParentRoute>, NoInfer<TSearchValidator>>
   >
 
 export type ParseSplatParams<TPath extends string> = TPath extends `${string}$`
@@ -131,33 +128,6 @@ export type ParamsOptions<TPath extends string, TParams> = {
   */
   stringifyParams?: StringifyParamsFn<TPath, TParams>
 }
-
-export interface SearchOptionsWithMiddlewares<TSearchSchema> {
-  search: {
-    middlewares?: Array<SearchMiddleware<TSearchSchema>>
-  }
-  // XOR with preSearchFilters/postSearchFilters
-  preSearchFilters?: never
-  postSearchFilters?: never
-}
-
-export interface SearchOptionsWithFilters<TSearchSchema> {
-  /** 
-  @deprecated Use search.middlewares instead
-  */
-  preSearchFilters?: Array<SearchFilter<TSearchSchema>>
-  /** 
-  @deprecated Use search.middlewares instead
-  */
-  postSearchFilters?: Array<SearchFilter<TSearchSchema>>
-
-  // XOR with search.middlewares
-  search?: never
-}
-
-export type UpdatableSearchOptions<TSearchSchema> =
-  | SearchOptionsWithMiddlewares<TSearchSchema>
-  | SearchOptionsWithFilters<TSearchSchema>
 
 export interface FullSearchSchemaOption<
   in out TParentRoute extends AnyRoute,
@@ -368,6 +338,23 @@ export interface UpdatableRouteOptions<
   preload?: boolean
   preloadStaleTime?: number
   preloadGcTime?: number
+  search?: {
+    middlewares?: Array<
+      SearchMiddleware<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+    >
+  }
+  /** 
+  @deprecated Use search.middlewares instead
+  */
+  preSearchFilters?: Array<
+    SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+  >
+  /** 
+  @deprecated Use search.middlewares instead
+  */
+  postSearchFilters?: Array<
+    SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+  >
   onCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
@@ -1198,10 +1185,7 @@ export class Route<
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn
-    > &
-      UpdatableSearchOptions<
-        ResolveFullSearchSchema<TParentRoute, TSearchValidator>
-      >,
+    >,
   ): this => {
     Object.assign(this.options, options)
     return this
@@ -1370,11 +1354,7 @@ export type RootRouteOptions<
   | 'parseParams'
   | 'stringifyParams'
   | 'params'
-  | 'search'
-  | 'preSearchFilters'
-  | 'postSearchFilters'
-> &
-  UpdatableSearchOptions<ResolveSearchSchema<NoInfer<TSearchValidator>>>
+>
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
