@@ -488,13 +488,13 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
       : '',
     '// Import Routes',
     [
-      `import { Route as rootRoute } from './${getImportPath(rootRouteNode)}'`,
+      `import { Route as rootRoute } from './${getImportPath(rootRouteNode)}.${config.disableTypes ? 'js' : 'tsx'}'`,
       ...sortedRouteNodes
         .filter((d) => !d.isVirtual)
         .map((node) => {
           return `import { Route as ${
             node.variableName
-          }Import } from './${getImportPath(node)}'`
+          }Import } from './${getImportPath(node)}.${config.disableTypes ? 'js' : 'tsx'}'`
         }),
     ].join('\n'),
     virtualRouteNodes.length ? '// Create Virtual Routes' : '',
