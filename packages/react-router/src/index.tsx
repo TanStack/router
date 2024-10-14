@@ -351,3 +351,5 @@ export type { Manifest, RouterManagedTag } from './manifest'
 
 export { createControlledPromise } from './utils'
 export type { ControlledPromise } from './utils'
+
+export { retainSearchParams } from './searchMiddleware'

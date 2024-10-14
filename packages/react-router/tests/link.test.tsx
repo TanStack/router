@@ -15,6 +15,7 @@ import {
   Outlet,
   RouterProvider,
   createLink,
+  createMemoryHistory,
   createRootRoute,
   createRootRouteWithContext,
   createRoute,
@@ -28,7 +29,11 @@ import {
   useRouterState,
   useSearch,
 } from '../src'
-import { getIntersectionObserverMock, sleep } from './utils'
+import {
+  getIntersectionObserverMock,
+  getSearchParamsFromURI,
+  sleep,
+} from './utils'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -3829,5 +3834,150 @@ describe('createLink', () => {
 
     const button3 = await screen.findByText('active: no - foo: no - Button3')
     expect(button3.getAttribute('overrideMeIfYouWant')).toBe('Button3')
+  })
+})
+
+describe('search middleware', () => {
+  test('legacy search filters still work', async () => {
+    const rootRoute = createRootRoute({
+      validateSearch: (input) => {
+        return {
+          root: input.root as string | undefined,
+          foo: input.foo as string | undefined,
+        }
+      },
+      preSearchFilters: [
+        (search) => {
+          return { ...search, foo: 'foo' }
+        },
+      ],
+      postSearchFilters: [
+        (search) => {
+          return { ...search, root: search.root ?? 'default' }
+        },
+      ],
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/posts" search={(p: any) => ({ page: 123, foo: p.foo })}>
+              Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1>Posts</h1>
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: (input: Record<string, unknown>) => {
+        const page = Number(input.page)
+        return {
+          page,
+        }
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/?foo=bar'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(postsLink).toHaveAttribute('href')
+    const href = postsLink.getAttribute('href')
+    const search = getSearchParamsFromURI(href!)
+    expect(search.size).toBe(3)
+    expect(search.get('page')).toBe('123')
+    expect(search.get('root')).toBe('default')
+    expect(search.get('foo')).toBe('foo')
+  })
+
+  test('search middlewares work', async () => {
+    const rootRoute = createRootRoute({
+      validateSearch: (input) => {
+        return {
+          root: input.root as string | undefined,
+          foo: input.foo as string | undefined,
+        }
+      },
+      search: {
+        middlewares: [
+          ({ search, next }) => {
+            return next({ ...search, foo: 'foo' })
+          },
+          ({ search, next }) => {
+            expect(search.foo).toBe('foo')
+            const result = next({ ...search, foo: 'hello' })
+            return { ...result, root: search.root }
+          },
+        ],
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/posts" search={{ page: 123, root: 'hello' }}>
+              Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1>Posts</h1>
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: (input: Record<string, unknown>) => {
+        const page = Number(input.page)
+        return {
+          page,
+        }
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/?root=abc'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(postsLink).toHaveAttribute('href')
+    const href = postsLink.getAttribute('href')
+    const search = getSearchParamsFromURI(href!)
+    expect(search.size).toBe(2)
+    expect(search.get('page')).toBe('123')
+    expect(search.get('root')).toBe('abc')
   })
 })

@@ -51,6 +51,7 @@ import type {
   RouteComponent,
   RouteContextOptions,
   RouteMask,
+  SearchMiddleware,
 } from './route'
 import type {
   FullSearchSchema,
@@ -1428,39 +1429,86 @@ export class Router<
         leaveParams: opts.leaveParams,
       })
 
-      const preSearchFilters =
-        stayingMatches
-          ?.map((route) => route.options.preSearchFilters ?? [])
-          .flat()
-          .filter(Boolean) ?? []
+      const applyMiddlewares = () => {
+        const allMiddlewares =
+          stayingMatches?.reduce(
+            (acc, route) => {
+              let middlewares: Array<SearchMiddleware<any>> = []
+              if ('search' in route.options) {
+                if (route.options.search?.middlewares) {
+                  middlewares = route.options.search.middlewares
+                }
+              }
+              // TODO remove preSearchFilters and postSearchFilters in v2
+              else if (
+                route.options.preSearchFilters ||
+                route.options.postSearchFilters
+              ) {
+                const legacyMiddleware: SearchMiddleware<any> = ({
+                  search,
+                  next,
+                }) => {
+                  let nextSearch = search
+                  if (
+                    'preSearchFilters' in route.options &&
+                    route.options.preSearchFilters
+                  ) {
+                    nextSearch = route.options.preSearchFilters.reduce(
+                      (prev, next) => next(prev),
+                      search,
+                    )
+                  }
+                  const result = next(nextSearch)
+                  if (
+                    'postSearchFilters' in route.options &&
+                    route.options.postSearchFilters
+                  ) {
+                    return route.options.postSearchFilters.reduce(
+                      (prev, next) => next(prev),
+                      result,
+                    )
+                  }
+                  return result
+                }
+                middlewares = [legacyMiddleware]
+              }
+              return acc.concat(middlewares)
+            },
+            [] as Array<SearchMiddleware<any>>,
+          ) ?? []
 
-      const postSearchFilters =
-        stayingMatches
-          ?.map((route) => route.options.postSearchFilters ?? [])
-          .flat()
-          .filter(Boolean) ?? []
+        // the chain ends here since `next` is not called
+        const final: SearchMiddleware<any> = ({ search }) => {
+          if (!dest.search) {
+            return {}
+          }
+          if (dest.search === true) {
+            return search
+          }
+          return functionalUpdate(dest.search, search)
+        }
+        allMiddlewares.push(final)
 
-      // Pre filters first
-      const preFilteredSearch = preSearchFilters.length
-        ? preSearchFilters.reduce((prev, next) => next(prev), fromSearch)
-        : fromSearch
+        const applyNext = (index: number, currentSearch: any): any => {
+          // no more middlewares left, return the current search
+          if (index >= allMiddlewares.length) {
+            return currentSearch
+          }
 
-      // Then the link/navigate function
-      const destSearch =
-        dest.search === true
-          ? preFilteredSearch // Preserve resolvedFrom true
-          : dest.search
-            ? functionalUpdate(dest.search, preFilteredSearch) // Updater
-            : preSearchFilters.length
-              ? preFilteredSearch // Preserve resolvedFrom filters
-              : {}
+          const middleware = allMiddlewares[index]!
 
-      // Then post filters
-      const postFilteredSearch = postSearchFilters.length
-        ? postSearchFilters.reduce((prev, next) => next(prev), destSearch)
-        : destSearch
+          const next = (newSearch: any): any => {
+            return applyNext(index + 1, newSearch)
+          }
 
-      let search = postFilteredSearch
+          return middleware({ search: currentSearch, next })
+        }
+
+        // Start applying middlewares
+        return applyNext(0, fromSearch)
+      }
+
+      let search = applyMiddlewares()
 
       if (opts._includeValidateSearch) {
         matchedRoutesResult?.matchedRoutes.forEach((route) => {

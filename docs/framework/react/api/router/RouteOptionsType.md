@@ -58,6 +58,13 @@ The `RouteOptions` type accepts an object with the following properties:
 - A function that will be called when this route is matched and passed the raw search params from the current location and return valid parsed search params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's search params and the return type will be inferred into the rest of the router.
 - Optionally, the parameter type can be tagged with the `SearchSchemaInput` type like this: `(searchParams: TSearchSchemaInput & SearchSchemaInput) => TSearchSchema`. If this tag is present, `TSearchSchemaInput` will be used to type the `search` property of `<Link />` and `navigate()` **instead of** `TSearchSchema`. The difference between `TSearchSchemaInput` and `TSearchSchema` can be useful, for example, to express optional search parameters.
 
+### `search.middlewares` property
+
+- Type: `(({search: TSearchSchema, next: (newSearch: TSearchSchema) => TSearchSchema}) => TSearchSchema)[]`
+- Optional
+- Search middlewares are functions that transform the search parameters when generating new links for a route or its descendants.
+- A search middleware is passed in the current search (if it is the first middleware to run) or is invoked by the previous middleware calling `next`.
+
 ### `parseParams` method (⚠️ deprecated)
 
 - Type: `(rawParams: Record<string, string>) => TParams`
@@ -213,7 +220,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Defaults to `30_000` ms (30 seconds)
 - The maximum amount of time in milliseconds that a route's preloaded route data will be cached for. If a route is not matched within this time frame, its loader data will be discarded.
 
-### `preSearchFilters` property
+### `preSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)
 
 - Type: `((search: TFullSearchSchema) => TFullSearchSchema)[]`
 - Optional
@@ -221,7 +228,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Each function will be called with the current search params and should return a new search params object that will be used to generate the link.
 - It has a `pre` prefix because it is called before the user-provided function that is passed to `navigate`/`Link` etc has a chance to modify the search params.
 
-### `postSearchFilters` property
+### `postSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)
 
 - Type: `((search: TFullSearchSchema) => TFullSearchSchema)[]`
 - Optional
