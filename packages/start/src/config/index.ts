@@ -36,6 +36,17 @@ import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
 import type { NitroOptions } from 'nitropack'
 
+import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
+
+type RouterType = 'client' | 'server' | 'ssr' | 'api'
+
+type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
+
+function getUserConfig(config?: StartUserViteConfig) {
+  const { plugins, ...userConfig } =
+    typeof config === 'function' ? config() : { ...config }
+  return { plugins, userConfig }
+}
 /**
  * Not all the deployment presets are fully functional or tested.
  * @see https://github.com/TanStack/router/pull/2002
@@ -153,13 +164,7 @@ const serverSchema = z
   })
   .and(z.custom<ServerOptions>())
 
-const viteSchema = z.object({
-  optimizeDeps: z.custom<vite.UserConfig['optimizeDeps']>().optional(),
-  plugins: z
-    .function()
-    .returns(z.array(z.custom<vite.PluginOption>()))
-    .optional(),
-})
+const viteSchema = z.custom<StartUserViteConfig>()
 
 const babelSchema = z.object({
   plugins: z
@@ -285,8 +290,8 @@ export function defineConfig(
           sourcemap: true,
         },
         plugins: () => [
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.client?.vite?.plugins?.() || []),
+          ...(getUserConfig(opts.vite).plugins || []),
+          ...(getUserConfig(opts.routers?.client?.vite).plugins || []),
           serverFunctions.client({
             runtime: '@tanstack/start/client-runtime',
           }),
@@ -303,12 +308,13 @@ export function defineConfig(
         ? [
             withPlugins([
               config('start-vite', {
+                ...getUserConfig(opts.vite).userConfig,
+                ...getUserConfig(opts.routers?.api?.vite).userConfig,
                 ssr: {
+                  ...(getUserConfig(opts.vite).userConfig.ssr || {}),
+                  ...(getUserConfig(opts.routers?.api?.vite).userConfig.ssr ||
+                    {}),
                   noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-                },
-                optimizeDeps: {
-                  ...opts.vite?.optimizeDeps,
-                  ...opts.routers?.api?.vite?.optimizeDeps,
                 },
               }),
               TanStackRouterVite({
@@ -326,8 +332,8 @@ export function defineConfig(
               handler: apiEntry,
               routes: tsrFileRouter({ tsrConfig, apiBase }),
               plugins: () => [
-                ...(opts.vite?.plugins?.() || []),
-                ...(opts.routers?.api?.vite?.plugins?.() || []),
+                ...(getUserConfig(opts.vite).plugins || []),
+                ...(getUserConfig(opts.routers?.api?.vite).plugins || []),
                 // serverTransform({
                 //   runtime: '@tanstack/start/server-runtime',
                 // }),
@@ -356,8 +362,8 @@ export function defineConfig(
             tsrConfig,
             clientBase,
           }),
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.ssr?.vite?.plugins?.() || []),
+          ...(getUserConfig(opts.vite).plugins || []),
+          ...(getUserConfig(opts.routers?.ssr?.vite).plugins || []),
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
@@ -403,8 +409,8 @@ export function defineConfig(
           //   runtime: '@vinxi/react-server-dom/runtime',
           //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
           // }),
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.server?.vite?.plugins?.() || []),
+          ...(getUserConfig(opts.vite).plugins || []),
+          ...(getUserConfig(opts.routers?.server?.vite).plugins || []),
         ],
       }),
     ],
@@ -442,18 +448,23 @@ function withPlugins(prePlugins: Array<any>, postPlugins?: Array<any>) {
 
 function withStartPlugins(
   opts: TanStackStartDefineConfigOptions,
-  router: 'client' | 'server' | 'ssr',
+  router: RouterType,
 ) {
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
+  const { userConfig } = getUserConfig(opts.vite)
+  const { userConfig: routerUserConfig } = getUserConfig(
+    opts.routers?.[router]?.vite,
+  )
+
   return withPlugins(
     [
       config('start-vite', {
+        ...userConfig,
+        ...routerUserConfig,
         ssr: {
+          ...(userConfig.ssr || {}),
+          ...(routerUserConfig.ssr || {}),
           noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-        },
-        optimizeDeps: {
-          ...opts.vite?.optimizeDeps,
-          ...opts.routers?.[router]?.vite?.optimizeDeps,
         },
         // optimizeDeps: {
         //   include: ['@tanstack/start/server-runtime'],
