@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "goober": "^2.1.14"
+    "goober": "^2.1.16"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.2",
