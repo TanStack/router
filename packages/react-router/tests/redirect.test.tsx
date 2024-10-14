@@ -122,7 +122,11 @@ describe('redirect', () => {
         path: '/about',
         loader: async () => {
           await sleep(WAIT_TIME)
-          throw redirect({ to: '/nested/foo', hash: 'some-hash', search: { someSearch: 'hello123' } })
+          throw redirect({
+            to: '/nested/foo',
+            hash: 'some-hash',
+            search: { someSearch: 'hello123' },
+          })
         },
       })
       const nestedRoute = createRoute({
@@ -136,7 +140,7 @@ describe('redirect', () => {
       const fooRoute = createRoute({
         validateSearch: (search) => {
           return {
-            someSearch : search.someSearch as string 
+            someSearch: search.someSearch as string,
           }
         },
         getParentRoute: () => nestedRoute,
@@ -166,7 +170,9 @@ describe('redirect', () => {
 
       expect(fooElement).toBeInTheDocument()
 
-      expect(router.state.location.href).toBe('/nested/foo?someSearch=hello123#some-hash')
+      expect(router.state.location.href).toBe(
+        '/nested/foo?someSearch=hello123#some-hash',
+      )
       expect(window.location.pathname).toBe('/nested/foo')
 
       expect(nestedLoaderMock).toHaveBeenCalled()
