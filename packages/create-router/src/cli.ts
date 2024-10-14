@@ -3,12 +3,13 @@ import { Command, InvalidArgumentError } from 'commander'
 import {
   NAME,
   SUPPORTED_BUNDLERS,
+  SUPPORTED_IDES,
   SUPPORTED_PACKAGE_MANAGERS,
 } from './constants'
 import { validateProjectName } from './utils/validateProjectName'
 import { getPackageManager } from './utils/getPackageManager'
 import { packageJson } from './utils/packageJson'
-import type { Bundler, PackageManager } from './constants'
+import type { Bundler, Ide, PackageManager } from './constants'
 
 let directory: string | undefined
 
@@ -46,6 +47,23 @@ export const command = new Command(NAME)
       return value as Bundler
     },
   )
+  .option<Ide>(
+    `--ide <${SUPPORTED_IDES.join('|')}>`,
+    `use this IDE (${SUPPORTED_IDES.join(', ')})`,
+    (value) => {
+      if (!SUPPORTED_IDES.includes(value as Ide)) {
+        throw new InvalidArgumentError(
+          `Invalid IDE: ${value}. Only the following are allowed: ${SUPPORTED_IDES.join(', ')}`,
+        )
+      }
+      return value as Ide
+    },
+  )
+  .option(
+    '--open-project',
+    'Open the generated project in the IDE after creation. This requires option --ide to be set.',
+    false,
+  )
   .option(
     '--skip-install',
     'Explicitly tell the CLI to skip installing packages.',
@@ -75,8 +93,10 @@ export const command = new Command(NAME)
 const options = command.opts<{
   packageManager: PackageManager | undefined
   bundler: Bundler | undefined
+  ide: Ide | undefined
   skipInstall: boolean
-  skipBuild: false
+  skipBuild: boolean
+  openProject: boolean
 }>()
 
 export const cli = { options, args: command.args, directory }

@@ -36,6 +36,7 @@
     "@inquirer/prompts": "^5.5.0",
     "@types/cross-spawn": "^6.0.6",
     "@types/validate-npm-package-name": "^4.0.2",
+    "@types/which": "^3.0.4",
     "commander": "^12.1.0",
     "cross-spawn": "^7.0.3",
     "fast-glob": "^3.3.2",
@@ -119,5 +120,8 @@
     "react-dom": {
       "optional": true
     }
+  },
+  "dependencies": {
+    "which": "^5.0.0"
   }
 }
