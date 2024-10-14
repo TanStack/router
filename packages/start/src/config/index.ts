@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url'
 import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import { TanStackStartVite } from '@tanstack/start-vite-plugin'
+import {
+  TanStackStartVite,
+  TanStackStartViteDeadCodeElimination,
+} from '@tanstack/start-vite-plugin'
 import {
   configSchema,
   getConfig,
@@ -424,11 +427,15 @@ type TempRouter = Extract<
   }
 }
 
-function withPlugins(plugins: Array<any>) {
+function withPlugins(prePlugins: Array<any>, postPlugins?: Array<any>) {
   return (router: TempRouter) => {
     return {
       ...router,
-      plugins: async () => [...plugins, ...((await router.plugins?.()) ?? [])],
+      plugins: async () => [
+        ...prePlugins,
+        ...((await router.plugins?.()) ?? []),
+        ...(postPlugins ?? []),
+      ],
     }
   }
 }
@@ -438,28 +445,31 @@ function withStartPlugins(
   router: 'client' | 'server' | 'ssr',
 ) {
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
-  return withPlugins([
-    config('start-vite', {
-      ssr: {
-        noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-      },
-      optimizeDeps: {
-        ...opts.vite?.optimizeDeps,
-        ...opts.routers?.[router]?.vite?.optimizeDeps,
-      },
-      // optimizeDeps: {
-      //   include: ['@tanstack/start/server-runtime'],
-      // },
-    }),
-    TanStackRouterVite({
-      ...tsrConfig,
-      autoCodeSplitting: true,
-      experimental: {
-        ...tsrConfig.experimental,
-      },
-    }),
-    TanStackStartVite(),
-  ])
+  return withPlugins(
+    [
+      config('start-vite', {
+        ssr: {
+          noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+        },
+        optimizeDeps: {
+          ...opts.vite?.optimizeDeps,
+          ...opts.routers?.[router]?.vite?.optimizeDeps,
+        },
+        // optimizeDeps: {
+        //   include: ['@tanstack/start/server-runtime'],
+        // },
+      }),
+      TanStackRouterVite({
+        ...tsrConfig,
+        autoCodeSplitting: true,
+        experimental: {
+          ...tsrConfig.experimental,
+        },
+      }),
+      TanStackStartVite(),
+    ],
+    [TanStackStartViteDeadCodeElimination()],
+  )
 }
 
 // function resolveRelativePath(p: string) {
