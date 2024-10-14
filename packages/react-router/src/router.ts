@@ -1657,7 +1657,8 @@ export class Router<
       const parsed = parseHref(href, {})
       rest.to = parsed.pathname
       rest.search = this.options.parseSearch(parsed.search)
-      rest.hash = parsed.hash
+      // remove the leading `#` from the hash
+      rest.hash = parsed.hash.slice(1)
     }
 
     const location = this.buildLocation({
