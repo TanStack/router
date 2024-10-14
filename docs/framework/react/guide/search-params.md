@@ -563,7 +563,7 @@ Since this specific use case is quite common, TanStack Router provides a generic
 
 ```tsx
 import { z } from 'zod'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, retainSearchParams } from '@tanstack/react-router'
 import { zodSearchValidator } from '@tanstack/router-zod-adapter'
 
 const searchSchema = z.object({
