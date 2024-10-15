@@ -9,7 +9,7 @@ Static prerendering is the process of generating static HTML files for your appl
 
 ## Prerendering, powered by Nitro
 
-TanStack Start is built on Nitro, which means we can take advantage of Nitro's prerendering capabilities. Nitro can prerender your application to static HTML files, which can then be served to users without having to generate them on the fly. To prerender your application, you can add the `deployment.prerender` option to your `app.config.js` file:
+TanStack Start is built on Nitro, which means we can take advantage of Nitro's prerendering capabilities. Nitro can prerender your application to static HTML files, which can then be served to users without having to generate them on the fly. To prerender your application, you can add the `server.prerender` option to your `app.config.js` file:
 
 ```js
 // app.config.js
@@ -17,7 +17,7 @@ TanStack Start is built on Nitro, which means we can take advantage of Nitro's p
 import { defineConfig } from '@tanstack/start/config'
 
 export default defineConfig({
-  deployment: {
+  server: {
     prerender: {
       routes: ['/'],
       crawlLinks: true,

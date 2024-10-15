@@ -13,9 +13,11 @@ export const routes = rootRoute('root.tsx', [
     route('$postId', 'posts/posts-detail.tsx'),
   ]),
   layout('first', 'layout/first-layout.tsx', [
-    layout('second', 'layout/second-layout.tsx', [
-      route('/layout-a', 'a.tsx'),
-      route('/layout-b', 'b.tsx'),
+    layout('layout/second-layout.tsx', [
+      route('route-without-file', [
+        route('/layout-a', 'a.tsx'),
+        route('/layout-b', 'b.tsx'),
+      ]),
     ]),
   ]),
   physical('/classic', 'file-based-subtree'),

@@ -9,10 +9,10 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.58.3",
-    "@tanstack/router-devtools": "^1.58.3",
+    "@tanstack/react-router": "^1.67.0",
+    "@tanstack/router-devtools": "^1.67.0",
     "redaxios": "^0.5.1",
-    "framer-motion": "^11.5.4",
+    "framer-motion": "^11.11.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zod": "^3.23.8"
@@ -20,7 +20,7 @@
   "devDependencies": {
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.5"
+    "@vitejs/plugin-react": "^4.3.2",
+    "vite": "^5.4.8"
   }
 }

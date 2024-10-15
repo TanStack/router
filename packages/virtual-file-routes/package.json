@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/virtual-file-routes",
-  "version": "1.56.0",
+  "version": "1.64.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",

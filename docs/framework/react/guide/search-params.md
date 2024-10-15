@@ -452,7 +452,7 @@ const ProductList = () => {
 }
 ```
 
-If you want to update the search params in a generic component that is rendered on multiple routes, specifiying `from` can be challenging.
+If you want to update the search params in a generic component that is rendered on multiple routes, specifying `from` can be challenging.
 
 In this scenario you can set `to="."` which will give you access to loosely typed search params.  
 Here is an example that illustrates this:
@@ -524,3 +524,56 @@ The `router.navigate` function works exactly the same way as the `useNavigate`/`
 ### `<Navigate search />`
 
 The `<Navigate search />` component works exactly the same way as the `useNavigate`/`navigate` hook/function above, but accepts its options as props instead of a function argument.
+
+## Transforming search with search middlewares
+
+When link hrefs are built, by default the only thing that matters for the query string part is the `search` property of a `<Link>`.
+
+TanStack Router provides a way to manipulate search params before the href is generated via **search middlewares**.
+Search middlewares are functions that transform the search parameters when generating new links for a route or its descendants.
+
+The following example shows how to make sure that for **every** link that is being built, the `rootValue` search param is added _if_ it is part of the current search params. If a link specifies `rootValue` inside `search`, then that value is used for building the link.
+
+```tsx
+import { z } from 'zod'
+import { createFileRoute } from '@tanstack/react-router'
+import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+
+const searchSchema = z.object({
+  rootValue: z.string().optional(),
+})
+
+export const Route = createRootRoute({
+  validateSearch: zodSearchValidator(searchSchema),
+  search: {
+    middlewares: [
+      ({search, next}) => {
+        const result = next(search)
+        return {
+          rootValue: search.rootValue
+          ...result
+        }
+      }
+    ]
+  }
+})
+```
+
+Since this specific use case is quite common, TanStack Router provides a generic implementation to retain search params via `retainSearchParams`:
+
+```tsx
+import { z } from 'zod'
+import { createFileRoute, retainSearchParams } from '@tanstack/react-router'
+import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+
+const searchSchema = z.object({
+  rootValue: z.string().optional(),
+})
+
+export const Route = createRootRoute({
+  validateSearch: zodSearchValidator(searchSchema),
+  search: {
+    middlewares: [retainSearchParams(['rootValue'])],
+  },
+})
+```

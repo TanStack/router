@@ -9,7 +9,7 @@ TanStack Router supports a number of powerful routing concepts that allow you to
 - [Index Routes](./routing-concepts.md#index-routes)
 - [Dynamic Route Segments](./routing-concepts.md#dynamic-route-segments)
 - [Splat / Catch-All Routes](./routing-concepts.md#splat--catch-all-routes)
-- [Pathless Routes](./routing-concepts.md#pathless--layout-routes)
+- [Pathless Routes](./routing-concepts.md#pathless-routes)
 - [Non-Nested Routes](./routing-concepts.md#non-nested-routes)
 - [Not-Found Routes](./routing-concepts.md#404--notfoundroutes)
 
@@ -148,7 +148,7 @@ For example, a route targeting the `files/$` path is a splat route. If the URL p
 
 ## Pathless Routes
 
-Routes that are prefixed with an underscore (`_`) are considered "pathless". and are used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL
+Routes that are prefixed with an underscore (`_`) are considered "pathless" and are used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL. You can use pathless routes to:
 
 - Wrap child routes with a layout component
 - Enforce a `loader` requirement before displaying any child routes

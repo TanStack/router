@@ -7,6 +7,9 @@ export default defineConfig({
   source: {
     entry: { index: './src/main.tsx' },
   },
+  html: {
+    template: './index.html',
+  },
   tools: {
     rspack: {
       plugins: [TanStackRouterRspack()],

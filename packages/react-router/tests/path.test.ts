@@ -3,6 +3,7 @@ import {
   exactPathTest,
   getLastPathSegment,
   interpolatePath,
+  matchPathname,
   removeBasepath,
   removeTrailingSlash,
   resolvePath,
@@ -278,84 +279,56 @@ describe('interpolatePath', () => {
   })
 })
 
-describe('getLastPathSegment', () => {
+describe('matchPathname', () => {
   it.each([
     {
-      name: 'should return the last segment with leading slash when path ends with a slash',
-      path: '/_protected/test/',
-      expected: '/test',
+      name: 'should match the root path that start with the basepath',
+      basepath: '/basepath',
+      pathname: '/basepath',
+      matchLocation: {
+        to: '/',
+      },
+      expected: {},
     },
     {
-      name: 'should return the last segment with leading slash when path does not end with a slash',
-      path: '/_protected/test',
-      expected: '/test',
+      name: 'should match the path that start with the basepath',
+      basepath: '/basepath',
+      pathname: '/basepath/abc',
+      matchLocation: {
+        to: '/abc',
+      },
+      expected: {},
     },
     {
-      name: 'should return the last segment in a longer path with trailing slash',
-      path: '/another/path/example/',
-      expected: '/example',
-    },
-    {
-      name: 'should return the last segment in a longer path without trailing slash',
-      path: '/another/path/example',
-      expected: '/example',
-    },
-    {
-      name: 'should return the only segment with leading slash',
-      path: '/single',
-      expected: '/single',
-    },
-    {
-      name: 'should return the last segment with leading slash in a nested path',
-      path: '/trailing/slash/',
-      expected: '/slash',
-    },
-    {
-      name: 'should return undefined for root path',
-      path: '/',
+      name: 'should not match the root path that does not start with the basepath',
+      basepath: '/basepath',
+      pathname: '/',
+      matchLocation: {
+        to: '/',
+      },
       expected: undefined,
     },
     {
-      name: 'should return undefined for empty string',
-      path: '',
+      name: 'should not match the path that does not start with the basepath',
+      basepath: '/basepath',
+      pathname: '/abc',
+      matchLocation: {
+        to: '/abc',
+      },
       expected: undefined,
     },
     {
-      name: 'should handle paths with numbers correctly',
-      path: '/users/123/',
-      expected: '/123',
-    },
-    {
-      name: 'should handle paths with special characters',
-      path: '/path/with-special_chars!',
-      expected: '/with-special_chars!',
-    },
-    {
-      name: 'should handle paths with multiple special characters and trailing slash',
-      path: '/path/with/$pecial-Chars123/',
-      expected: '/$pecial-Chars123',
-    },
-    {
-      name: 'should return undefined when there is no segment after the last slash',
-      path: '/path/to/directory//',
+      name: 'should not match the path that match partial of the basepath',
+      basepath: '/base',
+      pathname: '/basepath/abc',
+      matchLocation: {
+        to: '/abc',
+      },
       expected: undefined,
     },
-    {
-      name: 'should handle paths without leading slash',
-      path: 'no/leading/slash',
-      expected: '/slash',
-    },
-    {
-      name: 'should handle single slash',
-      path: '/',
-      expected: undefined,
-    },
-    {
-      name: 'should handle path with multiple trailing slashes',
-      path: '/multiple/trailing/slashes///',
-      expected: undefined,
-    },
-  ])('$name', ({ path, expected }) => {
-    expect(getLastPathSegment(path)).toBe(expected)
+  ])('$name', ({ basepath, pathname, matchLocation, expected }) => {
+    expect(matchPathname(basepath, pathname, matchLocation)).toStrictEqual(
+      expected,
+    )
   })
 })
