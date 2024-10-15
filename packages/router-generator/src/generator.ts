@@ -591,9 +591,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
-        const filePathId = getFilePathIdFromPath(
-          routeNode.routePath,
-        )
+        const filePathId = getFilePathIdFromPath(routeNode.routePath)
 
         return `'${filePathId}': {
           id: '${filePathId}'
@@ -661,13 +659,11 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     const routesManifest = {
       __root__: {
         filePath: rootRouteNode.filePath,
-        children: routeTree.map(
-          (d) => getFilePathIdFromPath(d.routePath),
-        ),
+        children: routeTree.map((d) => getFilePathIdFromPath(d.routePath)),
       },
       ...Object.fromEntries(
         routeNodes.map((d) => {
-          const filePathId  = getFilePathIdFromPath(d.routePath)
+          const filePathId = getFilePathIdFromPath(d.routePath)
 
           return [
             filePathId,
@@ -676,9 +672,8 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
               parent: d.parent?.routePath
                 ? getFilePathIdFromPath(d.parent.routePath)
                 : undefined,
-              children: d.children?.map(
-                (childRoute) =>
-                  getFilePathIdFromPath(childRoute.routePath),
+              children: d.children?.map((childRoute) =>
+                getFilePathIdFromPath(childRoute.routePath),
               ),
             },
           ]

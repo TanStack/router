@@ -46,7 +46,7 @@ function RootComponent() {
         <Link
           to="/inside"
           data-testid="link-to-route-inside-group"
-          search={{hello: 'world'}}
+          search={{ hello: 'world' }}
           activeProps={{
             className: 'font-bold',
           }}
@@ -56,7 +56,7 @@ function RootComponent() {
         <Link
           to="/lazyinside"
           data-testid="link-to-lazy-route-inside-group"
-          search={{hello: 'world'}}
+          search={{ hello: 'world' }}
           activeProps={{
             className: 'font-bold',
           }}
