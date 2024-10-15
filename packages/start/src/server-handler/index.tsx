@@ -5,12 +5,18 @@ import {
   isRedirect,
 } from '@tanstack/react-router'
 import invariant from 'tiny-invariant'
-import { eventHandler, toWebRequest } from 'vinxi/http'
+import {
+  eventHandler,
+  getEvent,
+  getResponseStatus,
+  toWebRequest,
+} from 'vinxi/http'
 import { getManifest } from 'vinxi/manifest'
 import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../constants'
+import type { AnyRedirect, NotFoundError } from '@tanstack/react-router'
 import type { H3Event } from 'vinxi/server'
 
 export default eventHandler(handleServerAction)
@@ -110,14 +116,17 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
       //   return new Response(null, { status: 200 })
       // }
 
-      if (isRedirect(result) || isNotFound(result)) {
-        return redirectOrNotFoundResponse(result)
+      if (isRedirect(result)) {
+        return handleRedirect(result)
+      }
+      if (isNotFound(result)) {
+        return handleNotFound(result)
       }
 
       return new Response(
         result !== undefined ? JSON.stringify(result) : undefined,
         {
-          status: 200,
+          status: getResponseStatus(getEvent()),
           headers: {
             'Content-Type': 'application/json',
             [serverFnReturnTypeHeader]: 'json',
@@ -134,8 +143,11 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
       // The client will check for __redirect and __notFound keys,
       // and if they exist, it will handle them appropriately.
 
-      if (isRedirect(error) || isNotFound(error)) {
-        return redirectOrNotFoundResponse(error)
+      if (isRedirect(error)) {
+        return handleRedirect(error)
+      }
+      if (isNotFound(error)) {
+        return handleNotFound(error)
       }
 
       console.error('Server Fn Error!')
@@ -143,7 +155,7 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
       console.info()
 
       return new Response(JSON.stringify(error), {
-        status: 500,
+        status: getResponseStatus(getEvent()),
         headers: {
           'Content-Type': 'application/json',
           [serverFnReturnTypeHeader]: 'error',
@@ -155,10 +167,7 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
   if (process.env.NODE_ENV === 'development')
     console.info(`ServerFn Response: ${response.status}`)
 
-  if (
-    response.status === 200 &&
-    response.headers.get('Content-Type') === 'application/json'
-  ) {
+  if (response.headers.get('Content-Type') === 'application/json') {
     const cloned = response.clone()
     const text = await cloned.text()
     const payload = text ? JSON.stringify(JSON.parse(text)) : 'undefined'
@@ -173,15 +182,28 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
   return response
 }
 
-function redirectOrNotFoundResponse(error: any) {
-  const { headers, ...rest } = error
+function handleRedirect(redirect: AnyRedirect) {
+  const { headers, ...rest } = redirect
 
   return new Response(JSON.stringify(rest), {
-    status: 200,
+    status: redirect.statusCode ?? 307,
     headers: {
       'Content-Type': 'application/json',
       [serverFnReturnTypeHeader]: 'json',
-      ...(error.headers || {}),
+      ...(headers || {}),
+    },
+  })
+}
+
+function handleNotFound(error: NotFoundError) {
+  const { headers, ...rest } = error
+
+  return new Response(JSON.stringify(rest), {
+    status: 404,
+    headers: {
+      'Content-Type': 'application/json',
+      [serverFnReturnTypeHeader]: 'json',
+      ...(headers || {}),
     },
   })
 }
