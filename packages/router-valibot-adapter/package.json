@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-valibot-adapter",
-  "version": "1.67.0",
+  "version": "1.69.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
