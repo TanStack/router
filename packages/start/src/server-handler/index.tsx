@@ -2,7 +2,7 @@
 import {
   defaultParseSearch,
   isNotFound,
-  isRedirect
+  isRedirect,
 } from '@tanstack/react-router'
 import invariant from 'tiny-invariant'
 import {
@@ -16,9 +16,7 @@ import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../constants'
-import type {
-  AnyRedirect,
-  NotFoundError} from '@tanstack/react-router';
+import type { AnyRedirect, NotFoundError } from '@tanstack/react-router'
 import type { H3Event } from 'vinxi/server'
 
 export default eventHandler(handleServerAction)
@@ -199,7 +197,7 @@ function handleRedirect(redirect: AnyRedirect) {
 
 function handleNotFound(error: NotFoundError) {
   const { headers, ...rest } = error
-  
+
   return new Response(JSON.stringify(rest), {
     status: 404,
     headers: {
