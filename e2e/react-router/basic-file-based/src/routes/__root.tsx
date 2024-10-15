@@ -44,6 +44,26 @@ function RootComponent() {
           Layout
         </Link>{' '}
         <Link
+          to="/inside"
+          data-testid="link-to-route-inside-group"
+          search={{ hello: 'world' }}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Inside Group
+        </Link>{' '}
+        <Link
+          to="/lazyinside"
+          data-testid="link-to-lazy-route-inside-group"
+          search={{ hello: 'world' }}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Lazy Inside Group
+        </Link>{' '}
+        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
