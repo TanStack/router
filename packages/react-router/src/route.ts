@@ -16,7 +16,7 @@ import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, Router } from './router'
-import type { Assign, Constrain, Expand, NoInfer } from './utils'
+import type { Assign, Constrain, Expand, NoInfer, PickRequired } from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
@@ -1029,7 +1029,7 @@ export class Route<
       path = trimPathLeft(path)
     }
 
-    const customId = path || options?.id
+    const customId = options?.id || path
 
     // Strip the parentId prefix from the first level of children
     let id = isRoot

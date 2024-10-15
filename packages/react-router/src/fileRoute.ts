@@ -6,7 +6,6 @@ import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
-import { getLastPathSegment } from './path'
 import type { Constrain } from './utils'
 import type {
   AnyContext,
@@ -22,7 +21,7 @@ import type {
   UpdatableRouteOptions,
 } from './route'
 import type { MakeRouteMatch } from './Matches'
-import type { RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
@@ -262,10 +261,7 @@ export function createLazyRoute<
   TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
 >(id: TId) {
   return (opts: LazyRouteOptions) => {
-    return new LazyRoute<TRoute>({
-      id: getLastPathSegment(id as any) as any,
-      ...opts,
-    })
+    return new LazyRoute<TRoute>({ id: id as any, ...opts })
   }
 }
 
@@ -280,8 +276,5 @@ export function createLazyFileRoute<
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
 >(id: TFilePath) {
   return (opts: LazyRouteOptions) =>
-    new LazyRoute<TRoute>({
-      id: getLastPathSegment(removeGroups(id)) as any,
-      ...opts,
-    })
+    new LazyRoute<TRoute>({ id: removeGroups(id), ...opts })
 }
