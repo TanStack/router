@@ -13,6 +13,7 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
+    "@tanstack/router-zod-adapter": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1",
