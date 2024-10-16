@@ -447,11 +447,21 @@ export interface RouterOptions<
    * While usually automatic, sometimes it can be useful to force the router into a server-side state, e.g. when using the router in a non-browser environment that has access to a global.document object.
    *
    * @default typeof document !== 'undefined'
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#isserver property)
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#isserver-property)
    */
   isServer?: boolean
 
   defaultSsr?: boolean
+
+  search?: {
+    /**
+     * Configures how unknown search params (= not returned by any `validateSearch`) are treated.
+     *
+     * @default false
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#search.strict-property)
+     */
+    strict?: boolean
+  }
 }
 
 export interface RouterErrorSerializer<TSerializedError> {
@@ -1511,6 +1521,7 @@ export class Router<
       let search = applyMiddlewares()
 
       if (opts._includeValidateSearch) {
+        let validatedSearch = this.options.search?.strict ? {} : search
         matchedRoutesResult?.matchedRoutes.forEach((route) => {
           try {
             if (route.options.validateSearch) {
@@ -1518,12 +1529,16 @@ export class Router<
                 typeof route.options.validateSearch === 'object'
                   ? route.options.validateSearch.parse
                   : route.options.validateSearch
-              search = { ...search, ...validator(search) }
+              validatedSearch = {
+                ...validatedSearch,
+                ...validator({ ...validatedSearch, ...search }),
+              }
             }
           } catch (e) {
             // ignore errors here because they are already handled in matchRoutes
           }
         })
+        search = validatedSearch
       }
       search = replaceEqualDeep(fromSearch, search)
       const searchStr = this.options.stringifySearch(search)

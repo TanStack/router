@@ -39,6 +39,7 @@ export function Transitioner() {
       params: true,
       hash: true,
       state: true,
+      _includeValidateSearch: true,
     })
 
     if (
