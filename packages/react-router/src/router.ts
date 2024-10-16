@@ -2524,14 +2524,21 @@ export class Router<
     return matches
   }
 
-  invalidate = () => {
-    const invalidate = (d: MakeRouteMatch<TRouteTree>) => ({
-      ...d,
-      invalid: true,
-      ...(d.status === 'error'
-        ? ({ status: 'pending', error: undefined } as const)
-        : {}),
-    })
+  invalidate = (opts?: {
+    filter?: (d: MakeRouteMatch<TRouteTree>) => boolean
+  }) => {
+    const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
+      if (opts?.filter?.(d) ?? true) {
+        return {
+          ...d,
+          invalid: true,
+          ...(d.status === 'error'
+            ? ({ status: 'pending', error: undefined } as const)
+            : {}),
+        }
+      }
+      return d
+    }
 
     this.__store.setState((s) => ({
       ...s,
