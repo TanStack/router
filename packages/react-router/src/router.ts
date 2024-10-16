@@ -2351,37 +2351,41 @@ export class Router<
 
                         // Actually run the loader and handle the result
                         try {
-                          route._lazyPromise =
-                            route._lazyPromise ||
-                            (route.lazyFn
-                              ? route.lazyFn().then((lazyRoute) => {
-                                  const { id, ...options } = lazyRoute.options
+                          if (route._lazyPromise === undefined) {
+                            if (route.lazyFn) {
+                              route._lazyPromise = route
+                                .lazyFn()
+                                .then((lazyRoute) => {
+                                  // explicitly don't copy over the lazy route's id
+                                  const { id: _id, ...options } =
+                                    lazyRoute.options
                                   Object.assign(route.options, options)
                                 })
-                              : Promise.resolve())
+                            } else {
+                              route._lazyPromise = Promise.resolve()
+                            }
+                          }
 
                           // If for some reason lazy resolves more lazy components...
                           // We'll wait for that before pre attempt to preload any
                           // components themselves.
-                          const componentsPromise =
-                            this.getMatch(matchId)!.componentsPromise ||
-                            route._lazyPromise.then(() =>
-                              Promise.all(
-                                componentTypes.map(async (type) => {
-                                  const component = route.options[type]
-
-                                  if ((component as any)?.preload) {
-                                    await (component as any).preload()
-                                  }
-                                }),
-                              ),
+                          if (route._componentsPromise === undefined) {
+                            route._componentsPromise = route._lazyPromise.then(
+                              () =>
+                                Promise.all(
+                                  componentTypes.map(async (type) => {
+                                    const component = route.options[type]
+                                    if ((component as any)?.preload) {
+                                      await (component as any).preload()
+                                    }
+                                  }),
+                                ),
                             )
+                          }
 
-                          // Otherwise, load the route
                           updateMatch(matchId, (prev) => ({
                             ...prev,
                             isFetching: 'loader',
-                            componentsPromise,
                           }))
 
                           // Kick off the loader!
@@ -2457,9 +2461,9 @@ export class Router<
                           }))
                         }
 
-                        // Last but not least, wait for the the component
+                        // Last but not least, wait for the the components
                         // to be preloaded before we resolve the match
-                        await this.getMatch(matchId)!.componentsPromise
+                        await route._componentsPromise
                       } catch (err) {
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
