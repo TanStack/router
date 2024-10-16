@@ -10,14 +10,14 @@ For the following functions, the property order of the passed in object matters 
 - `createRootRoute`
 - `createRootRouteWithContext`
 
-The correct property order is as follows:
+The correct property order is as follows
 
-- `params`
-- `validateSearch`
-- `loaderDeps`
+- `params`, `validateSearch`
+- `loaderDeps`, `search.middlewares`
 - `context`
 - `beforeLoad`
 - `loader`
+- `onEnter`, `onStay`, `onLeave`, `meta`, `links`, `scripts`, `headers`
 
 All other properties are insensitive to the order as they do not depend on type inference.
 
