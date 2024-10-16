@@ -16,7 +16,6 @@ import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../constants'
-import type { AnyRedirect, NotFoundError } from '@tanstack/react-router'
 import type { H3Event } from 'vinxi/server'
 
 export default eventHandler(handleServerAction)
@@ -116,11 +115,8 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
       //   return new Response(null, { status: 200 })
       // }
 
-      if (isRedirect(result)) {
-        return handleRedirect(result)
-      }
-      if (isNotFound(result)) {
-        return handleNotFound(result)
+      if (isRedirect(result) || isNotFound(result)) {
+        return redirectOrNotFoundResponse(result)
       }
 
       return new Response(
@@ -143,11 +139,8 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
       // The client will check for __redirect and __notFound keys,
       // and if they exist, it will handle them appropriately.
 
-      if (isRedirect(error)) {
-        return handleRedirect(error)
-      }
-      if (isNotFound(error)) {
-        return handleNotFound(error)
+      if (isRedirect(error) || isNotFound(error)) {
+        return redirectOrNotFoundResponse(error)
       }
 
       console.error('Server Fn Error!')
@@ -182,28 +175,15 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
   return response
 }
 
-function handleRedirect(redirect: AnyRedirect) {
-  const { headers, ...rest } = redirect
-
-  return new Response(JSON.stringify(rest), {
-    status: redirect.statusCode ?? 307,
-    headers: {
-      'Content-Type': 'application/json',
-      [serverFnReturnTypeHeader]: 'json',
-      ...(headers || {}),
-    },
-  })
-}
-
-function handleNotFound(error: NotFoundError) {
+function redirectOrNotFoundResponse(error: any) {
   const { headers, ...rest } = error
 
   return new Response(JSON.stringify(rest), {
-    status: 404,
+    status: 200,
     headers: {
       'Content-Type': 'application/json',
       [serverFnReturnTypeHeader]: 'json',
-      ...(headers || {}),
+      ...(error.headers || {}),
     },
   })
 }
