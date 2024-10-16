@@ -2,29 +2,10 @@ import type {
   AnyValidator,
   Constrain,
   Expand,
+  MergeAll,
   ResolveValidatorInput,
   ResolveValidatorOutput,
 } from '@tanstack/react-router'
-
-/**
- * To be added to router types
- */
-type UnionToIntersection<T> = (
-  T extends any ? (arg: T) => any : never
-) extends (arg: infer T) => any
-  ? T
-  : never
-
-/**
- * To be added to router types
- * Merges everything in a union into one object.
- * This mapped type is homomorphic which means it preserves stuff! :)
- */
-type MergeAll<T> = {
-  [TKey in keyof UnionToIntersection<T>]: T extends any
-    ? T[TKey & keyof T]
-    : never
-}
 
 /**
  * Turns all middleware into a union

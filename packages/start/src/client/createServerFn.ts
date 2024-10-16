@@ -2,13 +2,10 @@ import invariant from 'tiny-invariant'
 import type {
   AnyServerMiddleware,
   ResolveAllMiddlewareContext,
+  ResolveAllMiddlewareInput,
   ResolveAllMiddlewareOutput,
 } from './createServerMiddleware'
-import type {
-  AnyValidator,
-  Constrain,
-  ResolveValidatorInput,
-} from '@tanstack/react-router'
+import type { AnyValidator, Constrain } from '@tanstack/react-router'
 
 //
 
@@ -20,39 +17,40 @@ export type CompiledFetcherFnOptions = {
   method: Method
   data: unknown
   requestInit?: RequestInit
-  middleware: ReadonlyArray<AnyServerMiddleware>
 }
 
-export type IsOptional<T> = [T] extends [undefined] ? true : false
-
-export type Fetcher<TInput, TResponse> = {
+export type Fetcher<TMiddlewares, TValidator, TResponse> = {
   url: string
   __execute: (input: any) => Promise<{
     input: any
     context: Record<string, any>
   }>
-} & FetcherImpl<TInput, TResponse>
+} & FetcherImpl<TMiddlewares, TValidator, TResponse>
 
-export type FetcherImpl<TInput, TResponse> =
-  IsOptional<TInput> extends true
-    ? (opts?: FetcherOptions<TInput>) => Promise<FetcherData<TResponse>>
-    : (opts: FetcherOptions<TInput>) => Promise<FetcherData<TResponse>>
-
-export type FetcherOptions<TInput> = FetcherBaseOptions &
-  FetcherDataOptions<TInput>
+export type FetcherImpl<
+  TMiddlewares,
+  TValidator,
+  TResponse,
+  TInput = ResolveAllMiddlewareInput<TMiddlewares, TValidator>,
+> = undefined extends TInput
+  ? (
+      opts?: OptionalFetcherDataOptions<TInput>,
+    ) => Promise<FetcherData<TResponse>>
+  : (
+      opts: RequiredFetcherDataOptions<TInput>,
+    ) => Promise<FetcherData<TResponse>>
 
 export type FetcherBaseOptions = {
   requestInit?: RequestInit
 }
 
-export type FetcherDataOptions<TInput> =
-  IsOptional<TInput> extends true
-    ? {
-        data?: ResolveValidatorInput<TInput>
-      }
-    : {
-        data: ResolveValidatorInput<TInput>
-      }
+export interface RequiredFetcherDataOptions<TInput> extends FetcherBaseOptions {
+  data: TInput
+}
+
+export interface OptionalFetcherDataOptions<TInput> extends FetcherBaseOptions {
+  data?: TInput
+}
 
 export type FetcherData<TResponse> = WrapRSCs<
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
@@ -74,19 +72,19 @@ export type RscStream<T> = {
 
 type Method = 'GET' | 'POST'
 
-export type ServerFn<TMethod, TMiddlewares, TInput, TResponse> = (
-  ctx: ServerFnCtx<TMethod, TMiddlewares, TInput>,
+export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
+  ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
 ) => Promise<TResponse> | TResponse
 
-export type ServerFnCtx<TMethod, TMiddlewares, TInput> = {
+export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
   method: TMethod
-  input: ResolveAllMiddlewareOutput<TMiddlewares, TInput>
+  input: ResolveAllMiddlewareOutput<TMiddlewares, TValidator>
   context: ResolveAllMiddlewareContext<TMiddlewares>
 }
 
-export type CompiledFetcherFn<TInput, TResponse> = {
+export type CompiledFetcherFn<TResponse> = {
   (
-    opts: FetcherOptions<TInput>,
+    opts: CompiledFetcherFnOptions,
     ctx: { options: ServerFnBaseOptions },
   ): Promise<TResponse>
   url: string
@@ -110,65 +108,65 @@ type ServerFnBase<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares = unknown,
-  TInput = unknown,
+  TValidator = unknown,
 > = {
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>
+  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
   middleware: <const TNewMiddlewares>(
     middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyServerMiddleware>>,
   ) => Pick<
-    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TInput>,
+    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TValidator>,
     'input' | 'handler'
   >
-  input: <TNewServerValidator>(
-    input: Constrain<TNewServerValidator, AnyValidator>,
+  input: <TValidator>(
+    input: Constrain<TValidator, AnyValidator>,
   ) => Pick<
-    ServerFnBase<TMethod, TResponse, TMiddlewares, TNewServerValidator>,
+    ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator>,
     'handler' | 'middleware'
   >
-  handler: (
-    fn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>,
-  ) => Fetcher<TInput, TResponse>
+  handler: <TNewResponse>(
+    fn?: ServerFn<TMethod, TMiddlewares, TValidator, TNewResponse>,
+  ) => Fetcher<TMiddlewares, TValidator, TNewResponse>
 }
 
 export function createServerFn<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares = unknown,
-  TInput = undefined,
+  TValidator = undefined,
 >(
   options?: {
     method: TMethod
   },
-  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TInput>,
-): ServerFnBase<TMethod, TResponse, TMiddlewares, TInput> {
+  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
+): ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator> {
   const resolvedOptions = (__opts || options) as ServerFnBaseOptions<
     TMethod,
     TResponse,
     TMiddlewares,
-    TInput
+    TValidator
   >
 
   return {
     options: resolvedOptions as any,
     middleware: (middleware) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
+      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
         undefined,
         Object.assign(resolvedOptions, { middleware }),
       ) as any
     },
     input: (input) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TInput>(
+      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
         undefined,
         Object.assign(resolvedOptions, { input }),
       ) as any
     },
-    handler: (...args): Fetcher<TInput, TResponse> => {
+    handler: (...args) => {
       // This function signature changes due to AST transformations
       // in the babel plugin. We need to cast it to the correct
       // function signature post-transformation
       const [extractedFn, __serverOnlyOriginalFn] = args as unknown as [
-        CompiledFetcherFn<TInput, TResponse>,
-        ServerFn<TMethod, TMiddlewares, TInput, TResponse>,
+        CompiledFetcherFn<TResponse>,
+        ServerFn<TMethod, TMiddlewares, TValidator, TResponse>,
       ]
 
       // Keep the original function around so we can use it
@@ -186,7 +184,7 @@ export function createServerFn<
       // We want to make sure the new function has the same
       // properties as the original function
       return Object.assign(
-        (opts?: FetcherOptions<TInput>) => {
+        (opts?: CompiledFetcherFnOptions) => {
           // Execute the extracted function. This may be a direct
           // call to handle the server function, or it may be a call
           // to make a fetch request from the client to the server
@@ -206,7 +204,7 @@ export function createServerFn<
           ...extractedFn,
           __execute: makeExecuterFn(resolvedOptions),
         },
-      ) as Fetcher<TInput, TResponse>
+      ) as any
     },
   }
 }
@@ -276,7 +274,7 @@ async function executeMiddleware(
       // Execute the middleware's useFn
       return nextMiddleware.options.useFn({
         input: ctx.input,
-        context: ctx.context,
+        context: ctx.context as never,
         next: (userResult) => {
           // Take the user provided context
           // and merge it with the current context

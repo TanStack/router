@@ -39,7 +39,7 @@ test('createServerMiddleware merges context', () => {
   const middleware1 = createServerMiddleware({
     id: 'test1',
   }).use(async ({ context, next }) => {
-    expectTypeOf(context).toEqualTypeOf<{}>
+    expectTypeOf(context).toEqualTypeOf<never>
     expectTypeOf(await next({ context: { a: true } })).toEqualTypeOf<{
       'use functions must return the result of next()': true
       context: { a: boolean }
@@ -50,7 +50,7 @@ test('createServerMiddleware merges context', () => {
   const middleware2 = createServerMiddleware({
     id: 'test2',
   }).use(({ context, next }) => {
-    expectTypeOf(context).toEqualTypeOf<{}>()
+    expectTypeOf(context).toEqualTypeOf<never>()
     return next({ context: { b: 'test' } })
   })
 
@@ -84,8 +84,8 @@ test('createServerMiddleware merges input', () => {
         a: 'a',
       } as const
     })
-    .use(({ data, next }) => {
-      expectTypeOf(data).toEqualTypeOf<{ readonly a: 'a' }>()
+    .use(({ input, next }) => {
+      expectTypeOf(input).toEqualTypeOf<{ readonly a: 'a' }>()
       return next()
     })
 
@@ -96,16 +96,16 @@ test('createServerMiddleware merges input', () => {
         b: 'b',
       } as const
     })
-    .use(({ data, next }) => {
-      expectTypeOf(data).toEqualTypeOf<{ readonly a: 'a'; readonly b: 'b' }>
+    .use(({ input, next }) => {
+      expectTypeOf(input).toEqualTypeOf<{ readonly a: 'a'; readonly b: 'b' }>
       return next()
     })
 
   createServerMiddleware({ id: 'test3' })
     .middleware([middleware2])
     .input(() => ({ c: 'c' }) as const)
-    .use(({ next, data }) => {
-      expectTypeOf(data).toEqualTypeOf<{
+    .use(({ next, input }) => {
+      expectTypeOf(input).toEqualTypeOf<{
         readonly a: 'a'
         readonly b: 'b'
         readonly c: 'c'

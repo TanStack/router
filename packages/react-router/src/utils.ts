@@ -66,12 +66,12 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | TResult
   | ((prev: TPrevious) => TResult)
 
-export type MergeUnionObjects<TUnion> = TUnion extends MergeUnionPrimitive
+export type ExtractObjects<TUnion> = TUnion extends MergeAllPrimitive
   ? never
   : TUnion
 
-export type MergeUnionObject<TUnion> =
-  MergeUnionObjects<TUnion> extends infer TObj
+export type PartialMergeAllObject<TUnion> =
+  ExtractObjects<TUnion> extends infer TObj
     ? {
         [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
           ? TKey extends keyof TObj
@@ -81,7 +81,7 @@ export type MergeUnionObject<TUnion> =
       }
     : never
 
-export type MergeUnionPrimitive =
+export type MergeAllPrimitive =
   | ReadonlyArray<any>
   | number
   | string
@@ -89,15 +89,43 @@ export type MergeUnionPrimitive =
   | boolean
   | symbol
 
-export type MergeUnionPrimitives<TUnion> = TUnion extends MergeUnionPrimitive
+export type ExtractPrimitives<TUnion> = TUnion extends MergeAllPrimitive
   ? TUnion
   : TUnion extends object
     ? never
     : TUnion
 
-export type MergeUnion<TUnion> =
-  | MergeUnionPrimitives<TUnion>
-  | MergeUnionObject<TUnion>
+export type PartialMergeAll<TUnion> =
+  | ExtractPrimitives<TUnion>
+  | PartialMergeAllObject<TUnion>
+
+/**
+ * To be added to router types
+ */
+export type UnionToIntersection<T> = (
+  T extends any ? (arg: T) => any : never
+) extends (arg: infer T) => any
+  ? T
+  : never
+
+/**
+ * Merges everything in a union into one object.
+ * This mapped type is homomorphic which means it preserves stuff! :)
+ */
+export type MergeAllObjects<
+  TUnion,
+  TIntersected = UnionToIntersection<ExtractObjects<TUnion>>,
+> = [keyof TIntersected] extends [never]
+  ? never
+  : {
+      [TKey in keyof TIntersected]: TUnion extends any
+        ? TUnion[TKey & keyof TUnion]
+        : never
+    }
+
+export type MergeAll<TUnion> =
+  | MergeAllObjects<TUnion>
+  | ExtractPrimitives<TUnion>
 
 export type Constrain<T, TConstaint, TDefault = TConstaint> =
   | (T extends TConstaint ? T : never)
