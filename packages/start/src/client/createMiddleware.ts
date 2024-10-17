@@ -65,7 +65,6 @@ export interface MiddlewareOptions<TId, TMiddlewares, TValidator, TContext> {
   middleware?: TMiddlewares
   input?: Constrain<TValidator, AnyValidator>
   client?: MiddlewareClientFn<TMiddlewares, TValidator, TContext>
-  selectServerContext?: unknown
   server?: MiddlewareServerFn<TMiddlewares, TValidator, TContext>
 }
 
@@ -73,21 +72,34 @@ export type MiddlewareServerFn<TMiddlewares, TValidator, TContext> = (options: {
   input: ResolveAllMiddlewareOutput<TMiddlewares, NonNullable<TValidator>>
   context: ResolveAllMiddlewareContext<TMiddlewares>
   next: <TContext>(ctx?: {
-    context: TContext
-  }) => Promise<ResultWithContext<TContext>>
-}) => Promise<ResultWithContext<TContext>> | ResultWithContext<TContext>
+    context?: TContext
+  }) => Promise<ServerResultWithContext<TContext>>
+}) =>
+  | Promise<ServerResultWithContext<TContext>>
+  | ServerResultWithContext<TContext>
 
 export type MiddlewareClientFn<TMiddlewares, TValidator, TContext> = (options: {
   input: ResolveAllMiddlewareInput<TMiddlewares, NonNullable<TValidator>>
   context: ResolveAllMiddlewareContext<TMiddlewares>
   next: <TContext>(ctx?: {
-    context: TContext
-  }) => Promise<ResultWithContext<TContext>>
-}) => Promise<ResultWithContext<TContext>> | ResultWithContext<TContext>
+    context?: TContext
+    serverContext?: TServerContext
+    headers?: HeadersInit
+  }) => Promise<ClientResultWithContext<TContext>>
+}) =>
+  | Promise<ClientResultWithContext<TContext>>
+  | ClientResultWithContext<TContext>
 
-export type ResultWithContext<TContext> = {
+export type ServerResultWithContext<TContext> = {
   'use functions must return the result of next()': true
   context: TContext
+}
+
+export type ClientResultWithContext<TContext> = {
+  'use functions must return the result of next()': true
+  context: TContext
+  serverContext: TServerContext
+  headers: HeadersInit
 }
 
 export type AnyMiddleware = MiddlewareTypes<any, any, any, any>
@@ -181,12 +193,6 @@ export function createMiddleware<
         Object.assign(resolvedOptions, { client }),
       ) as any
     },
-    sendClientContext: (sendClientContext) => {
-      return createMiddleware<TId, TMiddlewares, TValidator, TContext>(
-        undefined,
-        Object.assign(resolvedOptions, { sendClientContext }),
-      ) as any
-    },
     server: (server) => {
       return createMiddleware<TId, TMiddlewares, TValidator, TContext>(
         undefined,
@@ -207,5 +213,5 @@ const middleware2 = createMiddleware()
   .middleware([middleware1])
   .server(({ context, next }) => {
     console.log('middleware2', context)
-    return next({ context: {} })
+    return next({})
   })

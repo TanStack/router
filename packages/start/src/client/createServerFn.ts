@@ -1,4 +1,5 @@
 import invariant from 'tiny-invariant'
+import { mergeHeaders } from './headers'
 import type {
   AnyMiddleware,
   ResolveAllMiddlewareContext,
@@ -267,13 +268,19 @@ async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
   input: any,
-): Promise<unknown> {
+): Promise<{
+  context: any
+  serverContext: any
+  input: any
+  result: unknown
+}> {
   const flattenedMiddlewares = flattenMiddlewares(middlewares)
 
   const next = async (ctx: {
     input: any
     context: any
     serverContext: any
+    headers?: HeadersInit
   }): Promise<{
     context: any
     serverContext: any
@@ -317,21 +324,25 @@ async function executeMiddleware(
 
           const serverContext = {
             ...ctx.serverContext,
-            ...nextMiddleware.options.sendClientContext?.({
-              ...ctx,
-              context,
-            }),
+            ...((userResult as any)?.serverContext ?? {}),
           }
+
+          const headers = mergeHeaders(
+            ctx.headers,
+            (userResult as any)?.headers,
+          )
 
           // Return the next middleware
           return next({
             input: ctx.input,
             context,
             serverContext,
+            headers,
             result: (userResult as any)?.result,
           } as {
             context: any
             serverContext: any
+            headers: any
             input: any
             result: unknown
           }) as any
@@ -345,13 +356,12 @@ async function executeMiddleware(
   }
 
   // Start the middleware chain
-  const res = await next({
+  return next({
     input,
     context: {},
     serverContext: {},
+    headers: {},
   })
-
-  return res.result
 }
 
 function serverFnBaseToMiddleware(
