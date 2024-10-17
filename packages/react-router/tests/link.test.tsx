@@ -1,6 +1,7 @@
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 import {
+  act,
   cleanup,
   configure,
   fireEvent,
@@ -3924,8 +3925,8 @@ describe('search middleware', () => {
           },
           ({ search, next }) => {
             expect(search.foo).toBe('foo')
-            const result = next({ ...search, foo: 'hello' })
-            return { ...result, root: search.root }
+            const { root, ...result } = next({ ...search, foo: 'hello' })
+            return { ...result, root: root ?? search.root }
           },
         ],
       },
@@ -3934,10 +3935,19 @@ describe('search middleware', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => {
+        const { root } = indexRoute.useSearch()
         return (
           <>
             <h1>Index</h1>
-            <Link to="/posts" search={{ page: 123, root: 'hello' }}>
+            <div data-testid="search">{root ?? '$undefined'}</div>
+            <Link
+              data-testid="update-search"
+              to="/"
+              search={{ root: 'newValue' }}
+            >
+              update search
+            </Link>
+            <Link to="/posts" search={{ page: 123 }}>
               Posts
             </Link>
           </>
@@ -3972,12 +3982,26 @@ describe('search middleware', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
-    expect(postsLink).toHaveAttribute('href')
-    const href = postsLink.getAttribute('href')
-    const search = getSearchParamsFromURI(href!)
-    expect(search.size).toBe(2)
-    expect(search.get('page')).toBe('123')
-    expect(search.get('root')).toBe('abc')
+    async function checkSearchValue(value: string) {
+      const searchValue = await screen.findByTestId('search')
+      expect(searchValue).toHaveTextContent(value)
+    }
+    async function checkPostsLink(root: string) {
+      const postsLink = await screen.findByRole('link', { name: 'Posts' })
+      expect(postsLink).toHaveAttribute('href')
+      const href = postsLink.getAttribute('href')
+      const search = getSearchParamsFromURI(href!)
+      expect(search.size).toBe(2)
+      expect(search.get('page')).toBe('123')
+      expect(search.get('root')).toBe(root)
+    }
+    await checkSearchValue('abc')
+    await checkPostsLink('abc')
+
+    const updateSearchLink = await screen.findByTestId('update-search')
+    act(() => fireEvent.click(updateSearchLink))
+    await checkSearchValue('newValue')
+    await checkPostsLink('newValue')
+    expect(router.state.location.search).toEqual({ root: 'newValue' })
   })
 })
