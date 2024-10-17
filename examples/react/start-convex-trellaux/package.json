@@ -19,7 +19,7 @@
     "@tanstack/start": "^1.70.1",
     "@convex-dev/react-query": "0.0.0-alpha.5",
     "concurrently": "^8.2.2",
-    "convex": "^1.16.5",
+    "convex": "^1.16.6",
     "ky": "^1.7.2",
     "msw": "^2.4.11",
     "react": "^18.3.1",
