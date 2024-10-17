@@ -1,10 +1,10 @@
 import invariant from 'tiny-invariant'
 import type {
-  AnyServerMiddleware,
+  AnyMiddleware,
   ResolveAllMiddlewareContext,
   ResolveAllMiddlewareInput,
   ResolveAllMiddlewareOutput,
-} from './createServerMiddleware'
+} from './createMiddleware'
 import type { AnyValidator, Constrain } from '@tanstack/react-router'
 
 //
@@ -97,7 +97,8 @@ type ServerFnBaseOptions<
   TInput = unknown,
 > = {
   method: TMethod
-  middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyServerMiddleware>>
+  validateClient?: boolean
+  middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
   input?: Constrain<TInput, AnyValidator>
   handlerFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
@@ -112,7 +113,7 @@ type ServerFnBase<
 > = {
   options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
   middleware: <const TNewMiddlewares>(
-    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyServerMiddleware>>,
+    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
   ) => Pick<
     ServerFnBase<TMethod, TResponse, TNewMiddlewares, TValidator>,
     'input' | 'handler'
@@ -201,35 +202,54 @@ export function createServerFn<
           )
         },
         {
+          // This copies over the URL, function ID and filename
           ...extractedFn,
-          __execute: makeExecuterFn(resolvedOptions),
+          // These functions are called internally by the
+          // extracted version of the function on the client and
+          // server
+          // The client version is used to execute the client-side
+          __executeClient: makeExecuterFn('client', (serverExecutorFn) => ({
+            ...resolvedOptions,
+            handlerFn: (ctx) => {
+              // It needs to call the extracted function on the client
+              // that will ultimately make the RPC call to the server
+              return serverExecutorFn(ctx)
+            },
+          })),
+          // On the server, only the server version is called, which doesn't
+          // need to make any changes and will call the normal handlerFn
+          __executeServer: makeExecuterFn('server', () => resolvedOptions),
         },
       ) as any
     },
   }
 }
 
-function makeExecuterFn(options: ServerFnBaseOptions<any, any, any, any>) {
-  // This is a private method that is only called from the server to execute the middleware
-  // chain. It is used in the server environment. It's passed the input
-  // and uses the resolved server function options to create
-  // a final middleware chain to be executed and returned
-  return async (input: any) => {
+function makeExecuterFn(
+  env: 'client' | 'server',
+  getOptions: (
+    serverExecuterFn?: any,
+  ) => ServerFnBaseOptions<any, any, any, any>,
+) {
+  // This is a private method that gets called from the client to execute any client-side
+  // middleware logic. It's passed the server executor function.
+  return async (opts: any, serverExecutorFn: any) => {
+    const options = getOptions(serverExecutorFn)
     const middleware = [
       ...(options.middleware || []),
       serverFnBaseToMiddleware(options),
     ]
 
-    return executeMiddleware(middleware, input)
+    return executeMiddleware(middleware, env, opts)
   }
 }
 
 function flattenMiddlewares(
-  middlewares: Array<AnyServerMiddleware>,
-): Array<AnyServerMiddleware> {
-  const flattened: Array<AnyServerMiddleware> = []
+  middlewares: Array<AnyMiddleware>,
+): Array<AnyMiddleware> {
+  const flattened: Array<AnyMiddleware> = []
 
-  const recurse = (middleware: Array<AnyServerMiddleware>) => {
+  const recurse = (middleware: Array<AnyMiddleware>) => {
     middleware.forEach((m) => {
       if (m.options.middleware) {
         recurse(m.options.middleware)
@@ -244,7 +264,8 @@ function flattenMiddlewares(
 }
 
 async function executeMiddleware(
-  middlewares: Array<AnyServerMiddleware>,
+  middlewares: Array<AnyMiddleware>,
+  env: 'client' | 'server',
   input: any,
 ): Promise<unknown> {
   const flattenedMiddlewares = flattenMiddlewares(middlewares)
@@ -252,8 +273,10 @@ async function executeMiddleware(
   const next = async (ctx: {
     input: any
     context: any
+    serverContext: any
   }): Promise<{
     context: any
+    serverContext: any
     input: any
     result: unknown
   }> => {
@@ -265,14 +288,23 @@ async function executeMiddleware(
       return ctx as any
     }
 
-    if (nextMiddleware.options.input) {
+    if (
+      nextMiddleware.options.input && env === 'client'
+        ? nextMiddleware.options.validateClient
+        : true
+    ) {
       // Execute the middleware's input function
       ctx.input = await nextMiddleware.options.input(ctx.input)
     }
 
-    if (nextMiddleware.options.useFn) {
-      // Execute the middleware's useFn
-      return nextMiddleware.options.useFn({
+    const middlewareFn =
+      env === 'client'
+        ? nextMiddleware.options.client
+        : nextMiddleware.options.server
+
+    if (middlewareFn) {
+      // Execute the middleware's server
+      return middlewareFn({
         input: ctx.input,
         context: ctx.context as never,
         next: (userResult) => {
@@ -283,13 +315,23 @@ async function executeMiddleware(
             ...userResult?.context,
           }
 
+          const serverContext = {
+            ...ctx.serverContext,
+            ...nextMiddleware.options.sendClientContext?.({
+              ...ctx,
+              context,
+            }),
+          }
+
           // Return the next middleware
           return next({
             input: ctx.input,
             context,
+            serverContext,
             result: (userResult as any)?.result,
           } as {
             context: any
+            serverContext: any
             input: any
             result: unknown
           }) as any
@@ -297,7 +339,7 @@ async function executeMiddleware(
       }) as any
     }
 
-    // If the middleware doesn't have a useFn, just continue
+    // If the middleware doesn't have a fn, just continue
     // to the next middleware
     return next(ctx)
   }
@@ -306,6 +348,7 @@ async function executeMiddleware(
   const res = await next({
     input,
     context: {},
+    serverContext: {},
   })
 
   return res.result
@@ -313,14 +356,13 @@ async function executeMiddleware(
 
 function serverFnBaseToMiddleware(
   options: ServerFnBaseOptions<any, any, any, any>,
-): AnyServerMiddleware {
+): AnyMiddleware {
   return {
     _types: undefined!,
     options: {
-      id: undefined!,
       input: options.input,
-      // eslint-disable-next-line @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks
-      useFn: async ({ next, ...ctx }) => {
+      validateClient: options.validateClient,
+      server: async ({ next, ...ctx }) => {
         const result = await options.handlerFn?.(ctx as any)
 
         return next({

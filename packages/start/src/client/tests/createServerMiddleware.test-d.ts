@@ -1,8 +1,8 @@
 import { expectTypeOf, test } from 'vitest'
-import { createServerMiddleware } from '../createServerMiddleware'
+import { createMiddleware } from '../createMiddleware'
 
 test('createServeMiddleware removes middleware and input', () => {
-  const middleware = createServerMiddleware({
+  const middleware = createMiddleware({
     id: 'test1',
   })
 
@@ -35,8 +35,8 @@ test('createServeMiddleware removes middleware and input', () => {
   expectTypeOf(middlewareWithUse).not.toHaveProperty('middleware')
 })
 
-test('createServerMiddleware merges context', () => {
-  const middleware1 = createServerMiddleware({
+test('createMiddleware merges context', () => {
+  const middleware1 = createMiddleware({
     id: 'test1',
   }).use(async ({ context, next }) => {
     expectTypeOf(context).toEqualTypeOf<never>
@@ -47,14 +47,14 @@ test('createServerMiddleware merges context', () => {
     return await next({ context: { a: true } })
   })
 
-  const middleware2 = createServerMiddleware({
+  const middleware2 = createMiddleware({
     id: 'test2',
   }).use(({ context, next }) => {
     expectTypeOf(context).toEqualTypeOf<never>()
     return next({ context: { b: 'test' } })
   })
 
-  const middleware3 = createServerMiddleware({
+  const middleware3 = createMiddleware({
     id: 'test3',
   })
     .middleware([middleware1, middleware2])
@@ -63,7 +63,7 @@ test('createServerMiddleware merges context', () => {
       return next({ context: { c: 0 } })
     })
 
-  createServerMiddleware({
+  createMiddleware({
     id: 'test4',
   })
     .middleware([middleware3])
@@ -77,8 +77,8 @@ test('createServerMiddleware merges context', () => {
     })
 })
 
-test('createServerMiddleware merges input', () => {
-  const middleware1 = createServerMiddleware({ id: 'test1' })
+test('createMiddleware merges input', () => {
+  const middleware1 = createMiddleware({ id: 'test1' })
     .input(() => {
       return {
         a: 'a',
@@ -89,7 +89,7 @@ test('createServerMiddleware merges input', () => {
       return next()
     })
 
-  const middleware2 = createServerMiddleware({ id: 'test2' })
+  const middleware2 = createMiddleware({ id: 'test2' })
     .middleware([middleware1])
     .input(() => {
       return {
@@ -101,7 +101,7 @@ test('createServerMiddleware merges input', () => {
       return next()
     })
 
-  createServerMiddleware({ id: 'test3' })
+  createMiddleware({ id: 'test3' })
     .middleware([middleware2])
     .input(() => ({ c: 'c' }) as const)
     .use(({ next, input }) => {

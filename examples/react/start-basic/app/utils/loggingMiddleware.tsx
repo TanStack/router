@@ -1,8 +1,6 @@
-import { createServerMiddleware } from '@tanstack/start'
+import { createMiddleware } from '@tanstack/start'
 
-export const logMiddleware = createServerMiddleware({
-  id: 'logMiddleware',
-}).use(async (ctx) => {
+export const logMiddleware = createMiddleware().server(async (ctx) => {
   const requestedAt = new Date()
 
   const res = await ctx.next({

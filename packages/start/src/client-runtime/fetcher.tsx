@@ -10,7 +10,7 @@ import {
 } from '../constants'
 import type { CompiledFetcherFnOptions } from '../client'
 
-export async function fetcher<TPayload>(
+export async function fetcher(
   base: string,
   args: Array<any>,
   handler: (request: Request) => Promise<Response>,

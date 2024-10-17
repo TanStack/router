@@ -1,12 +1,12 @@
-import * as TanStackStart from '@tanstack/start';
+import { createMiddleware as middlewareFn } from '@tanstack/start';
 import { z } from 'zod';
-export const withUseServer = TanStackStart.createServerMiddleware({
+export const withUseServer = middlewareFn({
   id: 'test'
 });
-export const withoutUseServer = TanStackStart.createServerMiddleware({
+export const withoutUseServer = middlewareFn({
   id: 'test'
 });
-export const withVariable = TanStackStart.createServerMiddleware({
+export const withVariable = middlewareFn({
   id: 'test'
 });
 async function abstractedFunction() {
@@ -19,6 +19,6 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
     return fn(schema.parse(input));
   };
 }
-export const withZodValidator = TanStackStart.createServerMiddleware({
+export const withZodValidator = middlewareFn({
   id: 'test'
 });

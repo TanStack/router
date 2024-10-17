@@ -17,22 +17,22 @@ export {
   type ServerFnCtx,
 } from './createServerFn'
 export {
-  createServerMiddleware,
+  createMiddleware,
   type ParseMiddlewares,
   type ResolveAllMiddlewareContext,
   type ResolveAllMiddlewareInput,
   type ResolveAllMiddlewareOutput,
-  type ServerMiddlewareUseFn,
+  type MiddlewareServerFn as MiddlewareUseFn,
   type ResultWithContext,
-  type AnyServerMiddleware,
-  type ServerMiddlewareOptions,
-  type ServerMiddlewareTypes,
-  type ServerMiddlewareInput,
-  type ServerMiddlewareUse,
-  type ServerMiddlewareWithUse,
-  type ServerMiddlewareWithMiddleware,
-  type ServerMiddleware,
-} from './createServerMiddleware'
+  type AnyMiddleware,
+  type MiddlewareOptions,
+  type MiddlewareTypes,
+  type MiddlewareInput,
+  type MiddlewareServer as MiddlewareUse,
+  type MiddlewareWithServer as MiddlewareWithUse,
+  type MiddlewareWithMiddleware,
+  type Middleware,
+} from './createMiddleware'
 export { serverOnly } from './serverOnly'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'

@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import { createServerFn } from '../createServerFn'
-import { createServerMiddleware } from '../createServerMiddleware'
+import { createMiddleware } from '../createMiddleware'
 
 test('createServerFn without middleware', () => {
   createServerFn({ method: 'GET' }).handler((options) => {
@@ -29,19 +29,19 @@ test('createServerFn with input', () => {
 })
 
 test('createServerFn with middleware and context', () => {
-  const middleware1 = createServerMiddleware({ id: 'middleware1' }).use(
+  const middleware1 = createMiddleware({ id: 'middleware1' }).use(
     ({ next }) => {
       return next({ context: { a: 'a' } as const })
     },
   )
 
-  const middleware2 = createServerMiddleware({ id: 'middleware2' }).use(
+  const middleware2 = createMiddleware({ id: 'middleware2' }).use(
     ({ next }) => {
       return next({ context: { b: 'b' } as const })
     },
   )
 
-  const middleware3 = createServerMiddleware({ id: 'middleware3' }).middleware([
+  const middleware3 = createMiddleware({ id: 'middleware3' }).middleware([
     middleware1,
     middleware2,
   ])
@@ -61,21 +61,21 @@ test('createServerFn with middleware and context', () => {
 })
 
 test('createServerFn with middleware and input', async () => {
-  const middleware1 = createServerMiddleware({ id: 'middleware1' }).input(
+  const middleware1 = createMiddleware({ id: 'middleware1' }).input(
     () =>
       ({
         a: 'a',
       }) as const,
   )
 
-  const middleware2 = createServerMiddleware({ id: 'middleware2' }).input(
+  const middleware2 = createMiddleware({ id: 'middleware2' }).input(
     () =>
       ({
         b: 'b',
       }) as const,
   )
 
-  const middleware3 = createServerMiddleware({ id: 'middleware3' }).middleware([
+  const middleware3 = createMiddleware({ id: 'middleware3' }).middleware([
     middleware1,
     middleware2,
   ])

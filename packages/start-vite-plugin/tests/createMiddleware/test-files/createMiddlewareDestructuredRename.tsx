@@ -1,4 +1,4 @@
-import { createServerMiddleware as middlewareFn } from '@tanstack/start'
+import { createMiddleware as middlewareFn } from '@tanstack/start'
 import { z } from 'zod'
 
 export const withUseServer = middlewareFn({

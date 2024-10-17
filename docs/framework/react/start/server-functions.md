@@ -30,9 +30,9 @@ Server functions can be defined anywhere in your application, but must be define
 - On the server bundle, server functions logic is left alone. Nothing needs to be done since they are already in the correct place.
 - On the client, server functions are modified to remove server-only logic out of the client bundle and replaced with a function that, when called, makes a `fetch` request to the server instructing it to execute the server function in the server bundle and then send the response back to the client.
 
-## Server Middleware
+## Server Function Middleware
 
-Server functions can use server middleware to share logic, context, common operations, prerequisites, and much more. To learn more about server middleware, be sure to read about them in the [Server Middleware guide](../server-middleware).
+Server functions can use middleware to share logic, context, common operations, prerequisites, and much more. To learn more about server function middleware, be sure to read about them in the [Middleware guide](../middleware).
 
 ## Defining Server Functions
 

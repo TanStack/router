@@ -1,7 +1,7 @@
-import { createServerMiddleware } from '@tanstack/start'
+import { createMiddleware } from '@tanstack/start'
 import { z } from 'zod'
 
-export const withUseServer = createServerMiddleware({
+export const withUseServer = createMiddleware({
   id: 'test',
 }).use(async function () {
   console.info('Fetching posts...')
@@ -11,7 +11,7 @@ export const withUseServer = createServerMiddleware({
     .then((r) => r.data.slice(0, 10))
 })
 
-export const withoutUseServer = createServerMiddleware({
+export const withoutUseServer = createMiddleware({
   id: 'test',
 }).use(async () => {
   console.info('Fetching posts...')
@@ -21,7 +21,7 @@ export const withoutUseServer = createServerMiddleware({
     .then((r) => r.data.slice(0, 10))
 })
 
-export const withVariable = createServerMiddleware({
+export const withVariable = createMiddleware({
   id: 'test',
 }).use(abstractedFunction)
 
@@ -42,7 +42,7 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(
   }
 }
 
-export const withZodValidator = createServerMiddleware({
+export const withZodValidator = createMiddleware({
   id: 'test',
 }).use(
   zodValidator(z.number(), (input) => {

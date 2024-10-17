@@ -43,7 +43,7 @@ export function compileStartOutput(opts: ParseAstOptions) {
       enter(programPath) {
         const identifiers: {
           createServerFn: IdentifierConfig
-          createServerMiddleware: IdentifierConfig
+          createMiddleware: IdentifierConfig
           serverOnly: IdentifierConfig
         } = {
           createServerFn: {
@@ -53,11 +53,11 @@ export function compileStartOutput(opts: ParseAstOptions) {
             handleCallExpression: handleCreateServerFnCallExpression,
             paths: [],
           },
-          createServerMiddleware: {
-            name: 'createServerMiddleware',
+          createMiddleware: {
+            name: 'createMiddleware',
             type: 'ImportSpecifier',
             namespaceId: '',
-            handleCallExpression: handleCreateServerMiddlewareCallExpression,
+            handleCallExpression: handleCreateMiddlewareCallExpression,
             paths: [],
           },
           serverOnly: {
@@ -180,10 +180,24 @@ function handleCreateServerFnCallExpression(
   // the input, handler, and middleware methods. Check to make sure they
   // are children of the createServerFn call expression.
 
+  const calledOptions = path.node.arguments[0]
+    ? (path.get('arguments.0') as babel.NodePath<t.ObjectExpression>)
+    : null
+
+  const shouldValidateClient = !!calledOptions?.node.properties.find((prop) => {
+    return (
+      t.isObjectProperty(prop) &&
+      t.isIdentifier(prop.key) &&
+      prop.key.name === 'validateClient' &&
+      t.isBooleanLiteral(prop.value) &&
+      prop.value.value === true
+    )
+  })
+
   const callExpressionPaths = {
+    middleware: null as babel.NodePath<t.CallExpression> | null,
     input: null as babel.NodePath<t.CallExpression> | null,
     handler: null as babel.NodePath<t.CallExpression> | null,
-    middleware: null as babel.NodePath<t.CallExpression> | null,
   }
 
   const validMethods = Object.keys(callExpressionPaths)
@@ -221,8 +235,6 @@ function handleCreateServerFnCallExpression(
     },
   })
 
-  let inputExpression: t.Expression | null = null
-
   if (callExpressionPaths.input) {
     const innerInputExpression = callExpressionPaths.input.node.arguments[0]
 
@@ -232,9 +244,12 @@ function handleCreateServerFnCallExpression(
       )
     }
 
-    inputExpression = t.parenthesizedExpression(innerInputExpression as any)
-
-    if (t.isMemberExpression(callExpressionPaths.input.node.callee)) {
+    // If we're on the client, and we're not validating the client, remove the input call expression
+    if (
+      opts.env === 'client' &&
+      !shouldValidateClient &&
+      t.isMemberExpression(callExpressionPaths.input.node.callee)
+    ) {
       callExpressionPaths.input.replaceWith(
         callExpressionPaths.input.node.callee.object,
       )
@@ -278,20 +293,33 @@ function handleCreateServerFnCallExpression(
 
   handlerFnPath.replaceWith(
     t.arrowFunctionExpression(
-      [t.identifier('opts')],
-      t.blockStatement(
-        // Everything in here is server-only, since the client
-        // will strip out anything in the 'use server' directive.
-        [
-          t.returnStatement(
-            t.callExpression(
-              t.identifier(`${existingVariableName}.__execute`),
-              [t.identifier('opts')],
-            ),
+      [t.identifier('clientOpts')],
+      t.blockStatement([
+        t.returnStatement(
+          t.callExpression(
+            t.identifier(`${existingVariableName}.__executeClient`),
+            [
+              t.identifier('clientOpts'),
+              t.arrowFunctionExpression(
+                [t.identifier('opts')],
+                t.blockStatement(
+                  // Everything in here is server-only, since the client
+                  // will strip out anything in the 'use server' directive.
+                  [
+                    t.returnStatement(
+                      t.callExpression(
+                        t.identifier(`${existingVariableName}.__executeServer`),
+                        [t.identifier('opts')],
+                      ),
+                    ),
+                  ],
+                  [t.directive(t.directiveLiteral('use server'))],
+                ),
+              ),
+            ],
           ),
-        ],
-        [t.directive(t.directiveLiteral('use server'))],
-      ),
+        ),
+      ]),
     ),
   )
 
@@ -313,7 +341,7 @@ function removeUseServerDirective(path: babel.NodePath<any>) {
   })
 }
 
-function handleCreateServerMiddlewareCallExpression(
+function handleCreateMiddlewareCallExpression(
   path: babel.NodePath<t.CallExpression>,
   opts: ParseAstOptions,
 ) {
@@ -321,7 +349,7 @@ function handleCreateServerMiddlewareCallExpression(
 
   // if (!t.isObjectExpression(firstArg)) {
   //   throw new Error(
-  //     'createServerMiddleware must be called with an object of options!',
+  //     'createMiddleware must be called with an object of options!',
   //   )
   // }
 
@@ -339,7 +367,7 @@ function handleCreateServerMiddlewareCallExpression(
   //   !t.isStringLiteral(idProperty.value)
   // ) {
   //   throw new Error(
-  //     'createServerMiddleware must be called with an "id" property!',
+  //     'createMiddleware must be called with an "id" property!',
   //   )
   // }
 
@@ -347,7 +375,7 @@ function handleCreateServerMiddlewareCallExpression(
 
   if (debug)
     console.info(
-      'Handling createServerMiddleware call expression:',
+      'Handling createMiddleware call expression:',
       rootCallExpression.toString(),
     )
 
@@ -389,7 +417,7 @@ function handleCreateServerMiddlewareCallExpression(
   // })
 
   //   throw new Error(
-  //     'createServerMiddleware must be assigned to a variable and exported!',
+  //     'createMiddleware must be assigned to a variable and exported!',
   //   )
   // }
 
@@ -436,11 +464,11 @@ function handleCreateServerMiddlewareCallExpression(
   // )
 
   //   throw new Error(
-  //     'createServerMiddleware must be exported as a named export!',
+  //     'createMiddleware must be exported as a named export!',
   //   )
   // }
 
-  // The function is the 'fn' property of the object passed to createServerMiddleware
+  // The function is the 'fn' property of the object passed to createMiddleware
 
   // const firstArg = path.node.arguments[0]
   // if (t.isObjectExpression(firstArg)) {
@@ -449,12 +477,13 @@ function handleCreateServerMiddlewareCallExpression(
 
   // Traverse the member expression and find the call expressions for
   // the input, handler, and middleware methods. Check to make sure they
-  // are children of the createServerMiddleware call expression.
+  // are children of the createMiddleware call expression.
 
   const callExpressionPaths = {
-    input: null as babel.NodePath<t.CallExpression> | null,
-    use: null as babel.NodePath<t.CallExpression> | null,
     middleware: null as babel.NodePath<t.CallExpression> | null,
+    input: null as babel.NodePath<t.CallExpression> | null,
+    client: null as babel.NodePath<t.CallExpression> | null,
+    server: null as babel.NodePath<t.CallExpression> | null,
   }
 
   const validMethods = Object.keys(callExpressionPaths)
@@ -480,7 +509,7 @@ function handleCreateServerMiddlewareCallExpression(
 
     if (!innerInputExpression) {
       throw new Error(
-        'createServerMiddleware().input() must be called with an input validator!',
+        'createMiddleware().input() must be called with an input validator!',
       )
     }
 
@@ -494,22 +523,20 @@ function handleCreateServerMiddlewareCallExpression(
     }
   }
 
-  const useFnPath = callExpressionPaths.use?.get(
+  const useFnPath = callExpressionPaths.server?.get(
     'arguments.0',
   ) as babel.NodePath<any>
 
-  if (!callExpressionPaths.use || !useFnPath.node) {
-    throw new Error(
-      'createServerMiddleware must be called with a "use" property!',
-    )
+  if (!callExpressionPaths.server || !useFnPath.node) {
+    throw new Error('createMiddleware must be called with a "use" property!')
   }
 
   // If we're on the client, remove the use call expression
 
   if (opts.env === 'client') {
-    if (t.isMemberExpression(callExpressionPaths.use.node.callee)) {
-      callExpressionPaths.use.replaceWith(
-        callExpressionPaths.use.node.callee.object,
+    if (t.isMemberExpression(callExpressionPaths.server.node.callee)) {
+      callExpressionPaths.server.replaceWith(
+        callExpressionPaths.server.node.callee.object,
       )
     }
   }
