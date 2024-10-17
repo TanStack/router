@@ -37,10 +37,12 @@ test('Navigating to a route inside a route group', async ({ page }) => {
   await page.getByTestId('link-to-route-inside-group').click()
   await expect(page.getByTestId('search-via-hook')).toContainText('world')
   await expect(page.getByTestId('search-via-route-hook')).toContainText('world')
+  await expect(page.getByTestId('search-via-route-api')).toContainText('world')
 })
 
 test('Navigating to a lazy route inside a route group', async ({ page }) => {
   await page.getByTestId('link-to-lazy-route-inside-group').click()
   await expect(page.getByTestId('search-via-hook')).toContainText('world')
   await expect(page.getByTestId('search-via-route-hook')).toContainText('world')
+  await expect(page.getByTestId('search-via-route-api')).toContainText('world')
 })
