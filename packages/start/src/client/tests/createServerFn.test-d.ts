@@ -29,31 +29,35 @@ test('createServerFn with input', () => {
 })
 
 test('createServerFn with middleware and context', () => {
-  const middleware1 = createMiddleware({ id: 'middleware1' }).use(
-    ({ next }) => {
-      return next({ context: { a: 'a' } as const })
-    },
-  )
+  const middleware1 = createMiddleware().server(({ next }) => {
+    return next({ context: { a: 'a' } as const })
+  })
 
-  const middleware2 = createMiddleware({ id: 'middleware2' }).use(
-    ({ next }) => {
-      return next({ context: { b: 'b' } as const })
-    },
-  )
+  const middleware2 = createMiddleware().server(({ next }) => {
+    return next({ context: { b: 'b' } as const })
+  })
 
-  const middleware3 = createMiddleware({ id: 'middleware3' }).middleware([
-    middleware1,
-    middleware2,
-  ])
+  const middleware3 = createMiddleware()
+    .middleware([middleware1, middleware2])
+    .client(({ next }) => {
+      return next({ context: { c: 'c' } as const })
+    })
+
+  const middleware4 = createMiddleware()
+    .middleware([middleware3])
+    .client(({ context, next }) => {
+      return next({ serverContext: context })
+    })
 
   createServerFn({ method: 'GET' })
-    .middleware([middleware3])
+    .middleware([middleware4])
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
         context: {
           readonly a: 'a'
           readonly b: 'b'
+          readonly c: 'c'
         }
         input: never
       }>()
@@ -61,24 +65,21 @@ test('createServerFn with middleware and context', () => {
 })
 
 test('createServerFn with middleware and input', async () => {
-  const middleware1 = createMiddleware({ id: 'middleware1' }).input(
+  const middleware1 = createMiddleware().input(
     () =>
       ({
         a: 'a',
       }) as const,
   )
 
-  const middleware2 = createMiddleware({ id: 'middleware2' }).input(
+  const middleware2 = createMiddleware().input(
     () =>
       ({
         b: 'b',
       }) as const,
   )
 
-  const middleware3 = createMiddleware({ id: 'middleware3' }).middleware([
-    middleware1,
-    middleware2,
-  ])
+  const middleware3 = createMiddleware().middleware([middleware1, middleware2])
 
   const fn = createServerFn({ method: 'GET' })
     .middleware([middleware3])

@@ -19,11 +19,9 @@ export {
 export {
   createMiddleware,
   type ParseMiddlewares,
-  type ResolveAllMiddlewareContext,
   type ResolveAllMiddlewareInput,
   type ResolveAllMiddlewareOutput,
   type MiddlewareServerFn as MiddlewareUseFn,
-  type ResultWithContext,
   type AnyMiddleware,
   type MiddlewareOptions,
   type MiddlewareTypes,

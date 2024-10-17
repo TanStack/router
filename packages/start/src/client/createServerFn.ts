@@ -2,9 +2,9 @@ import invariant from 'tiny-invariant'
 import { mergeHeaders } from './headers'
 import type {
   AnyMiddleware,
-  ResolveAllMiddlewareContext,
   ResolveAllMiddlewareInput,
   ResolveAllMiddlewareOutput,
+  ResolveAllMiddlewareServerContext,
 } from './createMiddleware'
 import type { AnyValidator, Constrain } from '@tanstack/react-router'
 
@@ -80,7 +80,7 @@ export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
 export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
   method: TMethod
   input: ResolveAllMiddlewareOutput<TMiddlewares, TValidator>
-  context: ResolveAllMiddlewareContext<TMiddlewares>
+  context: ResolveAllMiddlewareServerContext<TMiddlewares>
 }
 
 export type CompiledFetcherFn<TResponse> = {
@@ -314,7 +314,7 @@ async function executeMiddleware(
       return middlewareFn({
         input: ctx.input,
         context: ctx.context as never,
-        next: (userResult) => {
+        next: (userResult: any) => {
           // Take the user provided context
           // and merge it with the current context
           const context = {
@@ -324,13 +324,10 @@ async function executeMiddleware(
 
           const serverContext = {
             ...ctx.serverContext,
-            ...((userResult as any)?.serverContext ?? {}),
+            ...(userResult?.serverContext ?? {}),
           }
 
-          const headers = mergeHeaders(
-            ctx.headers,
-            (userResult as any)?.headers,
-          )
+          const headers = mergeHeaders(ctx.headers, userResult?.headers)
 
           // Return the next middleware
           return next({
@@ -338,7 +335,7 @@ async function executeMiddleware(
             context,
             serverContext,
             headers,
-            result: (userResult as any)?.result,
+            result: userResult?.result,
           } as {
             context: any
             serverContext: any
