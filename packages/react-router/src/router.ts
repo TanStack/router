@@ -2560,29 +2560,31 @@ export class Router<
     return redirect
   }
 
-  cleanCache = () => {
+  cleanCache = (opts: { force?: boolean }) => {
     // This is where all of the garbage collection magic happens
     this.__store.setState((s) => {
       return {
         ...s,
-        cachedMatches: s.cachedMatches.filter((d) => {
-          const route = this.looseRoutesById[d.routeId]!
+        cachedMatches: opts.force
+          ? []
+          : s.cachedMatches.filter((d) => {
+              const route = this.looseRoutesById[d.routeId]!
 
-          if (!route.options.loader) {
-            return false
-          }
+              if (!route.options.loader) {
+                return false
+              }
 
-          // If the route was preloaded, use the preloadGcTime
-          // otherwise, use the gcTime
-          const gcTime =
-            (d.preload
-              ? (route.options.preloadGcTime ??
-                this.options.defaultPreloadGcTime)
-              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
-            5 * 60 * 1000
+              // If the route was preloaded, use the preloadGcTime
+              // otherwise, use the gcTime
+              const gcTime =
+                (d.preload
+                  ? (route.options.preloadGcTime ??
+                    this.options.defaultPreloadGcTime)
+                  : (route.options.gcTime ?? this.options.defaultGcTime)) ??
+                5 * 60 * 1000
 
-          return d.status !== 'error' && Date.now() - d.updatedAt < gcTime
-        }),
+              return d.status !== 'error' && Date.now() - d.updatedAt < gcTime
+            }),
       }
     })
   }
