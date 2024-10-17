@@ -44,6 +44,7 @@ export function compileStartOutput(opts: ParseAstOptions) {
         const identifiers: {
           createServerFn: IdentifierConfig
           createServerMiddleware: IdentifierConfig
+          serverOnly: IdentifierConfig
         } = {
           createServerFn: {
             name: 'createServerFn',
@@ -57,6 +58,13 @@ export function compileStartOutput(opts: ParseAstOptions) {
             type: 'ImportSpecifier',
             namespaceId: '',
             handleCallExpression: handleCreateServerMiddlewareCallExpression,
+            paths: [],
+          },
+          serverOnly: {
+            name: 'serverOnly',
+            type: 'ImportSpecifier',
+            namespaceId: '',
+            handleCallExpression: handleServerOnlyCallExpression,
             paths: [],
           },
         } as const
@@ -309,31 +317,31 @@ function handleCreateServerMiddlewareCallExpression(
   path: babel.NodePath<t.CallExpression>,
   opts: ParseAstOptions,
 ) {
-  const firstArg = path.node.arguments[0]
+  // const firstArg = path.node.arguments[0]
 
-  if (!t.isObjectExpression(firstArg)) {
-    throw new Error(
-      'createServerMiddleware must be called with an object of options!',
-    )
-  }
+  // if (!t.isObjectExpression(firstArg)) {
+  //   throw new Error(
+  //     'createServerMiddleware must be called with an object of options!',
+  //   )
+  // }
 
-  const idProperty = firstArg.properties.find((prop) => {
-    return (
-      t.isObjectProperty(prop) &&
-      t.isIdentifier(prop.key) &&
-      prop.key.name === 'id'
-    )
-  })
+  // const idProperty = firstArg.properties.find((prop) => {
+  //   return (
+  //     t.isObjectProperty(prop) &&
+  //     t.isIdentifier(prop.key) &&
+  //     prop.key.name === 'id'
+  //   )
+  // })
 
-  if (
-    !idProperty ||
-    !t.isObjectProperty(idProperty) ||
-    !t.isStringLiteral(idProperty.value)
-  ) {
-    throw new Error(
-      'createServerMiddleware must be called with an "id" property!',
-    )
-  }
+  // if (
+  //   !idProperty ||
+  //   !t.isObjectProperty(idProperty) ||
+  //   !t.isStringLiteral(idProperty.value)
+  // ) {
+  //   throw new Error(
+  //     'createServerMiddleware must be called with an "id" property!',
+  //   )
+  // }
 
   const rootCallExpression = getRootCallExpression(path)
 
@@ -344,93 +352,93 @@ function handleCreateServerMiddlewareCallExpression(
     )
 
   // Check if the call is assigned to a variable
-  if (!rootCallExpression.parentPath.isVariableDeclarator()) {
-    // TODO: move this logic out to eslint or something like
-    // the router generator code that can do autofixes on save.
+  // if (!rootCallExpression.parentPath.isVariableDeclarator()) {
+  // TODO: move this logic out to eslint or something like
+  // the router generator code that can do autofixes on save.
 
-    // // If not assigned to a variable, wrap the call in a variable declaration
-    // const variableDeclaration = t.variableDeclaration('const', [
-    //   t.variableDeclarator(t.identifier(middlewareName), path.node),
-    // ])
+  // // If not assigned to a variable, wrap the call in a variable declaration
+  // const variableDeclaration = t.variableDeclaration('const', [
+  //   t.variableDeclarator(t.identifier(middlewareName), path.node),
+  // ])
 
-    // // The parent could be an expression statement, if it is, we need to replace
-    // // it with the variable declaration
-    // if (path.parentPath.isExpressionStatement()) {
-    //   path.parentPath.replaceWith(variableDeclaration)
-    // } else {
-    //   // If the parent is not an expression statement, then it is a statement
-    //   // that is not an expression, like a variable declaration or a return statement.
-    //   // In this case, we need to insert the variable declaration before the statement
-    //   path.parentPath.insertBefore(variableDeclaration)
-    // }
+  // // The parent could be an expression statement, if it is, we need to replace
+  // // it with the variable declaration
+  // if (path.parentPath.isExpressionStatement()) {
+  //   path.parentPath.replaceWith(variableDeclaration)
+  // } else {
+  //   // If the parent is not an expression statement, then it is a statement
+  //   // that is not an expression, like a variable declaration or a return statement.
+  //   // In this case, we need to insert the variable declaration before the statement
+  //   path.parentPath.insertBefore(variableDeclaration)
+  // }
 
-    // // Now we need to export it. Just add an export statement
-    // // to the program body
-    // path.findParent((parentPath) => {
-    //   if (parentPath.isProgram()) {
-    //     parentPath.node.body.push(
-    //       t.exportNamedDeclaration(null, [
-    //         t.exportSpecifier(
-    //           t.identifier(middlewareName),
-    //           t.identifier(middlewareName),
-    //         ),
-    //       ]),
-    //     )
-    //   }
-    //   return false
-    // })
+  // // Now we need to export it. Just add an export statement
+  // // to the program body
+  // path.findParent((parentPath) => {
+  //   if (parentPath.isProgram()) {
+  //     parentPath.node.body.push(
+  //       t.exportNamedDeclaration(null, [
+  //         t.exportSpecifier(
+  //           t.identifier(middlewareName),
+  //           t.identifier(middlewareName),
+  //         ),
+  //       ]),
+  //     )
+  //   }
+  //   return false
+  // })
 
-    throw new Error(
-      'createServerMiddleware must be assigned to a variable and exported!',
-    )
-  }
+  //   throw new Error(
+  //     'createServerMiddleware must be assigned to a variable and exported!',
+  //   )
+  // }
 
-  const variableDeclarator = rootCallExpression.parentPath.node
-  const existingVariableName = (variableDeclarator.id as t.Identifier).name
+  // const variableDeclarator = rootCallExpression.parentPath.node
+  // const existingVariableName = (variableDeclarator.id as t.Identifier).name
 
-  const program = rootCallExpression.findParent((parentPath) => {
-    return parentPath.isProgram()
-  }) as babel.NodePath<t.Program>
+  // const program = rootCallExpression.findParent((parentPath) => {
+  //   return parentPath.isProgram()
+  // }) as babel.NodePath<t.Program>
 
-  let isExported = false as boolean
+  // let isExported = false as boolean
 
-  program.traverse({
-    ExportNamedDeclaration: (path) => {
-      if (
-        path.isExportNamedDeclaration() &&
-        path.node.declaration &&
-        t.isVariableDeclaration(path.node.declaration) &&
-        path.node.declaration.declarations.some((decl) => {
-          return (
-            t.isVariableDeclarator(decl) &&
-            t.isIdentifier(decl.id) &&
-            decl.id.name === existingVariableName
-          )
-        })
-      ) {
-        isExported = true
-      }
-    },
-  })
+  // program.traverse({
+  //   ExportNamedDeclaration: (path) => {
+  //     if (
+  //       path.isExportNamedDeclaration() &&
+  //       path.node.declaration &&
+  //       t.isVariableDeclaration(path.node.declaration) &&
+  //       path.node.declaration.declarations.some((decl) => {
+  //         return (
+  //           t.isVariableDeclarator(decl) &&
+  //           t.isIdentifier(decl.id) &&
+  //           decl.id.name === existingVariableName
+  //         )
+  //       })
+  //     ) {
+  //       isExported = true
+  //     }
+  //   },
+  // })
 
   // If not exported, export it
-  if (!isExported) {
-    // TODO: move this logic out to eslint or something like
-    // the router generator code that can do autofixes on save.
+  // if (!isExported) {
+  // TODO: move this logic out to eslint or something like
+  // the router generator code that can do autofixes on save.
 
-    // path.parentPath.parentPath.insertAfter(
-    //   t.exportNamedDeclaration(null, [
-    //     t.exportSpecifier(
-    //       t.identifier(existingVariableName),
-    //       t.identifier(existingVariableName),
-    //     ),
-    //   ]),
-    // )
+  // path.parentPath.parentPath.insertAfter(
+  //   t.exportNamedDeclaration(null, [
+  //     t.exportSpecifier(
+  //       t.identifier(existingVariableName),
+  //       t.identifier(existingVariableName),
+  //     ),
+  //   ]),
+  // )
 
-    throw new Error(
-      'createServerMiddleware must be exported as a named export!',
-    )
-  }
+  //   throw new Error(
+  //     'createServerMiddleware must be exported as a named export!',
+  //   )
+  // }
 
   // The function is the 'fn' property of the object passed to createServerMiddleware
 
@@ -505,6 +513,38 @@ function handleCreateServerMiddlewareCallExpression(
       )
     }
   }
+}
+
+function handleServerOnlyCallExpression(
+  path: babel.NodePath<t.CallExpression>,
+  opts: ParseAstOptions,
+) {
+  if (debug)
+    console.info('Handling serverOnly call expression:', path.toString())
+
+  if (opts.env === 'server') {
+    // Do nothing on the server.
+    return
+  }
+
+  // If we're on the client, replace the call expression with a function
+  // that has a single always-triggering invariant.
+
+  path.replaceWith(
+    t.arrowFunctionExpression(
+      [],
+      t.blockStatement([
+        t.expressionStatement(
+          t.callExpression(t.identifier('invariant'), [
+            t.booleanLiteral(false),
+            t.stringLiteral(
+              'serverOnly() functions can only be called on the server!',
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  )
 }
 
 function getRootCallExpression(path: babel.NodePath<t.CallExpression>) {

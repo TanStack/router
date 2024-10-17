@@ -30,9 +30,12 @@ export function TanStackStartViteCreateServerFn(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      const includesToken = /createServerFn|createServerMiddleware/.test(code)
+      const includesToken =
+        /createServerFn|createServerMiddleware|serverOnly/.test(code)
       const includesEitherFunc =
-        /(function createServerFn|function createServerMiddleware)/.test(code)
+        /(function createServerFn|function createServerMiddleware|function serverOnly)/.test(
+          code,
+        )
 
       if (
         !includesToken ||

@@ -67,7 +67,6 @@ export interface ServerMiddlewareOptions<
   TValidator,
   TContext,
 > {
-  id: TId
   middleware?: TMiddlewares
   input?: Constrain<TValidator, AnyValidator>
   useFn?: ServerMiddlewareUseFn<TMiddlewares, TValidator, TContext>
@@ -167,12 +166,11 @@ export function createServerMiddleware<
   TValidator = undefined,
   TContext = undefined,
 >(
-  options: {
-    id: TId
-  },
+  __?: never,
   __opts?: ServerMiddlewareOptions<TId, TMiddlewares, TValidator, TContext>,
 ): ServerMiddleware<TId, TMiddlewares, TValidator, TContext> {
-  const resolvedOptions = (__opts || options) as ServerMiddlewareOptions<
+  // const resolvedOptions = (__opts || options) as ServerMiddlewareOptions<
+  const resolvedOptions = __opts as ServerMiddlewareOptions<
     TId,
     TMiddlewares,
     TValidator,
@@ -183,38 +181,34 @@ export function createServerMiddleware<
     options: resolvedOptions as any,
     middleware: (middleware) => {
       return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
-        options,
+        undefined,
         Object.assign(resolvedOptions, { middleware }),
       ) as any
     },
     input: (input) => {
       return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
-        options,
+        undefined,
         Object.assign(resolvedOptions, { input }),
       ) as any
     },
     // eslint-disable-next-line @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks
     use: (useFn) => {
       return createServerMiddleware<TId, TMiddlewares, TValidator, TContext>(
-        options,
+        undefined,
         Object.assign(resolvedOptions, { useFn }),
       ) as any
     },
   } as ServerMiddleware<TId, TMiddlewares, TValidator, TContext>
 }
 
-const middleware1 = createServerMiddleware({
-  id: 'test1',
-}).use(async ({ context, next }) => {
+const middleware1 = createServerMiddleware().use(async ({ context, next }) => {
   console.log('middleware1', context)
   const res = await next({ context: { a: true } })
   console.log('middleware1 after', res)
   return res
 })
 
-const middleware2 = createServerMiddleware({
-  id: 'test2',
-})
+const middleware2 = createServerMiddleware()
   .middleware([middleware1])
   .use(({ context, next }) => {
     console.log('middleware2', context)
