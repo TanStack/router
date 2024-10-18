@@ -1439,7 +1439,29 @@ export class Router<
         leaveParams: opts.leaveParams,
       })
 
-      const applyMiddlewares = () => {
+      let search = fromSearch
+      if (opts._includeValidateSearch) {
+        let validatedSearch = this.options.search?.strict ? {} : search
+        matchedRoutesResult?.matchedRoutes.forEach((route) => {
+          try {
+            if (route.options.validateSearch) {
+              const validator =
+                typeof route.options.validateSearch === 'object'
+                  ? route.options.validateSearch.parse
+                  : route.options.validateSearch
+              validatedSearch = {
+                ...validatedSearch,
+                ...validator({ ...validatedSearch, ...search }),
+              }
+            }
+          } catch (e) {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        })
+        search = validatedSearch
+      }
+
+      const applyMiddlewares = (search: any) => {
         const allMiddlewares =
           stayingMatches?.reduce(
             (acc, route) => {
@@ -1515,31 +1537,11 @@ export class Router<
         }
 
         // Start applying middlewares
-        return applyNext(0, fromSearch)
+        return applyNext(0, search)
       }
 
-      let search = applyMiddlewares()
+      search = applyMiddlewares(search)
 
-      if (opts._includeValidateSearch) {
-        let validatedSearch = this.options.search?.strict ? {} : search
-        matchedRoutesResult?.matchedRoutes.forEach((route) => {
-          try {
-            if (route.options.validateSearch) {
-              const validator =
-                typeof route.options.validateSearch === 'object'
-                  ? route.options.validateSearch.parse
-                  : route.options.validateSearch
-              validatedSearch = {
-                ...validatedSearch,
-                ...validator({ ...validatedSearch, ...search }),
-              }
-            }
-          } catch (e) {
-            // ignore errors here because they are already handled in matchRoutes
-          }
-        })
-        search = validatedSearch
-      }
       search = replaceEqualDeep(fromSearch, search)
       const searchStr = this.options.stringifySearch(search)
 
