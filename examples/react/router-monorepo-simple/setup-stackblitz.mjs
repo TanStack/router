@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 function isRunningOnStackBlitz() {
   // Given stackblitz is running only on a folder and not the mono, this should detect if we are running on stackblitz
-  return __dirname.includes('router/examples');
+  return !__dirname.includes('router/examples');
 }
 
 if (isRunningOnStackBlitz()) {
