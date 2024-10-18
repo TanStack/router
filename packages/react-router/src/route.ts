@@ -407,42 +407,6 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => void
-  meta?: (ctx: {
-    matches: Array<
-      RouteMatch<
-        TRouteId,
-        TFullPath,
-        ResolveAllParamsFromParent<TParentRoute, TParams>,
-        ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-        ResolveLoaderData<TLoaderFn>,
-        ResolveAllContext<
-          TParentRoute,
-          TRouterContext,
-          TRouteContextFn,
-          TBeforeLoadFn
-        >,
-        TLoaderDeps
-      >
-    >
-    match: RouteMatch<
-      TRouteId,
-      TFullPath,
-      ResolveAllParamsFromParent<TParentRoute, TParams>,
-      ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-      ResolveLoaderData<TLoaderFn>,
-      ResolveAllContext<
-        TParentRoute,
-        TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn
-      >,
-      TLoaderDeps
-    >
-    params: ResolveAllParamsFromParent<TParentRoute, TParams>
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Array<React.JSX.IntrinsicElements['meta']>
-  links?: () => Array<React.JSX.IntrinsicElements['link']>
-  scripts?: () => Array<React.JSX.IntrinsicElements['script']>
   headers?: (ctx: {
     loaderData: ResolveLoaderData<TLoaderFn>
   }) => Record<string, string>
