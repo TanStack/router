@@ -14,7 +14,6 @@ This example showcases this approach using the following packages:
 - `packages/post-feature` is the posts ui library
 - `packages/app` is the app
 
-
 With this approach, we can use the query options from the data library both in the router and the feature library without creating circular dependencies.
 
 Since the router library re-exports the router components, importing them in the feature library ensures they remain type-safe, as they’re linked to the TypeScript augmentations.
