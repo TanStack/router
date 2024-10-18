@@ -1791,7 +1791,7 @@ export class Router<
           this.__store.batch(() => {
             // this call breaks a route context of destination route after a redirect
             // we should be fine not eagerly calling this since we call it later
-            // this.cleanCache()
+            // this.clearExpiredCache()
 
             // Match the routes
             pendingMatches = this.matchRoutes(next)
@@ -1869,7 +1869,7 @@ export class Router<
                       ],
                     }
                   })
-                  this.cleanCache()
+                  this.clearExpiredCache()
                 })
 
                 //
@@ -2562,31 +2562,47 @@ export class Router<
     return redirect
   }
 
-  cleanCache = () => {
+  clearCache = (opts?: {
+    filter?: (d: MakeRouteMatch<TRouteTree>) => boolean
+  }) => {
+    const filter = opts?.filter
+    if (filter !== undefined) {
+      this.__store.setState((s) => {
+        return {
+          ...s,
+          cachedMatches: s.cachedMatches.filter((m) => !filter(m)),
+        }
+      })
+    } else {
+      this.__store.setState((s) => {
+        return {
+          ...s,
+          cachedMatches: [],
+        }
+      })
+    }
+  }
+
+  clearExpiredCache = () => {
     // This is where all of the garbage collection magic happens
-    this.__store.setState((s) => {
-      return {
-        ...s,
-        cachedMatches: s.cachedMatches.filter((d) => {
-          const route = this.looseRoutesById[d.routeId]!
+    const filter = (d: MakeRouteMatch<TRouteTree>) => {
+      const route = this.looseRoutesById[d.routeId]!
 
-          if (!route.options.loader) {
-            return false
-          }
-
-          // If the route was preloaded, use the preloadGcTime
-          // otherwise, use the gcTime
-          const gcTime =
-            (d.preload
-              ? (route.options.preloadGcTime ??
-                this.options.defaultPreloadGcTime)
-              : (route.options.gcTime ?? this.options.defaultGcTime)) ??
-            5 * 60 * 1000
-
-          return d.status !== 'error' && Date.now() - d.updatedAt < gcTime
-        }),
+      if (!route.options.loader) {
+        return true
       }
-    })
+
+      // If the route was preloaded, use the preloadGcTime
+      // otherwise, use the gcTime
+      const gcTime =
+        (d.preload
+          ? (route.options.preloadGcTime ?? this.options.defaultPreloadGcTime)
+          : (route.options.gcTime ?? this.options.defaultGcTime)) ??
+        5 * 60 * 1000
+
+      return !(d.status !== 'error' && Date.now() - d.updatedAt < gcTime)
+    }
+    this.clearCache({ filter })
   }
 
   preloadRoute = async <
