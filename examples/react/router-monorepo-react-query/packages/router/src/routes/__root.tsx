@@ -1,8 +1,8 @@
-import { createRootRouteWithContext, Link } from '@tanstack/react-router';
-import type { QueryClient } from '@tanstack/react-query';
+import { Link, createRootRouteWithContext } from '@tanstack/react-router'
+import type { QueryClient } from '@tanstack/react-query'
 
 export const Route = createRootRouteWithContext<{
-  queryClient: QueryClient;
+  queryClient: QueryClient
 }>()({
   notFoundComponent: () => {
     return (
@@ -10,6 +10,6 @@ export const Route = createRootRouteWithContext<{
         <p>This is the notFoundComponent configured on root route</p>
         <Link to="/">Start Over</Link>
       </div>
-    );
+    )
   },
-});
+})
