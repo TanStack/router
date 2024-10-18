@@ -89,12 +89,20 @@ export interface MiddlewareOptions<
     TServerContext,
     TClientContext
   >
-  server?: MiddlewareServerFn<TMiddlewares, TValidator, TServerContext>
+  server?: MiddlewareServerFn<TMiddlewares, TValidator, TServerContext, unknown>
 }
 
-export type MiddlewareServerFn<TMiddlewares, TValidator, TContext> = (options: {
+export type MiddlewareServerFn<
+  TMiddlewares,
+  TValidator,
+  TServerContext,
+  TContext,
+> = (options: {
   input: ResolveAllMiddlewareOutput<TMiddlewares, NonNullable<TValidator>>
-  context: ResolveAllMiddlewareServerContext<TMiddlewares>
+  context: ResolveAllMiddlewareServerContext<
+    TMiddlewares,
+    NonNullable<TServerContext>
+  >
   next: <TContext = undefined>(ctx?: {
     context?: TContext
   }) => Promise<ServerResultWithContext<TContext>>
@@ -182,7 +190,12 @@ export interface MiddlewareServer<
   TClientContext,
 > {
   server: <TNewServerContext = undefined>(
-    server: MiddlewareServerFn<TMiddlewares, TValidator, TNewServerContext>,
+    server: MiddlewareServerFn<
+      TMiddlewares,
+      TValidator,
+      TServerContext,
+      TNewServerContext
+    >,
   ) => MiddlewareWithServer<
     TId,
     TMiddlewares,

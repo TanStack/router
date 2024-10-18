@@ -48,6 +48,14 @@ test('createServerFn with middleware and context', () => {
     .client(({ context, next }) => {
       return next({ serverContext: context })
     })
+    .server(({ context, next }) => {
+      expectTypeOf(context).toEqualTypeOf<{
+        readonly a: 'a'
+        readonly b: 'b'
+        readonly c: 'c'
+      }>()
+      return next({ context: { d: 'd' } as const })
+    })
 
   createServerFn({ method: 'GET' })
     .middleware([middleware4])
@@ -58,6 +66,7 @@ test('createServerFn with middleware and context', () => {
           readonly a: 'a'
           readonly b: 'b'
           readonly c: 'c'
+          readonly d: 'd'
         }
         input: never
       }>()
