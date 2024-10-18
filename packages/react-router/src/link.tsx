@@ -617,6 +617,16 @@ export function useLinkProps<
     ...rest
   } = options
 
+  const {
+    // prevent these from being returned
+    params: _params,
+    search: _search,
+    hash: _hash,
+    state: _state,
+    mask: _mask,
+    ...propsSafeToSpread
+  } = rest
+
   // If this link simply reloads the current route,
   // make sure it has a new key so it will trigger a data refresh
 
@@ -717,7 +727,7 @@ export function useLinkProps<
 
   if (type === 'external') {
     return {
-      ...rest,
+      ...propsSafeToSpread,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       type,
       href: to,
@@ -837,7 +847,7 @@ export function useLinkProps<
   }
 
   return {
-    ...rest,
+    ...propsSafeToSpread,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
     href: disabled
@@ -980,7 +990,7 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    const { type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
+    const { type: _type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
 
     const children =
       typeof rest.children === 'function'
