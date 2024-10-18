@@ -16,7 +16,7 @@ import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, Router } from './router'
-import type { Assign, Constrain, Expand, NoInfer, PickRequired } from './utils'
+import type { Assign, Constrain, Expand, NoInfer } from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
@@ -201,9 +201,9 @@ export type FileBaseRouteOptions<
     (
       ctx: RouteContextOptions<
         TParentRoute,
-        TSearchValidator,
         TParams,
-        TRouterContext
+        TRouterContext,
+        TLoaderDeps
       >,
     ) => any
   >
@@ -272,9 +272,8 @@ export type BaseRouteOptions<
 
 export interface ContextOptions<
   in out TParentRoute extends AnyRoute,
-  in out TSearchValidator,
   in out TParams,
-> extends FullSearchSchemaOption<TParentRoute, TSearchValidator> {
+> {
   abortController: AbortController
   preload: boolean
   params: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
@@ -290,10 +289,11 @@ export interface ContextOptions<
 
 export interface RouteContextOptions<
   in out TParentRoute extends AnyRoute,
-  in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
-> extends ContextOptions<TParentRoute, TSearchValidator, TParams> {
+  in out TLoaderDeps,
+> extends ContextOptions<TParentRoute, TParams> {
+  deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
 
@@ -303,7 +303,8 @@ export interface BeforeLoadContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
-> extends ContextOptions<TParentRoute, TSearchValidator, TParams> {
+> extends ContextOptions<TParentRoute, TParams>,
+    FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
     BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
   >
@@ -337,13 +338,20 @@ export interface UpdatableRouteOptions<
   preload?: boolean
   preloadStaleTime?: number
   preloadGcTime?: number
-  // Filter functions that can manipulate search params *before* they are passed to links and navigate
-  // calls that match this route.
+  search?: {
+    middlewares?: Array<
+      SearchMiddleware<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+    >
+  }
+  /** 
+  @deprecated Use search.middlewares instead
+  */
   preSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  // Filter functions that can manipulate search params *after* they are passed to links and navigate
-  // calls that match this route.
+  /** 
+  @deprecated Use search.middlewares instead
+  */
   postSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
@@ -554,6 +562,15 @@ export interface LoaderFnContext<
 }
 
 export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
+
+export type SearchMiddlewareContext<TSearchSchema> = {
+  search: TSearchSchema
+  next: (newSearch: TSearchSchema) => TSearchSchema
+}
+
+export type SearchMiddleware<TSearchSchema> = (
+  ctx: SearchMiddlewareContext<TSearchSchema>,
+) => TSearchSchema
 
 export type ResolveId<
   TParentRoute,
@@ -928,6 +945,7 @@ export class Route<
   rank!: number
   lazyFn?: () => Promise<LazyRoute<any>>
   _lazyPromise?: Promise<void>
+  _componentsPromise?: Promise<Array<void>>
 
   /**
    * @deprecated Use the `createRoute` function instead.

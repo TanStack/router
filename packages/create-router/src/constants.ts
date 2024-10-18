@@ -19,3 +19,7 @@ export const DEFAULT_PACKAGE_MANAGER: PackageManager = 'npm'
 export const SUPPORTED_BUNDLERS = ['vite', 'webpack', 'rspack'] as const
 export type Bundler = (typeof SUPPORTED_BUNDLERS)[number]
 export const DEFAULT_BUNDLER: Bundler = 'vite'
+
+export const SUPPORTED_IDES = ['vscode', 'cursor', 'other'] as const
+export type Ide = (typeof SUPPORTED_IDES)[number]
+export const DEFAULT_IDE: Ide = 'vscode'

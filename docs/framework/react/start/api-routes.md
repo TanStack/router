@@ -236,19 +236,19 @@ You can set the status code of the response by either:
   })
   ```
 
-- Using the `setStatus` helper function from `vinxi/http`
+- Using the `setResponseStatus` helper function from `vinxi/http`
 
   ```ts
   // routes/api/hello.ts
   import { json } from '@tanstack/start'
   import { createAPIFileRoute } from '@tanstack/start/api'
-  import { setStatus } from 'vinxi/http'
+  import { setResponseStatus } from 'vinxi/http'
 
   export const Route = createAPIFileRoute('/users/$id')({
     GET: async ({ request, params }) => {
       const user = await findUser(params.id)
       if (!user) {
-        setStatus(404)
+        setResponseStatus(404)
         return new Response('User not found')
       }
       return json(user)

@@ -8,9 +8,9 @@ You can install TanStack Router with any [NPM](https://npmjs.com) package manage
 npm install @tanstack/react-router
 # or
 pnpm add @tanstack/react-router
-#or
+# or
 yarn add @tanstack/react-router
-#or
+# or
 bun add @tanstack/react-router
 ```
 

@@ -99,6 +99,19 @@ const virtualRouteConfig = rootRoute('root.tsx', [
 ])
 ```
 
+You can also define a virtual route without a file name. This allows to set a common path prefix for its children:
+
+```tsx
+import { route } from '@tanstack/virtual-file-routes'
+
+const virtualRouteConfig = rootRoute('root.tsx', [
+  route('/hello', [
+    route('/world', 'world.tsx'), // full path will be "/hello/world"
+    route('/universe', 'universe.tsx'), // full path will be "/hello/universe"
+  ]),
+])
+```
+
 ## Virtual Index Route
 
 The `index` function is used to create a virtual index route. It takes a file name. Here's an example of a virtual index route:

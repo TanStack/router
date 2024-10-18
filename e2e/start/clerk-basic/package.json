@@ -10,7 +10,7 @@
     "test:e2e": "exit 0; playwright test --project=chromium"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.4.11",
+    "@clerk/tanstack-start": "0.4.12",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/start": "workspace:^",
@@ -23,7 +23,7 @@
     "vinxi": "0.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.47.2",
+    "@playwright/test": "^1.48.0",
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",

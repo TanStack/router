@@ -42,7 +42,7 @@ export * from './history'
 
 export { lazyRouteComponent } from './lazyRouteComponent'
 
-export { useLinkProps, createLink, Link } from './link'
+export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {
   CleanPath,
   Split,
@@ -351,3 +351,5 @@ export type { Manifest, RouterManagedTag } from './manifest'
 
 export { createControlledPromise } from './utils'
 export type { ControlledPromise } from './utils'
+
+export { retainSearchParams } from './searchMiddleware'

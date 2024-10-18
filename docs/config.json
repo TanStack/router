@@ -105,6 +105,10 @@
               "to": "framework/react/guide/search-params"
             },
             {
+              "label": "Link Options",
+              "to": "framework/react/guide/link-options"
+            },
+            {
               "label": "Custom Links",
               "to": "framework/react/guide/custom-link"
             },

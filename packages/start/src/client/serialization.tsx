@@ -7,11 +7,9 @@ import {
   isPlainObject,
   pick,
   useRouter,
-  warning,
 } from '@tanstack/react-router'
 import jsesc from 'jsesc'
 import invariant from 'tiny-invariant'
-import { Context } from '@tanstack/react-cross-context'
 import type {
   AnyRouteMatch,
   AnyRouter,

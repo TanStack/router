@@ -21,7 +21,7 @@ import type {
   UpdatableRouteOptions,
 } from './route'
 import type { MakeRouteMatch } from './Matches'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
 
 export interface FileRoutesByPath {
@@ -265,16 +265,9 @@ export function createLazyRoute<
   }
 }
 
-const routeGroupPatternRegex = /\(.+\)/g
-
-function removeGroups(s: string) {
-  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
-}
-
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
 >(id: TFilePath) {
-  return (opts: LazyRouteOptions) =>
-    new LazyRoute<TRoute>({ id: removeGroups(id), ...opts })
+  return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
 }

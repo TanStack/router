@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-vite-plugin",
-  "version": "1.60.0",
+  "version": "1.66.1",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -64,17 +64,18 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@babel/core": "^7.25.7",
+    "@babel/core": "^7.25.8",
     "@babel/generator": "^7.25.7",
-    "@babel/parser": "^7.25.7",
+    "@babel/parser": "^7.25.8",
     "@babel/plugin-syntax-jsx": "^7.25.7",
     "@babel/plugin-syntax-typescript": "^7.25.7",
     "@babel/template": "^7.25.7",
     "@babel/traverse": "^7.25.7",
-    "@babel/types": "^7.25.7",
+    "@babel/types": "^7.25.8",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",
-    "@types/babel__traverse": "^7.20.6"
+    "@types/babel__traverse": "^7.20.6",
+    "babel-dead-code-elimination": "^1.0.6"
   }
 }

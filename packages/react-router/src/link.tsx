@@ -595,12 +595,7 @@ export function useLinkProps<
     activeProps = () => ({ className: 'active' }),
     inactiveProps = () => ({}),
     activeOptions,
-    hash,
-    search,
-    params,
     to,
-    state,
-    mask,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
     replace,
@@ -636,9 +631,12 @@ export function useLinkProps<
     return 'internal'
   }, [to])
 
+  // subscribe to search params to re-build location if it changes
+  const currentSearch = useRouterState({ select: (s) => s.location.search })
+
   const next = React.useMemo(
     () => router.buildLocation(options as any),
-    [router, options],
+    [router, options, currentSearch],
   )
   const preload = React.useMemo(
     () => userPreload ?? router.options.defaultPreload,
@@ -649,32 +647,48 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
-      // Compare path/hash for matches
-      const currentPathSplit = removeTrailingSlash(
-        s.location.pathname,
-        router.basepath,
-      ).split('/')
-      const nextPathSplit = removeTrailingSlash(
-        next.pathname,
-        router.basepath,
-      ).split('/')
-      const pathIsFuzzyEqual = nextPathSplit.every(
-        (d, i) => d === currentPathSplit[i],
-      )
-      // Combine the matches based on user router.options
-      const pathTest = activeOptions?.exact
-        ? exactPathTest(s.location.pathname, next.pathname, router.basepath)
-        : pathIsFuzzyEqual
-      const hashTest = activeOptions?.includeHash
-        ? s.location.hash === next.hash
-        : true
-      const searchTest =
-        (activeOptions?.includeSearch ?? true)
-          ? deepEqual(s.location.search, next.search, !activeOptions?.exact)
-          : true
+      if (activeOptions?.exact) {
+        const testExact = exactPathTest(
+          s.location.pathname,
+          next.pathname,
+          router.basepath,
+        )
+        if (!testExact) {
+          return false
+        }
+      } else {
+        const currentPathSplit = removeTrailingSlash(
+          s.location.pathname,
+          router.basepath,
+        ).split('/')
+        const nextPathSplit = removeTrailingSlash(
+          next.pathname,
+          router.basepath,
+        ).split('/')
 
-      // The final "active" test
-      return pathTest && hashTest && searchTest
+        const pathIsFuzzyEqual = nextPathSplit.every(
+          (d, i) => d === currentPathSplit[i],
+        )
+        if (!pathIsFuzzyEqual) {
+          return false
+        }
+      }
+
+      if (activeOptions?.includeSearch ?? true) {
+        const searchTest = deepEqual(
+          s.location.search,
+          next.search,
+          !activeOptions?.exact,
+        )
+        if (!searchTest) {
+          return false
+        }
+      }
+
+      if (activeOptions?.includeHash) {
+        return s.location.hash === next.hash
+      }
+      return true
     },
   })
 
@@ -741,8 +755,9 @@ export function useLinkProps<
       })
 
       // All is well? Navigate!
-      router.commitLocation({
-        ...next,
+      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
+      router.buildAndCommitLocation({
+        ...options,
         replace,
         resetScroll,
         startTransition,
@@ -975,7 +990,7 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
         : rest.children
 
     if (typeof _asChild === 'undefined') {
-      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a delete prop
+      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
       // @ts-expect-error
       delete linkProps.disabled
     }
@@ -993,4 +1008,22 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+export type LinkOptionsFn<TComp> = <
+  const TProps,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '',
+>(
+  options: Constrain<
+    TProps,
+    LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  >,
+) => TProps
+
+export const linkOptions: LinkOptionsFn<'a'> = (options) => {
+  return options as any
 }

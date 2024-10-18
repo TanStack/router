@@ -1,6 +1,6 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_first/_second')({
+export const Route = createFileRoute('/_first/_second-layout')({
   component: LayoutComponent,
 })
 
@@ -10,7 +10,7 @@ function LayoutComponent() {
       <div>I'm a nested layout</div>
       <div className="flex gap-2 border-b">
         <Link
-          to="/layout-a"
+          to="/route-without-file/layout-a"
           activeProps={{
             className: 'font-bold',
           }}
@@ -18,7 +18,7 @@ function LayoutComponent() {
           Layout A
         </Link>
         <Link
-          to="/layout-b"
+          to="/route-without-file/layout-b"
           activeProps={{
             className: 'font-bold',
           }}
