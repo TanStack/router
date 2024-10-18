@@ -82,6 +82,16 @@
         "default": "./dist/cjs/webpack.cjs"
       }
     },
+    "./esbuild": {
+      "import": {
+        "types": "./dist/esm/esbuild.d.ts",
+        "default": "./dist/esm/esbuild.js"
+      },
+      "require": {
+        "types": "./dist/cjs/esbuild.d.cts",
+        "default": "./dist/cjs/esbuild.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
