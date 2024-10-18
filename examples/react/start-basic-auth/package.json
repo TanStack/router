@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@prisma/client": "5.20.0",
-    "@tanstack/react-router": "^1.72.1",
-    "@tanstack/router-devtools": "^1.72.1",
-    "@tanstack/start": "^1.72.1",
+    "@tanstack/react-router": "^1.73.0",
+    "@tanstack/router-devtools": "^1.73.0",
+    "@tanstack/start": "^1.73.0",
     "dotenv": "^16.4.5",
     "prisma": "^5.20.0",
     "react": "^18.3.1",
