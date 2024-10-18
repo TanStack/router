@@ -166,7 +166,7 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRoute
     }
     '/(this-folder-is-not-in-the-url)/route-group': {
-      id: '/route-group'
+      id: '/(this-folder-is-not-in-the-url)/route-group'
       path: '/route-group'
       fullPath: '/route-group'
       preLoaderRoute: typeof thisFolderIsNotInTheUrlRouteGroupImport
@@ -362,7 +362,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
-  '/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
+  '/(this-folder-is-not-in-the-url)/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
   '/_auth/profile': typeof AuthProfileRoute
   '/_layout/layout-a': typeof LayoutLayoutARoute
   '/_layout/layout-b': typeof LayoutLayoutBRoute
@@ -417,7 +417,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/dashboard'
     | '/login'
-    | '/route-group'
+    | '/(this-folder-is-not-in-the-url)/route-group'
     | '/_auth/profile'
     | '/_layout/layout-a'
     | '/_layout/layout-b'
@@ -470,7 +470,7 @@ export const routeTree = rootRoute
         "/_layout",
         "/dashboard",
         "/login",
-        "/route-group",
+        "/(this-folder-is-not-in-the-url)/route-group",
         "/expensive/"
       ]
     },
@@ -501,7 +501,7 @@ export const routeTree = rootRoute
     "/login": {
       "filePath": "login.tsx"
     },
-    "/route-group": {
+    "/(this-folder-is-not-in-the-url)/route-group": {
       "filePath": "(this-folder-is-not-in-the-url)/route-group.tsx"
     },
     "/_auth/profile": {
