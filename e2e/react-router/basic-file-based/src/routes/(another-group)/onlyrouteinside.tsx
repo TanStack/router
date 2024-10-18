@@ -2,14 +2,16 @@ import { createFileRoute, getRouteApi, useSearch } from '@tanstack/react-router'
 import { z } from 'zod'
 import { zodSearchValidator } from '@tanstack/router-zod-adapter'
 
-const routeApi = getRouteApi('/(group)/_layout/inside')
+const routeApi = getRouteApi('/(another-group)/onlyrouteinside')
 
-export const Route = createFileRoute('/(group)/_layout/inside')({
+export const Route = createFileRoute('/(another-group)/onlyrouteinside')({
   validateSearch: zodSearchValidator(
     z.object({ hello: z.string().optional() }),
   ),
   component: () => {
-    const searchViaHook = useSearch({ from: '/(group)/_layout/inside' })
+    const searchViaHook = useSearch({
+      from: '/(another-group)/onlyrouteinside',
+    })
     const searchViaRouteHook = Route.useSearch()
     const searchViaRouteApi = routeApi.useSearch()
     return (

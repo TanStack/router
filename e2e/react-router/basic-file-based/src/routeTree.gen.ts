@@ -20,10 +20,13 @@ import { Route as PostsIndexImport } from './routes/posts.index'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as groupLazyinsideImport } from './routes/(group)/lazyinside'
+import { Route as groupInsideImport } from './routes/(group)/inside'
 import { Route as groupLayoutImport } from './routes/(group)/_layout'
+import { Route as anotherGroupOnlyrouteinsideImport } from './routes/(another-group)/onlyrouteinside'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
-import { Route as groupLayoutInsideImport } from './routes/(group)/_layout.inside'
+import { Route as groupSubfolderInsideImport } from './routes/(group)/subfolder/inside'
+import { Route as groupLayoutInsidelayoutImport } from './routes/(group)/_layout.insidelayout'
 
 // Create Virtual Routes
 
@@ -37,6 +40,7 @@ const groupRoute = groupImport.update({
 } as any)
 
 const PostsRoute = PostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
@@ -47,16 +51,19 @@ const LayoutRoute = LayoutImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PostsIndexRoute = PostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
@@ -68,28 +75,51 @@ const LayoutLayout2Route = LayoutLayout2Import.update({
 
 const groupLazyinsideRoute = groupLazyinsideImport
   .update({
+    id: '/lazyinside',
     path: '/lazyinside',
     getParentRoute: () => groupRoute,
   } as any)
   .lazy(() => import('./routes/(group)/lazyinside.lazy').then((d) => d.Route))
+
+const groupInsideRoute = groupInsideImport.update({
+  id: '/inside',
+  path: '/inside',
+  getParentRoute: () => groupRoute,
+} as any)
 
 const groupLayoutRoute = groupLayoutImport.update({
   id: '/_layout',
   getParentRoute: () => groupRoute,
 } as any)
 
+const anotherGroupOnlyrouteinsideRoute =
+  anotherGroupOnlyrouteinsideImport.update({
+    id: '/(another-group)/onlyrouteinside',
+    path: '/onlyrouteinside',
+    getParentRoute: () => rootRoute,
+  } as any)
+
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
 const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-const groupLayoutInsideRoute = groupLayoutInsideImport.update({
-  path: '/inside',
+const groupSubfolderInsideRoute = groupSubfolderInsideImport.update({
+  id: '/subfolder/inside',
+  path: '/subfolder/inside',
+  getParentRoute: () => groupRoute,
+} as any)
+
+const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutImport.update({
+  id: '/insidelayout',
+  path: '/insidelayout',
   getParentRoute: () => groupLayoutRoute,
 } as any)
 
@@ -118,6 +148,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsImport
       parentRoute: typeof rootRoute
     }
+    '/(another-group)/onlyrouteinside': {
+      id: '/(another-group)/onlyrouteinside'
+      path: '/onlyrouteinside'
+      fullPath: '/onlyrouteinside'
+      preLoaderRoute: typeof anotherGroupOnlyrouteinsideImport
+      parentRoute: typeof rootRoute
+    }
     '/(group)': {
       id: '/(group)'
       path: '/'
@@ -131,6 +168,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof groupLayoutImport
       parentRoute: typeof groupRoute
+    }
+    '/(group)/inside': {
+      id: '/(group)/inside'
+      path: '/inside'
+      fullPath: '/inside'
+      preLoaderRoute: typeof groupInsideImport
+      parentRoute: typeof groupImport
     }
     '/(group)/lazyinside': {
       id: '/(group)/lazyinside'
@@ -160,12 +204,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
     }
-    '/(group)/_layout/inside': {
-      id: '/(group)/_layout/inside'
-      path: '/inside'
-      fullPath: '/inside'
-      preLoaderRoute: typeof groupLayoutInsideImport
+    '/(group)/_layout/insidelayout': {
+      id: '/(group)/_layout/insidelayout'
+      path: '/insidelayout'
+      fullPath: '/insidelayout'
+      preLoaderRoute: typeof groupLayoutInsidelayoutImport
       parentRoute: typeof groupLayoutImport
+    }
+    '/(group)/subfolder/inside': {
+      id: '/(group)/subfolder/inside'
+      path: '/subfolder/inside'
+      fullPath: '/subfolder/inside'
+      preLoaderRoute: typeof groupSubfolderInsideImport
+      parentRoute: typeof groupImport
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
@@ -224,11 +275,11 @@ const PostsRouteChildren: PostsRouteChildren = {
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
 interface groupLayoutRouteChildren {
-  groupLayoutInsideRoute: typeof groupLayoutInsideRoute
+  groupLayoutInsidelayoutRoute: typeof groupLayoutInsidelayoutRoute
 }
 
 const groupLayoutRouteChildren: groupLayoutRouteChildren = {
-  groupLayoutInsideRoute: groupLayoutInsideRoute,
+  groupLayoutInsidelayoutRoute: groupLayoutInsidelayoutRoute,
 }
 
 const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
@@ -237,12 +288,16 @@ const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
 
 interface groupRouteChildren {
   groupLayoutRoute: typeof groupLayoutRouteWithChildren
+  groupInsideRoute: typeof groupInsideRoute
   groupLazyinsideRoute: typeof groupLazyinsideRoute
+  groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
 }
 
 const groupRouteChildren: groupRouteChildren = {
   groupLayoutRoute: groupLayoutRouteWithChildren,
+  groupInsideRoute: groupInsideRoute,
   groupLazyinsideRoute: groupLazyinsideRoute,
+  groupSubfolderInsideRoute: groupSubfolderInsideRoute,
 }
 
 const groupRouteWithChildren = groupRoute._addFileChildren(groupRouteChildren)
@@ -251,10 +306,13 @@ export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
   '/posts': typeof PostsRouteWithChildren
+  '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
+  '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
-  '/inside': typeof groupLayoutInsideRoute
+  '/insidelayout': typeof groupLayoutInsidelayoutRoute
+  '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
 }
@@ -262,10 +320,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
+  '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
+  '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
-  '/inside': typeof groupLayoutInsideRoute
+  '/insidelayout': typeof groupLayoutInsidelayoutRoute
+  '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
 }
@@ -275,13 +336,16 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
+  '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)': typeof groupRouteWithChildren
   '/(group)/_layout': typeof groupLayoutRouteWithChildren
+  '/(group)/inside': typeof groupInsideRoute
   '/(group)/lazyinside': typeof groupLazyinsideRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
-  '/(group)/_layout/inside': typeof groupLayoutInsideRoute
+  '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
+  '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
 }
@@ -292,20 +356,26 @@ export interface FileRouteTypes {
     | '/'
     | ''
     | '/posts'
+    | '/onlyrouteinside'
+    | '/inside'
     | '/lazyinside'
     | '/posts/$postId'
     | '/posts/'
-    | '/inside'
+    | '/insidelayout'
+    | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | ''
+    | '/onlyrouteinside'
+    | '/inside'
     | '/lazyinside'
     | '/posts/$postId'
     | '/posts'
-    | '/inside'
+    | '/insidelayout'
+    | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
   id:
@@ -313,13 +383,16 @@ export interface FileRouteTypes {
     | '/'
     | '/_layout'
     | '/posts'
+    | '/(another-group)/onlyrouteinside'
     | '/(group)'
     | '/(group)/_layout'
+    | '/(group)/inside'
     | '/(group)/lazyinside'
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/posts/'
-    | '/(group)/_layout/inside'
+    | '/(group)/_layout/insidelayout'
+    | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
   fileRoutesById: FileRoutesById
@@ -329,6 +402,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren
+  anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
 }
 
@@ -336,6 +410,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
+  anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
 }
 
@@ -354,6 +429,7 @@ export const routeTree = rootRoute
         "/",
         "/_layout",
         "/posts",
+        "/(another-group)/onlyrouteinside",
         "/(group)"
       ]
     },
@@ -373,19 +449,28 @@ export const routeTree = rootRoute
         "/posts/"
       ]
     },
+    "/(another-group)/onlyrouteinside": {
+      "filePath": "(another-group)/onlyrouteinside.tsx"
+    },
     "/(group)": {
       "filePath": "(group)",
       "children": [
         "/(group)/_layout",
-        "/(group)/lazyinside"
+        "/(group)/inside",
+        "/(group)/lazyinside",
+        "/(group)/subfolder/inside"
       ]
     },
     "/(group)/_layout": {
       "filePath": "(group)/_layout.tsx",
       "parent": "/(group)",
       "children": [
-        "/(group)/_layout/inside"
+        "/(group)/_layout/insidelayout"
       ]
+    },
+    "/(group)/inside": {
+      "filePath": "(group)/inside.tsx",
+      "parent": "/(group)"
     },
     "/(group)/lazyinside": {
       "filePath": "(group)/lazyinside.tsx",
@@ -407,9 +492,13 @@ export const routeTree = rootRoute
       "filePath": "posts.index.tsx",
       "parent": "/posts"
     },
-    "/(group)/_layout/inside": {
-      "filePath": "(group)/_layout.inside.tsx",
+    "/(group)/_layout/insidelayout": {
+      "filePath": "(group)/_layout.insidelayout.tsx",
       "parent": "/(group)/_layout"
+    },
+    "/(group)/subfolder/inside": {
+      "filePath": "(group)/subfolder/inside.tsx",
+      "parent": "/(group)"
     },
     "/_layout/_layout-2/layout-a": {
       "filePath": "_layout/_layout-2/layout-a.tsx",

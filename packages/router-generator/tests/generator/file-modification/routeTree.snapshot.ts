@@ -25,18 +25,21 @@ const testBarLazyImport = createFileRoute('/(test)/bar')()
 
 const testBarLazyRoute = testBarLazyImport
   .update({
+    id: '/(test)/bar',
     path: '/bar',
     getParentRoute: () => rootRoute,
   } as any)
   .lazy(() => import('./routes/(test)/bar.lazy').then((d) => d.Route))
 
 const testInitiallyLazyRoute = testInitiallyLazyImport.update({
+  id: '/(test)/initiallyLazy',
   path: '/initiallyLazy',
   getParentRoute: () => rootRoute,
 } as any)
 
 const testInitiallyEmptyRoute = testInitiallyEmptyImport
   .update({
+    id: '/(test)/initiallyEmpty',
     path: '/initiallyEmpty',
     getParentRoute: () => rootRoute,
   } as any)
@@ -45,6 +48,7 @@ const testInitiallyEmptyRoute = testInitiallyEmptyImport
   )
 
 const testFooRoute = testFooImport.update({
+  id: '/(test)/foo',
   path: '/foo',
   getParentRoute: () => rootRoute,
 } as any)
