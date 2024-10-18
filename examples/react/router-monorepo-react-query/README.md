@@ -5,20 +5,21 @@ To run this example:
 - `npm install` or `yarn`
 - `npm dev` or `yarn dev`
 
-The challenge with TanStack router is that it needs to be setup with typescript types augmentations. But that means that if you do that in the final app, the links in the libraries will not be type safe. So to make that work in a monorepo, we need a separate library to contains the router, without components and then stitch it together with the app.
+A challenge with TanStack Router in a monorepo setup is that it requires TypeScript type augmentations. However, if you set this up directly in the final app, the links inside the libraries won’t be type-safe. To solve this in a monorepo, you need a separate library just for the router, without any components, and then integrate it with the app.
 
-This example does it using the following packages:
+This example showcases this approach using the following packages:
 
-- `pacakges/router` is the router library
+- `packages/router` is the router library
 - `packages/post-query` is the post query collection library
 - `packages/post-feature` is the posts ui library
 - `packages/app` is the app
 
-With this approach, we can use the query options from the data library in the router, and in the feature library without causing circular dependencies.
 
-And given the router lib re exposes the router components, when we import them in the feature library they are type safe given they are linked to the typescript augmentations.
+With this approach, we can use the query options from the data library both in the router and the feature library without creating circular dependencies.
 
-And finally, in the app, we can create a map of route to component ([`packages/app/src/main.tsx`](./packages/app/src/main.tsx)) that is used to stitch the router together with the components. **We could enforce lazy loading here also, but this was omitted for simplicity**, and we now have a fully type safe router!
+Since the router library re-exports the router components, importing them in the feature library ensures they remain type-safe, as they’re linked to the TypeScript augmentations.
+
+Finally, in the app, we can create a map of routes to components ([`packages/app/src/main.tsx`](./packages/app/src/main.tsx)), which ties the router to the components. **We could enforce lazy loading here, but it was left out for simplicity.** With this setup, we now have a fully type-safe router!
 
 Here is what it looks like in the monorepo:
 
@@ -26,6 +27,6 @@ Here is what it looks like in the monorepo:
 
 ## Stackblitz limitation
 
-### Typescript IDE feedback
+### TypeScript IDE feedback
 
 Due to a limitation on Stackblitz, the example's types are not properly inferred in the IDE, however as soon as you click on fork in the bottom right corner, the types should be correctly inferred.
