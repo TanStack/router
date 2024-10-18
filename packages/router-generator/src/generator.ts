@@ -521,9 +521,8 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         return [
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
-            node.isNonPath
-              ? `id: '${node.path}'`
-              : `path: '${node.cleanedPath}'`,
+            `id: '${node.path}'`,
+            !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)

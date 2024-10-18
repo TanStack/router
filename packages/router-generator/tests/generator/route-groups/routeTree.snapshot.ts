@@ -33,6 +33,7 @@ const fooAsdfbarLayoutXyzLazyImport = createFileRoute(
 // Create/Update Routes
 
 const fooAsdfRoute = fooAsdfImport.update({
+  id: '/(foo)/asdf',
   path: '/asdf',
   getParentRoute: () => rootRoute,
 } as any)
@@ -48,11 +49,13 @@ const fooAsdfLayoutRoute = fooAsdfLayoutImport.update({
 } as any)
 
 const fooAsdfLayoutFooRoute = fooAsdfLayoutFooImport.update({
+  id: '/foo',
   path: '/foo',
   getParentRoute: () => fooAsdfLayoutRoute,
 } as any)
 
 const fooAsdfbarIdRoute = fooAsdfbarIdImport.update({
+  id: '/(bar)/$id',
   path: '/$id',
   getParentRoute: () => fooAsdfRoute,
 } as any)
@@ -64,6 +67,7 @@ const fooAsdfanotherGroupLayoutRoute = fooAsdfanotherGroupLayoutImport.update({
 
 const fooAsdfbarLayoutXyzLazyRoute = fooAsdfbarLayoutXyzLazyImport
   .update({
+    id: '/(bar)/_layout/xyz',
     path: '/xyz',
     getParentRoute: () => fooAsdfRoute,
   } as any)
@@ -72,12 +76,14 @@ const fooAsdfbarLayoutXyzLazyRoute = fooAsdfbarLayoutXyzLazyImport
   )
 
 const fooAsdfbarLayoutAboutRoute = fooAsdfbarLayoutAboutImport.update({
+  id: '/(bar)/_layout/about',
   path: '/about',
   getParentRoute: () => fooAsdfRoute,
 } as any)
 
 const fooAsdfanotherGroupLayoutBazRoute =
   fooAsdfanotherGroupLayoutBazImport.update({
+    id: '/baz',
     path: '/baz',
     getParentRoute: () => fooAsdfanotherGroupLayoutRoute,
   } as any)
