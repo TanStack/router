@@ -14,7 +14,7 @@ If `true` is passed in, all search params will be retained.
 
 ```tsx
 import { z } from 'zod'
-import { createFileRoute } from '@tanstack/react-router'
+import { createRootRoute, retainSearchParams } from '@tanstack/react-router'
 import { zodSearchValidator } from '@tanstack/router-zod-adapter'
 
 const searchSchema = z.object({
@@ -31,7 +31,7 @@ export const Route = createRootRoute({
 
 ```tsx
 import { z } from 'zod'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, retainSearchParams } from '@tanstack/react-router'
 import { zodSearchValidator } from '@tanstack/router-zod-adapter'
 
 const searchSchema = z.object({

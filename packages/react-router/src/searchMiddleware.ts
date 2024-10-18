@@ -1,4 +1,7 @@
+import { deepEqual } from './utils'
+import type { NoInfer, PickOptional } from './utils'
 import type { SearchMiddleware } from './route'
+import type { IsRequiredParams } from './link'
 
 export function retainSearchParams<TSearchSchema extends object>(
   keys: Array<keyof TSearchSchema> | true,
@@ -15,5 +18,36 @@ export function retainSearchParams<TSearchSchema extends object>(
       }
     })
     return result
+  }
+}
+
+export function stripSearchParams<
+  TSearchSchema,
+  const TValues =
+    | Partial<NoInfer<TSearchSchema>>
+    | Array<keyof PickOptional<TSearchSchema>>,
+  const TInput = IsRequiredParams<TSearchSchema> extends never
+    ? TValues | true
+    : TValues,
+>(input: NoInfer<TInput>): SearchMiddleware<TSearchSchema> {
+  return ({ search, next }) => {
+    if (input === true) {
+      return {}
+    }
+    const result = next(search) as Record<string, unknown>
+    if (Array.isArray(input)) {
+      input.forEach((key) => {
+        delete result[key]
+      })
+    } else {
+      Object.entries(input as Record<string, unknown>).forEach(
+        ([key, value]) => {
+          if (deepEqual(result[key], value)) {
+            delete result[key]
+          }
+        },
+      )
+    }
+    return result as any
   }
 }
