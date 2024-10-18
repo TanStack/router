@@ -591,12 +591,10 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
-        const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
-          routeNode.routePath,
-        )
+        const filePathId = getFilePathIdFromPath(routeNode.routePath)
 
         return `'${filePathId}': {
-          id: '${routeId}'
+          id: '${filePathId}'
           path: '${inferPath(routeNode)}'
           fullPath: '${inferFullPath(routeNode)}'
           preLoaderRoute: typeof ${routeNode.variableName}Import
@@ -661,24 +659,21 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     const routesManifest = {
       __root__: {
         filePath: rootRouteNode.filePath,
-        children: routeTree.map(
-          (d) => getFilePathIdAndRouteIdFromPath(d.routePath)[1],
-        ),
+        children: routeTree.map((d) => getFilePathIdFromPath(d.routePath)),
       },
       ...Object.fromEntries(
         routeNodes.map((d) => {
-          const [_, routeId] = getFilePathIdAndRouteIdFromPath(d.routePath)
+          const filePathId = getFilePathIdFromPath(d.routePath)
 
           return [
-            routeId,
+            filePathId,
             {
               filePath: d.filePath,
               parent: d.parent?.routePath
-                ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
+                ? getFilePathIdFromPath(d.parent.routePath)
                 : undefined,
-              children: d.children?.map(
-                (childRoute) =>
-                  getFilePathIdAndRouteIdFromPath(childRoute.routePath)[1],
+              children: d.children?.map((childRoute) =>
+                getFilePathIdFromPath(childRoute.routePath),
               ),
             },
           ]
@@ -747,12 +742,6 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
       Date.now() - start
     }ms`,
   )
-}
-
-function spaces(d: number): string {
-  return Array.from({ length: d })
-    .map(() => ' ')
-    .join('')
 }
 
 function removeTrailingUnderscores(s?: string) {
@@ -879,7 +868,7 @@ export const createRouteNodesById = (
 ): Map<string, RouteNode> => {
   return new Map(
     routeNodes.map((routeNode) => {
-      const [_, id] = getFilePathIdAndRouteIdFromPath(routeNode.routePath)
+      const id = getFilePathIdFromPath(routeNode.routePath)
       return [id, routeNode]
     }),
   )
@@ -928,11 +917,9 @@ export const dedupeBranchesAndIndexRoutes = (
   })
 }
 
-function getFilePathIdAndRouteIdFromPath(pathname?: string) {
+function getFilePathIdFromPath(pathname?: string) {
   const filePathId = removeTrailingUnderscores(pathname)
-  const id = removeGroups(filePathId ?? '')
-
-  return [filePathId, id] as const
+  return filePathId ?? ''
 }
 
 function checkUnique<TElement>(routes: Array<TElement>, key: keyof TElement) {

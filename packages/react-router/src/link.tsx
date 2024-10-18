@@ -595,12 +595,7 @@ export function useLinkProps<
     activeProps = () => ({ className: 'active' }),
     inactiveProps = () => ({}),
     activeOptions,
-    hash,
-    search,
-    params,
     to,
-    state,
-    mask,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
     replace,
@@ -636,9 +631,12 @@ export function useLinkProps<
     return 'internal'
   }, [to])
 
+  // subscribe to search params to re-build location if it changes
+  const currentSearch = useRouterState({ select: (s) => s.location.search })
+
   const next = React.useMemo(
     () => router.buildLocation(options as any),
-    [router, options],
+    [router, options, currentSearch],
   )
   const preload = React.useMemo(
     () => userPreload ?? router.options.defaultPreload,

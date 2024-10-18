@@ -216,7 +216,7 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof FooRoute
     }
     '/(folder)/in-folder': {
-      id: '/in-folder'
+      id: '/(folder)/in-folder'
       path: '/in-folder'
       fullPath: '/in-folder'
       preLoaderRoute: typeof folderInFolderImport
@@ -552,7 +552,7 @@ export interface FileRoutesById {
   '/_layout-a2': typeof LayoutA2RouteWithChildren
   '/foo': typeof FooRouteWithChildren
   '/foo/_layout-b5': typeof FooLayoutB5RouteRouteWithChildren
-  '/in-folder': typeof folderInFolderRoute
+  '/(folder)/in-folder': typeof folderInFolderRoute
   '/_layout-a1/foo': typeof LayoutA1FooRoute
   '/_layout-a2/bar': typeof LayoutA2BarRoute
   '/foo/bar': typeof FooBarRoute
@@ -615,7 +615,7 @@ export interface FileRouteTypes {
     | '/_layout-a2'
     | '/foo'
     | '/foo/_layout-b5'
-    | '/in-folder'
+    | '/(folder)/in-folder'
     | '/_layout-a1/foo'
     | '/_layout-a2/bar'
     | '/foo/bar'
@@ -674,7 +674,7 @@ export const routeTree = rootRoute
         "/_layout-a1",
         "/_layout-a2",
         "/foo",
-        "/in-folder",
+        "/(folder)/in-folder",
         "/nested"
       ]
     },
@@ -715,7 +715,7 @@ export const routeTree = rootRoute
         "/foo/_layout-b5/"
       ]
     },
-    "/in-folder": {
+    "/(folder)/in-folder": {
       "filePath": "(folder)/in-folder.tsx"
     },
     "/_layout-a1/foo": {

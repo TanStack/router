@@ -245,14 +245,14 @@ export const getServerTime = createServerFn('GET', async () => {
 
 ## Responding with Custom Status Codes
 
-To respond with a custom status code, you can use Vinxi's `setStatus` function:
+To respond with a custom status code, you can use Vinxi's `setResponseStatus` function:
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
-import { setStatus } from 'vinxi/http'
+import { setResponseStatus } from 'vinxi/http'
 
 export const getServerTime = createServerFn('GET', async () => {
-  setStatus(201)
+  setResponseStatus(201)
   return new Date().toISOString()
 })
 ```

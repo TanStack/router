@@ -49,3 +49,8 @@ export const getIntersectionObserverMock = ({
     }
   }
 }
+
+export function getSearchParamsFromURI(uri: string) {
+  const [, paramString] = uri.split('?')
+  return new URLSearchParams(paramString)
+}

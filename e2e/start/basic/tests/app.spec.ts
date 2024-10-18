@@ -78,3 +78,23 @@ test('Directly visiting the search-params route with search param set', async ({
   await expect(page.getByTestId('search-param')).toContainText('b')
   expect(page.url().endsWith('/search-params?step=b'))
 })
+
+test('invoking a server function with custom response status code', async ({
+  page,
+}) => {
+  await page.goto('/status')
+
+  await page.waitForLoadState('networkidle')
+  await page.getByTestId('invoke-server-fn').click()
+
+  const requestPromise = new Promise<void>((resolve) => {
+    page.on('response', async (response) => {
+      expect(response.status()).toBe(225)
+      expect(response.statusText()).toBe('hello')
+      expect(response.headers()['content-type']).toBe('application/json')
+      expect(await response.json()).toEqual({ hello: 'world' })
+      resolve()
+    })
+  })
+  await requestPromise
+})

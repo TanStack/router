@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/eslint-plugin-router",
-  "version": "1.63.4",
+  "version": "1.70.0",
   "description": "ESLint plugin for TanStack Router",
   "author": "Manuel Schiller",
   "license": "MIT",
@@ -52,10 +52,10 @@
     "src"
   ],
   "dependencies": {
-    "@typescript-eslint/utils": "^8.8.0"
+    "@typescript-eslint/utils": "^8.8.1"
   },
   "devDependencies": {
-    "@typescript-eslint/rule-tester": "^8.8.0",
+    "@typescript-eslint/rule-tester": "^8.8.1",
     "combinate": "^1.1.11",
     "eslint": "^9.12.0"
   },

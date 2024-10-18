@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as UsersImport } from './routes/users'
+import { Route as StatusImport } from './routes/status'
 import { Route as SearchParamsImport } from './routes/search-params'
 import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
@@ -31,6 +32,11 @@ import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/
 
 const UsersRoute = UsersImport.update({
   path: '/users',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const StatusRoute = StatusImport.update({
+  path: '/status',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -148,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/search-params'
       fullPath: '/search-params'
       preLoaderRoute: typeof SearchParamsImport
+      parentRoute: typeof rootRoute
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusImport
       parentRoute: typeof rootRoute
     }
     '/users': {
@@ -274,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/search-params': typeof SearchParamsRoute
+  '/status': typeof StatusRoute
   '/users': typeof UsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
@@ -290,6 +304,7 @@ export interface FileRoutesByTo {
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
   '/search-params': typeof SearchParamsRoute
+  '/status': typeof StatusRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts': typeof PostsIndexRoute
@@ -307,6 +322,7 @@ export interface FileRoutesById {
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/search-params': typeof SearchParamsRoute
+  '/status': typeof StatusRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
@@ -327,6 +343,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/redirect'
     | '/search-params'
+    | '/status'
     | '/users'
     | '/posts/$postId'
     | '/users/$userId'
@@ -342,6 +359,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/redirect'
     | '/search-params'
+    | '/status'
     | '/posts/$postId'
     | '/users/$userId'
     | '/posts'
@@ -357,6 +375,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/redirect'
     | '/search-params'
+    | '/status'
     | '/users'
     | '/_layout/_layout-2'
     | '/posts/$postId'
@@ -376,6 +395,7 @@ export interface RootRouteChildren {
   PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
   SearchParamsRoute: typeof SearchParamsRoute
+  StatusRoute: typeof StatusRoute
   UsersRoute: typeof UsersRouteWithChildren
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
@@ -387,6 +407,7 @@ const rootRouteChildren: RootRouteChildren = {
   PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
   SearchParamsRoute: SearchParamsRoute,
+  StatusRoute: StatusRoute,
   UsersRoute: UsersRouteWithChildren,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
@@ -409,6 +430,7 @@ export const routeTree = rootRoute
         "/posts",
         "/redirect",
         "/search-params",
+        "/status",
         "/users",
         "/posts/$postId/deep"
       ]
@@ -437,6 +459,9 @@ export const routeTree = rootRoute
     },
     "/search-params": {
       "filePath": "search-params.tsx"
+    },
+    "/status": {
+      "filePath": "status.tsx"
     },
     "/users": {
       "filePath": "users.tsx",

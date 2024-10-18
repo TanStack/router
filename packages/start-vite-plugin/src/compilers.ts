@@ -1,6 +1,7 @@
 import * as babel from '@babel/core'
 import * as t from '@babel/types'
 import _generate from '@babel/generator'
+import { deadCodeElimination } from 'babel-dead-code-elimination'
 
 import { parseAst } from './ast'
 import type { ParseAstOptions } from './ast'
@@ -12,6 +13,20 @@ let generate = (_generate as any)['default'] as typeof _generate
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 if (!generate) {
   generate = _generate
+}
+
+export function compileEliminateDeadCode(opts: ParseAstOptions) {
+  const ast = parseAst(opts)
+  if (!ast) {
+    throw new Error(
+      `Failed to compile ast for compileEliminateDeadCode() for the file: ${opts.filename}`,
+    )
+  }
+  deadCodeElimination(ast)
+
+  return generate(ast, {
+    sourceMaps: true,
+  })
 }
 
 export function compileCreateServerFnOutput(opts: ParseAstOptions) {
