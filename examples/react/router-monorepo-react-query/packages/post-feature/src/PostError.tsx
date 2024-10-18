@@ -1,6 +1,10 @@
 import * as React from 'react'
 import { PostNotFoundError } from '@router-mono-react-query/post-query'
-import { useRouter, ErrorComponent, ErrorComponentProps } from '@router-mono-react-query/router'
+import {
+  useRouter,
+  ErrorComponent,
+  ErrorComponentProps,
+} from '@router-mono-react-query/router'
 import { useQueryErrorResetBoundary } from '@tanstack/react-query'
 
 export function PostErrorComponent({ error, reset }: ErrorComponentProps) {

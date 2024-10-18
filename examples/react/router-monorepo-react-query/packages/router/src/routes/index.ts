@@ -3,6 +3,6 @@ import { postsQueryOptions } from '@router-mono-react-query/post-query'
 
 export const Route = createFileRoute('/')({
   loader: ({ context: { queryClient } }) => {
-    return queryClient.ensureQueryData(postsQueryOptions);
-  }
+    return queryClient.ensureQueryData(postsQueryOptions)
+  },
 })

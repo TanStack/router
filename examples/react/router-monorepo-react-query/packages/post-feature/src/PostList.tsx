@@ -1,10 +1,10 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { postsQueryOptions } from '@router-mono-react-query/post-query';
-import { Link, Outlet } from '@router-mono-react-query/router';
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { postsQueryOptions } from '@router-mono-react-query/post-query'
+import { Link, Outlet } from '@router-mono-react-query/router'
 
 export function PostsListComponent() {
-  const postsQuery = useSuspenseQuery(postsQueryOptions);
-  const posts = postsQuery.data;
+  const postsQuery = useSuspenseQuery(postsQueryOptions)
+  const posts = postsQuery.data
 
   return (
     <div className="p-2 flex gap-2">
@@ -24,12 +24,12 @@ export function PostsListComponent() {
                   <div>{post.title.substring(0, 20)}</div>
                 </Link>
               </li>
-            );
-          }
+            )
+          },
         )}
       </ul>
       <hr />
       <Outlet />
     </div>
-  );
+  )
 }

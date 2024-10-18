@@ -1,4 +1,4 @@
-import { Link, createRootRoute } from '@tanstack/react-router';
+import { Link, createRootRoute } from '@tanstack/react-router'
 
 export const Route = createRootRoute({
   notFoundComponent: () => {
@@ -7,6 +7,6 @@ export const Route = createRootRoute({
         <p>This is the notFoundComponent configured on root route</p>
         <Link to="/">Start Over</Link>
       </div>
-    );
+    )
   },
-});
+})

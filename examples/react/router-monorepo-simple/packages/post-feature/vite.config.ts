@@ -1,11 +1,11 @@
-import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import dts from 'vite-plugin-dts'
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import react from '@vitejs/plugin-react'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 export default defineConfig({
   root: __dirname,
@@ -40,5 +40,5 @@ export default defineConfig({
         '@router-mono-simple/router',
       ],
     },
-  }
-});
+  },
+})

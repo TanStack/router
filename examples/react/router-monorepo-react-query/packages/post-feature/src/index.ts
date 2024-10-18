@@ -1,3 +1,3 @@
-export * from './PostIdPage';
+export * from './PostIdPage'
 export * from './PostList'
-export * from './PostError';
+export * from './PostError'

@@ -1,3 +1,3 @@
 export * from './postQueryOptions'
 export * from './postsQueryOptions'
-export { PostNotFoundError } from './posts';
+export { PostNotFoundError } from './posts'

@@ -1,5 +1,5 @@
-import { Link, Outlet } from '@router-mono-simple/router';
-import { TanStackRouterDevtools } from '@tanstack/router-devtools';
+import { Link, Outlet } from '@router-mono-simple/router'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 export function RootComponent() {
   return (
@@ -19,5 +19,5 @@ export function RootComponent() {
       <Outlet />
       <TanStackRouterDevtools position="bottom-right" />
     </>
-  );
+  )
 }

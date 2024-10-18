@@ -1,4 +1,4 @@
-import { Link, Outlet, getRouteApi } from '@router-mono-simple/router';
+import { Link, Outlet, getRouteApi } from '@router-mono-simple/router'
 
 const route = getRouteApi('/')
 
@@ -23,12 +23,12 @@ export function PostsListComponent() {
                   <div>{post.title.substring(0, 20)}</div>
                 </Link>
               </li>
-            );
-          }
+            )
+          },
         )}
       </ul>
       <hr />
       <Outlet />
     </div>
-  );
+  )
 }

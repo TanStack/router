@@ -1,15 +1,15 @@
-import { router } from './router';
+import { router } from './router'
 
-export type { RouterType, RouterIds } from './router';
+export type { RouterType, RouterIds } from './router'
 
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {
   interface Register {
-    router: typeof router;
+    router: typeof router
   }
 }
 
-export { router };
+export { router }
 
 export { PostNotFoundError } from './fetch/posts'
 
@@ -23,7 +23,5 @@ export {
   RouterProvider,
   getRouteApi,
   ErrorComponent,
-} from '@tanstack/react-router';
-export type {
-  ErrorComponentProps
-} from '@tanstack/react-router';
+} from '@tanstack/react-router'
+export type { ErrorComponentProps } from '@tanstack/react-router'

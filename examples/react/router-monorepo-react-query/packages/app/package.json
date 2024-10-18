@@ -27,7 +27,9 @@
   "nx": {
     "targets": {
       "dev": {
-        "dependsOn": ["^build"]
+        "dependsOn": [
+          "^build"
+        ]
       }
     }
   }

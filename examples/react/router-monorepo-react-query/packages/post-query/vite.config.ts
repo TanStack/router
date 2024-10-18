@@ -1,10 +1,10 @@
-import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'vite'
+import dts from 'vite-plugin-dts'
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 export default defineConfig({
   root: __dirname,
@@ -37,5 +37,5 @@ export default defineConfig({
         'redaxios',
       ],
     },
-  }
-});
+  },
+})

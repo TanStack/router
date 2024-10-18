@@ -8,6 +8,7 @@ To run this example:
 The challenge with TanStack router is that it needs to be setup with typescript types augmentations. But that means that if you do that in the final app, the links in the libraries will not be type safe. So to make that work in a monorepo, we need a separate library to contains the router, without components and then stitch it together with the app.
 
 This example does it using the following packages:
+
 - `pacakges/router` is the router library
 - `packages/post-feature` is the posts ui library
 - `packages/app` is the app
