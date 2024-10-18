@@ -1,9 +1,14 @@
 import { writeFileSync } from 'fs';
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function isRunningOnStackBlitz() {
-  // While it's not perfect, this is the best way to detect if we're running on StackBlitz
-  return process.env.SHELL === '/bin/jsh';
+  // Given stackblitz is running only on a folder and not the mono, this should detect if we are running on stackblitz
+  return __dirname.includes('router/examples');
 }
 
 if (isRunningOnStackBlitz()) {
