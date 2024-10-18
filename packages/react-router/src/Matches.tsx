@@ -142,7 +142,6 @@ export interface RouteMatch<
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  componentsPromise?: Promise<Array<void>>
   loadPromise?: ControlledPromise<void>
   beforeLoadPromise?: ControlledPromise<void>
   loaderPromise?: ControlledPromise<void>

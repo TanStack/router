@@ -16,7 +16,7 @@ import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, Router } from './router'
-import type { Assign, Constrain, Expand, NoInfer, PickRequired } from './utils'
+import type { Assign, Constrain, Expand, NoInfer } from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
@@ -201,9 +201,9 @@ export type FileBaseRouteOptions<
     (
       ctx: RouteContextOptions<
         TParentRoute,
-        TSearchValidator,
         TParams,
-        TRouterContext
+        TRouterContext,
+        TLoaderDeps
       >,
     ) => any
   >
@@ -272,9 +272,8 @@ export type BaseRouteOptions<
 
 export interface ContextOptions<
   in out TParentRoute extends AnyRoute,
-  in out TSearchValidator,
   in out TParams,
-> extends FullSearchSchemaOption<TParentRoute, TSearchValidator> {
+> {
   abortController: AbortController
   preload: boolean
   params: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
@@ -290,10 +289,11 @@ export interface ContextOptions<
 
 export interface RouteContextOptions<
   in out TParentRoute extends AnyRoute,
-  in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
-> extends ContextOptions<TParentRoute, TSearchValidator, TParams> {
+  in out TLoaderDeps,
+> extends ContextOptions<TParentRoute, TParams> {
+  deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
 
@@ -303,7 +303,8 @@ export interface BeforeLoadContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
-> extends ContextOptions<TParentRoute, TSearchValidator, TParams> {
+> extends ContextOptions<TParentRoute, TParams>,
+    FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
     BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
   >
@@ -321,7 +322,6 @@ export interface UpdatableRouteOptions<
   in out TRouteContextFn,
   in out TBeforeLoadFn,
 > extends UpdatableStaticRouteOption {
-  // test?: (args: TAllContext) => void
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
   // If true, this route will be forcefully wrapped in a suspense boundary
@@ -338,13 +338,20 @@ export interface UpdatableRouteOptions<
   preload?: boolean
   preloadStaleTime?: number
   preloadGcTime?: number
-  // Filter functions that can manipulate search params *before* they are passed to links and navigate
-  // calls that match this route.
+  search?: {
+    middlewares?: Array<
+      SearchMiddleware<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+    >
+  }
+  /** 
+  @deprecated Use search.middlewares instead
+  */
   preSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  // Filter functions that can manipulate search params *after* they are passed to links and navigate
-  // calls that match this route.
+  /** 
+  @deprecated Use search.middlewares instead
+  */
   postSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
@@ -439,6 +446,7 @@ export interface UpdatableRouteOptions<
   headers?: (ctx: {
     loaderData: ResolveLoaderData<TLoaderFn>
   }) => Record<string, string>
+  ssr?: boolean
 }
 
 interface RequiredStaticDataRouteOption {
@@ -554,6 +562,15 @@ export interface LoaderFnContext<
 }
 
 export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
+
+export type SearchMiddlewareContext<TSearchSchema> = {
+  search: TSearchSchema
+  next: (newSearch: TSearchSchema) => TSearchSchema
+}
+
+export type SearchMiddleware<TSearchSchema> = (
+  ctx: SearchMiddlewareContext<TSearchSchema>,
+) => TSearchSchema
 
 export type ResolveId<
   TParentRoute,
@@ -750,22 +767,18 @@ export type RouteConstraints = {
   TRouteTree: AnyRoute
 }
 
-export type RouteTypesById<
-  TRouter extends RegisteredRouter,
-  TId extends RouteIds<TRouter['routeTree']>,
-> = RouteById<TRouter['routeTree'], TId>['types']
+export type RouteTypesById<TRouter extends AnyRouter, TId> = RouteById<
+  TRouter['routeTree'],
+  TId
+>['types']
 
-export function getRouteApi<
-  TRouter extends RegisteredRouter,
-  TId extends RouteIds<TRouter['routeTree']>,
->(id: TId) {
-  return new RouteApi<TRouter, TId>({ id })
+export function getRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter>(
+  id: Constrain<TId, RouteIds<TRouter['routeTree']>>,
+) {
+  return new RouteApi<TId, TRouter>({ id })
 }
 
-export class RouteApi<
-  TRouter extends RegisteredRouter,
-  TId extends RouteIds<TRouter['routeTree']>,
-> {
+export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   id: TId
 
   /**
@@ -886,6 +899,7 @@ export class Route<
   private _path!: TPath
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
+  private _ssr!: boolean
 
   public get to() {
     /* invariant(
@@ -920,6 +934,10 @@ export class Route<
     return this._fullPath
   }
 
+  public get ssr() {
+    return this._ssr
+  }
+
   // Optional
   children?: TChildren
   originalIndex?: number
@@ -927,6 +945,7 @@ export class Route<
   rank!: number
   lazyFn?: () => Promise<LazyRoute<any>>
   _lazyPromise?: Promise<void>
+  _componentsPromise?: Promise<Array<void>>
 
   /**
    * @deprecated Use the `createRoute` function instead.
@@ -988,7 +1007,7 @@ export class Route<
     loaderDeps: TLoaderDeps
   }
 
-  init = (opts: { originalIndex: number }): void => {
+  init = (opts: { originalIndex: number; defaultSsr?: boolean }): void => {
     this.originalIndex = opts.originalIndex
 
     const options = this.options as
@@ -1055,6 +1074,7 @@ export class Route<
     // this.customId = customId as TCustomId
     this._fullPath = fullPath as TFullPath
     this._to = fullPath as TrimPathRight<TFullPath>
+    this._ssr = options?.ssr ?? opts.defaultSsr ?? true
   }
 
   addChildren<
@@ -1555,7 +1575,7 @@ export type RouteMask<TRouteTree extends AnyRoute> = {
 
 export function createRouteMask<
   TRouteTree extends AnyRoute,
-  TFrom extends RoutePaths<TRouteTree> | string,
+  TFrom extends string,
   TTo extends string,
 >(
   opts: {

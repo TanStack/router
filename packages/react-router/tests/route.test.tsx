@@ -8,7 +8,6 @@ import {
   createRoute,
   createRouter,
   getRouteApi,
-  useNavigate,
 } from '../src'
 
 afterEach(() => {

@@ -1,4 +1,3 @@
-import { resolve } from 'node:path'
 import { packageJson } from './packageJson'
 import type { PeerDependency } from '../types'
 

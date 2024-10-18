@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import { z } from 'zod'
 import {
   Link,
   Outlet,
@@ -16,7 +17,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { RouterHistory } from '../src'
+import type { AnyRoute, RouterOptions } from '../src'
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -26,14 +27,19 @@ afterEach(() => {
 
 const mockFn1 = vi.fn()
 
-function createTestRouter(initialHistory?: RouterHistory) {
-  let history
-
-  if (initialHistory) {
-    history = initialHistory
-  }
-
-  const rootRoute = createRootRoute({})
+function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
+  const rootRoute = createRootRoute({
+    validateSearch: z.object({ root: z.string().optional() }),
+    component: () => {
+      const search = rootRoute.useSearch()
+      return (
+        <>
+          <div data-testid="search-root">{search.root ?? '$undefined'}</div>
+          <Outlet />
+        </>
+      )
+    },
+  })
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -73,6 +79,67 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => pathSegmentLayoutSplatRoute,
     path: '$',
   })
+  const protectedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '/_protected',
+  }).lazy(() => import('./lazy/normal').then((f) => f.Route('/_protected')))
+  const protectedLayoutRoute = createRoute({
+    getParentRoute: () => protectedRoute,
+    id: '/_layout',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) => f.Route('/_protected/_layout')),
+  )
+  const protectedFileBasedLayoutRoute = createRoute({
+    getParentRoute: () => protectedRoute,
+    id: '/_fileBasedLayout',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) =>
+      f.FileRoute('/_protected/_fileBasedLayout'),
+    ),
+  )
+  const protectedFileBasedLayoutParentRoute = createRoute({
+    getParentRoute: () => protectedFileBasedLayoutRoute,
+    path: '/fileBasedParent',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) =>
+      f.FileRoute('/_protected/_fileBasedLayout/fileBasedParent'),
+    ),
+  )
+  const protectedLayoutParentRoute = createRoute({
+    getParentRoute: () => protectedLayoutRoute,
+    path: '/parent',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) => f.Route('/_protected/_layout/parent')),
+  )
+  const protectedLayoutParentChildRoute = createRoute({
+    getParentRoute: () => protectedLayoutParentRoute,
+    path: '/child',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) =>
+      f.Route('/_protected/_layout/parent/child'),
+    ),
+  )
+  const protectedFileBasedLayoutParentChildRoute = createRoute({
+    getParentRoute: () => protectedFileBasedLayoutParentRoute,
+    path: '/child',
+  }).lazy(() =>
+    import('./lazy/normal').then((f) =>
+      f.FileRoute('/_protected/_fileBasedLayout/fileBasedParent/child'),
+    ),
+  )
+  const searchRoute = createRoute({
+    validateSearch: z.object({ search: z.string().optional() }),
+    getParentRoute: () => rootRoute,
+    path: 'search',
+    component: () => {
+      const search = searchRoute.useSearch()
+      return (
+        <>
+          <div data-testid="search-search">{search.search ?? '$undefined'}</div>
+        </>
+      )
+    },
+  })
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
@@ -85,9 +152,22 @@ function createTestRouter(initialHistory?: RouterHistory) {
       pathSegmentLayoutSplatIndexRoute,
       pathSegmentLayoutSplatSplatRoute,
     ]),
+    protectedRoute.addChildren([
+      protectedLayoutRoute.addChildren([
+        protectedLayoutParentRoute.addChildren([
+          protectedLayoutParentChildRoute,
+        ]),
+      ]),
+      protectedFileBasedLayoutRoute.addChildren([
+        protectedFileBasedLayoutParentRoute.addChildren([
+          protectedFileBasedLayoutParentChildRoute,
+        ]),
+      ]),
+    ]),
+    searchRoute,
   ])
 
-  const router = createRouter({ routeTree, history })
+  const router = createRouter({ routeTree, ...options })
 
   return {
     router,
@@ -104,9 +184,9 @@ function createTestRouter(initialHistory?: RouterHistory) {
 
 describe('encoding: URL param segment for /posts/$slug', () => {
   it('state.location.pathname, should have the params.slug value of "tanner"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    })
 
     await act(() => router.load())
 
@@ -114,9 +194,9 @@ describe('encoding: URL param segment for /posts/$slug', () => {
   })
 
   it('state.location.pathname, should have the params.slug value of "🚀"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
+    })
 
     await act(() => router.load())
 
@@ -124,9 +204,9 @@ describe('encoding: URL param segment for /posts/$slug', () => {
   })
 
   it('state.location.pathname, should have the params.slug value of "%F0%9F%9A%80"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
+    })
 
     await act(() => router.load())
 
@@ -134,13 +214,13 @@ describe('encoding: URL param segment for /posts/$slug', () => {
   })
 
   it('state.location.pathname, should have the params.slug value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({
+    const { router } = createTestRouter({
+      history: createMemoryHistory({
         initialEntries: [
           '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
         ],
       }),
-    )
+    })
 
     await act(() => router.load())
 
@@ -150,9 +230,9 @@ describe('encoding: URL param segment for /posts/$slug', () => {
   })
 
   it('params.slug for the matched route, should be "tanner"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
-    )
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    })
 
     await act(() => router.load())
 
@@ -168,9 +248,9 @@ describe('encoding: URL param segment for /posts/$slug', () => {
   })
 
   it('params.slug for the matched route, should be "🚀"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
-    )
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
+    })
 
     await act(() => router.load())
 
@@ -186,9 +266,9 @@ describe('encoding: URL param segment for /posts/$slug', () => {
   })
 
   it('params.slug for the matched route, should be "🚀" instead of it being "%F0%9F%9A%80"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
-    )
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
+    })
 
     await act(() => router.load())
 
@@ -204,13 +284,13 @@ describe('encoding: URL param segment for /posts/$slug', () => {
   })
 
   it('params.slug for the matched route, should be "framework/react/guide/file-based-routing tanstack" instead of it being "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({
         initialEntries: [
           '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
         ],
       }),
-    )
+    })
 
     await act(() => router.load())
 
@@ -230,9 +310,9 @@ describe('encoding: URL param segment for /posts/$slug', () => {
 
 describe('encoding: URL splat segment for /$', () => {
   it('state.location.pathname, should have the params._splat value of "tanner"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/tanner'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/tanner'] }),
+    })
 
     await router.load()
 
@@ -240,9 +320,9 @@ describe('encoding: URL splat segment for /$', () => {
   })
 
   it('state.location.pathname, should have the params._splat value of "🚀"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/🚀'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/🚀'] }),
+    })
 
     await router.load()
 
@@ -250,9 +330,9 @@ describe('encoding: URL splat segment for /$', () => {
   })
 
   it('state.location.pathname, should have the params._splat value of "%F0%9F%9A%80"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
+    })
 
     await router.load()
 
@@ -260,13 +340,13 @@ describe('encoding: URL splat segment for /$', () => {
   })
 
   it('state.location.pathname, should have the params._splat value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({
+    const { router } = createTestRouter({
+      history: createMemoryHistory({
         initialEntries: [
           '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
         ],
       }),
-    )
+    })
 
     await router.load()
 
@@ -276,11 +356,11 @@ describe('encoding: URL splat segment for /$', () => {
   })
 
   it('state.location.pathname, should have the params._splat value of "framework/react/guide/file-based-routing tanstack"', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({
+    const { router } = createTestRouter({
+      history: createMemoryHistory({
         initialEntries: ['/framework/react/guide/file-based-routing tanstack'],
       }),
-    )
+    })
 
     await router.load()
 
@@ -290,9 +370,9 @@ describe('encoding: URL splat segment for /$', () => {
   })
 
   it('params._splat for the matched route, should be "tanner"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/tanner'] }),
-    )
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/tanner'] }),
+    })
 
     await router.load()
 
@@ -308,9 +388,9 @@ describe('encoding: URL splat segment for /$', () => {
   })
 
   it('params._splat for the matched route, should be "🚀"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/🚀'] }),
-    )
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/🚀'] }),
+    })
 
     await router.load()
 
@@ -326,9 +406,9 @@ describe('encoding: URL splat segment for /$', () => {
   })
 
   it('params._splat for the matched route, should be "🚀" instead of it being "%F0%9F%9A%80"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
-    )
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
+    })
 
     await router.load()
 
@@ -344,11 +424,11 @@ describe('encoding: URL splat segment for /$', () => {
   })
 
   it('params._splat for the matched route, should be "framework/react/guide/file-based-routing tanstack"', async () => {
-    const { router, routes } = createTestRouter(
-      createMemoryHistory({
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({
         initialEntries: ['/framework/react/guide/file-based-routing tanstack'],
       }),
-    )
+    })
 
     await router.load()
 
@@ -401,9 +481,9 @@ describe('encoding: URL path segment', () => {
   ])(
     'should resolve $input to $output when the path segment is $type',
     async ({ input, output }) => {
-      const { router } = createTestRouter(
-        createMemoryHistory({ initialEntries: [input] }),
-      )
+      const { router } = createTestRouter({
+        history: createMemoryHistory({ initialEntries: [input] }),
+      })
 
       render(<RouterProvider router={router} />)
       await act(() => router.load())
@@ -415,9 +495,9 @@ describe('encoding: URL path segment', () => {
 
 describe('router emits events during rendering', () => {
   it('during initial load, should emit the "onResolved" event', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
@@ -428,9 +508,9 @@ describe('router emits events during rendering', () => {
   })
 
   it('after a navigation, should have emitted the "onResolved" event twice', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
@@ -527,9 +607,9 @@ describe('transformer functions are defined', () => {
 
 describe('router matches URLs to route definitions', () => {
   it('solo splat route matches index route', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/solo-splat'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/solo-splat'] }),
+    })
 
     await act(() => router.load())
 
@@ -540,9 +620,9 @@ describe('router matches URLs to route definitions', () => {
   })
 
   it('solo splat route matches with splat', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/solo-splat/test'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/solo-splat/test'] }),
+    })
 
     await act(() => router.load())
 
@@ -553,9 +633,9 @@ describe('router matches URLs to route definitions', () => {
   })
 
   it('layout splat route matches with splat', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/layout-splat/test'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/layout-splat/test'] }),
+    })
 
     await act(() => router.load())
 
@@ -567,9 +647,9 @@ describe('router matches URLs to route definitions', () => {
   })
 
   it('layout splat route matches without splat', async () => {
-    const { router } = createTestRouter(
-      createMemoryHistory({ initialEntries: ['/layout-splat'] }),
-    )
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/layout-splat'] }),
+    })
 
     await act(() => router.load())
 
@@ -578,5 +658,204 @@ describe('router matches URLs to route definitions', () => {
       '/layout-splat',
       '/layout-splat/',
     ])
+  })
+})
+
+describe('invalidate', () => {
+  it('after router.invalid(), routes should be `valid` again after loading', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await act(() => router.load())
+
+    router.state.matches.forEach((match) => {
+      expect(match.invalid).toBe(false)
+    })
+
+    await act(() => router.invalidate())
+
+    router.state.matches.forEach((match) => {
+      expect(match.invalid).toBe(false)
+    })
+  })
+})
+
+describe('search params in URL', () => {
+  const testCases = [
+    { route: '/', search: { root: 'world' } },
+    { route: '/', search: { root: 'world', unknown: 'asdf' } },
+    { route: '/search', search: { search: 'foo' } },
+    { route: '/search', search: { root: 'world', search: 'foo' } },
+    {
+      route: '/search',
+      search: { root: 'world', search: 'foo', unknown: 'asdf' },
+    },
+  ]
+  describe.each([undefined, false])(
+    'does not modify the search params in the URL when search.strict=%s',
+    (strict) => {
+      it.each(testCases)(
+        'at $route with search params $search',
+        async ({ route, search }) => {
+          const { router } = createTestRouter({ search: { strict } })
+          window.history.replaceState(
+            null,
+            '',
+            `${route}?${new URLSearchParams(search as Record<string, string>).toString()}`,
+          )
+
+          render(<RouterProvider router={router} />)
+          await act(() => router.load())
+
+          expect(await screen.findByTestId('search-root')).toHaveTextContent(
+            search.root ?? '$undefined',
+          )
+          if (route === '/search') {
+            expect(
+              await screen.findByTestId('search-search'),
+            ).toHaveTextContent(search.search ?? '$undefined')
+          }
+          expect(router.state.location.search).toEqual(search)
+          const parsedSearch = new URLSearchParams(window.location.search)
+          expect(parsedSearch.size).toBe(Object.keys(search).length)
+          for (const [key, value] of Object.entries(search)) {
+            expect(parsedSearch.get(key)).toBe(value)
+          }
+        },
+      )
+    },
+  )
+
+  describe('removes unknown search params in the URL when search.strict=true', () => {
+    it.each(testCases)('%j', async ({ route, search }) => {
+      const { router } = createTestRouter({ search: { strict: true } })
+      window.history.replaceState(
+        null,
+        '',
+        `${route}?${new URLSearchParams(search as Record<string, string>).toString()}`,
+      )
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      await expect(await screen.findByTestId('search-root')).toHaveTextContent(
+        search.root ?? 'undefined',
+      )
+      if (route === '/search') {
+        expect(await screen.findByTestId('search-search')).toHaveTextContent(
+          search.search ?? 'undefined',
+        )
+      }
+
+      expect(window.location.pathname).toEqual(route)
+      const expectedSearch = { ...search }
+      delete expectedSearch.unknown
+      expect(router.state.location.search).toEqual(expectedSearch)
+      const parsedSearch = new URLSearchParams(window.location.search)
+      expect(parsedSearch.size).toBe(Object.keys(expectedSearch).length)
+      for (const [key, value] of Object.entries(expectedSearch)) {
+        expect(parsedSearch.get(key)).toBe(value)
+      }
+    })
+  })
+})
+
+/*
+  it('updates search params in URL upon initial load according to the result of validateSearch', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await act(() => router.load())
+
+    router.state.matches.forEach((match) => {
+      expect(match.invalid).toBe(false)
+    })
+
+    await act(() => router.invalidate())
+
+    router.state.matches.forEach((match) => {
+      expect(match.invalid).toBe(false)
+    })
+
+    await act(() => router.load())
+
+    router.state.matches.forEach((match) => {
+      expect(match.invalid).toBe(false)
+    })
+  })
+})
+  */
+
+describe('route ids should be consistent after rebuilding the route tree', () => {
+  it('should have the same route ids after rebuilding the route tree', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const originalRouteIds = Object.keys(router.routesById)
+
+    await act(() =>
+      router.navigate({
+        to: '/parent/child',
+      }),
+    )
+
+    await act(() =>
+      router.navigate({
+        to: '/filBasedParent/child',
+      }),
+    )
+
+    router.buildRouteTree()
+
+    const rebuiltRouteIds = Object.keys(router.routesById)
+
+    originalRouteIds.forEach((id) => {
+      expect(rebuiltRouteIds).toContain(id)
+    })
+
+    rebuiltRouteIds.forEach((id) => {
+      expect(originalRouteIds).toContain(id)
+    })
+  })
+})
+
+describe('route id uniqueness', () => {
+  it('flatRoute should not have routes with duplicated route ids', () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const routeIdSet = new Set<string>()
+
+    router.flatRoutes.forEach((route) => {
+      expect(routeIdSet.has(route.id)).toBe(false)
+      routeIdSet.add(route.id)
+    })
+  })
+
+  it('routesById should not have routes duplicated route ids', () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const routeIdSet = new Set<string>()
+
+    Object.values(router.routesById).forEach((route) => {
+      expect(routeIdSet.has(route.id)).toBe(false)
+      routeIdSet.add(route.id)
+    })
+  })
+
+  it('routesByPath should not have routes duplicated route ids', () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const routeIdSet = new Set<string>()
+
+    Object.values(router.routesByPath).forEach((route) => {
+      expect(routeIdSet.has(route.id)).toBe(false)
+      routeIdSet.add(route.id)
+    })
   })
 })

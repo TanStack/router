@@ -1,6 +1,7 @@
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 import {
+  act,
   cleanup,
   configure,
   fireEvent,
@@ -15,6 +16,7 @@ import {
   Outlet,
   RouterProvider,
   createLink,
+  createMemoryHistory,
   createRootRoute,
   createRootRouteWithContext,
   createRoute,
@@ -28,7 +30,11 @@ import {
   useRouterState,
   useSearch,
 } from '../src'
-import { getIntersectionObserverMock, sleep } from './utils'
+import {
+  getIntersectionObserverMock,
+  getSearchParamsFromURI,
+  sleep,
+} from './utils'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -1093,6 +1099,37 @@ describe('Link', () => {
 
     const errorText = await screen.findByText('Oops! Something went wrong!')
     expect(errorText).toBeInTheDocument()
+  })
+
+  test('when navigating to the root with an error in component', async () => {
+    const notFoundComponent = vi.fn()
+
+    const rootRoute = createRootRoute({
+      errorComponent: () => <span>Expected rendering error message</span>,
+      notFoundComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        throw new Error(
+          'Error from component should not render notFoundComponent',
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const errorText = await screen.findByText(
+      'Expected rendering error message',
+    )
+    expect(errorText).toBeInTheDocument()
+    expect(notFoundComponent).not.toBeCalled()
   })
 
   test('when navigating to /posts with params', async () => {
@@ -3709,5 +3746,262 @@ describe('createLink', () => {
 
     expect(customElement.hasAttribute('foo')).toBe(true)
     expect(customElement.getAttribute('foo')).toBe('bar')
+  })
+
+  it('should pass activeProps and inactiveProps to the custom link', async () => {
+    const Button: React.FC<
+      React.PropsWithChildren<{
+        active?: boolean
+        foo?: boolean
+        overrideMeIfYouWant: string
+      }>
+    > = ({ active, foo, children, ...props }) => (
+      <button {...props}>
+        active: {active ? 'yes' : 'no'} - foo: {foo ? 'yes' : 'no'} - {children}
+      </button>
+    )
+
+    const ButtonLink = createLink(Button)
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <ButtonLink
+            to="/"
+            overrideMeIfYouWant="Button1"
+            activeProps={{
+              active: true,
+              'data-hello': 'world',
+              overrideMeIfYouWant: 'overridden-by-activeProps',
+            }}
+            inactiveProps={{ foo: true }}
+          >
+            Button1
+          </ButtonLink>
+          <ButtonLink
+            to="/posts"
+            overrideMeIfYouWant="Button2"
+            activeProps={{
+              active: true,
+              'data-hello': 'world',
+            }}
+            inactiveProps={{
+              foo: true,
+              'data-hello': 'void',
+              overrideMeIfYouWant: 'overridden-by-inactiveProps',
+            }}
+          >
+            Button2
+          </ButtonLink>
+          <ButtonLink
+            to="/posts"
+            overrideMeIfYouWant="Button3"
+            activeProps={{
+              active: true,
+            }}
+            inactiveProps={{
+              active: false,
+            }}
+          >
+            Button3
+          </ButtonLink>
+        </>
+      ),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const button1 = await screen.findByText('active: yes - foo: no - Button1')
+    expect(button1.getAttribute('data-hello')).toBe('world')
+    expect(button1.getAttribute('overrideMeIfYouWant')).toBe(
+      'overridden-by-activeProps',
+    )
+
+    const button2 = await screen.findByText('active: no - foo: yes - Button2')
+    expect(button2.getAttribute('data-hello')).toBe('void')
+    expect(button2.getAttribute('overrideMeIfYouWant')).toBe(
+      'overridden-by-inactiveProps',
+    )
+
+    const button3 = await screen.findByText('active: no - foo: no - Button3')
+    expect(button3.getAttribute('overrideMeIfYouWant')).toBe('Button3')
+  })
+})
+
+describe('search middleware', () => {
+  test('legacy search filters still work', async () => {
+    const rootRoute = createRootRoute({
+      validateSearch: (input) => {
+        return {
+          root: input.root as string | undefined,
+          foo: input.foo as string | undefined,
+        }
+      },
+      preSearchFilters: [
+        (search) => {
+          return { ...search, foo: 'foo' }
+        },
+      ],
+      postSearchFilters: [
+        (search) => {
+          return { ...search, root: search.root ?? 'default' }
+        },
+      ],
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/posts" search={(p: any) => ({ page: 123, foo: p.foo })}>
+              Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1>Posts</h1>
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: (input: Record<string, unknown>) => {
+        const page = Number(input.page)
+        return {
+          page,
+        }
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/?foo=bar'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(postsLink).toHaveAttribute('href')
+    const href = postsLink.getAttribute('href')
+    const search = getSearchParamsFromURI(href!)
+    expect(search.size).toBe(3)
+    expect(search.get('page')).toBe('123')
+    expect(search.get('root')).toBe('default')
+    expect(search.get('foo')).toBe('foo')
+  })
+
+  test('search middlewares work', async () => {
+    const rootRoute = createRootRoute({
+      validateSearch: (input) => {
+        return {
+          root: input.root as string | undefined,
+          foo: input.foo as string | undefined,
+        }
+      },
+      search: {
+        middlewares: [
+          ({ search, next }) => {
+            return next({ ...search, foo: 'foo' })
+          },
+          ({ search, next }) => {
+            expect(search.foo).toBe('foo')
+            const { root, ...result } = next({ ...search, foo: 'hello' })
+            return { ...result, root: root ?? search.root }
+          },
+        ],
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const { root } = indexRoute.useSearch()
+        return (
+          <>
+            <h1>Index</h1>
+            <div data-testid="search">{root ?? '$undefined'}</div>
+            <Link
+              data-testid="update-search"
+              to="/"
+              search={{ root: 'newValue' }}
+            >
+              update search
+            </Link>
+            <Link to="/posts" search={{ page: 123 }}>
+              Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1>Posts</h1>
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: (input: Record<string, unknown>) => {
+        const page = Number(input.page)
+        return {
+          page,
+        }
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/?root=abc'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    async function checkSearchValue(value: string) {
+      const searchValue = await screen.findByTestId('search')
+      expect(searchValue).toHaveTextContent(value)
+    }
+    async function checkPostsLink(root: string) {
+      const postsLink = await screen.findByRole('link', { name: 'Posts' })
+      expect(postsLink).toHaveAttribute('href')
+      const href = postsLink.getAttribute('href')
+      const search = getSearchParamsFromURI(href!)
+      expect(search.size).toBe(2)
+      expect(search.get('page')).toBe('123')
+      expect(search.get('root')).toBe(root)
+    }
+    await checkSearchValue('abc')
+    await checkPostsLink('abc')
+
+    const updateSearchLink = await screen.findByTestId('update-search')
+    act(() => fireEvent.click(updateSearchLink))
+    await checkSearchValue('newValue')
+    await checkPostsLink('newValue')
+    expect(router.state.location.search).toEqual({ root: 'newValue' })
   })
 })

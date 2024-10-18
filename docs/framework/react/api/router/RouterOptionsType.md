@@ -35,6 +35,15 @@ The `RouterOptions` type accepts an object with the following properties and met
 - A function that will be used to parse search params when parsing the current location.
 - Defaults to `defaultParseSearch`.
 
+### `search.strict` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- Configures how unknown search params (= not returned by any `validateSearch`) are treated.
+- If `false`, unknown search params will be kept.
+- If `true`, unknown search params will be removed.
+
 ### `defaultPreload` property
 
 - Type: `undefined | false | 'intent' | 'viewport'`

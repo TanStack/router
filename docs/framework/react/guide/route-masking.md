@@ -56,7 +56,16 @@ When using either route masking APIs, the `mask` option accepts the same navigat
 The `<Link>` and `navigate()` APIs both accept a `mask` option that can be used to mask the URL of the route being navigated to. Here's an example of using it with the `<Link>` component:
 
 ```tsx
-<Link to="/photos/5/modal" mask={{ to: '/photo/5' }}>
+<Link
+  to="/photos/$photoId/modal"
+  params={{ photoId: 5 }}
+  mask={{
+    to: "/photos/$photoId"
+    params: {
+      photoId: 5,
+    },
+  }}
+>
   Open Photo
 </Link>
 ```
@@ -67,7 +76,15 @@ And here's an example of using it with the `navigate()` API:
 const navigate = useNavigate()
 
 function onOpenPhoto() {
-  navigate('/photos/5/modal', { mask: { to: '/photo/5' } })
+  navigate({
+    to: '/photos/$photoId/modal',
+    mask: {
+      to: '/photos/$photoId'
+      params: {
+        photoId: 5,
+      },
+    }
+  })
 }
 ```
 

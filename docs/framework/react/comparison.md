@@ -20,7 +20,7 @@ Feature/Capability Key:
 | Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-router]][gh-router]                        | [![][stars-nextjs]][gh-nextjs]                        |
 | Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-router]][bpl-router]                          | ❓                                                    |
 | History, Memory & Hash Routers                 | ✅                                               | ✅                                                    | 🛑                                                    |
-| Nested / Layout Routes                         | ✅                                               | ✅                                                    | ✅                                                    |
+| Nested / Layout Routes                         | ✅                                               | ✅                                                    | 🟡                                                    |
 | Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
 | Typesafe Routes                                | ✅                                               | 🛑                                                    | 🟡                                                    |
 | Code-based Routes                              | ✅                                               | ✅                                                    | 🛑                                                    |

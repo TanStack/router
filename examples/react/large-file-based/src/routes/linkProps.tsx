@@ -1,14 +1,14 @@
 import * as React from 'react'
-import { Link, type LinkProps, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, linkOptions } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/linkProps')({
   component: LinkPropsPage,
 })
 
 function LinkPropsPage() {
-  const linkProps: LinkProps = {
+  const linkProps = linkOptions({
     to: '/absolute',
-  }
+  })
 
   return <Link {...linkProps} />
 }

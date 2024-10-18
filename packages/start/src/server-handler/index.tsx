@@ -5,7 +5,12 @@ import {
   isRedirect,
 } from '@tanstack/react-router'
 import invariant from 'tiny-invariant'
-import { eventHandler, toWebRequest } from 'vinxi/http'
+import {
+  eventHandler,
+  getEvent,
+  getResponseStatus,
+  toWebRequest,
+} from 'vinxi/http'
 import { getManifest } from 'vinxi/manifest'
 import {
   serverFnPayloadTypeHeader,
@@ -117,7 +122,7 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
       return new Response(
         result !== undefined ? JSON.stringify(result) : undefined,
         {
-          status: 200,
+          status: getResponseStatus(getEvent()),
           headers: {
             'Content-Type': 'application/json',
             [serverFnReturnTypeHeader]: 'json',
@@ -143,7 +148,7 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
       console.info()
 
       return new Response(JSON.stringify(error), {
-        status: 500,
+        status: getResponseStatus(getEvent()),
         headers: {
           'Content-Type': 'application/json',
           [serverFnReturnTypeHeader]: 'error',
@@ -155,10 +160,7 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
   if (process.env.NODE_ENV === 'development')
     console.info(`ServerFn Response: ${response.status}`)
 
-  if (
-    response.status === 200 &&
-    response.headers.get('Content-Type') === 'application/json'
-  ) {
+  if (response.headers.get('Content-Type') === 'application/json') {
     const cloned = response.clone()
     const text = await cloned.text()
     const payload = text ? JSON.stringify(JSON.parse(text)) : 'undefined'

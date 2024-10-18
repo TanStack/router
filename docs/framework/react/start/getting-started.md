@@ -35,6 +35,7 @@ Create a `tsconfig.json` file with at least the following settings:
     "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
+    "strictNullChecks": true,
   },
 }
 ```
@@ -147,6 +148,7 @@ information to our server entry point:
 
 ```tsx
 // app/ssr.tsx
+/// <reference types="vinxi/types/server" />
 import {
   createStartHandler,
   defaultStreamHandler,
@@ -170,6 +172,7 @@ router information to our client entry point:
 
 ```tsx
 // app/client.tsx
+/// <reference types="vinxi/types/client" />
 import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/start'
 import { createRouter } from './router'

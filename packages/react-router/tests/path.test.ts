@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   exactPathTest,
   interpolatePath,
+  matchPathname,
   removeBasepath,
   removeTrailingSlash,
   resolvePath,
@@ -274,5 +275,59 @@ describe('interpolatePath', () => {
       const result = interpolatePath({ path: exp.path, params: exp.params })
       expect(result).toBe(exp.result)
     })
+  })
+})
+
+describe('matchPathname', () => {
+  it.each([
+    {
+      name: 'should match the root path that start with the basepath',
+      basepath: '/basepath',
+      pathname: '/basepath',
+      matchLocation: {
+        to: '/',
+      },
+      expected: {},
+    },
+    {
+      name: 'should match the path that start with the basepath',
+      basepath: '/basepath',
+      pathname: '/basepath/abc',
+      matchLocation: {
+        to: '/abc',
+      },
+      expected: {},
+    },
+    {
+      name: 'should not match the root path that does not start with the basepath',
+      basepath: '/basepath',
+      pathname: '/',
+      matchLocation: {
+        to: '/',
+      },
+      expected: undefined,
+    },
+    {
+      name: 'should not match the path that does not start with the basepath',
+      basepath: '/basepath',
+      pathname: '/abc',
+      matchLocation: {
+        to: '/abc',
+      },
+      expected: undefined,
+    },
+    {
+      name: 'should not match the path that match partial of the basepath',
+      basepath: '/base',
+      pathname: '/basepath/abc',
+      matchLocation: {
+        to: '/abc',
+      },
+      expected: undefined,
+    },
+  ])('$name', ({ basepath, pathname, matchLocation, expected }) => {
+    expect(matchPathname(basepath, pathname, matchLocation)).toStrictEqual(
+      expected,
+    )
   })
 })

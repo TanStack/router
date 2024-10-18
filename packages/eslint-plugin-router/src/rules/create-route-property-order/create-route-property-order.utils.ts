@@ -65,3 +65,9 @@ export function sortDataByOrder<T, TKey extends keyof T>(
   }
   return result
 }
+
+export function getCheckedProperties<T>(
+  orderRules: ReadonlyArray<ReadonlyArray<ReadonlyArray<T>>>,
+): ReadonlyArray<T> {
+  return [...new Set<T>(orderRules.flat(2))]
+}

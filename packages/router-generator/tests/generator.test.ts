@@ -133,6 +133,13 @@ async function postprocess(folderName: string) {
   }
 }
 
+function shouldThrow(folderName: string) {
+  if (folderName === 'duplicate-fullPath') {
+    return `Conflicting configuration paths were found for the following routes: "/", "/".`
+  }
+  return undefined
+}
+
 describe('generator works', async () => {
   const folderNames = await readDir()
 
@@ -144,17 +151,23 @@ describe('generator works', async () => {
       rewriteConfigByFolderName(folderName, config)
 
       await preprocess(folderName)
-      await generator(config)
+      const error = shouldThrow(folderName)
+      if (error) {
+        expect(() => generator(config)).rejects.toThrowError(error)
+      } else {
+        await generator(config)
 
-      const generatedRouteTree = await getRouteTreeFileText(config)
+        const generatedRouteTree = await getRouteTreeFileText(config)
 
-      expect(generatedRouteTree).toMatchFileSnapshot(
-        join(
-          'generator',
-          folderName,
-          `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
-        ),
-      )
+        expect(generatedRouteTree).toMatchFileSnapshot(
+          join(
+            'generator',
+            folderName,
+            `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+          ),
+        )
+      }
+
       await postprocess(folderName)
     },
   )

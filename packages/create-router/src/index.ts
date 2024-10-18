@@ -5,8 +5,10 @@ import { confirm, input, select } from '@inquirer/prompts'
 import { cli } from './cli'
 import {
   DEFAULT_BUNDLER,
+  DEFAULT_IDE,
   DEFAULT_PACKAGE_MANAGER,
   SUPPORTED_BUNDLERS,
+  SUPPORTED_IDES,
   SUPPORTED_PACKAGE_MANAGERS,
 } from './constants'
 import { validateProjectName } from './utils/validateProjectName'
@@ -61,6 +63,22 @@ async function main() {
     }
   } while (cli.options.bundler === undefined)
 
+  if (!cli.options.ide) {
+    cli.options.ide = await select({
+      message: 'Select an IDE',
+      choices: SUPPORTED_IDES.map((ide) => ({ value: ide })),
+      default: DEFAULT_IDE,
+    })
+  }
+
+  if (cli.options.ide === 'other') {
+    cli.options.openProject = false
+  } else {
+    cli.options.openProject = await confirm({
+      message: `Open the generated project using ${cli.options.ide} after creation?`,
+      default: true,
+    })
+  }
   const targetFolder = resolve(cli.directory)
   const projectName = basename(targetFolder)
 
@@ -89,6 +107,8 @@ async function main() {
     skipBuild: cli.options.skipBuild,
     packageManager: cli.options.packageManager,
     bundler: cli.options.bundler,
+    ide: cli.options.ide,
+    openProject: cli.options.openProject,
   })
 }
 
