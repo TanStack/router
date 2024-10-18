@@ -446,6 +446,44 @@ export interface UpdatableRouteOptions<
   headers?: (ctx: {
     loaderData: ResolveLoaderData<TLoaderFn>
   }) => Record<string, string>
+  head?: (ctx: {
+    matches: Array<
+      RouteMatch<
+        TRouteId,
+        TFullPath,
+        ResolveAllParamsFromParent<TParentRoute, TParams>,
+        ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+        ResolveLoaderData<TLoaderFn>,
+        ResolveAllContext<
+          TParentRoute,
+          TRouterContext,
+          TRouteContextFn,
+          TBeforeLoadFn
+        >,
+        TLoaderDeps
+      >
+    >
+    match: RouteMatch<
+      TRouteId,
+      TFullPath,
+      ResolveAllParamsFromParent<TParentRoute, TParams>,
+      ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveLoaderData<TLoaderFn>,
+      ResolveAllContext<
+        TParentRoute,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn
+      >,
+      TLoaderDeps
+    >
+    params: ResolveAllParamsFromParent<TParentRoute, TParams>
+    loaderData: ResolveLoaderData<TLoaderFn> | undefined
+  }) => {
+    links?: Array<React.JSX.IntrinsicElements['link']> | undefined
+    scripts?: Array<React.JSX.IntrinsicElements['script']> | undefined
+    meta?: Array<React.JSX.IntrinsicElements['meta']> | undefined
+  }
   ssr?: boolean
 }
 
