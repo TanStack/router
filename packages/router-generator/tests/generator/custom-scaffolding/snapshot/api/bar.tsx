@@ -1,0 +1,1 @@
+export const result = {"type":"createAPIFileRoute","routePath":"/api/bar"}

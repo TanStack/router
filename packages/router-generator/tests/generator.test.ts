@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -21,6 +21,23 @@ async function readDir(...paths: Array<string>) {
     join(process.cwd(), 'tests', 'generator', ...paths),
   )
   return folders
+}
+
+async function traverseDirectory(
+  dir: string,
+  handleFile: (filePath: string) => void | Promise<void>,
+) {
+  const files = await fs.readdir(dir, { withFileTypes: true })
+
+  for (const file of files) {
+    const filePath = join(dir, file.name)
+
+    if (file.isDirectory()) {
+      await traverseDirectory(filePath, handleFile)
+    } else {
+      await handleFile(filePath)
+    }
+  }
 }
 
 async function setupConfig(
@@ -81,6 +98,17 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.generatedRouteTree =
         makeFolderDir(folderName) + '/routeTree.gen.js'
       break
+    case 'custom-scaffolding':
+      config.experimental = {
+        customScaffolding: async ({ routePath, filePath, type }) => {
+          await fs.writeFile(
+            filePath,
+            `export const result = ${JSON.stringify({ type, routePath })}`,
+            'utf-8',
+          )
+        },
+      }
+      break
     default:
       break
   }
@@ -107,6 +135,22 @@ async function preprocess(folderName: string) {
       await fs.copyFile(templatePath, makeRoutePath('bar.lazy.tsx'))
       await makeEmptyFile('initiallyEmpty.tsx')
       await makeEmptyFile('initiallyEmpty.lazy.tsx')
+      break
+    }
+    case 'custom-scaffolding': {
+      const makeEmptyFile = async (...file: Array<string>) => {
+        const filePath = join(makeFolderDir(folderName), 'routes', ...file)
+        const dir = dirname(filePath)
+        await fs.mkdir(dir, { recursive: true })
+        const fh = await fs.open(filePath, 'w')
+        await fh.close()
+      }
+
+      await makeEmptyFile('__root.tsx')
+      await makeEmptyFile('index.tsx')
+      await makeEmptyFile('foo.lazy.tsx')
+      await makeEmptyFile('api', 'bar.tsx')
+      break
     }
   }
 }
@@ -129,6 +173,18 @@ async function postprocess(folderName: string) {
             join('generator', folderName, 'snapshot', routeFile),
           )
         })
+      break
+    }
+    case 'custom-scaffolding': {
+      const startDir = join(makeFolderDir(folderName), 'routes')
+      await traverseDirectory(startDir, async (filePath) => {
+        const relativePath = relative(startDir, filePath)
+        if (filePath.endsWith('.tsx')) {
+          expect(await fs.readFile(filePath, 'utf-8')).toMatchFileSnapshot(
+            join('generator', folderName, 'snapshot', relativePath),
+          )
+        }
+      })
     }
   }
 }
