@@ -531,6 +531,7 @@ When link hrefs are built, by default the only thing that matters for the query 
 
 TanStack Router provides a way to manipulate search params before the href is generated via **search middlewares**.
 Search middlewares are functions that transform the search parameters when generating new links for a route or its descendants.
+They are also executed upon navigation after search validation to allow manipulation of the query string.
 
 The following example shows how to make sure that for **every** link that is being built, the `rootValue` search param is added _if_ it is part of the current search params. If a link specifies `rootValue` inside `search`, then that value is used for building the link.
 
