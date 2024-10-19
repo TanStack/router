@@ -202,3 +202,71 @@ const requestLogger = createMiddleware()
     return next()
   })
 ```
+
+## Reading/Modifying the Server Response
+
+Middleware that uses the `server` method executes in the same context as server functions, so you can follow the exact same [Server Function Context Utilities](./server-functions#server-function-context) to read and modify anything about the request headers, status codes, etc.
+
+## Modifying the Client Request
+
+Middleware that uses the `client` method executes in a **completely different client-side context** than server functions, so you can't use the same utilities to read and modify the request. However, you can still modify the request returning additional properties when calling the `next` function. Currently supported properties are:
+
+- `headers`: An object containing headers to be added to the request.
+
+Here's an example of adding an `Authorization` header any request using this middleware:
+
+```tsx
+import { getToken } from 'my-auth-library'
+
+const authMiddleware = createMiddleware().client(async ({ next }) => {
+  return next({
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+    },
+  })
+})
+```
+
+## Middleware Execution Order
+
+Middleware is executed dependency-first, so the following example will execute `a`, `b`, `c` and `d` in that order:
+
+```tsx
+const a = createMiddleware().server(async ({ next }) => {
+  console.log('a')
+  return next()
+})
+
+const b = createMiddleware()
+  .middleware([a])
+  .server(async ({ next }) => {
+    console.log('b')
+    return next()
+  })
+
+const c = createMiddleware()
+  .middleware()
+  .server(async ({ next }) => {
+    console.log('c')
+    return next()
+  })
+
+const d = createMiddleware()
+  .middleware([b, c])
+  .server(async () => {
+    console.log('d')
+  })
+
+const fn = createServerFn()
+  .middleware([d])
+  .server(async () => {
+    console.log('fn')
+  })
+```
+
+## Environment Tree Shaking
+
+Middleware functionality is tree-shaken based on the environment for each bundle produced.
+
+- On the server, nothing is tree-shaken, so all code used in middleware will be included in the server bundle.
+- On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. If `validateClient` is set to `true`, the client-side validation code will be included in the client bundle, otherwise `input` validation code will also be removed.
