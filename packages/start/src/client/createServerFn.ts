@@ -17,15 +17,21 @@ export interface JsonResponse<TData> extends Response {
 export type CompiledFetcherFnOptions = {
   method: Method
   data: unknown
-  requestInit?: RequestInit
+  headers?: HeadersInit
 }
 
 export type Fetcher<TMiddlewares, TValidator, TResponse> = {
   url: string
-  __execute: (input: any) => Promise<{
-    input: any
-    context: Record<string, any>
-  }>
+  __executeClient: (opts: {
+    method: Method
+    input: unknown
+    headers?: HeadersInit
+  }) => Promise<unknown>
+  __executeServer: (opts: {
+    method: Method
+    input: unknown
+    headers?: HeadersInit
+  }) => Promise<unknown>
 } & FetcherImpl<TMiddlewares, TValidator, TResponse>
 
 export type FetcherImpl<
@@ -42,7 +48,7 @@ export type FetcherImpl<
     ) => Promise<FetcherData<TResponse>>
 
 export type FetcherBaseOptions = {
-  requestInit?: RequestInit
+  headers?: HeadersInit
 }
 
 export interface RequiredFetcherDataOptions<TInput> extends FetcherBaseOptions {
@@ -84,10 +90,7 @@ export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
 }
 
 export type CompiledFetcherFn<TResponse> = {
-  (
-    opts: CompiledFetcherFnOptions,
-    ctx: { options: ServerFnBaseOptions },
-  ): Promise<TResponse>
+  (opts: CompiledFetcherFnOptions & ServerFnBaseOptions): Promise<TResponse>
   url: string
 }
 
@@ -101,7 +104,8 @@ type ServerFnBaseOptions<
   validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
   input?: Constrain<TInput, AnyValidator>
-  handlerFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
+  extractedFn?: CompiledFetcherFn<TResponse>
+  serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
   functionId: string
 }
@@ -166,7 +170,7 @@ export function createServerFn<
       // This function signature changes due to AST transformations
       // in the babel plugin. We need to cast it to the correct
       // function signature post-transformation
-      const [extractedFn, __serverOnlyOriginalFn] = args as unknown as [
+      const [extractedFn, serverFn] = args as unknown as [
         CompiledFetcherFn<TResponse>,
         ServerFn<TMethod, TMiddlewares, TValidator, TResponse>,
       ]
@@ -175,7 +179,8 @@ export function createServerFn<
       // in the server environment
       Object.assign(resolvedOptions, {
         ...extractedFn,
-        handlerFn: __serverOnlyOriginalFn,
+        extractedFn,
+        serverFn,
       })
 
       invariant(
@@ -183,65 +188,37 @@ export function createServerFn<
         `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/start-vite-plugin ?`,
       )
 
+      const resolvedMiddleware = [
+        ...(resolvedOptions.middleware || []),
+        serverFnBaseToMiddleware(resolvedOptions),
+      ]
+
       // We want to make sure the new function has the same
       // properties as the original function
       return Object.assign(
-        (opts?: CompiledFetcherFnOptions) => {
-          // Execute the extracted function. This may be a direct
-          // call to handle the server function, or it may be a call
-          // to make a fetch request from the client to the server
-          // This depends on the runtime environment for `use server`
-          return extractedFn(
-            {
-              method: resolvedOptions.method,
-              data: opts?.data as any,
-              requestInit: opts?.requestInit,
-            },
-            {
-              options: resolvedOptions as any,
-            },
-          )
+        async (opts?: CompiledFetcherFnOptions) => {
+          // Start by executing the client-side middleware chain
+          return executeMiddleware(resolvedMiddleware, 'client', {
+            ...extractedFn,
+            method: resolvedOptions.method,
+            input: opts?.data as any,
+            headers: opts?.headers,
+          }).then((d) => d.result)
         },
         {
           // This copies over the URL, function ID and filename
           ...extractedFn,
-          // These functions are called internally by the
-          // extracted version of the function on the client and
-          // server
-          // The client version is used to execute the client-side
-          __executeClient: makeExecuterFn('client', (serverExecutorFn) => ({
-            ...resolvedOptions,
-            handlerFn: (ctx) => {
-              // It needs to call the extracted function on the client
-              // that will ultimately make the RPC call to the server
-              return serverExecutorFn(ctx)
-            },
-          })),
-          // On the server, only the server version is called, which doesn't
-          // need to make any changes and will call the normal handlerFn
-          __executeServer: makeExecuterFn('server', () => resolvedOptions),
+          // The extracted function on the server-side calls
+          // this function
+          __executeServer: (opts: any) => {
+            return executeMiddleware(resolvedMiddleware, 'server', {
+              ...extractedFn,
+              ...opts,
+            }).then((d) => d.result)
+          },
         },
       ) as any
     },
-  }
-}
-
-function makeExecuterFn(
-  env: 'client' | 'server',
-  getOptions: (
-    serverExecuterFn?: any,
-  ) => ServerFnBaseOptions<any, any, any, any>,
-) {
-  // This is a private method that gets called from the client to execute any client-side
-  // middleware logic. It's passed the server executor function.
-  return async (opts: any, serverExecutorFn: any) => {
-    const options = getOptions(serverExecutorFn)
-    const middleware = [
-      ...(options.middleware || []),
-      serverFnBaseToMiddleware(options),
-    ]
-
-    return executeMiddleware(middleware, env, opts)
   }
 }
 
@@ -267,7 +244,11 @@ function flattenMiddlewares(
 async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
-  input: any,
+  opts: {
+    method: Method
+    input: any
+    headers?: HeadersInit
+  },
 ): Promise<{
   context: any
   serverContext: any
@@ -277,6 +258,7 @@ async function executeMiddleware(
   const flattenedMiddlewares = flattenMiddlewares(middlewares)
 
   const next = async (ctx: {
+    method: Method
     input: any
     context: any
     serverContext: any
@@ -296,9 +278,8 @@ async function executeMiddleware(
     }
 
     if (
-      nextMiddleware.options.input && env === 'client'
-        ? nextMiddleware.options.validateClient
-        : true
+      nextMiddleware.options.input &&
+      (env === 'client' ? nextMiddleware.options.validateClient : true)
     ) {
       // Execute the middleware's input function
       ctx.input = await nextMiddleware.options.input(ctx.input)
@@ -331,12 +312,14 @@ async function executeMiddleware(
 
           // Return the next middleware
           return next({
+            method: ctx.method,
             input: ctx.input,
             context,
             serverContext,
             headers,
             result: userResult?.result,
           } as {
+            method: Method
             context: any
             serverContext: any
             headers: any
@@ -354,10 +337,10 @@ async function executeMiddleware(
 
   // Start the middleware chain
   return next({
-    input,
+    ...opts,
     context: {},
     serverContext: {},
-    headers: {},
+    headers: opts.headers || {},
   })
 }
 
@@ -369,8 +352,17 @@ function serverFnBaseToMiddleware(
     options: {
       input: options.input,
       validateClient: options.validateClient,
+      client: async ({ next, ...ctx }) => {
+        // Execute the extracted function
+        const result = await options.extractedFn?.(ctx as any)
+
+        return next({
+          result,
+        } as any)
+      },
       server: async ({ next, ...ctx }) => {
-        const result = await options.handlerFn?.(ctx as any)
+        // Execute the server function
+        const result = await options.serverFn?.(ctx as any)
 
         return next({
           result,

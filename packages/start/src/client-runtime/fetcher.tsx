@@ -37,9 +37,9 @@ export async function fetcher(
             accept: 'application/json',
           }
         : {}),
-      ...(opts.requestInit?.headers instanceof Headers
-        ? Object.fromEntries(opts.requestInit.headers.entries())
-        : opts.requestInit?.headers || {}),
+      ...(opts.headers instanceof Headers
+        ? Object.fromEntries(opts.headers.entries())
+        : opts.headers || {}),
     })
 
     // If the method is GET, we need to move the payload to the query string
@@ -57,7 +57,6 @@ export async function fetcher(
 
     // Create the request
     const request = new Request(base, {
-      ...opts.requestInit,
       method: opts.method,
       headers,
       ...(opts.method === 'POST'

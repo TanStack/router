@@ -343,7 +343,7 @@ export function createMiddleware<
   // const resolvedOptions = (__opts || options) as MiddlewareOptions<
   const resolvedOptions =
     __opts ||
-    (options as MiddlewareOptions<
+    ((options || {}) as MiddlewareOptions<
       TMiddlewares,
       TValidator,
       TServerContext,

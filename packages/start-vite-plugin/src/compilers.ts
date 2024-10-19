@@ -293,38 +293,22 @@ function handleCreateServerFnCallExpression(
 
   handlerFnPath.replaceWith(
     t.arrowFunctionExpression(
-      [t.identifier('clientOpts')],
-      t.blockStatement([
-        t.returnStatement(
-          t.callExpression(
-            t.identifier(`${existingVariableName}.__executeClient`),
-            [
-              t.identifier('clientOpts'),
-              t.arrowFunctionExpression(
-                [t.identifier('opts')],
-                t.blockStatement(
-                  // Everything in here is server-only, since the client
-                  // will strip out anything in the 'use server' directive.
-                  [
-                    t.returnStatement(
-                      t.callExpression(
-                        t.identifier(`${existingVariableName}.__executeServer`),
-                        [t.identifier('opts')],
-                      ),
-                    ),
-                  ],
-                  [t.directive(t.directiveLiteral('use server'))],
-                ),
-              ),
-            ],
+      [t.identifier('opts')],
+      t.blockStatement(
+        // Everything in here is server-only, since the client
+        // will strip out anything in the 'use server' directive.
+        [
+          t.returnStatement(
+            t.callExpression(
+              t.identifier(`${existingVariableName}.__executeServer`),
+              [t.identifier('opts')],
+            ),
           ),
-        ),
-      ]),
+        ],
+        [t.directive(t.directiveLiteral('use server'))],
+      ),
     ),
   )
-
-  // If we're on the server, add the original handler function to the
-  // arguments of the handler function call.
 
   if (opts.env === 'server') {
     callExpressionPaths.handler.node.arguments.push(handlerFn)
