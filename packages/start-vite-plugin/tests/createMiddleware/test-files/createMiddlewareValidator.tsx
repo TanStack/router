@@ -5,4 +5,4 @@ export const withUseServer = createMiddleware({
   id: 'test',
 })
   .input(z.number())
-  .use(({ input }) => input + 1)
+  .server(({ input }) => input + 1)

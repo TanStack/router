@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 export const withUseServer = createMiddleware({
   id: 'test',
-}).use(async function () {
+}).server(async function () {
   console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
@@ -13,7 +13,7 @@ export const withUseServer = createMiddleware({
 
 export const withoutUseServer = createMiddleware({
   id: 'test',
-}).use(async () => {
+}).server(async () => {
   console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 500))
   return axios
@@ -23,7 +23,7 @@ export const withoutUseServer = createMiddleware({
 
 export const withVariable = createMiddleware({
   id: 'test',
-}).use(abstractedFunction)
+}).server(abstractedFunction)
 
 async function abstractedFunction() {
   console.info('Fetching posts...')
@@ -44,7 +44,7 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(
 
 export const withZodValidator = createMiddleware({
   id: 'test',
-}).use(
+}).server(
   zodValidator(z.number(), (input) => {
     return { 'you gave': input }
   }),

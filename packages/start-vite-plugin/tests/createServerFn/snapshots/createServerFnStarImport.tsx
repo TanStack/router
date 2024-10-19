@@ -2,10 +2,12 @@ import * as TanStackStart from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = TanStackStart.createServerFn({
   method: 'GET'
-}).handler(opts => {
-  "use server";
+}).handler(clientOpts => {
+  return withUseServer.__executeClient(clientOpts, opts => {
+    "use server";
 
-  return withUseServer.__execute(opts);
+    return withUseServer.__executeServer(opts);
+  });
 }, async function () {
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
@@ -13,10 +15,12 @@ export const withUseServer = TanStackStart.createServerFn({
 });
 export const withoutUseServer = TanStackStart.createServerFn({
   method: 'GET'
-}).handler(opts => {
-  "use server";
+}).handler(clientOpts => {
+  return withoutUseServer.__executeClient(clientOpts, opts => {
+    "use server";
 
-  return withoutUseServer.__execute(opts);
+    return withoutUseServer.__executeServer(opts);
+  });
 }, async () => {
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
@@ -24,10 +28,12 @@ export const withoutUseServer = TanStackStart.createServerFn({
 });
 export const withVariable = TanStackStart.createServerFn({
   method: 'GET'
-}).handler(opts => {
-  "use server";
+}).handler(clientOpts => {
+  return withVariable.__executeClient(clientOpts, opts => {
+    "use server";
 
-  return withVariable.__execute(opts);
+    return withVariable.__executeServer(opts);
+  });
 }, abstractedFunction);
 async function abstractedFunction() {
   console.info('Fetching posts...');
@@ -41,10 +47,12 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
 }
 export const withZodValidator = TanStackStart.createServerFn({
   method: 'GET'
-}).handler(opts => {
-  "use server";
+}).handler(clientOpts => {
+  return withZodValidator.__executeClient(clientOpts, opts => {
+    "use server";
 
-  return withZodValidator.__execute(opts);
+    return withZodValidator.__executeServer(opts);
+  });
 }, zodValidator(z.number(), input => {
   return {
     'you gave': input

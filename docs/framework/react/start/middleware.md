@@ -19,7 +19,7 @@ Middleware allows you to customized the behavior of server functions created wit
 
 ## Defining Middleware
 
-Middleware is defined using the `createMiddleware` function. This function returns a `Middleware` object that can be used to continue customizing the middleware with methods like `middleware`, `input`, `server`, and `clientUse`.
+Middleware is defined using the `createMiddleware` function. This function returns a `Middleware` object that can be used to continue customizing the middleware with methods like `middleware`, `input`, `server`, and `client`.
 
 ```tsx
 import { createMiddleware } from '@tanstack/start'
@@ -39,7 +39,7 @@ Several methods are available to customize the middleware. If you are (hopefully
 - `middleware`: Add a middleware to the chain.
 - `input`: Modify the input object before it is passed to this middleware and any nested middleware.
 - `server`: Define server-side logic that the middleware will execute before any nested middleware and ultimately a server function, and also provide the result to the next middleware.
-- `clientUse`: Define client-side logic that the middleware will execute before any nested middleware and ultimately the client-side RPC function (or the server-side function), and also provide the result to the next middleware.
+- `client`: Define client-side logic that the middleware will execute before any nested middleware and ultimately the client-side RPC function (or the server-side function), and also provide the result to the next middleware.
 
 ## The `middleware` method
 
@@ -136,9 +136,9 @@ const workspaceMiddleware = createMiddleware({ validateClient: true })
   })
 ```
 
-## The `clientUse` method
+## The `client` method
 
-Client middleware logic is defined using the `clientUse` method on a `Middleware` object. This method is used to define client-side logic that the middleware will execute both before and after any nested middleware and ultimately the client-side RPC function (or the server-side function if you're doing SSR or calling this function from another server function).
+Client middleware logic is defined using the `client` method on a `Middleware` object. This method is used to define client-side logic that the middleware will execute both before and after any nested middleware and ultimately the client-side RPC function (or the server-side function if you're doing SSR or calling this function from another server function).
 
 **Client-side middleware logic shares much of the same API as logic created with the `server` method, but it is executed on the client side.** This includes:
 
@@ -153,7 +153,7 @@ Similar to the `server` function, it also receives an object with the following 
 - `context`: An object that stores data from parent middleware. It can be extended with additional data that will be passed to child middleware.
 
 ```tsx
-const loggingMiddleware = createMiddleware().clientUse(async ({ next }) => {
+const loggingMiddleware = createMiddleware().client(async ({ next }) => {
   console.log('Request sent')
   const result = await next()
   console.log('Response received')
@@ -163,19 +163,20 @@ const loggingMiddleware = createMiddleware().clientUse(async ({ next }) => {
 
 ## Sending client context to the server
 
-**Client context is NOT sent to the server by default since this could end up unintentionally sending large payloads to the server.** If you need to send client context to the server, you must use the `sendClientContext` function to transmit any data to the server. Anything returned from `sendClientContext` will be serialized and sent to the server along with the input.
+**Client context is NOT sent to the server by default since this could end up unintentionally sending large payloads to the server.** If you need to send client context to the server, you must call the `next` function with a `serverContext` property and object to transmit any data to the server. Any properties passed to `serverContext` will be merged, serialized and sent to the server along with the input and will be available on the normal context object of any nested server middleware.
 
 ```tsx
 const requestLogger = createMiddleware()
-  .clientUse(async ({ next, context }) => {
+  .client(async ({ next, context }) => {
     return next({
-      context: {
+      serverContext: {
+        // Send the workspace ID to the server
         workspaceId: context.workspaceId,
       },
     })
   })
-  .sendClientContext(({ context: { workspaceId } }) => ({ workspaceId }))
   .server(async ({ next, input, context }) => {
+    // Woah! We have the workspace ID from the client!
     console.log('Workspace ID:', context.workspaceId)
     return next()
   })
@@ -183,18 +184,17 @@ const requestLogger = createMiddleware()
 
 ## Client-Sent Context Security
 
-You may have noticed that in the example above, client-sent context is not validated by the server-side input schema. This is primarily because it's highly unlikely that client-side context includes dynamic user-generated data that could be harmful. However, **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.** Here's an example:
+You may have noticed that in the example above that while client-sent context is type-safe, it is is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.** Here's an example:
 
 ```tsx
 const requestLogger = createMiddleware()
-  .clientUse(async ({ next, context }) => {
+  .client(async ({ next, context }) => {
     return next({
-      context: {
+      serverContext: {
         workspaceId: context.workspaceId,
       },
     })
   })
-  .sendClientContext(({ context: { workspaceId } }) => ({ workspaceId }))
   .server(async ({ next, input, context }) => {
     // Validate the workspace ID before using it
     const workspaceId = zodValidator(z.number()).parse(context.workspaceId)
