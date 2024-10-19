@@ -1,13 +1,13 @@
 import { decode, encode } from './qss'
 import type { AnySearchSchema } from './route'
 
-export const defaultParseSearch = parseSearchWith(JSON.parse)
+export const defaultParseSearch = parseSearchWith((str) => JSON.parse(str))
 export const defaultStringifySearch = stringifySearchWith(
-  JSON.stringify,
-  JSON.parse,
+  (value) => JSON.stringify(value),
+  (str) => JSON.parse(str),
 )
 
-export function parseSearchWith(parser: (str: string) => any) {
+export function parseSearchWith(parser: (str: string, key: string) => any) {
   return (searchStr: string): AnySearchSchema => {
     if (searchStr.substring(0, 1) === '?') {
       searchStr = searchStr.substring(1)
@@ -20,7 +20,7 @@ export function parseSearchWith(parser: (str: string) => any) {
       const value = query[key]
       if (typeof value === 'string') {
         try {
-          query[key] = parser(value)
+          query[key] = parser(value, key)
         } catch (err) {
           //
         }
@@ -32,13 +32,13 @@ export function parseSearchWith(parser: (str: string) => any) {
 }
 
 export function stringifySearchWith(
-  stringify: (search: any) => string,
-  parser?: (str: string) => any,
+  stringify: (search: any, key: string) => string,
+  parser?: (str: string, key: string) => any,
 ) {
-  function stringifyValue(val: any) {
+  function stringifyValue(val: any, key: string) {
     if (typeof val === 'object' && val !== null) {
       try {
-        return stringify(val)
+        return stringify(val, key)
       } catch (err) {
         // silent
       }
@@ -46,8 +46,8 @@ export function stringifySearchWith(
       try {
         // Check if it's a valid parseable string.
         // If it is, then stringify it again.
-        parser(val)
-        return stringify(val)
+        parser(val, key)
+        return stringify(val, key)
       } catch (err) {
         // silent
       }
@@ -63,7 +63,7 @@ export function stringifySearchWith(
       if (typeof val === 'undefined' || val === undefined) {
         delete search[key]
       } else {
-        search[key] = stringifyValue(val)
+        search[key] = stringifyValue(val, key)
       }
     })
 

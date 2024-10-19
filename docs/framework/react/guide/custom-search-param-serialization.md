@@ -31,8 +31,8 @@ import {
 
 const router = createRouter({
   // ...
-  parseSearch: parseSearchWith(JSON.parse),
-  stringifySearch: stringifySearchWith(JSON.stringify),
+  parseSearch: parseSearchWith((value) => JSON.parse(value)),
+  stringifySearch: stringifySearchWith((value) => JSON.stringify(value)),
 })
 ```
 
@@ -135,8 +135,8 @@ import { parse, stringify } from 'jsurl2'
 
 const router = createRouter({
   // ...
-  parseSearch: parseSearchWith(parse),
-  stringifySearch: stringifySearchWith(stringify),
+  parseSearch: parseSearchWith((value) => parse(value)),
+  stringifySearch: stringifySearchWith((value) => stringify(value)),
 })
 ```
 
