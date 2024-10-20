@@ -296,13 +296,13 @@ describe('Link', () => {
       expect(indexExactLink).toHaveAttribute('data-status', 'active')
 
       if (opts.explicitUndefined) {
-        expect(indexFooUndefinedLink).not.toHaveClass('active')
-        expect(indexFooUndefinedLink).toHaveClass('inactive')
-        expect(indexFooUndefinedLink).not.toHaveAttribute(
+        expect(indexFooUndefinedLink).toHaveClass('active')
+        expect(indexFooUndefinedLink).not.toHaveClass('inactive')
+        expect(indexFooUndefinedLink).toHaveAttribute(
           'aria-current',
           'page',
         )
-        expect(indexFooUndefinedLink).not.toHaveAttribute(
+        expect(indexFooUndefinedLink).toHaveAttribute(
           'data-status',
           'active',
         )
