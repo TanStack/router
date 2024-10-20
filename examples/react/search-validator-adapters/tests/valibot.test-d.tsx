@@ -1,6 +1,6 @@
-import { createRootRoute, createRoute, Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { expectTypeOf, test } from 'vitest'
-import * as v from 'valibot'
+
 import { router } from '../src/main'
 import { Route as ValibotRoute } from '../src/routes/users/valibot.index'
 
