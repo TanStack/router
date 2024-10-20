@@ -4106,10 +4106,9 @@ describe('search middleware', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
-      validateSearch: 
-        z.object({
-          foo: z.string().default('default'),
-        }),
+      validateSearch: z.object({
+        foo: z.string().default('default'),
+      }),
       search: {
         middlewares: [
           // @ts-expect-error we cannot use zodSearchValidator here to due to circular dependency
