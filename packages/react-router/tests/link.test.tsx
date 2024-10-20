@@ -11,6 +11,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 
+import { z } from 'zod'
 import {
   Link,
   Outlet,
@@ -23,6 +24,8 @@ import {
   createRouteMask,
   createRouter,
   redirect,
+  retainSearchParams,
+  stripSearchParams,
   useLoaderData,
   useMatchRoute,
   useParams,
@@ -4068,5 +4071,116 @@ describe('search middleware', () => {
     await checkSearchValue('newValue')
     await checkPostsLink('newValue')
     expect(router.state.location.search).toEqual({ root: 'newValue' })
+  })
+
+  test('search middlewares work with redirect', async () => {
+    const rootRoute = createRootRoute({
+      validateSearch: z.object({ root: z.string().optional() }),
+      component: () => {
+        return (
+          <>
+            <h1>Root</h1>
+            <Link
+              data-testid="root-link-posts"
+              search={{ foo: 'default' }}
+              to="/posts"
+            >
+              posts
+            </Link>{' '}
+            <Link data-testid="root-link-invoices" to="/invoices">
+              invoices
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad: () => {
+        throw redirect({ to: '/posts' })
+      },
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: 
+        z.object({
+          foo: z.string().default('default'),
+        }),
+      search: {
+        middlewares: [
+          // @ts-expect-error we cannot use zodSearchValidator here to due to circular dependency
+          // this means we cannot get the correct input type for this schema
+          stripSearchParams({ foo: 'default' }),
+          retainSearchParams(true),
+        ],
+      },
+
+      component: () => {
+        const { foo } = postsRoute.useSearch()
+        return (
+          <>
+            <h1>Posts</h1>
+            <div data-testid="posts-search">{foo}</div>
+            <Link data-testid="posts-link-new" to="/posts/new">
+              new
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const postsNewRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: 'new',
+    })
+
+    const invoicesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'invoices',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postsRoute.addChildren([postsNewRoute]),
+        invoicesRoute,
+      ]),
+    })
+
+    window.history.replaceState(null, 'root', '/?root=abc')
+
+    render(<RouterProvider router={router} />)
+
+    const searchValue = await screen.findByTestId('posts-search')
+    expect(searchValue).toHaveTextContent('default')
+
+    expect(router.state.location.pathname).toBe('/posts')
+    expect(router.state.location.search).toEqual({ root: 'abc' })
+
+    // link to sibling does not retain search param
+    const invoicesLink = await screen.findByTestId('root-link-invoices')
+    expect(invoicesLink).toHaveAttribute('href')
+    const invoicesLinkHref = invoicesLink.getAttribute('href')
+    const invoicesLinkSearch = getSearchParamsFromURI(invoicesLinkHref!)
+    expect(invoicesLinkSearch.size).toBe(0)
+
+    // link to child retains search param
+    const postsNewLink = await screen.findByTestId('posts-link-new')
+    expect(postsNewLink).toHaveAttribute('href')
+    const postsNewLinkHref = postsNewLink.getAttribute('href')
+    const postsNewLinkSearch = getSearchParamsFromURI(postsNewLinkHref!)
+    expect(postsNewLinkSearch.size).toBe(1)
+    expect(postsNewLinkSearch.get('root')).toBe('abc')
+
+    const postsLink = await screen.findByTestId('root-link-posts')
+    expect(postsLink).toHaveAttribute('href')
+    const postsLinkHref = postsNewLink.getAttribute('href')
+    const postsLinkSearch = getSearchParamsFromURI(postsLinkHref!)
+    expect(postsLinkSearch.size).toBe(1)
+    expect(postsLinkSearch.get('root')).toBe('abc')
+    expect(postsLink).toHaveAttribute('data-status', 'active')
   })
 })

@@ -1390,7 +1390,6 @@ export class Router<
       const stayingMatches = matchedRoutesResult?.matchedRoutes.filter((d) =>
         fromMatches.find((e) => e.routeId === d.id),
       )
-
       let pathname: string
       if (dest.to) {
         pathname = this.resolvePathWithBase(fromPath, `${dest.to}`)
@@ -1463,7 +1462,7 @@ export class Router<
 
       const applyMiddlewares = (search: any) => {
         const allMiddlewares =
-          stayingMatches?.reduce(
+          matchedRoutesResult?.matchedRoutes.reduce(
             (acc, route) => {
               let middlewares: Array<SearchMiddleware<any>> = []
               if ('search' in route.options) {

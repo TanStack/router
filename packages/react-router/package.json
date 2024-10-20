@@ -81,9 +81,9 @@
     "zod": "^3.23.8"
   },
   "peerDependencies": {
+    "@tanstack/router-generator": "workspace:*",
     "react": ">=18",
-    "react-dom": ">=18",
-    "@tanstack/router-generator": "workspace:*"
+    "react-dom": ">=18"
   },
   "peerDependenciesMeta": {
     "@tanstack/router-generator": {
