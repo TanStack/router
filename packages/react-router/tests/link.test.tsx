@@ -214,132 +214,197 @@ describe('Link', () => {
     expect(postsLink).not.toHaveAttribute('data-status', 'active')
   })
 
-  test('when the current route has a search fields with undefined values', async () => {
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => {
-        return (
-          <>
-            <h1>Index</h1>
-            <Link
-              to="/"
-              activeOptions={{ exact: true }}
-              inactiveProps={{ className: 'inactive' }}
-            >
-              Index exact
-            </Link>
-            <Link
-              to="/"
-              search={{ foo: undefined }}
-              inactiveProps={{ className: 'inactive' }}
-            >
-              Index foo=undefined
-            </Link>
-            <Link
-              to="/"
-              search={{ foo: undefined }}
-              activeOptions={{ exact: true }}
-              inactiveProps={{ className: 'inactive' }}
-            >
-              Index foo=undefined-exact
-            </Link>
-            <Link
-              to="/"
-              search={{ foo: 'bar' }}
-              inactiveProps={{
-                className: 'inactive',
-              }}
-            >
-              Index foo=bar
-            </Link>
-          </>
+  describe('when the current route has a search fields with undefined values', () => {
+    async function runTest(opts: { explicitUndefined: boolean | undefined }) {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <>
+              <h1>Index</h1>
+              <Link
+                to="/"
+                activeOptions={{ exact: true }}
+                inactiveProps={{ className: 'inactive' }}
+              >
+                Index exact
+              </Link>
+              <Link
+                to="/"
+                search={{ foo: undefined }}
+                inactiveProps={{ className: 'inactive' }}
+                activeOptions={{ explicitUndefined: opts.explicitUndefined }}
+              >
+                Index foo=undefined
+              </Link>
+              <Link
+                to="/"
+                search={{ foo: undefined }}
+                activeOptions={{
+                  exact: true,
+                  explicitUndefined: opts.explicitUndefined,
+                }}
+                inactiveProps={{ className: 'inactive' }}
+              >
+                Index foo=undefined-exact
+              </Link>
+              <Link
+                to="/"
+                search={{ foo: 'bar' }}
+                inactiveProps={{
+                  className: 'inactive',
+                }}
+              >
+                Index foo=bar
+              </Link>
+            </>
+          )
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+      })
+
+      render(<RouterProvider router={router} />)
+
+      // round 1
+      const indexExactLink = await screen.findByRole('link', {
+        name: 'Index exact',
+      })
+
+      const indexFooUndefinedLink = await screen.findByRole('link', {
+        name: 'Index foo=undefined',
+      })
+
+      const indexFooUndefinedExactLink = await screen.findByRole('link', {
+        name: 'Index foo=undefined-exact',
+      })
+
+      const indexFooBarLink = await screen.findByRole('link', {
+        name: 'Index foo=bar',
+      })
+
+      expect(window.location.pathname).toBe('/')
+
+      expect(indexExactLink).toHaveClass('active')
+      expect(indexExactLink).not.toHaveClass('inactive')
+      expect(indexExactLink).toHaveAttribute('href', '/')
+      expect(indexExactLink).toHaveAttribute('aria-current', 'page')
+      expect(indexExactLink).toHaveAttribute('data-status', 'active')
+
+      if (opts.explicitUndefined) {
+        expect(indexFooUndefinedLink).not.toHaveClass('active')
+        expect(indexFooUndefinedLink).toHaveClass('inactive')
+        expect(indexFooUndefinedLink).not.toHaveAttribute(
+          'aria-current',
+          'page',
         )
+        expect(indexFooUndefinedLink).not.toHaveAttribute(
+          'data-status',
+          'active',
+        )
+      } else {
+        expect(indexFooUndefinedLink).toHaveClass('active')
+        expect(indexFooUndefinedLink).not.toHaveClass('inactive')
+        expect(indexFooUndefinedLink).toHaveAttribute('aria-current', 'page')
+        expect(indexFooUndefinedLink).toHaveAttribute('data-status', 'active')
+      }
+
+      expect(indexFooUndefinedLink).toHaveAttribute('href', '/')
+
+      if (opts.explicitUndefined) {
+        expect(indexFooUndefinedExactLink).not.toHaveClass('active')
+        expect(indexFooUndefinedExactLink).toHaveClass('inactive')
+        expect(indexFooUndefinedExactLink).not.toHaveAttribute(
+          'aria-current',
+          'page',
+        )
+        expect(indexFooUndefinedExactLink).not.toHaveAttribute(
+          'data-status',
+          'active',
+        )
+      } else {
+        expect(indexFooUndefinedExactLink).toHaveClass('active')
+        expect(indexFooUndefinedExactLink).not.toHaveClass('inactive')
+        expect(indexFooUndefinedExactLink).toHaveAttribute(
+          'aria-current',
+          'page',
+        )
+        expect(indexFooUndefinedExactLink).toHaveAttribute(
+          'data-status',
+          'active',
+        )
+      }
+
+      expect(indexFooUndefinedExactLink).toHaveAttribute('href', '/')
+
+      expect(indexFooBarLink).toHaveClass('inactive')
+      expect(indexFooBarLink).not.toHaveClass('active')
+      expect(indexFooBarLink).toHaveAttribute('href', '/?foo=bar')
+      expect(indexFooBarLink).not.toHaveAttribute('aria-current', 'page')
+      expect(indexFooBarLink).not.toHaveAttribute('data-status', 'active')
+
+      // navigate to /?foo=bar
+      fireEvent.click(indexFooBarLink)
+
+      expect(indexExactLink).toHaveClass('inactive')
+      expect(indexExactLink).not.toHaveClass('active')
+      expect(indexExactLink).toHaveAttribute('href', '/')
+      expect(indexExactLink).not.toHaveAttribute('aria-current', 'page')
+      expect(indexExactLink).not.toHaveAttribute('data-status', 'active')
+
+      if (opts.explicitUndefined) {
+        expect(indexFooUndefinedLink).not.toHaveClass('active')
+        expect(indexFooUndefinedLink).toHaveClass('inactive')
+        expect(indexFooUndefinedLink).not.toHaveAttribute(
+          'aria-current',
+          'page',
+        )
+        expect(indexFooUndefinedLink).not.toHaveAttribute(
+          'data-status',
+          'active',
+        )
+      } else {
+        expect(indexFooUndefinedLink).toHaveClass('active')
+        expect(indexFooUndefinedLink).not.toHaveClass('inactive')
+        expect(indexFooUndefinedLink).toHaveAttribute('aria-current', 'page')
+        expect(indexFooUndefinedLink).toHaveAttribute('data-status', 'active')
+      }
+
+      expect(indexFooUndefinedLink).toHaveAttribute('href', '/')
+
+      expect(indexFooUndefinedExactLink).toHaveClass('inactive')
+      expect(indexFooUndefinedExactLink).not.toHaveClass('active')
+      expect(indexFooUndefinedExactLink).toHaveAttribute('href', '/')
+      expect(indexFooUndefinedExactLink).not.toHaveAttribute(
+        'aria-current',
+        'page',
+      )
+      expect(indexFooUndefinedExactLink).not.toHaveAttribute(
+        'data-status',
+        'active',
+      )
+
+      expect(indexFooBarLink).toHaveClass('active')
+      expect(indexFooBarLink).not.toHaveClass('inactive')
+      expect(indexFooBarLink).toHaveAttribute('href', '/?foo=bar')
+      expect(indexFooBarLink).toHaveAttribute('aria-current', 'page')
+      expect(indexFooBarLink).toHaveAttribute('data-status', 'active')
+    }
+
+    test.each([undefined, false])(
+      'activeOptions.explicitUndefined=%s',
+      async (explicitUndefined) => {
+        await runTest({ explicitUndefined })
       },
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute]),
-    })
-
-    render(<RouterProvider router={router} />)
-
-    // round 1
-    const indexExactLink = await screen.findByRole('link', {
-      name: 'Index exact',
-    })
-
-    const indexFooUndefinedLink = await screen.findByRole('link', {
-      name: 'Index foo=undefined',
-    })
-
-    const indexFooUndefinedExactLink = await screen.findByRole('link', {
-      name: 'Index foo=undefined-exact',
-    })
-
-    const indexFooBarLink = await screen.findByRole('link', {
-      name: 'Index foo=bar',
-    })
-
-    expect(window.location.pathname).toBe('/')
-
-    expect(indexExactLink).toHaveClass('active')
-    expect(indexExactLink).not.toHaveClass('inactive')
-    expect(indexExactLink).toHaveAttribute('href', '/')
-    expect(indexExactLink).toHaveAttribute('aria-current', 'page')
-    expect(indexExactLink).toHaveAttribute('data-status', 'active')
-
-    expect(indexFooUndefinedLink).toHaveClass('active')
-    expect(indexFooUndefinedLink).not.toHaveClass('inactive')
-    expect(indexFooUndefinedLink).toHaveAttribute('href', '/')
-    expect(indexFooUndefinedLink).toHaveAttribute('aria-current', 'page')
-    expect(indexFooUndefinedLink).toHaveAttribute('data-status', 'active')
-
-    expect(indexFooUndefinedExactLink).toHaveClass('active')
-    expect(indexFooUndefinedExactLink).not.toHaveClass('inactive')
-    expect(indexFooUndefinedExactLink).toHaveAttribute('href', '/')
-    expect(indexFooUndefinedExactLink).toHaveAttribute('aria-current', 'page')
-    expect(indexFooUndefinedExactLink).toHaveAttribute('data-status', 'active')
-
-    expect(indexFooBarLink).toHaveClass('inactive')
-    expect(indexFooBarLink).not.toHaveClass('active')
-    expect(indexFooBarLink).toHaveAttribute('href', '/?foo=bar')
-    expect(indexFooBarLink).not.toHaveAttribute('aria-current', 'page')
-    expect(indexFooBarLink).not.toHaveAttribute('data-status', 'active')
-
-    // navigate to /?foo=bar
-    fireEvent.click(indexFooBarLink)
-
-    expect(indexExactLink).toHaveClass('inactive')
-    expect(indexExactLink).not.toHaveClass('active')
-    expect(indexExactLink).toHaveAttribute('href', '/')
-    expect(indexExactLink).not.toHaveAttribute('aria-current', 'page')
-    expect(indexExactLink).not.toHaveAttribute('data-status', 'active')
-
-    expect(indexFooUndefinedLink).toHaveClass('active')
-    expect(indexFooUndefinedLink).not.toHaveClass('inactive')
-    expect(indexFooUndefinedLink).toHaveAttribute('href', '/')
-    expect(indexFooUndefinedLink).toHaveAttribute('aria-current', 'page')
-    expect(indexFooUndefinedLink).toHaveAttribute('data-status', 'active')
-
-    expect(indexFooUndefinedExactLink).toHaveClass('inactive')
-    expect(indexFooUndefinedExactLink).not.toHaveClass('active')
-    expect(indexFooUndefinedExactLink).toHaveAttribute('href', '/')
-    expect(indexFooUndefinedExactLink).not.toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-    expect(indexFooUndefinedExactLink).not.toHaveAttribute(
-      'data-status',
-      'active',
     )
 
-    expect(indexFooBarLink).toHaveClass('active')
-    expect(indexFooBarLink).not.toHaveClass('inactive')
-    expect(indexFooBarLink).toHaveAttribute('href', '/?foo=bar')
-    expect(indexFooBarLink).toHaveAttribute('aria-current', 'page')
-    expect(indexFooBarLink).toHaveAttribute('data-status', 'active')
+    test('activeOptions.explicitUndefined=true', async () => {
+      await runTest({ explicitUndefined: true })
+    })
   })
 
   test('when the current route is the root with beforeLoad that throws', async () => {

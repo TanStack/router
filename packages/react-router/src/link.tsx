@@ -470,6 +470,7 @@ export interface ActiveOptions {
   exact?: boolean
   includeHash?: boolean
   includeSearch?: boolean
+  explicitUndefined?: boolean
 }
 
 export type LinkOptions<
@@ -685,11 +686,10 @@ export function useLinkProps<
       }
 
       if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(
-          s.location.search,
-          next.search,
-          !activeOptions?.exact,
-        )
+        const searchTest = deepEqual(s.location.search, next.search, {
+          partial: !activeOptions?.exact,
+          ignoreUndefined: !activeOptions?.explicitUndefined,
+        })
         if (!searchTest) {
           return false
         }
