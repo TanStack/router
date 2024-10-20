@@ -23,6 +23,7 @@ import { Route as groupLazyinsideImport } from './routes/(group)/lazyinside'
 import { Route as groupInsideImport } from './routes/(group)/inside'
 import { Route as groupLayoutImport } from './routes/(group)/_layout'
 import { Route as anotherGroupOnlyrouteinsideImport } from './routes/(another-group)/onlyrouteinside'
+import { Route as PostsPostIdEditImport } from './routes/posts_.$postId.edit'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as groupSubfolderInsideImport } from './routes/(group)/subfolder/inside'
@@ -98,6 +99,12 @@ const anotherGroupOnlyrouteinsideRoute =
     path: '/onlyrouteinside',
     getParentRoute: () => rootRoute,
   } as any)
+
+const PostsPostIdEditRoute = PostsPostIdEditImport.update({
+  id: '/posts_/$postId/edit',
+  path: '/posts/$postId/edit',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
   id: '/layout-b',
@@ -232,6 +239,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2LayoutBImport
       parentRoute: typeof LayoutLayout2Import
     }
+    '/posts_/$postId/edit': {
+      id: '/posts_/$postId/edit'
+      path: '/posts/$postId/edit'
+      fullPath: '/posts/$postId/edit'
+      preLoaderRoute: typeof PostsPostIdEditImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -315,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/posts/$postId/edit': typeof PostsPostIdEditRoute
 }
 
 export interface FileRoutesByTo {
@@ -329,6 +344,7 @@ export interface FileRoutesByTo {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/posts/$postId/edit': typeof PostsPostIdEditRoute
 }
 
 export interface FileRoutesById {
@@ -348,6 +364,7 @@ export interface FileRoutesById {
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/posts_/$postId/edit': typeof PostsPostIdEditRoute
 }
 
 export interface FileRouteTypes {
@@ -365,6 +382,7 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/posts/$postId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -378,6 +396,7 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/posts/$postId/edit'
   id:
     | '__root__'
     | '/'
@@ -395,6 +414,7 @@ export interface FileRouteTypes {
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/posts_/$postId/edit'
   fileRoutesById: FileRoutesById
 }
 
@@ -404,6 +424,7 @@ export interface RootRouteChildren {
   PostsRoute: typeof PostsRouteWithChildren
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
+  PostsPostIdEditRoute: typeof PostsPostIdEditRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -412,6 +433,7 @@ const rootRouteChildren: RootRouteChildren = {
   PostsRoute: PostsRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
+  PostsPostIdEditRoute: PostsPostIdEditRoute,
 }
 
 export const routeTree = rootRoute
@@ -430,7 +452,8 @@ export const routeTree = rootRoute
         "/_layout",
         "/posts",
         "/(another-group)/onlyrouteinside",
-        "/(group)"
+        "/(group)",
+        "/posts_/$postId/edit"
       ]
     },
     "/": {
@@ -507,6 +530,9 @@ export const routeTree = rootRoute
     "/_layout/_layout-2/layout-b": {
       "filePath": "_layout/_layout-2/layout-b.tsx",
       "parent": "/_layout/_layout-2"
+    },
+    "/posts_/$postId/edit": {
+      "filePath": "posts_.$postId.edit.tsx"
     }
   }
 }

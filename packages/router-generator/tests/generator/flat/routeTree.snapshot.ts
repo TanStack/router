@@ -102,8 +102,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
-    '/blog/stats': {
-      id: '/blog/stats'
+    '/blog_/stats': {
+      id: '/blog_/stats'
       path: '/blog/stats'
       fullPath: '/blog/stats'
       preLoaderRoute: typeof BlogStatsImport
@@ -206,7 +206,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
-  '/blog/stats': typeof BlogStatsRoute
+  '/blog_/stats': typeof BlogStatsRoute
   '/blog/': typeof BlogIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
@@ -240,7 +240,7 @@ export interface FileRouteTypes {
     | '/'
     | '/blog'
     | '/posts'
-    | '/blog/stats'
+    | '/blog_/stats'
     | '/blog/'
     | '/posts/'
     | '/posts/$postId/deep'
@@ -278,7 +278,7 @@ export const routeTree = rootRoute
         "/",
         "/blog",
         "/posts",
-        "/blog/stats"
+        "/blog_/stats"
       ]
     },
     "/": {
@@ -299,7 +299,7 @@ export const routeTree = rootRoute
         "/posts/$postId/"
       ]
     },
-    "/blog/stats": {
+    "/blog_/stats": {
       "filePath": "blog_.stats.tsx"
     },
     "/blog/": {

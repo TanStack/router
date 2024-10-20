@@ -25,6 +25,7 @@ import { Route as postsLetsGoDeeperHomeImport } from './routes/posts/lets-go/dee
 // Create/Update Routes
 
 const PostsRoute = PostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
@@ -35,11 +36,13 @@ const LayoutRoute = LayoutImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const postsDetailsRoute = postsDetailsImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
@@ -50,26 +53,31 @@ const LayoutLayout2Route = LayoutLayout2Import.update({
 } as any)
 
 const postsHomeRoute = postsHomeImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const postsLetsGoIndexRoute = postsLetsGoIndexImport.update({
+  id: '/inception/',
   path: '/inception/',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
 const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
 const postsLetsGoDeeperHomeRoute = postsLetsGoDeeperHomeImport.update({
+  id: '/inception/deeper/',
   path: '/inception/deeper/',
   getParentRoute: () => PostsRoute,
 } as any)

@@ -21,31 +21,37 @@ import { Route as DashboardPostsPostIdImport } from './routes/dashboard.posts.$p
 // Create/Update Routes
 
 const DashboardRoute = DashboardImport.update({
+  id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRoute,
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const DashboardIndexRoute = DashboardIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 const DashboardPostsRoute = DashboardPostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 const DashboardPostsIndexRoute = DashboardPostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => DashboardPostsRoute,
 } as any)
 
 const DashboardPostsPostIdRoute = DashboardPostsPostIdImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => DashboardPostsRoute,
 } as any)
