@@ -6,7 +6,8 @@
     "dev": "vite --port=3001",
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
-    "start": "vite"
+    "start": "vite",
+    "test:unit": "vitest"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.13",
@@ -26,6 +27,8 @@
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.3.2",
-    "vite": "^5.4.8"
+    "vite": "^5.4.8",
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.1"
   }
 }

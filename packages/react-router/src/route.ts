@@ -498,6 +498,38 @@ export interface SearchValidatorAdapter<TInput, TOutput> {
 
 export type AnySearchValidatorAdapter = SearchValidatorAdapter<any, any>
 
+export interface StandardSchemaValidator<TInput, TOutput> {
+  readonly '~types'?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
+  readonly '~validate': AnyStandardSchemaValidate
+}
+
+export type AnyStandardSchemaValidator = StandardSchemaValidator<any, any>
+
+export interface StandardSchemaValidatorTypes<TInput, TOutput> {
+  readonly input: TInput
+  readonly output: TOutput
+}
+
+export interface AnyStandardSchemaValidateSuccess {
+  readonly value: any
+}
+
+export interface AnyStandardSchemaValidateFailure {
+  readonly issues: ReadonlyArray<AnyStandardSchemaValidateIssue>
+}
+
+export interface AnyStandardSchemaValidateIssue {
+  readonly message: string
+}
+
+export interface AnyStandardSchemaValidateInput {
+  readonly value: any
+}
+
+export type AnyStandardSchemaValidate = (
+  input: AnyStandardSchemaValidateInput,
+) => AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure
+
 export type AnySearchValidatorFn = SearchValidatorFn<any, any>
 
 export type SearchValidatorFn<TInput, TOutput> = (input: TInput) => TOutput
@@ -506,6 +538,7 @@ export type SearchValidator<TInput, TOutput> =
   | SearchValidatorObj<TInput, TOutput>
   | SearchValidatorFn<TInput, TOutput>
   | SearchValidatorAdapter<TInput, TOutput>
+  | StandardSchemaValidator<TInput, TOutput>
   | undefined
 
 export type AnySearchValidator = SearchValidator<any, any>
@@ -624,11 +657,13 @@ export type ResolveSearchSchemaFnInput<TSearchValidator> =
     : AnySearchSchema
 
 export type ResolveSearchSchemaInput<TSearchValidator> =
-  TSearchValidator extends AnySearchValidatorAdapter
-    ? TSearchValidator['types']['input']
-    : TSearchValidator extends AnySearchValidatorObj
-      ? ResolveSearchSchemaFnInput<TSearchValidator['parse']>
-      : ResolveSearchSchemaFnInput<TSearchValidator>
+  TSearchValidator extends AnyStandardSchemaValidator
+    ? NonNullable<TSearchValidator['~types']>['input']
+    : TSearchValidator extends AnySearchValidatorAdapter
+      ? TSearchValidator['types']['input']
+      : TSearchValidator extends AnySearchValidatorObj
+        ? ResolveSearchSchemaFnInput<TSearchValidator['parse']>
+        : ResolveSearchSchemaFnInput<TSearchValidator>
 
 export type ResolveSearchSchemaFn<TSearchValidator> = TSearchValidator extends (
   ...args: any
@@ -639,11 +674,13 @@ export type ResolveSearchSchemaFn<TSearchValidator> = TSearchValidator extends (
 export type ResolveSearchSchema<TSearchValidator> =
   unknown extends TSearchValidator
     ? TSearchValidator
-    : TSearchValidator extends AnySearchValidatorAdapter
-      ? TSearchValidator['types']['output']
-      : TSearchValidator extends AnySearchValidatorObj
-        ? ResolveSearchSchemaFn<TSearchValidator['parse']>
-        : ResolveSearchSchemaFn<TSearchValidator>
+    : TSearchValidator extends AnyStandardSchemaValidator
+      ? NonNullable<TSearchValidator['~types']>['output']
+      : TSearchValidator extends AnySearchValidatorAdapter
+        ? TSearchValidator['types']['output']
+        : TSearchValidator extends AnySearchValidatorObj
+          ? ResolveSearchSchemaFn<TSearchValidator['parse']>
+          : ResolveSearchSchemaFn<TSearchValidator>
 
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,

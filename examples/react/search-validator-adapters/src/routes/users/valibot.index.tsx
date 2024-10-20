@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { valibotSearchValidator } from '@tanstack/router-valibot-adapter'
 import * as v from 'valibot'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
@@ -8,9 +7,7 @@ import { Content } from '../../components/Content'
 import { Search } from '../../components/Search'
 
 const Valibot = () => {
-  const search = Route.useSearch({
-    select: (search) => search.search ?? '',
-  })
+  const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
 
   return (
@@ -18,11 +15,11 @@ const Valibot = () => {
       <Header title="Valibot" />
       <Content>
         <Search
-          search={search}
+          search={search.search}
           onChange={(search) => navigate({ search: { search }, replace: true })}
         />
         <React.Suspense>
-          <Users search={search} />
+          <Users search={search.search} />
         </React.Suspense>
       </Content>
     </>
@@ -30,15 +27,13 @@ const Valibot = () => {
 }
 
 export const Route = createFileRoute('/users/valibot/')({
-  validateSearch: valibotSearchValidator(
-    v.object({
-      search: v.fallback(v.optional(v.string()), undefined),
-    }),
-  ),
+  validateSearch: v.object({
+    search: v.fallback(v.optional(v.string(), ''), ''),
+  }),
   loaderDeps: (opt) => ({ search: opt.search }),
   loader: (opt) => {
     opt.context.queryClient.ensureQueryData(
-      usersQueryOptions(opt.deps.search.search ?? ''),
+      usersQueryOptions(opt.deps.search.search),
     )
   },
   component: Valibot,
