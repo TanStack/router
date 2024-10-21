@@ -64,7 +64,7 @@
     "node": ">=12"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/jest-dom": "^6.6.2",
     "@testing-library/react": "^16.0.1",
     "@tanstack/react-router": "workspace:*",
     "zod": "^3.23.8"
