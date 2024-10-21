@@ -2088,6 +2088,7 @@ export class Router<
 
               updateMatch(matchId, (prev) => {
                 prev.beforeLoadPromise?.resolve()
+                prev.loadPromise?.resolve()
 
                 return {
                   ...prev,
