@@ -271,6 +271,9 @@ This provides flexibility in which type you want to infer for navigation and whi
 
 ### Valibot
 
+> [!WARNING]
+> Router expects the valibot 1.0 package to be installed.
+
 When using [Valibot](https://valibot.dev/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because `valibot` implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
 ```tsx
