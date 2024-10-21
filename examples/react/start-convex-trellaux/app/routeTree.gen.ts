@@ -17,13 +17,11 @@ import { Route as BoardsBoardIdImport } from './routes/boards.$boardId'
 // Create/Update Routes
 
 const IndexRoute = IndexImport.update({
-  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const BoardsBoardIdRoute = BoardsBoardIdImport.update({
-  id: '/boards/$boardId',
   path: '/boards/$boardId',
   getParentRoute: () => rootRoute,
 } as any)
