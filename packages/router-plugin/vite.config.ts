@@ -19,6 +19,7 @@ export default mergeConfig(
       './src/vite.ts',
       './src/rspack.ts',
       './src/webpack.ts',
+      './src/esbuild.ts',
     ],
     srcDir: './src',
   }),

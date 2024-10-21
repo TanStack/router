@@ -150,6 +150,7 @@ To enable file-based routing, you'll need to be using React with a supported bun
 - Vite
 - Rspack/Rsbuild
 - Webpack
+- Esbuild
 - Others??? (let us know if you'd like to see support for a specific bundler)
 
 If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
@@ -239,6 +240,28 @@ export default {
 ```
 
 Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-webpack-file-based) and get started.
+
+### Configuration with Esbuild
+
+To use file-based routing with **Esbuild**, you'll need to install the `@tanstack/router-plugin` package.
+
+```sh
+npm install -D @tanstack/router-plugin
+```
+
+Once installed, you'll need to add the plugin to your configuration.
+
+```tsx
+// esbuild.config.js
+import { TanStackRouterEsbuild } from '@tanstack/router-plugin/esbuild'
+
+export default {
+  // ...
+  plugins: [TanStackRouterEsbuild()],
+}
+```
+
+Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-esbuild-file-based) and get started.
 
 ### Configuration with the TanStack Router CLI
 
