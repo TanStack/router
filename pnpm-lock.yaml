@@ -1518,6 +1518,40 @@ importers:
         specifier: ^5.4.9
         version: 5.4.9(@types/node@22.7.4)(terser@5.31.1)
 
+  examples/react/quickstart-esbuild-file-based:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.11
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.0
+      esbuild:
+        specifier: ^0.23.1
+        version: 0.23.1
+
   examples/react/quickstart-file-based:
     dependencies:
       '@tanstack/react-router':
