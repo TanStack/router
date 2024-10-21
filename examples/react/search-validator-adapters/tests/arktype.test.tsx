@@ -7,8 +7,9 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
-import * as v from 'valibot'
+
 import '@testing-library/jest-dom/vitest'
+import { type } from 'arktype'
 
 test('can navigate to the route', async () => {
   const rootRoute = createRootRoute()
@@ -16,38 +17,40 @@ test('can navigate to the route', async () => {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => <Link to="/users/valibot">Valibot</Link>,
+    component: () => <Link to="/users/arktype">Arktype</Link>,
   })
 
-  const Valibot = () => {
-    const { search } = valibotRoute.useSearch()
+  const ArkType = () => {
+    const { search } = arkTypeRoute.useSearch()
 
     return (
       <div>
         <div>{search}</div>
-        <Link from="/users/valibot" search={{ search: 'updated' }}>
+        <Link from="/users/arktype" search={{ search: 'updated' }}>
           Update
         </Link>
       </div>
     )
   }
 
-  const valibotRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/users/valibot',
-    validateSearch: v.object({
-      search: v.optional(v.string(), 'default'),
-    }),
-    component: Valibot,
+  const search = type({
+    'search?': 'string = "default"',
   })
 
-  const routeTree = rootRoute.addChildren([indexRoute, valibotRoute])
+  const arkTypeRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/users/arkType',
+    validateSearch: search,
+    component: ArkType,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, arkTypeRoute])
 
   const router = createRouter({ routeTree })
 
   render(<RouterProvider router={router as any} />)
 
-  const link = await screen.findByText('Valibot')
+  const link = await screen.findByText('Arktype')
 
   fireEvent.click(link)
 

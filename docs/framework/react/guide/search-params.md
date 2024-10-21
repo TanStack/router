@@ -271,7 +271,7 @@ This provides flexibility in which type you want to infer for navigation and whi
 
 ### Valibot
 
-When using [Valibot](https://valibot.dev/) an adapter is not needed to ensure the correct `input` an `output` types are used for navigation and reading search params. This is because `valibot` implements a standard schema
+When using [Valibot](https://valibot.dev/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because `valibot` implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
@@ -294,14 +294,13 @@ export const Route = createFileRoute('/shop/products/')({
 ### Arktype
 
 > [!WARNING]
-> This adapter expects the arktype 2.0-beta package to be installed.
+> Router expects the arktype 2.0-rc package to be installed.
 
-When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
+When using [ArkType](https://arktype.io/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [ArkType](https://arktype.io/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
 ```tsx
 import { arkTypeSearchValidator } from '@tanstack/router-arktype-adapter'
 import { createFileRoute } from '@tanstack/react-router'
-import * as v from 'valibot'
 import { type } from 'arktype'
 
 const productSearchSchema = type({
@@ -311,7 +310,7 @@ const productSearchSchema = type({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: arkTypeSearchValidator(productSearchSchema),
+  validateSearch: productSearchSchema,
 })
 ```
 
