@@ -43,6 +43,7 @@ import type {
   AnyRoute,
   AnyRouteWithContext,
   AnySearchSchema,
+  AnySearchValidator,
   BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
@@ -555,6 +556,31 @@ function routeNeedsPreload(route: AnyRoute) {
     }
   }
   return false
+}
+
+function validateSearch(
+  validateSearch: AnySearchValidator,
+  input: unknown,
+): unknown {
+  if (validateSearch == null) return {}
+
+  if ('~validate' in validateSearch) {
+    const result = validateSearch['~validate']({ value: input })
+
+    if ('value' in result) return result.value
+
+    throw new SearchParamError(JSON.stringify(result.issues, undefined, 2))
+  }
+
+  if ('parse' in validateSearch) {
+    return validateSearch.parse(input)
+  }
+
+  if (typeof validateSearch === 'function') {
+    return validateSearch(input)
+  }
+
+  return {}
 }
 
 export type RouterEvents = {
@@ -1114,12 +1140,8 @@ export class Router<
         const parentSearch = parentMatch?.search ?? next.search
 
         try {
-          const validator =
-            typeof route.options.validateSearch === 'object'
-              ? route.options.validateSearch.parse
-              : route.options.validateSearch
-
-          const search = validator?.(parentSearch) ?? {}
+          const search =
+            validateSearch(route.options.validateSearch, parentSearch) ?? {}
 
           return [
             {
@@ -1444,13 +1466,12 @@ export class Router<
         matchedRoutesResult?.matchedRoutes.forEach((route) => {
           try {
             if (route.options.validateSearch) {
-              const validator =
-                typeof route.options.validateSearch === 'object'
-                  ? route.options.validateSearch.parse
-                  : route.options.validateSearch
               validatedSearch = {
                 ...validatedSearch,
-                ...validator({ ...validatedSearch, ...search }),
+                ...(validateSearch(route.options.validateSearch, {
+                  ...validatedSearch,
+                  ...search,
+                }) ?? {}),
               }
             }
           } catch (e) {
