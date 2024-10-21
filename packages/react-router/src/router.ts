@@ -2481,7 +2481,11 @@ export class Router<
                       ;(async () => {
                         try {
                           await runLoader()
-                        } catch (err) {}
+                        } catch (err) {
+                          if (isResolvedRedirect(err)) {
+                            await this.navigate(err)
+                          }
+                        }
                       })()
                     } else if (status !== 'success') {
                       await runLoader()
