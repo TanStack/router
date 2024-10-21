@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-zod-adapter",
-  "version": "1.74.6",
+  "version": "1.75.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
