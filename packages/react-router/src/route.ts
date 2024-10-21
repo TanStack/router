@@ -340,7 +340,9 @@ export interface UpdatableRouteOptions<
   preloadGcTime?: number
   search?: {
     middlewares?: Array<
-      SearchMiddleware<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+      SearchMiddleware<
+        ResolveFullSearchSchemaInput<TParentRoute, TSearchValidator>
+      >
     >
   }
   /** 

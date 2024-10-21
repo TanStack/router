@@ -8,15 +8,15 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.70.0",
-    "@tanstack/router-devtools": "^1.70.0",
+    "@tanstack/react-router": "^1.74.4",
+    "@tanstack/router-devtools": "^1.74.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@rsbuild/core": "1.0.13",
-    "@rsbuild/plugin-react": "1.0.3",
-    "@tanstack/router-plugin": "^1.69.1",
+    "@rsbuild/core": "1.0.16",
+    "@rsbuild/plugin-react": "1.0.5",
+    "@tanstack/router-plugin": "^1.74.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "typescript": "^5.6.2"

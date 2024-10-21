@@ -15,6 +15,10 @@ export type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
 }
 
+export type PickOptional<T> = {
+  [K in keyof T as undefined extends T[K] ? K : never]: T[K]
+}
+
 // from https://stackoverflow.com/a/76458160
 export type WithoutEmpty<T> = T extends any ? ({} extends T ? never : T) : never
 
@@ -214,7 +218,19 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
-export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
+function getObjectKeys(obj: any, ignoreUndefined: boolean) {
+  let keys = Object.keys(obj)
+  if (ignoreUndefined) {
+    keys = keys.filter((key) => obj[key] !== undefined)
+  }
+  return keys
+}
+
+export function deepEqual(
+  a: any,
+  b: any,
+  opts?: { partial?: boolean; ignoreUndefined?: boolean },
+): boolean {
   if (a === b) {
     return true
   }
@@ -224,23 +240,22 @@ export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const aKeys = Object.keys(a).filter((key) => a[key] !== undefined)
-    const bKeys = Object.keys(b).filter((key) => b[key] !== undefined)
+    const ignoreUndefined = opts?.ignoreUndefined ?? true
+    const aKeys = getObjectKeys(a, ignoreUndefined)
+    const bKeys = getObjectKeys(b, ignoreUndefined)
 
-    if (!partial && aKeys.length !== bKeys.length) {
+    if (!opts?.partial && aKeys.length !== bKeys.length) {
       return false
     }
 
-    return !bKeys.some(
-      (key) => !(key in a) || !deepEqual(a[key], b[key], partial),
-    )
+    return bKeys.every((key) => deepEqual(a[key], b[key], opts))
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) {
       return false
     }
-    return !a.some((item, index) => !deepEqual(item, b[index], partial))
+    return !a.some((item, index) => !deepEqual(item, b[index], opts))
   }
 
   return false

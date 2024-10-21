@@ -1,0 +1,31 @@
+{
+  "name": "router-mono-simple",
+  "version": "1.0.0",
+  "scripts": {
+    "post-feature": "pnpm --filter @router-mono-simple/post-feature",
+    "router": "pnpm --filter @router-mono-simple/router",
+    "app": "pnpm --filter @router-mono-simple/app",
+    "dev": "node ./setup-stackblitz.mjs && pnpm dev-run",
+    "dev-run": "pnpm router build && pnpm post-feature build && pnpm app dev"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.74.4",
+    "@tanstack/router-devtools": "^1.74.4",
+    "@tanstack/router-plugin": "^1.74.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "redaxios": "^0.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "5.6.2",
+    "vite": "^5.4.9",
+    "vite-plugin-dts": "^4.2.4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -44,6 +44,16 @@ function RootComponent() {
           Layout
         </Link>{' '}
         <Link
+          to="/onlyrouteinside"
+          data-testid="link-to-only-route-inside-group"
+          search={{ hello: 'world' }}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Only Route Inside Group
+        </Link>{' '}
+        <Link
           to="/inside"
           data-testid="link-to-route-inside-group"
           search={{ hello: 'world' }}
@@ -52,6 +62,26 @@ function RootComponent() {
           }}
         >
           Inside Group
+        </Link>{' '}
+        <Link
+          to="/subfolder/inside"
+          data-testid="link-to-route-inside-group-inside-subfolder"
+          search={{ hello: 'world' }}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Inside Subfolder Inside Group
+        </Link>{' '}
+        <Link
+          to="/insidelayout"
+          data-testid="link-to-route-inside-group-inside-layout"
+          search={{ hello: 'world' }}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Inside Group Inside Layout
         </Link>{' '}
         <Link
           to="/lazyinside"
