@@ -368,7 +368,7 @@ describe('deepEqual', () => {
       it('should return `true` for objects', () => {
         const a = { a: { b: 'b' }, c: 'c' }
         const b = { a: { b: 'b' }, c: 'c', d: undefined }
-        expect(deepEqual(a, b, { partial, ignoreUndefined })).toEqual(false)
+        expect(deepEqual(a, b, { partial, ignoreUndefined })).toEqual(true)
         expect(deepEqual(b, a, { partial, ignoreUndefined })).toEqual(true)
       })
 
@@ -376,7 +376,7 @@ describe('deepEqual', () => {
         const a = { a: { b: 'b', x: undefined }, c: 'c' }
         const b = { a: { b: 'b' }, c: 'c' }
         expect(deepEqual([a], [b], { partial, ignoreUndefined })).toEqual(true)
-        expect(deepEqual([b], [a], { partial, ignoreUndefined })).toEqual(false)
+        expect(deepEqual([b], [a], { partial, ignoreUndefined })).toEqual(true)
       })
     })
   })

@@ -759,33 +759,6 @@ describe('search params in URL', () => {
   })
 })
 
-/*
-  it('updates search params in URL upon initial load according to the result of validateSearch', async () => {
-    const { router } = createTestRouter({
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    await act(() => router.load())
-
-    router.state.matches.forEach((match) => {
-      expect(match.invalid).toBe(false)
-    })
-
-    await act(() => router.invalidate())
-
-    router.state.matches.forEach((match) => {
-      expect(match.invalid).toBe(false)
-    })
-
-    await act(() => router.load())
-
-    router.state.matches.forEach((match) => {
-      expect(match.invalid).toBe(false)
-    })
-  })
-})
-  */
-
 describe('route ids should be consistent after rebuilding the route tree', () => {
   it('should have the same route ids after rebuilding the route tree', async () => {
     const { router } = createTestRouter({

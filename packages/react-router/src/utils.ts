@@ -248,7 +248,7 @@ export function deepEqual(
       return false
     }
 
-    return !bKeys.some((key) => !(key in a) || !deepEqual(a[key], b[key], opts))
+    return bKeys.every((key) => deepEqual(a[key], b[key], opts))
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
