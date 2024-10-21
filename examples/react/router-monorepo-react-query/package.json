@@ -7,8 +7,7 @@
     "post-feature": "pnpm --filter @router-mono-react-query/post-feature",
     "router": "pnpm --filter @router-mono-react-query/router",
     "app": "pnpm --filter @router-mono-react-query/app",
-    "dev": "node ./setup-stackblitz.mjs && pnpm dev-run",
-    "dev-run": "pnpm post-query build && pnpm router build && pnpm post-feature build && pnpm app dev"
+    "dev": "pnpm post-query build && pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.15",
