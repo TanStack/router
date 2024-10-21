@@ -9,7 +9,7 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/react-query": "^5.59.15",
-    "@tanstack/react-router": "^1.74.4",
+    "@tanstack/react-router": "^1.74.5",
     "@tanstack/router-plugin": "^1.74.2",
     "@router-mono-react-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",

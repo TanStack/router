@@ -9,8 +9,8 @@
     "dev-run": "pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.74.4",
-    "@tanstack/router-devtools": "^1.74.4",
+    "@tanstack/react-router": "^1.74.5",
+    "@tanstack/router-devtools": "^1.74.5",
     "@tanstack/router-plugin": "^1.74.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
