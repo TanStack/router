@@ -13,12 +13,10 @@ export const Route = createFileRoute('/posts_/$postId/deep')({
       title: data.title,
     }
   },
-  meta: ({ loaderData }) => [
-    {
-      title: loaderData.title,
-    },
-  ],
-  errorComponent: PostErrorComponent as any,
+  head: ({ loaderData }) => ({
+    meta: loaderData ? [{ title: loaderData.title }] : undefined,
+  }),
+  errorComponent: PostErrorComponent,
   component: PostDeepComponent,
 })
 
