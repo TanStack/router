@@ -18,7 +18,7 @@ import type { Config } from './core/config'
  */
 const TanStackRouterGeneratorEsbuild = createEsbuildPlugin(
   unpluginRouterGeneratorFactory,
-);
+)
 
 /**
  * @example
@@ -31,7 +31,7 @@ const TanStackRouterGeneratorEsbuild = createEsbuildPlugin(
  */
 const TanStackRouterCodeSplitterEsbuild = createEsbuildPlugin(
   unpluginRouterCodeSplitterFactory,
-);
+)
 
 /**
  * @example
@@ -42,15 +42,15 @@ const TanStackRouterCodeSplitterEsbuild = createEsbuildPlugin(
  * }
  * ```
  */
-const TanStackRouterEsbuild = createEsbuildPlugin(unpluginRouterComposedFactory);
+const TanStackRouterEsbuild = createEsbuildPlugin(unpluginRouterComposedFactory)
 
-export default TanStackRouterEsbuild;
+export default TanStackRouterEsbuild
 
 export {
   configSchema,
   TanStackRouterGeneratorEsbuild,
   TanStackRouterCodeSplitterEsbuild,
   TanStackRouterEsbuild,
-};
+}
 
-export type { Config };
+export type { Config }

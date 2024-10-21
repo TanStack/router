@@ -241,9 +241,7 @@ export default {
 
 Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-webpack-file-based) and get started.
 
-
 ### Configuration with Esbuild
-
 
 To use file-based routing with **Esbuild**, you'll need to install the `@tanstack/router-plugin` package.
 
@@ -255,16 +253,15 @@ Once installed, you'll need to add the plugin to your configuration.
 
 ```tsx
 // esbuild.config.js
-import {TanStackRouterEsbuild} from '@tanstack/router-plugin/esbuild';
+import { TanStackRouterEsbuild } from '@tanstack/router-plugin/esbuild'
 
 export default {
   // ...
-  plugins: [TanStackRouterEsbuild()]
+  plugins: [TanStackRouterEsbuild()],
 }
 ```
 
 Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-esbuild-file-based) and get started.
-
 
 ### Configuration with the TanStack Router CLI
 
