@@ -2,13 +2,13 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
-  type ErrorComponentProps,
   Link,
   RouterProvider,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
+import type { ErrorComponentProps } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
   return <div>Error: {props.error.message}</div>
