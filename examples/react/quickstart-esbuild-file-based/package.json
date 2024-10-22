@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-react-example-quickstart-file-based",
+  "name": "tanstack-router-react-example-quickstart-esbuild-file-based",
   "private": true,
   "type": "module",
   "scripts": {

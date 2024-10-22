@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-e2e-react-basic-file-based",
+  "name": "tanstack-router-e2e-react-basic-esbuild-file-based",
   "private": true,
   "type": "module",
   "scripts": {
