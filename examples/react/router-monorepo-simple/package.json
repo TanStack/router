@@ -5,12 +5,11 @@
     "post-feature": "pnpm --filter @router-mono-simple/post-feature",
     "router": "pnpm --filter @router-mono-simple/router",
     "app": "pnpm --filter @router-mono-simple/app",
-    "dev": "node ./setup-stackblitz.mjs && pnpm dev-run",
-    "dev-run": "pnpm router build && pnpm post-feature build && pnpm app dev"
+    "dev": "pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.74.4",
-    "@tanstack/router-devtools": "^1.74.4",
+    "@tanstack/react-router": "^1.75.0",
+    "@tanstack/router-devtools": "^1.75.0",
     "@tanstack/router-plugin": "^1.74.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

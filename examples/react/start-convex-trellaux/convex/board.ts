@@ -27,6 +27,19 @@ export const seed = internalMutation(async (ctx) => {
   })
 })
 
+// Clear all boards (do this on a regular cadence for public examples)
+export const clear = internalMutation(async (ctx) => {
+  const allBoards = await ctx.db.query('boards').collect()
+  for (const board of allBoards) {
+    await ctx.db.delete(board._id)
+  }
+  await ctx.db.insert('boards', {
+    id: '1',
+    name: 'First board',
+    color: '#e0e0e0',
+  })
+})
+
 function withoutSystemFields<T extends { _creationTime: number; _id: Id<any> }>(
   doc: T,
 ) {
