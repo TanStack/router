@@ -451,10 +451,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   e2e/start/basic-auth:
     dependencies:
@@ -487,7 +487,7 @@ importers:
         version: 0.5.1
       remix-auth-form:
         specifier: ^1.5.0
-        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.2))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2)))
+        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.3))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/server-runtime@2.11.2(typescript@5.6.3)))
       tailwind-merge:
         specifier: ^2.5.4
         version: 2.5.4
@@ -521,10 +521,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   e2e/start/basic-react-query:
     dependencies:
@@ -588,10 +588,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   e2e/start/basic-rsc:
     dependencies:
@@ -637,10 +637,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   e2e/start/clerk-basic:
     dependencies:
@@ -670,7 +670,7 @@ importers:
         version: 0.5.1
       remix-auth-form:
         specifier: ^1.5.0
-        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.2))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2)))
+        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.3))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/server-runtime@2.11.2(typescript@5.6.3)))
       tailwind-merge:
         specifier: ^2.5.4
         version: 2.5.4
@@ -704,10 +704,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   examples/react/authenticated-routes:
     dependencies:
@@ -1621,7 +1621,7 @@ importers:
         version: 18.3.0
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
 
   examples/react/quickstart-webpack-file-based:
     dependencies:
@@ -1652,13 +1652,13 @@ importers:
         version: 18.3.0
       html-webpack-plugin:
         specifier: ^5.6.2
-        version: 5.6.2(@rspack/core@1.0.13(@swc/helpers@0.5.13))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
+        version: 5.6.2(@rspack/core@1.0.13(@swc/helpers@0.5.13))(webpack@5.95.0)
       swc-loader:
         specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.7.36(@swc/helpers@0.5.13))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
+        version: 0.2.6(@swc/core@1.7.36(@swc/helpers@0.5.13))(webpack@5.95.0)
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       webpack:
         specifier: ^5.95.0
         version: 5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)
@@ -2153,10 +2153,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   examples/react/start-basic-auth:
     dependencies:
@@ -2189,7 +2189,7 @@ importers:
         version: 0.5.1
       remix-auth-form:
         specifier: ^1.5.0
-        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.2))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2)))
+        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.3))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/server-runtime@2.11.2(typescript@5.6.3)))
       tailwind-merge:
         specifier: ^2.5.4
         version: 2.5.4
@@ -2220,10 +2220,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   examples/react/start-basic-react-query:
     dependencies:
@@ -2284,10 +2284,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   examples/react/start-basic-rsc:
     dependencies:
@@ -2333,10 +2333,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   examples/react/start-clerk-basic:
     dependencies:
@@ -2366,7 +2366,7 @@ importers:
         version: 0.5.1
       remix-auth-form:
         specifier: ^1.5.0
-        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.2))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2)))
+        version: 1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.3))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/server-runtime@2.11.2(typescript@5.6.3)))
       tailwind-merge:
         specifier: ^2.5.4
         version: 2.5.4
@@ -2397,10 +2397,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   examples/react/start-convex-trellaux:
     dependencies:
@@ -2436,7 +2436,7 @@ importers:
         version: 1.7.2
       msw:
         specifier: ^2.4.11
-        version: 2.4.11(typescript@5.6.2)
+        version: 2.4.11(typescript@5.6.3)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2482,10 +2482,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   examples/react/start-counter:
     dependencies:
@@ -2516,7 +2516,7 @@ importers:
         version: 18.3.0
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
 
   examples/react/start-supabase-basic:
     dependencies:
@@ -2565,7 +2565,7 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
 
   examples/react/start-trellaux:
     dependencies:
@@ -2592,7 +2592,7 @@ importers:
         version: 1.7.2
       msw:
         specifier: ^2.4.11
-        version: 2.4.11(typescript@5.6.2)
+        version: 2.4.11(typescript@5.6.3)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2638,10 +2638,10 @@ importers:
         version: 3.4.14
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite-tsconfig-paths:
         specifier: ^5.0.1
-        version: 5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
   examples/react/with-framer-motion:
     dependencies:
@@ -2806,7 +2806,7 @@ importers:
         version: 4.3.3(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
       html-webpack-plugin:
         specifier: ^5.6.0
-        version: 5.6.2(@rspack/core@1.0.13(@swc/helpers@0.5.13))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
+        version: 5.6.2(@rspack/core@1.0.13(@swc/helpers@0.5.13))(webpack@5.95.0)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2815,10 +2815,10 @@ importers:
         version: 18.3.1(react@18.3.1)
       swc-loader:
         specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.7.36(@swc/helpers@0.5.13))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
+        version: 0.2.6(@swc/core@1.7.36(@swc/helpers@0.5.13))(webpack@5.95.0)
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
       vite:
         specifier: ^5.4.8
         version: 5.4.9(@types/node@22.7.4)(terser@5.31.1)
@@ -2861,7 +2861,7 @@ importers:
         version: 1.1.1
       unbuild:
         specifier: ^2.0.0
-        version: 2.0.0(typescript@5.6.2)(vue-tsc@2.0.29(typescript@5.6.2))
+        version: 2.0.0(typescript@5.6.3)(vue-tsc@2.0.29(typescript@5.6.3))
       validate-npm-package-name:
         specifier: ^5.0.1
         version: 5.0.1
@@ -3195,7 +3195,7 @@ importers:
         version: 18.3.1(react@18.3.1)
       typescript:
         specifier: ^5.6.2
-        version: 5.6.2
+        version: 5.6.3
 
   packages/start-vite-plugin:
     dependencies:
@@ -11821,23 +11821,23 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.11
 
-  '@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2)':
+  '@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)':
     dependencies:
       '@remix-run/router': 1.19.0
-      '@remix-run/server-runtime': 2.11.1(typescript@5.6.2)
+      '@remix-run/server-runtime': 2.11.1(typescript@5.6.3)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-router: 6.26.0(react@18.3.1)
       react-router-dom: 6.26.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       turbo-stream: 2.2.0
     optionalDependencies:
-      typescript: 5.6.2
+      typescript: 5.6.3
 
   '@remix-run/router@1.19.0': {}
 
   '@remix-run/router@1.19.1': {}
 
-  '@remix-run/server-runtime@2.11.1(typescript@5.6.2)':
+  '@remix-run/server-runtime@2.11.1(typescript@5.6.3)':
     dependencies:
       '@remix-run/router': 1.19.0
       '@types/cookie': 0.6.0
@@ -11847,9 +11847,9 @@ snapshots:
       source-map: 0.7.4
       turbo-stream: 2.2.0
     optionalDependencies:
-      typescript: 5.6.2
+      typescript: 5.6.3
 
-  '@remix-run/server-runtime@2.11.2(typescript@5.6.2)':
+  '@remix-run/server-runtime@2.11.2(typescript@5.6.3)':
     dependencies:
       '@remix-run/router': 1.19.1
       '@types/cookie': 0.6.0
@@ -11859,7 +11859,7 @@ snapshots:
       source-map: 0.7.4
       turbo-stream: 2.3.0
     optionalDependencies:
-      typescript: 5.6.2
+      typescript: 5.6.3
 
   '@rollup/plugin-alias@5.1.0(rollup@3.29.4)':
     dependencies:
@@ -12960,20 +12960,6 @@ snapshots:
       de-indent: 1.0.2
       he: 1.2.0
 
-  '@vue/language-core@2.0.29(typescript@5.6.2)':
-    dependencies:
-      '@volar/language-core': 2.4.5
-      '@vue/compiler-dom': 3.4.27
-      '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.4.27
-      computeds: 0.0.1
-      minimatch: 9.0.5
-      muggle-string: 0.4.1
-      path-browserify: 1.0.1
-    optionalDependencies:
-      typescript: 5.6.2
-    optional: true
-
   '@vue/language-core@2.0.29(typescript@5.6.3)':
     dependencies:
       '@volar/language-core': 2.4.5
@@ -13080,17 +13066,17 @@ snapshots:
       '@webassemblyjs/ast': 1.12.1
       '@xtuc/long': 4.2.2
 
-  '@webpack-cli/configtest@2.1.1(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))':
+  '@webpack-cli/configtest@2.1.1(webpack-cli@5.1.4)(webpack@5.95.0)':
     dependencies:
       webpack: 5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0)
 
-  '@webpack-cli/info@2.0.2(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))':
+  '@webpack-cli/info@2.0.2(webpack-cli@5.1.4)(webpack@5.95.0)':
     dependencies:
       webpack: 5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0)
 
-  '@webpack-cli/serve@2.0.5(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0))(webpack-dev-server@5.1.0(webpack-cli@5.1.4)(webpack@5.95.0))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))':
+  '@webpack-cli/serve@2.0.5(webpack-cli@5.1.4)(webpack-dev-server@5.1.0)(webpack@5.95.0)':
     dependencies:
       webpack: 5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0)
@@ -15036,7 +15022,7 @@ snapshots:
 
   html-void-elements@3.0.0: {}
 
-  html-webpack-plugin@5.6.2(@rspack/core@1.0.13(@swc/helpers@0.5.13))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)):
+  html-webpack-plugin@5.6.2(@rspack/core@1.0.13(@swc/helpers@0.5.13))(webpack@5.95.0):
     dependencies:
       '@types/html-minifier-terser': 6.1.0
       html-minifier-terser: 6.1.0
@@ -15734,7 +15720,7 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
-  mkdist@1.5.7(typescript@5.6.2)(vue-tsc@2.0.29(typescript@5.6.2)):
+  mkdist@1.5.7(typescript@5.6.3)(vue-tsc@2.0.29(typescript@5.6.3)):
     dependencies:
       autoprefixer: 10.4.20(postcss@8.4.47)
       citty: 0.1.6
@@ -15750,8 +15736,8 @@ snapshots:
       postcss-nested: 6.2.0(postcss@8.4.47)
       semver: 7.6.3
     optionalDependencies:
-      typescript: 5.6.2
-      vue-tsc: 2.0.29(typescript@5.6.2)
+      typescript: 5.6.3
+      vue-tsc: 2.0.29(typescript@5.6.3)
 
   mlly@1.7.1:
     dependencies:
@@ -15767,28 +15753,6 @@ snapshots:
   ms@2.1.2: {}
 
   ms@2.1.3: {}
-
-  msw@2.4.11(typescript@5.6.2):
-    dependencies:
-      '@bundled-es-modules/cookie': 2.0.0
-      '@bundled-es-modules/statuses': 1.0.1
-      '@bundled-es-modules/tough-cookie': 0.1.6
-      '@inquirer/confirm': 3.2.0
-      '@mswjs/interceptors': 0.35.9
-      '@open-draft/until': 2.1.0
-      '@types/cookie': 0.6.0
-      '@types/statuses': 2.0.5
-      chalk: 4.1.2
-      graphql: 16.9.0
-      headers-polyfill: 4.0.3
-      is-node-process: 1.2.0
-      outvariant: 1.4.3
-      path-to-regexp: 6.3.0
-      strict-event-emitter: 0.5.1
-      type-fest: 4.26.1
-      yargs: 17.7.2
-    optionalDependencies:
-      typescript: 5.6.2
 
   msw@2.4.11(typescript@5.6.3):
     dependencies:
@@ -15811,7 +15775,6 @@ snapshots:
       yargs: 17.7.2
     optionalDependencies:
       typescript: 5.6.3
-    optional: true
 
   muggle-string@0.4.1: {}
 
@@ -16720,15 +16683,15 @@ snapshots:
 
   relateurl@0.2.7: {}
 
-  remix-auth-form@1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.2))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2))):
+  remix-auth-form@1.5.0(@remix-run/server-runtime@2.11.2(typescript@5.6.3))(remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/server-runtime@2.11.2(typescript@5.6.3))):
     dependencies:
-      '@remix-run/server-runtime': 2.11.2(typescript@5.6.2)
-      remix-auth: 3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2))
+      '@remix-run/server-runtime': 2.11.2(typescript@5.6.3)
+      remix-auth: 3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/server-runtime@2.11.2(typescript@5.6.3))
 
-  remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2))(@remix-run/server-runtime@2.11.2(typescript@5.6.2)):
+  remix-auth@3.7.0(@remix-run/react@2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/server-runtime@2.11.2(typescript@5.6.3)):
     dependencies:
-      '@remix-run/react': 2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.2)
-      '@remix-run/server-runtime': 2.11.2(typescript@5.6.2)
+      '@remix-run/react': 2.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)
+      '@remix-run/server-runtime': 2.11.2(typescript@5.6.3)
       uuid: 8.3.2
 
   renderkid@3.0.0:
@@ -16784,11 +16747,11 @@ snapshots:
       glob: 11.0.0
       package-json-from-dist: 1.0.0
 
-  rollup-plugin-dts@6.1.1(rollup@3.29.4)(typescript@5.6.2):
+  rollup-plugin-dts@6.1.1(rollup@3.29.4)(typescript@5.6.3):
     dependencies:
       magic-string: 0.30.11
       rollup: 3.29.4
-      typescript: 5.6.2
+      typescript: 5.6.3
     optionalDependencies:
       '@babel/code-frame': 7.25.7
 
@@ -17207,7 +17170,7 @@ snapshots:
       csso: 5.0.5
       picocolors: 1.1.1
 
-  swc-loader@0.2.6(@swc/core@1.7.36(@swc/helpers@0.5.13))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)):
+  swc-loader@0.2.6(@swc/core@1.7.36(@swc/helpers@0.5.13))(webpack@5.95.0):
     dependencies:
       '@swc/core': 1.7.36(@swc/helpers@0.5.13)
       '@swc/counter': 0.1.3
@@ -17277,18 +17240,6 @@ snapshots:
       mkdirp: 1.0.4
       yallist: 4.0.0
 
-  terser-webpack-plugin@5.3.10(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)):
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.25
-      jest-worker: 27.5.1
-      schema-utils: 3.3.0
-      serialize-javascript: 6.0.2
-      terser: 5.31.1
-      webpack: 5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)
-    optionalDependencies:
-      '@swc/core': 1.7.36(@swc/helpers@0.5.13)
-      esbuild: 0.23.1
-
   terser-webpack-plugin@5.3.10(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
@@ -17297,6 +17248,18 @@ snapshots:
       serialize-javascript: 6.0.2
       terser: 5.31.1
       webpack: 5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)
+    optionalDependencies:
+      '@swc/core': 1.7.36(@swc/helpers@0.5.13)
+      esbuild: 0.23.1
+
+  terser-webpack-plugin@5.3.10(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack@5.95.0):
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.25
+      jest-worker: 27.5.1
+      schema-utils: 3.3.0
+      serialize-javascript: 6.0.2
+      terser: 5.31.1
+      webpack: 5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)
     optionalDependencies:
       '@swc/core': 1.7.36(@swc/helpers@0.5.13)
       esbuild: 0.23.1
@@ -17400,10 +17363,6 @@ snapshots:
 
   ts-pattern@5.4.0: {}
 
-  tsconfck@3.0.3(typescript@5.6.2):
-    optionalDependencies:
-      typescript: 5.6.2
-
   tsconfck@3.0.3(typescript@5.6.3):
     optionalDependencies:
       typescript: 5.6.3
@@ -17497,7 +17456,7 @@ snapshots:
 
   ufo@1.5.4: {}
 
-  unbuild@2.0.0(typescript@5.6.2)(vue-tsc@2.0.29(typescript@5.6.2)):
+  unbuild@2.0.0(typescript@5.6.3)(vue-tsc@2.0.29(typescript@5.6.3)):
     dependencies:
       '@rollup/plugin-alias': 5.1.0(rollup@3.29.4)
       '@rollup/plugin-commonjs': 25.0.8(rollup@3.29.4)
@@ -17514,17 +17473,17 @@ snapshots:
       hookable: 5.5.3
       jiti: 1.21.6
       magic-string: 0.30.11
-      mkdist: 1.5.7(typescript@5.6.2)(vue-tsc@2.0.29(typescript@5.6.2))
+      mkdist: 1.5.7(typescript@5.6.3)(vue-tsc@2.0.29(typescript@5.6.3))
       mlly: 1.7.1
       pathe: 1.1.2
       pkg-types: 1.2.0
       pretty-bytes: 6.1.1
       rollup: 3.29.4
-      rollup-plugin-dts: 6.1.1(rollup@3.29.4)(typescript@5.6.2)
+      rollup-plugin-dts: 6.1.1(rollup@3.29.4)(typescript@5.6.3)
       scule: 1.3.0
       untyped: 1.4.2
     optionalDependencies:
-      typescript: 5.6.2
+      typescript: 5.6.3
     transitivePeerDependencies:
       - sass
       - supports-color
@@ -17874,17 +17833,6 @@ snapshots:
     dependencies:
       vite: 5.4.9(@types/node@22.7.4)(terser@5.31.1)
 
-  vite-tsconfig-paths@5.0.1(typescript@5.6.2)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1)):
-    dependencies:
-      debug: 4.3.6
-      globrex: 0.1.2
-      tsconfck: 3.0.3(typescript@5.6.2)
-    optionalDependencies:
-      vite: 5.4.9(@types/node@22.7.4)(terser@5.31.1)
-    transitivePeerDependencies:
-      - supports-color
-      - typescript
-
   vite-tsconfig-paths@5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1)):
     dependencies:
       debug: 4.3.6
@@ -17943,14 +17891,6 @@ snapshots:
 
   vscode-uri@3.0.8: {}
 
-  vue-tsc@2.0.29(typescript@5.6.2):
-    dependencies:
-      '@volar/typescript': 2.4.5
-      '@vue/language-core': 2.0.29(typescript@5.6.2)
-      semver: 7.6.3
-      typescript: 5.6.2
-    optional: true
-
   vue-tsc@2.0.29(typescript@5.6.3):
     dependencies:
       '@volar/typescript': 2.4.5
@@ -17984,9 +17924,9 @@ snapshots:
   webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0):
     dependencies:
       '@discoveryjs/json-ext': 0.5.7
-      '@webpack-cli/configtest': 2.1.1(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
-      '@webpack-cli/info': 2.0.2(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
-      '@webpack-cli/serve': 2.0.5(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.95.0))(webpack-dev-server@5.1.0(webpack-cli@5.1.4)(webpack@5.95.0))(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
+      '@webpack-cli/configtest': 2.1.1(webpack-cli@5.1.4)(webpack@5.95.0)
+      '@webpack-cli/info': 2.0.2(webpack-cli@5.1.4)(webpack@5.95.0)
+      '@webpack-cli/serve': 2.0.5(webpack-cli@5.1.4)(webpack-dev-server@5.1.0)(webpack@5.95.0)
       colorette: 2.0.20
       commander: 10.0.1
       cross-spawn: 7.0.3
@@ -18000,7 +17940,7 @@ snapshots:
     optionalDependencies:
       webpack-dev-server: 5.1.0(webpack-cli@5.1.4)(webpack@5.95.0)
 
-  webpack-dev-middleware@7.4.2(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)):
+  webpack-dev-middleware@7.4.2(webpack@5.95.0):
     dependencies:
       colorette: 2.0.20
       memfs: 4.9.3
@@ -18039,7 +17979,7 @@ snapshots:
       serve-index: 1.9.1
       sockjs: 0.3.24
       spdy: 4.0.2
-      webpack-dev-middleware: 7.4.2(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
+      webpack-dev-middleware: 7.4.2(webpack@5.95.0)
       ws: 8.18.0
     optionalDependencies:
       webpack: 5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4)
@@ -18112,7 +18052,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack@5.95.0(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack-cli@5.1.4))
+      terser-webpack-plugin: 5.3.10(@swc/core@1.7.36(@swc/helpers@0.5.13))(esbuild@0.23.1)(webpack@5.95.0)
       watchpack: 2.4.1
       webpack-sources: 3.2.3
     optionalDependencies:
