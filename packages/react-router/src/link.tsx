@@ -874,8 +874,8 @@ export function useLinkProps<
   }
 }
 
-type UseLinkReactProps<TComp> = TComp extends keyof JSX.IntrinsicElements
-  ? JSX.IntrinsicElements[TComp]
+type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
+  ? React.JSX.IntrinsicElements[TComp]
   : React.PropsWithoutRef<
       TComp extends React.ComponentType<infer TProps> ? TProps : never
     > &
