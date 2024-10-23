@@ -5,7 +5,10 @@ import { Auth } from '../components/Auth'
 import { getSupabaseServerClient } from '../utils/supabase'
 
 export const signupFn = createServerFn()
-  .input((d) => d as { email: string; password: string; redirectUrl?: string })
+  .input(
+    (d: unknown) =>
+      d as { email: string; password: string; redirectUrl?: string },
+  )
   .handler(async ({ input }) => {
     const supabase = await getSupabaseServerClient()
     const { data, error } = await supabase.auth.signUp({
@@ -25,6 +28,10 @@ export const signupFn = createServerFn()
     })
   })
 
+export const Route = createFileRoute('/signup')({
+  component: SignupComp,
+})
+
 function SignupComp() {
   const signupMutation = useMutation({
     fn: useServerFn(signupFn),
@@ -38,8 +45,10 @@ function SignupComp() {
         const formData = new FormData(e.target as HTMLFormElement)
 
         signupMutation.mutate({
-          email: formData.get('email') as string,
-          password: formData.get('password') as string,
+          data: {
+            email: formData.get('email') as string,
+            password: formData.get('password') as string,
+          },
         })
       }}
       afterSubmit={

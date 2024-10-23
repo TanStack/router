@@ -95,11 +95,13 @@ export type CodeRoutePaths<TRouteTree extends AnyRoute> =
     ? TRoutes['fullPath']
     : never
 
-export type RoutePaths<TRouteTree extends AnyRoute> =
-  | (InferFileRouteTypes<TRouteTree> extends never
-      ? CodeRoutePaths<TRouteTree>
-      : InferFileRouteTypes<TRouteTree>['fullPaths'])
-  | '/'
+export type RoutePaths<TRouteTree extends AnyRoute> = unknown extends TRouteTree
+  ? string
+  :
+      | (InferFileRouteTypes<TRouteTree> extends never
+          ? CodeRoutePaths<TRouteTree>
+          : InferFileRouteTypes<TRouteTree>['fullPaths'])
+      | '/'
 
 export type RouteToPathAlwaysTrailingSlash<TRoute extends AnyRoute> =
   TRoute['path'] extends '/'
@@ -160,8 +162,9 @@ export type FileRouteToPath<
 export type RouteToPath<
   TRouter extends AnyRouter,
   TRouteTree extends AnyRoute,
-> =
-  InferFileRouteTypes<TRouter['routeTree']> extends never
+> = unknown extends TRouter
+  ? string
+  : InferFileRouteTypes<TRouter['routeTree']> extends never
     ? CodeRouteToPath<TRouter, TRouteTree>
     : FileRouteToPath<TRouter>
 

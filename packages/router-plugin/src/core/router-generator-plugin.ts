@@ -92,28 +92,48 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     async rspack(compiler) {
       userConfig = getConfig(options, ROOT)
 
-      // rspack watcher doesn't register newly created files
       if (compiler.options.mode === 'production') {
         await run(generate)
       } else {
+        // rspack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
-        chokidar.watch(routesDirectoryPath).on('add', async () => {
-          await run(generate)
+        chokidar
+          .watch(routesDirectoryPath, { ignoreInitial: true })
+          .on('add', async () => {
+            await run(generate)
+          })
+
+        let generated = false
+        compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
+          if (!generated) {
+            generated = true
+            return run(generate)
+          }
         })
       }
     },
     async webpack(compiler) {
       userConfig = getConfig(options, ROOT)
 
-      // webpack watcher doesn't register newly created files
       if (compiler.options.mode === 'production') {
         await run(generate)
       } else {
+        // webpack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
-        chokidar.watch(routesDirectoryPath).on('add', async () => {
-          await run(generate)
+        chokidar
+          .watch(routesDirectoryPath, { ignoreInitial: true })
+          .on('add', async () => {
+            await run(generate)
+          })
+
+        let generated = false
+        compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
+          if (!generated) {
+            generated = true
+            return run(generate)
+          }
         })
       }
 

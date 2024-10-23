@@ -1,20 +1,17 @@
 import { parse } from 'valibot'
 import type { ValidatorAdapter } from '@tanstack/react-router'
-import type { GenericSchema } from 'valibot'
+import type { GenericSchema, InferInput, InferOutput } from 'valibot'
 
 export type ValibotValidatorAdapter<TOptions extends GenericSchema> =
-  ValidatorAdapter<
-    NonNullable<TOptions['_types']>['input'],
-    NonNullable<TOptions['_types']>['output']
-  >
+  ValidatorAdapter<InferInput<TOptions>, InferOutput<TOptions>>
 
 export const valibotValidator = <TOptions extends GenericSchema>(
   options: TOptions,
 ): ValibotValidatorAdapter<TOptions> => {
   return {
     types: {
-      input: options._types?.input,
-      output: options._types?.output,
+      input: null,
+      output: null,
     },
     parse: (input) => parse(options, input),
   }

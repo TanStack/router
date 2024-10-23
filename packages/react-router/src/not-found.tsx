@@ -52,9 +52,13 @@ export function CatchNotFound(props: {
           throw error
         }
       }}
-      errorComponent={({ error }: { error: NotFoundError }) =>
-        props.fallback?.(error)
-      }
+      errorComponent={({ error }: { error: Error }) => {
+        if (isNotFound(error)) {
+          return props.fallback?.(error)
+        } else {
+          throw error
+        }
+      }}
     >
       {props.children}
     </CatchBoundary>

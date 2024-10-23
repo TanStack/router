@@ -129,11 +129,21 @@ Navigates to a new location.
 
 ### `.invalidate` method
 
-Invalidates all route matches by forcing their `beforeLoad` and `load` functions to be called again.
+Invalidates route matches by forcing their `beforeLoad` and `load` functions to be called again.
 
-- Type: `() => Promise<void>`
+- Type: `(opts?: {filter?: (d: MakeRouteMatch<TRouteTree>) => boolean}) => Promise<void>`
 - This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
+- if `filter` is not supplied, all matches will be invalidated
+- if `filter` is supplied, only matches for which `filter` returns `true` will be invalidated.
 - You might also want to invalidate the Router if you imperatively `reset` the router's `CatchBoundary` to trigger loaders again.
+
+### `.removeCachedMatches` method
+
+Remove cached route matches.
+
+- Type: `(opts?: {filter?: (d: MakeRouteMatch<TRouteTree>) => boolean}) => void`
+- if `filter` is not supplied, all cached matches will be removed
+- if `filter` is supplied, only matches for which `filter` returns `true` will be removed.
 
 ### `.load` method
 

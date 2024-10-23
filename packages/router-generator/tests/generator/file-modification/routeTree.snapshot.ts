@@ -25,18 +25,21 @@ const testBarLazyImport = createFileRoute('/(test)/bar')()
 
 const testBarLazyRoute = testBarLazyImport
   .update({
+    id: '/(test)/bar',
     path: '/bar',
     getParentRoute: () => rootRoute,
   } as any)
   .lazy(() => import('./routes/(test)/bar.lazy').then((d) => d.Route))
 
 const testInitiallyLazyRoute = testInitiallyLazyImport.update({
+  id: '/(test)/initiallyLazy',
   path: '/initiallyLazy',
   getParentRoute: () => rootRoute,
 } as any)
 
 const testInitiallyEmptyRoute = testInitiallyEmptyImport
   .update({
+    id: '/(test)/initiallyEmpty',
     path: '/initiallyEmpty',
     getParentRoute: () => rootRoute,
   } as any)
@@ -45,6 +48,7 @@ const testInitiallyEmptyRoute = testInitiallyEmptyImport
   )
 
 const testFooRoute = testFooImport.update({
+  id: '/(test)/foo',
   path: '/foo',
   getParentRoute: () => rootRoute,
 } as any)
@@ -54,28 +58,28 @@ const testFooRoute = testFooImport.update({
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/(test)/foo': {
-      id: '/foo'
+      id: '/(test)/foo'
       path: '/foo'
       fullPath: '/foo'
       preLoaderRoute: typeof testFooImport
       parentRoute: typeof rootRoute
     }
     '/(test)/initiallyEmpty': {
-      id: '/initiallyEmpty'
+      id: '/(test)/initiallyEmpty'
       path: '/initiallyEmpty'
       fullPath: '/initiallyEmpty'
       preLoaderRoute: typeof testInitiallyEmptyImport
       parentRoute: typeof rootRoute
     }
     '/(test)/initiallyLazy': {
-      id: '/initiallyLazy'
+      id: '/(test)/initiallyLazy'
       path: '/initiallyLazy'
       fullPath: '/initiallyLazy'
       preLoaderRoute: typeof testInitiallyLazyImport
       parentRoute: typeof rootRoute
     }
     '/(test)/bar': {
-      id: '/bar'
+      id: '/(test)/bar'
       path: '/bar'
       fullPath: '/bar'
       preLoaderRoute: typeof testBarLazyImport
@@ -102,10 +106,10 @@ export interface FileRoutesByTo {
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
-  '/foo': typeof testFooRoute
-  '/initiallyEmpty': typeof testInitiallyEmptyRoute
-  '/initiallyLazy': typeof testInitiallyLazyRoute
-  '/bar': typeof testBarLazyRoute
+  '/(test)/foo': typeof testFooRoute
+  '/(test)/initiallyEmpty': typeof testInitiallyEmptyRoute
+  '/(test)/initiallyLazy': typeof testInitiallyLazyRoute
+  '/(test)/bar': typeof testBarLazyRoute
 }
 
 export interface FileRouteTypes {
@@ -113,7 +117,12 @@ export interface FileRouteTypes {
   fullPaths: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
   fileRoutesByTo: FileRoutesByTo
   to: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
-  id: '__root__' | '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar'
+  id:
+    | '__root__'
+    | '/(test)/foo'
+    | '/(test)/initiallyEmpty'
+    | '/(test)/initiallyLazy'
+    | '/(test)/bar'
   fileRoutesById: FileRoutesById
 }
 
@@ -143,22 +152,22 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/foo",
-        "/initiallyEmpty",
-        "/initiallyLazy",
-        "/bar"
+        "/(test)/foo",
+        "/(test)/initiallyEmpty",
+        "/(test)/initiallyLazy",
+        "/(test)/bar"
       ]
     },
-    "/foo": {
+    "/(test)/foo": {
       "filePath": "(test)/foo.tsx"
     },
-    "/initiallyEmpty": {
+    "/(test)/initiallyEmpty": {
       "filePath": "(test)/initiallyEmpty.tsx"
     },
-    "/initiallyLazy": {
+    "/(test)/initiallyLazy": {
       "filePath": "(test)/initiallyLazy.tsx"
     },
-    "/bar": {
+    "/(test)/bar": {
       "filePath": "(test)/bar.lazy.tsx"
     }
   }

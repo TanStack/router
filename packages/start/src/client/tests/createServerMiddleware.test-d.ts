@@ -44,7 +44,7 @@ test('createMiddleware merges server context', () => {
   })
 
   const middleware2 = createMiddleware().server(({ context, next }) => {
-    expectTypeOf(context).toEqualTypeOf<never>()
+    expectTypeOf(context).toEqualTypeOf<undefined>()
     return next({ context: { b: 'test' } })
   })
 
@@ -69,7 +69,7 @@ test('createMiddleware merges server context', () => {
 
 test('createMiddleware merges client context', () => {
   const middleware1 = createMiddleware().client(async ({ context, next }) => {
-    expectTypeOf(context).toEqualTypeOf<never>()
+    expectTypeOf(context).toEqualTypeOf<undefined>()
     expectTypeOf(await next({ context: { a: true } })).toEqualTypeOf<{
       'use functions must return the result of next()': true
       context: { a: boolean }
@@ -80,7 +80,7 @@ test('createMiddleware merges client context', () => {
   })
 
   const middleware2 = createMiddleware().client(({ context, next }) => {
-    expectTypeOf(context).toEqualTypeOf<never>()
+    expectTypeOf(context).toEqualTypeOf<undefined>()
     return next({ context: { b: 'test' } })
   })
 

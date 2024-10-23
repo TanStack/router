@@ -15,29 +15,36 @@ export type ParseMiddlewares<
   TAcc = never,
 > = unknown extends TMiddlewares
   ? TAcc
-  : [] extends TMiddlewares
+  : undefined extends TMiddlewares
     ? TAcc
-    : TMiddlewares extends ReadonlyArray<AnyMiddleware>
-      ? TMiddlewares[number] extends infer TMiddleware extends AnyMiddleware
-        ? TMiddleware extends any
-          ? ParseMiddlewares<
-              TMiddleware['_types']['middleware'],
-              TAcc | TMiddleware
-            >
+    : [] extends TMiddlewares
+      ? TAcc
+      : TMiddlewares extends ReadonlyArray<AnyMiddleware>
+        ? TMiddlewares[number] extends infer TMiddleware extends AnyMiddleware
+          ? TMiddleware extends any
+            ? ParseMiddlewares<
+                TMiddleware['_types']['middleware'],
+                TAcc | TMiddleware
+              >
+            : TAcc
           : TAcc
         : TAcc
-      : TAcc
+
+export type NonNullableIfNotEmpty<T> = [T] extends [undefined]
+  ? undefined
+  : NonNullable<T>
 
 /**
  * Recursively resolve the server context type produced by a sequence of middleware
  */
 export type ResolveAllMiddlewareServerContext<
   TMiddlewares,
-  TContext = never,
+  TContext = undefined,
 > = Expand<
   MergeAll<
-    | NonNullable<ParseMiddlewares<TMiddlewares>['_types']['serverContext']>
-    | TContext
+    NonNullableIfNotEmpty<
+      ParseMiddlewares<TMiddlewares>['_types']['serverContext'] | TContext
+    >
   >
 >
 
@@ -46,11 +53,12 @@ export type ResolveAllMiddlewareServerContext<
  */
 export type ResolveAllMiddlewareClientContext<
   TMiddlewares,
-  TContext = never,
+  TContext = undefined,
 > = Expand<
   MergeAll<
-    | NonNullable<ParseMiddlewares<TMiddlewares>['_types']['clientContext']>
-    | TContext
+    NonNullableIfNotEmpty<
+      ParseMiddlewares<TMiddlewares>['_types']['clientContext'] | TContext
+    >
   >
 >
 
@@ -59,8 +67,10 @@ export type ResolveAllMiddlewareClientContext<
  */
 export type ResolveAllMiddlewareInput<TMiddlewares, TValidator> = Expand<
   MergeAll<
-    | ParseMiddlewares<TMiddlewares>['_types']['input']
-    | ResolveValidatorInput<TValidator>
+    NonNullableIfNotEmpty<
+      | ParseMiddlewares<TMiddlewares>['_types']['input']
+      | ResolveValidatorInput<TValidator>
+    >
   >
 >
 
@@ -69,8 +79,10 @@ export type ResolveAllMiddlewareInput<TMiddlewares, TValidator> = Expand<
  */
 export type ResolveAllMiddlewareOutput<TMiddlewares, TValidator> = Expand<
   MergeAll<
-    | ParseMiddlewares<TMiddlewares>['_types']['output']
-    | ResolveValidatorOutput<TValidator>
+    NonNullableIfNotEmpty<
+      | ParseMiddlewares<TMiddlewares>['_types']['output']
+      | ResolveValidatorOutput<TValidator>
+    >
   >
 >
 

@@ -36,36 +36,43 @@ const LayoutTestLazyRoute = LayoutTestLazyImport.update({
 } as any).lazy(() => import('./routes/_layout-test.lazy').then((d) => d.Route))
 
 const PostsRoute = PostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/posts.lazy').then((d) => d.Route))
 
 const IndexLazyRoute = IndexLazyImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
 
 const PostsIndexRoute = PostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const LayoutTestLayoutBRoute = LayoutTestLayoutBImport.update({
+  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutTestLazyRoute,
 } as any)
 
 const LayoutTestLayoutARoute = LayoutTestLayoutAImport.update({
+  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutTestLazyRoute,
 } as any)
 
 const PostsPostIdRouteRoute = PostsPostIdRouteImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any).lazy(() => import('./routes/posts.$postId/lazy').then((d) => d.Route))
 
 const LayoutTestLayoutBTestLazyRoute = LayoutTestLayoutBTestLazyImport.update({
+  id: '/test',
   path: '/test',
   getParentRoute: () => LayoutTestLayoutBRoute,
 } as any).lazy(() =>
@@ -73,6 +80,7 @@ const LayoutTestLayoutBTestLazyRoute = LayoutTestLayoutBTestLazyImport.update({
 )
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+  id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRoute,
 } as any).lazy(() =>
@@ -132,8 +140,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
     }
-    '/posts/$postId/deep': {
-      id: '/posts/$postId/deep'
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
       path: '/posts/$postId/deep'
       fullPath: '/posts/$postId/deep'
       preLoaderRoute: typeof PostsPostIdDeepImport
@@ -220,7 +228,7 @@ export interface FileRoutesById {
   '/_layout-test/layout-a': typeof LayoutTestLayoutARoute
   '/_layout-test/layout-b': typeof LayoutTestLayoutBRouteWithChildren
   '/posts/': typeof PostsIndexRoute
-  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
   '/_layout-test/layout-b/test': typeof LayoutTestLayoutBTestLazyRoute
 }
 
@@ -255,7 +263,7 @@ export interface FileRouteTypes {
     | '/_layout-test/layout-a'
     | '/_layout-test/layout-b'
     | '/posts/'
-    | '/posts/$postId/deep'
+    | '/posts_/$postId/deep'
     | '/_layout-test/layout-b/test'
   fileRoutesById: FileRoutesById
 }
@@ -289,7 +297,7 @@ export const routeTree = rootRoute
         "/",
         "/posts",
         "/_layout-test",
-        "/posts/$postId/deep"
+        "/posts_/$postId/deep"
       ]
     },
     "/": {
@@ -328,7 +336,7 @@ export const routeTree = rootRoute
       "filePath": "posts.index.tsx",
       "parent": "/posts"
     },
-    "/posts/$postId/deep": {
+    "/posts_/$postId/deep": {
       "filePath": "posts_.$postId.deep.tsx"
     },
     "/_layout-test/layout-b/test": {

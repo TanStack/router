@@ -105,6 +105,14 @@
               "to": "framework/react/guide/search-params"
             },
             {
+              "label": "Link Options",
+              "to": "framework/react/guide/link-options"
+            },
+            {
+              "label": "Custom Links",
+              "to": "framework/react/guide/custom-link"
+            },
+            {
               "label": "Data Loading",
               "to": "framework/react/guide/data-loading"
             },
@@ -218,6 +226,10 @@
             {
               "label": "Static Prerendering",
               "to": "framework/react/start/static-prerendering"
+            },
+            {
+              "label": "Path Aliases",
+              "to": "framework/react/start/path-aliases"
             }
           ]
         }
@@ -235,6 +247,19 @@
               "to": "framework/react/api/router"
             }
           ]
+        }
+      ]
+    },
+    {
+      "label": "ESLint",
+      "children": [
+        {
+          "label": "ESLint Plugin Router",
+          "to": "eslint/eslint-plugin-router"
+        },
+        {
+          "label": "Create Route Property Order",
+          "to": "eslint/create-route-property-order"
         }
       ]
     },
@@ -320,6 +345,14 @@
             {
               "label": "With tRPC + React Query",
               "to": "framework/react/examples/with-trpc-react-query"
+            },
+            {
+              "label": "Monorepo basic",
+              "to": "framework/react/examples/router-monorepo-simple"
+            },
+            {
+              "label": "Monorepo with React Query",
+              "to": "framework/react/examples/router-monorepo-react-query"
             }
           ]
         }

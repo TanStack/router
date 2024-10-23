@@ -56,16 +56,30 @@ export function layout(
   }
 }
 
+export function route(path: string, children: Array<VirtualRouteNode>): Route
+export function route(path: string, file: string): Route
 export function route(
   path: string,
   file: string,
+  children: Array<VirtualRouteNode>,
+): Route
+export function route(
+  path: string,
+  fileOrChildren: string | Array<VirtualRouteNode>,
   children?: Array<VirtualRouteNode>,
 ): Route {
+  if (typeof fileOrChildren === 'string') {
+    return {
+      type: 'route',
+      file: fileOrChildren,
+      path,
+      children,
+    }
+  }
   return {
     type: 'route',
-    file,
     path,
-    children,
+    children: fileOrChildren,
   }
 }
 

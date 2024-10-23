@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   configure,
   fireEvent,
@@ -6,6 +7,7 @@ import {
   screen,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { z } from 'zod'
 
 import {
   Link,
@@ -39,6 +41,213 @@ const WAIT_TIME = 150
 
 describe('context function', () => {
   configure({ reactStrictMode: true })
+
+  describe('context is executed', () => {
+    async function findByText(text: string) {
+      const element = await screen.findByText(text)
+      expect(element).toBeInTheDocument()
+    }
+
+    async function clickButton(name: string) {
+      const button = await screen.findByRole('button', {
+        name,
+      })
+      expect(button).toBeInTheDocument()
+      fireEvent.click(button)
+    }
+
+    test('when the path params change', async () => {
+      const mockContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <h1>Index page</h1>
+
+              <button
+                onClick={() =>
+                  navigate({ to: '/detail/$id', params: { id: 1 } })
+                }
+              >
+                detail-1
+              </button>
+            </div>
+          )
+        },
+      })
+      const detailRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/detail/$id',
+        params: {
+          parse: (p) => z.object({ id: z.coerce.number() }).parse(p),
+          stringify: (p) => ({ id: `${p.id}` }),
+        },
+        context: (args) => {
+          mockContextFn(args.params)
+        },
+        component: () => {
+          const id = detailRoute.useParams({ select: (params) => params.id })
+          const navigate = detailRoute.useNavigate()
+          return (
+            <div>
+              <h1>Detail page: {id}</h1>
+              <button
+                onClick={() =>
+                  navigate({
+                    to: '/detail/$id',
+                    params: (p: any) => ({ ...p, id: p.id + 1 }),
+                  })
+                }
+              >
+                next
+              </button>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute, detailRoute])
+      const router = createRouter({ routeTree, history })
+
+      await act(() => render(<RouterProvider router={router} />))
+
+      await findByText('Index page')
+      expect(mockContextFn).not.toHaveBeenCalled()
+
+      await clickButton('detail-1')
+
+      await findByText('Detail page: 1')
+      console.log(mockContextFn.mock.calls)
+      expect(mockContextFn).toHaveBeenCalledOnce()
+      expect(mockContextFn).toHaveBeenCalledWith({ id: 1 })
+      mockContextFn.mockClear()
+      await clickButton('next')
+
+      await findByText('Detail page: 2')
+      expect(mockContextFn).toHaveBeenCalledOnce()
+      expect(mockContextFn).toHaveBeenCalledWith({ id: 2 })
+      mockContextFn.mockClear()
+      await clickButton('next')
+
+      await findByText('Detail page: 3')
+      expect(mockContextFn).toHaveBeenCalledOnce()
+      expect(mockContextFn).toHaveBeenCalledWith({ id: 3 })
+      mockContextFn.mockClear()
+    })
+
+    test('when loader deps change', async () => {
+      const mockContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        validateSearch: z.object({
+          foo: z.string().optional(),
+          bar: z.string().optional(),
+        }),
+        path: '/',
+        loaderDeps: ({ search }) => ({ foo: search.foo }),
+        context: ({ deps }) => {
+          mockContextFn(deps)
+        },
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <h1>Index page</h1>
+              <h2>search: {JSON.stringify(indexRoute.useSearch())}</h2>
+              <button
+                onClick={() => {
+                  navigate({ search: (p: any) => ({ ...p, foo: 'foo-1' }) })
+                }}
+              >
+                foo-1
+              </button>
+              <button
+                onClick={() => {
+                  navigate({ search: (p: any) => ({ ...p, foo: 'foo-2' }) })
+                }}
+              >
+                foo-2
+              </button>
+              <button
+                onClick={() => {
+                  navigate({ search: (p: any) => ({ ...p, bar: 'bar-1' }) })
+                }}
+              >
+                bar-1
+              </button>
+              <button
+                onClick={() => {
+                  navigate({ search: (p: any) => ({ ...p, bar: 'bar-2' }) })
+                }}
+              >
+                bar-2
+              </button>
+              <button
+                onClick={() => {
+                  navigate({ search: {} })
+                }}
+              >
+                clear
+              </button>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await findByText('Index page')
+      await findByText(`search: ${JSON.stringify({})}`)
+
+      expect(mockContextFn).toHaveBeenCalledOnce()
+      expect(mockContextFn).toHaveBeenCalledWith({})
+      mockContextFn.mockClear()
+
+      await clickButton('foo-1')
+      await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
+      expect(mockContextFn).toHaveBeenCalledOnce()
+      expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-1' })
+
+      mockContextFn.mockClear()
+      await clickButton('foo-1')
+      await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
+      expect(mockContextFn).not.toHaveBeenCalled()
+
+      await clickButton('bar-1')
+      await findByText(
+        `search: ${JSON.stringify({ foo: 'foo-1', bar: 'bar-1' })}`,
+      )
+      expect(mockContextFn).not.toHaveBeenCalled()
+
+      await clickButton('foo-2')
+      await findByText(
+        `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-1' })}`,
+      )
+      expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-2' })
+      mockContextFn.mockClear()
+
+      await clickButton('bar-2')
+      await findByText(
+        `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-2' })}`,
+      )
+      expect(mockContextFn).not.toHaveBeenCalled()
+
+      await clickButton('clear')
+      await findByText(`search: ${JSON.stringify({})}`)
+      expect(mockContextFn).toHaveBeenCalledOnce()
+      expect(mockContextFn).toHaveBeenCalledWith({})
+    })
+  })
 
   describe('accessing values in the context function', () => {
     test('receives an empty object', async () => {
@@ -2170,7 +2379,7 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
-        // eslint-disable-next-line ts/no-unnecessary-condition
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (context === undefined) {
           throw new Error('context is undefined')
         }

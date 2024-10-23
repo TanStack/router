@@ -26,6 +26,158 @@ Vercel is a leading hosting platform that provides a fast, secure, and reliable 
 - To learn more about Vercel, visit the [Vercel website](https://vercel.com?utm_source=tanstack)
 - To sign up, visit the [Vercel dashboard](https://vercel.com/signup?utm_source=tanstack)
 
-## Documentation & APIs
+## Deployment
 
-Documentation for deploying your application with different hosting providers is coming soon!
+> [!WARNING]
+> The page is still a work in progress. We'll keep updating this page with guides on deployment to different hosting providers soon!
+
+When a TanStack Start application is being deployed, the `server.preset` value in the `app.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
+
+- [`vercel`](#vercel): Deploy to Vercel
+- [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
+- [`netlify`](#netlify): Deploy to Netlify
+- [`node-server`](#nodejs): Deploy to a Node.js server
+- [`bun`](#bun): Deploy to a Bun server
+- ... and more to come!
+
+Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice.
+
+### Vercel
+
+Deploying your TanStack Start application to Vercel is easy and straightforward. Just set the `server.preset` value to `vercel` in your `app.config.ts` file, and you're ready to deploy your application to Vercel.
+
+```ts
+// app.config.ts
+import { defineConfig } from '@tanstack/start/config'
+
+export default defineConfig({
+  server: {
+    preset: 'vercel',
+  },
+})
+```
+
+Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+
+```sh
+npm run build --preset vercel
+```
+
+Deploy you application to Vercel using their one-click deployment process, and you're ready to go!
+
+### Cloudflare Pages
+
+Set the `server.preset` value to `cloudflare-pages` in your `app.config.ts` file.
+
+```ts
+// app.config.ts
+import { defineConfig } from '@tanstack/start/config'
+
+export default defineConfig({
+  server: {
+    preset: 'cloudflare-pages',
+  },
+})
+```
+
+Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+
+```sh
+npm run build --preset cloudflare-pages
+```
+
+Deploy you application to Cloudflare Pages using their one-click deployment process, and you're ready to go!
+
+### Netlify
+
+Set the `server.preset` value to `netlify` in your `app.config.ts` file.
+
+```ts
+// app.config.ts
+import { defineConfig } from '@tanstack/start/config'
+
+export default defineConfig({
+  server: {
+    preset: 'netlify',
+  },
+})
+```
+
+Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+
+```sh
+npm run build --preset netlify
+```
+
+Deploy you application to Netlify using their one-click deployment process, and you're ready to go!
+
+### Node.js
+
+Set the `server.preset` value to `node-server` in your `app.config.ts` file.
+
+```ts
+// app.config.ts
+import { defineConfig } from '@tanstack/start/config'
+
+export default defineConfig({
+  server: {
+    preset: 'node-server',
+  },
+})
+
+// Or you can use the --preset flag with the build command
+// to specify the deployment target when building the application:
+// npm run build --preset node-server
+```
+
+Then you can run the following command to build and start your application:
+
+```sh
+npm run build
+```
+
+You're now ready to deploy your application to a Node.js server. You can start your application by running:
+
+```sh
+node .output/server/index.mjs
+```
+
+### Bun
+
+> [!IMPORTANT]
+> Currently, the Bun specific deployment guidelines only work with React 19. If you are using React 18, please refer to the [Node.js](#nodejs) deployment guidelines.
+
+Make sure that your `react` and `react-dom` packages are set to version 19.0.0 or higher in your `package.json` file. If not, run the following command to upgrade the packages:
+
+```sh
+npm install react@rc react-dom@rc
+```
+
+Set the `server.preset` value to `bun` in your `app.config.ts` file.
+
+```ts
+// app.config.ts
+import { defineConfig } from '@tanstack/start/config'
+
+export default defineConfig({
+  server: {
+    preset: 'bun',
+  },
+})
+
+// Or you can use the --preset flag with the build command
+// to specify the deployment target when building the application:
+// npm run build --preset bun
+```
+
+Then you can run the following command to build and start your application:
+
+```sh
+bun run build
+```
+
+You're now ready to deploy your application to a Bun server. You can start your application by running:
+
+```sh
+bun run .output/server/index.mjs
+```

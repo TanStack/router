@@ -256,7 +256,7 @@ function PostComponent() {
 ```
 
 > [!TIP]
-> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
+> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
 
 ## Splat / Catch-All Routes
 
@@ -302,6 +302,12 @@ const layoutBRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: 'layout-b',
 })
+
+const routeTree = rootRoute.addChildren([
+  // The layout route has no path, only an id
+  // So its children will be nested under the layout route
+  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
+])
 ```
 
 Now both `/layout-a` and `/layout-b` will render the their contents inside of the `LayoutComponent`:

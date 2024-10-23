@@ -1,0 +1,25 @@
+{
+  "name": "@router-mono-react-query/post-feature",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && tsc --noEmit"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@tanstack/react-query": "^5.59.15",
+    "@router-mono-react-query/post-query": "workspace:*",
+    "@router-mono-react-query/router": "workspace:*",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "5.6.2",
+    "vite": "^5.4.9",
+    "vite-plugin-dts": "^4.2.4"
+  }
+}

@@ -295,7 +295,7 @@ function Test() {
 
 ## Server Function Context
 
-In addition to the single parameter that server functions accept, you can also access server request context from within any server function using many utilites from `vinxi/http`. Under the hood, Vinxi uses `unjs`'s `h3` package to perform cross-platform HTTP requests.
+In addition to the single parameter that server functions accept, you can also access server request context from within any server function using many utilities from `vinxi/http`. Under the hood, Vinxi uses `unjs`'s `h3` package to perform cross-platform HTTP requests.
 
 There are many context functions available to you for things like:
 
@@ -303,7 +303,7 @@ There are many context functions available to you for things like:
 - Accessing/setting headers
 - Accessing/setting sessions/cookies
 - Setting response status codes and status messages
-- Dealing with mulit-part form data
+- Dealing with multi-part form data
 - Reading/Setting custom server context properties
 
 For a full list of available context functions, see all of the available [h3 Methods](https://h3.unjs.io/utils/request) or inspect the [Vinxi Exports Source Code](https://github.com/nksaraf/vinxi/blob/main/packages/vinxi/runtime/http.js#L232-L320).
@@ -320,11 +320,11 @@ import { getWebRequest } from 'vinxi/http'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const { method } = getWebRequest()
+    const request = getWebRequest()
 
-    console.log(method) // GET
+    console.log(request.method) // GET
 
-    console.log(context.request.headers.get('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
+    console.log(request.headers.get('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
   },
 )
 ```
@@ -417,15 +417,15 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 
 ## Responding with Custom Status Codes
 
-To respond with a custom status code, you can use Vinxi's `setStatus` function:
+To respond with a custom status code, you can use Vinxi's `setResponseStatus` function:
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
-import { setStatus } from 'vinxi/http'
+import { setResponseStatus } from 'vinxi/http'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    setStatus(201)
+    setResponseStatus(201)
     return new Date().toISOString()
   },
 )
@@ -519,10 +519,11 @@ Server functions can throw a `redirect` error to redirect the user to a differen
 - During SSR, redirects are handled by sending a 302 response to the client with the new location
 - On the client, redirects are handled by the router automatically from within a route lifecycle or a component that uses the `useServerFn` hook. If you call a server function from anywhere else, redirects will not be handled automatically.
 
-To throw a redirect, you can use the `redirect` function exported from the `@tanstack/start` package:
+To throw a redirect, you can use the `redirect` function exported from the `@tanstack/react-router` package:
 
 ```tsx
-import { createServerFn, redirect } from '@tanstack/start'
+import { redirect } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
 
 export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Redirect the user to the home page
@@ -541,7 +542,8 @@ Redirects can utilize all of the same options as `router.navigate`, `useNavigate
 Redirects can also set the status code of the response by passing a `status` option:
 
 ```tsx
-import { createServerFn, redirect } from '@tanstack/start'
+import { redirect } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
 
 export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Redirect the user to the home page with a 301 status code
@@ -559,7 +561,8 @@ export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
 You can also set custom headers on a redirect by passing a `headers` option:
 
 ```tsx
-import { createServerFn, redirect } from '@tanstack/start'
+import { redirect } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
 
 export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Redirect the user to the home page with a custom header

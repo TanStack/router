@@ -45,11 +45,13 @@ const FooImport = createFileRoute('/foo')()
 // Create/Update Routes
 
 const NestedRoute = NestedImport.update({
+  id: '/nested',
   path: '/nested',
   getParentRoute: () => rootRoute,
 } as any)
 
 const FooRoute = FooImport.update({
+  id: '/foo',
   path: '/foo',
   getParentRoute: () => rootRoute,
 } as any)
@@ -65,11 +67,13 @@ const LayoutA1Route = LayoutA1Import.update({
 } as any)
 
 const JestedRouteRoute = JestedRouteImport.update({
+  id: '/jested',
   path: '/jested',
   getParentRoute: () => rootRoute,
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
@@ -95,21 +99,25 @@ const JestedLayoutB3Route = JestedLayoutB3Import.update({
 } as any)
 
 const FooBarRoute = FooBarImport.update({
+  id: '/bar',
   path: '/bar',
   getParentRoute: () => FooRoute,
 } as any)
 
 const LayoutA2BarRoute = LayoutA2BarImport.update({
+  id: '/bar',
   path: '/bar',
   getParentRoute: () => LayoutA2Route,
 } as any)
 
 const LayoutA1FooRoute = LayoutA1FooImport.update({
+  id: '/foo',
   path: '/foo',
   getParentRoute: () => LayoutA1Route,
 } as any)
 
 const folderInFolderRoute = folderInFolderImport.update({
+  id: '/(folder)/in-folder',
   path: '/in-folder',
   getParentRoute: () => rootRoute,
 } as any)
@@ -120,21 +128,25 @@ const FooLayoutB5RouteRoute = FooLayoutB5RouteImport.update({
 } as any)
 
 const NestedLayoutB1IndexRoute = NestedLayoutB1IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => NestedLayoutB1Route,
 } as any)
 
 const JestedLayoutB3IndexRoute = JestedLayoutB3IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => JestedLayoutB3Route,
 } as any)
 
 const FooLayoutB5IndexRoute = FooLayoutB5IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => FooLayoutB5RouteRoute,
 } as any)
 
 const NestedLayoutB2FooRoute = NestedLayoutB2FooImport.update({
+  id: '/foo',
   path: '/foo',
   getParentRoute: () => NestedLayoutB2Route,
 } as any)
@@ -145,6 +157,7 @@ const NestedLayoutB1LayoutC1Route = NestedLayoutB1LayoutC1Import.update({
 } as any)
 
 const JestedLayoutB4FooRoute = JestedLayoutB4FooImport.update({
+  id: '/foo',
   path: '/foo',
   getParentRoute: () => JestedLayoutB4Route,
 } as any)
@@ -155,16 +168,19 @@ const JestedLayoutB3LayoutC2Route = JestedLayoutB3LayoutC2Import.update({
 } as any)
 
 const FooLayoutB5IdRoute = FooLayoutB5IdImport.update({
+  id: '/$id',
   path: '/$id',
   getParentRoute: () => FooLayoutB5RouteRoute,
 } as any)
 
 const NestedLayoutB1LayoutC1BarRoute = NestedLayoutB1LayoutC1BarImport.update({
+  id: '/bar',
   path: '/bar',
   getParentRoute: () => NestedLayoutB1LayoutC1Route,
 } as any)
 
 const JestedLayoutB3LayoutC2BarRoute = JestedLayoutB3LayoutC2BarImport.update({
+  id: '/bar',
   path: '/bar',
   getParentRoute: () => JestedLayoutB3LayoutC2Route,
 } as any)
@@ -216,7 +232,7 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof FooRoute
     }
     '/(folder)/in-folder': {
-      id: '/in-folder'
+      id: '/(folder)/in-folder'
       path: '/in-folder'
       fullPath: '/in-folder'
       preLoaderRoute: typeof folderInFolderImport
@@ -552,7 +568,7 @@ export interface FileRoutesById {
   '/_layout-a2': typeof LayoutA2RouteWithChildren
   '/foo': typeof FooRouteWithChildren
   '/foo/_layout-b5': typeof FooLayoutB5RouteRouteWithChildren
-  '/in-folder': typeof folderInFolderRoute
+  '/(folder)/in-folder': typeof folderInFolderRoute
   '/_layout-a1/foo': typeof LayoutA1FooRoute
   '/_layout-a2/bar': typeof LayoutA2BarRoute
   '/foo/bar': typeof FooBarRoute
@@ -615,7 +631,7 @@ export interface FileRouteTypes {
     | '/_layout-a2'
     | '/foo'
     | '/foo/_layout-b5'
-    | '/in-folder'
+    | '/(folder)/in-folder'
     | '/_layout-a1/foo'
     | '/_layout-a2/bar'
     | '/foo/bar'
@@ -674,7 +690,7 @@ export const routeTree = rootRoute
         "/_layout-a1",
         "/_layout-a2",
         "/foo",
-        "/in-folder",
+        "/(folder)/in-folder",
         "/nested"
       ]
     },
@@ -715,7 +731,7 @@ export const routeTree = rootRoute
         "/foo/_layout-b5/"
       ]
     },
-    "/in-folder": {
+    "/(folder)/in-folder": {
       "filePath": "(folder)/in-folder.tsx"
     },
     "/_layout-a1/foo": {

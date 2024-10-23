@@ -19,21 +19,25 @@ import { Route as fooBarHomeImport } from './routes/foo/bar/home'
 // Create/Update Routes
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const FooBarRoute = FooBarImport.update({
+  id: '/foo/bar',
   path: '/foo/bar',
   getParentRoute: () => rootRoute,
 } as any)
 
 const fooBarDetailsRoute = fooBarDetailsImport.update({
+  id: '/$id',
   path: '/$id',
   getParentRoute: () => FooBarRoute,
 } as any)
 
 const fooBarHomeRoute = fooBarHomeImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => FooBarRoute,
 } as any)

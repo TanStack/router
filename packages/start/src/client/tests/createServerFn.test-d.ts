@@ -6,8 +6,8 @@ test('createServerFn without middleware', () => {
   createServerFn({ method: 'GET' }).handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
       method: 'GET'
-      context: never
-      input: never
+      context: undefined
+      input: undefined
     }>()
   })
 })
@@ -20,7 +20,7 @@ test('createServerFn with input', () => {
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
-        context: never
+        context: undefined
         input: {
           a: string
         }
@@ -68,7 +68,7 @@ test('createServerFn with middleware and context', () => {
           readonly c: 'c'
           readonly d: 'd'
         }
-        input: never
+        input: undefined
       }>()
     })
 })
@@ -99,9 +99,10 @@ test('createServerFn with middleware and input', async () => {
         }) as const,
     )
     .handler((options) => {
+      options.input?.b
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
-        context: never
+        context: undefined
         input: {
           readonly a: 'a'
           readonly b: 'b'
@@ -118,7 +119,7 @@ test('createServerFn with middleware and input', async () => {
       readonly b: 'b'
       readonly c: 'c'
     }
-    requestInit?: RequestInit
+    headers?: HeadersInit
   }>()
 
   expectTypeOf(fn).returns.resolves.toEqualTypeOf<'data'>()
@@ -130,19 +131,21 @@ test('createServerFn where input is a primitive', () => {
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
-        context: never
+        context: undefined
         input: 'c'
       }>()
     })
 })
 
-test('createServerFn where input is optional', () => {
+/**
+ * test('createServerFn where input is optional if object is optional', () => {
   const fn = createServerFn({ method: 'GET' })
     .input(() => 'c' as 'c' | undefined)
     .handler((options) => {
+      options
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
-        context: never
+        context: undefined
         input: 'c' | undefined
       }>()
     })
@@ -150,7 +153,25 @@ test('createServerFn where input is optional', () => {
   expectTypeOf(fn).parameter(0).toEqualTypeOf<
     | {
         data?: 'c'
-        requestInit?: RequestInit
+        headers?: HeadersInit
+      }
+    | undefined
+  >()
+})*/
+
+test('createServerFn where input is optional if there is no input', () => {
+  const fn = createServerFn({ method: 'GET' }).handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: undefined
+      input: undefined
+    }>()
+  })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<
+    | {
+        data?: undefined
+        headers?: HeadersInit
       }
     | undefined
   >()

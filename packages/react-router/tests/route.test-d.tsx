@@ -38,7 +38,7 @@ test('when creating the root with routeContext', () => {
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: {}
-        search: {}
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
     },
@@ -109,7 +109,7 @@ test('when creating the root route with context and routeContext', () => {
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        search: {}
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
     },
@@ -214,7 +214,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        search: {}
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
 
@@ -325,7 +325,7 @@ test('when creating a child route with routeContext from the root route with con
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        search: {}
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
 
@@ -365,7 +365,7 @@ test('when creating a child route with a loader from the root route', () => {
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader: async (opt) => {
+    loader: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -407,7 +407,7 @@ test('when creating a child route with a loader from the root route with context
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    loader: async (opts) => {
+    loader: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -622,7 +622,7 @@ test('when creating a child route with params, search with routeContext from the
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        search: { page: number }
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
     },
@@ -670,7 +670,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        search: { page: number }
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
       return {
@@ -786,7 +786,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        search: {}
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
 
@@ -807,7 +807,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; invoiceId: string }
-        search: {}
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
 
@@ -841,7 +841,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
-    beforeLoad: async (opt) => {
+    beforeLoad: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -861,7 +861,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
   const detailsRoute = createRoute({
     path: 'details',
     getParentRoute: () => invoicesRoute,
-    beforeLoad: async (opt) => {
+    beforeLoad: (opt) => {
       expectTypeOf(opt).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
@@ -915,7 +915,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        search: { page: number }
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
       return { env: 'env1' }
@@ -960,7 +960,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           env: string
           invoicePermissions: readonly ['view']
         }
-        search: { page: number; detailPage: number }
+        deps: {}
         matches: Array<MakeRouteMatchUnion>
       }>()
       return { detailEnv: 'detailEnv' }
@@ -994,6 +994,27 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
       detailPage: deps.search.detailPage,
       invoicePage: deps.search.page,
     }),
+    context: (opt) => {
+      expectTypeOf(opt).toEqualTypeOf<{
+        abortController: AbortController
+        preload: boolean
+        params: { invoiceId: string; detailId: string }
+        location: ParsedLocation
+        navigate: NavigateFn
+        buildLocation: BuildLocationFn
+        cause: 'preload' | 'enter' | 'stay'
+        context: {
+          userId: string
+          env: string
+          invoicePermissions: readonly ['view']
+          detailEnv: string
+          detailsPermissions: readonly ['view']
+        }
+        deps: { detailPage: number; invoicePage: number }
+        matches: Array<MakeRouteMatchUnion>
+      }>()
+      return { detailEnv: 'detailEnv' }
+    },
     loader: (opts) =>
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
@@ -1125,11 +1146,11 @@ test('when creating a child route with context, search, params, loader, loaderDe
   createRoute({
     path: '$detailId',
     getParentRoute: () => detailsRoute,
+    beforeLoad: () => ({ detailPermission: true }),
     loaderDeps: (deps) => ({
       detailPage: deps.search.detailPage,
       invoicePage: deps.search.page,
     }),
-    beforeLoad: () => ({ detailPermission: true }),
     loader: () => ({ detailLoader: 'detailResult' }) as const,
     onEnter: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
     onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),

@@ -98,6 +98,8 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                         if (prop.key.name === 'component') {
                           const value = prop.value
 
+                          let shouldSplit = true
+
                           if (t.isIdentifier(value)) {
                             existingCompImportPath =
                               getImportSpecifierAndPathFromLocalName(
@@ -105,50 +107,62 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                                 value.name,
                               ).path
 
-                            removeIdentifierLiteral(path, value)
+                            // exported identifiers should not be split
+                            // since they are already being imported
+                            // and need to be retained in the compiled file
+                            const isExported = hasExport(ast, value)
+                            shouldSplit = !isExported
+
+                            if (shouldSplit) {
+                              removeIdentifierLiteral(path, value)
+                            }
                           }
 
-                          // Prepend the import statement to the program along with the importer function
-                          // Check to see if lazyRouteComponent is already imported before attempting
-                          // to import it again
+                          if (shouldSplit) {
+                            // Prepend the import statement to the program along with the importer function
+                            // Check to see if lazyRouteComponent is already imported before attempting
+                            // to import it again
 
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              'lazyRouteComponent',
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
+                            if (
+                              !hasImportedOrDefinedIdentifier(
+                                'lazyRouteComponent',
+                              )
+                            ) {
+                              programPath.unshiftContainer('body', [
+                                template.statement(
+                                  `import { lazyRouteComponent } from '@tanstack/react-router'`,
+                                )(),
+                              ])
+                            }
+
+                            if (
+                              !hasImportedOrDefinedIdentifier(
+                                '$$splitComponentImporter',
+                              )
+                            ) {
+                              programPath.unshiftContainer('body', [
+                                template.statement(
+                                  `const $$splitComponentImporter = () => import('${splitUrl}')`,
+                                )(),
+                              ])
+                            }
+
+                            prop.value = template.expression(
+                              `lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)`,
+                            )()
+
+                            programPath.pushContainer('body', [
                               template.statement(
-                                `import { lazyRouteComponent } from '@tanstack/react-router'`,
+                                `function DummyComponent() { return null }`,
                               )(),
                             ])
+
+                            found = true
                           }
-
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              '$$splitComponentImporter',
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
-                              template.statement(
-                                `const $$splitComponentImporter = () => import('${splitUrl}')`,
-                              )(),
-                            ])
-                          }
-
-                          prop.value = template.expression(
-                            `lazyRouteComponent($$splitComponentImporter, 'component')`,
-                          )()
-
-                          programPath.pushContainer('body', [
-                            template.statement(
-                              `function DummyComponent() { return null }`,
-                            )(),
-                          ])
-
-                          found = true
                         } else if (prop.key.name === 'loader') {
                           const value = prop.value
+
+                          let shouldSplit = true
 
                           if (t.isIdentifier(value)) {
                             existingLoaderImportPath =
@@ -157,36 +171,45 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                                 value.name,
                               ).path
 
-                            removeIdentifierLiteral(path, value)
+                            // exported identifiers should not be split
+                            // since they are already being imported
+                            // and need to be retained in the compiled file
+                            const isExported = hasExport(ast, value)
+                            shouldSplit = !isExported
+
+                            if (shouldSplit) {
+                              removeIdentifierLiteral(path, value)
+                            }
                           }
 
-                          // Prepend the import statement to the program along with the importer function
+                          if (shouldSplit) {
+                            // Prepend the import statement to the program along with the importer function
+                            if (!hasImportedOrDefinedIdentifier('lazyFn')) {
+                              programPath.unshiftContainer('body', [
+                                template.smart(
+                                  `import { lazyFn } from '@tanstack/react-router'`,
+                                )() as t.Statement,
+                              ])
+                            }
 
-                          if (!hasImportedOrDefinedIdentifier('lazyFn')) {
-                            programPath.unshiftContainer('body', [
-                              template.smart(
-                                `import { lazyFn } from '@tanstack/react-router'`,
-                              )() as t.Statement,
-                            ])
+                            if (
+                              !hasImportedOrDefinedIdentifier(
+                                '$$splitLoaderImporter',
+                              )
+                            ) {
+                              programPath.unshiftContainer('body', [
+                                template.statement(
+                                  `const $$splitLoaderImporter = () => import('${splitUrl}')`,
+                                )(),
+                              ])
+                            }
+
+                            prop.value = template.expression(
+                              `lazyFn($$splitLoaderImporter, 'loader')`,
+                            )()
+
+                            found = true
                           }
-
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              '$$splitLoaderImporter',
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
-                              template.statement(
-                                `const $$splitLoaderImporter = () => import('${splitUrl}')`,
-                              )(),
-                            ])
-                          }
-
-                          prop.value = template.expression(
-                            `lazyFn($$splitLoaderImporter, 'loader')`,
-                          )()
-
-                          found = true
                         }
                       }
                     }
@@ -236,7 +259,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
   return generate(ast, {
     sourceMaps: true,
-    minified: process.env.NODE_ENV === 'production',
   })
 }
 
@@ -251,6 +273,8 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
       `Failed to compile ast for compileCodeSplitVirtualRoute() for the file: ${opts.filename}`,
     )
   }
+
+  const knownExportedIdents = new Set<string>()
 
   babel.traverse(ast, {
     Program: {
@@ -288,11 +312,30 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 if (t.isObjectExpression(options)) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
-                      splitNodeTypes.forEach((type) => {
-                        if (t.isIdentifier(prop.key)) {
-                          if (prop.key.name === type) {
-                            splitNodesByType[type] = prop.value
+                      splitNodeTypes.forEach((splitType) => {
+                        if (
+                          !t.isIdentifier(prop.key) ||
+                          prop.key.name !== splitType
+                        ) {
+                          return
+                        }
+
+                        const value = prop.value
+
+                        let isExported = false
+                        if (t.isIdentifier(value)) {
+                          isExported = hasExport(ast, value)
+                          if (isExported) {
+                            knownExportedIdents.add(value.name)
                           }
+                        }
+
+                        // If the node is exported, we need to remove
+                        // the export from the split file
+                        if (isExported && t.isIdentifier(value)) {
+                          removeExports(ast, value)
+                        } else {
+                          splitNodesByType[splitType] = prop.value
                         }
                       })
                     }
@@ -449,9 +492,30 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
   deadCodeElimination(ast)
 
+  // if there are exported identifiers, then we need to add a warning
+  // to the file to let the user know that the exported identifiers
+  // will not in the split file but in the original file, therefore
+  // increasing the bundle size
+  if (knownExportedIdents.size > 0) {
+    const list = Array.from(knownExportedIdents).reduce((str, ident) => {
+      str += `\n- ${ident}`
+      return str
+    }, '')
+
+    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
+    console.warn(warningMessage)
+
+    // append this warning to the file using a template
+    if (process.env.NODE_ENV !== 'production') {
+      const warningTemplate = template.statement(
+        `console.warn(${JSON.stringify(warningMessage)})`,
+      )()
+      ast.program.body.unshift(warningTemplate)
+    }
+  }
+
   return generate(ast, {
     sourceMaps: true,
-    minified: process.env.NODE_ENV === 'production',
   })
 }
 
@@ -516,4 +580,86 @@ function removeIdentifierLiteral(path: any, node: any) {
       binding.path.remove()
     }
   }
+}
+
+function hasExport(ast: t.File, node: t.Identifier): boolean {
+  let found = false
+
+  babel.traverse(ast, {
+    ExportNamedDeclaration(path) {
+      if (path.node.declaration) {
+        // declared as `const loaderFn = () => {}`
+        if (t.isVariableDeclaration(path.node.declaration)) {
+          path.node.declaration.declarations.forEach((decl) => {
+            if (t.isVariableDeclarator(decl)) {
+              if (t.isIdentifier(decl.id)) {
+                if (decl.id.name === node.name) {
+                  found = true
+                }
+              }
+            }
+          })
+        }
+
+        // declared as `function loaderFn() {}`
+        if (t.isFunctionDeclaration(path.node.declaration)) {
+          if (t.isIdentifier(path.node.declaration.id)) {
+            if (path.node.declaration.id.name === node.name) {
+              found = true
+            }
+          }
+        }
+      }
+    },
+    ExportDefaultDeclaration(path) {
+      if (t.isIdentifier(path.node.declaration)) {
+        if (path.node.declaration.name === node.name) {
+          found = true
+        }
+      }
+    },
+  })
+
+  return found
+}
+
+function removeExports(ast: t.File, node: t.Identifier): boolean {
+  let removed = false
+
+  babel.traverse(ast, {
+    ExportNamedDeclaration(path) {
+      if (path.node.declaration) {
+        // declared as `const loaderFn = () => {}`
+        if (t.isVariableDeclaration(path.node.declaration)) {
+          path.node.declaration.declarations.forEach((decl) => {
+            if (t.isVariableDeclarator(decl)) {
+              if (t.isIdentifier(decl.id)) {
+                if (decl.id.name === node.name) {
+                  path.remove()
+                  removed = true
+                }
+              }
+            }
+          })
+        } else if (t.isFunctionDeclaration(path.node.declaration)) {
+          if (t.isIdentifier(path.node.declaration.id)) {
+            if (path.node.declaration.id.name === node.name) {
+              path.remove()
+              removed = true
+            }
+          }
+        }
+      }
+    },
+    ExportDefaultDeclaration(path) {
+      if (t.isIdentifier(path.node.declaration)) {
+        if (path.node.declaration.name === node.name) {
+          path.remove()
+          removed = true
+        }
+      }
+    },
+  })
+
+  return removed
 }

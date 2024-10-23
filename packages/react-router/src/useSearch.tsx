@@ -2,7 +2,6 @@ import { useMatch } from './useMatch'
 import type { AnyRoute } from './route'
 import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
 import type { RegisteredRouter } from './router'
-import type { MakeRouteMatch } from './Matches'
 import type { Constrain, Expand, StrictOrFrom } from './utils'
 
 export type UseSearchOptions<

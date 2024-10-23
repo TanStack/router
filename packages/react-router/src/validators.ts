@@ -1,5 +1,37 @@
 import type { SearchSchemaInput } from './route'
 
+export interface StandardSchemaValidator<TInput, TOutput> {
+  readonly '~types'?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
+  readonly '~validate': AnyStandardSchemaValidate
+}
+
+export type AnyStandardSchemaValidator = StandardSchemaValidator<any, any>
+
+export interface StandardSchemaValidatorTypes<TInput, TOutput> {
+  readonly input: TInput
+  readonly output: TOutput
+}
+
+export interface AnyStandardSchemaValidateSuccess {
+  readonly value: any
+}
+
+export interface AnyStandardSchemaValidateFailure {
+  readonly issues: ReadonlyArray<AnyStandardSchemaValidateIssue>
+}
+
+export interface AnyStandardSchemaValidateIssue {
+  readonly message: string
+}
+
+export interface AnyStandardSchemaValidateInput {
+  readonly value: any
+}
+
+export type AnyStandardSchemaValidate = (
+  input: AnyStandardSchemaValidateInput,
+) => AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure
+
 export interface ValidatorObj<TInput, TOutput> {
   parse: ValidatorFn<TInput, TOutput>
 }
@@ -24,6 +56,7 @@ export type Validator<TInput, TOutput> =
   | ValidatorObj<TInput, TOutput>
   | ValidatorFn<TInput, TOutput>
   | ValidatorAdapter<TInput, TOutput>
+  | StandardSchemaValidator<TInput, TOutput>
   | undefined
 
 export type AnyValidator = Validator<any, any>
@@ -40,12 +73,15 @@ export type ResolveValidatorInputFn<TValidator> = TValidator extends (
     : ResolveValidatorOutputFn<TValidator>
   : AnySchema
 
-export type ResolveValidatorInput<TValidator> =
-  TValidator extends AnyValidatorAdapter
-    ? TValidator['types']['input']
-    : TValidator extends AnyValidatorObj
-      ? ResolveValidatorInputFn<TValidator['parse']>
-      : ResolveValidatorInputFn<TValidator>
+export type ResolveValidatorInput<TValidator> = undefined extends TValidator
+  ? TValidator
+  : TValidator extends AnyStandardSchemaValidator
+    ? NonNullable<TValidator['~types']>['input']
+    : TValidator extends AnyValidatorAdapter
+      ? TValidator['types']['input']
+      : TValidator extends AnyValidatorObj
+        ? ResolveValidatorInputFn<TValidator['parse']>
+        : ResolveValidatorInputFn<TValidator>
 
 export type ResolveValidatorOutputFn<TValidator> = TValidator extends (
   ...args: any
@@ -55,8 +91,12 @@ export type ResolveValidatorOutputFn<TValidator> = TValidator extends (
 
 export type ResolveValidatorOutput<TValidator> = unknown extends TValidator
   ? TValidator
-  : TValidator extends AnyValidatorAdapter
-    ? TValidator['types']['output']
-    : TValidator extends AnyValidatorObj
-      ? ResolveValidatorOutputFn<TValidator['parse']>
-      : ResolveValidatorOutputFn<TValidator>
+  : undefined extends TValidator
+    ? TValidator
+    : TValidator extends AnyStandardSchemaValidator
+      ? NonNullable<TValidator['~types']>['output']
+      : TValidator extends AnyValidatorAdapter
+        ? TValidator['types']['output']
+        : TValidator extends AnyValidatorObj
+          ? ResolveValidatorOutputFn<TValidator['parse']>
+          : ResolveValidatorOutputFn<TValidator>

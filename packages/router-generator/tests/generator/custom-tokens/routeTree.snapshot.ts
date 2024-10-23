@@ -23,41 +23,49 @@ import { Route as PostsPostIdDeepImport } from './routes/posts/$postId/deep'
 // Create/Update Routes
 
 const PostsR0ut3Route = PostsR0ut3Import.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
 const BlogR0ut3Route = BlogR0ut3Import.update({
+  id: '/blog',
   path: '/blog',
   getParentRoute: () => rootRoute,
 } as any)
 
 const R1nd3xRoute = R1nd3xImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const Posts1nd3xRoute = Posts1nd3xImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => PostsR0ut3Route,
 } as any)
 
 const Blog1nd3xRoute = Blog1nd3xImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => BlogR0ut3Route,
 } as any)
 
 const BlogSlugRoute = BlogSlugImport.update({
+  id: '/$slug',
   path: '/$slug',
   getParentRoute: () => BlogR0ut3Route,
 } as any)
 
 const PostsPostId1nd3xRoute = PostsPostId1nd3xImport.update({
+  id: '/$postId/',
   path: '/$postId/',
   getParentRoute: () => PostsR0ut3Route,
 } as any)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+  id: '/$postId/deep',
   path: '/$postId/deep',
   getParentRoute: () => PostsR0ut3Route,
 } as any)

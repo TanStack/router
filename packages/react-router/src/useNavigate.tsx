@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
 import type { FromPathOption, NavigateOptions } from './link'
-import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
@@ -50,10 +49,10 @@ export function useNavigate<
 
 export function Navigate<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  TTo extends string | undefined = undefined,
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-  TMaskTo extends string = '',
+  TFrom extends string = string,
+  TTo extends string | undefined = '.',
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '.',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
 
@@ -61,7 +60,6 @@ export function Navigate<
     navigate({
       ...props,
     } as any)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null

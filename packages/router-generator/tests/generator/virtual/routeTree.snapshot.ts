@@ -30,46 +30,55 @@ const layoutRoute = layoutImport.update({
 } as any)
 
 const indexRoute = indexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const dbDashboardRoute = dbDashboardImport.update({
+  id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => layoutRoute,
 } as any)
 
 const HelloIndexRoute = HelloIndexImport.update({
+  id: '/hello/',
   path: '/hello/',
   getParentRoute: () => layoutRoute,
 } as any)
 
 const dbDashboardInvoicesRoute = dbDashboardInvoicesImport.update({
+  id: '/invoices',
   path: '/invoices',
   getParentRoute: () => dbDashboardRoute,
 } as any)
 
 const dbDashboardIndexRoute = dbDashboardIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => dbDashboardRoute,
 } as any)
 
 const HelloFooIndexRoute = HelloFooIndexImport.update({
+  id: '/hello/foo/',
   path: '/hello/foo/',
   getParentRoute: () => layoutRoute,
 } as any)
 
 const HelloFooIdRoute = HelloFooIdImport.update({
+  id: '/hello/foo/$id',
   path: '/hello/foo/$id',
   getParentRoute: () => layoutRoute,
 } as any)
 
 const dbInvoiceDetailRoute = dbInvoiceDetailImport.update({
+  id: '/$id',
   path: '/$id',
   getParentRoute: () => dbDashboardInvoicesRoute,
 } as any)
 
 const dbInvoicesIndexRoute = dbInvoicesIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => dbDashboardInvoicesRoute,
 } as any)

@@ -17,8 +17,11 @@ title: Router API
   - [`isNotFound`](./router/isNotFoundFunction.md)
   - [`isRedirect`](./router/isRedirectFunction.md)
   - [`lazyRouteComponent`](./router/lazyRouteComponentFunction.md)
+  - [`linkOptions`](./router/linkOptions.md)
   - [`notFound`](./router/notFoundFunction.md)
   - [`redirect`](./router/redirectFunction.md)
+  - [`retainSearchParams`](./router/retainSearchParamsFunction.md)
+  - [`stripSearchParams`](./router/stripSearchParamsFunction.md)
 - Components
   - [`<Await>`](./router/awaitComponent.md)
   - [`<CatchBoundary>`](./router/catchBoundaryComponent.md)

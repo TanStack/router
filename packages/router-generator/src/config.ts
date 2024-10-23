@@ -119,5 +119,15 @@ ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is n
       `The "indexToken" and "routeToken" options must be different.`,
     )
   }
+
+  if (
+    config.routeFileIgnorePrefix &&
+    config.routeFileIgnorePrefix.trim() === '_'
+  ) {
+    throw new Error(
+      `The "routeFileIgnorePrefix" cannot be an underscore ("_"). This is a reserved character used to denote a pathless route. Please use a different prefix.`,
+    )
+  }
+
   return config
 }

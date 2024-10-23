@@ -64,7 +64,7 @@ Route trees can be configured using a few different ways:
 - [Flat Routes](./file-based-routing.md#flat-routes)
 - [Directories](./file-based-routing.md#directory-routes)
 - [Mixed Flat Routes and Directories](./file-based-routing.md#mixed-flat-and-directory-routes)
-- [Virtual File Routes](./file-based-routing.md#virtual-file-routes)
+- [Virtual File Routes](./virtual-file-routes.md)
 - [Code-Based Routes](./code-based-routing.md)
 
 Please be sure to check out the full documentation links above for each type of route tree, or just proceed to the next section to get started with file-based routing.

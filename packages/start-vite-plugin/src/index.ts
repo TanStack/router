@@ -1,5 +1,7 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { compileStartOutput } from './compilers'
+
+import { compileEliminateDeadCode, compileStartOutput } from './compilers'
+
 import type { Plugin } from 'vite'
 
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
@@ -75,6 +77,46 @@ plugins: [
       if (debug) console.info('')
 
       return compiled
+    },
+  }
+}
+
+export function TanStackStartViteDeadCodeElimination(
+  opts: TanStackStartViteOptions,
+): Plugin {
+  let ROOT: string = process.cwd()
+
+  return {
+    name: 'vite-plugin-tanstack-start-dead-code-elimination',
+    enforce: 'post',
+    configResolved: (config) => {
+      ROOT = config.root
+    },
+    transform(code, id) {
+      const url = pathToFileURL(id)
+      url.searchParams.delete('v')
+      id = fileURLToPath(url).replace(/\\/g, '/')
+
+      if (code.includes('createServerFn')) {
+        const compiled = compileEliminateDeadCode({
+          code,
+          root: ROOT,
+          filename: id,
+          env: opts.env,
+        })
+
+        if (debug) console.info('')
+        if (debug) console.info('Output after dead code elimination')
+        if (debug) console.info('')
+        if (debug) console.info(compiled.code)
+        if (debug) console.info('')
+        if (debug) console.info('')
+        if (debug) console.info('')
+
+        return compiled
+      }
+
+      return null
     },
   }
 }

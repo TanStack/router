@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url'
 import viteReact from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import { TanStackStartVite } from '@tanstack/start-vite-plugin'
+import {
+  TanStackStartVite,
+  TanStackStartViteDeadCodeElimination,
+} from '@tanstack/start-vite-plugin'
 import {
   configSchema,
   getConfig,
@@ -31,7 +34,19 @@ import type {
 } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
+import type { NitroOptions } from 'nitropack'
 
+import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
+
+type RouterType = 'client' | 'server' | 'ssr' | 'api'
+
+type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
+
+function getUserConfig(config?: StartUserViteConfig) {
+  const { plugins, ...userConfig } =
+    typeof config === 'function' ? config() : { ...config }
+  return { plugins, userConfig }
+}
 /**
  * Not all the deployment presets are fully functional or tested.
  * @see https://github.com/TanStack/router/pull/2002
@@ -94,13 +109,6 @@ const testedDeploymentPresets: Array<DeploymentPreset> = [
   'cloudflare-pages',
   'node-server',
 ]
-const staticDeploymentPresets: Array<DeploymentPreset> = [
-  'cloudflare-pages-static',
-  'netlify-static',
-  'static',
-  'vercel-static',
-  'zeabur-static',
-]
 
 function checkDeploymentPresetInput(preset: string): DeploymentPreset {
   if (!vinxiDeploymentPresets.includes(preset as any)) {
@@ -120,7 +128,23 @@ function checkDeploymentPresetInput(preset: string): DeploymentPreset {
   return preset
 }
 
-const deploymentSchema = z
+type HTTPSOptions = {
+  cert?: string
+  key?: string
+  pfx?: string
+  passphrase?: string
+  validityDays?: number
+  domains?: Array<string>
+}
+type ServerOptions_ = VinxiAppOptions['server'] & {
+  https?: boolean | HTTPSOptions
+}
+
+type ServerOptions = {
+  [K in keyof ServerOptions_]: ServerOptions_[K]
+}
+
+const serverSchema = z
   .object({
     preset: z.custom<DeploymentPreset>().optional(),
     static: z.boolean().optional(),
@@ -140,10 +164,9 @@ const deploymentSchema = z
   })
   .optional()
   .default({})
+  .and(z.custom<ServerOptions>())
 
-const viteSchema = z.object({
-  plugins: z.function().returns(z.array(z.custom<vite.Plugin>())).optional(),
-})
+const viteSchema = z.custom<StartUserViteConfig>()
 
 const babelSchema = z.object({
   plugins: z
@@ -180,6 +203,7 @@ const routersSchema = z.object({
   api: z
     .object({
       entry: z.string().optional(),
+      vite: viteSchema.optional(),
     })
     .optional(),
 })
@@ -193,7 +217,7 @@ const inlineConfigSchema = z.object({
   vite: viteSchema.optional(),
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
-  deployment: deploymentSchema.optional(),
+  server: serverSchema.optional(),
 })
 
 export type TanStackStartDefineConfigOptions = z.infer<
@@ -220,15 +244,12 @@ export function defineConfig(
 ) {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
-  const { preset: configDeploymentPreset, ...deploymentOptions } =
-    deploymentSchema.parse(opts.deployment)
+  const { preset: configDeploymentPreset, ...serverOptions } =
+    serverSchema.parse(opts.server || {})
 
   const deploymentPreset = checkDeploymentPresetInput(
     configDeploymentPreset || 'vercel',
   )
-  const isStaticDeployment =
-    deploymentOptions.static ??
-    staticDeploymentPresets.includes(deploymentPreset)
 
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
 
@@ -244,10 +265,10 @@ export function defineConfig(
 
   return createApp({
     server: {
-      ...deploymentOptions,
-      static: isStaticDeployment,
+      ...serverOptions,
       preset: deploymentPreset,
       experimental: {
+        ...serverOptions.experimental,
         asyncContext: true,
       },
     },
@@ -277,6 +298,9 @@ export function defineConfig(
         TanStackStartVite({
           env: 'client',
         }),
+        TanStackStartViteDeadCodeElimination({
+          env: 'client',
+        }),
       ])({
         name: 'client',
         type: 'client',
@@ -287,8 +311,8 @@ export function defineConfig(
           sourcemap: true,
         },
         plugins: () => [
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.client?.vite?.plugins?.() || []),
+          ...(getUserConfig(opts.vite).plugins || []),
+          ...(getUserConfig(opts.routers?.client?.vite).plugins || []),
           serverFunctions.client({
             runtime: '@tanstack/start/client-runtime',
           }),
@@ -364,6 +388,9 @@ export function defineConfig(
         TanStackStartVite({
           env: 'server',
         }),
+        TanStackStartViteDeadCodeElimination({
+          env: 'server',
+        }),
       ])({
         name: 'ssr',
         type: 'http',
@@ -374,8 +401,8 @@ export function defineConfig(
             tsrConfig,
             clientBase,
           }),
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.ssr?.vite?.plugins?.() || []),
+          ...(getUserConfig(opts.vite).plugins || []),
+          ...(getUserConfig(opts.routers?.ssr?.vite).plugins || []),
           serverTransform({
             runtime: '@tanstack/start/server-runtime',
           }),
@@ -419,6 +446,9 @@ export function defineConfig(
         TanStackStartVite({
           env: 'server',
         }),
+        TanStackStartViteDeadCodeElimination({
+          env: 'server',
+        }),
       ])({
         name: 'server',
         type: 'http',
@@ -458,8 +488,8 @@ export function defineConfig(
           //   runtime: '@vinxi/react-server-dom/runtime',
           //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
           // }),
-          ...(opts.vite?.plugins?.() || []),
-          ...(opts.routers?.server?.vite?.plugins?.() || []),
+          ...(getUserConfig(opts.vite).plugins || []),
+          ...(getUserConfig(opts.routers?.server?.vite).plugins || []),
         ],
       }),
     ],
@@ -482,11 +512,15 @@ type TempRouter = Extract<
   }
 }
 
-function withPlugins(plugins: Array<any>) {
+function withPlugins(prePlugins: Array<any>, postPlugins?: Array<any>) {
   return (router: TempRouter) => {
     return {
       ...router,
-      plugins: async () => [...plugins, ...((await router.plugins?.()) ?? [])],
+      plugins: async () => [
+        ...prePlugins,
+        ...((await router.plugins?.()) ?? []),
+        ...(postPlugins ?? []),
+      ],
     }
   }
 }
@@ -537,7 +571,7 @@ function tsrRoutesManifest(opts: {
 
         const clientViteManifestPath = path.resolve(
           config.build.outDir,
-          '../client/_build/.vite/manifest.json',
+          `../client/${opts.clientBase}/.vite/manifest.json`,
         )
 
         type ViteManifest = Record<
@@ -555,10 +589,7 @@ function tsrRoutesManifest(opts: {
         } catch (err) {
           console.error(err)
           throw new Error(
-            `Could not find the production client vite manifest at '${path.resolve(
-              config.build.outDir,
-              '../client/_build/.vite/manifest.json',
-            )}'!`,
+            `Could not find the production client vite manifest at '${clientViteManifestPath}'!`,
           )
         }
 
@@ -569,9 +600,7 @@ function tsrRoutesManifest(opts: {
           routeTreeContent = readFileSync(routeTreePath, 'utf-8')
         } catch (err) {
           throw new Error(
-            `Could not find the generated route tree at '${path.resolve(
-              opts.tsrConfig.generatedRouteTree,
-            )}'!`,
+            `Could not find the generated route tree at '${routeTreePath}'!`,
           )
         }
 

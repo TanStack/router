@@ -16,6 +16,7 @@ import { Route as IndexImport } from './routes/index'
 // Create/Update Routes
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)

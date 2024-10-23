@@ -42,7 +42,7 @@ export * from './history'
 
 export { lazyRouteComponent } from './lazyRouteComponent'
 
-export { useLinkProps, createLink, Link } from './link'
+export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {
   CleanPath,
   Split,
@@ -73,6 +73,8 @@ export type {
   ActiveLinkOptions,
   LinkProps,
   LinkComponent,
+  CreateLinkProps,
+  MakeOptionalPathParams,
 } from './link'
 
 export type { ParsedLocation } from './location'
@@ -352,3 +354,5 @@ export type {
   ValidatorAdapter,
   ValidatorObj,
 } from './validators'
+
+export { retainSearchParams, stripSearchParams } from './searchMiddleware'

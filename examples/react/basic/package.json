@@ -6,21 +6,19 @@
     "dev": "vite --port=3001",
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
-    "start": "vite",
-    "test:e2e": "playwright test --project=chromium"
+    "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.57.13",
-    "@tanstack/router-devtools": "^1.57.13",
+    "@tanstack/react-router": "^1.75.0",
+    "@tanstack/router-devtools": "^1.75.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.46.1",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.3.5"
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^5.4.9"
   }
 }
