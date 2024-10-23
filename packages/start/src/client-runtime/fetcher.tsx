@@ -133,13 +133,10 @@ async function handleResponseErrors(response: Response) {
       return await response.text()
     })()
 
-    const message = `Request failed with status ${response.status}`
+    const defaultMessage = `Request failed with status ${response.status}`
+    const message = body?.message || body || defaultMessage
 
-    if (isJson) {
-      throw new Error(body.message || message)
-    } else {
-      throw new Error(body || message)
-    }
+    throw new Error(message)
   }
 
   return response
