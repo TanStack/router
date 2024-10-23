@@ -136,16 +136,9 @@ async function handleResponseErrors(response: Response) {
     const message = `Request failed with status ${response.status}`
 
     if (isJson) {
-      throw new Error(
-        JSON.stringify({
-          message,
-          body,
-        }),
-      )
+      throw new Error(body.message || message)
     } else {
-      throw new Error(
-        [message, `${JSON.stringify(body, null, 2)}`].join('\n\n'),
-      )
+      throw new Error(body || message)
     }
   }
 
