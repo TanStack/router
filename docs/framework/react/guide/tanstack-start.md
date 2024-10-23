@@ -1,7 +1,9 @@
 ---
-id: getting-started
-title: Getting Started
+id: tanstack-start
+title: TanStack Start
 ---
+
+TanStack Start is a full-stack framework for building server-rendered React applications built on top of [TanStack Router](https://tanstack.com/router).
 
 To set up a TanStack Start project, you'll need to:
 
@@ -15,7 +17,7 @@ Follow this guide to build a basic TanStack Start web application. Together, we 
 - Which displays a counter...
 - With a button to increment the counter persistently.
 
-[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-counter)
+[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-basic-counter)
 
 Create a new project if you're starting fresh.
 
@@ -32,15 +34,14 @@ Create a `tsconfig.json` file with at least the following settings:
   "compilerOptions": {
     "jsx": "react-jsx",
     "moduleResolution": "Bundler",
-    "module": "ESNext",
+    "module": "Preserve",
     "target": "ES2022",
     "skipLibCheck": true,
-    "strictNullChecks": true,
   },
 }
 ```
 
-## Install Dependencies
+# Install Dependencies
 
 TanStack Start is powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
 
@@ -62,7 +63,7 @@ and some TypeScript:
 npm i -D typescript @types/react @types/react-dom
 ```
 
-## Update Configuration Files
+# Update Configuration Files
 
 We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
 
@@ -87,7 +88,7 @@ import { defineConfig } from '@tanstack/start/config'
 export default defineConfig({})
 ```
 
-## Add the Basic Templating
+# Add the Basic Templating
 
 There are four required files for TanStack Start usage:
 
@@ -148,7 +149,6 @@ information to our server entry point:
 
 ```tsx
 // app/ssr.tsx
-/// <reference types="vinxi/types/server" />
 import {
   createStartHandler,
   defaultStreamHandler,
@@ -172,7 +172,6 @@ router information to our client entry point:
 
 ```tsx
 // app/client.tsx
-/// <reference types="vinxi/types/client" />
 import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/start'
 import { createRouter } from './router'
@@ -235,7 +234,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 ```
 
-## Writing Your First Route
+# Writing Your First Route
 
 Now that we have the basic templating setup, we can write our first route. This is done by creating a new file in the `app/routes` directory.
 
@@ -290,5 +289,3 @@ function Home() {
 That's it! 🤯 You've now set up a TanStack Start project and written your first route. 🎉
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
-
-You want to deploy your application? Check out the [hosting guide](./hosting.md).

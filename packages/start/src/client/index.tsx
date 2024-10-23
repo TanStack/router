@@ -34,7 +34,7 @@ export {
 export { serverOnly } from './serverOnly'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'
-export { Meta, Html, Head, Body } from './Meta'
+export { Meta } from './Meta'
 export { Scripts } from './Scripts'
 export { StartClient } from './StartClient'
 export {

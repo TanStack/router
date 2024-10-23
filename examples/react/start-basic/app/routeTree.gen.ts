@@ -29,25 +29,21 @@ import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/
 // Create/Update Routes
 
 const UsersRoute = UsersImport.update({
-  id: '/users',
   path: '/users',
   getParentRoute: () => rootRoute,
 } as any)
 
 const RedirectRoute = RedirectImport.update({
-  id: '/redirect',
   path: '/redirect',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PostsRoute = PostsImport.update({
-  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
 const DeferredRoute = DeferredImport.update({
-  id: '/deferred',
   path: '/deferred',
   getParentRoute: () => rootRoute,
 } as any)
@@ -58,31 +54,26 @@ const LayoutRoute = LayoutImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
-  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const UsersIndexRoute = UsersIndexImport.update({
-  id: '/',
   path: '/',
   getParentRoute: () => UsersRoute,
 } as any)
 
 const PostsIndexRoute = PostsIndexImport.update({
-  id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const UsersUserIdRoute = UsersUserIdImport.update({
-  id: '/$userId',
   path: '/$userId',
   getParentRoute: () => UsersRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
-  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
@@ -93,19 +84,16 @@ const LayoutLayout2Route = LayoutLayout2Import.update({
 } as any)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
-  id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRoute,
 } as any)
 
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
-  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
 const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
-  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
@@ -205,8 +193,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2LayoutBImport
       parentRoute: typeof LayoutLayout2Import
     }
-    '/posts_/$postId/deep': {
-      id: '/posts_/$postId/deep'
+    '/posts/$postId/deep': {
+      id: '/posts/$postId/deep'
       path: '/posts/$postId/deep'
       fullPath: '/posts/$postId/deep'
       preLoaderRoute: typeof PostsPostIdDeepImport
@@ -311,7 +299,7 @@ export interface FileRoutesById {
   '/users/': typeof UsersIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
+  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
 }
 
 export interface FileRouteTypes {
@@ -358,7 +346,7 @@ export interface FileRouteTypes {
     | '/users/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
-    | '/posts_/$postId/deep'
+    | '/posts/$postId/deep'
   fileRoutesById: FileRoutesById
 }
 
@@ -400,7 +388,7 @@ export const routeTree = rootRoute
         "/posts",
         "/redirect",
         "/users",
-        "/posts_/$postId/deep"
+        "/posts/$postId/deep"
       ]
     },
     "/": {
@@ -464,7 +452,7 @@ export const routeTree = rootRoute
       "filePath": "_layout/_layout-2/layout-b.tsx",
       "parent": "/_layout/_layout-2"
     },
-    "/posts_/$postId/deep": {
+    "/posts/$postId/deep": {
       "filePath": "posts_.$postId.deep.tsx"
     }
   }
