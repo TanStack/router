@@ -16,6 +16,7 @@ import {
   createRoute,
   createRouter,
   redirect,
+  useRouter,
 } from '../src'
 
 import { sleep } from './utils'
@@ -177,6 +178,79 @@ describe('redirect', () => {
 
       expect(nestedLoaderMock).toHaveBeenCalled()
       expect(nestedFooLoaderMock).toHaveBeenCalled()
+    })
+
+    test('when `redirect` is thrown in `loader` after `router.invalidate()`', async () => {
+      let shouldRedirect = false
+
+      const rootRoute = createRootRoute({})
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <div>
+              <h1>Index page</h1>
+              <Link data-testid="link-to-about" to="/about">
+                link to about
+              </Link>
+            </div>
+          )
+        },
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+        loader: async () => {
+          await sleep(WAIT_TIME)
+          if (shouldRedirect) {
+            throw redirect({
+              to: '/final',
+            })
+          }
+        },
+        component: () => {
+          const router = useRouter()
+          return (
+            <button
+              data-testid="button-invalidate"
+              onClick={() => {
+                shouldRedirect = true
+                router.invalidate()
+              }}
+            >
+              invalidate
+            </button>
+          )
+        },
+      })
+      const finalRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/final',
+        component: () => <div>Final</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([
+        aboutRoute,
+        indexRoute,
+        finalRoute,
+      ])
+      const router = createRouter({ routeTree })
+
+      render(<RouterProvider router={router} />)
+
+      const linkToAbout = await screen.findByTestId('link-to-about')
+      expect(linkToAbout).toBeInTheDocument()
+
+      fireEvent.click(linkToAbout)
+
+      const invalidateButton = await screen.findByTestId('button-invalidate')
+      expect(invalidateButton).toBeInTheDocument()
+
+      fireEvent.click(invalidateButton)
+
+      expect(await screen.findByText('Final')).toBeInTheDocument()
+      expect(window.location.pathname).toBe('/final')
     })
   })
 

@@ -33,16 +33,48 @@ test('Navigating to a not-found route', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
 })
 
-test('Navigating to a route inside a route group', async ({ page }) => {
-  await page.getByTestId('link-to-route-inside-group').click()
-  await expect(page.getByTestId('search-via-hook')).toContainText('world')
-  await expect(page.getByTestId('search-via-route-hook')).toContainText('world')
-  await expect(page.getByTestId('search-via-route-api')).toContainText('world')
+const testCases = [
+  {
+    description: 'Navigating to a route inside a route group',
+    testId: 'link-to-route-inside-group',
+  },
+  {
+    description:
+      'Navigating to a route inside a subfolder inside a route group ',
+    testId: 'link-to-route-inside-group-inside-subfolder',
+  },
+  {
+    description: 'Navigating to a route inside a route group inside a layout',
+    testId: 'link-to-route-inside-group-inside-layout',
+  },
+  {
+    description: 'Navigating to a lazy route inside a route group',
+    testId: 'link-to-lazy-route-inside-group',
+  },
+
+  {
+    description: 'Navigating to the only route inside a route group ',
+    testId: 'link-to-only-route-inside-group',
+  },
+]
+
+testCases.forEach(({ description, testId }) => {
+  test(description, async ({ page }) => {
+    await page.getByTestId(testId).click()
+    await expect(page.getByTestId('search-via-hook')).toContainText('world')
+    await expect(page.getByTestId('search-via-route-hook')).toContainText(
+      'world',
+    )
+    await expect(page.getByTestId('search-via-route-api')).toContainText(
+      'world',
+    )
+  })
 })
 
-test('Navigating to a lazy route inside a route group', async ({ page }) => {
-  await page.getByTestId('link-to-lazy-route-inside-group').click()
-  await expect(page.getByTestId('search-via-hook')).toContainText('world')
-  await expect(page.getByTestId('search-via-route-hook')).toContainText('world')
-  await expect(page.getByTestId('search-via-route-api')).toContainText('world')
+test('navigating to an unnested route', async ({ page }) => {
+  const postId = 'hello-world'
+  page.goto(`/posts/${postId}/edit`)
+  await expect(page.getByTestId('params-via-hook')).toContainText(postId)
+  await expect(page.getByTestId('params-via-route-hook')).toContainText(postId)
+  await expect(page.getByTestId('params-via-route-api')).toContainText(postId)
 })

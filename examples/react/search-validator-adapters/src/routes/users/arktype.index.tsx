@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { arkTypeSearchValidator } from '@tanstack/router-arktype-adapter'
+
 import { type } from 'arktype'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
@@ -9,7 +9,7 @@ import { Search } from '../../components/Search'
 
 const ArkType = () => {
   const search = Route.useSearch({
-    select: (search) => search.search ?? '',
+    select: (search) => search.search,
   })
   const navigate = useNavigate({ from: Route.fullPath })
 
@@ -29,16 +29,16 @@ const ArkType = () => {
   )
 }
 
+const search = type({
+  search: 'string = ""',
+})
+
 export const Route = createFileRoute('/users/arktype/')({
-  validateSearch: arkTypeSearchValidator(
-    type({
-      'search?': 'string',
-    }),
-  ),
+  validateSearch: search,
   loaderDeps: (opt) => ({ search: opt.search }),
   loader: (opt) => {
     opt.context.queryClient.ensureQueryData(
-      usersQueryOptions(opt.deps.search.search ?? ''),
+      usersQueryOptions(opt.deps.search.search),
     )
   },
   component: ArkType,

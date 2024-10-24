@@ -224,3 +224,101 @@ test('reproducer for #2053', async () => {
   const fooElement = await screen.findByText('fooId: 3ΚΑΠΠΑ')
   expect(fooElement).toBeInTheDocument()
 })
+
+test('reproducer for #2198 - throw error from beforeLoad upon initial load', async () => {
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Index page</div>,
+    beforeLoad: () => {
+      throw new Error('Test!')
+    },
+    errorComponent: () => <div>indexErrorComponent</div>,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({
+    routeTree,
+    defaultErrorComponent: () => {
+      return <div>defaultErrorComponent</div>
+    },
+  })
+
+  render(<RouterProvider router={router} />)
+
+  const errorElement = await screen.findByText('indexErrorComponent')
+  expect(errorElement).toBeInTheDocument()
+})
+
+test('throw error from loader upon initial load', async () => {
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Index page</div>,
+    loader: () => {
+      throw new Error('Test!')
+    },
+    errorComponent: () => <div>indexErrorComponent</div>,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({
+    routeTree,
+    defaultErrorComponent: () => {
+      return <div>defaultErrorComponent</div>
+    },
+  })
+
+  render(<RouterProvider router={router} />)
+
+  const errorElement = await screen.findByText('indexErrorComponent')
+  expect(errorElement).toBeInTheDocument()
+})
+
+test('throw error from beforeLoad when navigating to route', async () => {
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => (
+      <div>
+        <h1>Index page</h1> <Link to="/foo">link to foo</Link>
+      </div>
+    ),
+    errorComponent: () => <div>indexErrorComponent</div>,
+  })
+
+  const fooRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    component: () => <div>Foo page</div>,
+    beforeLoad: () => {
+      throw new Error('Test!')
+    },
+    errorComponent: () => <div>fooErrorComponent</div>,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, fooRoute])
+  const router = createRouter({
+    routeTree,
+    defaultErrorComponent: () => {
+      return <div>defaultErrorComponent</div>
+    },
+  })
+
+  render(<RouterProvider router={router} />)
+
+  const linkToFoo = await screen.findByRole('link', { name: 'link to foo' })
+
+  expect(linkToFoo).toBeInTheDocument()
+
+  fireEvent.click(linkToFoo)
+
+  const indexElement = await screen.findByText('fooErrorComponent')
+  expect(indexElement).toBeInTheDocument()
+})

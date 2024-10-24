@@ -4,9 +4,9 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
 
-const queryClient = new QueryClient()
+export const queryClient = new QueryClient()
 
-const router = createRouter({
+export const router = createRouter({
   routeTree,
   context: {
     queryClient,
@@ -19,7 +19,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-function App() {
+export function App() {
   return <RouterProvider router={router} />
 }
 

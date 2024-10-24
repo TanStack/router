@@ -1,0 +1,25 @@
+{
+  "name": "tanstack-router-react-example-quickstart-esbuild-file-based",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "esbuild src/main.tsx --serve=3001 --bundle --outfile=dist/main.js --watch --servedir=.",
+    "build": "esbuild src/main.tsx --bundle --outfile=dist/main.js",
+    "serve": "esbuild src/main.tsx --bundle --outfile=dist/main.js --servedir=.",
+    "start": "dev"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.76.1",
+    "@tanstack/router-devtools": "^1.76.1",
+    "@tanstack/router-plugin": "^1.76.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "redaxios": "^0.5.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "esbuild": "^0.23.1"
+  }
+}

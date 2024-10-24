@@ -23,6 +23,7 @@ import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/
 // Create/Update Routes
 
 const PostsRoute = PostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
@@ -33,16 +34,19 @@ const LayoutRoute = LayoutImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PostsIndexRoute = PostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
@@ -53,11 +57,13 @@ const LayoutLayout2Route = LayoutLayout2Import.update({
 } as any)
 
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
 const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)

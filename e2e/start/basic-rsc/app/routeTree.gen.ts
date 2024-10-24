@@ -24,6 +24,7 @@ import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/
 // Create/Update Routes
 
 const PostsRoute = PostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
@@ -34,16 +35,19 @@ const LayoutRoute = LayoutImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PostsIndexRoute = PostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
@@ -54,16 +58,19 @@ const LayoutLayout2Route = LayoutLayout2Import.update({
 } as any)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+  id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRoute,
 } as any)
 
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
 const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
@@ -128,8 +135,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2LayoutBImport
       parentRoute: typeof LayoutLayout2Import
     }
-    '/posts/$postId/deep': {
-      id: '/posts/$postId/deep'
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
       path: '/posts/$postId/deep'
       fullPath: '/posts/$postId/deep'
       preLoaderRoute: typeof PostsPostIdDeepImport
@@ -208,7 +215,7 @@ export interface FileRoutesById {
   '/posts/': typeof PostsIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
 }
 
 export interface FileRouteTypes {
@@ -241,7 +248,7 @@ export interface FileRouteTypes {
     | '/posts/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
-    | '/posts/$postId/deep'
+    | '/posts_/$postId/deep'
   fileRoutesById: FileRoutesById
 }
 
@@ -274,7 +281,7 @@ export const routeTree = rootRoute
         "/",
         "/_layout",
         "/posts",
-        "/posts/$postId/deep"
+        "/posts_/$postId/deep"
       ]
     },
     "/": {
@@ -317,7 +324,7 @@ export const routeTree = rootRoute
       "filePath": "_layout/_layout-2/layout-b.tsx",
       "parent": "/_layout/_layout-2"
     },
-    "/posts/$postId/deep": {
+    "/posts_/$postId/deep": {
       "filePath": "posts_.$postId.deep.tsx"
     }
   }

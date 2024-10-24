@@ -186,9 +186,7 @@ export const Route = createRootRoute({
     if (!node.isVirtualParentRoute && !node.isVirtual) {
       const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
-      const escapedRoutePath = removeTrailingUnderscores(
-        node.routePath?.replaceAll('$', '$$') ?? '',
-      )
+      const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
       let replaced = routeCode
 
@@ -359,9 +357,7 @@ export const Route = createRootRoute({
   const handleAPINode = async (node: RouteNode) => {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
-    const escapedRoutePath = removeTrailingUnderscores(
-      node.routePath?.replaceAll('$', '$$') ?? '',
-    )
+    const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
       const replaced = `import { json } from '@tanstack/start'
@@ -502,9 +498,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
       .map((node) => {
         return `const ${
           node.variableName
-        }Import = createFileRoute('${removeTrailingUnderscores(
-          node.routePath,
-        )}')()`
+        }Import = createFileRoute('${node.routePath}')()`
       })
       .join('\n'),
     '// Create/Update Routes',
@@ -521,9 +515,8 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         return [
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
-            node.isNonPath
-              ? `id: '${node.path}'`
-              : `path: '${node.cleanedPath}'`,
+            `id: '${node.path}'`,
+            !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)
@@ -591,7 +584,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
-        const filePathId = getFilePathIdFromPath(routeNode.routePath)
+        const filePathId = routeNode.routePath
 
         return `'${filePathId}': {
           id: '${filePathId}'
@@ -659,22 +652,18 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     const routesManifest = {
       __root__: {
         filePath: rootRouteNode.filePath,
-        children: routeTree.map((d) => getFilePathIdFromPath(d.routePath)),
+        children: routeTree.map((d) => d.routePath),
       },
       ...Object.fromEntries(
         routeNodes.map((d) => {
-          const filePathId = getFilePathIdFromPath(d.routePath)
+          const filePathId = d.routePath
 
           return [
             filePathId,
             {
               filePath: d.filePath,
-              parent: d.parent?.routePath
-                ? getFilePathIdFromPath(d.parent.routePath)
-                : undefined,
-              children: d.children?.map((childRoute) =>
-                getFilePathIdFromPath(childRoute.routePath),
-              ),
+              parent: d.parent?.routePath ? d.parent.routePath : undefined,
+              children: d.children?.map((childRoute) => childRoute.routePath),
             },
           ]
         }),
@@ -868,7 +857,7 @@ export const createRouteNodesById = (
 ): Map<string, RouteNode> => {
   return new Map(
     routeNodes.map((routeNode) => {
-      const id = getFilePathIdFromPath(routeNode.routePath)
+      const id = routeNode.routePath ?? ''
       return [id, routeNode]
     }),
   )
@@ -915,11 +904,6 @@ export const dedupeBranchesAndIndexRoutes = (
     if (route.children?.find((child) => child.cleanedPath === '/')) return false
     return true
   })
-}
-
-function getFilePathIdFromPath(pathname?: string) {
-  const filePathId = removeTrailingUnderscores(pathname)
-  return filePathId ?? ''
 }
 
 function checkUnique<TElement>(routes: Array<TElement>, key: keyof TElement) {

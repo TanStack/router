@@ -22,6 +22,7 @@ import { Route as AuthInvoicesInvoiceIdImport } from './routes/_auth.invoices.$i
 // Create/Update Routes
 
 const LoginRoute = LoginImport.update({
+  id: '/login',
   path: '/login',
   getParentRoute: () => rootRoute,
 } as any)
@@ -32,26 +33,31 @@ const AuthRoute = AuthImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const AuthInvoicesRoute = AuthInvoicesImport.update({
+  id: '/invoices',
   path: '/invoices',
   getParentRoute: () => AuthRoute,
 } as any)
 
 const AuthDashboardRoute = AuthDashboardImport.update({
+  id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthRoute,
 } as any)
 
 const AuthInvoicesIndexRoute = AuthInvoicesIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => AuthInvoicesRoute,
 } as any)
 
 const AuthInvoicesInvoiceIdRoute = AuthInvoicesInvoiceIdImport.update({
+  id: '/$invoiceId',
   path: '/$invoiceId',
   getParentRoute: () => AuthInvoicesRoute,
 } as any)

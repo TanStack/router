@@ -19,21 +19,25 @@ import { Route as UsersArktypeIndexImport } from './routes/users/arktype.index'
 // Create/Update Routes
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const UsersZodIndexRoute = UsersZodIndexImport.update({
+  id: '/users/zod/',
   path: '/users/zod/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const UsersValibotIndexRoute = UsersValibotIndexImport.update({
+  id: '/users/valibot/',
   path: '/users/valibot/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const UsersArktypeIndexRoute = UsersArktypeIndexImport.update({
+  id: '/users/arktype/',
   path: '/users/arktype/',
   getParentRoute: () => rootRoute,
 } as any)

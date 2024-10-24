@@ -19,21 +19,25 @@ import { Route as PostsPostIdImport } from './routes/posts/$postId'
 // Create/Update Routes
 
 const PostsRoute = PostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 })
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 })
 
 const UsersUserIdRoute = UsersUserIdImport.update({
+  id: '/users/$userId',
   path: '/users/$userId',
   getParentRoute: () => rootRoute,
 })
 
 const PostsPostIdRoute = PostsPostIdImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 })

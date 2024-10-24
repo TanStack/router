@@ -79,7 +79,7 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
     const dMatch = window.__TSR__?.matches[match.index]
     if (dMatch) {
       const parentMatch = router.state.matches[match.index - 1]
-      const parentContext = parentMatch?.context ?? {}
+      const parentContext = parentMatch?.context ?? router.options.context ?? {}
       if (dMatch.__beforeLoadContext) {
         match.__beforeLoadContext = router.options.transformer.parse(
           dMatch.__beforeLoadContext,
