@@ -9,6 +9,10 @@ export const Route = createFileRoute('/')({
   pendingComponent: () => <Loader />,
 })
 
+const foo = api.board.getBoards
+const bar = convexQuery(foo, {})
+useSuspenseQuery(bar)
+
 function Home() {
   const boardsQuery = useSuspenseQuery(convexQuery(api.board.getBoards, {}))
 
