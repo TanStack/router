@@ -35,7 +35,7 @@ test('createServeMiddleware removes middleware and input', () => {
 
 test('createMiddleware merges server context', () => {
   const middleware1 = createMiddleware().server(async ({ context, next }) => {
-    expectTypeOf(context).toEqualTypeOf<never>()
+    expectTypeOf(context).toEqualTypeOf<undefined>()
     expectTypeOf(await next({ context: { a: true } })).toEqualTypeOf<{
       'use functions must return the result of next()': true
       context: { a: boolean }

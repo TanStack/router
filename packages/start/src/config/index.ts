@@ -326,49 +326,49 @@ export function defineConfig(
           // serverComponents.client(),
         ],
       }),
-      // ...(apiEntryExists
-      //   ? [
-      //       withPlugins([
-      //         config('start-vite', {
-      //           ssr: {
-      //             noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-      //           },
-      //         }),
-      //         TanStackRouterVite({
-      //           ...tsrConfig,
-      //           autoCodeSplitting: true,
-      //           experimental: {
-      //             ...(tsrConfig.experimental ),
-      //           },
-      //         }),
-      //       ])({
-      //         name: 'api',
-      //         type: 'http',
-      //         target: 'server',
-      //         base: apiBase,
-      //         handler: apiEntry,
-      //         routes: tsrFileRouter({
-      //           tsrConfig,
-      //           apiBase,
-      //         }),
-      //         plugins: () => [
-      //           ...(opts.vite?.plugins?.() || []),
-      //           ...(opts.routers?.ssr?.vite?.plugins?.() || []),
-      //           // serverTransform({
-      //           //   runtime: '@tanstack/start/server-runtime',
-      //           // }),
-      //           // config('start-api', {
-      //           //   ssr: {
-      //           //     external: ['@vinxi/react-server-dom/client'],
-      //           //   },
-      //           // }),
-      //         ],
-      //         // link: {
-      //         //   client: 'client',
-      //         // },
-      //       }),
-      //     ]
-      //   : []),
+      ...(apiEntryExists
+        ? [
+            withPlugins([
+              config('start-vite', {
+                ssr: {
+                  noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+                },
+              }),
+              TanStackRouterVite({
+                ...tsrConfig,
+                autoCodeSplitting: true,
+                experimental: {
+                  ...tsrConfig.experimental,
+                },
+              }),
+            ])({
+              name: 'api',
+              type: 'http',
+              target: 'server',
+              base: apiBase,
+              handler: apiEntry,
+              routes: tsrFileRouter({
+                tsrConfig,
+                apiBase,
+              }),
+              plugins: () => [
+                ...(getUserConfig(opts.vite).plugins || []),
+                ...(getUserConfig(opts.routers?.api?.vite).plugins || []),
+                // serverTransform({
+                //   runtime: '@tanstack/start/server-runtime',
+                // }),
+                // config('start-api', {
+                //   ssr: {
+                //     external: ['@vinxi/react-server-dom/client'],
+                //   },
+                // }),
+              ],
+              // link: {
+              //   client: 'client',
+              // },
+            }),
+          ]
+        : []),
       withPlugins([
         config('start-vite', {
           ssr: {
