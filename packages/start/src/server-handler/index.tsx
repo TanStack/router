@@ -143,17 +143,20 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
         return redirectOrNotFoundResponse(error)
       }
 
-      console.error('Server Fn Error!')
-      console.error(error)
-      console.info()
-
-      return new Response(JSON.stringify(error), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          [serverFnReturnTypeHeader]: 'error',
+      return new Response(
+        error instanceof Error
+          ? error.toString()
+          : JSON.stringify({
+              message: error?.message ?? 'Internal Server Error',
+            }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            [serverFnReturnTypeHeader]: 'error',
+          },
         },
-      })
+      )
     }
   })()
 
