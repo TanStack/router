@@ -1,12 +1,11 @@
+import * as React from 'react'
 import {
   ErrorComponent,
   Link,
   rootRouteId,
-  // ErrorComponentProps,
   useMatch,
   useRouter,
 } from '@tanstack/react-router'
-import * as React from 'react'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
