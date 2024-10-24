@@ -14,29 +14,30 @@ describe('useBlocker', () => {
   })
 
   describe('condition', () => {
-    test('should not add the blocker if condition is false', () => {
-      renderHook(() => useBlocker({ condition: false }))
+    test('should not add a blocker if disabled is true', () => {
+      renderHook(() => useBlocker({ disabled: true, blockerFn: () => true }))
       expect(block).not.toHaveBeenCalled()
     })
 
-    test('should not add the blocker if condition is false (deprecated API)', () => {
-      renderHook(() => useBlocker(undefined, false))
-      expect(block).not.toHaveBeenCalled()
-    })
-
-    test('should add the blocker if condition is true', () => {
-      renderHook(() => useBlocker({ condition: true }))
+    test('should add the blocker if not disabled', () => {
+      renderHook(() => useBlocker({ blockerFn: () => true }))
       expect(block).toHaveBeenCalledOnce()
     })
 
-    test('should add the blocker if condition is true (deprecated API)', () => {
-      renderHook(() => useBlocker(undefined, true))
-      expect(block).toHaveBeenCalledOnce()
+    test('Blocker object should be provided to blocker', () => {
+      renderHook(() => useBlocker({ blockerFn: () => true }))
+      expect(block).toHaveBeenCalledWith(
+        expect.objectContaining({ blockerFn: expect.any(Function) }),
+      )
     })
 
-    test('should add the blocker if condition is not provided', () => {
-      renderHook(() => useBlocker())
-      expect(block).toHaveBeenCalledOnce()
+    test('disableBeforeUnload should be passed to history.block', () => {
+      renderHook(() =>
+        useBlocker({ blockerFn: () => true, disableBeforeUnload: true }),
+      )
+      expect(block).toHaveBeenCalledWith(
+        expect.objectContaining({ disableBeforeUnload: true }),
+      )
     })
   })
 })
