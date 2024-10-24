@@ -642,6 +642,37 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
 
+  e2e/start/basic-tsr-config:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      vinxi:
+        specifier: 0.4.3
+        version: 0.4.3(@types/node@22.7.4)(ioredis@5.4.1)(terser@5.31.1)(webpack-sources@3.2.3)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.5.4
+        version: 22.7.4
+      '@types/react':
+        specifier: ^18.2.65
+        version: 18.3.11
+      '@types/react-dom':
+        specifier: ^18.2.21
+        version: 18.3.0
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.3
+
   e2e/start/clerk-basic:
     dependencies:
       '@clerk/tanstack-start':
