@@ -133,9 +133,9 @@ function InnerApp() {
 
 function App() {
   return (
-    <AuthProvider>
+    <RouterProvider>
       <InnerApp />
-    </AuthProvider>
+    </RouterProvider>
   )
 }
 ```
