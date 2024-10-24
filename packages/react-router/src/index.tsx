@@ -305,7 +305,10 @@ export type { SearchSerializer, SearchParser } from './searchParams'
 export { defaultTransformer } from './transformer'
 export type { RouterTransformer } from './transformer'
 
+export type { UseBlockerOpts } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
+
+export { usePromiseBlocker } from './usePromiseBlocker'
 
 export { useNavigate, Navigate } from './useNavigate'
 export type { UseNavigateResult } from './useNavigate'

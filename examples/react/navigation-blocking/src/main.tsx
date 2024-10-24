@@ -16,6 +16,14 @@ const rootRoute = createRootRoute({
 })
 
 function RootComponent() {
+  // Always block going from editor-1 to editor-2
+  const { proceed, reset, status } = useBlocker({
+    from: '/editor-1',
+    to: '/editor-1/editor-2',
+    blockerFn: () => true,
+    disableBeforeUnload: true,
+  })
+
   return (
     <>
       <div className="p-2 flex gap-2 text-lg">
@@ -36,8 +44,34 @@ function RootComponent() {
         >
           Editor 1
         </Link>
+        <Link
+          to={'/editor-1/editor-2'}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Editor 2
+        </Link>
       </div>
       <hr />
+
+      {status === 'blocked' && (
+        <div className="mt-2">
+          <div>Are you sure you want to leave home for editor-2?</div>
+          <button
+            className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
+            onClick={proceed}
+          >
+            YES
+          </button>
+          <button
+            className="bg-red-500 text-white rounded p-1 px-2"
+            onClick={reset}
+          >
+            NO
+          </button>
+        </div>
+      )}
       <Outlet />
       <TanStackRouterDevtools position="bottom-right" />
     </>
@@ -66,26 +100,16 @@ const editor1Route = createRoute({
 
 function Editor1Component() {
   const [value, setValue] = React.useState('')
-  const [useCustomBlocker, setUseCustomBlocker] = React.useState(false)
 
+  // Block leaving editor-1 if there is text in the input
   const { proceed, reset, status } = useBlocker({
-    blockerFn: useCustomBlocker
-      ? undefined
-      : () => window.confirm('Are you sure you want to leave editor 1?'),
-    condition: value,
+    blockerFn: () => value !== '',
+    disableBeforeUnload: () => value === '',
   })
 
   return (
     <div className="flex flex-col p-2">
       <h3>Editor 1</h3>
-      <label>
-        <input
-          type="checkbox"
-          checked={useCustomBlocker}
-          onChange={(e) => setUseCustomBlocker(e.target.checked)}
-        />{' '}
-        Use custom blocker
-      </label>
       <div>
         <input
           value={value}
@@ -93,6 +117,10 @@ function Editor1Component() {
           className="border"
         />
       </div>
+      <hr className="m-2" />
+      <Link to="/editor-1/editor-2">Go to Editor 2</Link>
+      <Outlet />
+
       {status === 'blocked' && (
         <div className="mt-2">
           <div>Are you sure you want to leave editor 1?</div>
@@ -110,9 +138,6 @@ function Editor1Component() {
           </button>
         </div>
       )}
-      <hr className="m-2" />
-      <Link to="/editor-1/editor-2">Go to Editor 2</Link>
-      <Outlet />
     </div>
   )
 }
@@ -125,11 +150,6 @@ const editor2Route = createRoute({
 
 function Editor2Component() {
   const [value, setValue] = React.useState('')
-
-  useBlocker({
-    blockerFn: () => window.confirm('Are you sure you want to leave editor 2?'),
-    condition: value,
-  })
 
   return (
     <div className="p-2">
