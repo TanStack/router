@@ -36,6 +36,7 @@ type RouteSubNode = {
 }
 
 export async function generator(config: Config) {
+  const customScaffolding = config.experimental?.customScaffolding
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
@@ -125,7 +126,14 @@ export async function generator(config: Config) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const replaced = `import * as React from 'react';
+      if (customScaffolding) {
+        await customScaffolding({
+          routePath: rootPathId,
+          filePath: node.fullPath,
+          type: 'createRootRoute',
+        })
+      } else {
+        const initialCode = `import * as React from 'react';
 import { Outlet, createRootRoute } from '@tanstack/react-router';
 
 export const Route = createRootRoute({
@@ -139,11 +147,12 @@ export const Route = createRootRoute({
 
 `
 
-      logger.log(`🟡 Creating ${node.fullPath}`)
-      fs.writeFileSync(
-        node.fullPath,
-        await prettier.format(replaced, prettierOptions),
-      )
+        logger.log(`🟡 Creating ${node.fullPath}`)
+        fs.writeFileSync(
+          node.fullPath,
+          await prettier.format(initialCode, prettierOptions),
+        )
+      }
     }
   }
 
@@ -188,32 +197,46 @@ export const Route = createRootRoute({
 
       const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
-      let replaced = routeCode
-
       if (!routeCode) {
-        if (node.isLazy) {
-          replaced = [
-            `import { createLazyFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createLazyFileRoute('${escapedRoutePath}')({
+        if (customScaffolding) {
+          await customScaffolding({
+            routePath: escapedRoutePath!,
+            filePath: node.fullPath,
+            type: node.isLazy ? 'createLazyFileRoute' : 'createFileRoute',
+          })
+        } else {
+          let initialCode: string | undefined
+          if (node.isLazy) {
+            initialCode = [
+              `import { createLazyFileRoute } from '@tanstack/react-router'`,
+              `export const Route = createLazyFileRoute('${escapedRoutePath}')({
   component: () => <div>Hello ${escapedRoutePath}!</div>
 })`,
-          ].join('\n\n')
-        } else if (
-          node.isRoute ||
-          (!node.isComponent &&
-            !node.isErrorComponent &&
-            !node.isPendingComponent &&
-            !node.isLoader)
-        ) {
-          replaced = [
-            `import { createFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createFileRoute('${escapedRoutePath}')({
+            ].join('\n\n')
+          } else if (
+            node.isRoute ||
+            (!node.isComponent &&
+              !node.isErrorComponent &&
+              !node.isPendingComponent &&
+              !node.isLoader)
+          ) {
+            initialCode = [
+              `import { createFileRoute } from '@tanstack/react-router'`,
+              `export const Route = createFileRoute('${escapedRoutePath}')({
   component: () => <div>Hello ${escapedRoutePath}!</div>
 })`,
-          ].join('\n\n')
+            ].join('\n\n')
+          }
+          if (initialCode !== undefined) {
+            logger.log(`🟡 Creating ${node.fullPath}`)
+            fs.writeFileSync(
+              node.fullPath,
+              await prettier.format(initialCode, prettierOptions),
+            )
+          }
         }
       } else {
-        replaced = routeCode
+        const replaced = routeCode
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
             (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
@@ -228,19 +251,19 @@ export const Route = createRootRoute({
             (match, p1, p2, p3, p4) =>
               `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
-      }
 
-      await writeIfDifferent(
-        node.fullPath,
-        prettierOptions,
-        routeCode,
-        replaced,
-        {
-          beforeWrite: () => {
-            logger.log(`🟡 Updating ${node.fullPath}`)
+        await writeIfDifferent(
+          node.fullPath,
+          prettierOptions,
+          routeCode,
+          replaced,
+          {
+            beforeWrite: () => {
+              logger.log(`🟡 Updating ${node.fullPath}`)
+            },
           },
-        },
-      )
+        )
+      }
     }
 
     if (
@@ -360,22 +383,30 @@ export const Route = createRootRoute({
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
-      const replaced = `import { json } from '@tanstack/start'
-import { createAPIFileRoute } from '@tanstack/start/api'
-
-export const Route = createAPIFileRoute('${escapedRoutePath}')({
-  GET: ({ request, params }) => {
+      if (customScaffolding) {
+        await customScaffolding({
+          routePath: escapedRoutePath!,
+          filePath: node.fullPath,
+          type: 'createAPIFileRoute',
+        })
+      } else {
+        const initialCode = `import { json } from '@tanstack/start'
+        import { createAPIFileRoute } from '@tanstack/start/api'
+        
+        export const Route = createAPIFileRoute('${escapedRoutePath}')({
+          GET: ({ request, params }) => {
     return json({ message: 'Hello ${escapedRoutePath}' })
   },
 })
 
 `
 
-      logger.log(`🟡 Creating ${node.fullPath}`)
-      fs.writeFileSync(
-        node.fullPath,
-        await prettier.format(replaced, prettierOptions),
-      )
+        logger.log(`🟡 Creating ${node.fullPath}`)
+        fs.writeFileSync(
+          node.fullPath,
+          await prettier.format(initialCode, prettierOptions),
+        )
+      }
     } else {
       await writeIfDifferent(
         node.fullPath,
