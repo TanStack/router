@@ -11,8 +11,8 @@
   "dependencies": {
     "@tanstack/react-query": "^5.59.15",
     "@tanstack/react-query-devtools": "^5.59.15",
-    "@tanstack/react-router": "^1.76.1",
-    "@tanstack/router-devtools": "^1.76.1",
+    "@tanstack/react-router": "^1.76.3",
+    "@tanstack/router-devtools": "^1.76.3",
     "redaxios": "^0.5.1",
     "immer": "^10.1.1",
     "react": "^18.2.0",
