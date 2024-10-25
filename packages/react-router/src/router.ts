@@ -1007,6 +1007,7 @@ export class Router<
       base: from,
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
+      caseSensitive: this.options.caseSensitive,
     })
     return resolvedPath
   }
