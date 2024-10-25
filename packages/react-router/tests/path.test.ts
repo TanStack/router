@@ -49,6 +49,45 @@ describe('removeBasepath', () => {
   ])('$name', ({ basepath, pathname, expected }) => {
     expect(removeBasepath(basepath, pathname)).toBe(expected)
   })
+  describe('case sensitivity', () => {
+    describe('caseSensitive = true', () => {
+      it.each([
+        {
+          name: 'should not remove basepath from the beginning of the pathname',
+          basepath: '/app',
+          pathname: '/App/path/App',
+          expected: '/App/path/App',
+        },
+        {
+          name: 'should not remove basepath from the beginning of the pathname with multiple segments',
+          basepath: '/app/New',
+          pathname: '/App/New/path/App',
+          expected: '/App/New/path/App',
+        },
+      ])('$name', ({ basepath, pathname, expected }) => {
+        expect(removeBasepath(basepath, pathname, true)).toBe(expected)
+      })
+    })
+
+    describe('caseSensitive = false', () => {
+      it.each([
+        {
+          name: 'should remove basepath from the beginning of the pathname',
+          basepath: '/App',
+          pathname: '/app/path/app',
+          expected: '/path/app',
+        },
+        {
+          name: 'should remove multisegment basepath from the beginning of the pathname',
+          basepath: '/App/New',
+          pathname: '/app/new/path/app',
+          expected: '/path/app',
+        },
+      ])('$name', ({ basepath, pathname, expected }) => {
+        expect(removeBasepath(basepath, pathname, false)).toBe(expected)
+      })
+    })
+  })
 })
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
@@ -324,6 +363,23 @@ describe('matchPathname', () => {
         to: '/abc',
       },
       expected: undefined,
+    },
+    {
+      name: "should not match the path when the basepath's case sensitivity does not match",
+      basepath: '/basepath',
+      pathname: '/Basepath/abc',
+      matchLocation: {
+        to: '/abc',
+        caseSensitive: true,
+      },
+    },
+    {
+      name: 'should match the path with a differing case sensitivity in the basepath',
+      basepath: '/basepath',
+      pathname: '/Basepath/abc',
+      matchLocation: {
+        to: '/abc',
+      },
     },
   ])('$name', ({ basepath, pathname, matchLocation, expected }) => {
     expect(matchPathname(basepath, pathname, matchLocation)).toStrictEqual(
