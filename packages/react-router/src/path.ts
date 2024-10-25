@@ -267,32 +267,37 @@ export function removeBasepath(
   pathname: string,
   caseSensitive: boolean = false,
 ) {
-  // Normalize basepath and pathname for case-insensitive comparison if needed
+  // normalize basepath and pathname for case-insensitive comparison if needed
   const normalizedBasepath = caseSensitive ? basepath : basepath.toLowerCase()
   const normalizedPathname = caseSensitive ? pathname : pathname.toLowerCase()
 
   switch (true) {
-    // Default behaviour when the basepath is root ('/')
+    // default behaviour is to serve app from the root - pathname
+    // left untouched
     case normalizedBasepath === '/':
       return pathname
 
-    // Shortcut for removing the basepath if it matches the pathname
+    // shortcut for removing the basepath if it matches the pathname
     case normalizedPathname === normalizedBasepath:
       return ''
 
-    // If pathname is shorter than basepath, there's nothing to remove
+    // in case pathname is shorter than basepath - there is
+    // nothing to remove
     case pathname.length < basepath.length:
       return pathname
 
-    // Avoid matching partial segments
+    // avoid matching partial segments - strict equality handled
+    // earlier, otherwise, basepath separated from pathname with
+    // separator, therefore lack of separator means partial
+    // segment match (`/app` should not match `/application`)
     case normalizedPathname[normalizedBasepath.length] !== '/':
       return pathname
 
-    // Remove the basepath if the pathname starts with it
+    // remove the basepath from the pathname if it starts with it
     case normalizedPathname.startsWith(normalizedBasepath):
       return pathname.slice(basepath.length)
 
-    // Otherwise, return the pathname as is
+    // otherwise, return the pathname as is
     default:
       return pathname
   }
