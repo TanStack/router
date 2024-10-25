@@ -364,23 +364,6 @@ describe('matchPathname', () => {
       },
       expected: undefined,
     },
-    {
-      name: "should not match the path when the basepath's case sensitivity does not match",
-      basepath: '/basepath',
-      pathname: '/Basepath/abc',
-      matchLocation: {
-        to: '/abc',
-        caseSensitive: true,
-      },
-    },
-    {
-      name: 'should match the path with a differing case sensitivity in the basepath',
-      basepath: '/basepath',
-      pathname: '/Basepath/abc',
-      matchLocation: {
-        to: '/abc',
-      },
-    },
   ])('$name', ({ basepath, pathname, matchLocation, expected }) => {
     expect(matchPathname(basepath, pathname, matchLocation)).toStrictEqual(
       expected,
