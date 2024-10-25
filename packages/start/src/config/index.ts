@@ -34,11 +34,9 @@ import type {
 } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
-import type { NitroOptions } from 'nitropack'
+// import type { NitroOptions } from 'nitropack'
 
 import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
-
-type RouterType = 'client' | 'server' | 'ssr' | 'api'
 
 type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
 
@@ -284,9 +282,12 @@ export function defineConfig(
           ssr: {
             noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
           },
-          // optimizeDeps: {
-          //   include: ['@tanstack/start/server-runtime'],
-          // },
+          resolve: {
+            dedupe: ['react', 'react-dom'],
+          },
+          optimizeDeps: {
+            include: ['@tanstack/start/server-runtime'],
+          },
         }),
         TanStackRouterVite({
           ...tsrConfig,
@@ -333,6 +334,12 @@ export function defineConfig(
                 ssr: {
                   noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
                 },
+                resolve: {
+                  dedupe: ['react', 'react-dom'],
+                },
+                optimizeDeps: {
+                  include: ['@tanstack/start/server-runtime'],
+                },
               }),
               TanStackRouterVite({
                 ...tsrConfig,
@@ -374,9 +381,12 @@ export function defineConfig(
           ssr: {
             noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
           },
-          // optimizeDeps: {
-          //   include: ['@tanstack/start/server-runtime'],
-          // },
+          resolve: {
+            dedupe: ['react', 'react-dom'],
+          },
+          optimizeDeps: {
+            include: ['@tanstack/start/server-runtime'],
+          },
         }),
         TanStackRouterVite({
           ...tsrConfig,
@@ -432,9 +442,12 @@ export function defineConfig(
           ssr: {
             noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
           },
-          // optimizeDeps: {
-          //   include: ['@tanstack/start/server-runtime'],
-          // },
+          resolve: {
+            dedupe: ['react', 'react-dom'],
+          },
+          optimizeDeps: {
+            include: ['@tanstack/start/server-runtime'],
+          },
         }),
         TanStackRouterVite({
           ...tsrConfig,

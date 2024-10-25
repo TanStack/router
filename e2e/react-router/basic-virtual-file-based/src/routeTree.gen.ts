@@ -11,12 +11,12 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/root'
-import { Route as postspostsImport } from './routes/posts/posts'
-import { Route as layoutfirstLayoutImport } from './routes/layout/first-layout'
+import { Route as postsPostsImport } from './routes/posts/posts'
+import { Route as layoutFirstLayoutImport } from './routes/layout/first-layout'
 import { Route as homeImport } from './routes/home'
-import { Route as postspostsDetailImport } from './routes/posts/posts-detail'
-import { Route as layoutsecondLayoutImport } from './routes/layout/second-layout'
-import { Route as postspostsHomeImport } from './routes/posts/posts-home'
+import { Route as postsPostsDetailImport } from './routes/posts/posts-detail'
+import { Route as layoutSecondLayoutImport } from './routes/layout/second-layout'
+import { Route as postsPostsHomeImport } from './routes/posts/posts-home'
 import { Route as ClassicHelloRouteImport } from './routes/file-based-subtree/hello/route'
 import { Route as ClassicHelloIndexImport } from './routes/file-based-subtree/hello/index'
 import { Route as ClassicHelloWorldImport } from './routes/file-based-subtree/hello/world'
@@ -26,13 +26,13 @@ import { Route as aImport } from './routes/a'
 
 // Create/Update Routes
 
-const postspostsRoute = postspostsImport.update({
+const postsPostsRoute = postsPostsImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const layoutfirstLayoutRoute = layoutfirstLayoutImport.update({
+const layoutFirstLayoutRoute = layoutFirstLayoutImport.update({
   id: '/_first',
   getParentRoute: () => rootRoute,
 } as any)
@@ -43,21 +43,21 @@ const homeRoute = homeImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const postspostsDetailRoute = postspostsDetailImport.update({
+const postsPostsDetailRoute = postsPostsDetailImport.update({
   id: '/$postId',
   path: '/$postId',
-  getParentRoute: () => postspostsRoute,
+  getParentRoute: () => postsPostsRoute,
 } as any)
 
-const layoutsecondLayoutRoute = layoutsecondLayoutImport.update({
+const layoutSecondLayoutRoute = layoutSecondLayoutImport.update({
   id: '/_second',
-  getParentRoute: () => layoutfirstLayoutRoute,
+  getParentRoute: () => layoutFirstLayoutRoute,
 } as any)
 
-const postspostsHomeRoute = postspostsHomeImport.update({
+const postsPostsHomeRoute = postsPostsHomeImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => postspostsRoute,
+  getParentRoute: () => postsPostsRoute,
 } as any)
 
 const ClassicHelloRouteRoute = ClassicHelloRouteImport.update({
@@ -87,13 +87,13 @@ const ClassicHelloUniverseRoute = ClassicHelloUniverseImport.update({
 const bRoute = bImport.update({
   id: '/layout-b',
   path: '/layout-b',
-  getParentRoute: () => layoutsecondLayoutRoute,
+  getParentRoute: () => layoutSecondLayoutRoute,
 } as any)
 
 const aRoute = aImport.update({
   id: '/layout-a',
   path: '/layout-a',
-  getParentRoute: () => layoutsecondLayoutRoute,
+  getParentRoute: () => layoutSecondLayoutRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -111,14 +111,14 @@ declare module '@tanstack/react-router' {
       id: '/_first'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof layoutfirstLayoutImport
+      preLoaderRoute: typeof layoutFirstLayoutImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof postspostsImport
+      preLoaderRoute: typeof postsPostsImport
       parentRoute: typeof rootRoute
     }
     '/classic/hello': {
@@ -132,36 +132,36 @@ declare module '@tanstack/react-router' {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof postspostsHomeImport
-      parentRoute: typeof postspostsImport
+      preLoaderRoute: typeof postsPostsHomeImport
+      parentRoute: typeof postsPostsImport
     }
     '/_first/_second': {
       id: '/_first/_second'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof layoutsecondLayoutImport
-      parentRoute: typeof layoutfirstLayoutImport
+      preLoaderRoute: typeof layoutSecondLayoutImport
+      parentRoute: typeof layoutFirstLayoutImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof postspostsDetailImport
-      parentRoute: typeof postspostsImport
+      preLoaderRoute: typeof postsPostsDetailImport
+      parentRoute: typeof postsPostsImport
     }
     '/_first/_second/layout-a': {
       id: '/_first/_second/layout-a'
       path: '/layout-a'
       fullPath: '/layout-a'
       preLoaderRoute: typeof aImport
-      parentRoute: typeof layoutsecondLayoutImport
+      parentRoute: typeof layoutSecondLayoutImport
     }
     '/_first/_second/layout-b': {
       id: '/_first/_second/layout-b'
       path: '/layout-b'
       fullPath: '/layout-b'
       preLoaderRoute: typeof bImport
-      parentRoute: typeof layoutsecondLayoutImport
+      parentRoute: typeof layoutSecondLayoutImport
     }
     '/classic/hello/universe': {
       id: '/classic/hello/universe'
@@ -189,42 +189,42 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-interface layoutsecondLayoutRouteChildren {
+interface layoutSecondLayoutRouteChildren {
   aRoute: typeof aRoute
   bRoute: typeof bRoute
 }
 
-const layoutsecondLayoutRouteChildren: layoutsecondLayoutRouteChildren = {
+const layoutSecondLayoutRouteChildren: layoutSecondLayoutRouteChildren = {
   aRoute: aRoute,
   bRoute: bRoute,
 }
 
-const layoutsecondLayoutRouteWithChildren =
-  layoutsecondLayoutRoute._addFileChildren(layoutsecondLayoutRouteChildren)
+const layoutSecondLayoutRouteWithChildren =
+  layoutSecondLayoutRoute._addFileChildren(layoutSecondLayoutRouteChildren)
 
-interface layoutfirstLayoutRouteChildren {
-  layoutsecondLayoutRoute: typeof layoutsecondLayoutRouteWithChildren
+interface layoutFirstLayoutRouteChildren {
+  layoutSecondLayoutRoute: typeof layoutSecondLayoutRouteWithChildren
 }
 
-const layoutfirstLayoutRouteChildren: layoutfirstLayoutRouteChildren = {
-  layoutsecondLayoutRoute: layoutsecondLayoutRouteWithChildren,
+const layoutFirstLayoutRouteChildren: layoutFirstLayoutRouteChildren = {
+  layoutSecondLayoutRoute: layoutSecondLayoutRouteWithChildren,
 }
 
-const layoutfirstLayoutRouteWithChildren =
-  layoutfirstLayoutRoute._addFileChildren(layoutfirstLayoutRouteChildren)
+const layoutFirstLayoutRouteWithChildren =
+  layoutFirstLayoutRoute._addFileChildren(layoutFirstLayoutRouteChildren)
 
-interface postspostsRouteChildren {
-  postspostsHomeRoute: typeof postspostsHomeRoute
-  postspostsDetailRoute: typeof postspostsDetailRoute
+interface postsPostsRouteChildren {
+  postsPostsHomeRoute: typeof postsPostsHomeRoute
+  postsPostsDetailRoute: typeof postsPostsDetailRoute
 }
 
-const postspostsRouteChildren: postspostsRouteChildren = {
-  postspostsHomeRoute: postspostsHomeRoute,
-  postspostsDetailRoute: postspostsDetailRoute,
+const postsPostsRouteChildren: postsPostsRouteChildren = {
+  postsPostsHomeRoute: postsPostsHomeRoute,
+  postsPostsDetailRoute: postsPostsDetailRoute,
 }
 
-const postspostsRouteWithChildren = postspostsRoute._addFileChildren(
-  postspostsRouteChildren,
+const postsPostsRouteWithChildren = postsPostsRoute._addFileChildren(
+  postsPostsRouteChildren,
 )
 
 interface ClassicHelloRouteRouteChildren {
@@ -244,11 +244,11 @@ const ClassicHelloRouteRouteWithChildren =
 
 export interface FileRoutesByFullPath {
   '/': typeof homeRoute
-  '': typeof layoutsecondLayoutRouteWithChildren
-  '/posts': typeof postspostsRouteWithChildren
+  '': typeof layoutSecondLayoutRouteWithChildren
+  '/posts': typeof postsPostsRouteWithChildren
   '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
-  '/posts/': typeof postspostsHomeRoute
-  '/posts/$postId': typeof postspostsDetailRoute
+  '/posts/': typeof postsPostsHomeRoute
+  '/posts/$postId': typeof postsPostsDetailRoute
   '/layout-a': typeof aRoute
   '/layout-b': typeof bRoute
   '/classic/hello/universe': typeof ClassicHelloUniverseRoute
@@ -258,9 +258,9 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof homeRoute
-  '': typeof layoutsecondLayoutRouteWithChildren
-  '/posts': typeof postspostsHomeRoute
-  '/posts/$postId': typeof postspostsDetailRoute
+  '': typeof layoutSecondLayoutRouteWithChildren
+  '/posts': typeof postsPostsHomeRoute
+  '/posts/$postId': typeof postsPostsDetailRoute
   '/layout-a': typeof aRoute
   '/layout-b': typeof bRoute
   '/classic/hello/universe': typeof ClassicHelloUniverseRoute
@@ -271,12 +271,12 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof homeRoute
-  '/_first': typeof layoutfirstLayoutRouteWithChildren
-  '/posts': typeof postspostsRouteWithChildren
+  '/_first': typeof layoutFirstLayoutRouteWithChildren
+  '/posts': typeof postsPostsRouteWithChildren
   '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
-  '/posts/': typeof postspostsHomeRoute
-  '/_first/_second': typeof layoutsecondLayoutRouteWithChildren
-  '/posts/$postId': typeof postspostsDetailRoute
+  '/posts/': typeof postsPostsHomeRoute
+  '/_first/_second': typeof layoutSecondLayoutRouteWithChildren
+  '/posts/$postId': typeof postsPostsDetailRoute
   '/_first/_second/layout-a': typeof aRoute
   '/_first/_second/layout-b': typeof bRoute
   '/classic/hello/universe': typeof ClassicHelloUniverseRoute
@@ -328,15 +328,15 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   homeRoute: typeof homeRoute
-  layoutfirstLayoutRoute: typeof layoutfirstLayoutRouteWithChildren
-  postspostsRoute: typeof postspostsRouteWithChildren
+  layoutFirstLayoutRoute: typeof layoutFirstLayoutRouteWithChildren
+  postsPostsRoute: typeof postsPostsRouteWithChildren
   ClassicHelloRouteRoute: typeof ClassicHelloRouteRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
   homeRoute: homeRoute,
-  layoutfirstLayoutRoute: layoutfirstLayoutRouteWithChildren,
-  postspostsRoute: postspostsRouteWithChildren,
+  layoutFirstLayoutRoute: layoutFirstLayoutRouteWithChildren,
+  postsPostsRoute: postsPostsRouteWithChildren,
   ClassicHelloRouteRoute: ClassicHelloRouteRouteWithChildren,
 }
 
@@ -362,13 +362,13 @@ export const routeTree = rootRoute
       "filePath": "home.tsx"
     },
     "/_first": {
-      "filePath": "layout\\first-layout.tsx",
+      "filePath": "layout/first-layout.tsx",
       "children": [
         "/_first/_second"
       ]
     },
     "/posts": {
-      "filePath": "posts\\posts.tsx",
+      "filePath": "posts/posts.tsx",
       "children": [
         "/posts/",
         "/posts/$postId"
@@ -383,11 +383,11 @@ export const routeTree = rootRoute
       ]
     },
     "/posts/": {
-      "filePath": "posts\\posts-home.tsx",
+      "filePath": "posts/posts-home.tsx",
       "parent": "/posts"
     },
     "/_first/_second": {
-      "filePath": "layout\\second-layout.tsx",
+      "filePath": "layout/second-layout.tsx",
       "parent": "/_first",
       "children": [
         "/_first/_second/layout-a",
@@ -395,7 +395,7 @@ export const routeTree = rootRoute
       ]
     },
     "/posts/$postId": {
-      "filePath": "posts\\posts-detail.tsx",
+      "filePath": "posts/posts-detail.tsx",
       "parent": "/posts"
     },
     "/_first/_second/layout-a": {
