@@ -722,6 +722,7 @@ export class Router<
       defaultPendingMinMs: 500,
       context: undefined!,
       ...options,
+      caseSensitive: options.caseSensitive ?? false,
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
@@ -1007,6 +1008,7 @@ export class Router<
       base: from,
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
+      caseSensitive: this.options.caseSensitive,
     })
     return resolvedPath
   }
