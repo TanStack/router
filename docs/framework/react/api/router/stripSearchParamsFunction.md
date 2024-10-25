@@ -7,7 +7,7 @@ title: Search middleware to strip search params
 
 ## stripSearchParams props
 
-The `retainSearchParams` accepts one of the following inputs:
+`stripSearchParams` accepts one of the following inputs:
 
 - `true`: if the search schema has no required params, `true` can be used to strip all search params
 - a list of keys of those search params that shall be removed; only keys of optional search params are allowed.
