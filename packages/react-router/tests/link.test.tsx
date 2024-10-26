@@ -1247,7 +1247,7 @@ describe('Link', () => {
     render(<RouterProvider router={router} />)
 
     await waitFor(async () => {
-      const rootLoading = screen.findByText('Root Loading...');
+      const rootLoading = screen.findByText('Root Loading...')
       expect(await rootLoading).toBeInTheDocument()
     })
 
