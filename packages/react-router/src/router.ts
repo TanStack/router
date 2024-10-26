@@ -211,7 +211,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreload-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
    */
-  defaultPreload?: false | 'intent' | 'viewport'
+  defaultPreload?: false | 'intent' | 'viewport' | 'render'
   /**
    * The delay in milliseconds that a route must be hovered over or touched before it is preloaded.
    *
@@ -1622,7 +1622,7 @@ export class Router<
         })
 
         if (foundMask) {
-          const { from, ...maskProps } = foundMask
+          const { from: _from, ...maskProps } = foundMask
           maskedDest = {
             ...pick(opts, ['from']),
             ...maskProps,
