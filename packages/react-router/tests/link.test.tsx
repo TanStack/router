@@ -3643,6 +3643,37 @@ describe('Link', () => {
     },
   )
 
+  test.each([false, 'intent', 'viewport', 'render'] as const)(
+    'Router.preload="%s" with Link.preload="false", should not trigger the IntersectionObserver\'s observe method',
+    async (preload) => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <>
+            <h1>Index Heading</h1>
+            <Link to="/" preload={false}>
+              Index Link
+            </Link>
+          </>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        defaultPreload: preload,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+      expect(indexLink).toBeInTheDocument()
+
+      expect(ioObserveMock).not.toBeCalled()
+    },
+  )
+
   test('Router.preload="viewport", should trigger the IntersectionObserver\'s observe and disconnect methods', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -3671,62 +3702,6 @@ describe('Link', () => {
 
     expect(ioDisconnectMock).toBeCalled()
     expect(ioDisconnectMock).toBeCalledTimes(1) // since React.StrictMode is enabled it should have disconnected
-  })
-
-  test('Router.preload="viewport" with Link.preload="false", should not trigger the IntersectionObserver\'s observe method', async () => {
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => (
-        <>
-          <h1>Index Heading</h1>
-          <Link to="/" preload={false}>
-            Index Link
-          </Link>
-        </>
-      ),
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute]),
-      defaultPreload: 'viewport',
-    })
-
-    render(<RouterProvider router={router} />)
-
-    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
-    expect(indexLink).toBeInTheDocument()
-
-    expect(ioObserveMock).not.toBeCalled()
-  })
-
-  test('Router.preload="render" with Link.preload="false", should not trigger the IntersectionObserver\'s observe method', async () => {
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => (
-        <>
-          <h1>Index Heading</h1>
-          <Link to="/" preload={false}>
-            Index Link
-          </Link>
-        </>
-      ),
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute]),
-      defaultPreload: 'viewport',
-    })
-
-    render(<RouterProvider router={router} />)
-
-    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
-    expect(indexLink).toBeInTheDocument()
-
-    expect(ioObserveMock).not.toBeCalled()
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {
