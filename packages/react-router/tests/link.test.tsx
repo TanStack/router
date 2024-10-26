@@ -3613,7 +3613,7 @@ describe('Link', () => {
     expect(stringifyParamsMock).toHaveBeenCalledWith({ postId: 0 })
   })
 
-  test.each([false, 'intent'] as const)(
+  test.each([false, 'intent', 'render'] as const)(
     'Router.preload="%s", should not trigger the IntersectionObserver\'s observe and disconnect methods',
     async (preload) => {
       const rootRoute = createRootRoute()
@@ -3699,6 +3699,74 @@ describe('Link', () => {
     expect(indexLink).toBeInTheDocument()
 
     expect(ioObserveMock).not.toBeCalled()
+  })
+
+  test('Router.preload="render" with Link.preload="false", should not trigger the IntersectionObserver\'s observe method', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/" preload={false}>
+            Index Link
+          </Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'viewport',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    expect(indexLink).toBeInTheDocument()
+
+    expect(ioObserveMock).not.toBeCalled()
+  })
+
+  test("Router.preload='render', should trigger the route loader on render", async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: () => {
+        mock()
+      },
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/about">About Link</Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => (
+        <>
+          <h1>About Heading</h1>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
+      defaultPreload: 'render',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const aboutLink = await screen.findByRole('link', { name: 'About Link' })
+    expect(aboutLink).toBeInTheDocument()
+
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
