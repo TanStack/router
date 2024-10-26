@@ -35,7 +35,8 @@ import {
   useParams,
   useRouteContext,
   useRouterState,
-  useSearch, notFound,
+  useSearch,
+  notFound,
 } from '../src'
 import {
   getIntersectionObserverMock,
@@ -1987,25 +1988,18 @@ describe('Link', () => {
     expect(notFoundComponent).not.toBeCalled()
   })
 
-
   test('404 thrown in child will bubble up to the root without async loader', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      notFoundComponent: () => (
-          <div>
-            Root notFoundComponent
-          </div>
-      ),
+      notFoundComponent: () => <div>Root notFoundComponent</div>,
       component: () => {
         return (
-            <>
-              <h1>Index</h1>
-              <Link to="/nonExistingPost">
-                Non existing post
-              </Link>
-            </>
+          <>
+            <h1>Index</h1>
+            <Link to="/nonExistingPost">Non existing post</Link>
+          </>
         )
       },
     })
@@ -2016,16 +2010,16 @@ describe('Link', () => {
       params: {
         parse: (p) => {
           if (p.postId === 'nonExistingPost') {
-            throw new Error('Post not exists');
+            throw new Error('Post not exists')
           }
           return {
             postId: p.postId,
-          };
+          }
         },
         stringify: (p) => ({ postId: p.postId }),
       },
       onError: () => {
-        throw notFound();
+        throw notFound()
       },
       component: () => <div>Existing Post</div>,
     })
@@ -2036,7 +2030,9 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Non existing post' })
+    const postsLink = await screen.findByRole('link', {
+      name: 'Non existing post',
+    })
     fireEvent.click(postsLink)
 
     const errorText = await screen.findByText('Root notFoundComponent')
@@ -2048,23 +2044,17 @@ describe('Link', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      notFoundComponent: () => (
-          <div>
-            Root notFoundComponent
-          </div>
-      ),
+      notFoundComponent: () => <div>Root notFoundComponent</div>,
       loader: async () => {
-        await sleep(0);
-        return { ok: true };
+        await sleep(0)
+        return { ok: true }
       },
       component: () => {
         return (
-            <>
-              <h1>Index</h1>
-              <Link to="/nonExistingPost">
-                Non existing post
-              </Link>
-            </>
+          <>
+            <h1>Index</h1>
+            <Link to="/nonExistingPost">Non existing post</Link>
+          </>
         )
       },
     })
@@ -2075,16 +2065,16 @@ describe('Link', () => {
       params: {
         parse: (p) => {
           if (p.postId === 'nonExistingPost') {
-            throw new Error('Post not exists');
+            throw new Error('Post not exists')
           }
           return {
             postId: p.postId,
-          };
+          }
         },
         stringify: (p) => ({ postId: p.postId }),
       },
       onError: () => {
-        throw notFound();
+        throw notFound()
       },
       component: () => <div>Existing Post</div>,
     })
@@ -2095,7 +2085,9 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Non existing post' })
+    const postsLink = await screen.findByRole('link', {
+      name: 'Non existing post',
+    })
     fireEvent.click(postsLink)
 
     const errorText = await screen.findByText('Root notFoundComponent')
