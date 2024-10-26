@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
+    "dev": "vinxi dev --port 3002",
     "build": "vinxi build",
     "start": "vinxi start",
     "test:e2e": "exit 0; playwright test --project=chromium"
