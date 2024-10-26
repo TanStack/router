@@ -172,7 +172,8 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
           cache.set((c) => ({ ...c, next: {} }))
           weakScrolledElements = new WeakSet<any>()
         }
-      })
+      },
+    )
 
     return () => {
       document.removeEventListener('scroll', onScroll)
