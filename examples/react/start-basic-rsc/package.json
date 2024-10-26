@@ -12,7 +12,7 @@
     "@babel/plugin-syntax-typescript": "^7.25.7",
     "@tanstack/react-router": "^1.76.3",
     "@tanstack/router-devtools": "^1.76.3",
-    "@tanstack/start": "^1.76.3",
+    "@tanstack/start": "^1.76.4",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.4",
     "vinxi": "0.4.3"

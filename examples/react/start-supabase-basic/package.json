@@ -17,7 +17,7 @@
     "@supabase/supabase-js": "^2.45.6",
     "@tanstack/react-router": "^1.76.3",
     "@tanstack/router-devtools": "^1.76.3",
-    "@tanstack/start": "^1.76.3",
+    "@tanstack/start": "^1.76.4",
     "@vitejs/plugin-react": "^4.3.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
