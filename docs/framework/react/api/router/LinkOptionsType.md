@@ -33,7 +33,7 @@ The `LinkOptions` object accepts/contains the following properties:
 
 ### `preload`
 
-- Type: `false | 'intent' | 'viewport'`
+- Type: `false | 'intent' | 'viewport' | 'render'`
 - Optional
 - If set, the link's preloading strategy will be set to this value.
 - See the [Preloading guide](../../guide/preloading.md) for more information.
