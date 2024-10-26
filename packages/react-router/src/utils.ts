@@ -4,6 +4,13 @@ export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
   ? TYesResult
   : TNoResult
+export type IsNull<T> = [T] extends [null] ? true : false
+
+export type IsUnknown<T> = unknown extends T
+  ? IsNull<T> extends false
+    ? true
+    : false
+  : false
 
 export type PickAsRequired<TValue, TKey extends keyof TValue> = Omit<
   TValue,

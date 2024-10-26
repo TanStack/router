@@ -68,6 +68,7 @@ export const useMeta = () => {
             ...link,
           },
         })) as Array<RouterManagedTag>,
+    structuralSharing: true,
   })
 
   const preloadMeta = useRouterState({
@@ -92,6 +93,7 @@ export const useMeta = () => {
 
       return preloadMeta
     },
+    structuralSharing: true,
   })
 
   return uniqBy(

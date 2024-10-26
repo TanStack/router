@@ -7,21 +7,22 @@ import {
 } from '../src'
 
 test('when creating a router without context', () => {
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const rootRoute = createRootRoute()
 
   type RouteTree = typeof rootRoute
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{} | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .not.toMatchTypeOf<{
       context: {}
@@ -97,21 +98,22 @@ test('when building location using router', () => {
 })
 
 test('when creating a router with context', () => {
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   type RouteTree = typeof rootRoute
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{ userId: string }>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toMatchTypeOf<{
       context: { userId: string }
@@ -126,21 +128,22 @@ test('when creating a router with context and children', () => {
     path: '/',
   })
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const routeTree = rootRoute.addChildren([indexRoute])
 
   type RouteTree = typeof routeTree
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{ userId: string }>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toMatchTypeOf<{
       context: { userId: string }

@@ -31,39 +31,42 @@ test('when there is no context', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useRouteContext<DefaultRouter['routeTree']>)
+  expectTypeOf(useRouteContext<DefaultRouter>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<'/invoices' | '__root__' | '/invoices/' | '/'>()
 
-  expectTypeOf(useRouteContext<DefaultRouter['routeTree']>)
+  expectTypeOf(useRouteContext<DefaultRouter>)
     .parameter(0)
     .toHaveProperty('strict')
     .toEqualTypeOf<true | undefined>()
 
-  expectTypeOf(useRouteContext<DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>)
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
     .toEqualTypeOf<{}>()
 
-  expectTypeOf(useRouteContext<DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>)
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<{}>()
+    .returns.toEqualTypeOf<unknown>()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/'>,
+    useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>,
   ).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/', false>({ strict: false }),
+    useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/', false>({
+      strict: false,
+    }),
   ).toEqualTypeOf<{}>()
 })
 
@@ -99,6 +102,7 @@ test('when there is the root context', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -107,35 +111,52 @@ test('when there is the root context', () => {
   type DefaultRouter = typeof defaultRouter
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/'>,
+    useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>,
   ).returns.toEqualTypeOf<{ userId: string }>()
-
-  expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices/$invoiceId'>,
-  ).returns.toEqualTypeOf<{ userId: string }>()
-
-  expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices/$invoiceId'>,
-  )
-    .parameter(0)
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      ((search: { userId: string }) => { userId: string }) | undefined
-    >()
-
-  expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices', false>,
-  ).returns.toEqualTypeOf<{ userId?: string }>()
-
-  expectTypeOf(useRouteContext<DefaultRouter['routeTree'], '/invoices', false>)
-    .parameter(0)
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      ((search: { userId?: string }) => { userId?: string }) | undefined
-    >()
 
   expectTypeOf(
     useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices/$invoiceId'
+    >,
+  ).returns.toEqualTypeOf<{ userId: string }>()
+
+  expectTypeOf(
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices/$invoiceId'
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<((search: { userId: string }) => unknown) | undefined>()
+
+  expectTypeOf(
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  ).returns.toEqualTypeOf<{ userId?: string }>()
+
+  expectTypeOf(
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<((search: { userId?: string }) => unknown) | undefined>()
+
+  expectTypeOf(
+    useRouteContext<
+      DefaultRouter,
       DefaultRouter['routeTree'],
       '/invoices',
       false,
@@ -192,6 +213,7 @@ test('when there are multiple contexts', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -200,35 +222,49 @@ test('when there are multiple contexts', () => {
   type DefaultRouter = typeof defaultRouter
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/'>,
+    useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>,
   ).returns.toEqualTypeOf<{ userId: string }>()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices/$invoiceId'>,
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices/$invoiceId'
+    >,
   ).returns.toEqualTypeOf<{ userId: string }>()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices/$invoiceId'>,
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices/$invoiceId'
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<((search: { userId: string }) => unknown) | undefined>()
+
+  expectTypeOf(
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  ).returns.toEqualTypeOf<{ userId?: string; username?: string }>()
+
+  expectTypeOf(
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
   )
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
-      ((search: { userId: string }) => { userId: string }) | undefined
-    >()
-
-  expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices', false>,
-  ).returns.toEqualTypeOf<{ userId?: string; username?: string }>()
-
-  expectTypeOf(useRouteContext<DefaultRouter['routeTree'], '/invoices', false>)
-    .parameter(0)
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      | ((search: { userId?: string; username?: string }) => {
-          userId?: string
-          username?: string
-        })
-      | undefined
+      ((search: { userId?: string; username?: string }) => unknown) | undefined
     >()
 })
 
@@ -281,6 +317,7 @@ test('when there are overlapping contexts', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -288,47 +325,64 @@ test('when there are overlapping contexts', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useRouteContext<DefaultRouter['routeTree'], '/'>).returns
-    .toEqualTypeOf<{ userId: string }>
+  expectTypeOf(useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>)
+    .returns.toEqualTypeOf<{ userId: string }>
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices/$invoiceId'>,
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices/$invoiceId'
+    >,
   ).returns.toEqualTypeOf<{
     userId: string
     readonly username: 'username2'
   }>()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices/$invoiceId'>,
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices/$invoiceId'
+    >,
   )
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
-      | ((search: { userId: string; readonly username: 'username2' }) => {
+      | ((search: {
           userId: string
           readonly username: 'username2'
-        })
+        }) => unknown)
       | undefined
     >()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/invoices', false>,
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
   ).returns.toEqualTypeOf<{
     userId?: string
     username?: 'username1' | 'username2'
   }>()
 
-  expectTypeOf(useRouteContext<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(
+    useRouteContext<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  )
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
       | ((search: {
           userId?: string
           username?: 'username2' | 'username1'
-        }) => {
-          userId?: string
-          username?: 'username2' | 'username1'
-        })
+        }) => unknown)
       | undefined
     >()
 })

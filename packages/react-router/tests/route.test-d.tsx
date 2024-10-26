@@ -97,7 +97,6 @@ test('when creating the root with a loader', () => {
 
 test('when creating the root route with context and routeContext', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
-
   const rootRoute = createRouteResult({
     context: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
@@ -123,10 +122,20 @@ test('when creating the root route with context and routeContext', () => {
     userId: string
   }>()
 
-  expectTypeOf(rootRoute.useRouteContext<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { userId: string }) => string } | undefined
+    .branded.toEqualTypeOf<
+      | {
+          select?: ((context: { userId: string }) => unknown) | undefined
+          structuralSharing?: boolean
+        }
+      | undefined
     >()
 })
 
@@ -158,10 +167,20 @@ test('when creating the root route with context and beforeLoad', () => {
     userId: string
   }>()
 
-  expectTypeOf(rootRoute.useRouteContext<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { userId: string }) => string } | undefined
+    .branded.toEqualTypeOf<
+      | {
+          select?: (context: { userId: string }) => string
+          structuralSharing?: boolean
+        }
+      | undefined
     >()
 })
 
@@ -193,10 +212,20 @@ test('when creating the root route with context and a loader', () => {
     userId: string
   }>()
 
-  expectTypeOf(rootRoute.useRouteContext<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { userId: string }) => string } | undefined
+    .branded.toEqualTypeOf<
+      | {
+          select?: (context: { userId: string }) => string
+          structuralSharing?: boolean
+        }
+      | undefined
     >()
 })
 
@@ -263,15 +292,22 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
     env: 'env1'
   }>()
 
-  expectTypeOf(rootRoute.useRouteContext<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
+    .branded.toEqualTypeOf<
       | {
-          select?: (search: {
+          select?: (context: {
             userId: string
             permission: 'view'
             env: 'env1'
           }) => string
+          structuralSharing?: boolean
         }
       | undefined
     >()
@@ -302,10 +338,20 @@ test('when creating a child route from the root route with context', () => {
     userId: string
   }>()
 
-  expectTypeOf(invoicesRoute.useRouteContext<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(invoicesRoute.useRouteContext<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { userId: string }) => string } | undefined
+    .branded.toEqualTypeOf<
+      | {
+          select?: (search: { userId: string }) => string
+          structuralSharing?: boolean
+        }
+      | undefined
     >()
 })
 
@@ -382,9 +428,14 @@ test('when creating a child route with a loader from the root route', () => {
     },
   })
 
-  expectTypeOf(invoicesRoute.useLoaderData<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
+    .branded.toEqualTypeOf<
       | {
           select?: (
             search: readonly [
@@ -392,6 +443,7 @@ test('when creating a child route with a loader from the root route', () => {
               { readonly id: 'invoice2' },
             ],
           ) => string
+          structuralSharing?: boolean
         }
       | undefined
     >()
@@ -424,9 +476,15 @@ test('when creating a child route with a loader from the root route with context
     },
   })
 
-  expectTypeOf(invoicesRoute.useLoaderData<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
+    .branded.toEqualTypeOf<
       | {
           select?: (
             search: readonly [
@@ -434,6 +492,7 @@ test('when creating a child route with a loader from the root route with context
               { readonly id: 'invoice2' },
             ],
           ) => string
+          structuralSharing?: boolean
         }
       | undefined
     >()
@@ -456,10 +515,19 @@ test('when creating a child route with search params from the root route', () =>
     page: number
   }>()
 
-  expectTypeOf(invoicesRoute.useSearch<number>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(invoicesRoute.useSearch<typeof router, number>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { page: number }) => number } | undefined
+    .branded.toEqualTypeOf<
+      | {
+          select?: (search: { page: number }) => number
+          structuralSharing?: boolean
+        }
+      | undefined
     >()
 })
 
@@ -474,10 +542,19 @@ test('when creating a child route with optional search params from the root rout
 
   expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{ page?: number }>()
 
-  expectTypeOf(invoicesRoute.useSearch<number>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(invoicesRoute.useSearch<typeof router, number>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { page?: number }) => number } | undefined
+    .branded.toEqualTypeOf<
+      | {
+          select?: (search: { page?: number }) => number
+          structuralSharing?: boolean
+        }
+      | undefined
     >()
 })
 
@@ -489,11 +566,20 @@ test('when creating a child route with params from the root route', () => {
     getParentRoute: () => rootRoute,
   })
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
   expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{ invoiceId: string }>()
-  expectTypeOf(invoicesRoute.useParams<string>)
+  expectTypeOf(invoicesRoute.useParams<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { invoiceId: string }) => string } | undefined
+    .branded.toEqualTypeOf<
+      | {
+          select?: (search: { invoiceId: string }) => string
+          structuralSharing?: boolean
+        }
+      | undefined
     >()
 })
 
@@ -505,11 +591,20 @@ test('when creating a child route with a splat param from the root route', () =>
     getParentRoute: () => rootRoute,
   })
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
   expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{ _splat?: string }>()
-  expectTypeOf(invoicesRoute.useParams<string>)
+  expectTypeOf(invoicesRoute.useParams<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { _splat?: string }) => string } | undefined
+    .branded.toEqualTypeOf<
+      | {
+          select?: (search: { _splat?: string }) => string
+          structuralSharing?: boolean
+        }
+      | undefined
     >()
 })
 
@@ -520,15 +615,22 @@ test('when creating a child route with a param and splat param from the root rou
     path: 'invoices/$invoiceId/$',
     getParentRoute: () => rootRoute,
   })
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
 
   expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{
     invoiceId: string
     _splat?: string
   }>()
-  expectTypeOf(invoicesRoute.useParams<string>)
+  expectTypeOf(invoicesRoute.useParams<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
-      | { select?: (search: { invoiceId: string; _splat?: string }) => string }
+    .branded.toEqualTypeOf<
+      | {
+          select?: (search: { invoiceId: string; _splat?: string }) => string
+          structuralSharing?: boolean
+        }
       | undefined
     >()
 })
@@ -727,11 +829,19 @@ test('when creating a child route with params from a parent with params', () => 
     detailId: string
   }>()
 
-  expectTypeOf(detailsRoute.useParams<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([detailsRoute]),
+    ]),
+  })
+
+  expectTypeOf(detailsRoute.useParams<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
+    .branded.toEqualTypeOf<
       | {
           select?: (search: { invoiceId: string; detailId: string }) => string
+          structuralSharing?: boolean
         }
       | undefined
     >()
@@ -757,14 +867,22 @@ test('when creating a child route with search from a parent with search', () => 
     detailPage: number
   }>()
 
-  expectTypeOf(detailsRoute.useSearch<number>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([detailsRoute]),
+    ]),
+  })
+
+  expectTypeOf(detailsRoute.useSearch<typeof router, number>)
     .parameter(0)
-    .toEqualTypeOf<
+    .branded.toEqualTypeOf<
       | {
           select?: (search: {
             invoicePage: number
             detailPage: number
           }) => number
+          structuralSharing?: boolean
         }
       | undefined
     >()
@@ -821,15 +939,24 @@ test('when creating a child route with routeContext from a parent with routeCont
     detailId: string
   }>()
 
-  expectTypeOf(detailsRoute.useRouteContext<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([detailsRoute]),
+    ]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(detailsRoute.useRouteContext<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
+    .branded.toEqualTypeOf<
       | {
           select?: (search: {
             userId: string
             invoiceId: string
             detailId: string
           }) => string
+          structuralSharing?: boolean
         }
       | undefined
     >()
@@ -884,15 +1011,24 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
     detailId: string
   }>()
 
-  expectTypeOf(detailsRoute.useRouteContext<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([detailsRoute]),
+    ]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(detailsRoute.useRouteContext<typeof router, string>)
     .parameter(0)
-    .toEqualTypeOf<
+    .branded.toEqualTypeOf<
       | {
           select?: (search: {
             userId: string
             invoiceId: string
             detailId: string
           }) => string
+          structuralSharing?: boolean
         }
       | undefined
     >()

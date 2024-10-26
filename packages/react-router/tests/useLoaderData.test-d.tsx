@@ -30,23 +30,24 @@ test('when there is no loaders', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree']>)
+  expectTypeOf(useLoaderData<DefaultRouter>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<'/invoices' | '__root__' | '/invoices/' | '/'>()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree']>)
+  expectTypeOf(useLoaderData<DefaultRouter>)
     .parameter(0)
     .toHaveProperty('strict')
     .toEqualTypeOf<true | undefined>()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/'>)
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
@@ -54,17 +55,19 @@ test('when there is no loaders', () => {
       loaderData?: {}
     }>()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/'>)
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<{}>()
+    .returns.toEqualTypeOf<unknown>()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/'>,
   ).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/', false>({ strict: false }),
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/', false>({
+      strict: false,
+    }),
   ).toEqualTypeOf<{}>
 })
 
@@ -97,6 +100,7 @@ test('when there is one loader', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -105,29 +109,44 @@ test('when there is one loader', () => {
   type DefaultRouter = typeof defaultRouter
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
   ).returns.toEqualTypeOf<{ data: Array<string> }>()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
   ).returns.toEqualTypeOf<{ data: Array<string> }>()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices'>)
-    .parameter(0)
-    .toHaveProperty('select')
-    .returns.toEqualTypeOf<{ data: Array<string> }>()
-
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices', false>,
-  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
-
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices', false>)
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
+  )
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<{ data?: Array<string> }>()
+    .returns.toEqualTypeOf<unknown>()
 
   expectTypeOf(
     useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
+
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .returns.toEqualTypeOf<unknown>()
+
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter,
       DefaultRouter['routeTree'],
       '/invoices',
       false,
@@ -166,6 +185,7 @@ test('when there is one loader that is async', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -174,29 +194,44 @@ test('when there is one loader that is async', () => {
   type DefaultRouter = typeof defaultRouter
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
   ).returns.toEqualTypeOf<{ data: Array<string> }>()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
   ).returns.toEqualTypeOf<{ data: Array<string> }>()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices'>)
-    .parameter(0)
-    .toHaveProperty('select')
-    .returns.toEqualTypeOf<{ data: Array<string> }>()
-
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices', false>,
-  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
-
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices', false>)
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
+  )
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<{ data?: Array<string> }>()
+    .returns.toEqualTypeOf<unknown>()
 
   expectTypeOf(
     useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
+
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .returns.toEqualTypeOf<unknown>()
+
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter,
       DefaultRouter['routeTree'],
       '/invoices',
       false,
@@ -237,6 +272,7 @@ test('when there are multiple loaders', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -244,24 +280,29 @@ test('when there are multiple loaders', () => {
   type DefaultRouter = typeof defaultRouter
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/'>,
   ).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
   ).returns.toEqualTypeOf<{
     readonly data: readonly ['invoice1', 'invoice2']
   }>()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices'>)
+  expectTypeOf(
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
+  )
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<{
-      readonly data: readonly ['invoice1', 'invoice2']
-    }>()
+    .returns.toEqualTypeOf<unknown>()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices', false>,
+    useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
   ).returns.toEqualTypeOf<{
     data?:
       | readonly ['invoice1', 'invoice2']
@@ -269,10 +310,30 @@ test('when there are multiple loaders', () => {
       | undefined
   }>()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  )
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<{
+    .returns.toEqualTypeOf<unknown>()
+
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .parameter(0)
+    .toEqualTypeOf<{
       data?:
         | readonly ['invoice1', 'invoice2']
         | readonly ['post1', 'post2']
@@ -312,6 +373,7 @@ test('when there are multiple loaders of objects and primtives', () => {
     postsRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -319,20 +381,35 @@ test('when there are multiple loaders of objects and primtives', () => {
   type DefaultRouter = typeof defaultRouter
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/'>,
   ).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices'>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
   ).returns.toEqualTypeOf<readonly ['invoice1', 'invoice2']>()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices'>)
+  expectTypeOf(
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
+  )
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<readonly ['invoice1', 'invoice2']>()
+    .returns.toEqualTypeOf<unknown>()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/invoices', false>,
+    useLoaderData<DefaultRouter, DefaultRouter['routeTree'], '/invoices'>,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .parameter(0)
+    .toEqualTypeOf<readonly ['invoice1', 'invoice2']>()
+
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
   ).returns.toEqualTypeOf<
     | readonly ['invoice1', 'invoice2']
     | readonly ['post1', 'post2']
@@ -345,10 +422,18 @@ test('when there are multiple loaders of objects and primtives', () => {
       }
   >()
 
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(
+    useLoaderData<
+      DefaultRouter,
+      DefaultRouter['routeTree'],
+      '/invoices',
+      false
+    >,
+  )
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<
+    .parameter(0)
+    .toEqualTypeOf<
       | readonly ['invoice1', 'invoice2']
       | readonly ['post1', 'post2']
       | {

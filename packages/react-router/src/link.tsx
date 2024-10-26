@@ -232,10 +232,10 @@ export interface MaskOptions<
 }
 
 export type ToMaskOptions<
-  TRouteTree extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TMaskFrom extends string = string,
   TMaskTo extends string = '.',
-> = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
+> = ToSubOptions<TRouter, TMaskFrom, TMaskTo> & {
   unmaskOnReload?: boolean
 }
 
@@ -643,7 +643,10 @@ export function useLinkProps<
   }, [to])
 
   // subscribe to search params to re-build location if it changes
-  const currentSearch = useRouterState({ select: (s) => s.location.search })
+  const currentSearch = useRouterState({
+    select: (s) => s.location.search,
+    structuralSharing: true,
+  })
 
   const next = React.useMemo(
     () => router.buildLocation(options as any),

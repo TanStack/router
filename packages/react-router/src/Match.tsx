@@ -120,9 +120,10 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       return {
         routeId,
         matchIndex,
-        match: pick(match, ['id', 'status', 'error', 'loadPromise']),
+        match: pick(match, ['id', 'status', 'error']),
       }
     },
+    structuralSharing: true,
   })
 
   const route = router.routesById[routeId]!
@@ -180,7 +181,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     //   false,
     //   'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
     // )
-    throw match.loadPromise
+    throw router.getMatch(match.id)?.loadPromise
   }
 
   if (match.status === 'error') {
@@ -237,7 +238,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }, pendingMinMs)
       }
     }
-    throw match.loadPromise
+    throw router.getMatch(match.id)?.loadPromise
   }
 
   return (
@@ -259,7 +260,7 @@ export const Outlet = React.memo(function OutletImpl() {
 
   const route = router.routesById[routeId]!
 
-  const { parentGlobalNotFound } = useRouterState({
+  const parentGlobalNotFound = useRouterState({
     select: (s) => {
       const matches = s.matches
       const parentMatch = matches.find((d) => d.id === matchId)
@@ -267,9 +268,7 @@ export const Outlet = React.memo(function OutletImpl() {
         parentMatch,
         `Could not find parent match for matchId "${matchId}"`,
       )
-      return {
-        parentGlobalNotFound: parentMatch.globalNotFound,
-      }
+      return parentMatch.globalNotFound
     },
   })
 

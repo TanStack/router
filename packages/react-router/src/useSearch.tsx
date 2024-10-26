@@ -1,36 +1,43 @@
 import { useMatch } from './useMatch'
+import type { StructuralSharingOption } from './structuralSharing'
 import type { AnyRoute } from './route'
 import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
-import type { RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter } from './router'
 import type { Constrain, Expand, StrictOrFrom } from './utils'
 
 export type UseSearchOptions<
+  TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
   TSearch,
   TSelected,
 > = StrictOrFrom<TFrom, TStrict> & {
-  select?: (search: TSearch) => TSelected
-}
+  select?: (state: TSearch) => TSelected
+} & StructuralSharingOption<TRouter, TSelected>
 
 export function useSearch<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRouteTree extends AnyRoute = TRouter['routeTree'],
   TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSearch = TStrict extends false
     ? FullSearchSchema<TRouteTree>
     : Expand<RouteById<TRouteTree, TFrom>['types']['fullSearchSchema']>,
-  TSelected = TSearch,
+  TSelected = unknown,
+  TReturn = unknown extends TSelected ? TSearch : TSelected,
 >(
   opts: UseSearchOptions<
+    TRouter,
     Constrain<TFrom, RouteIds<TRouteTree>>,
     TStrict,
     TSearch,
     TSelected
   >,
-): TSelected {
+): TReturn {
   return useMatch({
-    ...opts,
+    from: opts.from!,
+    strict: opts.strict,
+    structuralSharing: opts.structuralSharing,
     select: (match) => {
       return opts.select ? opts.select(match.search) : match.search
     },

@@ -16,6 +16,7 @@ const invoicesRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
+// eslint-disable-next-line unused-imports/no-unused-vars
 const defaultRouter = createRouter({ routeTree })
 
 type DefaultRouter = typeof defaultRouter
@@ -27,12 +28,13 @@ describe('useMatch', () => {
   test('return type is `RouteMatch` when shouldThrow = true', () => {
     const shouldThrow = true
     const match = useMatch<
+      DefaultRouter,
       DefaultRouter['routeTree'],
       typeof from,
-      true,
+      true, // TStrict
+      typeof shouldThrow,
       TRouteMatch,
-      TRouteMatch,
-      typeof shouldThrow
+      TRouteMatch
     >({ from, shouldThrow })
 
     expectTypeOf(match).toEqualTypeOf<TRouteMatch>()
@@ -41,12 +43,13 @@ describe('useMatch', () => {
   test('return type is `RouteMatch | undefined` when shouldThrow = false', () => {
     const shouldThrow = false
     const match = useMatch<
+      DefaultRouter,
       DefaultRouter['routeTree'],
       typeof from,
-      true,
+      true, // TStrict
+      typeof shouldThrow,
       TRouteMatch,
-      TRouteMatch,
-      typeof shouldThrow
+      TRouteMatch
     >({ from, shouldThrow })
 
     expectTypeOf(match).toEqualTypeOf<TRouteMatch | undefined>()
