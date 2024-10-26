@@ -24,6 +24,9 @@ export function Transitioner() {
     routerState.isLoading || isTransitioning || hasPendingMatches
   const previousIsAnyPending = usePrevious(isAnyPending)
 
+  const isPagePending = routerState.isLoading || hasPendingMatches
+  const previousIsPagePending = usePrevious(isPagePending)
+
   if (!router.isServer) {
     router.startReactTransition = startReactTransition_
   }
@@ -91,6 +94,22 @@ export function Transitioner() {
       })
     }
   }, [previousIsLoading, router, routerState.isLoading])
+
+  useLayoutEffect(() => {
+    // emit onBeforePageMount
+    if (previousIsPagePending && !isPagePending) {
+      const toLocation = router.state.location
+      const fromLocation = router.state.resolvedLocation
+      const pathChanged = fromLocation.href !== toLocation.href
+
+      router.emit({
+        type: 'onBeforePageMount',
+        fromLocation,
+        toLocation,
+        pathChanged,
+      })
+    }
+  }, [isPagePending, previousIsPagePending, router])
 
   useLayoutEffect(() => {
     // The router was pending and now it's not
