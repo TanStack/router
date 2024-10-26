@@ -1,4 +1,4 @@
-import { act, useEffect } from 'react'
+import { act, useEffect, useLayoutEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -520,6 +520,142 @@ describe('router emits events during rendering', () => {
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
     unsub()
+  })
+
+  it('during initial load, should emit the "onBeforePageMount" and "onResolved" events in the correct order', async () => {
+    const mockBeforePageMount = vi.fn()
+    const mockOnResolved = vi.fn()
+
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    // Subscribe to the events
+    const unsubBeforeMount = router.subscribe(
+      'onBeforePageMount',
+      mockBeforePageMount,
+    )
+    const unsubResolved = router.subscribe('onResolved', mockOnResolved)
+
+    await act(() => router.load())
+    render(<RouterProvider router={router} />)
+
+    // Ensure the "onBeforePageMount" event was called once
+    await waitFor(() => expect(mockBeforePageMount).toBeCalledTimes(1))
+
+    // Ensure the "onResolved" event was also called once
+    await waitFor(() => expect(mockOnResolved).toBeCalledTimes(1))
+
+    // Check if the invocation call orders are defined before comparing
+    const beforePageMountOrder = mockBeforePageMount.mock.invocationCallOrder[0]
+    const onResolvedOrder = mockOnResolved.mock.invocationCallOrder[0]
+
+    if (beforePageMountOrder !== undefined && onResolvedOrder !== undefined) {
+      expect(beforePageMountOrder).toBeLessThan(onResolvedOrder)
+    } else {
+      throw new Error('onBeforePageMount should be emitted before onResolved.')
+    }
+
+    unsubBeforeMount()
+    unsubResolved()
+  })
+
+  it('during initial load, should emit the "onBeforePageMount" event before route component\'s useLayoutEffect setup', async () => {
+    const mockBeforePageMount = vi.fn()
+    const mockUseLayoutEffectSetup = vi.fn()
+
+    const rootRoute = createRootRoute()
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        useLayoutEffect(() => {
+          mockUseLayoutEffectSetup()
+          console.log('useLayoutEffect in index component')
+        }, [])
+
+        return (
+          <>
+            <h1>Index</h1>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const unsubBeforeMount = router.subscribe(
+      'onBeforePageMount',
+      mockBeforePageMount,
+    )
+
+    await act(() => router.load())
+
+    render(<RouterProvider router={router} />)
+
+    // Ensure the "onBeforePageMount" event was called once
+    await waitFor(() => expect(mockBeforePageMount).toBeCalledTimes(1))
+
+    await waitFor(() => expect(mockUseLayoutEffectSetup).toBeCalledTimes(1))
+
+    // Check if the invocation call orders are defined before comparing
+    const beforePageMountOrder = mockBeforePageMount.mock.invocationCallOrder[0]
+    const useLayoutEffectOrder =
+      mockUseLayoutEffectSetup.mock.invocationCallOrder[0]
+
+    if (
+      beforePageMountOrder !== undefined &&
+      useLayoutEffectOrder !== undefined
+    ) {
+      expect(beforePageMountOrder).toBeLessThan(useLayoutEffectOrder)
+    } else {
+      throw new Error(
+        '"onBeforePageMount" should be emitted before page\'s useLayoutEffect setup',
+      )
+    }
+
+    unsubBeforeMount()
+  })
+
+  it('after a navigation, should have emitted the "onBeforePageMount" event twice', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const mockBeforePageMount = vi.fn()
+    const mockOnResolved = vi.fn()
+
+    const unsubBeforePageMount = router.subscribe(
+      'onBeforePageMount',
+      mockBeforePageMount,
+    )
+    const unsubResolved = router.subscribe('onResolved', mockOnResolved)
+
+    await act(() => router.load())
+
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({
+        to: '/parent/child',
+      }),
+    )
+
+    await waitFor(() => expect(mockBeforePageMount).toBeCalledTimes(2))
+    await waitFor(() => expect(mockOnResolved).toBeCalledTimes(2))
+
+    // Check if the invocation call orders are defined before comparing
+    const beforePageMountOrders = mockBeforePageMount.mock.invocationCallOrder
+    const onResolvedOrders = mockOnResolved.mock.invocationCallOrder
+
+    expect(beforePageMountOrders[0]).toBeLessThan(onResolvedOrders[0] ?? 0)
+    expect(beforePageMountOrders[1]).toBeLessThan(onResolvedOrders[1] ?? 0)
+
+    unsubBeforePageMount()
+    unsubResolved()
   })
 })
 
