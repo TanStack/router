@@ -330,7 +330,7 @@ export interface UpdatableRouteOptions<
   component?: RouteComponent
   errorComponent?: false | null | ErrorRouteComponent
   notFoundComponent?: NotFoundRouteComponent
-  pendingComponent?: RouteComponent
+  pendingComponent?: RouteComponent | 'never'
   pendingMs?: number
   pendingMinMs?: number
   staleTime?: number
