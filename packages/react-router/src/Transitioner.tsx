@@ -100,7 +100,7 @@ export function Transitioner() {
     if (previousIsPagePending && !isPagePending) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.href !== toLocation.href
+      const pathChanged = fromLocation.pathname !== toLocation.pathname
 
       router.emit({
         type: 'onBeforeRouteMount',
