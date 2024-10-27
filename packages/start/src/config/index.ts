@@ -321,6 +321,11 @@ export function defineConfig(
                     {}),
                   noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
                 },
+                optimizeDeps: {
+                  ...(getUserConfig(opts.vite).userConfig.optimizeDeps || {}),
+                  ...(getUserConfig(opts.routers?.api?.vite).userConfig.optimizeDeps || {}),
+                  entries: [],
+                }
               }),
               TanStackRouterVite({
                 ...tsrConfig,
@@ -471,9 +476,12 @@ function withStartPlugins(
           ...(routerUserConfig.ssr || {}),
           noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
         },
-        // optimizeDeps: {
-        //   include: ['@tanstack/start/server-runtime'],
-        // },
+        optimizeDeps: {
+          ...(userConfig.optimizeDeps || {}),
+          ...(routerUserConfig.optimizeDeps || {}),
+          entries: [],
+          // include: ['@tanstack/start/server-runtime'],
+        },
       }),
       TanStackRouterVite({
         ...tsrConfig,
@@ -650,7 +658,8 @@ function tsrRoutesManifest(opts: {
           }
         }
 
-        recurseRoute(routes.__root__!)
+        // @ts-expect-error
+        recurseRoute(routes.__root__)
 
         const routesManifest = {
           routes,
