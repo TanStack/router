@@ -24,46 +24,55 @@ import { Route as PostsPostIdDeepImport } from './routes/posts/$postId/deep'
 // Create/Update Routes
 
 const PostsRouteRoute = PostsRouteImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
 const BlogRouteRoute = BlogRouteImport.update({
+  id: '/blog',
   path: '/blog',
   getParentRoute: () => rootRoute,
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PostsIndexRoute = PostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => PostsRouteRoute,
 } as any)
 
 const BlogIndexRoute = BlogIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => BlogRouteRoute,
 } as any)
 
 const BlogStatsRoute = BlogStatsImport.update({
+  id: '/blog_/stats',
   path: '/blog/stats',
   getParentRoute: () => rootRoute,
 } as any)
 
 const BlogSlugRoute = BlogSlugImport.update({
+  id: '/$slug',
   path: '/$slug',
   getParentRoute: () => BlogRouteRoute,
 } as any)
 
 const PostsPostIdIndexRoute = PostsPostIdIndexImport.update({
+  id: '/$postId/',
   path: '/$postId/',
   getParentRoute: () => PostsRouteRoute,
 } as any)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+  id: '/$postId/deep',
   path: '/$postId/deep',
   getParentRoute: () => PostsRouteRoute,
 } as any)
@@ -100,8 +109,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugImport
       parentRoute: typeof BlogRouteImport
     }
-    '/blog/stats': {
-      id: '/blog/stats'
+    '/blog_/stats': {
+      id: '/blog_/stats'
       path: '/blog/stats'
       fullPath: '/blog/stats'
       preLoaderRoute: typeof BlogStatsImport
@@ -198,7 +207,7 @@ export interface FileRoutesById {
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
-  '/blog/stats': typeof BlogStatsRoute
+  '/blog_/stats': typeof BlogStatsRoute
   '/blog/': typeof BlogIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
@@ -232,7 +241,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/posts'
     | '/blog/$slug'
-    | '/blog/stats'
+    | '/blog_/stats'
     | '/blog/'
     | '/posts/'
     | '/posts/$postId/deep'
@@ -269,7 +278,7 @@ export const routeTree = rootRoute
         "/",
         "/blog",
         "/posts",
-        "/blog/stats"
+        "/blog_/stats"
       ]
     },
     "/": {
@@ -294,7 +303,7 @@ export const routeTree = rootRoute
       "filePath": "blog/$slug.tsx",
       "parent": "/blog"
     },
-    "/blog/stats": {
+    "/blog_/stats": {
       "filePath": "blog_/stats.tsx"
     },
     "/blog/": {

@@ -23,16 +23,19 @@ import { Route as AuthedPostsPostIdImport } from './routes/_authed/posts.$postId
 // Create/Update Routes
 
 const SignupRoute = SignupImport.update({
+  id: '/signup',
   path: '/signup',
   getParentRoute: () => rootRoute,
 } as any)
 
 const LogoutRoute = LogoutImport.update({
+  id: '/logout',
   path: '/logout',
   getParentRoute: () => rootRoute,
 } as any)
 
 const LoginRoute = LoginImport.update({
+  id: '/login',
   path: '/login',
   getParentRoute: () => rootRoute,
 } as any)
@@ -43,21 +46,25 @@ const AuthedRoute = AuthedImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const AuthedPostsRoute = AuthedPostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => AuthedRoute,
 } as any)
 
 const AuthedPostsIndexRoute = AuthedPostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => AuthedPostsRoute,
 } as any)
 
 const AuthedPostsPostIdRoute = AuthedPostsPostIdImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => AuthedPostsRoute,
 } as any)

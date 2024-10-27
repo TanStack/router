@@ -10,8 +10,8 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.59.13",
-    "@tanstack/react-query-devtools": "^5.59.13",
+    "@tanstack/react-query": "^5.59.15",
+    "@tanstack/react-query-devtools": "^5.59.15",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "react": "^18.2.0",
@@ -19,10 +19,10 @@
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.0",
+    "@playwright/test": "^1.48.1",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.3.2",
-    "vite": "^5.4.8"
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^5.4.9"
   }
 }

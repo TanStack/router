@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/create-router",
-  "version": "1.70.1",
+  "version": "1.77.3",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -40,7 +40,7 @@
     "commander": "^12.1.0",
     "cross-spawn": "^7.0.3",
     "fast-glob": "^3.3.2",
-    "picocolors": "^1.1.0",
+    "picocolors": "^1.1.1",
     "unbuild": "^2.0.0",
     "validate-npm-package-name": "^5.0.1",
     "yocto-spinner": "^0.1.1"

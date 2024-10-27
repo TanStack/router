@@ -26,26 +26,31 @@ const AuthedRoute = AuthedImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const AuthedPostsRoute = AuthedPostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => AuthedRoute,
 } as any)
 
 const AuthedPostsIndexRoute = AuthedPostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => AuthedPostsRoute,
 } as any)
 
 const AuthedProfileSplatRoute = AuthedProfileSplatImport.update({
+  id: '/profile/$',
   path: '/profile/$',
   getParentRoute: () => AuthedRoute,
 } as any)
 
 const AuthedPostsPostIdRoute = AuthedPostsPostIdImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => AuthedPostsRoute,
 } as any)

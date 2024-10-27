@@ -88,6 +88,7 @@ export type LinkOptions<
     exact?: boolean
     includeHash?: boolean
     includeSearch?: boolean
+    explicitUndefined?: boolean
   }
   // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
   preload?: false | 'intent'
@@ -282,6 +283,10 @@ export interface ActiveOptions {
   // If true, the link will only be active if the current URL search params inclusively match the `search` prop
   // Defaults to `true`
   includeSearch?: boolean
+  // This modifies the `includeSearch` behavior.
+  // If true,  properties in `search` that are explicitly `undefined` must NOT be present in the current URL search params for the link to be active.
+  // defaults to `false`
+  explicitUndefined?: boolean
 }
 ```
 

@@ -20,26 +20,31 @@ import { Route as PostsPostIdImport } from './routes/posts/$postId'
 // Create/Update Routes
 
 const PostsRoute = PostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
 const ErrorRoute = ErrorImport.update({
+  id: '/error',
   path: '/error',
   getParentRoute: () => rootRoute,
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PostsIndexRoute = PostsIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)

@@ -37,11 +37,13 @@ const ExpensiveIndexLazyImport = createFileRoute('/expensive/')()
 // Create/Update Routes
 
 const LoginRoute = LoginImport.update({
+  id: '/login',
   path: '/login',
   getParentRoute: () => rootRoute,
 } as any)
 
 const DashboardRoute = DashboardImport.update({
+  id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRoute,
 } as any)
@@ -57,11 +59,13 @@ const AuthRoute = AuthImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const ExpensiveIndexLazyRoute = ExpensiveIndexLazyImport.update({
+  id: '/expensive/',
   path: '/expensive/',
   getParentRoute: () => rootRoute,
 } as any).lazy(() =>
@@ -69,58 +73,69 @@ const ExpensiveIndexLazyRoute = ExpensiveIndexLazyImport.update({
 )
 
 const DashboardIndexRoute = DashboardIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 const DashboardUsersRoute = DashboardUsersImport.update({
+  id: '/users',
   path: '/users',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 const DashboardInvoicesRoute = DashboardInvoicesImport.update({
+  id: '/invoices',
   path: '/invoices',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 const LayoutLayoutBRoute = LayoutLayoutBImport.update({
+  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutRoute,
 } as any)
 
 const LayoutLayoutARoute = LayoutLayoutAImport.update({
+  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutRoute,
 } as any)
 
 const AuthProfileRoute = AuthProfileImport.update({
+  id: '/profile',
   path: '/profile',
   getParentRoute: () => AuthRoute,
 } as any)
 
 const thisFolderIsNotInTheUrlRouteGroupRoute =
   thisFolderIsNotInTheUrlRouteGroupImport.update({
+    id: '/(this-folder-is-not-in-the-url)/route-group',
     path: '/route-group',
     getParentRoute: () => rootRoute,
   } as any)
 
 const DashboardUsersIndexRoute = DashboardUsersIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => DashboardUsersRoute,
 } as any)
 
 const DashboardInvoicesIndexRoute = DashboardInvoicesIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => DashboardInvoicesRoute,
 } as any)
 
 const DashboardUsersUserRoute = DashboardUsersUserImport.update({
+  id: '/user',
   path: '/user',
   getParentRoute: () => DashboardUsersRoute,
 } as any)
 
 const DashboardInvoicesInvoiceIdRoute = DashboardInvoicesInvoiceIdImport.update(
   {
+    id: '/$invoiceId',
     path: '/$invoiceId',
     getParentRoute: () => DashboardInvoicesRoute,
   } as any,
@@ -166,7 +181,7 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRoute
     }
     '/(this-folder-is-not-in-the-url)/route-group': {
-      id: '/route-group'
+      id: '/(this-folder-is-not-in-the-url)/route-group'
       path: '/route-group'
       fullPath: '/route-group'
       preLoaderRoute: typeof thisFolderIsNotInTheUrlRouteGroupImport
@@ -362,7 +377,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
-  '/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
+  '/(this-folder-is-not-in-the-url)/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
   '/_auth/profile': typeof AuthProfileRoute
   '/_layout/layout-a': typeof LayoutLayoutARoute
   '/_layout/layout-b': typeof LayoutLayoutBRoute
@@ -417,7 +432,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/dashboard'
     | '/login'
-    | '/route-group'
+    | '/(this-folder-is-not-in-the-url)/route-group'
     | '/_auth/profile'
     | '/_layout/layout-a'
     | '/_layout/layout-b'
@@ -470,7 +485,7 @@ export const routeTree = rootRoute
         "/_layout",
         "/dashboard",
         "/login",
-        "/route-group",
+        "/(this-folder-is-not-in-the-url)/route-group",
         "/expensive/"
       ]
     },
@@ -501,7 +516,7 @@ export const routeTree = rootRoute
     "/login": {
       "filePath": "login.tsx"
     },
-    "/route-group": {
+    "/(this-folder-is-not-in-the-url)/route-group": {
       "filePath": "(this-folder-is-not-in-the-url)/route-group.tsx"
     },
     "/_auth/profile": {

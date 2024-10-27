@@ -37,11 +37,13 @@ const ExpensiveIndexLazyImport = createFileRoute('/expensive/')()
 // Create/Update Routes
 
 const LoginRoute = LoginImport.update({
+  id: '/login',
   path: '/login',
   getParentRoute: () => rootRoute,
 } as any)
 
 const DashboardRoute = DashboardImport.update({
+  id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRoute,
 } as any)
@@ -57,11 +59,13 @@ const AuthRoute = AuthImport.update({
 } as any)
 
 const IndexRoute = IndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const ExpensiveIndexLazyRoute = ExpensiveIndexLazyImport.update({
+  id: '/expensive/',
   path: '/expensive/',
   getParentRoute: () => rootRoute,
 } as any).lazy(() =>
@@ -69,57 +73,68 @@ const ExpensiveIndexLazyRoute = ExpensiveIndexLazyImport.update({
 )
 
 const DashboardIndexRoute = DashboardIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 const FooBarRoute = FooBarImport.update({
+  id: '/foo/bar',
   path: '/foo/bar',
   getParentRoute: () => rootRoute,
 } as any)
 
 const DashboardUsersRoute = DashboardUsersImport.update({
+  id: '/users',
   path: '/users',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 const DashboardInvoicesRoute = DashboardInvoicesImport.update({
+  id: '/invoices',
   path: '/invoices',
   getParentRoute: () => DashboardRoute,
 } as any)
 
 const LayoutLayoutBRoute = LayoutLayoutBImport.update({
+  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutRoute,
 } as any)
 
 const LayoutLayoutARoute = LayoutLayoutAImport.update({
+  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutRoute,
 } as any)
 
 const AuthProfileRoute = AuthProfileImport.update({
+  id: '/profile',
   path: '/profile',
   getParentRoute: () => AuthRoute,
 } as any)
 
 const DashboardUsersIndexRoute = DashboardUsersIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => DashboardUsersRoute,
 } as any)
 
 const DashboardInvoicesIndexRoute = DashboardInvoicesIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => DashboardInvoicesRoute,
 } as any)
 
 const DashboardUsersUserRoute = DashboardUsersUserImport.update({
+  id: '/user',
   path: '/user',
   getParentRoute: () => DashboardUsersRoute,
 } as any)
 
 const DashboardInvoicesInvoiceIdRoute = DashboardInvoicesInvoiceIdImport.update(
   {
+    id: '/$invoiceId',
     path: '/$invoiceId',
     getParentRoute: () => DashboardInvoicesRoute,
   } as any,

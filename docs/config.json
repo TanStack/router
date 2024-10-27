@@ -345,6 +345,14 @@
             {
               "label": "With tRPC + React Query",
               "to": "framework/react/examples/with-trpc-react-query"
+            },
+            {
+              "label": "Monorepo basic",
+              "to": "framework/react/examples/router-monorepo-simple"
+            },
+            {
+              "label": "Monorepo with React Query",
+              "to": "framework/react/examples/router-monorepo-react-query"
             }
           ]
         }

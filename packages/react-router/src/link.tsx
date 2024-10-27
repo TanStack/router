@@ -9,6 +9,7 @@ import {
   functionalUpdate,
   useForwardedRef,
   useIntersectionObserver,
+  useLayoutEffect,
 } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
 import type { ParsedLocation } from './location'
@@ -470,6 +471,7 @@ export interface ActiveOptions {
   exact?: boolean
   includeHash?: boolean
   includeSearch?: boolean
+  explicitUndefined?: boolean
 }
 
 export type LinkOptions<
@@ -496,7 +498,7 @@ export interface LinkOptionsProps {
    * - `'intent'` - Preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
    * - `'viewport'` - Preload the linked route when it enters the viewport
    */
-  preload?: false | 'intent' | 'viewport'
+  preload?: false | 'intent' | 'viewport' | 'render'
   /**
    * When a preload strategy is set, this delays the preload by this many milliseconds.
    * If the user exits the link before this delay, the preload will be cancelled.
@@ -588,6 +590,7 @@ export function useLinkProps<
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
+  const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
 
   const {
@@ -616,6 +619,16 @@ export function useLinkProps<
     ignoreBlocker,
     ...rest
   } = options
+
+  const {
+    // prevent these from being returned
+    params: _params,
+    search: _search,
+    hash: _hash,
+    state: _state,
+    mask: _mask,
+    ...propsSafeToSpread
+  } = rest
 
   // If this link simply reloads the current route,
   // make sure it has a new key so it will trigger a data refresh
@@ -675,11 +688,10 @@ export function useLinkProps<
       }
 
       if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(
-          s.location.search,
-          next.search,
-          !activeOptions?.exact,
-        )
+        const searchTest = deepEqual(s.location.search, next.search, {
+          partial: !activeOptions?.exact,
+          ignoreUndefined: !activeOptions?.explicitUndefined,
+        })
         if (!searchTest) {
           return false
         }
@@ -712,12 +724,22 @@ export function useLinkProps<
     innerRef,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!disabled || preload !== 'viewport' },
+    { disabled: !!disabled || !(preload === 'viewport') },
   )
+
+  useLayoutEffect(() => {
+    if (hasRenderFetched.current) {
+      return
+    }
+    if (!disabled && preload === 'render') {
+      doPreload()
+      hasRenderFetched.current = true
+    }
+  }, [disabled, doPreload, preload])
 
   if (type === 'external') {
     return {
-      ...rest,
+      ...propsSafeToSpread,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       type,
       href: to,
@@ -837,7 +859,7 @@ export function useLinkProps<
   }
 
   return {
-    ...rest,
+    ...propsSafeToSpread,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
     href: disabled
@@ -864,8 +886,8 @@ export function useLinkProps<
   }
 }
 
-type UseLinkReactProps<TComp> = TComp extends keyof JSX.IntrinsicElements
-  ? JSX.IntrinsicElements[TComp]
+type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
+  ? React.JSX.IntrinsicElements[TComp]
   : React.PropsWithoutRef<
       TComp extends React.ComponentType<infer TProps> ? TProps : never
     > &
@@ -980,7 +1002,7 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    const { type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
+    const { type: _type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
 
     const children =
       typeof rest.children === 'function'

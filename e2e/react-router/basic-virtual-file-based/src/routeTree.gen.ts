@@ -27,6 +27,7 @@ import { Route as aImport } from './routes/a'
 // Create/Update Routes
 
 const postsPostsRoute = postsPostsImport.update({
+  id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
@@ -37,11 +38,13 @@ const layoutFirstLayoutRoute = layoutFirstLayoutImport.update({
 } as any)
 
 const homeRoute = homeImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const postsPostsDetailRoute = postsPostsDetailImport.update({
+  id: '/$postId',
   path: '/$postId',
   getParentRoute: () => postsPostsRoute,
 } as any)
@@ -52,36 +55,43 @@ const layoutSecondLayoutRoute = layoutSecondLayoutImport.update({
 } as any)
 
 const postsPostsHomeRoute = postsPostsHomeImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => postsPostsRoute,
 } as any)
 
 const ClassicHelloRouteRoute = ClassicHelloRouteImport.update({
+  id: '/classic/hello',
   path: '/classic/hello',
   getParentRoute: () => rootRoute,
 } as any)
 
 const ClassicHelloIndexRoute = ClassicHelloIndexImport.update({
+  id: '/',
   path: '/',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 
 const ClassicHelloWorldRoute = ClassicHelloWorldImport.update({
+  id: '/world',
   path: '/world',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 
 const ClassicHelloUniverseRoute = ClassicHelloUniverseImport.update({
+  id: '/universe',
   path: '/universe',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 
 const bRoute = bImport.update({
+  id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => layoutSecondLayoutRoute,
 } as any)
 
 const aRoute = aImport.update({
+  id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => layoutSecondLayoutRoute,
 } as any)

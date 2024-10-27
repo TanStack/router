@@ -521,6 +521,45 @@ describe('router emits events during rendering', () => {
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
     unsub()
   })
+
+  it('during initial load, should emit the "onBeforeRouteMount" and "onResolved" events in the correct order', async () => {
+    const mockOnBeforeRouteMount = vi.fn()
+    const mockOnResolved = vi.fn()
+
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    // Subscribe to the events
+    const unsubBeforeRouteMount = router.subscribe(
+      'onBeforeRouteMount',
+      mockOnBeforeRouteMount,
+    )
+    const unsubResolved = router.subscribe('onResolved', mockOnResolved)
+
+    await act(() => router.load())
+    render(<RouterProvider router={router} />)
+
+    // Ensure the "onBeforeRouteMount" event was called once
+    await waitFor(() => expect(mockOnBeforeRouteMount).toBeCalledTimes(1))
+
+    // Ensure the "onResolved" event was also called once
+    await waitFor(() => expect(mockOnResolved).toBeCalledTimes(1))
+
+    // Check if the invocation call orders are defined before comparing
+    const beforeRouteMountOrder =
+      mockOnBeforeRouteMount.mock.invocationCallOrder[0]
+    const onResolvedOrder = mockOnResolved.mock.invocationCallOrder[0]
+
+    if (beforeRouteMountOrder !== undefined && onResolvedOrder !== undefined) {
+      expect(beforeRouteMountOrder).toBeLessThan(onResolvedOrder)
+    } else {
+      throw new Error('onBeforeRouteMount should be emitted before onResolved.')
+    }
+
+    unsubBeforeRouteMount()
+    unsubResolved()
+  })
 })
 
 describe('router rendering stability', () => {
@@ -758,33 +797,6 @@ describe('search params in URL', () => {
     })
   })
 })
-
-/*
-  it('updates search params in URL upon initial load according to the result of validateSearch', async () => {
-    const { router } = createTestRouter({
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    await act(() => router.load())
-
-    router.state.matches.forEach((match) => {
-      expect(match.invalid).toBe(false)
-    })
-
-    await act(() => router.invalidate())
-
-    router.state.matches.forEach((match) => {
-      expect(match.invalid).toBe(false)
-    })
-
-    await act(() => router.load())
-
-    router.state.matches.forEach((match) => {
-      expect(match.invalid).toBe(false)
-    })
-  })
-})
-  */
 
 describe('route ids should be consistent after rebuilding the route tree', () => {
   it('should have the same route ids after rebuilding the route tree', async () => {

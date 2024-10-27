@@ -1,0 +1,35 @@
+{
+  "name": "@router-mono-simple/app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3001",
+    "build": "vite build && tsc --noEmit",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@router-mono-simple/post-feature": "workspace:*",
+    "@router-mono-simple/router": "workspace:*",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.3.3",
+    "@tanstack/router-devtools": "^1.77.3",
+    "typescript": "5.6.2",
+    "vite": "^5.4.9",
+    "vite-plugin-dts": "^4.2.4"
+  },
+  "nx": {
+    "targets": {
+      "dev": {
+        "dependsOn": [
+          "^build"
+        ]
+      }
+    }
+  }
+}
