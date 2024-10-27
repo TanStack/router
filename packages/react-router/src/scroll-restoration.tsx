@@ -135,47 +135,50 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
       }
     })
 
-    const unsubOnResolved = router.subscribe('onResolved', (event) => {
-      if (event.pathChanged) {
-        if (!router.resetNextScroll) {
-          return
-        }
+    const unsubOnBeforeRouteMount = router.subscribe(
+      'onBeforeRouteMount',
+      (event) => {
+        if (event.pathChanged) {
+          if (!router.resetNextScroll) {
+            return
+          }
 
-        router.resetNextScroll = true
+          router.resetNextScroll = true
 
-        const restoreKey = getKey(event.toLocation)
-        let windowRestored = false
+          const restoreKey = getKey(event.toLocation)
+          let windowRestored = false
 
-        for (const cacheKey in cache.state.cached) {
-          const entry = cache.state.cached[cacheKey]!
-          const [key, elementSelector] = cacheKey.split(delimiter)
-          if (key === restoreKey) {
-            if (elementSelector === windowKey) {
-              windowRestored = true
-              window.scrollTo(entry.scrollX, entry.scrollY)
-            } else if (elementSelector) {
-              const element = document.querySelector(elementSelector)
-              if (element) {
-                element.scrollLeft = entry.scrollX
-                element.scrollTop = entry.scrollY
+          for (const cacheKey in cache.state.cached) {
+            const entry = cache.state.cached[cacheKey]!
+            const [key, elementSelector] = cacheKey.split(delimiter)
+            if (key === restoreKey) {
+              if (elementSelector === windowKey) {
+                windowRestored = true
+                window.scrollTo(entry.scrollX, entry.scrollY)
+              } else if (elementSelector) {
+                const element = document.querySelector(elementSelector)
+                if (element) {
+                  element.scrollLeft = entry.scrollX
+                  element.scrollTop = entry.scrollY
+                }
               }
             }
           }
-        }
 
-        if (!windowRestored) {
-          window.scrollTo(0, 0)
-        }
+          if (!windowRestored) {
+            window.scrollTo(0, 0)
+          }
 
-        cache.set((c) => ({ ...c, next: {} }))
-        weakScrolledElements = new WeakSet<any>()
-      }
-    })
+          cache.set((c) => ({ ...c, next: {} }))
+          weakScrolledElements = new WeakSet<any>()
+        }
+      },
+    )
 
     return () => {
       document.removeEventListener('scroll', onScroll)
       unsubOnBeforeLoad()
-      unsubOnResolved()
+      unsubOnBeforeRouteMount()
     }
   }, [options?.getKey, router])
 }

@@ -609,6 +609,12 @@ export type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
   }
+  onBeforeRouteMount: {
+    type: 'onBeforeRouteMount'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
