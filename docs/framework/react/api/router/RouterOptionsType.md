@@ -52,7 +52,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 - If `false`, routes will not be preloaded by default in any way.
 - If `'intent'`, routes will be preloaded by default when the user hovers over a link or a `touchstart` event is detected on a `<Link>`.
 - If `'viewport'`, routes will be preloaded by default when they are within the viewport of the browser.
-- If `'render'`, routes will be preloaded by default when as soon as they are rendered on in the DOM.
+- If `'render'`, routes will be preloaded by default as soon as they are rendered in the DOM.
 
 ### `defaultPreloadDelay` property
 
