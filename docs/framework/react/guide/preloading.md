@@ -13,7 +13,8 @@ Preloading in TanStack Router is a way to load a route before the user actually 
   - Preloading by **"viewport**" works by using the Intersection Observer API to preload the dependencies for the destination route when the `<Link>` component is in the viewport.
   - This strategy is useful for preloading routes that are below the fold or off-screen.
 - Render
-  - **Coming soon!**
+  - Preloading by **"render"** works by preloading the dependencies for the destination route as soon as the `<Link>` component is rendered in the DOM.
+  - This strategy is useful for preloading routes that are always needed.
 
 ## How long does preloaded data stay in memory?
 
