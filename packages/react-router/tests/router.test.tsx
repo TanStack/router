@@ -1,4 +1,4 @@
-import { act, useEffect, useLayoutEffect } from 'react'
+import { act, useEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
