@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react'
+import React, { useLayoutEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Link,
@@ -50,9 +50,13 @@ const indexRoute = createRoute({
 })
 
 function IndexComponent() {
+  useLayoutEffect(() => {
+    window.invokeOrders.push('index-useLayoutEffect')
+  }, [])
+
   return (
     <div className="p-2">
-      <h3 id="greeting" style={{ backgroundColor: 'red' }}>
+      <h3 id="greeting" className="bg-red-600">
         Welcome Home!
       </h3>
       <HasShown id="top-message" />
@@ -78,6 +82,9 @@ const aboutRoute = createRoute({
 })
 
 function AboutComponent() {
+  useLayoutEffect(() => {
+    window.invokeOrders.push('about-useLayoutEffect')
+  }, [])
   return (
     <div className="p-2">
       <h3 id="greeting">Hello from About!</h3>
@@ -205,6 +212,20 @@ const routeTree = rootRoute.addChildren([
 
 const router = createRouter({ routeTree, defaultPreload: 'intent' })
 
+declare global {
+  interface Window {
+    invokeOrders: string[]
+  }
+}
+window.invokeOrders = []
+router.subscribe('onBeforePageMount', (event) => {
+  window.invokeOrders.push(event.type)
+})
+
+router.subscribe('onResolved', (event) => {
+  window.invokeOrders.push(event.type)
+})
+
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
@@ -214,9 +235,5 @@ declare module '@tanstack/react-router' {
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <RouterProvider router={router} />
-    </StrictMode>,
-  )
+  root.render(<RouterProvider router={router} />)
 }
