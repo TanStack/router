@@ -302,7 +302,6 @@ export const Route = createFileRoute('/shop/products/')({
 When using [ArkType](https://arktype.io/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [ArkType](https://arktype.io/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
 ```tsx
-import { arkTypeSearchValidator } from '@tanstack/router-arktype-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import { type } from 'arktype'
 
