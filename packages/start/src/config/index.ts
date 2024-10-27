@@ -323,9 +323,10 @@ export function defineConfig(
                 },
                 optimizeDeps: {
                   ...(getUserConfig(opts.vite).userConfig.optimizeDeps || {}),
-                  ...(getUserConfig(opts.routers?.api?.vite).userConfig.optimizeDeps || {}),
+                  ...(getUserConfig(opts.routers?.api?.vite).userConfig
+                    .optimizeDeps || {}),
                   entries: [],
-                }
+                },
               }),
               TanStackRouterVite({
                 ...tsrConfig,
