@@ -135,8 +135,8 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
       }
     })
 
-    const unsubOnBeforePageMount = router.subscribe(
-      'onBeforePageMount',
+    const unsubOnBeforeRouteMount = router.subscribe(
+      'onBeforeRouteMount',
       (event) => {
         if (event.pathChanged) {
           if (!router.resetNextScroll) {
@@ -178,7 +178,7 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
     return () => {
       document.removeEventListener('scroll', onScroll)
       unsubOnBeforeLoad()
-      unsubOnBeforePageMount()
+      unsubOnBeforeRouteMount()
     }
   }, [options?.getKey, router])
 }

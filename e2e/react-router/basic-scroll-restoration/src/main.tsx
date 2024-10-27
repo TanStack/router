@@ -218,7 +218,7 @@ declare global {
   }
 }
 window.invokeOrders = []
-router.subscribe('onBeforePageMount', (event) => {
+router.subscribe('onBeforeRouteMount', (event) => {
   window.invokeOrders.push(event.type)
 })
 

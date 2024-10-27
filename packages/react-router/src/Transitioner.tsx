@@ -96,14 +96,14 @@ export function Transitioner() {
   }, [previousIsLoading, router, routerState.isLoading])
 
   useLayoutEffect(() => {
-    // emit onBeforePageMount
+    // emit onBeforeRouteMount
     if (previousIsPagePending && !isPagePending) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.href !== toLocation.href
 
       router.emit({
-        type: 'onBeforePageMount',
+        type: 'onBeforeRouteMount',
         fromLocation,
         toLocation,
         pathChanged,

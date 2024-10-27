@@ -522,8 +522,8 @@ describe('router emits events during rendering', () => {
     unsub()
   })
 
-  it('during initial load, should emit the "onBeforePageMount" and "onResolved" events in the correct order', async () => {
-    const mockBeforePageMount = vi.fn()
+  it('during initial load, should emit the "onBeforeRouteMount" and "onResolved" events in the correct order', async () => {
+    const mockOnBeforeRouteMount = vi.fn()
     const mockOnResolved = vi.fn()
 
     const { router } = createTestRouter({
@@ -531,32 +531,33 @@ describe('router emits events during rendering', () => {
     })
 
     // Subscribe to the events
-    const unsubBeforeMount = router.subscribe(
-      'onBeforePageMount',
-      mockBeforePageMount,
+    const unsubBeforeRouteMount = router.subscribe(
+      'onBeforeRouteMount',
+      mockOnBeforeRouteMount,
     )
     const unsubResolved = router.subscribe('onResolved', mockOnResolved)
 
     await act(() => router.load())
     render(<RouterProvider router={router} />)
 
-    // Ensure the "onBeforePageMount" event was called once
-    await waitFor(() => expect(mockBeforePageMount).toBeCalledTimes(1))
+    // Ensure the "onBeforeRouteMount" event was called once
+    await waitFor(() => expect(mockOnBeforeRouteMount).toBeCalledTimes(1))
 
     // Ensure the "onResolved" event was also called once
     await waitFor(() => expect(mockOnResolved).toBeCalledTimes(1))
 
     // Check if the invocation call orders are defined before comparing
-    const beforePageMountOrder = mockBeforePageMount.mock.invocationCallOrder[0]
+    const beforeRouteMountOrder =
+      mockOnBeforeRouteMount.mock.invocationCallOrder[0]
     const onResolvedOrder = mockOnResolved.mock.invocationCallOrder[0]
 
-    if (beforePageMountOrder !== undefined && onResolvedOrder !== undefined) {
-      expect(beforePageMountOrder).toBeLessThan(onResolvedOrder)
+    if (beforeRouteMountOrder !== undefined && onResolvedOrder !== undefined) {
+      expect(beforeRouteMountOrder).toBeLessThan(onResolvedOrder)
     } else {
-      throw new Error('onBeforePageMount should be emitted before onResolved.')
+      throw new Error('onBeforeRouteMount should be emitted before onResolved.')
     }
 
-    unsubBeforeMount()
+    unsubBeforeRouteMount()
     unsubResolved()
   })
 })

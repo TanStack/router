@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('after a navigation, should have emitted "onBeforePageMount","onResolved" and useLayoutEffect setup in the correct order', async ({
+test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" and useLayoutEffect setup in the correct order', async ({
   page,
 }) => {
   // Navigate to the Home page
@@ -9,8 +9,8 @@ test('after a navigation, should have emitted "onBeforePageMount","onResolved" a
 
   let orders = await page.evaluate(() => window.invokeOrders)
 
-  expectItemOrder(orders, 'onBeforePageMount', 'onResolved')
-  expectItemOrder(orders, 'onBeforePageMount', 'index-useLayoutEffect')
+  expectItemOrder(orders, 'onBeforeRouteMount', 'onResolved')
+  expectItemOrder(orders, 'onBeforeRouteMount', 'index-useLayoutEffect')
 
   // Clear the invokeOrders array
   orders = await page.evaluate(() => {
@@ -24,8 +24,8 @@ test('after a navigation, should have emitted "onBeforePageMount","onResolved" a
 
   orders = await page.evaluate(() => window.invokeOrders)
 
-  expectItemOrder(orders, 'onBeforePageMount', 'onResolved')
-  expectItemOrder(orders, 'onBeforePageMount', 'about-useLayoutEffect')
+  expectItemOrder(orders, 'onBeforeRouteMount', 'onResolved')
+  expectItemOrder(orders, 'onBeforeRouteMount', 'about-useLayoutEffect')
 })
 
 function expectItemOrder<T>(array: T[], firstItem: T, secondItem: T) {

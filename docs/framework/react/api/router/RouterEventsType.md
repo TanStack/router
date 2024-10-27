@@ -25,8 +25,8 @@ type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
   }
-  onBeforePageMount: {
-    type: 'onBeforePageMount'
+  onBeforeRouteMount: {
+    type: 'onBeforeRouteMount'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
@@ -40,7 +40,7 @@ Once an event is emitted, the following properties will be present on the event 
 
 ### `type` property
 
-- Type: `onBeforeLoad | onLoad | onBeforePageMount | onResolved`
+- Type: `onBeforeLoad | onLoad | onBeforeRouteMount | onResolved`
 - The type of the event
 - This is useful for discriminating between events in a listener function.
 
