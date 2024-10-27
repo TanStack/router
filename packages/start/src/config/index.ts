@@ -322,10 +322,10 @@ export function defineConfig(
                   noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
                 },
                 optimizeDeps: {
+                  entries: [],
                   ...(getUserConfig(opts.vite).userConfig.optimizeDeps || {}),
                   ...(getUserConfig(opts.routers?.api?.vite).userConfig
                     .optimizeDeps || {}),
-                  entries: [],
                 },
               }),
               TanStackRouterVite({
@@ -478,9 +478,9 @@ function withStartPlugins(
           noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
         },
         optimizeDeps: {
+          entries: [],
           ...(userConfig.optimizeDeps || {}),
           ...(routerUserConfig.optimizeDeps || {}),
-          entries: [],
           // include: ['@tanstack/start/server-runtime'],
         },
       }),
