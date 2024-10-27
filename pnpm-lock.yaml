@@ -458,7 +458,7 @@ importers:
     devDependencies:
       '@playwright/test':
         specifier: ^1.45.3
-        version: 1.48.0
+        version: 1.48.1
       '@types/react':
         specifier: ^18.2.47
         version: 18.3.11
@@ -467,10 +467,10 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.2(vite@5.4.8(@types/node@22.7.4)(terser@5.31.1))
+        version: 4.3.3(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
       vite:
         specifier: ^5.3.5
-        version: 5.4.8(@types/node@22.7.4)(terser@5.31.1)
+        version: 5.4.9(@types/node@22.7.4)(terser@5.31.1)
 
   e2e/start/basic:
     dependencies:
@@ -2109,12 +2109,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.18
         version: 18.3.0
-      html-webpack-plugin:
-        specifier: ^5.6.0
-        version: 5.6.0(@rspack/core@1.0.10(@swc/helpers@0.5.13))(webpack@5.95.0)
-      swc-loader:
-        specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.7.35(@swc/helpers@0.5.13))(webpack@5.95.0)
       '@vitejs/plugin-react':
         specifier: ^4.3.3
         version: 4.3.3(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
