@@ -2560,7 +2560,7 @@ export class Router<
     return matches
   }
 
-  invalidate = <TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+  invalidate = <TRouter extends AnyRouter = typeof this>(opts?: {
     filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   }) => {
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
@@ -2596,7 +2596,7 @@ export class Router<
     return redirect
   }
 
-  clearCache = <TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+  clearCache = <TRouter extends AnyRouter = typeof this>(opts?: {
     filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   }) => {
     const filter = opts?.filter
