@@ -70,6 +70,7 @@ import type {
 import type {
   AnyRouteMatch,
   MakeRouteMatch,
+  MakeRouteMatchUnion,
   MatchRouteOptions,
 } from './Matches'
 import type { ParsedLocation } from './location'
@@ -2553,11 +2554,11 @@ export class Router<
     return matches
   }
 
-  invalidate = (opts?: {
-    filter?: (d: MakeRouteMatch<TRouteTree>) => boolean
+  invalidate = <TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+    filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   }) => {
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
-      if (opts?.filter?.(d) ?? true) {
+      if (opts?.filter?.(d as MakeRouteMatchUnion<TRouter>) ?? true) {
         return {
           ...d,
           invalid: true,
@@ -2589,15 +2590,17 @@ export class Router<
     return redirect
   }
 
-  clearCache = (opts?: {
-    filter?: (d: MakeRouteMatch<TRouteTree>) => boolean
+  clearCache = <TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+    filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   }) => {
     const filter = opts?.filter
     if (filter !== undefined) {
       this.__store.setState((s) => {
         return {
           ...s,
-          cachedMatches: s.cachedMatches.filter((m) => !filter(m)),
+          cachedMatches: s.cachedMatches.filter(
+            (m) => !filter(m as MakeRouteMatchUnion<TRouter>),
+          ),
         }
       })
     } else {
