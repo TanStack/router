@@ -11,7 +11,12 @@ import { rootRouteId } from './root'
 import type * as React from 'react'
 import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
-import type { MakeRouteMatch, MakeRouteMatchUnion, RouteMatch } from './Matches'
+import type {
+  MakeRouteMatch,
+  MakeRouteMatchFromRoute,
+  MakeRouteMatchUnion,
+  RouteMatch,
+} from './Matches'
 import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
@@ -591,7 +596,7 @@ export interface LoaderFnContext<
    * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
    **/
   navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
-  parentMatchPromise?: Promise<void>
+  parentMatchPromise?: Promise<MakeRouteMatchFromRoute<TParentRoute>>
   cause: 'preload' | 'enter' | 'stay'
   route: Route
 }

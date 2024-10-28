@@ -134,14 +134,17 @@ describe('loaders parentMatchPromise', () => {
       path: '/nested',
       loader: async () => {
         await sleep(WAIT_TIME)
+        return 'nested'
       },
       component: () => <Outlet />,
     })
     const fooRoute = createRoute({
       getParentRoute: () => nestedRoute,
       path: '/foo',
-      loader: ({ parentMatchPromise }) => {
+      loader: async ({ parentMatchPromise }) => {
         nestedLoaderMock(parentMatchPromise)
+        const parentMatch = await parentMatchPromise
+        expect(parentMatch?.loaderData).toBe('nested')
       },
       component: () => <div>Nested Foo page</div>,
     })
