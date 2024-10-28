@@ -2299,7 +2299,7 @@ export class Router<
             }
 
             const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
-            const matchPromises: Array<Promise<any>> = []
+            const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
             validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
               matchPromises.push(
@@ -2535,6 +2535,7 @@ export class Router<
                     loaderPromise: undefined,
                     invalid: false,
                   }))
+                  return this.getMatch(matchId)!
                 })(),
               )
             })
