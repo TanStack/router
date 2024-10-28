@@ -2299,7 +2299,7 @@ export class Router<
             }
 
             const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
-            const matchPromises: Array<Promise<any>> = []
+            const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
             validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
               matchPromises.push(
@@ -2535,6 +2535,7 @@ export class Router<
                     loaderPromise: undefined,
                     invalid: false,
                   }))
+                  return this.getMatch(matchId)!
                 })(),
               )
             })
@@ -2560,7 +2561,7 @@ export class Router<
     return matches
   }
 
-  invalidate = <TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+  invalidate = <TRouter extends AnyRouter = typeof this>(opts?: {
     filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   }) => {
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
@@ -2596,7 +2597,7 @@ export class Router<
     return redirect
   }
 
-  clearCache = <TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+  clearCache = <TRouter extends AnyRouter = typeof this>(opts?: {
     filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   }) => {
     const filter = opts?.filter

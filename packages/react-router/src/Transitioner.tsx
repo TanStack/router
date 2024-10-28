@@ -84,7 +84,7 @@ export function Transitioner() {
     if (previousIsLoading && !routerState.isLoading) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.href !== toLocation.href
+      const pathChanged = fromLocation.pathname !== toLocation.pathname
 
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
@@ -100,7 +100,7 @@ export function Transitioner() {
     if (previousIsPagePending && !isPagePending) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.href !== toLocation.href
+      const pathChanged = fromLocation.pathname !== toLocation.pathname
 
       router.emit({
         type: 'onBeforeRouteMount',
@@ -116,7 +116,7 @@ export function Transitioner() {
     if (previousIsAnyPending && !isAnyPending) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.href !== toLocation.href
+      const pathChanged = fromLocation.pathname !== toLocation.pathname
 
       router.emit({
         type: 'onResolved',
