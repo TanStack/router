@@ -238,6 +238,36 @@ function setTsrDefaults(config: TanStackStartDefineConfigOptions['tsr']) {
   }
 }
 
+function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
+  let ssrOptions: vite.SSROptions = {}
+  let noExternal: vite.SSROptions['noExternal'] = []
+  for (const option of options) {
+    if (!option) {
+      continue
+    }
+
+    if (option.noExternal) {
+      if (option.noExternal === true) {
+        noExternal = true
+      } else if (noExternal !== true) {
+        if (Array.isArray(option.noExternal)) {
+          noExternal.push(...option.noExternal)
+        } else {
+          noExternal.push(option.noExternal)
+        }
+      }
+    }
+
+    ssrOptions = {
+      ...ssrOptions,
+      ...option,
+      noExternal,
+    }
+  }
+
+  return ssrOptions
+}
+
 export function defineConfig(
   inlineConfig: TanStackStartDefineConfigOptions = {},
 ) {
@@ -315,12 +345,11 @@ export function defineConfig(
               config('start-vite', {
                 ...getUserConfig(opts.vite).userConfig,
                 ...getUserConfig(opts.routers?.api?.vite).userConfig,
-                ssr: {
-                  ...(getUserConfig(opts.vite).userConfig.ssr || {}),
-                  ...(getUserConfig(opts.routers?.api?.vite).userConfig.ssr ||
-                    {}),
-                  noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-                },
+                ssr: mergeSsrOptions([
+                  getUserConfig(opts.vite).userConfig.ssr,
+                  getUserConfig(opts.routers?.api?.vite).userConfig.ssr,
+                  { noExternal: ['@tanstack/start', 'tsr:routes-manifest'] },
+                ]),
                 optimizeDeps: {
                   entries: [],
                   ...(getUserConfig(opts.vite).userConfig.optimizeDeps || {}),
@@ -472,11 +501,11 @@ function withStartPlugins(
       config('start-vite', {
         ...userConfig,
         ...routerUserConfig,
-        ssr: {
-          ...(userConfig.ssr || {}),
-          ...(routerUserConfig.ssr || {}),
-          noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-        },
+        ssr: mergeSsrOptions([
+          userConfig.ssr,
+          routerUserConfig.ssr,
+          { noExternal: ['@tanstack/start', 'tsr:routes-manifest'] },
+        ]),
         optimizeDeps: {
           entries: [],
           ...(userConfig.optimizeDeps || {}),
