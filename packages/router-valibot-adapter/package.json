@@ -71,6 +71,6 @@
   },
   "peerDependencies": {
     "@tanstack/react-router": ">=1.43.2",
-    "valibot": "^1.0.0"
+    "valibot": "^1.0.0 || ^1.0.0-beta || ^1.0.0-rc"
   }
 }
