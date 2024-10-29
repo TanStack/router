@@ -100,6 +100,7 @@ export class FileRoute<
   >(
     options?: FileBaseRouteOptions<
       TParentRoute,
+      TId,
       TPath,
       TSearchValidator,
       TParams,
@@ -161,6 +162,7 @@ export function FileRouteLoader<
     TLoaderFn,
     RouteLoaderFn<
       TRoute['parentRoute'],
+      TRoute['types']['id'],
       TRoute['types']['params'],
       TRoute['types']['loaderDeps'],
       TRoute['types']['routerContext'],

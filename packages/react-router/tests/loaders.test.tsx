@@ -144,7 +144,7 @@ describe('loaders parentMatchPromise', () => {
       loader: async ({ parentMatchPromise }) => {
         nestedLoaderMock(parentMatchPromise)
         const parentMatch = await parentMatchPromise
-        expect(parentMatch?.loaderData).toBe('nested')
+        expect(parentMatch.loaderData).toBe('nested')
       },
       component: () => <div>Nested Foo page</div>,
     })
