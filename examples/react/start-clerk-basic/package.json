@@ -9,7 +9,7 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.4.15",
+    "@clerk/tanstack-start": "0.4.17",
     "@tanstack/react-router": "^1.77.6",
     "@tanstack/router-devtools": "^1.77.6",
     "@tanstack/start": "^1.77.6",
