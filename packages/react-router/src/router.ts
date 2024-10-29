@@ -2310,7 +2310,7 @@ export class Router<
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
                   } else {
-                    const parentMatchPromise = matchPromises[index - 1]
+                    const parentMatchPromise = matchPromises[index - 1] as any
                     const route = this.looseRoutesById[routeId]!
 
                     const getLoaderContext = (): LoaderFnContext => {
