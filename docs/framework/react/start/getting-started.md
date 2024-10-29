@@ -74,7 +74,7 @@ We'll then update our `package.json` to reference the new Vinxi entry point and 
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start"
-  },
+  }
 }
 ```
 
