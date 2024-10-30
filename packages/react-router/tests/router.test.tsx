@@ -306,6 +306,37 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       'framework/react/guide/file-based-routing tanstack',
     )
   })
+
+  it('params.slug should be encoded in the final URL', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
+    )
+
+    expect(router.state.location.pathname).toBe('/posts/%40jane')
+  })
+
+  it('params.slug should be encoded in the final URL except characters in pathParamsAllowedCharacters', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      pathParamsAllowedCharacters: ['@'],
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
+    )
+
+    expect(router.state.location.pathname).toBe('/posts/@jane')
+  })
 })
 
 describe('encoding: URL splat segment for /$', () => {

@@ -286,3 +286,9 @@ const router = createRouter({
 - Optional
 - Defaults to `never`
 - Configures how trailing slashes are treated. `'always'` will add a trailing slash if not present, `'never'` will remove the trailing slash if present and `'preserve'` will not modify the trailing slash.
+
+### `pathParamsAllowedCharacters` property
+
+- Type: `Array<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
+- Optional
+- Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
