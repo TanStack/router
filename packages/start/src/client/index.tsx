@@ -19,8 +19,8 @@ export {
 export {
   createMiddleware,
   type ParseMiddlewares,
-  type ResolveAllMiddlewareInput,
-  type ResolveAllMiddlewareOutput,
+  type MergeAllValidatorInputs as ResolveAllMiddlewareInput,
+  type MergeAllValidatorOutputs as ResolveAllMiddlewareOutput,
   type MiddlewareServerFn as MiddlewareUseFn,
   type AnyMiddleware,
   type MiddlewareOptions,
@@ -28,8 +28,8 @@ export {
   type MiddlewareInput,
   type MiddlewareServer as MiddlewareUse,
   type MiddlewareWithServer as MiddlewareWithUse,
-  type MiddlewareWithMiddleware,
-  type Middleware,
+  type MiddlewareWithClientAndServer,
+  type MiddlewareWithAll,
 } from './createMiddleware'
 export { serverOnly } from './serverOnly'
 export { DehydrateRouter } from './DehydrateRouter'

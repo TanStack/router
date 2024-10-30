@@ -2,9 +2,10 @@ import invariant from 'tiny-invariant'
 import { mergeHeaders } from './headers'
 import type {
   AnyMiddleware,
-  ResolveAllMiddlewareInput,
-  ResolveAllMiddlewareOutput,
-  ResolveAllMiddlewareServerContext,
+  MergeAllServerContext,
+  MergeAllValidatorInputs,
+  MergeAllValidatorOutputs,
+  ResolveAllValidators,
 } from './createMiddleware'
 import type { AnyValidator, Constrain } from '@tanstack/react-router'
 
@@ -34,18 +35,23 @@ export type Fetcher<TMiddlewares, TValidator, TResponse> = {
   }) => Promise<unknown>
 } & FetcherImpl<TMiddlewares, TValidator, TResponse>
 
-export type FetcherImpl<
+export type IsDataOptional<TMiddlewares, TValidator> = ResolveAllValidators<
   TMiddlewares,
-  TValidator,
-  TResponse,
-  TInput = ResolveAllMiddlewareInput<TMiddlewares, TValidator>,
-> = undefined extends TInput
-  ? (
-      opts?: OptionalFetcherDataOptions<TInput>,
-    ) => Promise<FetcherData<TResponse>>
-  : (
-      opts: RequiredFetcherDataOptions<TInput>,
-    ) => Promise<FetcherData<TResponse>>
+  TValidator
+>
+
+export type FetcherImpl<TMiddlewares, TValidator, TResponse> =
+  undefined extends MergeAllValidatorInputs<TMiddlewares, TValidator>
+    ? (
+        opts?: OptionalFetcherDataOptions<
+          MergeAllValidatorInputs<TMiddlewares, TValidator>
+        >,
+      ) => Promise<FetcherData<TResponse>>
+    : (
+        opts: RequiredFetcherDataOptions<
+          MergeAllValidatorInputs<TMiddlewares, TValidator>
+        >,
+      ) => Promise<FetcherData<TResponse>>
 
 export type FetcherBaseOptions = {
   headers?: HeadersInit
@@ -85,8 +91,8 @@ export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
 
 export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
   method: TMethod
-  input: ResolveAllMiddlewareOutput<TMiddlewares, TValidator>
-  context: ResolveAllMiddlewareServerContext<TMiddlewares>
+  input: MergeAllValidatorOutputs<TMiddlewares, TValidator>
+  context: MergeAllServerContext<TMiddlewares>
 }
 
 export type CompiledFetcherFn<TResponse> = {

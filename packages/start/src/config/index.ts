@@ -296,12 +296,8 @@ export function defineConfig(
             ...tsrConfig.experimental,
           },
         }),
-        TanStackStartVite({
-          env: 'client',
-        }),
-        TanStackStartViteDeadCodeElimination({
-          env: 'client',
-        }),
+        TanStackStartVite(),
+        TanStackStartViteDeadCodeElimination(),
       ])({
         name: 'client',
         type: 'client',
@@ -395,12 +391,8 @@ export function defineConfig(
             ...tsrConfig.experimental,
           },
         }),
-        TanStackStartVite({
-          env: 'server',
-        }),
-        TanStackStartViteDeadCodeElimination({
-          env: 'server',
-        }),
+        TanStackStartVite(),
+        TanStackStartViteDeadCodeElimination(),
       ])({
         name: 'ssr',
         type: 'http',
@@ -456,12 +448,8 @@ export function defineConfig(
             ...tsrConfig.experimental,
           },
         }),
-        TanStackStartVite({
-          env: 'server',
-        }),
-        TanStackStartViteDeadCodeElimination({
-          env: 'server',
-        }),
+        TanStackStartVite(),
+        TanStackStartViteDeadCodeElimination(),
       ])({
         name: 'server',
         type: 'http',

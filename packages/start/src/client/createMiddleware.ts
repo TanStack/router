@@ -15,75 +15,81 @@ export type ParseMiddlewares<
   TAcc = never,
 > = unknown extends TMiddlewares
   ? TAcc
-  : undefined extends TMiddlewares
+  : [] extends TMiddlewares
     ? TAcc
-    : [] extends TMiddlewares
-      ? TAcc
-      : TMiddlewares extends ReadonlyArray<AnyMiddleware>
-        ? TMiddlewares[number] extends infer TMiddleware extends AnyMiddleware
-          ? TMiddleware extends any
-            ? ParseMiddlewares<
-                TMiddleware['_types']['middleware'],
-                TAcc | TMiddleware
-              >
-            : TAcc
+    : TMiddlewares extends ReadonlyArray<AnyMiddleware>
+      ? TMiddlewares[number] extends infer TMiddleware extends AnyMiddleware
+        ? TMiddleware extends any
+          ? ParseMiddlewares<
+              TMiddleware['_types']['middlewares'],
+              TAcc | TMiddleware
+            >
           : TAcc
         : TAcc
+      : TAcc
 
-export type NonNullableIfNotEmpty<T> = [T] extends [undefined]
-  ? undefined
-  : NonNullable<T>
+export type ResolveAllMiddlewareServerContext<
+  TMiddlewares,
+  TContext = undefined,
+> = ParseMiddlewares<TMiddlewares>['_types']['serverContext'] | TContext
 
 /**
  * Recursively resolve the server context type produced by a sequence of middleware
  */
-export type ResolveAllMiddlewareServerContext<
-  TMiddlewares,
-  TContext = undefined,
-> = Expand<
+export type MergeAllServerContext<TMiddlewares, TContext = undefined> = Expand<
   MergeAll<
-    NonNullableIfNotEmpty<
-      ParseMiddlewares<TMiddlewares>['_types']['serverContext'] | TContext
-    >
+    ResolveAllMiddlewareServerContext<TMiddlewares, TContext> extends undefined
+      ? undefined
+      : NonNullable<ResolveAllMiddlewareServerContext<TMiddlewares, TContext>>
   >
 >
+
+export type ResolveAllMiddlewareClientContext<
+  TMiddlewares,
+  TContext = undefined,
+> = ParseMiddlewares<TMiddlewares>['_types']['clientContext'] | TContext
 
 /**
  * Recursively resolve the client context type produced by a sequence of middleware
  */
-export type ResolveAllMiddlewareClientContext<
-  TMiddlewares,
-  TContext = undefined,
-> = Expand<
+export type MergeAllClientContext<TMiddlewares, TContext = undefined> = Expand<
   MergeAll<
-    NonNullableIfNotEmpty<
-      ParseMiddlewares<TMiddlewares>['_types']['clientContext'] | TContext
-    >
+    ResolveAllMiddlewareClientContext<TMiddlewares, TContext> extends undefined
+      ? undefined
+      : NonNullable<ResolveAllMiddlewareClientContext<TMiddlewares, TContext>>
   >
 >
+
+export type ResolveAllValidators<TMiddlewares, TValidator> =
+  | ParseMiddlewares<TMiddlewares>['_types']['validator']
+  | TValidator
+
+export type ResolveAllValidatorInputs<TMiddlewares, TValidator> =
+  ResolveAllValidators<TMiddlewares, TValidator> extends undefined
+    ? undefined
+    : ResolveValidatorInput<
+        NonNullable<ResolveAllValidators<TMiddlewares, TValidator>>
+      >
 
 /**
  * Recursively resolve the input type produced by a sequence of middleware
  */
-export type ResolveAllMiddlewareInput<TMiddlewares, TValidator> = Expand<
-  MergeAll<
-    NonNullableIfNotEmpty<
-      | ParseMiddlewares<TMiddlewares>['_types']['input']
-      | ResolveValidatorInput<TValidator>
-    >
-  >
+export type MergeAllValidatorInputs<TMiddlewares, TValidator> = Expand<
+  MergeAll<ResolveAllValidatorInputs<TMiddlewares, TValidator>>
 >
 
+export type ResolveAllValidatorOutputs<TMiddlewares, TValidator> =
+  ResolveAllValidators<TMiddlewares, TValidator> extends undefined
+    ? undefined
+    : ResolveValidatorOutput<
+        NonNullable<ResolveAllValidators<TMiddlewares, TValidator>>
+      >
+
 /**
- * Recursively resolve the output type produced by a sequence of middleware
+ * Recursively merge the output type produced by a sequence of middleware
  */
-export type ResolveAllMiddlewareOutput<TMiddlewares, TValidator> = Expand<
-  MergeAll<
-    NonNullableIfNotEmpty<
-      | ParseMiddlewares<TMiddlewares>['_types']['output']
-      | ResolveValidatorOutput<TValidator>
-    >
-  >
+export type MergeAllValidatorOutputs<TMiddlewares, TValidator> = Expand<
+  MergeAll<ResolveAllValidatorOutputs<TMiddlewares, TValidator>>
 >
 
 export interface MiddlewareOptions<
@@ -110,11 +116,8 @@ export type MiddlewareServerFn<
   TServerContext,
   TContext,
 > = (options: {
-  input: ResolveAllMiddlewareOutput<TMiddlewares, NonNullable<TValidator>>
-  context: ResolveAllMiddlewareServerContext<
-    TMiddlewares,
-    NonNullable<TServerContext>
-  >
+  input: MergeAllValidatorOutputs<TMiddlewares, NonNullable<TValidator>>
+  context: MergeAllServerContext<TMiddlewares, NonNullable<TServerContext>>
   next: <TContext = undefined>(ctx?: {
     context?: TContext
   }) => Promise<ServerResultWithContext<TContext>>
@@ -128,8 +131,8 @@ export type MiddlewareClientFn<
   TServerContext,
   TClientContext,
 > = (options: {
-  input: ResolveAllMiddlewareInput<TMiddlewares, NonNullable<TValidator>>
-  context: ResolveAllMiddlewareClientContext<TMiddlewares>
+  input: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
+  context: MergeAllClientContext<TMiddlewares>
   next: <TNewServerContext = undefined, TNewClientContext = undefined>(ctx?: {
     context?: TNewClientContext
     serverContext?: TNewServerContext
@@ -162,11 +165,12 @@ export interface MiddlewareTypes<
 > {
   _types: {
     id: TId
-    middleware: TMiddlewares
+    middlewares: TMiddlewares
     input: ResolveValidatorInput<TValidator>
     output: ResolveValidatorOutput<TValidator>
     clientContext: TClientContext
     serverContext: TServerContext
+    validator: TValidator
   }
   options: MiddlewareOptions<
     TMiddlewares,
@@ -185,7 +189,7 @@ export interface MiddlewareInput<
 > {
   input: <TNewValidator>(
     input: Constrain<TNewValidator, AnyValidator>,
-  ) => MiddlewareWithMiddleware<
+  ) => MiddlewareWithClientAndServer<
     TId,
     TMiddlewares,
     NonNullable<TInput> | TNewValidator,
@@ -212,8 +216,7 @@ export interface MiddlewareServer<
     TId,
     TMiddlewares,
     TValidator,
-    // Merge the current context with the new context
-    NonNullable<TServerContext> | TNewServerContext,
+    TServerContext | TNewServerContext,
     TClientContext
   >
 }
@@ -257,8 +260,8 @@ export interface MiddlewareClient<
     TId,
     TMiddlewares,
     TValidator,
-    NonNullable<TServerContext> | TNewServerContext,
-    NonNullable<TClientContext> | TNewClientContext
+    TServerContext | TNewServerContext,
+    TClientContext | TNewClientContext
   >
 }
 
@@ -283,7 +286,7 @@ export interface MiddlewareWithClient<
       TClientContext
     > {}
 
-export interface MiddlewareWithMiddleware<
+export interface MiddlewareWithClientAndServer<
   TId,
   TMiddlewares,
   TValidator,
@@ -311,13 +314,13 @@ export interface MiddlewareWithMiddleware<
       TClientContext
     > {}
 
-export interface Middleware<
+export interface MiddlewareWithAll<
   TId,
   TMiddlewares,
   TValidator,
   TServerContext,
   TClientContext,
-> extends MiddlewareWithMiddleware<
+> extends MiddlewareWithClientAndServer<
     TId,
     TMiddlewares,
     TValidator,
@@ -326,7 +329,7 @@ export interface Middleware<
   > {
   middleware: <const TNewMiddlewares>(
     middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => MiddlewareWithMiddleware<
+  ) => MiddlewareWithClientAndServer<
     TId,
     TNewMiddlewares,
     TValidator,
@@ -351,7 +354,13 @@ export function createMiddleware<
     TServerContext,
     TClientContext
   >,
-): Middleware<TId, TMiddlewares, TValidator, TServerContext, TClientContext> {
+): MiddlewareWithAll<
+  TId,
+  TMiddlewares,
+  TValidator,
+  TServerContext,
+  TClientContext
+> {
   // const resolvedOptions = (__opts || options) as MiddlewareOptions<
   const resolvedOptions =
     __opts ||
@@ -400,7 +409,7 @@ export function createMiddleware<
         TClientContext
       >(undefined, Object.assign(resolvedOptions, { server })) as any
     },
-  } as unknown as Middleware<
+  } as unknown as MiddlewareWithAll<
     TId,
     TMiddlewares,
     TValidator,
