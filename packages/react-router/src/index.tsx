@@ -73,6 +73,7 @@ export type {
   ActiveLinkOptions,
   LinkProps,
   LinkComponent,
+  LinkComponentProps,
   CreateLinkProps,
   MakeOptionalPathParams,
 } from './link'
