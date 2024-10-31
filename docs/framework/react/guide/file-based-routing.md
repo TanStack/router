@@ -433,7 +433,6 @@ The following options are available for configuration via the `tsr.config.json` 
   - Default:
   - ```
     [
-      '/* prettier-ignore-start */',
       '/* eslint-disable */',
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols'
@@ -442,13 +441,8 @@ The following options are available for configuration via the `tsr.config.json` 
 
 - **`routeTreeFileFooter`**
   - (Optional) An array of strings to append to the generated route tree file content.
-  - Default:
-  - ```
-    [
-      '/* prettier-ignore-end */'
-    ]
-    ```
-- **`disableManifestGeneration**
+  - Default: `[]`
+- **`disableManifestGeneration`**
   - (Optional, **Defaults to `false`**) disables generating the route tree manifest
 
 ## Route Inclusion / Exclusion
