@@ -67,10 +67,12 @@
     "@testing-library/jest-dom": "^6.6.2",
     "@testing-library/react": "^16.0.1",
     "@tanstack/react-router": "workspace:*",
-    "valibot": "^0.36.0"
+    "valibot": "^0.42.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "peerDependencies": {
-    "valibot": ">=0.36.0",
+    "valibot": "^0.42.1",
     "@tanstack/react-router": ">=1.43.2"
   }
 }

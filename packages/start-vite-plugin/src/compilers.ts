@@ -81,7 +81,7 @@ export function compileStartOutput(opts: ParseAstOptions) {
             handleCallExpression: handleServerOnlyCallExpression,
             paths: [],
           },
-        } as const
+        }
 
         const identifierKeys = Object.keys(identifiers) as Array<
           keyof typeof identifiers
