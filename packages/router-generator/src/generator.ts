@@ -125,24 +125,21 @@ export async function generator(config: Config) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const replaced = `import * as React from 'react';
-import { Outlet, createRootRoute } from '@tanstack/react-router';
-
-export const Route = createRootRoute({
-  component: () => (
-    <React.Fragment>
-      <div>Hello "${rootPathId}"!</div>
-      <Outlet />
-    </React.Fragment>
-  ),
-})
-
-`
+      const initialCode = fillTemplate(
+        config.experimental.customScaffolding.routeTemplate,
+        {
+          tsrImports:
+            "import { Outlet, createRootRoute } from '@tanstack/react-router'",
+          tsrPath: rootPathId,
+          tsrExportStart: `export const Route = createRootRoute(`,
+          tsrExportEnd: ')',
+        },
+      )
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
         node.fullPath,
-        await prettier.format(replaced, prettierOptions),
+        await prettier.format(initialCode, prettierOptions),
       )
     }
   }
@@ -192,12 +189,16 @@ export const Route = createRootRoute({
 
       if (!routeCode) {
         if (node.isLazy) {
-          replaced = [
-            `import { createLazyFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createLazyFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-          ].join('\n\n')
+          replaced = fillTemplate(
+            config.experimental.customScaffolding.routeTemplate,
+            {
+              tsrImports:
+                "import { createLazyFileRoute } from '@tanstack/react-router'",
+              tsrPath: escapedRoutePath,
+              tsrExportStart: `export const Route = createLazyFileRoute('${escapedRoutePath}')(`,
+              tsrExportEnd: ')',
+            },
+          )
         } else if (
           node.isRoute ||
           (!node.isComponent &&
@@ -205,12 +206,16 @@ export const Route = createRootRoute({
             !node.isPendingComponent &&
             !node.isLoader)
         ) {
-          replaced = [
-            `import { createFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-          ].join('\n\n')
+          replaced = fillTemplate(
+            config.experimental.customScaffolding.routeTemplate,
+            {
+              tsrImports:
+                "import { createFileRoute } from '@tanstack/react-router'",
+              tsrPath: escapedRoutePath,
+              tsrExportStart: `export const Route = createFileRoute('${escapedRoutePath}')(`,
+              tsrExportEnd: ')',
+            },
+          )
         }
       } else {
         replaced = routeCode
@@ -360,16 +365,16 @@ export const Route = createRootRoute({
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
-      const replaced = `import { json } from '@tanstack/start'
-import { createAPIFileRoute } from '@tanstack/start/api'
-
-export const Route = createAPIFileRoute('${escapedRoutePath}')({
-  GET: ({ request, params }) => {
-    return json({ message: 'Hello ${escapedRoutePath}' })
-  },
-})
-
-`
+      const replaced = fillTemplate(
+        config.experimental.customScaffolding.apiTemplate,
+        {
+          tsrImports:
+            "import { createAPIFileRoute } from '@tanstack/start/api'",
+          tsrPath: escapedRoutePath,
+          tsrExportStart: `export const Route = createAPIFileRoute('${escapedRoutePath}')(`,
+          tsrExportEnd: ')',
+        },
+      )
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
@@ -1007,4 +1012,13 @@ export function startAPIRouteSegmentsFromTSRFilePath(
   })
 
   return segments
+}
+
+type TemplateTag = 'tsrImports' | 'tsrPath' | 'tsrExportStart' | 'tsrExportEnd'
+
+function fillTemplate(template: string, values: Record<TemplateTag, string>) {
+  return template.replace(
+    /%%(\w+)%%/g,
+    (_, key) => values[key as TemplateTag] || '',
+  )
 }

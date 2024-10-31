@@ -3,6 +3,20 @@ import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
+const defaultTemplate = {
+  routeTemplate: [
+    'import * as React from "react";\n',
+    '%%tsrImports%%\n\n',
+    '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+    'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
+  ].join(''),
+  apiTemplate: [
+    'import { json } from "@tanstack/start";\n',
+    '%%tsrImports%%\n\n',
+    '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message: "Hello /api/test" }) }}%%tsrExportEnd%%\n',
+  ].join(''),
+}
+
 export const configSchema = z.object({
   virtualRouteConfig: virtualRootRouteSchema.optional(),
   routeFilePrefix: z.string().optional(),
@@ -37,8 +51,24 @@ export const configSchema = z.object({
     .object({
       // TODO: Remove this option in the next major release (v2).
       enableCodeSplitting: z.boolean().optional(),
+      customScaffolding: z
+        .object({
+          routeTemplate: z
+            .string()
+            .optional()
+            .default(defaultTemplate.routeTemplate),
+          apiTemplate: z
+            .string()
+            .optional()
+            .default(defaultTemplate.routeTemplate),
+        })
+        .optional()
+        .default(defaultTemplate),
     })
-    .optional(),
+    .optional()
+    .default({
+      customScaffolding: defaultTemplate,
+    }),
 })
 
 export type Config = z.infer<typeof configSchema>
@@ -103,7 +133,7 @@ export function getConfig(
 }
 
 function validateConfig(config: Config) {
-  if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
+  if (typeof config.experimental.enableCodeSplitting !== 'undefined') {
     const message = `
 ------
 ⚠️ ⚠️ ⚠️
