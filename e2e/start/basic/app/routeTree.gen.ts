@@ -16,24 +16,17 @@ import { Route as StatusImport } from './routes/status'
 import { Route as SearchParamsImport } from './routes/search-params'
 import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
-import { Route as NestedDocsImport } from './routes/nested-docs'
 import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as UsersIndexImport } from './routes/users.index'
 import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as NestedDocsIndexImport } from './routes/nested-docs.index'
 import { Route as UsersUserIdImport } from './routes/users.$userId'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
-import { Route as NestedDocsProjectIndexImport } from './routes/nested-docs.$project.index'
 import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
-import { Route as NestedDocsProjectVersionIndexImport } from './routes/nested-docs.$project.$version.index'
-import { Route as NestedDocsProjectVersionDocsFrameworkFrameworkImport } from './routes/nested-docs.$project.$version.docs.framework.$framework'
-import { Route as NestedDocsProjectVersionDocsFrameworkFrameworkIndexImport } from './routes/nested-docs.$project.$version.docs.framework.$framework.index'
-import { Route as NestedDocsProjectVersionDocsFrameworkFrameworkSplatImport } from './routes/nested-docs.$project.$version.docs.framework.$framework.$'
 
 // Create/Update Routes
 
@@ -67,12 +60,6 @@ const PostsRoute = PostsImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const NestedDocsRoute = NestedDocsImport.update({
-  id: '/nested-docs',
-  path: '/nested-docs',
-  getParentRoute: () => rootRoute,
-} as any)
-
 const DeferredRoute = DeferredImport.update({
   id: '/deferred',
   path: '/deferred',
@@ -102,12 +89,6 @@ const PostsIndexRoute = PostsIndexImport.update({
   getParentRoute: () => PostsRoute,
 } as any)
 
-const NestedDocsIndexRoute = NestedDocsIndexImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => NestedDocsRoute,
-} as any)
-
 const UsersUserIdRoute = UsersUserIdImport.update({
   id: '/$userId',
   path: '/$userId',
@@ -123,12 +104,6 @@ const PostsPostIdRoute = PostsPostIdImport.update({
 const LayoutLayout2Route = LayoutLayout2Import.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
-} as any)
-
-const NestedDocsProjectIndexRoute = NestedDocsProjectIndexImport.update({
-  id: '/$project/',
-  path: '/$project/',
-  getParentRoute: () => NestedDocsRoute,
 } as any)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
@@ -148,34 +123,6 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
-
-const NestedDocsProjectVersionIndexRoute =
-  NestedDocsProjectVersionIndexImport.update({
-    id: '/$project/$version/',
-    path: '/$project/$version/',
-    getParentRoute: () => NestedDocsRoute,
-  } as any)
-
-const NestedDocsProjectVersionDocsFrameworkFrameworkRoute =
-  NestedDocsProjectVersionDocsFrameworkFrameworkImport.update({
-    id: '/$project/$version/docs/framework/$framework',
-    path: '/$project/$version/docs/framework/$framework',
-    getParentRoute: () => NestedDocsRoute,
-  } as any)
-
-const NestedDocsProjectVersionDocsFrameworkFrameworkIndexRoute =
-  NestedDocsProjectVersionDocsFrameworkFrameworkIndexImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => NestedDocsProjectVersionDocsFrameworkFrameworkRoute,
-  } as any)
-
-const NestedDocsProjectVersionDocsFrameworkFrameworkSplatRoute =
-  NestedDocsProjectVersionDocsFrameworkFrameworkSplatImport.update({
-    id: '/$',
-    path: '/$',
-    getParentRoute: () => NestedDocsProjectVersionDocsFrameworkFrameworkRoute,
-  } as any)
 
 // Populate the FileRoutesByPath interface
 
@@ -200,13 +147,6 @@ declare module '@tanstack/react-router' {
       path: '/deferred'
       fullPath: '/deferred'
       preLoaderRoute: typeof DeferredImport
-      parentRoute: typeof rootRoute
-    }
-    '/nested-docs': {
-      id: '/nested-docs'
-      path: '/nested-docs'
-      fullPath: '/nested-docs'
-      preLoaderRoute: typeof NestedDocsImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
@@ -265,13 +205,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersUserIdImport
       parentRoute: typeof UsersImport
     }
-    '/nested-docs/': {
-      id: '/nested-docs/'
-      path: '/'
-      fullPath: '/nested-docs/'
-      preLoaderRoute: typeof NestedDocsIndexImport
-      parentRoute: typeof NestedDocsImport
-    }
     '/posts/': {
       id: '/posts/'
       path: '/'
@@ -307,41 +240,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdDeepImport
       parentRoute: typeof rootRoute
     }
-    '/nested-docs/$project/': {
-      id: '/nested-docs/$project/'
-      path: '/$project'
-      fullPath: '/nested-docs/$project'
-      preLoaderRoute: typeof NestedDocsProjectIndexImport
-      parentRoute: typeof NestedDocsImport
-    }
-    '/nested-docs/$project/$version/': {
-      id: '/nested-docs/$project/$version/'
-      path: '/$project/$version'
-      fullPath: '/nested-docs/$project/$version'
-      preLoaderRoute: typeof NestedDocsProjectVersionIndexImport
-      parentRoute: typeof NestedDocsImport
-    }
-    '/nested-docs/$project/$version/docs/framework/$framework': {
-      id: '/nested-docs/$project/$version/docs/framework/$framework'
-      path: '/$project/$version/docs/framework/$framework'
-      fullPath: '/nested-docs/$project/$version/docs/framework/$framework'
-      preLoaderRoute: typeof NestedDocsProjectVersionDocsFrameworkFrameworkImport
-      parentRoute: typeof NestedDocsImport
-    }
-    '/nested-docs/$project/$version/docs/framework/$framework/$': {
-      id: '/nested-docs/$project/$version/docs/framework/$framework/$'
-      path: '/$'
-      fullPath: '/nested-docs/$project/$version/docs/framework/$framework/$'
-      preLoaderRoute: typeof NestedDocsProjectVersionDocsFrameworkFrameworkSplatImport
-      parentRoute: typeof NestedDocsProjectVersionDocsFrameworkFrameworkImport
-    }
-    '/nested-docs/$project/$version/docs/framework/$framework/': {
-      id: '/nested-docs/$project/$version/docs/framework/$framework/'
-      path: '/'
-      fullPath: '/nested-docs/$project/$version/docs/framework/$framework/'
-      preLoaderRoute: typeof NestedDocsProjectVersionDocsFrameworkFrameworkIndexImport
-      parentRoute: typeof NestedDocsProjectVersionDocsFrameworkFrameworkImport
-    }
   }
 }
 
@@ -372,43 +270,6 @@ const LayoutRouteChildren: LayoutRouteChildren = {
 const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
-interface NestedDocsProjectVersionDocsFrameworkFrameworkRouteChildren {
-  NestedDocsProjectVersionDocsFrameworkFrameworkSplatRoute: typeof NestedDocsProjectVersionDocsFrameworkFrameworkSplatRoute
-  NestedDocsProjectVersionDocsFrameworkFrameworkIndexRoute: typeof NestedDocsProjectVersionDocsFrameworkFrameworkIndexRoute
-}
-
-const NestedDocsProjectVersionDocsFrameworkFrameworkRouteChildren: NestedDocsProjectVersionDocsFrameworkFrameworkRouteChildren =
-  {
-    NestedDocsProjectVersionDocsFrameworkFrameworkSplatRoute:
-      NestedDocsProjectVersionDocsFrameworkFrameworkSplatRoute,
-    NestedDocsProjectVersionDocsFrameworkFrameworkIndexRoute:
-      NestedDocsProjectVersionDocsFrameworkFrameworkIndexRoute,
-  }
-
-const NestedDocsProjectVersionDocsFrameworkFrameworkRouteWithChildren =
-  NestedDocsProjectVersionDocsFrameworkFrameworkRoute._addFileChildren(
-    NestedDocsProjectVersionDocsFrameworkFrameworkRouteChildren,
-  )
-
-interface NestedDocsRouteChildren {
-  NestedDocsIndexRoute: typeof NestedDocsIndexRoute
-  NestedDocsProjectIndexRoute: typeof NestedDocsProjectIndexRoute
-  NestedDocsProjectVersionIndexRoute: typeof NestedDocsProjectVersionIndexRoute
-  NestedDocsProjectVersionDocsFrameworkFrameworkRoute: typeof NestedDocsProjectVersionDocsFrameworkFrameworkRouteWithChildren
-}
-
-const NestedDocsRouteChildren: NestedDocsRouteChildren = {
-  NestedDocsIndexRoute: NestedDocsIndexRoute,
-  NestedDocsProjectIndexRoute: NestedDocsProjectIndexRoute,
-  NestedDocsProjectVersionIndexRoute: NestedDocsProjectVersionIndexRoute,
-  NestedDocsProjectVersionDocsFrameworkFrameworkRoute:
-    NestedDocsProjectVersionDocsFrameworkFrameworkRouteWithChildren,
-}
-
-const NestedDocsRouteWithChildren = NestedDocsRoute._addFileChildren(
-  NestedDocsRouteChildren,
-)
-
 interface PostsRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
   PostsIndexRoute: typeof PostsIndexRoute
@@ -437,7 +298,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/nested-docs': typeof NestedDocsRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/search-params': typeof SearchParamsRoute
@@ -445,17 +305,11 @@ export interface FileRoutesByFullPath {
   '/users': typeof UsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
-  '/nested-docs/': typeof NestedDocsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
-  '/nested-docs/$project': typeof NestedDocsProjectIndexRoute
-  '/nested-docs/$project/$version': typeof NestedDocsProjectVersionIndexRoute
-  '/nested-docs/$project/$version/docs/framework/$framework': typeof NestedDocsProjectVersionDocsFrameworkFrameworkRouteWithChildren
-  '/nested-docs/$project/$version/docs/framework/$framework/$': typeof NestedDocsProjectVersionDocsFrameworkFrameworkSplatRoute
-  '/nested-docs/$project/$version/docs/framework/$framework/': typeof NestedDocsProjectVersionDocsFrameworkFrameworkIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -467,16 +321,11 @@ export interface FileRoutesByTo {
   '/status': typeof StatusRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
-  '/nested-docs': typeof NestedDocsIndexRoute
   '/posts': typeof PostsIndexRoute
   '/users': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
-  '/nested-docs/$project': typeof NestedDocsProjectIndexRoute
-  '/nested-docs/$project/$version': typeof NestedDocsProjectVersionIndexRoute
-  '/nested-docs/$project/$version/docs/framework/$framework/$': typeof NestedDocsProjectVersionDocsFrameworkFrameworkSplatRoute
-  '/nested-docs/$project/$version/docs/framework/$framework': typeof NestedDocsProjectVersionDocsFrameworkFrameworkIndexRoute
 }
 
 export interface FileRoutesById {
@@ -484,7 +333,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/nested-docs': typeof NestedDocsRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/search-params': typeof SearchParamsRoute
@@ -493,17 +341,11 @@ export interface FileRoutesById {
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
-  '/nested-docs/': typeof NestedDocsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
-  '/nested-docs/$project/': typeof NestedDocsProjectIndexRoute
-  '/nested-docs/$project/$version/': typeof NestedDocsProjectVersionIndexRoute
-  '/nested-docs/$project/$version/docs/framework/$framework': typeof NestedDocsProjectVersionDocsFrameworkFrameworkRouteWithChildren
-  '/nested-docs/$project/$version/docs/framework/$framework/$': typeof NestedDocsProjectVersionDocsFrameworkFrameworkSplatRoute
-  '/nested-docs/$project/$version/docs/framework/$framework/': typeof NestedDocsProjectVersionDocsFrameworkFrameworkIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -512,7 +354,6 @@ export interface FileRouteTypes {
     | '/'
     | ''
     | '/deferred'
-    | '/nested-docs'
     | '/posts'
     | '/redirect'
     | '/search-params'
@@ -520,17 +361,11 @@ export interface FileRouteTypes {
     | '/users'
     | '/posts/$postId'
     | '/users/$userId'
-    | '/nested-docs/'
     | '/posts/'
     | '/users/'
     | '/layout-a'
     | '/layout-b'
     | '/posts/$postId/deep'
-    | '/nested-docs/$project'
-    | '/nested-docs/$project/$version'
-    | '/nested-docs/$project/$version/docs/framework/$framework'
-    | '/nested-docs/$project/$version/docs/framework/$framework/$'
-    | '/nested-docs/$project/$version/docs/framework/$framework/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -541,22 +376,16 @@ export interface FileRouteTypes {
     | '/status'
     | '/posts/$postId'
     | '/users/$userId'
-    | '/nested-docs'
     | '/posts'
     | '/users'
     | '/layout-a'
     | '/layout-b'
     | '/posts/$postId/deep'
-    | '/nested-docs/$project'
-    | '/nested-docs/$project/$version'
-    | '/nested-docs/$project/$version/docs/framework/$framework/$'
-    | '/nested-docs/$project/$version/docs/framework/$framework'
   id:
     | '__root__'
     | '/'
     | '/_layout'
     | '/deferred'
-    | '/nested-docs'
     | '/posts'
     | '/redirect'
     | '/search-params'
@@ -565,17 +394,11 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/users/$userId'
-    | '/nested-docs/'
     | '/posts/'
     | '/users/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
     | '/posts_/$postId/deep'
-    | '/nested-docs/$project/'
-    | '/nested-docs/$project/$version/'
-    | '/nested-docs/$project/$version/docs/framework/$framework'
-    | '/nested-docs/$project/$version/docs/framework/$framework/$'
-    | '/nested-docs/$project/$version/docs/framework/$framework/'
   fileRoutesById: FileRoutesById
 }
 
@@ -583,7 +406,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
-  NestedDocsRoute: typeof NestedDocsRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
   SearchParamsRoute: typeof SearchParamsRoute
@@ -596,7 +418,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
-  NestedDocsRoute: NestedDocsRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
   SearchParamsRoute: SearchParamsRoute,
@@ -620,7 +441,6 @@ export const routeTree = rootRoute
         "/",
         "/_layout",
         "/deferred",
-        "/nested-docs",
         "/posts",
         "/redirect",
         "/search-params",
@@ -640,15 +460,6 @@ export const routeTree = rootRoute
     },
     "/deferred": {
       "filePath": "deferred.tsx"
-    },
-    "/nested-docs": {
-      "filePath": "nested-docs.tsx",
-      "children": [
-        "/nested-docs/",
-        "/nested-docs/$project/",
-        "/nested-docs/$project/$version/",
-        "/nested-docs/$project/$version/docs/framework/$framework"
-      ]
     },
     "/posts": {
       "filePath": "posts.tsx",
@@ -689,10 +500,6 @@ export const routeTree = rootRoute
       "filePath": "users.$userId.tsx",
       "parent": "/users"
     },
-    "/nested-docs/": {
-      "filePath": "nested-docs.index.tsx",
-      "parent": "/nested-docs"
-    },
     "/posts/": {
       "filePath": "posts.index.tsx",
       "parent": "/posts"
@@ -711,30 +518,6 @@ export const routeTree = rootRoute
     },
     "/posts_/$postId/deep": {
       "filePath": "posts_.$postId.deep.tsx"
-    },
-    "/nested-docs/$project/": {
-      "filePath": "nested-docs.$project.index.tsx",
-      "parent": "/nested-docs"
-    },
-    "/nested-docs/$project/$version/": {
-      "filePath": "nested-docs.$project.$version.index.tsx",
-      "parent": "/nested-docs"
-    },
-    "/nested-docs/$project/$version/docs/framework/$framework": {
-      "filePath": "nested-docs.$project.$version.docs.framework.$framework.tsx",
-      "parent": "/nested-docs",
-      "children": [
-        "/nested-docs/$project/$version/docs/framework/$framework/$",
-        "/nested-docs/$project/$version/docs/framework/$framework/"
-      ]
-    },
-    "/nested-docs/$project/$version/docs/framework/$framework/$": {
-      "filePath": "nested-docs.$project.$version.docs.framework.$framework.$.tsx",
-      "parent": "/nested-docs/$project/$version/docs/framework/$framework"
-    },
-    "/nested-docs/$project/$version/docs/framework/$framework/": {
-      "filePath": "nested-docs.$project.$version.docs.framework.$framework.index.tsx",
-      "parent": "/nested-docs/$project/$version/docs/framework/$framework"
     }
   }
 }
