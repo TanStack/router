@@ -12,7 +12,6 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as UsersImport } from './routes/users'
-import { Route as TestRouteImport } from './routes/test-route'
 import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
 import { Route as DeferredImport } from './routes/deferred'
@@ -32,12 +31,6 @@ import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/
 const UsersRoute = UsersImport.update({
   id: '/users',
   path: '/users',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const TestRouteRoute = TestRouteImport.update({
-  id: '/test-route',
-  path: '/test-route',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -154,13 +147,6 @@ declare module '@tanstack/react-router' {
       path: '/redirect'
       fullPath: '/redirect'
       preLoaderRoute: typeof RedirectImport
-      parentRoute: typeof rootRoute
-    }
-    '/test-route': {
-      id: '/test-route'
-      path: '/test-route'
-      fullPath: '/test-route'
-      preLoaderRoute: typeof TestRouteImport
       parentRoute: typeof rootRoute
     }
     '/users': {
@@ -286,7 +272,6 @@ export interface FileRoutesByFullPath {
   '/deferred': typeof DeferredRoute
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
-  '/test-route': typeof TestRouteRoute
   '/users': typeof UsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
@@ -302,7 +287,6 @@ export interface FileRoutesByTo {
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
-  '/test-route': typeof TestRouteRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts': typeof PostsIndexRoute
@@ -319,7 +303,6 @@ export interface FileRoutesById {
   '/deferred': typeof DeferredRoute
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
-  '/test-route': typeof TestRouteRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
@@ -339,7 +322,6 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/posts'
     | '/redirect'
-    | '/test-route'
     | '/users'
     | '/posts/$postId'
     | '/users/$userId'
@@ -354,7 +336,6 @@ export interface FileRouteTypes {
     | ''
     | '/deferred'
     | '/redirect'
-    | '/test-route'
     | '/posts/$postId'
     | '/users/$userId'
     | '/posts'
@@ -369,7 +350,6 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/posts'
     | '/redirect'
-    | '/test-route'
     | '/users'
     | '/_layout/_layout-2'
     | '/posts/$postId'
@@ -388,7 +368,6 @@ export interface RootRouteChildren {
   DeferredRoute: typeof DeferredRoute
   PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
-  TestRouteRoute: typeof TestRouteRoute
   UsersRoute: typeof UsersRouteWithChildren
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
@@ -399,7 +378,6 @@ const rootRouteChildren: RootRouteChildren = {
   DeferredRoute: DeferredRoute,
   PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
-  TestRouteRoute: TestRouteRoute,
   UsersRoute: UsersRouteWithChildren,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
@@ -421,7 +399,6 @@ export const routeTree = rootRoute
         "/deferred",
         "/posts",
         "/redirect",
-        "/test-route",
         "/users",
         "/posts_/$postId/deep"
       ]
@@ -447,9 +424,6 @@ export const routeTree = rootRoute
     },
     "/redirect": {
       "filePath": "redirect.tsx"
-    },
-    "/test-route": {
-      "filePath": "test-route.tsx"
     },
     "/users": {
       "filePath": "users.tsx",
