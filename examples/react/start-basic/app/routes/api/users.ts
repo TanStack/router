@@ -1,7 +1,7 @@
 import { json } from '@tanstack/start'
 import { createAPIFileRoute } from '@tanstack/start/api'
 import axios from 'redaxios'
-import type { User } from '../utils/users'
+import type { User } from '../../utils/users'
 
 export const Route = createAPIFileRoute('/api/users')({
   GET: async ({ request }) => {

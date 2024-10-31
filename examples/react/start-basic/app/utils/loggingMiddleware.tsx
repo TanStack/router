@@ -1,25 +1,36 @@
 import { createMiddleware } from '@tanstack/start'
 
-export const logMiddleware = createMiddleware().server(async (ctx) => {
-  const requestedAt = new Date()
+export const logMiddleware = createMiddleware()
+  .client(async (ctx) => {
+    const requestedAt = new Date()
 
-  console.log('Request:', ctx)
+    const res = await ctx.next({
+      context: {
+        requestedAt,
+      },
+      serverContext: {
+        requestedAt,
+      },
+    })
 
-  const res = await ctx.next({
-    context: {
-      requestedAt,
-    },
+    console.log(typeof document !== 'undefined' ? 'Client' : 'Server')
+    console.log('Response:', res)
+
+    return res
   })
+  .server(async (ctx) => {
+    console.log('Request:', ctx)
 
-  const duration = new Date().getTime() - requestedAt.getTime()
+    const res = await ctx.next()
 
-  console.log('Response:', {
-    ...res,
-    context: {
-      ...res.context,
-      duration,
-    },
+    const duration = new Date().getTime() - ctx.context.requestedAt.getTime()
+
+    console.log('Response:', {
+      ...res,
+      context: {
+        duration,
+      },
+    })
+
+    return res
   })
-
-  return res
-})

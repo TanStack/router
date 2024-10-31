@@ -418,12 +418,21 @@ export function createMiddleware<
   >
 }
 
-const middleware1 = createMiddleware().server(async ({ context, next }) => {
-  console.log('middleware1', context)
-  const res = await next({ context: { a: true } })
-  console.log('middleware1 after', res)
-  return res
-})
+const middleware1 = createMiddleware()
+  .client((ctx) => {
+    return ctx.next({
+      context: {
+        client: 'client',
+      },
+      serverContext: { clientServer: 'clientServer' },
+    })
+  })
+  .server(async ({ context, next }) => {
+    console.log('middleware1', context)
+    const res = await next({ context: { a: true } })
+    console.log('middleware1 after', res)
+    return res
+  })
 
 const middleware2 = createMiddleware()
   .middleware([middleware1])
