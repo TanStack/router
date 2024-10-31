@@ -350,7 +350,7 @@ export default defineConfig({
 
 ### Ignoring the generated route tree file
 
-If your project is configured to use a linter and/or formatter, you may want to ignore the generated route tree file. This is because the generated route tree file is automatically generated and should not be manually edited.
+If your project is configured to use a linter and/or formatter, you may want to ignore the generated route tree file. This is this file is managed by TanStack Router and shouldn't and therefore shouldn't be changed by your linter or formatter.
 
 Here are some resources to help you ignore the generated route tree file:
 
