@@ -195,7 +195,7 @@ Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/rout
 
 Now that you've added the plugin to your Vite configuration, you're all set to start using file-based routing with TanStack Router.
 
-You shouldn't forget to ignore the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
 ### Configuration with Rspack/Rsbuild
 
@@ -227,7 +227,7 @@ Or, you can clone our [Quickstart Rspack/Rsbuild example](https://github.com/Tan
 
 Now that you've added the plugin to your Rspack/Rsbuild configuration, you're all set to start using file-based routing with TanStack Router.
 
-You shouldn't forget to ignore the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
 ### Configuration with Webpack
 
@@ -252,7 +252,7 @@ Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/r
 
 Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
 
-You shouldn't forget to ignore the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
 ### Configuration with Esbuild
 
@@ -278,7 +278,7 @@ Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/r
 
 Now that you've added the plugin to your Esbuild configuration, you're all set to start using file-based routing with TanStack Router.
 
-You shouldn't forget to ignore the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
 ### Configuration with the TanStack Router CLI
 
@@ -301,7 +301,7 @@ Once installed, you'll need to amend your your scripts in your `package.json` fo
 }
 ```
 
-You shouldn't forget to ignore the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
 With the CLI installed, the following commands are made available via the `tsr` command
 
