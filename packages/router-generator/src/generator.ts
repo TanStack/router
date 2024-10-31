@@ -125,7 +125,7 @@ export async function generator(config: Config) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const initialCode = fillTemplate(
+      const replaced = fillTemplate(
         config.experimental.customScaffolding.routeTemplate,
         {
           tsrImports:
@@ -139,7 +139,7 @@ export async function generator(config: Config) {
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
         node.fullPath,
-        await prettier.format(initialCode, prettierOptions),
+        await prettier.format(replaced, prettierOptions),
       )
     }
   }
