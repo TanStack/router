@@ -121,8 +121,8 @@ export type StringifyParamsFn<TPath extends string, TParams> = (
 
 export type ParamsOptions<TPath extends string, TParams> = {
   params?: {
-    parse: ParseParamsFn<TPath, TParams>
-    stringify: StringifyParamsFn<TPath, TParams>
+    parse?: ParseParamsFn<TPath, TParams>
+    stringify?: StringifyParamsFn<TPath, TParams>
   }
 
   /** 
