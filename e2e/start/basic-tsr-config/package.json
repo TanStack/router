@@ -1,0 +1,25 @@
+{
+  "name": "tanstack-start-e2e-basic-tsr-config",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev --port 3002",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "test:e2e": "playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.77.6",
+    "@tanstack/start": "^1.77.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vinxi": "0.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@types/react": "^18.2.65",
+    "@types/react-dom": "^18.2.21",
+    "typescript": "^5.6.2"
+  }
+}

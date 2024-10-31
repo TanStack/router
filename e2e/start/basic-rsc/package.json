@@ -4,12 +4,12 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
+    "dev": "vinxi dev --port 3002",
     "build": "vinxi build",
     "start": "vinxi start"
   },
   "dependencies": {
-    "@babel/plugin-syntax-typescript": "^7.25.7",
+    "@babel/plugin-syntax-typescript": "^7.25.9",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/start": "workspace:^",

@@ -78,7 +78,7 @@ The `loader` function receives a single object with the following properties:
 - `deps` - The object value returned from the `Route.loaderDeps` function. If `Route.loaderDeps` is not defined, an empty object will be provided instead.
 - `location` - The current location
 - `params` - The route's path params
-- `parentMatchPromise` - `Promise<void>` or `undefined`
+- `parentMatchPromise` - `Promise<RouteMatch>` (`undefined` for the root route)
 - `preload` - Boolean which is `true` when the route is being preloaded instead of loaded
 - `route` - The route itself
 

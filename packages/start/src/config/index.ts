@@ -207,7 +207,7 @@ const routersSchema = z.object({
 })
 
 const tsrConfig = configSchema.partial().extend({
-  appDirectory: z.string(),
+  appDirectory: z.string().optional(),
 })
 
 const inlineConfigSchema = z.object({
@@ -222,19 +222,50 @@ export type TanStackStartDefineConfigOptions = z.infer<
   typeof inlineConfigSchema
 >
 
-function setTsrDefaults(
-  config: TanStackStartDefineConfigOptions['tsr'],
-): Partial<TanStackStartDefineConfigOptions['tsr']> {
+function setTsrDefaults(config: TanStackStartDefineConfigOptions['tsr']) {
+  // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
+  const appDirectory = config?.appDirectory ?? './app'
   return {
     ...config,
-    // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
-    appDirectory: config?.appDirectory ?? './app',
-    routesDirectory: config?.routesDirectory ?? './app/routes',
-    generatedRouteTree: config?.generatedRouteTree ?? './app/routeTree.gen.ts',
+    appDirectory: config?.appDirectory ?? appDirectory,
+    routesDirectory:
+      config?.routesDirectory ?? path.join(appDirectory, 'routes'),
+    generatedRouteTree:
+      config?.generatedRouteTree ?? path.join(appDirectory, 'routeTree.gen.ts'),
     experimental: {
       ...config?.experimental,
     },
   }
+}
+
+function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
+  let ssrOptions: vite.SSROptions = {}
+  let noExternal: vite.SSROptions['noExternal'] = []
+  for (const option of options) {
+    if (!option) {
+      continue
+    }
+
+    if (option.noExternal) {
+      if (option.noExternal === true) {
+        noExternal = true
+      } else if (noExternal !== true) {
+        if (Array.isArray(option.noExternal)) {
+          noExternal.push(...option.noExternal)
+        } else {
+          noExternal.push(option.noExternal)
+        }
+      }
+    }
+
+    ssrOptions = {
+      ...ssrOptions,
+      ...option,
+      noExternal,
+    }
+  }
+
+  return ssrOptions
 }
 
 export function defineConfig(
@@ -248,16 +279,20 @@ export function defineConfig(
   const deploymentPreset = checkDeploymentPresetInput(
     configDeploymentPreset || 'vercel',
   )
+  const tsr = setTsrDefaults(opts.tsr)
+  const appDirectory = tsr.appDirectory
 
-  const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
+  const tsrConfig = getConfig(tsr)
 
   const clientBase = opts.routers?.client?.base || '/_build'
   const serverBase = opts.routers?.server?.base || '/_server'
   const apiBase = opts.tsr?.apiBase || '/api'
 
-  const clientEntry = opts.routers?.client?.entry || './app/client.tsx'
-  const ssrEntry = opts.routers?.ssr?.entry || './app/ssr.tsx'
-  const apiEntry = opts.routers?.api?.entry || './app/api.ts'
+  const clientEntry =
+    opts.routers?.client?.entry || path.join(appDirectory, 'client.tsx')
+  const ssrEntry =
+    opts.routers?.ssr?.entry || path.join(appDirectory, 'ssr.tsx')
+  const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
 
   const apiEntryExists = existsSync(apiEntry)
 
@@ -688,7 +723,8 @@ function tsrRoutesManifest(opts: {
           }
         }
 
-        recurseRoute(routes.__root__!)
+        // @ts-expect-error
+        recurseRoute(routes.__root__)
 
         const routesManifest = {
           routes,

@@ -68,6 +68,7 @@ import type {
 import type {
   AnyRouteMatch,
   MakeRouteMatch,
+  MakeRouteMatchUnion,
   MatchRouteOptions,
 } from './Matches'
 import type { ParsedLocation } from './location'
@@ -210,7 +211,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreload-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
    */
-  defaultPreload?: false | 'intent' | 'viewport'
+  defaultPreload?: false | 'intent' | 'viewport' | 'render'
   /**
    * The delay in milliseconds that a route must be hovered over or touched before it is preloaded.
    *
@@ -604,6 +605,12 @@ export type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
   }
+  onBeforeRouteMount: {
+    type: 'onBeforeRouteMount'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -718,6 +725,7 @@ export class Router<
       defaultPendingMinMs: 500,
       context: undefined!,
       ...options,
+      caseSensitive: options.caseSensitive ?? false,
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
@@ -1003,6 +1011,7 @@ export class Router<
       base: from,
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
+      caseSensitive: this.options.caseSensitive,
     })
     return resolvedPath
   }
@@ -1616,7 +1625,7 @@ export class Router<
         })
 
         if (foundMask) {
-          const { from, ...maskProps } = foundMask
+          const { from: _from, ...maskProps } = foundMask
           maskedDest = {
             ...pick(opts, ['from']),
             ...maskProps,
@@ -2286,7 +2295,7 @@ export class Router<
             }
 
             const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
-            const matchPromises: Array<Promise<any>> = []
+            const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
             validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
               matchPromises.push(
@@ -2297,7 +2306,7 @@ export class Router<
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
                   } else {
-                    const parentMatchPromise = matchPromises[index - 1]
+                    const parentMatchPromise = matchPromises[index - 1] as any
                     const route = this.looseRoutesById[routeId]!
 
                     const getLoaderContext = (): LoaderFnContext => {
@@ -2522,6 +2531,7 @@ export class Router<
                     loaderPromise: undefined,
                     invalid: false,
                   }))
+                  return this.getMatch(matchId)!
                 })(),
               )
             })
@@ -2547,11 +2557,11 @@ export class Router<
     return matches
   }
 
-  invalidate = (opts?: {
-    filter?: (d: MakeRouteMatch<TRouteTree>) => boolean
+  invalidate = <TRouter extends AnyRouter = typeof this>(opts?: {
+    filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   }) => {
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
-      if (opts?.filter?.(d) ?? true) {
+      if (opts?.filter?.(d as MakeRouteMatchUnion<TRouter>) ?? true) {
         return {
           ...d,
           invalid: true,
@@ -2583,15 +2593,17 @@ export class Router<
     return redirect
   }
 
-  clearCache = (opts?: {
-    filter?: (d: MakeRouteMatch<TRouteTree>) => boolean
+  clearCache = <TRouter extends AnyRouter = typeof this>(opts?: {
+    filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   }) => {
     const filter = opts?.filter
     if (filter !== undefined) {
       this.__store.setState((s) => {
         return {
           ...s,
-          cachedMatches: s.cachedMatches.filter((m) => !filter(m)),
+          cachedMatches: s.cachedMatches.filter(
+            (m) => !filter(m as MakeRouteMatchUnion<TRouter>),
+          ),
         }
       })
     } else {

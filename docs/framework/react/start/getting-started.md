@@ -53,7 +53,7 @@ npm i @tanstack/start @tanstack/react-router vinxi
 You'll also need React and the Vite React plugin, so install them too:
 
 ```shell
-npm i react react-dom @vitejs/plugin-react
+npm i react react-dom; npm i -D @vitejs/plugin-react
 ```
 
 and some TypeScript:
@@ -66,15 +66,15 @@ npm i -D typescript @types/react @types/react-dom
 
 We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
 
-```jsonc
+```json
 {
   // ...
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
-  },
+    "start": "vinxi start"
+  }
 }
 ```
 
@@ -179,7 +179,12 @@ import { createRouter } from './router'
 
 const router = createRouter()
 
-hydrateRoot(document.getElementById('root')!, <StartClient router={router} />)
+const root = document.getElementById('root')
+if (!root) {
+  throw new Error('Root element not found')
+}
+
+hydrateRoot(root, <StartClient router={router} />)
 ```
 
 This enables us to kick off client-side routing once the user's initial server request has fulfilled.
@@ -241,7 +246,7 @@ Now that we have the basic templating setup, we can write our first route. This 
 
 ```tsx
 // app/routes/index.tsx
-import * as fs from 'fs'
+import * as fs from 'node:fs'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
 
@@ -275,6 +280,7 @@ function Home() {
 
   return (
     <button
+      type="button"
       onClick={() => {
         updateCount(1).then(() => {
           router.invalidate()

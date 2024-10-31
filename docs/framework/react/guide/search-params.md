@@ -302,7 +302,6 @@ export const Route = createFileRoute('/shop/products/')({
 When using [ArkType](https://arktype.io/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [ArkType](https://arktype.io/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
 ```tsx
-import { arkTypeValidator } from '@tanstack/arktype-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import { type } from 'arktype'
 
@@ -539,14 +538,14 @@ The following example shows how to make sure that for **every** link that is bei
 ```tsx
 import { z } from 'zod'
 import { createFileRoute } from '@tanstack/react-router'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
 const searchSchema = z.object({
   rootValue: z.string().optional(),
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodSearchValidator(searchSchema),
+  validateSearch: zodValidator(searchSchema),
   search: {
     middlewares: [
       ({search, next}) => {
@@ -566,14 +565,14 @@ Since this specific use case is quite common, TanStack Router provides a generic
 ```tsx
 import { z } from 'zod'
 import { createFileRoute, retainSearchParams } from '@tanstack/react-router'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
 const searchSchema = z.object({
   rootValue: z.string().optional(),
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodSearchValidator(searchSchema),
+  validateSearch: zodValidator(searchSchema),
   search: {
     middlewares: [retainSearchParams(['rootValue'])],
   },
@@ -585,7 +584,7 @@ Another common use case is to strip out search params from links if their defaul
 ```tsx
 import { z } from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
 const defaultValues = {
   one: 'abc',
@@ -598,7 +597,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/hello')({
-  validateSearch: zodSearchValidator(searchSchema),
+  validateSearch: zodValidator(searchSchema),
   search: {
     // strip default values
     middlewares: [stripSearchParams(defaultValues)],
@@ -616,12 +615,12 @@ import {
   stripSearchParams,
 } from '@tanstack/react-router'
 import { z } from 'zod'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
 const defaultValues = ['foo', 'bar']
 
 export const Route = createFileRoute('/search')({
-  validateSearch: zodSearchValidator(
+  validateSearch: zodValidator(
     z.object({
       retainMe: z.string().optional(),
       arrayWithDefaults: z.string().array().default(defaultValues),
