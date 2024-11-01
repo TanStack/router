@@ -1,3 +1,4 @@
+import type { Method } from './createServerFn'
 import type {
   AnyValidator,
   Constrain,
@@ -133,6 +134,8 @@ export type MiddlewareClientFn<
 > = (options: {
   input: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
   context: MergeAllClientContext<TMiddlewares>
+  serverContext?: unknown // cc Chris Horobin
+  method: Method
   next: <TNewServerContext = undefined, TNewClientContext = undefined>(ctx?: {
     context?: TNewClientContext
     serverContext?: TNewServerContext

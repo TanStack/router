@@ -1,5 +1,6 @@
 import {
-  defaultStringifySearch,
+  defaultTransformer,
+  encode,
   isNotFound,
   isPlainObject,
   isRedirect,
@@ -8,23 +9,23 @@ import {
   serverFnPayloadTypeHeader,
   serverFnReturnTypeHeader,
 } from '../constants'
-import type { CompiledFetcherFnOptions } from '../client'
+import type { MiddlewareOptions } from '../client/createServerFn'
 
 export async function fetcher(
   base: string,
   args: Array<any>,
   handler: (request: Request) => Promise<Response>,
 ) {
-  const first = args[0]
+  const _first = args[0]
 
   // If createServerFn was used to wrap the fetcher,
   // We need to handle the arguments differently
-  if (isPlainObject(first) && first.method) {
-    const opts = first as CompiledFetcherFnOptions
+  if (isPlainObject(_first) && _first.method) {
+    const first = _first as MiddlewareOptions
     const type =
-      opts.data instanceof FormData
+      first.input instanceof FormData
         ? 'formData'
-        : opts.data instanceof Request
+        : first.input instanceof Request
           ? 'request'
           : 'payload'
 
@@ -37,34 +38,34 @@ export async function fetcher(
             accept: 'application/json',
           }
         : {}),
-      ...(opts.headers instanceof Headers
-        ? Object.fromEntries(opts.headers.entries())
-        : opts.headers || {}),
+      ...(first.headers instanceof Headers
+        ? Object.fromEntries(first.headers.entries())
+        : first.headers || {}),
     })
 
     // If the method is GET, we need to move the payload to the query string
-    if (opts.method === 'GET') {
+    if (first.method === 'GET') {
       // If the method is GET, we need to move the payload to the query string
-      const encodedPayload =
-        opts.data !== undefined
-          ? defaultStringifySearch({
-              payload: opts.data,
-            }).substring(1)
-          : ''
+      const encodedPayload = encode({
+        payload: defaultTransformer.stringify({
+          input: first.input,
+          context: first.context,
+        }),
+      })
 
       if (encodedPayload) base += `&${encodedPayload}`
     }
 
     // Create the request
     const request = new Request(base, {
-      method: opts.method,
+      method: first.method,
       headers,
-      ...(opts.method === 'POST'
+      ...(first.method === 'POST'
         ? {
             body:
               type === 'formData'
-                ? opts.data
-                : (JSON.stringify(opts.data ?? null) as any),
+                ? first.input
+                : (defaultTransformer.stringify(first.input ?? null) as any),
           }
         : {}),
     })
@@ -79,7 +80,7 @@ export async function fetcher(
 
     if (['json'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
       const text = await response.text()
-      const json = text ? JSON.parse(text) : undefined
+      const json = text ? defaultTransformer.parse(text) : undefined
 
       // If the response is a redirect or not found, throw it
       // for the router to handle

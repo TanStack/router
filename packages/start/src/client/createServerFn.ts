@@ -83,7 +83,7 @@ export type RscStream<T> = {
   __cacheState: T
 }
 
-type Method = 'GET' | 'POST'
+export type Method = 'GET' | 'POST'
 
 export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
   ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
@@ -247,34 +247,29 @@ function flattenMiddlewares(
   return flattened
 }
 
-async function executeMiddleware(
-  middlewares: Array<AnyMiddleware>,
-  env: 'client' | 'server',
-  opts: {
-    method: Method
-    input: any
-    headers?: HeadersInit
-  },
-): Promise<{
+export type MiddlewareOptions = {
+  method: Method
+  input: any
+  headers?: HeadersInit
+  serverContext?: any
+  context?: any
+}
+
+export type MiddlewareResult = {
   context: any
   serverContext: any
   input: any
   result: unknown
-}> {
+}
+
+async function executeMiddleware(
+  middlewares: Array<AnyMiddleware>,
+  env: 'client' | 'server',
+  opts: MiddlewareOptions,
+): Promise<MiddlewareResult> {
   const flattenedMiddlewares = flattenMiddlewares(middlewares)
 
-  const next = async (ctx: {
-    method: Method
-    input: any
-    context: any
-    serverContext: any
-    headers?: HeadersInit
-  }): Promise<{
-    context: any
-    serverContext: any
-    input: any
-    result: unknown
-  }> => {
+  const next = async (ctx: MiddlewareOptions): Promise<MiddlewareResult> => {
     // Get the next middleware
     const nextMiddleware = flattenedMiddlewares.shift()
 
@@ -301,6 +296,8 @@ async function executeMiddleware(
       return middlewareFn({
         input: ctx.input,
         context: ctx.context as never,
+        serverContext: ctx.serverContext as never,
+        method: ctx.method,
         next: (userResult: any) => {
           // Take the user provided context
           // and merge it with the current context
@@ -324,13 +321,8 @@ async function executeMiddleware(
             serverContext,
             headers,
             result: userResult?.result,
-          } as {
+          } as MiddlewareResult & {
             method: Method
-            context: any
-            serverContext: any
-            headers: any
-            input: any
-            result: unknown
           }) as any
         },
       }) as any
@@ -344,9 +336,9 @@ async function executeMiddleware(
   // Start the middleware chain
   return next({
     ...opts,
-    context: {},
-    serverContext: {},
     headers: opts.headers || {},
+    serverContext: (opts as any).serverContext || {},
+    context: opts.context || {},
   })
 }
 
@@ -358,9 +350,14 @@ function serverFnBaseToMiddleware(
     options: {
       input: options.input,
       validateClient: options.validateClient,
-      client: async ({ next, ...ctx }) => {
+      client: async ({ next, serverContext, ...ctx }) => {
         // Execute the extracted function
-        const result = await options.extractedFn?.(ctx as any)
+        // but not before serializing the context
+        const result = await options.extractedFn?.({
+          ...ctx,
+          // switch the serverContext over to context
+          context: serverContext,
+        } as any)
 
         return next({
           result,

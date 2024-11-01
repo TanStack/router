@@ -1,6 +1,7 @@
 /// <reference types="vinxi/types/server" />
 import {
-  defaultParseSearch,
+  decode,
+  defaultTransformer,
   isNotFound,
   isRedirect,
 } from '@tanstack/react-router'
@@ -24,7 +25,7 @@ async function handleServerAction(event: H3Event) {
   return handleServerRequest(toWebRequest(event), event)
 }
 
-export async function handleServerRequest(request: Request, event?: H3Event) {
+export async function handleServerRequest(request: Request, _event?: H3Event) {
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
   const search = Object.fromEntries(
@@ -59,7 +60,13 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
           return [
             method.toLowerCase() === 'get'
               ? (() => {
-                  return (defaultParseSearch(url.search) as any)?.payload
+                  const payload = decode(url.search)?.payload
+
+                  if (!payload) {
+                    return undefined
+                  }
+
+                  return defaultTransformer.parse(payload)
                 })()
               : await request.json(),
           ] as const
@@ -72,6 +79,7 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
           return [
             method.toLowerCase() === 'get'
               ? (() => {
+                  // TODO: This is a weird use case. Can you actually GET form data?
                   const { _serverFnId, _serverFnName, payload } = search
                   return payload
                 })()
@@ -118,7 +126,7 @@ export async function handleServerRequest(request: Request, event?: H3Event) {
       }
 
       return new Response(
-        result !== undefined ? JSON.stringify(result) : undefined,
+        result !== undefined ? defaultTransformer.stringify(result) : undefined,
         {
           status: getResponseStatus(getEvent()),
           headers: {
