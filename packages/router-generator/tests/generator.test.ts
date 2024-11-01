@@ -99,20 +99,18 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         makeFolderDir(folderName) + '/routeTree.gen.js'
       break
     case 'custom-scaffolding':
-      config.experimental = {
-        customScaffolding: {
-          routeTemplate: [
-            'import * as React from "react";\n',
-            '%%tsrImports%%\n\n',
-            '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-            'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
-          ].join(''),
-          apiTemplate: [
-            'import { json } from "@tanstack/start";\n',
-            '%%tsrImports%%\n\n',
-            '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message: "Hello /api/test" }) }}%%tsrExportEnd%%\n',
-          ].join(''),
-        },
+      config.customScaffolding = {
+        routeTemplate: [
+          'import * as React from "react";\n',
+          '%%tsrImports%%\n\n',
+          '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+          'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
+        ].join(''),
+        apiTemplate: [
+          'import { json } from "@tanstack/start";\n',
+          '%%tsrImports%%\n\n',
+          '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message: "Hello /api/test" }) }}%%tsrExportEnd%%\n',
+        ].join(''),
       }
       break
     default:
