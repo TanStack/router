@@ -37,15 +37,11 @@ export const configSchema = z.object({
     .array(z.string())
     .optional()
     .default([
-      '/* prettier-ignore-start */',
       '/* eslint-disable */',
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols',
     ]),
-  routeTreeFileFooter: z
-    .array(z.string())
-    .optional()
-    .default(['/* prettier-ignore-end */']),
+  routeTreeFileFooter: z.array(z.string()).optional().default([]),
   autoCodeSplitting: z.boolean().optional(),
   indexToken: z.string().optional().default('index'),
   routeToken: z.string().optional().default('route'),
