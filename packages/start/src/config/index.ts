@@ -218,11 +218,10 @@ const inlineConfigSchema = z.object({
   server: serverSchema.optional(),
 })
 
-export type TanStackStartDefineConfigOptions = z.infer<
-  typeof inlineConfigSchema
->
+export type TanStackStartInputConfig = z.input<typeof inlineConfigSchema>
+export type TanStackStartOutputConfig = z.infer<typeof inlineConfigSchema>
 
-function setTsrDefaults(config: TanStackStartDefineConfigOptions['tsr']) {
+function setTsrDefaults(config: TanStackStartOutputConfig['tsr']) {
   // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
   const appDirectory = config?.appDirectory ?? './app'
   return {
@@ -265,9 +264,7 @@ function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
   return ssrOptions
 }
 
-export function defineConfig(
-  inlineConfig: TanStackStartDefineConfigOptions = {},
-) {
+export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
   const { preset: configDeploymentPreset, ...serverOptions } =
@@ -483,10 +480,7 @@ function withPlugins(prePlugins: Array<any>, postPlugins?: Array<any>) {
   }
 }
 
-function withStartPlugins(
-  opts: TanStackStartDefineConfigOptions,
-  router: RouterType,
-) {
+function withStartPlugins(opts: TanStackStartOutputConfig, router: RouterType) {
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
   const { userConfig } = getUserConfig(opts.vite)
   const { userConfig: routerUserConfig } = getUserConfig(
