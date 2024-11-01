@@ -195,7 +195,11 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // app/routes/__root.tsx
-import { Outlet, ScrollRestoration, createRootRoute } from '@tanstack/react-router'
+import {
+  Outlet,
+  ScrollRestoration,
+  createRootRoute,
+} from '@tanstack/react-router'
 import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
 import type { ReactNode } from 'react'
 
