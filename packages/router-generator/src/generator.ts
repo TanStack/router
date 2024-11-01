@@ -126,13 +126,19 @@ export async function generator(config: Config) {
 
     if (!routeCode) {
       const replaced = fillTemplate(
-        config.experimental.customScaffolding.routeTemplate,
+        [
+          'import * as React from "react"\n',
+          '%%tsrImports%%',
+          '\n\n',
+          '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
+          'function RootComponent() { return (<React.Fragment><div>Hello "%%tsrPath%%"!</div><Outlet /></React.Fragment>) };\n',
+        ].join(''),
         {
           tsrImports:
-            "import { Outlet, createRootRoute } from '@tanstack/react-router'",
+            "import { Outlet, createRootRoute } from '@tanstack/react-router';",
           tsrPath: rootPathId,
           tsrExportStart: `export const Route = createRootRoute(`,
-          tsrExportEnd: ')',
+          tsrExportEnd: ');',
         },
       )
 
@@ -189,16 +195,13 @@ export async function generator(config: Config) {
 
       if (!routeCode) {
         if (node.isLazy) {
-          replaced = fillTemplate(
-            config.experimental.customScaffolding.routeTemplate,
-            {
-              tsrImports:
-                "import { createLazyFileRoute } from '@tanstack/react-router'",
-              tsrPath: escapedRoutePath,
-              tsrExportStart: `export const Route = createLazyFileRoute('${escapedRoutePath}')(`,
-              tsrExportEnd: ')',
-            },
-          )
+          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
+            tsrImports:
+              "import { createLazyFileRoute } from '@tanstack/react-router';",
+            tsrPath: escapedRoutePath,
+            tsrExportStart: `export const Route = createLazyFileRoute('${escapedRoutePath}')(`,
+            tsrExportEnd: ');',
+          })
         } else if (
           node.isRoute ||
           (!node.isComponent &&
@@ -206,16 +209,13 @@ export async function generator(config: Config) {
             !node.isPendingComponent &&
             !node.isLoader)
         ) {
-          replaced = fillTemplate(
-            config.experimental.customScaffolding.routeTemplate,
-            {
-              tsrImports:
-                "import { createFileRoute } from '@tanstack/react-router'",
-              tsrPath: escapedRoutePath,
-              tsrExportStart: `export const Route = createFileRoute('${escapedRoutePath}')(`,
-              tsrExportEnd: ')',
-            },
-          )
+          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
+            tsrImports:
+              "import { createFileRoute } from '@tanstack/react-router';",
+            tsrPath: escapedRoutePath,
+            tsrExportStart: `export const Route = createFileRoute('${escapedRoutePath}')(`,
+            tsrExportEnd: ');',
+          })
         }
       } else {
         replaced = routeCode
@@ -365,16 +365,12 @@ export async function generator(config: Config) {
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
-      const replaced = fillTemplate(
-        config.experimental.customScaffolding.apiTemplate,
-        {
-          tsrImports:
-            "import { createAPIFileRoute } from '@tanstack/start/api'",
-          tsrPath: escapedRoutePath,
-          tsrExportStart: `export const Route = createAPIFileRoute('${escapedRoutePath}')(`,
-          tsrExportEnd: ')',
-        },
-      )
+      const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
+        tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
+        tsrPath: escapedRoutePath,
+        tsrExportStart: `export const Route = createAPIFileRoute('${escapedRoutePath}')(`,
+        tsrExportEnd: ');',
+      })
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(

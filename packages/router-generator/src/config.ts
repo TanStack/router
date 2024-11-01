@@ -6,14 +6,16 @@ import { virtualRootRouteSchema } from './filesystem/virtual/config'
 const defaultTemplate = {
   routeTemplate: [
     'import * as React from "react";\n',
-    '%%tsrImports%%\n\n',
+    '%%tsrImports%%',
+    '\n\n',
     '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
     'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
   ].join(''),
   apiTemplate: [
     'import { json } from "@tanstack/start";\n',
-    '%%tsrImports%%\n\n',
-    '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message: "Hello /api/test" }) }}%%tsrExportEnd%%\n',
+    '%%tsrImports%%',
+    '\n\n',
+    '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message:\'Hello "%%tsrPath%%"!\' }) }}%%tsrExportEnd%%\n',
   ].join(''),
 }
 
@@ -47,28 +49,22 @@ export const configSchema = z.object({
   autoCodeSplitting: z.boolean().optional(),
   indexToken: z.string().optional().default('index'),
   routeToken: z.string().optional().default('route'),
+  customScaffolding: z
+    .object({
+      routeTemplate: z
+        .string()
+        .optional()
+        .default(defaultTemplate.routeTemplate),
+      apiTemplate: z.string().optional().default(defaultTemplate.apiTemplate),
+    })
+    .optional()
+    .default(defaultTemplate),
   experimental: z
     .object({
       // TODO: Remove this option in the next major release (v2).
       enableCodeSplitting: z.boolean().optional(),
-      customScaffolding: z
-        .object({
-          routeTemplate: z
-            .string()
-            .optional()
-            .default(defaultTemplate.routeTemplate),
-          apiTemplate: z
-            .string()
-            .optional()
-            .default(defaultTemplate.routeTemplate),
-        })
-        .optional()
-        .default(defaultTemplate),
     })
-    .optional()
-    .default({
-      customScaffolding: defaultTemplate,
-    }),
+    .optional(),
 })
 
 export type Config = z.infer<typeof configSchema>
@@ -133,7 +129,7 @@ export function getConfig(
 }
 
 function validateConfig(config: Config) {
-  if (typeof config.experimental.enableCodeSplitting !== 'undefined') {
+  if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
     const message = `
 ------
 ⚠️ ⚠️ ⚠️
