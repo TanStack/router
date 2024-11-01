@@ -4,7 +4,7 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
+import { Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -68,16 +68,16 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <Html>
-      <Head>
+    <html>
+      <head>
         <Meta />
-      </Head>
-      <Body>
+      </head>
+      <body>
         {children}
         <ScrollRestoration />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </Body>
-    </Html>
+      </body>
+    </html>
   )
 }

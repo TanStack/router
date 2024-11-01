@@ -5,14 +5,7 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import {
-  Body,
-  Head,
-  Html,
-  Meta,
-  Scripts,
-  createServerFn,
-} from '@tanstack/start'
+import { Meta, Scripts, createServerFn } from '@tanstack/start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
@@ -100,11 +93,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const { user } = Route.useRouteContext()
 
   return (
-    <Html>
-      <Head>
+    <html>
+      <head>
         <Meta />
-      </Head>
-      <Body>
+      </head>
+      <body>
         <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -139,7 +132,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ScrollRestoration />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </Body>
-    </Html>
+      </body>
+    </html>
   )
 }
