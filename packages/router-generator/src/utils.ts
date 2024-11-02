@@ -98,7 +98,7 @@ export function routePathToVariable(routePath: string): string {
       ?.replace(/\/\$\//g, '/splat/')
       .replace(/\$$/g, 'splat')
       .replace(/\$/g, '')
-      .split(/[/-]/g)
+      .split(/[\\/\\-]/g)
       .map((d, i) => (i > 0 ? capitalize(d) : d))
       .join('')
       .replace(/([^a-zA-Z0-9]|[.])/gm, '')
