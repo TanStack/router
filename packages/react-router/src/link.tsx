@@ -9,6 +9,7 @@ import {
   functionalUpdate,
   useForwardedRef,
   useIntersectionObserver,
+  useLayoutEffect,
 } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
 import type { ParsedLocation } from './location'
@@ -497,7 +498,7 @@ export interface LinkOptionsProps {
    * - `'intent'` - Preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
    * - `'viewport'` - Preload the linked route when it enters the viewport
    */
-  preload?: false | 'intent' | 'viewport'
+  preload?: false | 'intent' | 'viewport' | 'render'
   /**
    * When a preload strategy is set, this delays the preload by this many milliseconds.
    * If the user exits the link before this delay, the preload will be cancelled.
@@ -589,6 +590,7 @@ export function useLinkProps<
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
+  const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
 
   const {
@@ -722,8 +724,18 @@ export function useLinkProps<
     innerRef,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!disabled || preload !== 'viewport' },
+    { disabled: !!disabled || !(preload === 'viewport') },
   )
+
+  useLayoutEffect(() => {
+    if (hasRenderFetched.current) {
+      return
+    }
+    if (!disabled && preload === 'render') {
+      doPreload()
+      hasRenderFetched.current = true
+    }
+  }, [disabled, doPreload, preload])
 
   if (type === 'external') {
     return {

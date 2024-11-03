@@ -121,6 +121,16 @@ export const isMatch = <TMatch, TPath extends string>(
   return value != null
 }
 
+export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
+  TRoute['types']['id'],
+  TRoute['types']['fullPath'],
+  TRoute['types']['allParams'],
+  TRoute['types']['fullSearchSchema'],
+  TRoute['types']['loaderData'],
+  TRoute['types']['allContext'],
+  TRoute['types']['loaderDeps']
+>
+
 export interface RouteMatch<
   TRouteId,
   TFullPath,

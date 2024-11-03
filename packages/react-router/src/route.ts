@@ -11,7 +11,12 @@ import { rootRouteId } from './root'
 import type * as React from 'react'
 import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
-import type { MakeRouteMatch, MakeRouteMatchUnion, RouteMatch } from './Matches'
+import type {
+  MakeRouteMatch,
+  MakeRouteMatchFromRoute,
+  MakeRouteMatchUnion,
+  RouteMatch,
+} from './Matches'
 import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
@@ -52,6 +57,7 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
   TCustomId extends string = string,
   TFullPath extends string = string,
   TPath extends string = string,
@@ -64,6 +70,7 @@ export type RouteOptions<
   TBeforeLoadFn = AnyContext,
 > = BaseRouteOptions<
   TParentRoute,
+  TId,
   TCustomId,
   TPath,
   TSearchValidator,
@@ -114,8 +121,8 @@ export type StringifyParamsFn<TPath extends string, TParams> = (
 
 export type ParamsOptions<TPath extends string, TParams> = {
   params?: {
-    parse: ParseParamsFn<TPath, TParams>
-    stringify: StringifyParamsFn<TPath, TParams>
+    parse?: ParseParamsFn<TPath, TParams>
+    stringify?: StringifyParamsFn<TPath, TParams>
   }
 
   /** 
@@ -168,6 +175,7 @@ export type BeforeLoadFn<
 
 export type FileBaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
   TPath extends string = string,
   TSearchValidator = undefined,
   TParams = {},
@@ -188,6 +196,7 @@ export type FileBaseRouteOptions<
     | ((
         match: LoaderFnContext<
           TParentRoute,
+          TId,
           TParams,
           TLoaderDeps,
           TRouterContext,
@@ -234,6 +243,7 @@ export type FileBaseRouteOptions<
     (
       ctx: LoaderFnContext<
         TParentRoute,
+        TId,
         TParams,
         TLoaderDeps,
         TRouterContext,
@@ -246,6 +256,7 @@ export type FileBaseRouteOptions<
 
 export type BaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
   TCustomId extends string = string,
   TPath extends string = string,
   TSearchValidator = undefined,
@@ -258,6 +269,7 @@ export type BaseRouteOptions<
 > = RoutePathOptions<TCustomId, TPath> &
   FileBaseRouteOptions<
     TParentRoute,
+    TId,
     TPath,
     TSearchValidator,
     TParams,
@@ -552,6 +564,7 @@ export type DefaultSearchValidator = SearchValidator<
 
 export type RouteLoaderFn<
   in out TParentRoute extends AnyRoute = AnyRoute,
+  in out TId extends string = string,
   in out TParams = {},
   in out TLoaderDeps = {},
   in out TRouterContext = {},
@@ -560,6 +573,7 @@ export type RouteLoaderFn<
 > = (
   match: LoaderFnContext<
     TParentRoute,
+    TId,
     TParams,
     TLoaderDeps,
     TRouterContext,
@@ -570,6 +584,7 @@ export type RouteLoaderFn<
 
 export interface LoaderFnContext<
   in out TParentRoute extends AnyRoute = AnyRoute,
+  in out TId extends string = string,
   in out TParams = {},
   in out TLoaderDeps = {},
   in out TRouterContext = {},
@@ -593,7 +608,10 @@ export interface LoaderFnContext<
    * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
    **/
   navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
-  parentMatchPromise?: Promise<void>
+  // root route does not have a parent match
+  parentMatchPromise: TId extends RootRouteId
+    ? never
+    : Promise<MakeRouteMatchFromRoute<TParentRoute>>
   cause: 'preload' | 'enter' | 'stay'
   route: Route
 }
@@ -922,6 +940,7 @@ export class Route<
   isRoot: TParentRoute extends Route<any> ? true : false
   options: RouteOptions<
     TParentRoute,
+    TId,
     TCustomId,
     TFullPath,
     TPath,
@@ -994,6 +1013,7 @@ export class Route<
   constructor(
     options?: RouteOptions<
       TParentRoute,
+      TId,
       TCustomId,
       TFullPath,
       TPath,
@@ -1054,6 +1074,7 @@ export class Route<
     const options = this.options as
       | (RouteOptions<
           TParentRoute,
+          TId,
           TCustomId,
           TFullPath,
           TPath,
@@ -1189,6 +1210,7 @@ export class Route<
       TNewLoaderFn,
       RouteLoaderFn<
         TParentRoute,
+        TCustomId,
         TParams,
         TLoaderDeps,
         TRouterContext,
@@ -1337,6 +1359,7 @@ export function createRoute<
 >(
   options: RouteOptions<
     TParentRoute,
+    TId,
     TCustomId,
     TFullPath,
     TPath,
@@ -1378,8 +1401,9 @@ export type RootRouteOptions<
 > = Omit<
   RouteOptions<
     any, // TParentRoute
-    RootRouteId,
-    '', // TCustomId
+    RootRouteId, // TId
+    RootRouteId, // TCustomId
+    '', // TFullPath
     '', // TPath
     TSearchValidator,
     {}, // TParams
@@ -1690,6 +1714,7 @@ export class NotFoundRoute<
     options: Omit<
       RouteOptions<
         TParentRoute,
+        string,
         string,
         string,
         string,

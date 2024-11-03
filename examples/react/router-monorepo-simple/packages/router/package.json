@@ -8,8 +8,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@tanstack/react-router": "^1.76.1",
-    "@tanstack/router-plugin": "^1.76.0",
+    "@tanstack/react-router": "^1.78.2",
+    "@tanstack/router-plugin": "^1.78.2",
     "redaxios": "^0.5.1",
     "zod": "^3.23.8",
     "react": "^18.2.0",
@@ -20,7 +20,7 @@
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.3.3",
     "typescript": "5.6.2",
-    "vite": "^5.4.9",
-    "vite-plugin-dts": "^4.2.4"
+    "vite": "^5.4.10",
+    "vite-plugin-dts": "^4.3.0"
   }
 }

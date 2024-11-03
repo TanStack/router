@@ -1,0 +1,27 @@
+{
+  "name": "tanstack-router-e2e-react-basic-scroll-restoration",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3001",
+    "build": "vite build && tsc --noEmit",
+    "serve": "vite preview",
+    "start": "vite",
+    "test:e2e": "playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-devtools": "workspace:^",
+    "@tanstack/react-virtual": "^3.10.8",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "redaxios": "^0.5.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.2",
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^5.4.10"
+  }
+}
