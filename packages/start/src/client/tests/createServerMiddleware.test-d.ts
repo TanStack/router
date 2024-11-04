@@ -28,7 +28,7 @@ test('createServeMiddleware removes middleware and input', () => {
     })
   })
 
-  expectTypeOf(middlewareWithServer).toHaveProperty('server')
+  expectTypeOf(middlewareWithServer).toHaveProperty('clientAfter')
   expectTypeOf(middlewareWithServer).not.toHaveProperty('input')
   expectTypeOf(middlewareWithServer).not.toHaveProperty('middleware')
 })
@@ -39,6 +39,7 @@ test('createMiddleware merges server context', () => {
     expectTypeOf(await next({ context: { a: true } })).toEqualTypeOf<{
       'use functions must return the result of next()': true
       context: { a: boolean }
+      clientAfterContext: undefined
     }>()
     return await next({ context: { a: true } })
   })
@@ -99,7 +100,7 @@ test('createMiddleware merges client context', () => {
         b: string
         c: number
       }>()
-      return next({ serverContext: { ...context, c: 5 } })
+      return next({ sendContext: { ...context, c: 5 } })
     })
 
   createMiddleware()

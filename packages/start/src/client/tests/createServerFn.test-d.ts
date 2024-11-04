@@ -46,7 +46,7 @@ test('createServerFn with middleware and context', () => {
   const middleware4 = createMiddleware()
     .middleware([middleware3])
     .client(({ context, next }) => {
-      return next({ serverContext: context })
+      return next({ sendContext: context })
     })
     .server(({ context, next }) => {
       expectTypeOf(context).toEqualTypeOf<{

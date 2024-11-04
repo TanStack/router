@@ -61,6 +61,34 @@ export type MergeAllClientContext<TMiddlewares, TContext = undefined> = Expand<
   >
 >
 
+export type ResolveAllMiddlewareClientAfterContext<
+  TMiddlewares,
+  TContext = undefined,
+> =
+  | ParseMiddlewares<TMiddlewares>['_types']['clientContext']
+  | ParseMiddlewares<TMiddlewares>['_types']['clientAfterContext']
+  | TContext
+
+export type MergeAllClientAfterContext<
+  TMiddlewares,
+  TClientContext = undefined,
+  TClientAfterContext = undefined,
+> = Expand<
+  MergeAll<
+    ResolveAllMiddlewareClientAfterContext<
+      TMiddlewares,
+      TClientContext | TClientAfterContext
+    > extends undefined
+      ? undefined
+      : NonNullable<
+          ResolveAllMiddlewareClientAfterContext<
+            TMiddlewares,
+            TClientContext | TClientAfterContext
+          >
+        >
+  >
+>
+
 export type ResolveAllValidators<TMiddlewares, TValidator> =
   | ParseMiddlewares<TMiddlewares>['_types']['validator']
   | TValidator
@@ -108,23 +136,36 @@ export interface MiddlewareOptions<
     TServerContext,
     TClientContext
   >
-  server?: MiddlewareServerFn<TMiddlewares, TValidator, TServerContext, unknown>
+  server?: MiddlewareServerFn<
+    TMiddlewares,
+    TValidator,
+    TServerContext,
+    unknown,
+    unknown
+  >
 }
 
 export type MiddlewareServerFn<
   TMiddlewares,
   TValidator,
   TServerContext,
-  TContext,
+  TNewServerContext,
+  TNewClientAfterContext,
 > = (options: {
   input: MergeAllValidatorOutputs<TMiddlewares, NonNullable<TValidator>>
   context: MergeAllServerContext<TMiddlewares, NonNullable<TServerContext>>
-  next: <TContext = undefined>(ctx?: {
-    context?: TContext
-  }) => Promise<ServerResultWithContext<TContext>>
+  next: <
+    TNewServerContext = undefined,
+    TNewClientAfterContext = undefined,
+  >(ctx?: {
+    context?: TNewServerContext
+    sendContext?: TNewClientAfterContext
+  }) => Promise<
+    ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
+  >
 }) =>
-  | Promise<ServerResultWithContext<TContext>>
-  | ServerResultWithContext<TContext>
+  | Promise<ServerResultWithContext<TNewServerContext, TNewClientAfterContext>>
+  | ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
 
 export type MiddlewareClientFn<
   TMiddlewares,
@@ -138,16 +179,45 @@ export type MiddlewareClientFn<
   method: Method
   next: <TNewServerContext = undefined, TNewClientContext = undefined>(ctx?: {
     context?: TNewClientContext
-    serverContext?: TNewServerContext
+    sendContext?: TNewServerContext
     headers?: HeadersInit
   }) => Promise<ClientResultWithContext<TNewServerContext, TNewClientContext>>
 }) =>
   | Promise<ClientResultWithContext<TServerContext, TClientContext>>
   | ClientResultWithContext<TServerContext, TClientContext>
 
-export type ServerResultWithContext<TContext> = {
+export type MiddlewareClientAfterFn<
+  TMiddlewares,
+  TValidator,
+  TClientContext,
+  TClientAfterContext,
+  TNewClientAfterContext,
+> = (options: {
+  input: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
+  context: MergeAllClientAfterContext<
+    TMiddlewares,
+    TClientContext,
+    TClientAfterContext
+  >
+  method: Method
+  next: <TNewClientAfterContext = undefined>(ctx?: {
+    context?: TNewClientAfterContext
+    headers?: HeadersInit
+  }) => Promise<ClientAfterResultWithContext<TNewClientAfterContext>>
+}) =>
+  | Promise<ClientAfterResultWithContext<TNewClientAfterContext>>
+  | ClientAfterResultWithContext<TNewClientAfterContext>
+
+export type ServerResultWithContext<TContext, TClientAfterContext> = {
   'use functions must return the result of next()': true
   context: TContext
+  clientAfterContext: TClientAfterContext
+}
+
+export type ClientAfterResultWithContext<TClientContext> = {
+  'use functions must return the result of next()': true
+  context: TClientContext
+  headers: HeadersInit
 }
 
 export type ClientResultWithContext<TServerContext, TClientContext> = {
@@ -157,7 +227,7 @@ export type ClientResultWithContext<TServerContext, TClientContext> = {
   headers: HeadersInit
 }
 
-export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any>
+export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any, any>
 
 export interface MiddlewareTypes<
   TId,
@@ -165,6 +235,7 @@ export interface MiddlewareTypes<
   TValidator,
   TServerContext,
   TClientContext,
+  TClientAfterContext,
 > {
   _types: {
     id: TId
@@ -173,6 +244,7 @@ export interface MiddlewareTypes<
     output: ResolveValidatorOutput<TValidator>
     clientContext: TClientContext
     serverContext: TServerContext
+    clientAfterContext: TClientAfterContext
     validator: TValidator
   }
   options: MiddlewareOptions<
@@ -186,20 +258,72 @@ export interface MiddlewareTypes<
 export interface MiddlewareInput<
   TId,
   TMiddlewares,
-  TInput,
+  TValidator,
   TServerContext,
   TClientContext,
+  TClientAfterContext,
 > {
   input: <TNewValidator>(
     input: Constrain<TNewValidator, AnyValidator>,
-  ) => MiddlewareWithClientAndServer<
+  ) => MiddlewareAfterMiddleware<
     TId,
     TMiddlewares,
-    NonNullable<TInput> | TNewValidator,
+    NonNullable<TValidator> | TNewValidator,
     TServerContext,
-    TClientContext
+    TClientContext,
+    TClientAfterContext
   >
 }
+
+export interface MiddlewareClientAfter<
+  TId,
+  TMiddlewares,
+  TValidator,
+  TServerContext,
+  TClientContext,
+  TClientAfterContext,
+> {
+  clientAfter: <TNewClientAfterContext = undefined>(
+    clientAfter: MiddlewareClientAfterFn<
+      TMiddlewares,
+      TValidator,
+      TClientContext,
+      TClientAfterContext,
+      TNewClientAfterContext
+    >,
+  ) => MiddlewareAfterServer<
+    TId,
+    TMiddlewares,
+    TValidator,
+    TServerContext,
+    TClientContext,
+    TClientAfterContext | TNewClientAfterContext
+  >
+}
+
+export interface MiddlewareAfterServer<
+  TId,
+  TMiddlewares,
+  TValidator,
+  TServerContext,
+  TClientContext,
+  TClientAfterContext,
+> extends MiddlewareTypes<
+      TId,
+      TMiddlewares,
+      TValidator,
+      TServerContext,
+      TClientContext,
+      TClientAfterContext
+    >,
+    MiddlewareClientAfter<
+      TId,
+      TMiddlewares,
+      TValidator,
+      TServerContext,
+      TClientContext,
+      TClientAfterContext
+    > {}
 
 export interface MiddlewareServer<
   TId,
@@ -207,42 +331,48 @@ export interface MiddlewareServer<
   TValidator,
   TServerContext,
   TClientContext,
+  TClientAfterContext,
 > {
-  server: <TNewServerContext = undefined>(
+  server: <TNewServerContext = undefined, TNewClientAfterContext = undefined>(
     server: MiddlewareServerFn<
       TMiddlewares,
       TValidator,
       TServerContext,
-      TNewServerContext
+      TNewServerContext,
+      TNewClientAfterContext
     >,
-  ) => MiddlewareWithServer<
+  ) => MiddlewareAfterServer<
     TId,
     TMiddlewares,
     TValidator,
     TServerContext | TNewServerContext,
-    TClientContext
+    TClientContext,
+    TClientAfterContext | TNewClientAfterContext
   >
 }
 
-export interface MiddlewareWithServer<
+export interface MiddlewareAfterClient<
   TId,
   TMiddlewares,
   TValidator,
   TServerContext,
   TClientContext,
+  TClientAfterContext,
 > extends MiddlewareTypes<
       TId,
       TMiddlewares,
       TValidator,
       TServerContext,
-      TClientContext
+      TClientContext,
+      TClientAfterContext
     >,
     MiddlewareServer<
       TId,
       TMiddlewares,
       TValidator,
       TServerContext,
-      TClientContext
+      TClientContext,
+      TClientAfterContext
     > {}
 
 export interface MiddlewareClient<
@@ -251,6 +381,7 @@ export interface MiddlewareClient<
   TValidator,
   TServerContext,
   TClientContext,
+  TClientAfterContext,
 > {
   client: <TNewServerContext = undefined, TNewClientContext = undefined>(
     client: MiddlewareClientFn<
@@ -259,85 +390,80 @@ export interface MiddlewareClient<
       TNewServerContext,
       TNewClientContext
     >,
-  ) => MiddlewareWithServer<
+  ) => MiddlewareAfterClient<
     TId,
     TMiddlewares,
     TValidator,
     TServerContext | TNewServerContext,
-    TClientContext | TNewClientContext
+    TClientContext | TNewClientContext,
+    TClientAfterContext
   >
 }
 
-export interface MiddlewareWithClient<
+export interface MiddlewareAfterMiddleware<
   TId,
   TMiddlewares,
   TValidator,
   TServerContext,
   TClientContext,
+  TClientAfterContext,
 > extends MiddlewareTypes<
       TId,
       TMiddlewares,
       TValidator,
       TServerContext,
-      TClientContext
+      TClientContext,
+      TClientAfterContext
+    >,
+    MiddlewareServer<
+      TId,
+      TMiddlewares,
+      TValidator,
+      TServerContext,
+      TClientContext,
+      TClientAfterContext
     >,
     MiddlewareClient<
       TId,
       TMiddlewares,
       TValidator,
       TServerContext,
-      TClientContext
-    > {}
-
-export interface MiddlewareWithClientAndServer<
-  TId,
-  TMiddlewares,
-  TValidator,
-  TServerContext,
-  TClientContext,
-> extends MiddlewareWithServer<
-      TId,
-      TMiddlewares,
-      TValidator,
-      TServerContext,
-      TClientContext
-    >,
-    MiddlewareWithClient<
-      TId,
-      TMiddlewares,
-      TValidator,
-      TServerContext,
-      TClientContext
+      TClientContext,
+      TClientAfterContext
     >,
     MiddlewareInput<
       TId,
       TMiddlewares,
       TValidator,
       TServerContext,
-      TClientContext
+      TClientContext,
+      TClientAfterContext
     > {}
 
-export interface MiddlewareWithAll<
+export interface Middleware<
   TId,
   TMiddlewares,
   TValidator,
   TServerContext,
   TClientContext,
-> extends MiddlewareWithClientAndServer<
+  TClientAfterContext,
+> extends MiddlewareAfterMiddleware<
     TId,
     TMiddlewares,
     TValidator,
     TServerContext,
-    TClientContext
+    TClientContext,
+    TClientAfterContext
   > {
   middleware: <const TNewMiddlewares>(
     middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => MiddlewareWithClientAndServer<
+  ) => MiddlewareAfterMiddleware<
     TId,
     TNewMiddlewares,
     TValidator,
     TServerContext,
-    TClientContext
+    TClientContext,
+    TClientAfterContext
   >
 }
 
@@ -347,6 +473,7 @@ export function createMiddleware<
   TValidator = undefined,
   TServerContext = undefined,
   TClientContext = undefined,
+  TClientAfterContext = undefined,
 >(
   options?: {
     validateClient?: boolean
@@ -357,12 +484,13 @@ export function createMiddleware<
     TServerContext,
     TClientContext
   >,
-): MiddlewareWithAll<
+): Middleware<
   TId,
   TMiddlewares,
   TValidator,
   TServerContext,
-  TClientContext
+  TClientContext,
+  TClientAfterContext
 > {
   // const resolvedOptions = (__opts || options) as MiddlewareOptions<
   const resolvedOptions =
@@ -412,12 +540,13 @@ export function createMiddleware<
         TClientContext
       >(undefined, Object.assign(resolvedOptions, { server })) as any
     },
-  } as unknown as MiddlewareWithAll<
+  } as unknown as Middleware<
     TId,
     TMiddlewares,
     TValidator,
     TServerContext,
-    TClientContext
+    TClientContext,
+    TClientAfterContext
   >
 }
 
@@ -427,25 +556,46 @@ const middleware1 = createMiddleware()
       context: {
         client: 'client',
       },
-      serverContext: { clientServer: 'clientServer' },
+      sendContext: { fromClient1: 'fromClient1' },
     })
   })
   .server(async ({ context, next }) => {
     console.log('middleware1', context)
-    const res = await next({ context: { a: true } })
+    const res = await next({
+      context: { a: true },
+      sendContext: {
+        fromServer1: 'fromServer1',
+      },
+    })
     console.log('middleware1 after', res)
     return res
+  })
+  .clientAfter(({ context, next }) => {
+    console.log('middleware1', context)
+    return next({ context: { clientAfter1: 'clientAfter' } })
   })
 
 const middleware2 = createMiddleware()
   .middleware([middleware1])
   .server(({ context, next }) => {
     console.log('middleware2', context)
-    return next({})
+    return next({ sendContext: { fromServer2: 'fromServer2' } })
+  })
+  .clientAfter(({ context, next }) => {
+    console.log('middleware1', context)
+    return next({ context: { clientAfter2: 'clientAfter2' } })
   })
 
 const clientMiddleware1 = createMiddleware()
   .middleware([middleware2])
   .client(({ next, context }) => {
     return next({ context: { a: 'c' } as const })
+  })
+  .server(({ context, next }) => {
+    console.log('middleware2', context)
+    return next({ sendContext: { fromServer3: 'fromServer3' } })
+  })
+  .clientAfter(({ context, next }) => {
+    console.log('middleware1', context)
+    return next({ context: { clientAfter3: 'clientAfter3' } })
   })

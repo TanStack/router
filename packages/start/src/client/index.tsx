@@ -27,9 +27,9 @@ export {
   type MiddlewareTypes,
   type MiddlewareInput,
   type MiddlewareServer as MiddlewareUse,
-  type MiddlewareWithServer as MiddlewareWithUse,
-  type MiddlewareWithClientAndServer,
-  type MiddlewareWithAll,
+  type MiddlewareAfterClient as MiddlewareWithUse,
+  type MiddlewareAfterMiddleware as MiddlewareWithClientAndServer,
+  type Middleware as MiddlewareWithAll,
 } from './createMiddleware'
 export { serverOnly } from './serverOnly'
 export { DehydrateRouter } from './DehydrateRouter'
