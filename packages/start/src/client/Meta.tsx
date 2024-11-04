@@ -122,7 +122,17 @@ export const useMetaElements = () => {
           children={`
 __TSR__ = {
   matches: [],
-  streamedValues: {},
+  streamedValues: new Proxy(
+    {},
+    {
+      set(t, key, v) {
+        const res = Reflect.set(t, key, v)
+        window.__TSR__ROUTER__ &&
+          __TSR__ROUTER__.emit({ type: 'onStreamedValue', key })
+        return res
+      },
+    },
+  ),
   initMatch: (index) => {
     Object.entries(__TSR__.matches[index].extracted).forEach(([id, ex]) => {
       if (ex.type === 'stream') {

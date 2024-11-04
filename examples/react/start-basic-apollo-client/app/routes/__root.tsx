@@ -1,3 +1,4 @@
+import { ApolloClient, InMemoryCache } from '@apollo/client-react-streaming'
 import {
   Link,
   Outlet,
@@ -7,6 +8,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
+import { ApolloProvider } from '~/components/ApolloProvider'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -60,11 +62,20 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 
+function makeClient() {
+  return new ApolloClient({
+    cache: new InMemoryCache(),
+    uri: 'https://main--hack-the-e-commerce.apollographos.net/graphql',
+  })
+}
+
 function RootComponent() {
   return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
+    <ApolloProvider makeClient={makeClient}>
+      <RootDocument>
+        <Outlet />
+      </RootDocument>
+    </ApolloProvider>
   )
 }
 
