@@ -1,21 +1,29 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
-import axios from 'redaxios'
-import { DEPLOY_URL, type User } from '../utils/users'
+import {
+  gql,
+  TypedDocumentNode,
+  useSuspenseQuery,
+} from '@apollo/client/index.js'
 
 export const Route = createFileRoute('/users')({
-  loader: async () => {
-    return await axios
-      .get<Array<User>>(DEPLOY_URL + '/api/users')
-      .then((r) => r.data)
-      .catch(() => {
-        throw new Error('Failed to fetch users')
-      })
-  },
   component: UsersComponent,
 })
 
+const USERS_QUERY: TypedDocumentNode<{
+  users: { data: Array<{ id: string; name: string }> }
+}> = gql`
+  query GetUsers {
+    users {
+      data {
+        id
+        name
+      }
+    }
+  }
+`
+
 function UsersComponent() {
-  const users = Route.useLoaderData()
+  const users = useSuspenseQuery(USERS_QUERY).data.users.data
 
   return (
     <div className="p-2 flex gap-2">

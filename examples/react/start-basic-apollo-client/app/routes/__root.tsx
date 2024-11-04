@@ -65,7 +65,7 @@ export const Route = createRootRoute({
 function makeClient() {
   return new ApolloClient({
     cache: new InMemoryCache(),
-    uri: 'https://main--hack-the-e-commerce.apollographos.net/graphql',
+    uri: 'https://graphqlzero.almansi.me/api',
   })
 }
 

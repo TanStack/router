@@ -1,18 +1,13 @@
 import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
-import axios from 'redaxios'
 import type { ErrorComponentProps } from '@tanstack/react-router'
-import { DEPLOY_URL, type User } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
+import {
+  gql,
+  TypedDocumentNode,
+  useSuspenseQuery,
+} from '@apollo/client/index.js'
 
 export const Route = createFileRoute('/users/$userId')({
-  loader: async ({ params: { userId } }) => {
-    return await axios
-      .get<User>(DEPLOY_URL + '/api/users/' + userId)
-      .then((r) => r.data)
-      .catch(() => {
-        throw new Error('Failed to fetch user')
-      })
-  },
   errorComponent: UserErrorComponent,
   component: UserComponent,
   notFoundComponent: () => {
@@ -20,12 +15,33 @@ export const Route = createFileRoute('/users/$userId')({
   },
 })
 
+const USER_QUERY: TypedDocumentNode<
+  {
+    user: {
+      id: string
+      name: string
+      email: string
+    }
+  },
+  { id: string }
+> = gql`
+  query GetUser($id: ID!) {
+    user(id: $id) {
+      id
+      name
+      email
+    }
+  }
+`
+
 export function UserErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />
 }
 
 function UserComponent() {
-  const user = Route.useLoaderData()
+  const id = Route.useParams().userId
+  const user = useSuspenseQuery(USER_QUERY, { variables: { id } }).data.user
+  console.log({ user })
 
   return (
     <div className="space-y-2">
