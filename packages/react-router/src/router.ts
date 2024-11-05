@@ -464,6 +464,15 @@ export interface RouterOptions<
      */
     strict?: boolean
   }
+  /**
+   * Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#pathparamsallowedcharacters-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/path-params#allowed-characters)
+   */
+  pathParamsAllowedCharacters?: Array<
+    ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
+  >
 }
 
 export interface RouterErrorSerializer<TSerializedError> {
@@ -711,6 +720,7 @@ export class Router<
   routesByPath!: RoutesByPath<TRouteTree>
   flatRoutes!: Array<AnyRoute>
   isServer!: boolean
+  pathParamsDecodeCharMap?: Map<string, string>
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -767,6 +777,15 @@ export class Router<
     }
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
+
+    this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
+      ? new Map(
+          this.options.pathParamsAllowedCharacters.map((char) => [
+            encodeURIComponent(char),
+            char,
+          ]),
+        )
+      : undefined
 
     if (
       !this.basepath ||
@@ -1187,6 +1206,7 @@ export class Router<
       const interpolatedPath = interpolatePath({
         path: route.fullPath,
         params: routeParams,
+        decodeCharMap: this.pathParamsDecodeCharMap,
       })
 
       const matchId =
@@ -1194,6 +1214,7 @@ export class Router<
           path: route.id,
           params: routeParams,
           leaveWildcards: true,
+          decodeCharMap: this.pathParamsDecodeCharMap,
         }) + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
@@ -1431,6 +1452,7 @@ export class Router<
               const interpolatedPath = interpolatePath({
                 path: route.fullPath,
                 params: matchedRoutesResult?.routeParams ?? {},
+                decodeCharMap: this.pathParamsDecodeCharMap,
               })
               const pathname = joinPaths([this.basepath, interpolatedPath])
               return pathname === fromPath
@@ -1467,6 +1489,7 @@ export class Router<
         params: nextParams ?? {},
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
+        decodeCharMap: this.pathParamsDecodeCharMap,
       })
 
       let search = fromSearch
