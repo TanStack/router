@@ -1,20 +1,24 @@
-import { ApolloClient, InMemoryCache } from '@apollo/client-react-streaming'
 import {
   Link,
   Outlet,
   ScrollRestoration,
-  createRootRoute,
+  createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
-import { ApolloProvider } from '~/components/ApolloProvider'
+import type { ApolloClient } from '@apollo/client-react-streaming'
+import type { PreloadQueryFunction } from '@apollo/client/index.js'
+import { ApolloProvider } from '~/apollo/ApolloProvider'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{
+  apolloClient: ApolloClient<any>
+  queryPreloader: PreloadQueryFunction
+}>()({
   meta: () => [
     {
       charSet: 'utf-8',
@@ -62,16 +66,10 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 
-function makeClient() {
-  return new ApolloClient({
-    cache: new InMemoryCache(),
-    uri: 'https://graphqlzero.almansi.me/api',
-  })
-}
-
 function RootComponent() {
+  const apolloClient = Route.useRouteContext().apolloClient
   return (
-    <ApolloProvider makeClient={makeClient}>
+    <ApolloProvider makeClient={() => apolloClient}>
       <RootDocument>
         <Outlet />
       </RootDocument>
