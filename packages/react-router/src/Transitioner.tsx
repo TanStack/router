@@ -17,7 +17,7 @@ export function Transitioner() {
         'isTransitioning',
         'matches',
       ]),
-    structuralSharing: true as boolean,
+    structuralSharing: true as any,
   })
 
   const [isTransitioning, startReactTransition_] = React.useTransition()
