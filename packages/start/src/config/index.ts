@@ -28,6 +28,7 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
+import { envValidationSchema, tsrValidateEnvPlugin } from './env/plugin.js'
 import type {
   AppOptions as VinxiAppOptions,
   RouterSchemaInput as VinxiRouterSchemaInput,
@@ -37,6 +38,8 @@ import type * as vite from 'vite'
 import type { NitroOptions } from 'nitropack'
 
 import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
+
+export { stringEnv, booleanEnv } from './env/schema.js'
 
 type RouterType = 'client' | 'server' | 'ssr' | 'api'
 
@@ -216,6 +219,11 @@ const inlineConfigSchema = z.object({
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
   server: serverSchema.optional(),
+  env: z
+    .object({
+      schema: envValidationSchema.optional(),
+    })
+    .optional(),
 })
 
 export type TanStackStartInputConfig = z.input<typeof inlineConfigSchema>
@@ -266,6 +274,10 @@ function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
 
 export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
   const opts = inlineConfigSchema.parse(inlineConfig)
+
+  const root = process.cwd()
+
+  const envSchemaInput = opts.env?.schema
 
   const { preset: configDeploymentPreset, ...serverOptions } =
     serverSchema.parse(opts.server || {})
@@ -319,6 +331,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
           sourcemap: true,
         },
         plugins: () => [
+          tsrValidateEnvPlugin({ schema: envSchemaInput, root }),
           ...(getUserConfig(opts.vite).plugins || []),
           ...(getUserConfig(opts.routers?.client?.vite).plugins || []),
           serverFunctions.client({
@@ -336,6 +349,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
       ...(apiEntryExists
         ? [
             withPlugins([
+              tsrValidateEnvPlugin({ schema: envSchemaInput, root }),
               config('start-vite', {
                 ...getUserConfig(opts.vite).userConfig,
                 ...getUserConfig(opts.routers?.api?.vite).userConfig,
@@ -392,6 +406,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
         target: 'server',
         handler: ssrEntry,
         plugins: () => [
+          tsrValidateEnvPlugin({ schema: envSchemaInput, root }),
           tsrRoutesManifest({
             tsrConfig,
             clientBase,
@@ -423,6 +438,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => [
+          tsrValidateEnvPlugin({ schema: envSchemaInput, root }),
           serverFunctions.server({
             runtime: '@tanstack/start/react-server-runtime',
             // TODO: RSCS - remove this
@@ -591,6 +607,7 @@ function tsrRoutesManifest(opts: {
         try {
           routeTreeContent = readFileSync(routeTreePath, 'utf-8')
         } catch (err) {
+          console.error(err)
           throw new Error(
             `Could not find the generated route tree at '${routeTreePath}'!`,
           )
