@@ -33,5 +33,5 @@ export function useLocation<
   return useRouterState({
     select: (state: any) =>
       opts?.select ? opts.select(state.location) : state.location,
-  } as any)
+  } as any) as UseLocationResult<TRouter, TSelected>
 }

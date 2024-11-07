@@ -1,5 +1,8 @@
 import { useMatch } from './useMatch'
-import type { StructuralSharingOption } from './structuralSharing'
+import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { RouteById } from './routeInfo'
 import type { Expand, StrictOrFrom } from './utils'
@@ -8,8 +11,11 @@ export interface UseLoaderDepsBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
   TSelected,
+  TStructuralSharing,
 > {
-  select?: (deps: ResolveLoaderDeps<TRouter, TFrom>) => TSelected
+  select?: (
+    deps: ResolveLoaderDeps<TRouter, TFrom>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
 export type UseLoaderDepsOptions<
@@ -18,7 +24,7 @@ export type UseLoaderDepsOptions<
   TSelected,
   TStructuralSharing,
 > = StrictOrFrom<TRouter, TFrom> &
-  UseLoaderDepsBaseOptions<TRouter, TFrom, TSelected> &
+  UseLoaderDepsBaseOptions<TRouter, TFrom, TSelected, TStructuralSharing> &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
 export type ResolveLoaderDeps<TRouter extends AnyRouter, TFrom> = Expand<
@@ -34,8 +40,9 @@ export type UseLoaderDepsResult<
 export type UseLoaderDepsRoute<out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected> &
+  opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, false>,
 ) => UseLoaderDepsResult<TRouter, TId, TSelected>
 

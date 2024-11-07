@@ -19,16 +19,18 @@ export type UseRouterStateOptions<
   ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 } & StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
+export type UseRouterStateResult<
+  TRouter extends AnyRouter,
+  TSelected,
+> = unknown extends TSelected ? RouterState<TRouter['routeTree']> : TSelected
+
 export function useRouterState<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TReturn = unknown extends TSelected
-    ? RouterState<TRouter['routeTree']>
-    : TSelected,
   TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseRouterStateOptions<TRouter, TSelected, TStructuralSharing>,
-): TReturn {
+): UseRouterStateResult<TRouter, TSelected> {
   const contextRouter = useRouter<TRouter>({
     warn: opts?.router === undefined,
   })
@@ -49,5 +51,5 @@ export function useRouterState<
       return opts.select(state)
     }
     return state
-  }) as TReturn
+  }) as UseRouterStateResult<TRouter, TSelected>
 }
