@@ -1,24 +1,28 @@
 import {
-  WrapApolloProvider,
-  QueryEvent,
   DataTransportContext,
+  WrapApolloProvider,
 } from '@apollo/client-react-streaming'
 import { useRouter } from '@tanstack/react-router'
-import {
-  ComponentProps,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-} from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef } from 'react'
+import type { QueryEvent } from '@apollo/client-react-streaming'
 
 const APOLLO_EVENT_PREFIX = '@@apollo.event/'
 const APOLLO_HOOK_PREFIX = '@@apollo.hook/'
 
 const handledEvents = new WeakSet<object>()
 
-export const ApolloProvider = WrapApolloProvider((props) => {
+export const ApolloProvider = (props: React.PropsWithChildren) => {
+  const router = useRouter()
+  return (
+    <WrappedApolloProvider
+      makeClient={() => router.options.context.apolloClient}
+    >
+      {props.children}
+    </WrappedApolloProvider>
+  )
+}
+
+const WrappedApolloProvider = WrapApolloProvider((props) => {
   const router = useRouter()
 
   const consumeBackPressure = useCallback(() => {

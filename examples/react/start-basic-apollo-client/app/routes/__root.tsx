@@ -9,7 +9,6 @@ import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import type { ApolloClient } from '@apollo/client-react-streaming'
 import type { PreloadQueryFunction } from '@apollo/client/index.js'
-import { ApolloProvider } from '~/apollo/ApolloProvider'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -17,7 +16,7 @@ import { seo } from '~/utils/seo'
 
 export const Route = createRootRouteWithContext<{
   apolloClient: ApolloClient<any>
-  queryPreloader: PreloadQueryFunction
+  preloadQuery: PreloadQueryFunction
 }>()({
   meta: () => [
     {
@@ -67,13 +66,10 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootComponent() {
-  const apolloClient = Route.useRouteContext().apolloClient
   return (
-    <ApolloProvider makeClient={() => apolloClient}>
-      <RootDocument>
-        <Outlet />
-      </RootDocument>
-    </ApolloProvider>
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
   )
 }
 

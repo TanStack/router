@@ -22,7 +22,7 @@ const GET_POSTS: TypedDocumentNode<{
 
 export const Route = createFileRoute('/posts')({
   loader: ({ context }) => {
-    const postsRef = context.queryPreloader(GET_POSTS)
+    const postsRef = context.preloadQuery(GET_POSTS)
     return { postsRef }
   },
   component: PostsComponent,
