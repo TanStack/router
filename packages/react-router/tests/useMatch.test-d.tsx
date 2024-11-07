@@ -29,11 +29,9 @@ describe('useMatch', () => {
     const shouldThrow = true
     const match = useMatch<
       DefaultRouter,
-      DefaultRouter['routeTree'],
       typeof from,
       true, // TStrict
       typeof shouldThrow,
-      TRouteMatch,
       TRouteMatch
     >({ from, shouldThrow })
 
@@ -44,11 +42,9 @@ describe('useMatch', () => {
     const shouldThrow = false
     const match = useMatch<
       DefaultRouter,
-      DefaultRouter['routeTree'],
       typeof from,
       true, // TStrict
       typeof shouldThrow,
-      TRouteMatch,
       TRouteMatch
     >({ from, shouldThrow })
 

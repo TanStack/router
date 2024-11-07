@@ -645,7 +645,7 @@ export function useLinkProps<
   // subscribe to search params to re-build location if it changes
   const currentSearch = useRouterState({
     select: (s) => s.location.search,
-    structuralSharing: true,
+    structuralSharing: true as any,
   })
 
   const next = React.useMemo(

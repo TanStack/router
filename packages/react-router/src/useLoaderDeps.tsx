@@ -1,31 +1,57 @@
 import { useMatch } from './useMatch'
 import type { StructuralSharingOption } from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { AnyRoute } from './route'
-import type { MakeRouteMatch } from './Matches'
-import type { RouteIds } from './routeInfo'
-import type { Constrain, StrictOrFrom } from './utils'
+import type { RouteById } from './routeInfo'
+import type { Expand, StrictOrFrom } from './utils'
+
+export interface UseLoaderDepsBaseOptions<
+  TRouter extends AnyRouter,
+  TFrom,
+  TSelected,
+> {
+  select?: (deps: ResolveLoaderDeps<TRouter, TFrom>) => TSelected
+}
+
+export type UseLoaderDepsOptions<
+  TRouter extends AnyRouter,
+  TFrom extends string | undefined,
+  TSelected,
+  TStructuralSharing,
+> = StrictOrFrom<TRouter, TFrom> &
+  UseLoaderDepsBaseOptions<TRouter, TFrom, TSelected> &
+  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+
+export type ResolveLoaderDeps<TRouter extends AnyRouter, TFrom> = Expand<
+  RouteById<TRouter['routeTree'], TFrom>['types']['loaderDeps']
+>
+
+export type UseLoaderDepsResult<
+  TRouter extends AnyRouter,
+  TFrom,
+  TSelected,
+> = unknown extends TSelected ? ResolveLoaderDeps<TRouter, TFrom> : TSelected
+
+export type UseLoaderDepsRoute<TId> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+>(
+  opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected> &
+    StructuralSharingOption<TRouter, TSelected, false>,
+) => UseLoaderDepsResult<TRouter, TId, TSelected>
 
 export function useLoaderDeps<
   TRouter extends AnyRouter = RegisteredRouter,
-  TRouteTree extends AnyRoute = TRouter['routeTree'],
   TFrom extends string | undefined = undefined,
-  TRouteMatch extends MakeRouteMatch<TRouteTree, TFrom> = MakeRouteMatch<
-    TRouteTree,
-    TFrom
-  >,
   TSelected = unknown,
-  TReturn = unknown extends TSelected ? TRouteMatch : TSelected,
+  TStructuralSharing extends boolean = boolean,
 >(
-  opts: StrictOrFrom<Constrain<TFrom, RouteIds<TRouteTree>>> & {
-    select?: (deps: TRouteMatch['loaderDeps']) => TSelected
-  } & StructuralSharingOption<TRouter, TSelected>,
-): TReturn {
+  opts: UseLoaderDepsOptions<TRouter, TFrom, TSelected, TStructuralSharing>,
+): UseLoaderDepsResult<TRouter, TFrom, TSelected> {
   const { select, ...rest } = opts
   return useMatch({
     ...rest,
     select: (s) => {
       return select ? select(s.loaderDeps) : s.loaderDeps
     },
-  })
+  }) as UseLoaderDepsResult<TRouter, TFrom, TSelected>
 }

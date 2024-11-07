@@ -7,14 +7,22 @@ import { trimPathRight } from './path'
 export function Transitioner() {
   const router = useRouter()
   const mountLoadForRouter = React.useRef({ router, mounted: false })
+  // CHECK HERE
   const routerState = useRouterState({
     select: (s) =>
-      pick(s, ['isLoading', 'location', 'resolvedLocation', 'isTransitioning']),
-    structuralSharing: true,
+      pick(s, [
+        'isLoading',
+        'location',
+        'resolvedLocation',
+        'isTransitioning',
+        'matches',
+      ]),
+    structuralSharing: true as boolean,
   })
 
   const [isTransitioning, startReactTransition_] = React.useTransition()
   // Track pending state changes
+  // CHECK HERE
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
     structuralSharing: true,

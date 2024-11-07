@@ -1,12 +1,15 @@
 import warning from 'tiny-warning'
 import { createRoute } from './route'
+
 import { useMatch } from './useMatch'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
-import type { StructuralSharingOption } from './structuralSharing'
+import type { UseParamsRoute } from './useParams'
+import type { UseMatchRoute } from './useMatch'
+import type { UseSearchRoute } from './useSearch'
 import type { Constrain } from './utils'
 import type {
   AnyContext,
@@ -21,9 +24,11 @@ import type {
   RouteLoaderFn,
   UpdatableRouteOptions,
 } from './route'
-import type { MakeRouteMatch } from './Matches'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
+import type { UseLoaderDepsRoute } from './useLoaderDeps'
+import type { UseLoaderDataRoute } from './useLoaderData'
+import type { UseRouteContextRoute } from './useRouteContext'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -207,99 +212,42 @@ export class LazyRoute<TRoute extends AnyRoute> {
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
-  useMatch = <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TSelected = unknown,
-    TRouteMatch = MakeRouteMatch<TRouter['routeTree'], TRoute['types']['id']>,
-    TReturn = unknown extends TSelected ? TRouteMatch : TSelected,
-  >(
-    opts?: {
-      select?: (match: TRouteMatch) => TSelected
-    } & StructuralSharingOption<TRouter, TSelected>,
-  ): TReturn => {
+  useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
     return useMatch({
-      select: opts?.select as any,
+      select: opts?.select,
       from: this.options.id,
       structuralSharing: opts?.structuralSharing,
-    })
+    } as any) as any
   }
 
-  useRouteContext = <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TSelected = unknown,
-    TRouteContext = TRoute['types']['allContext'],
-    TReturn = unknown extends TSelected ? TRouteContext : TSelected,
-  >(
-    opts?: {
-      select?: (s: TRouteContext) => TSelected
-    } & StructuralSharingOption<TRouter, TSelected>,
-  ): TReturn => {
+  useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
     return useMatch({
       from: this.options.id,
       select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-      structuralSharing: opts?.structuralSharing,
-    })
+    }) as any
   }
 
-  useSearch = <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TSelected = unknown,
-    TSearch = TRoute['types']['fullSearchSchema'],
-    TReturn = unknown extends TSelected ? TSearch : TSelected,
-  >(
-    opts?: {
-      select?: (s: TRoute['types']['fullSearchSchema']) => TSelected
-    } & StructuralSharingOption<TRouter, TSelected>,
-  ): TReturn => {
+  useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
     return useSearch({
-      select: opts?.select as any,
+      select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.options.id,
-    })
+    } as any)
   }
 
-  useParams = <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TSelected = unknown,
-    TAllParams = TRoute['types']['allParams'],
-    TReturn = unknown extends TSelected ? TAllParams : TSelected,
-  >(
-    opts?: {
-      select?: (s: TRoute['types']['allParams']) => TSelected
-    } & StructuralSharingOption<TRouter, TSelected>,
-  ): TReturn => {
+  useParams: UseParamsRoute<TRoute['id']> = (opts) => {
     return useParams({
-      select: opts?.select as any,
+      select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.options.id,
-    })
+    } as any)
   }
 
-  useLoaderDeps = <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TSelected = unknown,
-    TLoaderDeps = TRoute['types']['loaderDeps'],
-    TReturn = unknown extends TSelected ? TLoaderDeps : TSelected,
-  >(
-    opts?: {
-      select?: (s: TLoaderDeps) => TSelected
-      structuralSharing?: boolean
-    } & StructuralSharingOption<TRouter, TSelected>,
-  ): TReturn => {
+  useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.options.id } as any)
   }
 
-  useLoaderData = <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TSelected = unknown,
-    TLoaderData = TRoute['types']['loaderData'],
-    TReturn = unknown extends TSelected ? TLoaderData : TSelected,
-  >(
-    opts?: {
-      select?: (s: TRoute['types']['loaderData']) => TSelected
-      structuralSharing?: boolean
-    } & StructuralSharingOption<TRouter, TSelected>,
-  ): TReturn => {
+  useLoaderData: UseLoaderDataRoute<TRoute['id']> = (opts) => {
     return useLoaderData({ ...opts, from: this.options.id } as any)
   }
 

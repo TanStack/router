@@ -1,45 +1,87 @@
 import { useMatch } from './useMatch'
-import type { StructuralSharingOption } from './structuralSharing'
-import type { AnyRoute } from './route'
-import type { FullSearchSchema, RouteById, RouteIds } from './routeInfo'
+import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
+import type { FullSearchSchema, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { Constrain, Expand, StrictOrFrom } from './utils'
+import type { Expand, StrictOrFrom } from './utils'
+
+export interface UseSearchBaseOptions<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean,
+  TSelected,
+  TStructuralSharing,
+> {
+  select?: (
+    state: ResolveSearch<TRouter, TFrom, TStrict>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+}
 
 export type UseSearchOptions<
   TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
-  TSearch,
   TSelected,
-> = StrictOrFrom<TFrom, TStrict> & {
-  select?: (state: TSearch) => TSelected
-} & StructuralSharingOption<TRouter, TSelected>
+  TStructuralSharing,
+> = StrictOrFrom<TRouter, TFrom, TStrict> &
+  UseSearchBaseOptions<TRouter, TFrom, TStrict, TSelected, TStructuralSharing> &
+  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+
+export type UseSearchResult<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean,
+  TSelected,
+> = unknown extends TSelected
+  ? ResolveSearch<TRouter, TFrom, TStrict>
+  : TSelected
+
+export type ResolveSearch<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean,
+> = TStrict extends false
+  ? FullSearchSchema<TRouter['routeTree']>
+  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['fullSearchSchema']>
+
+export type UseSearchRoute<TFrom> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseSearchBaseOptions<
+    TRouter,
+    TFrom,
+    true,
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => UseSearchResult<TRouter, TFrom, true, TSelected>
 
 export function useSearch<
   TRouter extends AnyRouter = RegisteredRouter,
-  TRouteTree extends AnyRoute = TRouter['routeTree'],
   TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
-  TSearch = TStrict extends false
-    ? FullSearchSchema<TRouteTree>
-    : Expand<RouteById<TRouteTree, TFrom>['types']['fullSearchSchema']>,
   TSelected = unknown,
-  TReturn = unknown extends TSelected ? TSearch : TSelected,
+  TStructuralSharing extends boolean = boolean,
 >(
   opts: UseSearchOptions<
     TRouter,
-    Constrain<TFrom, RouteIds<TRouteTree>>,
+    TFrom,
     TStrict,
-    TSearch,
-    TSelected
+    TSelected,
+    TStructuralSharing
   >,
-): TReturn {
+): UseSearchResult<TRouter, TFrom, TStrict, TSelected> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     structuralSharing: opts.structuralSharing,
-    select: (match) => {
+    select: (match: any) => {
       return opts.select ? opts.select(match.search) : match.search
     },
-  })
+  }) as UseSearchResult<TRouter, TFrom, TStrict, TSelected>
 }

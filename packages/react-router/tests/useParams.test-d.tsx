@@ -1,6 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useParams } from '../src'
-import type { FullSearchSchema } from '../src'
 
 test('when there are no params', () => {
   const rootRoute = createRootRoute()
@@ -42,23 +41,21 @@ test('when there are no params', () => {
     .toHaveProperty('strict')
     .toEqualTypeOf<true | undefined>()
 
-  expectTypeOf(useParams<DefaultRouter, DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useParams<DefaultRouter, '/'>)
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
     .toEqualTypeOf<{}>()
 
-  expectTypeOf(useParams<DefaultRouter, DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useParams<DefaultRouter, '/'>)
     .parameter(0)
     .toHaveProperty('select')
     .returns.toEqualTypeOf<unknown>()
 
-  expectTypeOf(
-    useParams<DefaultRouter, DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useParams<DefaultRouter, DefaultRouter['routeTree'], '/', false>({
+    useParams<DefaultRouter, '/', false>({
       strict: false,
     }),
   ).toEqualTypeOf<{}>()
@@ -99,49 +96,28 @@ test('when there is one param', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useParams<DefaultRouter, DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useParams<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
+    useParams<DefaultRouter, '/invoices/$invoiceId'>,
   ).returns.toEqualTypeOf<{ invoiceId: string }>()
 
-  expectTypeOf(
-    useParams<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
-  )
+  expectTypeOf(useParams<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<((search: { invoiceId: string }) => unknown) | undefined>()
 
   expectTypeOf(
-    useParams<DefaultRouter, DefaultRouter['routeTree'], '/invoices', false>,
+    useParams<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ invoiceId?: string }>()
 
-  expectTypeOf(
-    useParams<DefaultRouter, DefaultRouter['routeTree'], '/invoices', false>,
-  )
+  expectTypeOf(useParams<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<((search: { invoiceId?: string }) => unknown) | undefined>()
 
   expectTypeOf(
-    useParams<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices',
-      false,
-      FullSearchSchema<DefaultRouter['routeTree']>,
-      number
-    >,
+    useParams<DefaultRouter, '/invoices', false, number>,
   ).returns.toEqualTypeOf<number>()
 })
 
@@ -194,36 +170,22 @@ test('when there are multiple params', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useParams<DefaultRouter, DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useParams<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
+    useParams<DefaultRouter, '/invoices/$invoiceId'>,
   ).returns.toEqualTypeOf<{ invoiceId: string }>()
 
-  expectTypeOf(
-    useParams<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
-  )
+  expectTypeOf(useParams<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<((search: { invoiceId: string }) => unknown) | undefined>()
 
   expectTypeOf(
-    useParams<DefaultRouter, DefaultRouter['routeTree'], '/invoices', false>,
+    useParams<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ invoiceId?: string; postId?: string }>()
 
-  expectTypeOf(
-    useParams<DefaultRouter, DefaultRouter['routeTree'], '/invoices', false>,
-  )
+  expectTypeOf(useParams<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<

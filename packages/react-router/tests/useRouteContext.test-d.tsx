@@ -48,23 +48,21 @@ test('when there is no context', () => {
     .toHaveProperty('strict')
     .toEqualTypeOf<true | undefined>()
 
-  expectTypeOf(useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>)
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
     .toEqualTypeOf<{}>()
 
-  expectTypeOf(useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>)
     .parameter(0)
     .toHaveProperty('select')
     .returns.toEqualTypeOf<unknown>()
 
-  expectTypeOf(
-    useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/', false>({
+    useRouteContext<DefaultRouter, '/', false>({
       strict: false,
     }),
   ).toEqualTypeOf<{}>()
@@ -110,59 +108,30 @@ test('when there is the root context', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{ userId: string }>()
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<{
+    userId: string
+  }>()
 
   expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
+    useRouteContext<DefaultRouter, '/invoices/$invoiceId'>,
   ).returns.toEqualTypeOf<{ userId: string }>()
 
-  expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
-  )
+  expectTypeOf(useRouteContext<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<((search: { userId: string }) => unknown) | undefined>()
 
   expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices',
-      false
-    >,
+    useRouteContext<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ userId?: string }>()
 
-  expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices',
-      false
-    >,
-  )
+  expectTypeOf(useRouteContext<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<((search: { userId?: string }) => unknown) | undefined>()
 
   expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices',
-      false,
-      FullSearchSchema<DefaultRouter['routeTree']>,
-      number
-    >,
+    useRouteContext<DefaultRouter, '/invoices', false, number>,
   ).returns.toEqualTypeOf<number>()
 })
 
@@ -221,46 +190,24 @@ test('when there are multiple contexts', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{ userId: string }>()
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<{
+    userId: string
+  }>()
 
   expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
+    useRouteContext<DefaultRouter, '/invoices/$invoiceId'>,
   ).returns.toEqualTypeOf<{ userId: string }>()
 
-  expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
-  )
+  expectTypeOf(useRouteContext<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<((search: { userId: string }) => unknown) | undefined>()
 
   expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices',
-      false
-    >,
+    useRouteContext<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ userId?: string; username?: string }>()
 
-  expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices',
-      false
-    >,
-  )
+  expectTypeOf(useRouteContext<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
@@ -325,27 +272,18 @@ test('when there are overlapping contexts', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useRouteContext<DefaultRouter, DefaultRouter['routeTree'], '/'>)
-    .returns.toEqualTypeOf<{ userId: string }>
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<{
+    userId: string
+  }>
 
   expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
+    useRouteContext<DefaultRouter, '/invoices/$invoiceId'>,
   ).returns.toEqualTypeOf<{
     userId: string
     readonly username: 'username2'
   }>()
 
-  expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices/$invoiceId'
-    >,
-  )
+  expectTypeOf(useRouteContext<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
@@ -357,25 +295,13 @@ test('when there are overlapping contexts', () => {
     >()
 
   expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices',
-      false
-    >,
+    useRouteContext<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{
     userId?: string
     username?: 'username1' | 'username2'
   }>()
 
-  expectTypeOf(
-    useRouteContext<
-      DefaultRouter,
-      DefaultRouter['routeTree'],
-      '/invoices',
-      false
-    >,
-  )
+  expectTypeOf(useRouteContext<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<

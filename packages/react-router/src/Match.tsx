@@ -123,7 +123,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         match: pick(match, ['id', 'status', 'error']),
       }
     },
-    structuralSharing: true,
+    structuralSharing: true as any,
   })
 
   const route = router.routesById[routeId]!
