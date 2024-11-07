@@ -4,23 +4,38 @@ import {
 } from '@tanstack/react-router'
 import { InMemoryCache } from '@apollo/client-react-streaming'
 import { createQueryPreloader } from '@apollo/client/react/index.js'
-import { gql } from '@apollo/client/index.js'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
-import { ApolloClient } from './apollo/ApolloClient'
-import type { PreloadedQueryRef } from '@apollo/client/react/internal/index.js'
+import { ApolloClient, isTransportedQueryRef } from './apollo/ApolloClient'
 import type { Transformer } from 'node_modules/@tanstack/react-router/dist/esm/transformer'
+import type { InternalTransportedQueryRef } from './apollo/ApolloClient'
+import type { PreloadQueryFunction } from '@apollo/client/index.js'
 
-const encodeStream = new TransformStream({
-  transform(chunk, controller) {
-    controller.enqueue(JSON.stringify(chunk))
+const getApolloTransformer = (
+  queryPreloader: PreloadQueryFunction,
+): Transformer<InternalTransportedQueryRef<unknown, unknown>> => ({
+  stringifyCondition: () => false,
+  stringify: () => {
+    throw new Error()
   },
-})
+  parseCondition: isTransportedQueryRef,
+  parse: (value: InternalTransportedQueryRef<unknown, unknown>) => {
+    console.log('parsing', value)
 
-const decodeStream = new TransformStream({
-  transform(chunk, controller) {
-    controller.enqueue(JSON.parse(chunk))
+    if (!(value.$__apollo_queryRef.stream instanceof ReadableStream)) {
+      const intermediateStream = new TransformStream()
+      Object.defineProperty(value.$__apollo_queryRef, 'stream', {
+        get: () => intermediateStream.readable,
+        set: (value: ReadableStream) => {
+          console.log('setting stream, starts piping!')
+          value.pipeTo(intermediateStream.writable)
+        },
+      })
+    }
+
+    value._hydrated = queryPreloader.revive(value)
+    return value
   },
 })
 
@@ -40,43 +55,7 @@ export function createRouter() {
       queryPreloader,
     },
     transformer: defaultTransformer.withTransformers([
-      {
-        stringifyCondition(value) {
-          return (
-            value != null &&
-            value instanceof ReadableStream &&
-            (value as any).JSONStream
-          )
-        },
-        stringify(value) {
-          return { $__JSONStream: value.pipeThrough(encodeStream) }
-        },
-        parseCondition(value) {
-          return (
-            value != null &&
-            value.$__JSONStream &&
-            value.$__JSONStream instanceof ReadableStream
-          )
-        },
-        parse(value) {
-          console.log('parsing stream')
-          return (value.$__JSONStream as ReadableStream).pipeThrough(
-            decodeStream,
-          )
-        },
-      } satisfies Transformer<ReadableStream<any> & { JSONStream?: boolean }>,
-      {
-        stringifyCondition: () => false,
-        stringify: () => {
-          throw new Error()
-        },
-        parseCondition: (value: any) =>
-          value != null && !!value.__apollo_queryRef,
-        parse: ({ __apollo_queryRef: [query, options] }) => {
-          console.log('parsing queryRef')
-          return queryPreloader(gql(query), options)
-        },
-      } satisfies Transformer<PreloadedQueryRef>,
+      getApolloTransformer(queryPreloader),
     ]),
   })
 
