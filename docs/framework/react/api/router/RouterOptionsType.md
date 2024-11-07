@@ -46,12 +46,13 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultPreload` property
 
-- Type: `undefined | false | 'intent' | 'viewport'`
+- Type: `undefined | false | 'intent' | 'viewport' | 'render'`
 - Optional
 - Defaults to `false`
 - If `false`, routes will not be preloaded by default in any way.
 - If `'intent'`, routes will be preloaded by default when the user hovers over a link or a `touchstart` event is detected on a `<Link>`.
 - If `'viewport'`, routes will be preloaded by default when they are within the viewport of the browser.
+- If `'render'`, routes will be preloaded by default as soon as they are rendered in the DOM.
 
 ### `defaultPreloadDelay` property
 
@@ -285,3 +286,9 @@ const router = createRouter({
 - Optional
 - Defaults to `never`
 - Configures how trailing slashes are treated. `'always'` will add a trailing slash if not present, `'never'` will remove the trailing slash if present and `'preserve'` will not modify the trailing slash.
+
+### `pathParamsAllowedCharacters` property
+
+- Type: `Array<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
+- Optional
+- Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.

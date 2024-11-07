@@ -306,6 +306,37 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       'framework/react/guide/file-based-routing tanstack',
     )
   })
+
+  it('params.slug should be encoded in the final URL', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
+    )
+
+    expect(router.state.location.pathname).toBe('/posts/%40jane')
+  })
+
+  it('params.slug should be encoded in the final URL except characters in pathParamsAllowedCharacters', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      pathParamsAllowedCharacters: ['@'],
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
+    )
+
+    expect(router.state.location.pathname).toBe('/posts/@jane')
+  })
 })
 
 describe('encoding: URL splat segment for /$', () => {
@@ -520,6 +551,45 @@ describe('router emits events during rendering', () => {
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
     unsub()
+  })
+
+  it('during initial load, should emit the "onBeforeRouteMount" and "onResolved" events in the correct order', async () => {
+    const mockOnBeforeRouteMount = vi.fn()
+    const mockOnResolved = vi.fn()
+
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    // Subscribe to the events
+    const unsubBeforeRouteMount = router.subscribe(
+      'onBeforeRouteMount',
+      mockOnBeforeRouteMount,
+    )
+    const unsubResolved = router.subscribe('onResolved', mockOnResolved)
+
+    await act(() => router.load())
+    render(<RouterProvider router={router} />)
+
+    // Ensure the "onBeforeRouteMount" event was called once
+    await waitFor(() => expect(mockOnBeforeRouteMount).toBeCalledTimes(1))
+
+    // Ensure the "onResolved" event was also called once
+    await waitFor(() => expect(mockOnResolved).toBeCalledTimes(1))
+
+    // Check if the invocation call orders are defined before comparing
+    const beforeRouteMountOrder =
+      mockOnBeforeRouteMount.mock.invocationCallOrder[0]
+    const onResolvedOrder = mockOnResolved.mock.invocationCallOrder[0]
+
+    if (beforeRouteMountOrder !== undefined && onResolvedOrder !== undefined) {
+      expect(beforeRouteMountOrder).toBeLessThan(onResolvedOrder)
+    } else {
+      throw new Error('onBeforeRouteMount should be emitted before onResolved.')
+    }
+
+    unsubBeforeRouteMount()
+    unsubResolved()
   })
 })
 

@@ -149,3 +149,84 @@ test('when creating a router with context and children', () => {
       context: { userId: string }
     }>()
 })
+
+test('invalidate and clearCache narrowing in filter', () => {
+  const rootRoute = createRootRoute()
+
+  const invoicesRoute = createRoute({
+    path: 'invoices',
+    getParentRoute: () => rootRoute,
+    validateSearch: () => ({ page: 0 }),
+    beforeLoad: () => ({ invoicePermissions: ['view'] as const }),
+  })
+
+  const invoiceRoute = createRoute({
+    path: '$invoiceId',
+    getParentRoute: () => invoicesRoute,
+  })
+
+  const detailsRoute = createRoute({
+    path: 'details',
+    getParentRoute: () => invoiceRoute,
+    validateSearch: () => ({ detailPage: 0 }),
+    beforeLoad: () => ({ detailsPermissions: ['view'] as const }),
+  })
+
+  const detailRoute = createRoute({
+    path: '$detailId',
+    getParentRoute: () => detailsRoute,
+  })
+
+  const routeTree = rootRoute.addChildren([
+    invoicesRoute.addChildren([
+      invoiceRoute.addChildren([detailsRoute.addChildren([detailRoute])]),
+    ]),
+  ])
+
+  const router = createRouter({
+    routeTree,
+    context: { userId: 'userId' },
+  })
+
+  type Router = typeof router
+
+  router.invalidate<Router>({
+    filter: (route) => {
+      expectTypeOf(route.routeId).toEqualTypeOf<
+        | '__root__'
+        | '/invoices'
+        | '/invoices/$invoiceId'
+        | '/invoices/$invoiceId/details'
+        | '/invoices/$invoiceId/details/$detailId'
+      >()
+
+      if (route.routeId === '/invoices/$invoiceId/details/$detailId') {
+        expectTypeOf(route.params).branded.toEqualTypeOf<{
+          invoiceId: string
+          detailId: string
+        }>()
+      }
+      return true
+    },
+  })
+
+  router.clearCache<Router>({
+    filter: (route) => {
+      expectTypeOf(route.routeId).toEqualTypeOf<
+        | '__root__'
+        | '/invoices'
+        | '/invoices/$invoiceId'
+        | '/invoices/$invoiceId/details'
+        | '/invoices/$invoiceId/details/$detailId'
+      >()
+
+      if (route.routeId === '/invoices/$invoiceId/details/$detailId') {
+        expectTypeOf(route.params).branded.toEqualTypeOf<{
+          invoiceId: string
+          detailId: string
+        }>()
+      }
+      return true
+    },
+  })
+})

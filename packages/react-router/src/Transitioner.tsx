@@ -34,6 +34,9 @@ export function Transitioner() {
     routerState.isLoading || isTransitioning || hasPendingMatches
   const previousIsAnyPending = usePrevious(isAnyPending)
 
+  const isPagePending = routerState.isLoading || hasPendingMatches
+  const previousIsPagePending = usePrevious(isPagePending)
+
   if (!router.isServer) {
     router.startReactTransition = startReactTransition_
   }
@@ -91,7 +94,7 @@ export function Transitioner() {
     if (previousIsLoading && !routerState.isLoading) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.href !== toLocation.href
+      const pathChanged = fromLocation.pathname !== toLocation.pathname
 
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
@@ -103,11 +106,27 @@ export function Transitioner() {
   }, [previousIsLoading, router, routerState.isLoading])
 
   useLayoutEffect(() => {
+    // emit onBeforeRouteMount
+    if (previousIsPagePending && !isPagePending) {
+      const toLocation = router.state.location
+      const fromLocation = router.state.resolvedLocation
+      const pathChanged = fromLocation.pathname !== toLocation.pathname
+
+      router.emit({
+        type: 'onBeforeRouteMount',
+        fromLocation,
+        toLocation,
+        pathChanged,
+      })
+    }
+  }, [isPagePending, previousIsPagePending, router])
+
+  useLayoutEffect(() => {
     // The router was pending and now it's not
     if (previousIsAnyPending && !isAnyPending) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.href !== toLocation.href
+      const pathChanged = fromLocation.pathname !== toLocation.pathname
 
       router.emit({
         type: 'onResolved',

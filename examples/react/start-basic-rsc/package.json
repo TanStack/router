@@ -9,10 +9,10 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@babel/plugin-syntax-typescript": "^7.25.7",
-    "@tanstack/react-router": "^1.76.3",
-    "@tanstack/router-devtools": "^1.76.3",
-    "@tanstack/start": "^1.76.3",
+    "@babel/plugin-syntax-typescript": "^7.25.9",
+    "@tanstack/react-router": "^1.79.0",
+    "@tanstack/router-devtools": "^1.79.0",
+    "@tanstack/start": "^1.79.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.4",
     "vinxi": "0.4.3"

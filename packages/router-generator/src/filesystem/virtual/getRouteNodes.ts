@@ -84,7 +84,7 @@ export async function getRouteNodesRecursive(
       }
 
       function getFile(file: string) {
-        const filePath = file.split('/').join(path.sep)
+        const filePath = file
         const variableName = routePathToVariable(removeExt(filePath))
         const fullPath = join(fullDir, filePath)
         return { filePath, variableName, fullPath }

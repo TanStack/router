@@ -53,7 +53,7 @@ npm i @tanstack/start @tanstack/react-router vinxi
 You'll also need React and the Vite React plugin, so install them too:
 
 ```shell
-npm i react react-dom @vitejs/plugin-react
+npm i react react-dom; npm i -D @vitejs/plugin-react
 ```
 
 and some TypeScript:
@@ -66,15 +66,15 @@ npm i -D typescript @types/react @types/react-dom
 
 We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
 
-```jsonc
+```json
 {
   // ...
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
-  },
+    "start": "vinxi start"
+  }
 }
 ```
 
@@ -195,10 +195,13 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // app/routes/__root.tsx
-import { createRootRoute } from '@tanstack/react-router'
-import { Outlet, ScrollRestoration } from '@tanstack/react-router'
+import {
+  Outlet,
+  ScrollRestoration,
+  createRootRoute,
+} from '@tanstack/react-router'
 import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
-import * as React from 'react'
+import type { ReactNode } from 'react'
 
 export const Route = createRootRoute({
   meta: () => [
@@ -224,7 +227,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <Html>
       <Head>
