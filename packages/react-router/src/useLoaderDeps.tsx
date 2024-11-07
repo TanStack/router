@@ -31,7 +31,7 @@ export type UseLoaderDepsResult<
   TSelected,
 > = unknown extends TSelected ? ResolveLoaderDeps<TRouter, TFrom> : TSelected
 
-export type UseLoaderDepsRoute<TId> = <
+export type UseLoaderDepsRoute<out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
 >(

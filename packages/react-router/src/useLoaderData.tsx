@@ -52,7 +52,7 @@ export type UseLoaderDataResult<
   ? ResolveLoaderData<TRouter, TFrom, TStrict>
   : TSelected
 
-export type UseLoaderDataRoute<TId> = <
+export type UseLoaderDataRoute<out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,

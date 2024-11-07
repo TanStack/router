@@ -46,7 +46,7 @@ export type ResolveSearch<
   ? FullSearchSchema<TRouter['routeTree']>
   : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['fullSearchSchema']>
 
-export type UseSearchRoute<TFrom> = <
+export type UseSearchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,

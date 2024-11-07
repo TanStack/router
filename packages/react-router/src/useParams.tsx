@@ -46,7 +46,7 @@ export type UseParamsResult<
   ? ResolveParams<TRouter, TFrom, TStrict>
   : TSelected
 
-export type UseParamsRoute<TFrom> = <
+export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,

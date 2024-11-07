@@ -37,7 +37,7 @@ export type UseRouteContextResult<
   ? ResolveRouteContext<TRouter, TFrom, TStrict>
   : TSelected
 
-export type UseRouteContextRoute<TFrom> = <
+export type UseRouteContextRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
 >(

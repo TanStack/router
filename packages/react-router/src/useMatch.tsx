@@ -24,7 +24,7 @@ export interface UseMatchBaseOptions<
   shouldThrow?: TThrow
 }
 
-export type UseMatchRoute<TFrom> = <
+export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
