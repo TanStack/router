@@ -44,12 +44,15 @@ const WrappedApolloProvider = WrapApolloProvider((props) => {
 
   if (router.isServer) {
     props.registerDispatchRequestStarted!(({ event, observable }) => {
+      const id = crypto.randomUUID() as typeof event.id
+      event.id = id
       router.streamValue(
         `${APOLLO_EVENT_PREFIX}${event.id}/${event.type}`,
         event satisfies QueryEvent,
       )
       observable.subscribe({
         next(event) {
+          event.id = id
           router.streamValue(
             `${APOLLO_EVENT_PREFIX}${event.id}/${event.type}`,
             event satisfies QueryEvent,
