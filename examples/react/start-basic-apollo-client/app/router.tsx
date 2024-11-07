@@ -23,17 +23,27 @@ const getApolloTransformer = (
   parse: (value: InternalTransportedQueryRef<unknown, unknown>) => {
     console.log('parsing', value)
 
+    // Due to the timing in `afterHydrate`, the stream at this point will still be an empty object
+    // to be replaced by the `extracted` stream value a moment later
+    // Nonetheless, we want to kick off hydration of the queryRef here already,
+    // so query deduplication kicks in.
+    // So we create an intermediate `TransformStream` that is exposed via a getter,
+    // while at the same time, a setter is put into place that will start piping the
+    // incoming stream into our intermediate stream as soon as it is set.
+
+    // The check for `instanceof ReadableStream` is here just in case that the timing changes
+    // in the future and we don't need to do this anymore.
     if (!(value.$__apollo_queryRef.stream instanceof ReadableStream)) {
       const intermediateStream = new TransformStream()
       Object.defineProperty(value.$__apollo_queryRef, 'stream', {
         get: () => intermediateStream.readable,
         set: (value: ReadableStream) => {
-          console.log('setting stream, starts piping!')
           value.pipeTo(intermediateStream.writable)
         },
       })
     }
 
+    // with the guarantee to have a stream, we can now kick off the hydration
     value._hydrated = queryPreloader.revive(value)
     return value
   },

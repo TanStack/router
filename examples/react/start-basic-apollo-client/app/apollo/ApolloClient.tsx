@@ -8,10 +8,7 @@ import type {
   PreloadQueryFunction,
   WatchQueryOptions,
 } from '@apollo/client/index.js'
-import type {
-  HookWrappers as HookWrappers2,
-  QueryRef,
-} from '@apollo/client/react/internal'
+import type { HookWrappers, QueryRef } from '@apollo/client/react/internal'
 import type { StreamLinkEvent } from './StreamLink'
 
 declare module '@apollo/client/index.js' {
@@ -26,6 +23,10 @@ function printMinified(query: DocumentNode): string {
   return stripIgnoredCharacters(print(query))
 }
 
+function id<T>(x: T): T {
+  return x
+}
+
 const WRAPPERS = Symbol.for('apollo.hook.wrappers')
 
 export class ApolloClient extends _ApolloClient {
@@ -33,27 +34,37 @@ export class ApolloClient extends _ApolloClient {
     super(options)
     this.setLink(this.link)
 
-    const queryManager = this['queryManager'] as { [WRAPPERS]: HookWrappers2 }
-    const apolloClient = this
+    const queryManager = this['queryManager'] as { [WRAPPERS]: HookWrappers }
+
+    const origWrappers = { ...queryManager[WRAPPERS] }
+
+    const ensureHydrated = (queryRef: QueryRef<any, unknown>) => {
+      if (isTransportedQueryRef(queryRef)) {
+        if (!queryRef._hydrated) {
+          queryRef._hydrated = createQueryPreloader(this).revive(queryRef)
+        }
+        return queryRef._hydrated
+      }
+      return queryRef
+    }
 
     queryManager[WRAPPERS] = {
-      ...queryManager[WRAPPERS],
-      useReadQuery: (originalHook) => (queryRef: QueryRef<any, unknown>) => {
-        if (isTransportedQueryRef(queryRef)) {
-          if (!queryRef._hydrated) {
-            queryRef._hydrated =
-              createQueryPreloader(apolloClient).revive(queryRef)
-          }
-          queryRef = queryRef._hydrated
-        }
-        return originalHook(queryRef)
+      ...origWrappers,
+      useReadQuery: (originalHook) => (queryRef) => {
+        return (origWrappers.useReadQuery || id)(originalHook)(
+          ensureHydrated(queryRef),
+        )
+      },
+      useQueryRefHandlers: (originalHook) => (queryRef) => {
+        return (origWrappers.useQueryRefHandlers || id)(originalHook)<any, any>(
+          ensureHydrated(queryRef),
+        )
       },
       createQueryPreloader: (orig) => {
         return (client) => {
+          const realPreloader = orig(client)
           return Object.assign(
             (...[query, options]: Parameters<PreloadQueryFunction>) => {
-              if (options && 'stream' in options) {
-              }
               let __injectIntoStream:
                 | ReadableStreamDefaultController<StreamLinkEvent>
                 | undefined
@@ -62,13 +73,19 @@ export class ApolloClient extends _ApolloClient {
                   __injectIntoStream = controller
                 },
               })
+
+              // Instead of creating the queryRef, we kick off a query that will feed the network response
+              // into our custom event stream.
               client.query({
                 query,
                 ...options,
-                fetchPolicy: 'no-cache',
+                // ensure that this query makes it to the network
+                fetchPolicy: 'network-only',
                 context: {
                   ...options?.context,
+                  // we want to do this even if the query is already running for another reason
                   queryDeduplication: false,
+                  // this will cause the StreamLink to duplicate events into our custom event stream
                   __injectIntoStream,
                 },
               })
@@ -83,12 +100,12 @@ export class ApolloClient extends _ApolloClient {
             },
             {
               revive: (ref: InternalTransportedQueryRef) =>
-                reviveTransportedQueryRef(ref, orig(client)),
+                reviveTransportedQueryRef(ref, realPreloader),
             },
           )
         }
       },
-    } satisfies HookWrappers2
+    } satisfies HookWrappers
   }
 
   setLink(newLink: ApolloLink) {
