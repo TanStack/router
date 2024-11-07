@@ -41,7 +41,6 @@ export function UserErrorComponent({ error }: ErrorComponentProps) {
 function UserComponent() {
   const id = Route.useParams().userId
   const user = useSuspenseQuery(USER_QUERY, { variables: { id } }).data.user
-  console.log({ user })
 
   return (
     <div className="space-y-2">

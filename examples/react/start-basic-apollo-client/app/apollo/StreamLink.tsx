@@ -15,7 +15,6 @@ export const streamingLink = new ApolloLink((operation, forward) => {
 
   if (injectIntoStream) {
     return new Observable((observer) => {
-      console.log('reportStream subscribed')
       const subscription = forward(operation).subscribe({
         next: (result) => {
           injectIntoStream.enqueue({ type: 'next', value: result })
