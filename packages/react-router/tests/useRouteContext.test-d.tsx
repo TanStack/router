@@ -6,7 +6,6 @@ import {
   createRouter,
   useRouteContext,
 } from '../src'
-import type { FullSearchSchema } from '../src'
 
 test('when there is no context', () => {
   const rootRoute = createRootRoute()
