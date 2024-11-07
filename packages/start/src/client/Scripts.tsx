@@ -25,7 +25,7 @@ export const Scripts = () => {
 
       return assetScripts
     },
-    structuralSharing: true,
+    structuralSharing: true as any,
   })
 
   const { scripts } = useRouterState({
