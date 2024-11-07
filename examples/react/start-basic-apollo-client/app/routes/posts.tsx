@@ -11,7 +11,7 @@ const GET_POSTS: TypedDocumentNode<{
   }
 }> = gql`
   query GetPosts {
-    posts {
+    posts(options: { paginate: { page: 1, limit: 5 } }) {
       data {
         id
         title

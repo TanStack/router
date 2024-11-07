@@ -17,6 +17,13 @@ export function routerWithApolloClient<TRouter extends AnyRouter>(
 ): TRouter {
   // @ts-ignore unavoidable due to the ternary in arguments
   router.options.context.apolloClient = apolloClient
+
+  // it would be nice to do this in the long run
+  // @ts-ignore unavoidable due to the ternary in arguments
+  //   router.options.context.preloadQuery = router.isServer
+  //     ? createTransportedQueryPreloader(apolloClient)
+  //     : createQueryPreloader(apolloClient)
+
   // @ts-ignore unavoidable due to the ternary in arguments
   router.options.context.preloadQuery =
     createTransportedQueryPreloader(apolloClient)
