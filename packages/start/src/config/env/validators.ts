@@ -1,4 +1,9 @@
-import type { ValidEnvFieldUnion, ValidStringFieldSchema } from './schema.js'
+import { buildTypeAnnotation } from './templates.js'
+import type {
+  ValidAccessSchema,
+  ValidEnvFieldUnion,
+  ValidStringFieldSchema,
+} from './schema.js'
 
 type EnvValidationResult =
   | { ok: true; value: ValidEnvFieldUnion['default'] }
@@ -59,11 +64,17 @@ function getEnvValidator(schema: ValidEnvFieldUnion): EnvValueValidator {
 export function validateEnvVariables(options: {
   variables: Record<string, string>
   schema: Record<string, ValidEnvFieldUnion>
-}): Array<{ key: string; value: unknown; typeAnnotation: string }> {
+}): Array<{
+  key: string
+  value: unknown
+  typeAnnotation: string
+  access: ValidAccessSchema
+}> {
   const accepted: Array<{
     key: string
     value: unknown
     typeAnnotation: string
+    access: ValidAccessSchema
   }> = []
   const rejected: Array<{ key: string; error: string }> = []
 
@@ -84,15 +95,18 @@ export function validateEnvVariables(options: {
     }
 
     const validator = getEnvValidator(schema)
-    const result = validator(preValue)
+    const validatedResult = validator(preValue)
 
-    if (!result.ok) {
-      rejected.push({ key, error: result.error })
+    const typeAnnotation = buildTypeAnnotation(schema)
+
+    if (!validatedResult.ok) {
+      rejected.push({ key, error: validatedResult.error })
     } else {
       accepted.push({
         key,
-        value: result.value,
-        typeAnnotation: 'fill this in',
+        value: validatedResult.value,
+        typeAnnotation,
+        access: schema.access,
       })
     }
   }
