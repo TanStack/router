@@ -271,6 +271,76 @@ test('when there are multiple loaders', () => {
         | readonly ['post1', 'post2']
         | undefined
     }>()
+
+  expectTypeOf(
+    useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }>,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .exclude<undefined>()
+    .returns.toEqualTypeOf<{ func: () => void }>()
+
+  expectTypeOf(
+    useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }>,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
+
+  expectTypeOf(
+    useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }, true>,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .exclude<undefined>()
+    .returns.toEqualTypeOf<{ func: 'Function is not serializable' }>()
+
+  expectTypeOf(
+    useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }, true>,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
+
+  const routerWithStructuralSharing = createRouter({
+    routeTree,
+    defaultStructuralSharing: true,
+  })
+
+  expectTypeOf(
+    useLoaderData<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      true,
+      { func: () => void },
+      true
+    >,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .exclude<undefined>()
+    .returns.toEqualTypeOf<{
+      func: 'Function is not serializable'
+    }>()
+
+  expectTypeOf(
+    useLoaderData<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      true,
+      { func: () => void },
+      true
+    >,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when there are multiple loaders of objects and primtives', () => {

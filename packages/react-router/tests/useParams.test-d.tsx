@@ -191,4 +191,84 @@ test('when there are multiple params', () => {
     .toEqualTypeOf<
       ((search: { invoiceId?: string; postId?: string }) => unknown) | undefined
     >()
+
+  expectTypeOf(
+    useParams<DefaultRouter, '/invoices', true, { func: () => void }>,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: {}) => {
+          func: () => void
+        })
+      | undefined
+    >()
+
+  expectTypeOf(
+    useParams<DefaultRouter, '/invoices', true, { func: () => void }>,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
+
+  expectTypeOf(
+    useParams<DefaultRouter, '/invoices', true, { func: () => void }, true>,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: {}) => {
+          func: 'Function is not serializable'
+        })
+      | undefined
+    >()
+
+  expectTypeOf(
+    useParams<DefaultRouter, '/invoices', true, { func: () => void }, true>,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
+
+  const routerWithStructuralSharing = createRouter({
+    routeTree,
+    defaultStructuralSharing: true,
+  })
+
+  expectTypeOf(
+    useParams<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      true,
+      { func: () => void },
+      true
+    >,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: {}) => {
+          func: 'Function is not serializable'
+        })
+      | undefined
+    >()
+
+  expectTypeOf(
+    useParams<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      true,
+      { func: () => void },
+      true
+    >,
+  )
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })

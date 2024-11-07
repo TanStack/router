@@ -128,6 +128,76 @@ test('when there is one search params', () => {
   expectTypeOf(
     useSearch<DefaultRouter, '/invoices', false, number>,
   ).returns.toEqualTypeOf<number>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter, '/invoices', false, { func: () => void }>,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      ((search: { page?: number }) => { func: () => void }) | undefined
+    >()
+
+  expectTypeOf(
+    useSearch<DefaultRouter, '/invoices', false, { func: () => void }>,
+  )
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter, '/invoices', false, { func: () => void }, true>,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: { page?: number }) => {
+          func: 'Function is not serializable'
+        })
+      | undefined
+    >()
+
+  expectTypeOf(
+    useSearch<DefaultRouter, '/invoices', false, { func: () => void }, true>,
+  )
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
+
+  const routerWithStructuralSharing = createRouter({
+    routeTree,
+    defaultStructuralSharing: true,
+  })
+
+  expectTypeOf(
+    useSearch<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      false,
+      { func: () => void }
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: { page?: number }) => {
+          func: 'Function is not serializable'
+        })
+      | undefined
+    >()
+
+  expectTypeOf(
+    useSearch<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      false,
+      { date: Date },
+      true
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when there are multiple search params', () => {
