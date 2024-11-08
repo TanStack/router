@@ -20,7 +20,7 @@
   <img alt="" src="https://img.shields.io/github/stars/tanstack/router.svg?style=social&label=Star" />
 </a><a href="https://twitter.com/tan_stack" target="\_parent">
   <img alt="" src="https://img.shields.io/twitter/follow/tan_stack.svg?style=social&label=Follow @TanStack" />
-</a><a href="https://twitter.com/tannerlinsley" target="_parent">
+</a><a href="https://twitter.com/tannerlinsley" target="\_parent">
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow @TannerLinsley" />
 </a><a href="https://gurubase.io/g/tanstack-router">
   <img alt="Gurubase" src="https://img.shields.io/badge/Gurubase-Ask%20TanStack%20Router%20Guru-006BFF" />
