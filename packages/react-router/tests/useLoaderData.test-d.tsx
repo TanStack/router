@@ -287,7 +287,7 @@ test('when there are multiple loaders', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false | undefined>()
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }, true>,
@@ -304,7 +304,7 @@ test('when there are multiple loaders', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false | undefined>()
 
   const routerWithStructuralSharing = createRouter({
     routeTree,
@@ -340,7 +340,7 @@ test('when there are multiple loaders', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false>()
 })
 
 test('when there are multiple loaders of objects and primtives', () => {

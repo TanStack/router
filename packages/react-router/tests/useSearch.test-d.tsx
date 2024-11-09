@@ -143,7 +143,7 @@ test('when there is one search params', () => {
   )
     .parameter(0)
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false | undefined>()
 
   expectTypeOf(
     useSearch<DefaultRouter, '/invoices', false, { func: () => void }, true>,
@@ -162,7 +162,7 @@ test('when there is one search params', () => {
   )
     .parameter(0)
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false | undefined>()
 
   const routerWithStructuralSharing = createRouter({
     routeTree,
@@ -197,7 +197,7 @@ test('when there is one search params', () => {
   )
     .parameter(0)
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false>()
 })
 
 test('when there are multiple search params', () => {

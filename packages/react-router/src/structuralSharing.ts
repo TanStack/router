@@ -22,13 +22,15 @@ export type StructuralSharingOption<
   TRouter extends AnyRouter,
   TSelected,
   TStructuralSharing,
-> = AnyRouter extends TRouter
+> = unknown extends TSelected
   ? OptionalStructuralSharing<TStructuralSharing, boolean>
-  : TSelected extends ValidateJSON<TSelected>
+  : unknown extends TRouter['routeTree']
     ? OptionalStructuralSharing<TStructuralSharing, boolean>
-    : DefaultStructuralSharingEnabled<TRouter> extends true
-      ? RequiredStructuralSharing<TStructuralSharing, false>
-      : OptionalStructuralSharing<TStructuralSharing, false>
+    : TSelected extends ValidateJSON<TSelected>
+      ? OptionalStructuralSharing<TStructuralSharing, boolean>
+      : DefaultStructuralSharingEnabled<TRouter> extends true
+        ? RequiredStructuralSharing<TStructuralSharing, false>
+        : OptionalStructuralSharing<TStructuralSharing, false>
 
 export type StructuralSharingEnabled<
   TRouter extends AnyRouter,
@@ -42,6 +44,6 @@ export type ValidateSelected<
   TSelected,
   TStructuralSharing,
 > =
-  true extends StructuralSharingEnabled<TRouter, TStructuralSharing>
-    ? Constrain<TSelected, ValidateJSON<TSelected>>
+  StructuralSharingEnabled<TRouter, TStructuralSharing> extends true
+    ? ValidateJSON<TSelected>
     : TSelected

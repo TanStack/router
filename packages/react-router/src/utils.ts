@@ -105,12 +105,14 @@ export type MergeUnion<TUnion> =
   | MergeUnionPrimitives<TUnion>
   | MergeUnionObject<TUnion>
 
-export type Constrain<T, TConstaint, TDefault = TConstaint> =
-  | (T extends TConstaint ? T : never)
+export type Constrain<T, TConstraint, TDefault = TConstraint> =
+  | (T extends TConstraint ? T : never)
   | TDefault
 
 export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
-  ? 'Function is not serializable'
+  ? unknown extends T
+    ? never
+    : 'Function is not serializable'
   : { [K in keyof T]: ValidateJSON<T[K]> }
 
 export function last<T>(arr: Array<T>) {

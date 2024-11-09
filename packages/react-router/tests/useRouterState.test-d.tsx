@@ -67,7 +67,7 @@ test('can select router state', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false | undefined>()
 
   expectTypeOf(useRouterState<DefaultRouter, { func: () => void }, true>)
     .parameter(0)
@@ -84,7 +84,7 @@ test('can select router state', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false | undefined>()
 
   const routerWithStructuralSharing = createRouter({
     routeTree,
@@ -110,5 +110,5 @@ test('can select router state', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false>()
 })

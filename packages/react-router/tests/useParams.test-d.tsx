@@ -211,7 +211,7 @@ test('when there are multiple params', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false | undefined>()
 
   expectTypeOf(
     useParams<DefaultRouter, '/invoices', true, { func: () => void }, true>,
@@ -232,7 +232,7 @@ test('when there are multiple params', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false | undefined>()
 
   const routerWithStructuralSharing = createRouter({
     routeTree,
@@ -270,5 +270,5 @@ test('when there are multiple params', () => {
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<boolean | undefined>()
+    .toEqualTypeOf<false>()
 })
