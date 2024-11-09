@@ -292,3 +292,11 @@ const router = createRouter({
 - Type: `Array<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
 - Optional
 - Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+
+### `defaultStructuralSharing` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- Configures whether structural sharing is enabled by default for fine-grained selectors.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.

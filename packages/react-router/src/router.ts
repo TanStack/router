@@ -466,6 +466,11 @@ export interface RouterOptions<
     strict?: boolean
   }
 
+  /**
+   * Configures whether structural sharing is enabled by default for fine-grained selectors.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultstructuralsharing-property)
+   */
   defaultStructuralSharing?: TDefaultStructuralSharingOption
 
   /**

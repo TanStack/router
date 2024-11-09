@@ -18,6 +18,13 @@ The `useRouterState` hook accepts an optional `options` object.
 - Optional
 - If supplied, this function will be called with the [`RouterState`](./RouterStateType.md) object and the return value will be returned from `useRouterState`.
 
+### `opts.structuralSharing` option
+
+- Type: `boolean`
+- Optional
+- Configures whether structural sharing is enabled for the value returned by `select`.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+
 ## useRouterState returns
 
 - The current [`RouterState`](./RouterStateType.md) object or `TSelected` if a `select` function is provided.
