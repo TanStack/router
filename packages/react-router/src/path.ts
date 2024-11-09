@@ -174,7 +174,10 @@ export function parsePathname(pathname?: string): Array<Segment> {
         }
       }
 
-      if (part.charAt(0) === '$') {
+      if (
+        part.charAt(0) === '$' ||
+        (part.includes('[') && part.includes(']'))
+      ) {
         return {
           type: 'param',
           value: part,
@@ -197,6 +200,60 @@ export function parsePathname(pathname?: string): Array<Segment> {
   }
 
   return segments
+}
+
+function parseUsingTemplate(
+  template: string,
+  input: string,
+  decodeCharMap?: Map<string, string>,
+): Array<{ key: string; value: string }> | null {
+  // Regular expression to find placeholders in the format [key]
+  const regex = /\[([^\]]+)\]/g
+  const keys: Array<string> = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  // Extract keys and static parts from the template
+  let pattern = '^'
+  while ((match = regex.exec(template)) !== null) {
+    if (match[1]) {
+      keys.push(match[1])
+    }
+    // Add text between placeholders as static text in pattern
+    pattern +=
+      escapeRegExp(template.substring(lastIndex, match.index)) + '(.*?)'
+    lastIndex = regex.lastIndex
+  }
+  pattern += escapeRegExp(template.substring(lastIndex)) + '$'
+
+  // Match the input against the dynamic regex pattern
+  const patternRegex = new RegExp(pattern)
+  const inputMatch = patternRegex.exec(input)
+
+  // The first element in the match is the full match, so start at index 1
+  if (!inputMatch || inputMatch.length - 1 !== keys.length) {
+    return null
+  }
+
+  // Map the extracted parts to their respective keys
+  // const result: { [key: string]: string } = {}
+  // keys.forEach((key, index) => {
+  //   result[key] = encodePathParam(inputMatch[index + 1] || '', decodeCharMap)
+  // })
+  const result: Array<{ key: string; value: string }> = []
+  keys.forEach((key, index) => {
+    result.push({
+      key,
+      value: encodePathParam(inputMatch[index + 1] || '', decodeCharMap),
+    })
+  })
+
+  return result
+}
+
+// Helper function to escape special characters for use in regex
+function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 interface InterpolatePathOptions {
@@ -224,6 +281,12 @@ export function interpolatePath({
     if (['*', '_splat'].includes(key)) {
       // the splat/catch-all routes shouldn't have the '/' encoded out
       encodedParams[key] = isValueString ? encodeURI(value) : value
+    } else if (isValueString && key.includes('[') && key.includes(']')) {
+      parseUsingTemplate(key, value, decodeCharMap)?.forEach(
+        ({ key, value }) => {
+          encodedParams[key] = encodePathParam(value, decodeCharMap)
+        },
+      )
     } else {
       encodedParams[key] = isValueString
         ? encodePathParam(value, decodeCharMap)
@@ -406,10 +469,23 @@ export function matchByPath(
           if (baseSegment.value === '/') {
             return false
           }
+
           if (baseSegment.value.charAt(0) !== '$') {
-            params[routeSegment.value.substring(1)] = decodeURIComponent(
-              baseSegment.value,
-            )
+            // params[routeSegment.value.substring(1).replaceAll(/(\[|\])/g, '')] =
+            const routeSegmentValue = routeSegment.value
+            if (
+              routeSegmentValue.includes('[') &&
+              routeSegmentValue.includes(']')
+            ) {
+              parseUsingTemplate(routeSegmentValue, baseSegment.value)?.forEach(
+                ({ key, value }) => {
+                  params[key] = decodeURIComponent(value)
+                },
+              )
+            } else {
+              const key = routeSegmentValue.substring(1)
+              params[key] = decodeURIComponent(baseSegment.value)
+            }
           }
         }
       }
