@@ -213,6 +213,12 @@ const routersSchema = z.object({
       vite: viteSchema.optional(),
     })
     .optional(),
+  public: z
+    .object({
+      dir: z.string().optional(),
+      base: z.string().optional(),
+    })
+    .optional(),
 })
 
 const tsrConfig = configSchema.partial().extend({
@@ -306,6 +312,9 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
 
   const apiEntryExists = existsSync(apiEntry)
 
+  const publicDir = opts.routers?.public?.dir || './public'
+  const publicBase = opts.routers?.public?.base || '/'
+
   const tanstackFolderExists = existsSync(path.join(root, TANSTACK_FOLDER_NAME))
   const tanstackDTsFileExists = existsSync(
     path.join(appDirectory, PUBLIC_TANSTACK_START_DTS_FILENAME),
@@ -314,7 +323,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
   if (!tanstackDTsFileExists || !tanstackFolderExists) {
     fillFrameworkTsInfer({ root, appDirectory })
   }
-
+  
   return createApp({
     server: {
       ...serverOptions,
@@ -328,8 +337,8 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
       {
         name: 'public',
         type: 'static',
-        dir: './public',
-        base: '/',
+        dir: publicDir,
+        base: publicBase,
       },
       withStartPlugins(
         opts,
