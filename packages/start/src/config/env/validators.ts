@@ -68,13 +68,13 @@ export function validateEnvVariables(options: {
   key: string
   value: unknown
   typeAnnotation: string
-  access: ValidAccessSchema
+  context: ValidAccessSchema
 }> {
   const accepted: Array<{
     key: string
     value: unknown
     typeAnnotation: string
-    access: ValidAccessSchema
+    context: ValidAccessSchema
   }> = []
   const rejected: Array<{ key: string; error: string }> = []
 
@@ -106,7 +106,7 @@ export function validateEnvVariables(options: {
         key,
         value: validatedResult.value,
         typeAnnotation,
-        access: schema.access,
+        context: schema.context,
       })
     }
   }

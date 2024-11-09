@@ -1,11 +1,11 @@
 import { z } from 'zod'
 
-const AccessSchema = z.enum(['public', 'server'])
+const AccessSchema = z.enum(['client', 'server'])
 export type ValidAccessSchema = z.infer<typeof AccessSchema>
 
 const StringFieldSchema = z.object({
   type: z.literal('string'),
-  access: AccessSchema,
+  context: AccessSchema,
   optional: z.boolean().optional(),
   default: z.string().optional(),
   minLength: z.number().optional(),
@@ -15,7 +15,7 @@ export type ValidStringFieldSchema = z.infer<typeof StringFieldSchema>
 
 const BooleanFieldSchema = z.object({
   type: z.literal('boolean'),
-  access: AccessSchema,
+  context: AccessSchema,
   optional: z.boolean().optional(),
   default: z.boolean().optional(),
 })

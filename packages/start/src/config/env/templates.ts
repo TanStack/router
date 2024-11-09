@@ -9,13 +9,13 @@ export const ENV_MODULES_IDS_SET = new Set(Object.values(ENV_MODULES_IDS))
 
 export function buildTemplates(options: {
   schema: Record<string, ValidEnvFieldUnion>
-  variables: Array<{ key: string; value: any; access: ValidAccessSchema }>
+  variables: Array<{ key: string; value: any; context: ValidAccessSchema }>
 }): { client: string; server: string; internal: string } {
   let client = ''
   let server = ''
 
-  for (const { key, value, access } of options.variables) {
-    if (access === 'public') {
+  for (const { key, value, context } of options.variables) {
+    if (context === 'client') {
       client += `export const ${key} = ${JSON.stringify(value)}\n`
     } else {
       server += `export const ${key} = ${JSON.stringify(value)}\n`
