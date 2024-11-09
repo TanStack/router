@@ -1,6 +1,7 @@
 ---
 title: Render Optimizations
 ---
+
 TanStack Router includes several optimizations to ensure your components only re-render when necessary. These optimizations include:
 
 ## structural sharing
@@ -12,6 +13,7 @@ For example, consider a `details` route with two search parameters, `foo` and `b
 ```tsx
 const search = Route.useSearch()
 ```
+
 When only `bar` is changed by navigating from `/details?foo=f1&bar=b1` to `/details?foo=f1&bar=b2`, `search.foo` will be referentially stable and only `search.bar` will be replaced.
 
 ## fine-grained selectors
@@ -20,7 +22,7 @@ You can access and subscribe to the router state using various hooks like `useRo
 
 ```tsx
 // component won't re-render when `bar` changes
-const foo = Route.useSearch({select: (({foo}) => foo)})
+const foo = Route.useSearch({ select: ({ foo }) => foo })
 ```
 
 ### structural sharing with fine-grained selectors
@@ -28,12 +30,13 @@ const foo = Route.useSearch({select: (({foo}) => foo)})
 The `select` function can perform various calculations on the router state, allowing you to return different types of values, such as objects. For example:
 
 ```tsx
-const result = Route.useSearch({select: ((search) => {
-        return {
-            foo: search.foo,
-            hello: `hello ${search.foo}`
-        }
-    })
+const result = Route.useSearch({
+  select: (search) => {
+    return {
+      foo: search.foo,
+      hello: `hello ${search.foo}`,
+    }
+  },
 })
 ```
 
@@ -55,13 +58,14 @@ const router = createRouter({
 #### Enable it per hook usage as shown here:
 
 ```tsx
-const result = Route.useSearch({select: ((search) => {
-        return {
-            foo: search.foo,
-            hello: `hello ${search.foo}`
-        }
-    }),
-    structuralSharing: true
+const result = Route.useSearch({
+  select: (search) => {
+    return {
+      foo: search.foo,
+      hello: `hello ${search.foo}`,
+    }
+  },
+  structuralSharing: true,
 })
 ```
 
@@ -71,12 +75,13 @@ const result = Route.useSearch({select: ((search) => {
 In line with TanStack Router's type-safe design, TypeScript will raise an error if you attempt the following:
 
 ```tsx
-const result = Route.useSearch({select: ((search) => {
-        return {
-            date: new Date()
-        }
-    }),
-    structuralSharing: true
+const result = Route.useSearch({
+  select: (search) => {
+    return {
+      date: new Date(),
+    }
+  },
+  structuralSharing: true,
 })
 ```
 

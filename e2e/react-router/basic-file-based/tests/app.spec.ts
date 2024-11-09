@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import type { Page} from '@playwright/test';
+import type { Page } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -81,7 +81,9 @@ test('navigating to an unnested route', async ({ page }) => {
 })
 
 async function getRenderCount(page: Page) {
-  const renderCount = parseInt(await page.getByTestId('render-count').innerText())
+  const renderCount = parseInt(
+    await page.getByTestId('render-count').innerText(),
+  )
   return renderCount
 }
 async function structuralSharingTest(page: Page, enabled: boolean) {
