@@ -164,6 +164,21 @@ test('when there is one search params', () => {
     .toHaveProperty('structuralSharing')
     .toEqualTypeOf<false | undefined>()
 
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false, { hi: any }, true>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: { page?: number }) => {
+          hi: never
+        })
+      | undefined
+    >()
+
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false, { hi: any }, true>)
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<false | undefined>()
+
   const routerWithStructuralSharing = createRouter({
     routeTree,
     defaultStructuralSharing: true,
@@ -191,7 +206,38 @@ test('when there is one search params', () => {
       typeof routerWithStructuralSharing,
       '/invoices',
       false,
-      { date: Date },
+      { date: () => void },
+      true
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<false>()
+
+  expectTypeOf(
+    useSearch<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      false,
+      { hi: any },
+      true
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: { page?: number }) => {
+          hi: never
+        })
+      | undefined
+    >()
+
+  expectTypeOf(
+    useSearch<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      false,
+      { hi: any },
       true
     >,
   )
