@@ -25,6 +25,10 @@ function resolveVirtualModuleId<T extends string>(id: T): `\0tss:${T}` {
  */
 type StartEnvOptions = {
   [key: string]: any
+  tsr?: {
+    [key: string]: any
+    appDirectory?: string
+  }
   env?: {
     [key: string]: any
     schema?: z.output<typeof envValidationSchema> | undefined
@@ -40,7 +44,7 @@ export function tsrValidateEnvPlugin(options: {
     return undefined
   }
 
-  const shouldWrite = options.write ?? false
+  // const shouldWrite = options.write ?? false
   const schema = options.configOptions.env.schema
 
   let templates: ReturnType<typeof buildTemplates> | null = null

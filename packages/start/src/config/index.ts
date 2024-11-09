@@ -29,6 +29,7 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
 import { envValidationSchema, tsrValidateEnvPlugin } from './env/plugin.js'
+import { booleanEnv, stringEnv } from './env/schema.js'
 import type {
   AppOptions as VinxiAppOptions,
   RouterSchemaInput as VinxiRouterSchemaInput,
@@ -39,7 +40,7 @@ import type { NitroOptions } from 'nitropack'
 
 import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
 
-export { stringEnv, booleanEnv } from './env/schema.js'
+export const envValue = { string: stringEnv, boolean: booleanEnv }
 
 type RouterType = 'client' | 'server' | 'ssr' | 'api'
 
