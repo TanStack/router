@@ -16,15 +16,32 @@ function resolveVirtualModuleId<T extends string>(id: T): `\0tss:${T}` {
   return `\0tss:${id}`
 }
 
+/**
+ * TODO: Replace this with the correct Config type
+ * Currently, since we've got a major rewrite going on it makes it difficult to coordinate
+ * the types between the branches.
+ * When the start package is settled, we can use the correct Config type that's used when
+ * setting up the Start definedConfig function in the app.config.ts file.
+ */
+type StartEnvOptions = {
+  [key: string]: any
+  env?: {
+    [key: string]: any
+    schema?: z.output<typeof envValidationSchema> | undefined
+  }
+}
+
 export function tsrValidateEnvPlugin(options: {
-  schema: z.output<typeof envValidationSchema> | undefined
+  configOptions: StartEnvOptions
   root: string
+  write?: boolean
 }): Plugin | undefined {
-  if (!options.schema) {
+  if (!options.configOptions.env?.schema) {
     return undefined
   }
 
-  const schema = options.schema
+  const shouldWrite = options.write ?? false
+  const schema = options.configOptions.env.schema
 
   let templates: ReturnType<typeof buildTemplates> | null = null
 
@@ -39,7 +56,11 @@ export function tsrValidateEnvPlugin(options: {
     },
     load(id, _loadOptions) {
       if (id === resolveVirtualModuleId(ENV_MODULES_IDS.server)) {
-        return templates!.server
+        return templates?.server
+      }
+
+      if (id === resolveVirtualModuleId(ENV_MODULES_IDS.client)) {
+        return templates?.client
       }
 
       return undefined

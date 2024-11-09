@@ -277,8 +277,6 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
 
   const root = process.cwd()
 
-  const envSchemaInput = opts.env?.schema
-
   const { preset: configDeploymentPreset, ...serverOptions } =
     serverSchema.parse(opts.server || {})
 
@@ -331,7 +329,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
           sourcemap: true,
         },
         plugins: () => [
-          tsrValidateEnvPlugin({ schema: envSchemaInput, root }),
+          tsrValidateEnvPlugin({ configOptions: opts, root }),
           ...(getUserConfig(opts.vite).plugins || []),
           ...(getUserConfig(opts.routers?.client?.vite).plugins || []),
           serverFunctions.client({
@@ -349,7 +347,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
       ...(apiEntryExists
         ? [
             withPlugins([
-              tsrValidateEnvPlugin({ schema: envSchemaInput, root }),
+              tsrValidateEnvPlugin({ configOptions: opts, root }),
               config('start-vite', {
                 ...getUserConfig(opts.vite).userConfig,
                 ...getUserConfig(opts.routers?.api?.vite).userConfig,
@@ -406,7 +404,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
         target: 'server',
         handler: ssrEntry,
         plugins: () => [
-          tsrValidateEnvPlugin({ schema: envSchemaInput, root }),
+          tsrValidateEnvPlugin({ configOptions: opts, root }),
           tsrRoutesManifest({
             tsrConfig,
             clientBase,
@@ -438,7 +436,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => [
-          tsrValidateEnvPlugin({ schema: envSchemaInput, root }),
+          tsrValidateEnvPlugin({ configOptions: opts, root, write: true }),
           serverFunctions.server({
             runtime: '@tanstack/start/react-server-runtime',
             // TODO: RSCS - remove this
