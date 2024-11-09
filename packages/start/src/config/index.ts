@@ -323,7 +323,7 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
   if (!tanstackDTsFileExists || !tanstackFolderExists) {
     fillFrameworkTsInfer({ root, appDirectory })
   }
-  
+
   return createApp({
     server: {
       ...serverOptions,
