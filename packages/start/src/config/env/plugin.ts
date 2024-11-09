@@ -8,6 +8,7 @@ import {
   ENV_MODULES_IDS_SET,
   buildTemplates,
 } from './templates.js'
+import { cleanupEnvDTSFile } from './fs-ops.js'
 import type { Plugin } from 'vite'
 
 export const envValidationSchema = z.record(z.string(), EnvFieldUnion)
@@ -35,23 +36,38 @@ type StartEnvOptions = {
   }
 }
 
+const VITE_PLUGIN_BASE: Plugin = {
+  name: 'tanstack-start:env-plugin',
+  enforce: 'pre',
+}
+
 export function tsrValidateEnvPlugin(options: {
   configOptions: StartEnvOptions
   root: string
   write?: boolean
-}): Plugin | undefined {
-  if (!options.configOptions.env?.schema) {
-    return undefined
+}): Plugin {
+  const shouldWrite = options.write ?? false
+
+  if (
+    !options.configOptions.env?.schema ||
+    Object.keys(options.configOptions.env.schema).length === 0
+  ) {
+    return {
+      ...VITE_PLUGIN_BASE,
+      buildStart() {
+        if (shouldWrite) {
+          cleanupEnvDTSFile({ root: options.root })
+        }
+      },
+    }
   }
 
-  const shouldWrite = options.write ?? false
   const schema = options.configOptions.env.schema
 
   let templates: ReturnType<typeof buildTemplates> | null = null
 
   return {
-    name: 'tanstack-start:env-plugin',
-    enforce: 'pre',
+    ...VITE_PLUGIN_BASE,
     resolveId(id) {
       if (ENV_MODULES_IDS_SET.has(id)) {
         return resolveVirtualModuleId(id)

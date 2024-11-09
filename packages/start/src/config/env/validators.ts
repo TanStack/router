@@ -1,4 +1,5 @@
-import { buildTypeAnnotation, writeInternalDTSFile } from './templates.js'
+import { buildTypeAnnotation } from './templates.js'
+import { writeEnvDTSFile } from './fs-ops.js'
 import type {
   ValidAccessSchema,
   ValidEnvFieldUnion,
@@ -122,7 +123,7 @@ export function validateEnvVariables(options: {
   }
 
   if (options.write) {
-    writeInternalDTSFile({ accepted, root: options.root })
+    writeEnvDTSFile({ accepted, root: options.root })
   }
 
   return accepted

@@ -30,9 +30,9 @@ import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
 import {
   PUBLIC_TANSTACK_START_DTS_FILENAME,
-  TANSTACK_FOLDER_NAME,
-  fillFrameworkTsInfer,
-} from './frameworkTsInfer.js'
+  TANSTACK_DIR_NAME,
+  setupFrameworkTypesFile,
+} from './setup-fw-types.js'
 import { envValidationSchema, tsrValidateEnvPlugin } from './env/plugin.js'
 import { booleanEnv, stringEnv } from './env/schema.js'
 import type {
@@ -315,13 +315,13 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
   const publicDir = opts.routers?.public?.dir || './public'
   const publicBase = opts.routers?.public?.base || '/'
 
-  const tanstackFolderExists = existsSync(path.join(root, TANSTACK_FOLDER_NAME))
+  const tanstackFolderExists = existsSync(path.join(root, TANSTACK_DIR_NAME))
   const tanstackDTsFileExists = existsSync(
     path.join(appDirectory, PUBLIC_TANSTACK_START_DTS_FILENAME),
   )
 
   if (!tanstackDTsFileExists || !tanstackFolderExists) {
-    fillFrameworkTsInfer({ root, appDirectory })
+    setupFrameworkTypesFile({ root, appDirectory })
   }
 
   return createApp({
