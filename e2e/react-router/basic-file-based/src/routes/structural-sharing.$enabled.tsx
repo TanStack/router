@@ -23,10 +23,6 @@ export const Route = createFileRoute('/structural-sharing/$enabled')({
     parse: (p) => z.object(enabledSchema).parse(p),
   },
   validateSearch: z.object({ foo: z.string(), bar: z.string() }),
-  beforeLoad: ({ search }) => ({
-    foo: search.foo,
-    bar: search.bar,
-  }),
 })
 
 function useRenderCount() {
