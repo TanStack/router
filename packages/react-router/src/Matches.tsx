@@ -7,7 +7,10 @@ import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
-import type { StructuralSharingOption } from './structuralSharing'
+import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
 import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 import type { ResolveRelativePath, ToOptions } from './link'
@@ -371,8 +374,14 @@ export type MakeRouteMatchUnion<
     >
   : never
 
-export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
-  select?: (matches: Array<MakeRouteMatchUnion<TRouter>>) => TSelected
+export interface UseMatchesBaseOptions<
+  TRouter extends AnyRouter,
+  TSelected,
+  TStructuralSharing,
+> {
+  select?: (
+    matches: Array<MakeRouteMatchUnion<TRouter>>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
 export type UseMatchesResult<
@@ -385,7 +394,7 @@ export function useMatches<
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected> &
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
   return useRouterState({
@@ -404,7 +413,7 @@ export function useParentMatches<
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected> &
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
   const contextMatchId = React.useContext(matchContext)
@@ -426,7 +435,7 @@ export function useChildMatches<
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected> &
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
   const contextMatchId = React.useContext(matchContext)
