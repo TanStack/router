@@ -2,11 +2,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 export const TANSTACK_FOLDER_NAME = '.tanstack'
-export const TANSTACK_START_DTS_FILENAME = 'tanstack-start.d.ts'
+export const PUBLIC_TANSTACK_START_DTS_FILENAME = 'tanstack-start.d.ts'
 
-const INTERNAL_START_TYPES_FILENAME = 'start-types.d.ts'
+export const INTERNAL_START_TYPES_FILENAME = 'start-types.d.ts'
 
-const TANSTACK_START_DTS_TEMPLATE = `/// <reference types="../.tanstack/${INTERNAL_START_TYPES_FILENAME}" />\n`
+const TANSTACK_START_DTS_TEMPLATE = `/// <reference path="../.tanstack/${INTERNAL_START_TYPES_FILENAME}" />\n`
 
 export function fillFrameworkTsInfer(opts: {
   root: string
@@ -15,7 +15,7 @@ export function fillFrameworkTsInfer(opts: {
   const tanstackFolder = path.join(opts.root, TANSTACK_FOLDER_NAME)
   const frameworkDTSPath = path.join(
     opts.appDirectory,
-    TANSTACK_START_DTS_FILENAME,
+    PUBLIC_TANSTACK_START_DTS_FILENAME,
   )
 
   if (!fs.existsSync(tanstackFolder)) {

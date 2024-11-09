@@ -29,7 +29,8 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
 import {
-  TANSTACK_START_DTS_FILENAME,
+  PUBLIC_TANSTACK_START_DTS_FILENAME,
+  TANSTACK_FOLDER_NAME,
   fillFrameworkTsInfer,
 } from './frameworkTsInfer.js'
 import { envValidationSchema, tsrValidateEnvPlugin } from './env/plugin.js'
@@ -305,11 +306,12 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
 
   const apiEntryExists = existsSync(apiEntry)
 
+  const tanstackFolderExists = existsSync(path.join(root, TANSTACK_FOLDER_NAME))
   const tanstackDTsFileExists = existsSync(
-    path.join(appDirectory, TANSTACK_START_DTS_FILENAME),
+    path.join(appDirectory, PUBLIC_TANSTACK_START_DTS_FILENAME),
   )
 
-  if (!tanstackDTsFileExists) {
+  if (!tanstackDTsFileExists || !tanstackFolderExists) {
     fillFrameworkTsInfer({ root, appDirectory })
   }
 
@@ -342,7 +344,10 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
           sourcemap: true,
         },
         plugins: () => [
-          tsrValidateEnvPlugin({ configOptions: opts, root }),
+          tsrValidateEnvPlugin({
+            configOptions: { ...opts, tsr },
+            root,
+          }),
           ...(getUserConfig(opts.vite).plugins || []),
           ...(getUserConfig(opts.routers?.client?.vite).plugins || []),
           serverFunctions.client({
@@ -360,7 +365,10 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
       ...(apiEntryExists
         ? [
             withPlugins([
-              tsrValidateEnvPlugin({ configOptions: opts, root }),
+              tsrValidateEnvPlugin({
+                configOptions: { ...opts, tsr },
+                root,
+              }),
               config('start-vite', {
                 ...getUserConfig(opts.vite).userConfig,
                 ...getUserConfig(opts.routers?.api?.vite).userConfig,
@@ -417,7 +425,10 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
         target: 'server',
         handler: ssrEntry,
         plugins: () => [
-          tsrValidateEnvPlugin({ configOptions: opts, root }),
+          tsrValidateEnvPlugin({
+            configOptions: { ...opts, tsr },
+            root,
+          }),
           tsrRoutesManifest({
             tsrConfig,
             clientBase,
@@ -449,7 +460,11 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => [
-          tsrValidateEnvPlugin({ configOptions: opts, root, write: true }),
+          tsrValidateEnvPlugin({
+            configOptions: { ...opts, tsr },
+            root,
+            write: true,
+          }),
           serverFunctions.server({
             runtime: '@tanstack/start/react-server-runtime',
             // TODO: RSCS - remove this

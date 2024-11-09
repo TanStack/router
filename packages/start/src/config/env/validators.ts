@@ -1,4 +1,4 @@
-import { buildTypeAnnotation } from './templates.js'
+import { buildTypeAnnotation, writeInternalDTSFile } from './templates.js'
 import type {
   ValidAccessSchema,
   ValidEnvFieldUnion,
@@ -64,6 +64,8 @@ function getEnvValidator(schema: ValidEnvFieldUnion): EnvValueValidator {
 export function validateEnvVariables(options: {
   variables: Record<string, string>
   schema: Record<string, ValidEnvFieldUnion>
+  write: boolean
+  root: string
 }): Array<{
   key: string
   value: unknown
@@ -117,6 +119,10 @@ export function validateEnvVariables(options: {
         .map(({ key, error }) => `  - ${key}: ${error}`)
         .join('\n')}`,
     )
+  }
+
+  if (options.write) {
+    writeInternalDTSFile({ accepted, root: options.root })
   }
 
   return accepted

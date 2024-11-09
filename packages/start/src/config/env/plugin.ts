@@ -44,7 +44,7 @@ export function tsrValidateEnvPlugin(options: {
     return undefined
   }
 
-  // const shouldWrite = options.write ?? false
+  const shouldWrite = options.write ?? false
   const schema = options.configOptions.env.schema
 
   let templates: ReturnType<typeof buildTemplates> | null = null
@@ -79,6 +79,8 @@ export function tsrValidateEnvPlugin(options: {
       }
 
       const variables = validateEnvVariables({
+        root: options.root,
+        write: shouldWrite,
         variables: runtimeEnv,
         schema,
       })
