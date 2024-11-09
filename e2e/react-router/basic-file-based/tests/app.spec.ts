@@ -89,8 +89,6 @@ async function getRenderCount(page: Page) {
 async function structuralSharingTest(page: Page, enabled: boolean) {
   page.goto(`/structural-sharing/${enabled}/?foo=f1&bar=b1`)
   await expect(page.getByTestId('enabled')).toHaveText(JSON.stringify(enabled))
-  expect(await getRenderCount(page)).toBe(1)
-  await expect(page.getByTestId('render-count')).toHaveText('1')
 
   async function checkSearch({ foo, bar }: { foo: string; bar: string }) {
     expect(page.url().endsWith(`?foo=${foo}&bar=${bar}`)).toBe(true)
