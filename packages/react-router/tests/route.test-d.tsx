@@ -100,7 +100,6 @@ test('when creating the root with a loader', () => {
 
 test('when creating the root route with context and routeContext', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
-
   const rootRoute = createRouteResult({
     context: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
@@ -122,15 +121,21 @@ test('when creating the root route with context and routeContext', () => {
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
     userId: string
   }>()
 
-  expectTypeOf(rootRoute.useRouteContext<string>)
+  expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { userId: string }) => string } | undefined
-    >()
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
 test('when creating the root route with context and beforeLoad', () => {
@@ -157,15 +162,21 @@ test('when creating the root route with context and beforeLoad', () => {
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
     userId: string
   }>()
 
-  expectTypeOf(rootRoute.useRouteContext<string>)
+  expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { userId: string }) => string } | undefined
-    >()
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
 test('when creating the root route with context and a loader', () => {
@@ -192,15 +203,21 @@ test('when creating the root route with context and a loader', () => {
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
     userId: string
   }>()
 
-  expectTypeOf(rootRoute.useRouteContext<string>)
+  expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { userId: string }) => string } | undefined
-    >()
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
 test('when creating the root route with context, routeContext, beforeLoad and a loader', () => {
@@ -260,22 +277,28 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
     userId: string
     permission: 'view'
     env: 'env1'
   }>()
 
-  expectTypeOf(rootRoute.useRouteContext<string>)
+  expectTypeOf(rootRoute.useRouteContext<typeof router, string>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      | {
-          select?: (search: {
-            userId: string
-            permission: 'view'
-            env: 'env1'
-          }) => string
-        }
+      | ((context: {
+          userId: string
+          permission: 'view'
+          env: 'env1'
+        }) => string)
       | undefined
     >()
 })
@@ -301,15 +324,21 @@ test('when creating a child route from the root route with context', () => {
     getParentRoute: () => rootRoute,
   })
 
-  expectTypeOf(rootRoute.useRouteContext()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
     userId: string
   }>()
 
-  expectTypeOf(invoicesRoute.useRouteContext<string>)
+  expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { userId: string }) => string } | undefined
-    >()
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
 test('when creating a child route with routeContext from the root route with context', () => {
@@ -385,28 +414,37 @@ test('when creating a child route with a loader from the root route', () => {
     },
   })
 
-  expectTypeOf(invoicesRoute.useLoaderData<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router, string>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      | {
-          select?: (
-            search: readonly [
-              { readonly id: 'invoice1' },
-              { readonly id: 'invoice2' },
-            ],
-          ) => string
-        }
+      | ((
+          search: readonly [
+            { readonly id: 'invoice1' },
+            { readonly id: 'invoice2' },
+          ],
+        ) => string)
       | undefined
     >()
 
-  expectTypeOf(invoicesRoute.useLoaderData()).toEqualTypeOf<
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
+
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router>()).toEqualTypeOf<
     readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
   >()
 })
 
 test('when creating a child route with a loader from the root route with context', () => {
-  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
-
   const invoicesRoute = createRoute({
     path: 'invoices',
     getParentRoute: () => rootRoute,
@@ -427,21 +465,43 @@ test('when creating a child route with a loader from the root route with context
     },
   })
 
-  expectTypeOf(invoicesRoute.useLoaderData<string>)
+  const rootRoute = createRootRouteWithContext<{
+    userId: string
+  }>()()
+
+  const routeTree = rootRoute.addChildren([invoicesRoute])
+
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router, string>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      | {
-          select?: (
-            search: readonly [
-              { readonly id: 'invoice1' },
-              { readonly id: 'invoice2' },
-            ],
-          ) => string
-        }
+      | ((
+          search: readonly [
+            { readonly id: 'invoice1' },
+            { readonly id: 'invoice2' },
+          ],
+        ) => string)
       | undefined
     >()
 
-  expectTypeOf(invoicesRoute.useLoaderData()).toEqualTypeOf<
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
+
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router>()).toEqualTypeOf<
+    readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
+  >()
+
+  expectTypeOf(invoicesRoute.useLoaderData<typeof router>()).toEqualTypeOf<
     readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
   >()
 })
@@ -455,15 +515,26 @@ test('when creating a child route with search params from the root route', () =>
     validateSearch: () => ({ page: 0 }),
   })
 
-  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(invoicesRoute.useSearch<typeof router>()).toEqualTypeOf<{
     page: number
   }>()
 
-  expectTypeOf(invoicesRoute.useSearch<number>)
+  expectTypeOf(invoicesRoute.useSearch<typeof router, number>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { page: number }) => number } | undefined
-    >()
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<((search: { page: number }) => number) | undefined>()
+
+  expectTypeOf(invoicesRoute.useSearch<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when creating a child route with optional search params from the root route', () => {
@@ -475,13 +546,28 @@ test('when creating a child route with optional search params from the root rout
     validateSearch: (): { page?: number } => ({ page: 0 }),
   })
 
-  expectTypeOf(invoicesRoute.useSearch()).toEqualTypeOf<{ page?: number }>()
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
 
-  expectTypeOf(invoicesRoute.useSearch<number>)
+  expectTypeOf(invoicesRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page?: number
+  }>()
+
+  expectTypeOf(invoicesRoute.useSearch<typeof router, number>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      { select?: (search: { page?: number }) => number } | undefined
+      ((search: { page?: number | undefined }) => number) | undefined
     >()
+
+  expectTypeOf(invoicesRoute.useSearch<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when creating a child route with params from the root route', () => {
@@ -492,12 +578,25 @@ test('when creating a child route with params from the root route', () => {
     getParentRoute: () => rootRoute,
   })
 
-  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{ invoiceId: string }>()
-  expectTypeOf(invoicesRoute.useParams<string>)
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{
+    invoiceId: string
+  }>()
+
+  expectTypeOf(invoicesRoute.useParams<typeof router, number>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { invoiceId: string }) => string } | undefined
-    >()
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<((params: { invoiceId: string }) => number) | undefined>()
+
+  expectTypeOf(invoicesRoute.useParams<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when creating a child route with a splat param from the root route', () => {
@@ -508,12 +607,26 @@ test('when creating a child route with a splat param from the root route', () =>
     getParentRoute: () => rootRoute,
   })
 
-  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{ _splat?: string }>()
-  expectTypeOf(invoicesRoute.useParams<string>)
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{
+    _splat?: string
+  }>()
+
+  expectTypeOf(invoicesRoute.useParams<typeof router, number>)
     .parameter(0)
-    .toEqualTypeOf<
-      { select?: (search: { _splat?: string }) => string } | undefined
-    >()
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<((params: { _splat?: string }) => number) | undefined>()
+
+  expectTypeOf(invoicesRoute.useParams<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when creating a child route with a param and splat param from the root route', () => {
@@ -523,17 +636,29 @@ test('when creating a child route with a param and splat param from the root rou
     path: 'invoices/$invoiceId/$',
     getParentRoute: () => rootRoute,
   })
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
 
-  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{
     invoiceId: string
     _splat?: string
   }>()
-  expectTypeOf(invoicesRoute.useParams<string>)
+
+  expectTypeOf(invoicesRoute.useParams<typeof router, number>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      | { select?: (search: { invoiceId: string; _splat?: string }) => string }
-      | undefined
+      ((params: { invoiceId: string; _splat?: string }) => number) | undefined
     >()
+
+  expectTypeOf(invoicesRoute.useParams<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when creating a child route with params, search and loader from the root route', () => {
@@ -725,19 +850,31 @@ test('when creating a child route with params from a parent with params', () => 
     getParentRoute: () => invoicesRoute,
   })
 
-  expectTypeOf(detailsRoute.useParams()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([detailsRoute]),
+    ]),
+  })
+
+  expectTypeOf(detailsRoute.useParams<typeof router>()).toEqualTypeOf<{
     invoiceId: string
     detailId: string
   }>()
 
-  expectTypeOf(detailsRoute.useParams<string>)
+  expectTypeOf(detailsRoute.useParams<typeof router, number>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      | {
-          select?: (search: { invoiceId: string; detailId: string }) => string
-        }
-      | undefined
+      ((params: { invoiceId: string; detailId: string }) => number) | undefined
     >()
+
+  expectTypeOf(detailsRoute.useParams<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when creating a child route with search from a parent with search', () => {
@@ -755,22 +892,32 @@ test('when creating a child route with search from a parent with search', () => 
     validateSearch: () => ({ detailPage: 0 }),
   })
 
-  expectTypeOf(detailsRoute.useSearch()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([detailsRoute]),
+    ]),
+  })
+
+  expectTypeOf(detailsRoute.useSearch<typeof router>()).toEqualTypeOf<{
     invoicePage: number
     detailPage: number
   }>()
 
-  expectTypeOf(detailsRoute.useSearch<number>)
+  expectTypeOf(detailsRoute.useSearch<typeof router, number>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      | {
-          select?: (search: {
-            invoicePage: number
-            detailPage: number
-          }) => number
-        }
+      | ((params: { invoicePage: number; detailPage: number }) => number)
       | undefined
     >()
+
+  expectTypeOf(detailsRoute.useSearch<typeof router, number>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when creating a child route with routeContext from a parent with routeContext', () => {
@@ -818,22 +965,30 @@ test('when creating a child route with routeContext from a parent with routeCont
     },
   })
 
-  expectTypeOf(detailsRoute.useRouteContext()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([detailsRoute]),
+    ]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(detailsRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
     userId: string
     invoiceId: string
     detailId: string
   }>()
 
-  expectTypeOf(detailsRoute.useRouteContext<string>)
+  expectTypeOf(detailsRoute.useRouteContext<typeof router, number>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      | {
-          select?: (search: {
-            userId: string
-            invoiceId: string
-            detailId: string
-          }) => string
-        }
+      | ((params: {
+          userId: string
+          invoiceId: string
+          detailId: string
+        }) => number)
       | undefined
     >()
 })
@@ -881,22 +1036,30 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
     },
   })
 
-  expectTypeOf(detailsRoute.useRouteContext()).toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([detailsRoute]),
+    ]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(detailsRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
     userId: string
     invoiceId: string
     detailId: string
   }>()
 
-  expectTypeOf(detailsRoute.useRouteContext<string>)
+  expectTypeOf(detailsRoute.useRouteContext<typeof router, number>)
     .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
     .toEqualTypeOf<
-      | {
-          select?: (search: {
-            userId: string
-            invoiceId: string
-            detailId: string
-          }) => string
-        }
+      | ((params: {
+          userId: string
+          invoiceId: string
+          detailId: string
+        }) => number)
       | undefined
     >()
 })
@@ -1185,7 +1348,11 @@ test('when creating a child route with parseParams and stringify params without 
     },
   })
 
-  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{}>()
+  const routeTree = rootRoute.addChildren([invoicesRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{}>()
 })
 
 test('when creating a child route with params.parse and params.stringify without params in path', () => {
@@ -1212,7 +1379,11 @@ test('when creating a child route with params.parse and params.stringify without
     },
   })
 
-  expectTypeOf(invoicesRoute.useParams()).toEqualTypeOf<{}>()
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{}>()
 })
 
 test('when creating a child route with parseParams and stringifyParams with params in path', () => {
@@ -1246,7 +1417,13 @@ test('when creating a child route with parseParams and stringifyParams with para
     },
   })
 
-  expectTypeOf(invoiceRoute.useParams()).toEqualTypeOf<{ invoiceId: number }>()
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoiceRoute]),
+  })
+
+  expectTypeOf(invoiceRoute.useParams<typeof router>()).toEqualTypeOf<{
+    invoiceId: number
+  }>()
 })
 
 test('when creating a child route with params.parse and params.stringify with params in path', () => {
@@ -1282,7 +1459,13 @@ test('when creating a child route with params.parse and params.stringify with pa
     },
   })
 
-  expectTypeOf(invoiceRoute.useParams()).toEqualTypeOf<{ invoiceId: number }>()
+  const router = createRouter({
+    routeTree: invoicesRoute.addChildren([invoiceRoute]),
+  })
+
+  expectTypeOf(invoiceRoute.useParams<typeof router>()).toEqualTypeOf<{
+    invoiceId: number
+  }>()
 })
 
 test('when creating a child route with parseParams and stringifyParams with merged params from parent', () => {
@@ -1342,7 +1525,13 @@ test('when creating a child route with parseParams and stringifyParams with merg
     },
   })
 
-  expectTypeOf(detailRoute.useParams()).toEqualTypeOf<{
+  const router = createRouter({
+    routeTree: invoicesRoute.addChildren([
+      invoiceRoute.addChildren([detailRoute]),
+    ]),
+  })
+
+  expectTypeOf(detailRoute.useParams<typeof router>()).toEqualTypeOf<{
     detailId: number
     invoiceId: number
   }>()
@@ -1408,7 +1597,13 @@ test('when creating a child route with params.parse and params.stringify with me
     },
   })
 
-  expectTypeOf(detailRoute.useParams()).toEqualTypeOf<{
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([invoiceRoute.addChildren([detailRoute])]),
+    ]),
+  })
+
+  expectTypeOf(detailRoute.useParams<typeof router>()).toEqualTypeOf<{
     detailId: number
     invoiceId: number
   }>()
@@ -1424,7 +1619,13 @@ test('when routeContext throws', () => {
     },
   })
 
-  expectTypeOf(invoicesRoute.useRouteContext()).toEqualTypeOf<{}>()
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(
+    invoicesRoute.useRouteContext<typeof router>(),
+  ).toEqualTypeOf<{}>()
 })
 
 test('when beforeLoad throws', () => {
@@ -1437,7 +1638,13 @@ test('when beforeLoad throws', () => {
     },
   })
 
-  expectTypeOf(invoicesRoute.useRouteContext()).toEqualTypeOf<{}>()
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+  })
+
+  expectTypeOf(
+    invoicesRoute.useRouteContext<typeof router>(),
+  ).toEqualTypeOf<{}>()
 })
 
 test('when creating a child route with no explicit search input', () => {
@@ -1450,8 +1657,6 @@ test('when creating a child route with no explicit search input', () => {
     },
   })
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
-
   const rootRouteWithContext = createRootRouteWithContext()({
     validateSearch: (input) => {
       expectTypeOf(input).toEqualTypeOf<Record<string, unknown>>()
@@ -1460,10 +1665,6 @@ test('when creating a child route with no explicit search input', () => {
       }
     },
   })
-
-  expectTypeOf(rootRouteWithContext.useSearch()).toEqualTypeOf<{
-    page: number
-  }>()
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -1476,11 +1677,21 @@ test('when creating a child route with no explicit search input', () => {
     },
   })
 
-  expectTypeOf(indexRoute.useSearch()).toEqualTypeOf<{ page: number }>()
-
   const routeTree = rootRoute.addChildren([indexRoute])
 
   const router = createRouter({ routeTree })
+
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
+
+  expectTypeOf(indexRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
+
+  expectTypeOf(rootRouteWithContext.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
 
   const navigate = indexRoute.useNavigate()
 
@@ -1511,8 +1722,6 @@ test('when creating a child route with an explicit search input', () => {
     },
   })
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: string }>()
-
   const rootRouteWithContext = createRootRouteWithContext()({
     validateSearch: (input: SearchSchemaInput & { input: string }) => {
       return {
@@ -1520,10 +1729,6 @@ test('when creating a child route with an explicit search input', () => {
       }
     },
   })
-
-  expectTypeOf(rootRouteWithContext.useSearch()).toEqualTypeOf<{
-    page: string
-  }>()
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -1535,11 +1740,21 @@ test('when creating a child route with an explicit search input', () => {
     },
   })
 
-  expectTypeOf(indexRoute.useSearch()).toEqualTypeOf<{ page: string }>()
-
   const routeTree = rootRoute.addChildren([indexRoute])
 
   const router = createRouter({ routeTree })
+
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: string
+  }>()
+
+  expectTypeOf(indexRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: string
+  }>()
+
+  expectTypeOf(rootRouteWithContext.useSearch<typeof router>()).toEqualTypeOf<{
+    page: string
+  }>()
 
   const navigate = indexRoute.useNavigate()
 

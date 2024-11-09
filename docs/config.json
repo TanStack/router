@@ -175,6 +175,10 @@
             {
               "label": "SSR",
               "to": "framework/react/guide/ssr"
+            },
+            {
+              "label": "Render Optimizations",
+              "to": "framework/react/guide/render-optimizations"
             }
           ]
         }
