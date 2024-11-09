@@ -28,6 +28,10 @@ import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
 import { z } from 'zod'
+import {
+  TANSTACK_START_DTS_FILENAME,
+  fillFrameworkTsInfer,
+} from './frameworkTsInfer.js'
 import { envValidationSchema, tsrValidateEnvPlugin } from './env/plugin.js'
 import { booleanEnv, stringEnv } from './env/schema.js'
 import type {
@@ -211,7 +215,7 @@ const routersSchema = z.object({
 })
 
 const tsrConfig = configSchema.partial().extend({
-  appDirectory: z.string().optional(),
+  appDirectory: z.string().default('./app').optional(),
 })
 
 const inlineConfigSchema = z.object({
@@ -300,6 +304,14 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
 
   const apiEntryExists = existsSync(apiEntry)
+
+  const tanstackDTsFileExists = existsSync(
+    path.join(appDirectory, TANSTACK_START_DTS_FILENAME),
+  )
+
+  if (!tanstackDTsFileExists) {
+    fillFrameworkTsInfer({ root, appDirectory })
+  }
 
   return createApp({
     server: {
