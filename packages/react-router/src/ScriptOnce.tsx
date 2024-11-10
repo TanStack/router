@@ -16,8 +16,8 @@ export function ScriptOnce({
         __html: [
           children,
           (log ?? true) && process.env.NODE_ENV === 'development'
-          ? "console.info('Injected From Server:\\n" + children + "');"
-         : '',
+            ? "console.info('Injected From Server:\\n" + children + "');"
+            : '',
         ]
           .filter(Boolean)
           .join('\n'),
