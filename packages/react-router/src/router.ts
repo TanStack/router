@@ -103,7 +103,7 @@ declare global {
       cleanScripts: () => void
       dehydrated?: any
     }
-    __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any>>
+    __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any, any>>
   }
 }
 
@@ -111,7 +111,7 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<any, any, any, any>
+export type AnyRouter = Router<any, any, any, any, any>
 
 export type AnyRouterWithContext<TContext> = Router<
   AnyRouteWithContext<TContext>,
@@ -173,6 +173,7 @@ export type TrailingSlashOption = 'always' | 'never' | 'preserve'
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
+  TDefaultStructuralSharingOption extends boolean = false,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 > {
@@ -464,6 +465,14 @@ export interface RouterOptions<
      */
     strict?: boolean
   }
+
+  /**
+   * Configures whether structural sharing is enabled by default for fine-grained selectors.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultstructuralsharing-property)
+   */
+  defaultStructuralSharing?: TDefaultStructuralSharingOption
+
   /**
    * Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
    *
@@ -539,12 +548,14 @@ export interface DehydratedRouter {
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
+  TDefaultStructuralSharingOption extends boolean,
   TDehydrated extends Record<string, any>,
   TSerializedError extends Record<string, any>,
 > = Omit<
   RouterOptions<
     TRouteTree,
     TTrailingSlashOption,
+    TDefaultStructuralSharingOption,
     TDehydrated,
     TSerializedError
   >,
@@ -636,6 +647,7 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
 export function createRouter<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
+  TDefaultStructuralSharingOption extends boolean,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 >(
@@ -644,6 +656,7 @@ export function createRouter<
     : RouterConstructorOptions<
         TRouteTree,
         TTrailingSlashOption,
+        TDefaultStructuralSharingOption,
         TDehydrated,
         TSerializedError
       >,
@@ -651,6 +664,7 @@ export function createRouter<
   return new Router<
     TRouteTree,
     TTrailingSlashOption,
+    TDefaultStructuralSharingOption,
     TDehydrated,
     TSerializedError
   >(options)
@@ -666,6 +680,7 @@ type MatchRoutesOpts = {
 export class Router<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
+  in out TDefaultStructuralSharingOption extends boolean,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
   in out TSerializedError extends Record<string, any> = Record<string, any>,
 > {
@@ -703,6 +718,7 @@ export class Router<
       RouterOptions<
         TRouteTree,
         TTrailingSlashOption,
+        TDefaultStructuralSharingOption,
         TDehydrated,
         TSerializedError
       >,
@@ -729,6 +745,7 @@ export class Router<
     options: RouterConstructorOptions<
       TRouteTree,
       TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
       TDehydrated,
       TSerializedError
     >,
@@ -760,6 +777,7 @@ export class Router<
     newOptions: RouterConstructorOptions<
       TRouteTree,
       TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
       TDehydrated,
       TSerializedError
     >,
@@ -1660,6 +1678,7 @@ export class Router<
           }
           maskedNext = build(maskedDest)
         }
+        // console.log('buildWithMatches', {foundMask, dest, maskedDest, maskedNext})
       }
 
       const nextMatches = this.getMatchedRoutes(next, dest)
@@ -2209,6 +2228,8 @@ export class Router<
                   let pendingTimeout: ReturnType<typeof setTimeout>
 
                   if (shouldPending) {
+                    console.log('### 2186 setting timeout', pendingMs)
+
                     // If we might show a pending component, we need to wait for the
                     // pending promise to resolve before we start showing that state
                     pendingTimeout = setTimeout(() => {
@@ -2672,7 +2693,13 @@ export class Router<
     TMaskTo extends string = '',
   >(
     opts: NavigateOptions<
-      Router<TRouteTree, TTrailingSlashOption, TDehydrated, TSerializedError>,
+      Router<
+        TRouteTree,
+        TTrailingSlashOption,
+        TDefaultStructuralSharingOption,
+        TDehydrated,
+        TSerializedError
+      >,
       TFrom,
       TTo,
       TMaskFrom,
@@ -2746,7 +2773,13 @@ export class Router<
     TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
   >(
     location: ToOptions<
-      Router<TRouteTree, TTrailingSlashOption, TDehydrated, TSerializedError>,
+      Router<
+        TRouteTree,
+        TTrailingSlashOption,
+        TDefaultStructuralSharingOption,
+        TDehydrated,
+        TSerializedError
+      >,
       TFrom,
       TTo
     >,
