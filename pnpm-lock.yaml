@@ -2207,8 +2207,8 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       valibot:
-        specifier: 1.0.0-beta.3
-        version: 1.0.0-beta.3(typescript@5.6.3)
+        specifier: 1.0.0-beta.5
+        version: 1.0.0-beta.5(typescript@5.6.3)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -3232,8 +3232,8 @@ importers:
         specifier: ^16.0.1
         version: 16.0.1(@testing-library/dom@10.4.0)(@types/react-dom@18.3.1)(@types/react@18.3.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       valibot:
-        specifier: 1.0.0-beta.3
-        version: 1.0.0-beta.3(typescript@5.6.3)
+        specifier: 1.0.0-beta.5
+        version: 1.0.0-beta.5(typescript@5.6.3)
 
   packages/router-vite-plugin:
     dependencies:
@@ -10297,8 +10297,8 @@ packages:
     resolution: {integrity: sha512-fcRLaS4H/hrZk9hYwbdRM35D0U8IYMfEClhXxCivOojl+yTRAZH3Zy2sSy6qVCiGbV9YAtPssP6jaChqC9vPCg==}
     engines: {node: '>= 10.13.0'}
 
-  valibot@1.0.0-beta.3:
-    resolution: {integrity: sha512-PRknKVj2249cF8Pxqil1dahkVHgyaPDq++Y8sA96R5lx4nYnVazs11kefOsRVD3PSygYJG5q2MEdEm7kuSWa+g==}
+  valibot@1.0.0-beta.5:
+    resolution: {integrity: sha512-YrU03cSLH8+UIMMAOnYCpD9+c6k/VDlxu13aVDokt/YwtROICC6kkbQeRbamcEuh/+CbFa4pbqOptiNNbHFSog==}
     peerDependencies:
       typescript: '>=5'
     peerDependenciesMeta:
@@ -17909,7 +17909,7 @@ snapshots:
 
   v8flags@4.0.1: {}
 
-  valibot@1.0.0-beta.3(typescript@5.6.3):
+  valibot@1.0.0-beta.5(typescript@5.6.3):
     optionalDependencies:
       typescript: 5.6.3
 
