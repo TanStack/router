@@ -590,7 +590,8 @@ function validateSearch(
 
     if ('value' in result) return result.value
 
-    if (result instanceof Promise) throw new SearchParamError('Async validation not supported')
+    if (result instanceof Promise)
+      throw new SearchParamError('Async validation not supported')
 
     throw new SearchParamError(JSON.stringify(result.issues, undefined, 2))
   }
