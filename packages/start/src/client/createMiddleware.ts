@@ -32,7 +32,7 @@ export type ParseMiddlewares<
 export type ResolveAllMiddlewareServerContext<
   TMiddlewares,
   TContext = undefined,
-> = ParseMiddlewares<TMiddlewares>['_types']['serverContext'] | TContext
+> = ParseMiddlewares<TMiddlewares>['_types']['sendContext'] | TContext
 
 /**
  * Recursively resolve the server context type produced by a sequence of middleware
@@ -175,11 +175,11 @@ export type MiddlewareClientFn<
 > = (options: {
   input: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
   context: MergeAllClientContext<TMiddlewares>
-  serverContext?: unknown // cc Chris Horobin
+  sendContext?: unknown // cc Chris Horobin
   method: Method
   next: <TNewServerContext = undefined, TNewClientContext = undefined>(ctx?: {
     context?: TNewClientContext
-    sendContext?: TNewServerContext
+    serverContext?: TNewServerContext
     headers?: HeadersInit
   }) => Promise<ClientResultWithContext<TNewServerContext, TNewClientContext>>
 }) =>
@@ -223,7 +223,7 @@ export type ClientAfterResultWithContext<TClientContext> = {
 export type ClientResultWithContext<TServerContext, TClientContext> = {
   'use functions must return the result of next()': true
   context: TClientContext
-  serverContext: TServerContext
+  sendContext: TServerContext
   headers: HeadersInit
 }
 

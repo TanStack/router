@@ -163,13 +163,13 @@ const loggingMiddleware = createMiddleware().client(async ({ next }) => {
 
 ## Sending client context to the server
 
-**Client context is NOT sent to the server by default since this could end up unintentionally sending large payloads to the server.** If you need to send client context to the server, you must call the `next` function with a `serverContext` property and object to transmit any data to the server. Any properties passed to `serverContext` will be merged, serialized and sent to the server along with the input and will be available on the normal context object of any nested server middleware.
+**Client context is NOT sent to the server by default since this could end up unintentionally sending large payloads to the server.** If you need to send client context to the server, you must call the `next` function with a `sendContext` property and object to transmit any data to the server. Any properties passed to `sendContext` will be merged, serialized and sent to the server along with the input and will be available on the normal context object of any nested server middleware.
 
 ```tsx
 const requestLogger = createMiddleware()
   .client(async ({ next, context }) => {
     return next({
-      serverContext: {
+      sendContext: {
         // Send the workspace ID to the server
         workspaceId: context.workspaceId,
       },
@@ -190,7 +190,7 @@ You may have noticed that in the example above that while client-sent context is
 const requestLogger = createMiddleware()
   .client(async ({ next, context }) => {
     return next({
-      serverContext: {
+      sendContext: {
         workspaceId: context.workspaceId,
       },
     })
@@ -200,6 +200,27 @@ const requestLogger = createMiddleware()
     const workspaceId = zodValidator(z.number()).parse(context.workspaceId)
     console.log('Workspace ID:', workspaceId)
     return next()
+  })
+```
+
+## Sending server context to the client
+
+Similar to sending client context to the server, you can also send server context to the client by calling the `next` function with a `sendContext` property and object to transmit any data to the client. Any properties passed to `sendContext` will be merged, serialized and sent to the client along with the response and will be available on the normal context object of any nested client middleware.
+
+```tsx
+const requestLogger = createMiddleware()
+  .client(async ({ next, context }) => {
+    const result = next()
+    // Woah! We have the time from the server!
+    console.log('Time from the server:', result.context.timeFromServer)
+  })
+  .server(async ({ next }) => {
+    return next({
+      sendContext: {
+        // Send the current time to the client
+        timeFromServer: new Date(),
+      },
+    })
   })
 ```
 

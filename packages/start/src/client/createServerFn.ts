@@ -23,11 +23,6 @@ export type CompiledFetcherFnOptions = {
 
 export type Fetcher<TMiddlewares, TValidator, TResponse> = {
   url: string
-  __executeClient: (opts: {
-    method: Method
-    input: unknown
-    headers?: HeadersInit
-  }) => Promise<unknown>
   __executeServer: (opts: {
     method: Method
     input: unknown
@@ -209,6 +204,7 @@ export function createServerFn<
             method: resolvedOptions.method,
             input: opts?.data as any,
             headers: opts?.headers,
+            context: Object.assign({}, extractedFn),
           }).then((d) => d.result)
         },
         {
@@ -251,13 +247,13 @@ export type MiddlewareOptions = {
   method: Method
   input: any
   headers?: HeadersInit
-  serverContext?: any
+  sendContext?: any
   context?: any
 }
 
 export type MiddlewareResult = {
   context: any
-  serverContext: any
+  sendContext: any
   input: any
   result: unknown
 }
@@ -296,7 +292,7 @@ async function executeMiddleware(
       return middlewareFn({
         input: ctx.input,
         context: ctx.context as never,
-        serverContext: ctx.serverContext as never,
+        sendContext: ctx.sendContext as never,
         method: ctx.method,
         next: (userResult: any) => {
           // Take the user provided context
@@ -306,9 +302,9 @@ async function executeMiddleware(
             ...userResult?.context,
           }
 
-          const serverContext = {
-            ...ctx.serverContext,
-            ...(userResult?.serverContext ?? {}),
+          const sendContext = {
+            ...ctx.sendContext,
+            ...(userResult?.sendContext ?? {}),
           }
 
           const headers = mergeHeaders(ctx.headers, userResult?.headers)
@@ -318,7 +314,7 @@ async function executeMiddleware(
             method: ctx.method,
             input: ctx.input,
             context,
-            serverContext,
+            sendContext,
             headers,
             result: userResult?.result,
           } as MiddlewareResult & {
@@ -337,7 +333,7 @@ async function executeMiddleware(
   return next({
     ...opts,
     headers: opts.headers || {},
-    serverContext: (opts as any).serverContext || {},
+    sendContext: (opts as any).sendContext || {},
     context: opts.context || {},
   })
 }
@@ -350,13 +346,13 @@ function serverFnBaseToMiddleware(
     options: {
       input: options.input,
       validateClient: options.validateClient,
-      client: async ({ next, serverContext, ...ctx }) => {
+      client: async ({ next, sendContext, ...ctx }) => {
         // Execute the extracted function
         // but not before serializing the context
         const result = await options.extractedFn?.({
           ...ctx,
-          // switch the serverContext over to context
-          context: serverContext,
+          // switch the sendContext over to context
+          context: sendContext,
         } as any)
 
         return next({
