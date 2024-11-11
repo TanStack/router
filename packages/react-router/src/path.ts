@@ -202,11 +202,14 @@ export function parsePathname(pathname?: string): Array<Segment> {
   return segments
 }
 
-function parseUsingTemplate(
+function parseSquareBrackets(
   template: string,
   input: string,
   decodeCharMap?: Map<string, string>,
-): Array<{ key: string; value: string }> | null {
+): {
+  params: Array<{ key: string; value: string }> | null
+  isExactMatch: boolean
+} {
   // Regular expression to find placeholders in the format [key]
   const regex = /\[([^\]]+)\]/g
   const keys: Array<string> = []
@@ -214,41 +217,41 @@ function parseUsingTemplate(
   let match: RegExpExecArray | null
 
   // Extract keys and static parts from the template
-  let pattern = '^'
+  let pattern = '^' // Start of string
   while ((match = regex.exec(template)) !== null) {
     if (match[1]) {
       keys.push(match[1])
     }
-    // Add text between placeholders as static text in pattern
+    // Add text between placeholders as fixed text in the pattern
     pattern +=
-      escapeRegExp(template.substring(lastIndex, match.index)) + '(.*?)'
+      escapeRegExp(template.substring(lastIndex, match.index)) + '([^\\-]*)'
     lastIndex = regex.lastIndex
   }
-  pattern += escapeRegExp(template.substring(lastIndex)) + '$'
+  pattern += escapeRegExp(template.substring(lastIndex)) + '$' // End of string
 
   // Match the input against the dynamic regex pattern
   const patternRegex = new RegExp(pattern)
   const inputMatch = patternRegex.exec(input)
 
+  // Ensure that input matches the template in its entirety
+  const isExactMatch = !!inputMatch
+
   // The first element in the match is the full match, so start at index 1
   if (!inputMatch || inputMatch.length - 1 !== keys.length) {
-    return null
+    return { params: null, isExactMatch: false }
   }
 
   // Map the extracted parts to their respective keys
-  // const result: { [key: string]: string } = {}
-  // keys.forEach((key, index) => {
-  //   result[key] = encodePathParam(inputMatch[index + 1] || '', decodeCharMap)
-  // })
-  const result: Array<{ key: string; value: string }> = []
+  const params: Array<{ key: string; value: string }> = []
   keys.forEach((key, index) => {
-    result.push({
+    const value = inputMatch[index + 1] || ''
+    params.push({
       key,
-      value: encodePathParam(inputMatch[index + 1] || '', decodeCharMap),
+      value: encodePathParam(value, decodeCharMap),
     })
   })
 
-  return result
+  return { params, isExactMatch }
 }
 
 // Helper function to escape special characters for use in regex
@@ -282,7 +285,7 @@ export function interpolatePath({
       // the splat/catch-all routes shouldn't have the '/' encoded out
       encodedParams[key] = isValueString ? encodeURI(value) : value
     } else if (isValueString && key.includes('[') && key.includes(']')) {
-      parseUsingTemplate(key, value, decodeCharMap)?.forEach(
+      parseSquareBrackets(key, value, decodeCharMap).params?.forEach(
         ({ key, value }) => {
           encodedParams[key] = encodePathParam(value, decodeCharMap)
         },
@@ -477,11 +480,22 @@ export function matchByPath(
               routeSegmentValue.includes('[') &&
               routeSegmentValue.includes(']')
             ) {
-              parseUsingTemplate(routeSegmentValue, baseSegment.value)?.forEach(
-                ({ key, value }) => {
-                  params[key] = decodeURIComponent(value)
-                },
+              if (
+                !routeSegment.value.startsWith('[') &&
+                routeSegment.value.charAt(0) !== baseSegment.value.charAt(0)
+              ) {
+                return false
+              }
+              const parsed = parseSquareBrackets(
+                routeSegmentValue,
+                baseSegment.value,
               )
+              if (!parsed.isExactMatch && !matchLocation.fuzzy) {
+                return false
+              }
+              parsed.params?.forEach(({ key, value }) => {
+                params[key] = decodeURIComponent(value)
+              })
             } else {
               const key = routeSegmentValue.substring(1)
               params[key] = decodeURIComponent(baseSegment.value)

@@ -111,14 +111,14 @@ export interface SplatParams {
 
 export type ResolveParams<TPath extends string> =
   ParseSplatParams<TPath> extends never
-    ? Record<Extract<ParsePathParams<TPath>, string>, string> // Ensures extraction as strings
+    ? Record<Extract<ParsePathParams<TPath>, string>, string>
     : Record<Extract<ParsePathParams<TPath>, string>, string> & SplatParams
 
 export type ParseParamsFn<TPath extends string, TParams> = (
   rawParams: ResolveParams<TPath>,
 ) => TParams extends Record<ParsePathParams<TPath>, any>
   ? TParams
-  : Record<Extract<ParsePathParams<TPath>, string>, any> // Ensures the parameters are handled as desired
+  : Record<Extract<ParsePathParams<TPath>, string>, any>
 
 export type StringifyParamsFn<TPath extends string, TParams> = (
   params: TParams,
