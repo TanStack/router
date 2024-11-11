@@ -2293,8 +2293,8 @@ importers:
         specifier: ^3.11.8
         version: 3.11.8(@types/react@18.3.11)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@apollo/client-react-streaming':
-        specifier: ^0.11.5
-        version: 0.11.5(@apollo/client@3.11.8(@types/react@18.3.11)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        specifier: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz
+        version: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz(@apollo/client@3.11.8(@types/react@18.3.11)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3454,8 +3454,9 @@ packages:
   '@andrewbranch/untar.js@1.0.3':
     resolution: {integrity: sha512-Jh15/qVmrLGhkKJBdXlK1+9tY4lZruYjsgkDFj08ZmDiWVBLJcqkok7Z0/R0In+i1rScBpJlSvrTS2Lm41Pbnw==}
 
-  '@apollo/client-react-streaming@0.11.5':
-    resolution: {integrity: sha512-HK794oSbEdKa0e13E6rRTJY29da9FZnHAb/YZa7r+0/9EMbbEWe8Ll6BsBh1xN2RAR6BHJhZbo0c8yRMLnrGVQ==}
+  '@apollo/client-react-streaming@https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz':
+    resolution: {tarball: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz}
+    version: 0.11.5
     peerDependencies:
       '@apollo/client': ^3.10.4
       react: ^18 || >=19.0.0-rc <19.0.0
@@ -10855,7 +10856,7 @@ snapshots:
 
   '@andrewbranch/untar.js@1.0.3': {}
 
-  '@apollo/client-react-streaming@0.11.5(@apollo/client@3.11.8(@types/react@18.3.11)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
+  '@apollo/client-react-streaming@https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz(@apollo/client@3.11.8(@types/react@18.3.11)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@apollo/client': 3.11.8(@types/react@18.3.11)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
