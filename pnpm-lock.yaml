@@ -3039,6 +3039,9 @@ importers:
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
+      jsesc:
+        specifier: ^3.0.2
+        version: 3.0.2
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -3052,6 +3055,9 @@ importers:
       '@testing-library/react':
         specifier: ^16.0.1
         version: 16.0.1(@testing-library/dom@10.4.0)(@types/react-dom@18.3.1)(@types/react@18.3.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@types/jsesc':
+        specifier: ^3.0.3
+        version: 3.0.3
       '@vitejs/plugin-react':
         specifier: ^4.3.3
         version: 4.3.3(vite@5.4.10(@types/node@22.8.6)(terser@5.36.0))
