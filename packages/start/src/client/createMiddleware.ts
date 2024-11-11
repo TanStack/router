@@ -32,7 +32,7 @@ export type ParseMiddlewares<
 export type ResolveAllMiddlewareServerContext<
   TMiddlewares,
   TContext = undefined,
-> = ParseMiddlewares<TMiddlewares>['_types']['sendContext'] | TContext
+> = ParseMiddlewares<TMiddlewares>['_types']['serverContext'] | TContext
 
 /**
  * Recursively resolve the server context type produced by a sequence of middleware
@@ -143,6 +143,13 @@ export interface MiddlewareOptions<
     unknown,
     unknown
   >
+  clientAfter?: MiddlewareClientAfterFn<
+    TMiddlewares,
+    TValidator,
+    TClientContext,
+    unknown,
+    unknown
+  >
 }
 
 export type MiddlewareServerFn<
@@ -179,7 +186,7 @@ export type MiddlewareClientFn<
   method: Method
   next: <TNewServerContext = undefined, TNewClientContext = undefined>(ctx?: {
     context?: TNewClientContext
-    serverContext?: TNewServerContext
+    sendContext?: TNewServerContext
     headers?: HeadersInit
   }) => Promise<ClientResultWithContext<TNewServerContext, TNewClientContext>>
 }) =>
@@ -202,6 +209,7 @@ export type MiddlewareClientAfterFn<
   method: Method
   next: <TNewClientAfterContext = undefined>(ctx?: {
     context?: TNewClientAfterContext
+    sendContext?: never
     headers?: HeadersInit
   }) => Promise<ClientAfterResultWithContext<TNewClientAfterContext>>
 }) =>
@@ -223,7 +231,7 @@ export type ClientAfterResultWithContext<TClientContext> = {
 export type ClientResultWithContext<TServerContext, TClientContext> = {
   'use functions must return the result of next()': true
   context: TClientContext
-  sendContext: TServerContext
+  serverContext: TServerContext
   headers: HeadersInit
 }
 
@@ -540,6 +548,15 @@ export function createMiddleware<
         TClientContext
       >(undefined, Object.assign(resolvedOptions, { server })) as any
     },
+    clientAfter: (clientAfter: any) => {
+      return createMiddleware<
+        TId,
+        TMiddlewares,
+        TValidator,
+        TServerContext,
+        TClientContext
+      >(undefined, Object.assign(resolvedOptions, { clientAfter })) as any
+    },
   } as unknown as Middleware<
     TId,
     TMiddlewares,
@@ -549,53 +566,3 @@ export function createMiddleware<
     TClientAfterContext
   >
 }
-
-const middleware1 = createMiddleware()
-  .client((ctx) => {
-    return ctx.next({
-      context: {
-        client: 'client',
-      },
-      sendContext: { fromClient1: 'fromClient1' },
-    })
-  })
-  .server(async ({ context, next }) => {
-    console.log('middleware1', context)
-    const res = await next({
-      context: { a: true },
-      sendContext: {
-        fromServer1: 'fromServer1',
-      },
-    })
-    console.log('middleware1 after', res)
-    return res
-  })
-  .clientAfter(({ context, next }) => {
-    console.log('middleware1', context)
-    return next({ context: { clientAfter1: 'clientAfter' } })
-  })
-
-const middleware2 = createMiddleware()
-  .middleware([middleware1])
-  .server(({ context, next }) => {
-    console.log('middleware2', context)
-    return next({ sendContext: { fromServer2: 'fromServer2' } })
-  })
-  .clientAfter(({ context, next }) => {
-    console.log('middleware1', context)
-    return next({ context: { clientAfter2: 'clientAfter2' } })
-  })
-
-const clientMiddleware1 = createMiddleware()
-  .middleware([middleware2])
-  .client(({ next, context }) => {
-    return next({ context: { a: 'c' } as const })
-  })
-  .server(({ context, next }) => {
-    console.log('middleware2', context)
-    return next({ sendContext: { fromServer3: 'fromServer3' } })
-  })
-  .clientAfter(({ context, next }) => {
-    console.log('middleware1', context)
-    return next({ context: { clientAfter3: 'clientAfter3' } })
-  })

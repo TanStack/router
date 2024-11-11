@@ -1,5 +1,6 @@
 import invariant from 'tiny-invariant'
 import { mergeHeaders } from './headers'
+import type { AnyValidator, Constrain } from '@tanstack/react-router'
 import type {
   AnyMiddleware,
   MergeAllServerContext,
@@ -7,7 +8,6 @@ import type {
   MergeAllValidatorOutputs,
   ResolveAllValidators,
 } from './createMiddleware'
-import type { AnyValidator, Constrain } from '@tanstack/react-router'
 
 //
 
@@ -212,12 +212,15 @@ export function createServerFn<
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: (opts: any) => {
-            return executeMiddleware(resolvedMiddleware, 'server', {
+          __executeServer: (opts: any) =>
+            executeMiddleware(resolvedMiddleware, 'server', {
               ...extractedFn,
               ...opts,
-            }).then((d) => d.result)
-          },
+            }).then((d) => ({
+              // Only send the result and sendContext back to the client
+              result: d.result,
+              context: d.sendContext,
+            })),
         },
       ) as any
     },
@@ -258,6 +261,50 @@ export type MiddlewareResult = {
   result: unknown
 }
 
+const applyMiddleware = (
+  middlewareFn: NonNullable<
+    | AnyMiddleware['options']['client']
+    | AnyMiddleware['options']['server']
+    | AnyMiddleware['options']['clientAfter']
+  >,
+  mCtx: MiddlewareOptions,
+  nextFn: (ctx: MiddlewareOptions) => Promise<MiddlewareResult>,
+) => {
+  return middlewareFn({
+    input: mCtx.input,
+    context: mCtx.context as never,
+    sendContext: mCtx.sendContext as never,
+    method: mCtx.method,
+    next: ((userResult: any) => {
+      // Take the user provided context
+      // and merge it with the current context
+      const context = {
+        ...mCtx.context,
+        ...userResult?.context,
+      }
+
+      const sendContext = {
+        ...mCtx.sendContext,
+        ...(userResult?.sendContext ?? {}),
+      }
+
+      const headers = mergeHeaders(mCtx.headers, userResult?.headers)
+
+      // Return the next middleware
+      return nextFn({
+        method: mCtx.method,
+        input: mCtx.input,
+        context,
+        sendContext,
+        headers,
+        result: userResult?.result ?? (mCtx as any).result,
+      } as MiddlewareResult & {
+        method: Method
+      })
+    }) as any,
+  })
+}
+
 async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
@@ -288,44 +335,29 @@ async function executeMiddleware(
         : nextMiddleware.options.server
 
     if (middlewareFn) {
-      // Execute the middleware's server
-      return middlewareFn({
-        input: ctx.input,
-        context: ctx.context as never,
-        sendContext: ctx.sendContext as never,
-        method: ctx.method,
-        next: (userResult: any) => {
-          // Take the user provided context
-          // and merge it with the current context
-          const context = {
-            ...ctx.context,
-            ...userResult?.context,
+      // Execute the middleware
+      return applyMiddleware(
+        middlewareFn,
+        ctx,
+        async (userCtx): Promise<MiddlewareResult> => {
+          // If there is a clientAfter function and we are on the client
+          if (env === 'client' && nextMiddleware.options.clientAfter) {
+            // We need to await the next middleware and get the result
+            const result = await next(userCtx)
+            // Then we can execute the clientAfter function
+            return applyMiddleware(
+              nextMiddleware.options.clientAfter,
+              result as any,
+              // Identity, because there "next" is just returning
+              (d: any) => d,
+            ) as any
           }
 
-          const sendContext = {
-            ...ctx.sendContext,
-            ...(userResult?.sendContext ?? {}),
-          }
-
-          const headers = mergeHeaders(ctx.headers, userResult?.headers)
-
-          // Return the next middleware
-          return next({
-            method: ctx.method,
-            input: ctx.input,
-            context,
-            sendContext,
-            headers,
-            result: userResult?.result,
-          } as MiddlewareResult & {
-            method: Method
-          }) as any
+          return next(userCtx)
         },
-      }) as any
+      ) as any
     }
 
-    // If the middleware doesn't have a fn, just continue
-    // to the next middleware
     return next(ctx)
   }
 
@@ -349,15 +381,13 @@ function serverFnBaseToMiddleware(
       client: async ({ next, sendContext, ...ctx }) => {
         // Execute the extracted function
         // but not before serializing the context
-        const result = await options.extractedFn?.({
+        const res = await options.extractedFn?.({
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
         } as any)
 
-        return next({
-          result,
-        } as any)
+        return next(res)
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function
