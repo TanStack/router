@@ -2228,8 +2228,6 @@ export class Router<
                   let pendingTimeout: ReturnType<typeof setTimeout>
 
                   if (shouldPending) {
-                    console.log('### 2186 setting timeout', pendingMs)
-
                     // If we might show a pending component, we need to wait for the
                     // pending promise to resolve before we start showing that state
                     pendingTimeout = setTimeout(() => {
