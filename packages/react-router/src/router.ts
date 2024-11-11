@@ -586,7 +586,7 @@ function validateSearch(
   if (validateSearch == null) return {}
 
   if ('~standard' in validateSearch) {
-    const result = validateSearch['~standard']['validate'](input)
+    const result = validateSearch['~standard'].validate(input)
 
     if ('value' in result) return result.value
 
