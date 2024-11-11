@@ -1,7 +1,10 @@
-import { ApolloClient as _ApolloClient } from '@apollo/client-react-streaming'
-import { streamingLink } from './StreamLink'
+import {
+  ReadFromReadableStreamLink,
+  TeeToReadableStreamLink,
+  ApolloClient as _ApolloClient,
+} from '@apollo/client-react-streaming'
+import { ApolloLink } from '@apollo/client/index.js'
 import { ensureHydrated } from './createQueryPreloader'
-import type { ApolloLink } from '@apollo/client/index.js'
 import type { HookWrappers } from '@apollo/client/react/internal'
 
 function id<T>(x: T): T {
@@ -35,6 +38,13 @@ export class ApolloClient extends _ApolloClient {
   }
 
   setLink(newLink: ApolloLink) {
-    _ApolloClient.prototype.setLink.call(this, streamingLink.concat(newLink))
+    _ApolloClient.prototype.setLink.call(
+      this,
+      ApolloLink.from([
+        ReadFromReadableStreamLink,
+        TeeToReadableStreamLink,
+        newLink,
+      ]),
+    )
   }
 }

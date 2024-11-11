@@ -1,7 +1,12 @@
 import { createQueryPreloader, gql } from '@apollo/client/index.js'
 import { print, stripIgnoredCharacters } from 'graphql'
+import {
+  readFromReadableStream,
+  skipDataTransport,
+  teeToReadableStream,
+} from '@apollo/client-react-streaming'
+import type { ReadableStreamLinkEvent } from '@apollo/client-react-streaming'
 import type { ApolloClient } from './ApolloClient'
-import type { StreamLinkEvent } from './StreamLink'
 import type {
   DocumentNode,
   PreloadQueryFunction,
@@ -11,45 +16,41 @@ import type {
 
 export function createTransportedQueryPreloader(
   client: ApolloClient,
-): PreloadQueryFunction & {
-  revive: (ref: InternalTransportedQueryRef) => ReturnType<PreloadQueryFunction>
-} {
-  return Object.assign(
-    (...[query, options]: Parameters<PreloadQueryFunction>) => {
-      let __injectIntoStream:
-        | ReadableStreamDefaultController<StreamLinkEvent>
-        | undefined
-      const __eventStream = new ReadableStream({
-        start(controller) {
-          __injectIntoStream = controller
-        },
-      })
+): PreloadQueryFunction {
+  return (...[query, options]: Parameters<PreloadQueryFunction>) => {
+    let __injectIntoStream:
+      | ReadableStreamDefaultController<ReadableStreamLinkEvent>
+      | undefined
+    const __eventStream = new ReadableStream({
+      start(controller) {
+        __injectIntoStream = controller
+      },
+    })
 
-      // Instead of creating the queryRef, we kick off a query that will feed the network response
-      // into our custom event stream.
-      client.query({
-        query,
-        ...options,
-        // ensure that this query makes it to the network
-        fetchPolicy: 'network-only',
-        context: {
+    // Instead of creating the queryRef, we kick off a query that will feed the network response
+    // into our custom event stream.
+    client.query({
+      query,
+      ...options,
+      // ensure that this query makes it to the network
+      fetchPolicy: 'network-only',
+      context: skipDataTransport(
+        teeToReadableStream(__injectIntoStream!, {
           ...options?.context,
           // we want to do this even if the query is already running for another reason
           queryDeduplication: false,
-          // this will cause the StreamLink to duplicate events into our custom event stream
-          __injectIntoStream,
-        },
-      })
+        }),
+      ),
+    })
 
-      return createTransportedQueryRef(
-        {
-          ...(options as any),
-          query: printMinified(query),
-        },
-        __eventStream,
-      ) as any
-    },
-  )
+    return createTransportedQueryRef(
+      {
+        ...(options as any),
+        query: printMinified(query),
+      },
+      __eventStream,
+    ) as any
+  }
 }
 
 function printMinified(query: DocumentNode): string {
@@ -87,9 +88,9 @@ export function isTransportedQueryRef(
 
 export function createTransportedQueryRef<TData, TVariables>(
   options: TransportedQueryRefOptions,
-  stream: ReadableStream<StreamLinkEvent>,
+  stream: ReadableStream<ReadableStreamLinkEvent>,
 ): InternalTransportedQueryRef<TData, TVariables> {
-  const encodeStream = new TransformStream<StreamLinkEvent, string>({
+  const encodeStream = new TransformStream<ReadableStreamLinkEvent, string>({
     transform(chunk, controller) {
       controller.enqueue(JSON.stringify(chunk))
     },
@@ -120,7 +121,7 @@ export function reviveTransportedQueryRef(
   { $__apollo_queryRef: { options, stream } }: InternalTransportedQueryRef,
   apolloClient: ApolloClient,
 ) {
-  const decodeStream = new TransformStream<string, StreamLinkEvent>({
+  const decodeStream = new TransformStream<string, ReadableStreamLinkEvent>({
     transform(chunk, controller) {
       if (typeof chunk !== 'string') {
         chunk = new TextDecoder().decode(chunk)
@@ -134,10 +135,11 @@ export function reviveTransportedQueryRef(
   return createQueryPreloader(apolloClient)(query, {
     ...optionsRest,
     fetchPolicy: 'network-only',
-    context: {
-      ...optionsRest.context,
-      queryDeduplication: true,
-      __eventStream: stream.pipeThrough(decodeStream),
-    },
+    context: skipDataTransport(
+      readFromReadableStream(stream.pipeThrough(decodeStream), {
+        ...optionsRest.context,
+        queryDeduplication: true,
+      }),
+    ),
   })
 }
