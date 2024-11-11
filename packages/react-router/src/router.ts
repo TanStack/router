@@ -952,6 +952,21 @@ export class Router<
       .sort((a, b) => {
         const minLength = Math.min(a.scores.length, b.scores.length)
 
+        // Sort segments with parameters that don't start with `$`
+        for (let i = 0; i < minLength; i++) {
+          const paramA = a.parsed[i]!.value
+          const paramB = b.parsed[i]!.value
+
+          if (!paramA.startsWith('$') && !paramB.startsWith('$')) {
+            const countA = (paramA.match(/\[/g) || []).length
+            const countB = (paramB.match(/\[/g) || []).length
+
+            if (countA !== countB) {
+              return countA - countB // Sort descending by the number of `[`
+            }
+          }
+        }
+
         // Sort by min available score
         for (let i = 0; i < minLength; i++) {
           if (a.scores[i] !== b.scores[i]) {

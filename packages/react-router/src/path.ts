@@ -490,7 +490,8 @@ export function matchByPath(
                 routeSegmentValue,
                 baseSegment.value,
               )
-              if (!parsed.isExactMatch && !matchLocation.fuzzy) {
+              // if (!parsed.isExactMatch && !matchLocation.fuzzy) {
+              if (!parsed.isExactMatch) {
                 return false
               }
               parsed.params?.forEach(({ key, value }) => {
