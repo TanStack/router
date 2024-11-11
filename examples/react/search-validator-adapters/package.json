@@ -17,10 +17,10 @@
     "@tanstack/router-plugin": "^1.79.0",
     "@tanstack/router-valibot-adapter": "^1.81.3",
     "@tanstack/router-zod-adapter": "^1.81.3",
-    "arktype": "^2.0.0-rc.21",
+    "arktype": "2.0.0-rc.23",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "valibot": "1.0.0-beta.3",
+    "valibot": "1.0.0-beta.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
