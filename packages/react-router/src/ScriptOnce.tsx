@@ -1,3 +1,5 @@
+import jsesc from 'jsesc'
+
 export function ScriptOnce({
   className,
   children,
@@ -16,7 +18,8 @@ export function ScriptOnce({
         __html: [
           children,
           (log ?? true) && process.env.NODE_ENV === 'development'
-            ? "console.info('Injected From Server:\\n" + children + "');"
+            ? `console.info(\`Injected From Server:
+${jsesc(children.toString(), { quotes: 'backtick' })}\`)`
             : '',
         ]
           .filter(Boolean)
