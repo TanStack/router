@@ -5,10 +5,6 @@ import {
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
-import {
-  serverFnPayloadTypeHeader,
-  serverFnReturnTypeHeader,
-} from '../constants'
 import type { MiddlewareOptions } from '../client/createServerFn'
 
 export async function fetcher(
@@ -22,16 +18,10 @@ export async function fetcher(
   // We need to handle the arguments differently
   if (isPlainObject(_first) && _first.method) {
     const first = _first as MiddlewareOptions
-    const type =
-      first.input instanceof FormData
-        ? 'formData'
-        : first.input instanceof Request
-          ? 'request'
-          : 'payload'
+    const type = first.input instanceof FormData ? 'formData' : 'payload'
 
     // Arrange the headers
     const headers = new Headers({
-      [serverFnPayloadTypeHeader]: type,
       ...(type === 'payload'
         ? {
             'content-type': 'application/json',
@@ -74,11 +64,8 @@ export async function fetcher(
 
     const response = await handleResponseErrors(handlerResponse)
 
-    if (['rsc'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
-      return response.body
-    }
-
-    if (['json'].includes(response.headers.get(serverFnReturnTypeHeader)!)) {
+    // Check if the response is JSON
+    if (response.headers.get('content-type')?.includes('application/json')) {
       const text = await response.text()
       const json = text ? defaultTransformer.parse(text) : undefined
 
@@ -91,6 +78,7 @@ export async function fetcher(
       return json
     }
 
+    // Must be a raw response
     return response
   }
 
@@ -101,7 +89,6 @@ export async function fetcher(
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      [serverFnPayloadTypeHeader]: 'args',
     },
     body: JSON.stringify(args),
   })
