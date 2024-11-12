@@ -27,13 +27,7 @@ import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
-const fetchClerkAuth = createServerFn('GET', async (_, ctx) => {
-  const user = await getAuth(ctx.request)
 
-  return {
-    user,
-  }
-})
 
 export const Route = createRootRoute({
   meta: () => [
@@ -67,13 +61,6 @@ export const Route = createRootRoute({
     { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
     { rel: 'icon', href: '/favicon.ico' },
   ],
-  beforeLoad: async () => {
-    const { user } = await fetchClerkAuth()
-
-    return {
-      user,
-    }
-  },
   errorComponent: (props) => {
     return (
       <RootDocument>
