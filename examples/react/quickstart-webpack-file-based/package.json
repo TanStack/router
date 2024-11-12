@@ -13,7 +13,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@swc/core": "^1.8.0",
+    "@swc/core": "^1.9.2",
     "@tanstack/router-plugin": "^1.79.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
