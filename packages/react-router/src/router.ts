@@ -1514,8 +1514,8 @@ export class Router<
       })
 
       let search = fromSearch
-      if (opts._includeValidateSearch) {
-        let validatedSearch = this.options.search?.strict ? {} : search
+      if (opts._includeValidateSearch && this.options.search?.strict) {
+        let validatedSearch = {}
         matchedRoutesResult?.matchedRoutes.forEach((route) => {
           try {
             if (route.options.validateSearch) {
@@ -1538,10 +1538,10 @@ export class Router<
         const allMiddlewares =
           matchedRoutesResult?.matchedRoutes.reduce(
             (acc, route) => {
-              let middlewares: Array<SearchMiddleware<any>> = []
+              const middlewares: Array<SearchMiddleware<any>> = []
               if ('search' in route.options) {
                 if (route.options.search?.middlewares) {
-                  middlewares = route.options.search.middlewares
+                  middlewares.push(...route.options.search.middlewares)
                 }
               }
               // TODO remove preSearchFilters and postSearchFilters in v2
@@ -1575,7 +1575,25 @@ export class Router<
                   }
                   return result
                 }
-                middlewares = [legacyMiddleware]
+                middlewares.push(legacyMiddleware)
+              }
+              if (opts._includeValidateSearch && route.options.validateSearch) {
+                const validate: SearchMiddleware<any> = ({ search, next }) => {
+                  try {
+                    const result = next(search)
+                    const validatedSearch = {
+                      ...result,
+                      ...(validateSearch(
+                        route.options.validateSearch,
+                        result,
+                      ) ?? {}),
+                    }
+                    return validatedSearch
+                  } catch (e) {
+                    // ignore errors here because they are already handled in matchRoutes
+                  }
+                }
+                middlewares.push(validate)
               }
               return acc.concat(middlewares)
             },
