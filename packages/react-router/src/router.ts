@@ -1246,7 +1246,7 @@ export class Router<
       // pending matches that are still loading
       const existingMatch = this.getMatch(matchId)
 
-      const cause = this.state.matches.find((d) => d.id === matchId)
+      const cause = this.state.matches.find((d) => d.routeId === route.id)
         ? 'stay'
         : 'enter'
 
