@@ -1246,9 +1246,11 @@ export class Router<
       // pending matches that are still loading
       const existingMatch = this.getMatch(matchId)
 
-      const cause = this.state.matches.find((d) => d.routeId === route.id)
-        ? 'stay'
-        : 'enter'
+      const previousMatch = this.state.matches.find(
+        (d) => d.routeId === route.id,
+      )
+
+      const cause = previousMatch ? 'stay' : 'enter'
 
       let match: AnyRouteMatch
 
@@ -1286,7 +1288,10 @@ export class Router<
           abortController: new AbortController(),
           fetchCount: 0,
           cause,
-          loaderDeps,
+          loaderDeps: replaceEqualDeep(
+            previousMatch?.loaderDeps ?? loaderDeps,
+            loaderDeps,
+          ),
           invalid: false,
           preload: false,
           links: route.options.links?.(),
@@ -1320,7 +1325,10 @@ export class Router<
 
       // Regardless of whether we're reusing an existing match or creating
       // a new one, we need to update the match's search params
-      match.search = replaceEqualDeep(match.search, preMatchSearch)
+      match.search = replaceEqualDeep(
+        previousMatch?.search ?? preMatchSearch,
+        preMatchSearch,
+      )
       // And also update the searchError if there is one
       match.searchError = searchError
 
