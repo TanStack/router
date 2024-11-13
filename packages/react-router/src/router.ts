@@ -1246,7 +1246,7 @@ export class Router<
       // pending matches that are still loading
       const existingMatch = this.getMatch(matchId)
 
-      const cause = this.state.matches.find((d) => d.id === matchId)
+      const cause = this.state.matches.find((d) => d.routeId === route.id)
         ? 'stay'
         : 'enter'
 
@@ -1258,6 +1258,8 @@ export class Router<
           cause,
           params: routeParams,
         }
+        match.search = replaceEqualDeep(match.search, preMatchSearch)
+        match.searchError = searchError
       } else {
         const status =
           route.options.loader ||
@@ -1266,7 +1268,6 @@ export class Router<
           routeNeedsPreload(route)
             ? 'pending'
             : 'success'
-
         match = {
           id: matchId,
           index,
@@ -1274,8 +1275,8 @@ export class Router<
           params: routeParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
           updatedAt: Date.now(),
-          search: {} as any,
-          searchError: undefined,
+          search: preMatchSearch,
+          searchError,
           status,
           isFetching: false,
           error: undefined,
@@ -1317,12 +1318,6 @@ export class Router<
         // If we have a global not found, mark the right match as global not found
         match.globalNotFound = globalNotFoundRouteId === route.id
       }
-
-      // Regardless of whether we're reusing an existing match or creating
-      // a new one, we need to update the match's search params
-      match.search = replaceEqualDeep(match.search, preMatchSearch)
-      // And also update the searchError if there is one
-      match.searchError = searchError
 
       const parentMatchId = parentMatch?.id
 
