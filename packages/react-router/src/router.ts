@@ -491,7 +491,7 @@ export interface RouterErrorSerializer<TSerializedError> {
 
 export interface RouterState<
   TRouteTree extends AnyRoute = AnyRoute,
-  TRouteMatch = MakeRouteMatch<TRouteTree>,
+  TRouteMatch = MakeRouteMatchUnion,
 > {
   status: 'pending' | 'idle'
   loadedAt: number
