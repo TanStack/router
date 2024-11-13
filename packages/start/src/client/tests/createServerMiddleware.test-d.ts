@@ -6,17 +6,17 @@ test('createServeMiddleware removes middleware after middleware,', () => {
 
   expectTypeOf(middleware).toHaveProperty('middleware')
   expectTypeOf(middleware).toHaveProperty('server')
-  expectTypeOf(middleware).toHaveProperty('input')
+  expectTypeOf(middleware).toHaveProperty('validator')
 
   const middlewareAfterMiddleware = middleware.middleware([])
 
-  expectTypeOf(middlewareAfterMiddleware).toHaveProperty('input')
+  expectTypeOf(middlewareAfterMiddleware).toHaveProperty('validator')
   expectTypeOf(middlewareAfterMiddleware).toHaveProperty('server')
   expectTypeOf(middlewareAfterMiddleware).not.toHaveProperty('middleware')
 
-  const middlewareAfterInput = middleware.input(() => {})
+  const middlewareAfterInput = middleware.validator(() => {})
 
-  expectTypeOf(middlewareAfterInput).toHaveProperty('input')
+  expectTypeOf(middlewareAfterInput).toHaveProperty('validator')
   expectTypeOf(middlewareAfterInput).toHaveProperty('server')
   expectTypeOf(middlewareAfterInput).not.toHaveProperty('middleware')
 
@@ -118,33 +118,33 @@ test('createMiddleware merges client context and sends to the server', () => {
 
 test('createMiddleware merges input', () => {
   const middleware1 = createMiddleware()
-    .input(() => {
+    .validator(() => {
       return {
         a: 'a',
       } as const
     })
-    .server(({ input, next }) => {
-      expectTypeOf(input).toEqualTypeOf<{ readonly a: 'a' }>()
+    .server(({ data, next }) => {
+      expectTypeOf(data).toEqualTypeOf<{ readonly a: 'a' }>()
       return next()
     })
 
   const middleware2 = createMiddleware()
     .middleware([middleware1])
-    .input(() => {
+    .validator(() => {
       return {
         b: 'b',
       } as const
     })
-    .server(({ input, next }) => {
-      expectTypeOf(input).toEqualTypeOf<{ readonly a: 'a'; readonly b: 'b' }>
+    .server(({ data, next }) => {
+      expectTypeOf(data).toEqualTypeOf<{ readonly a: 'a'; readonly b: 'b' }>
       return next()
     })
 
   createMiddleware()
     .middleware([middleware2])
-    .input(() => ({ c: 'c' }) as const)
-    .server(({ next, input }) => {
-      expectTypeOf(input).toEqualTypeOf<{
+    .validator(() => ({ c: 'c' }) as const)
+    .server(({ next, data }) => {
+      expectTypeOf(data).toEqualTypeOf<{
         readonly a: 'a'
         readonly b: 'b'
         readonly c: 'c'

@@ -4,13 +4,14 @@ import { Login } from '../components/Login'
 import { getSupabaseServerClient } from '../utils/supabase'
 
 export const loginFn = createServerFn()
-  .input((d) => d as { email: string; password: string })
-  .handler(async ({ input }) => {
+  .validator((d) => d as { email: string; password: string })
+  .handler(async ({ data }) => {
     const supabase = await getSupabaseServerClient()
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: input.email,
-      password: input.password,
+    const { error } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
     })
+
     if (error) {
       return {
         error: true,

@@ -19,17 +19,17 @@ export {
 export {
   createMiddleware,
   type ParseMiddlewares,
-  type MergeAllValidatorInputs as ResolveAllMiddlewareInput,
-  type MergeAllValidatorOutputs as ResolveAllMiddlewareOutput,
-  type MiddlewareServerFn as MiddlewareUseFn,
+  type MergeAllValidatorInputs,
+  type MergeAllValidatorOutputs,
+  type MiddlewareServerFn,
   type AnyMiddleware,
   type MiddlewareOptions,
   type MiddlewareTypes,
-  type MiddlewareInput,
-  type MiddlewareServer as MiddlewareUse,
-  type MiddlewareAfterClient as MiddlewareWithUse,
-  type MiddlewareAfterMiddleware as MiddlewareWithClientAndServer,
-  type Middleware as MiddlewareWithAll,
+  type MiddlewareValidator,
+  type MiddlewareServer,
+  type MiddlewareAfterClient,
+  type MiddlewareAfterMiddleware,
+  type Middleware,
 } from './createMiddleware'
 export { serverOnly } from './serverOnly'
 export { DehydrateRouter } from './DehydrateRouter'

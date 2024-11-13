@@ -9,10 +9,10 @@ import { useAppSession } from '~/utils/session'
 export const signupFn = createServerFn({
   method: 'POST',
 })
-  .input(
-    (input: { email: string; password: string; redirectUrl?: string }) => input,
+  .validator(
+    (data: { email: string; password: string; redirectUrl?: string }) => data,
   )
-  .handler(async ({ input: payload }) => {
+  .handler(async ({ data: payload }) => {
     // Check if the user already exists
     const found = await prismaClient.user.findUnique({
       where: {

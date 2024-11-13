@@ -11,11 +11,11 @@ export type PostType = {
 
 export const fetchPost = createServerFn({ method: 'GET' })
   .middleware([logMiddleware])
-  .input((d) => d as string)
-  .handler(async ({ input }) => {
-    console.info(`Fetching post with id ${input}...`)
+  .validator((d) => d as string)
+  .handler(async ({ data }) => {
+    console.info(`Fetching post with id ${data}...`)
     const post = await axios
-      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${input}`)
+      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${data}`)
       .then((r) => r.data)
       .catch((err) => {
         console.error(err)
@@ -30,7 +30,7 @@ export const fetchPost = createServerFn({ method: 'GET' })
 
 export const fetchPosts = createServerFn({ method: 'GET' })
   .middleware([logMiddleware])
-  .handler(async (ctx) => {
+  .handler(async () => {
     console.info('Fetching posts...')
     return axios
       .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')

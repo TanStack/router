@@ -82,19 +82,23 @@ import { createServerFn } from '@tanstack/start'
 export const greet = createServerFn({
   method: 'GET',
 }).handler(async (ctx) => {
-  return `Hello, ${ctx.input}!`
+  return `Hello, ${ctx.data}!`
+})
+
+greet({
+  data: 'John',
 })
 ```
 
 ## Validation / Runtime Type Safety
 
-Server functions can be configured to validate the input parameter at runtime. This is useful for ensuring that the input is of the correct type before executing the server function, can provide more friendly error messages, and even power type-safety if configured correctly.
+Server functions can be configured to validate their input data at runtime. This is useful for ensuring that the input is of the correct type before executing the server function, can provide more friendly error messages, and even power type-safety if configured correctly.
 
-To enable validation, call the `input` method on the server function. You can pass a variety of things:
+To enable validation, call the `validator` method on the server function. You can pass a variety of things:
 
 - A function that returns the valid value and type
 - A thrown error, to indicate that the input is invalid
-- Schema objects that define the shape of the input (the exact shape of the schema object depends on the validation library you choose to use)
+- Schema objects that define the shape of the input data (the exact shape of the schema object depends on the validation library you choose to use)
 
 ### Basic Validation
 
@@ -108,7 +112,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .input((person: unknown): Person => {
+  .validator((person: unknown): Person => {
     if (typeof person !== 'object' || person === null) {
       throw new Error('Person must be an object')
     }
@@ -119,8 +123,8 @@ export const greet = createServerFn({ method: 'GET' })
 
     return person as Person
   })
-  .handler(async ({ input }) => {
-    return `Hello, ${input.name}!`
+  .handler(async ({ data }) => {
+    return `Hello, ${data.name}!`
   })
 ```
 
@@ -139,12 +143,18 @@ const Person = z.object({
 
 export const greet = createServerFn({ method: 'GET' })
   .validator(zodValidator)
-  .input((person: unknown) => {
+  .validator((person: unknown) => {
     return Person.parse(person)
   })
-  .handler(async (person: z.infer<typeof Person>) => {
-    return `Hello, ${person.name}!`
+  .handler(async (ctx) => {
+    return `Hello, ${ctx.data.name}!`
   })
+
+greet({
+  data: {
+    name: 'John',
+  },
+})
 ```
 
 ## Type Safety
@@ -159,7 +169,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .input((person: unknown): Person => {
+  .validator((person: unknown): Person => {
     if (typeof person !== 'object' || person === null) {
       throw new Error('Person must be an object')
     }
@@ -172,21 +182,21 @@ export const greet = createServerFn({ method: 'GET' })
   })
   .handler(
     async ({
-      input, // Person
+      data, // Person
     }) => {
-      return `Hello, ${input.name}!`
+      return `Hello, ${data.name}!`
     },
   )
 
 function test() {
-  greet({ name: 'John' }) // OK
-  greet({ name: 123 }) // Error: Argument of type '{ name: number; }' is not assignable to parameter of type 'Person'.
+  greet({ data: { name: 'John' } }) // OK
+  greet({ data: { name: 123 } }) // Error: Argument of type '{ name: number; }' is not assignable to parameter of type 'Person'.
 }
 ```
 
 ## Inference
 
-Server functions infer their input and output types based on the `input` handler and the return type of the `handler` function. In fact, the `input` handler can even have it's own separate input/output types, which can be useful if your input handler performs some kind of transformation on the input data.
+Server functions infer their input and output types based on the `validator` handler and the return type of the `handler` function. In fact, the `validator` you pass can even have it's own separate input/output types, which can be useful if your validator performs some kind of transformation on the input data.
 
 To illustrate this, let's take a look at an example using the `zod` validation library:
 
@@ -199,19 +209,21 @@ const transactionSchema = z.object({
 })
 
 const createTransaction = createServerFn()
-  .input(transactionSchema)
-  .handler(({ input }) => {
-    return input.amount // Returns a number
+  .validator(transactionSchema)
+  .handler(({ data }) => {
+    return data.amount // Returns a number
   })
 
 createTransaction({
-  amount: '123', // Accepts a string
+  data: {
+    amount: '123', // Accepts a string
+  },
 })
 ```
 
 ## Non-Validated Inference
 
-While we highly recommend using a validation library to validate your network I/O data, you may for whatever reason _not_ want to validate your data, but still have the type-safety. To do this, you can still provide type information to the server function using an identify function as the `input` handler:
+While we highly recommend using a validation library to validate your network I/O data, you may for whatever reason _not_ want to validate your data, but still have the type-safety. To do this, you can still provide type information to the server function using an identity function as the `validator` handler that casts the input and or output to the correct type:
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
@@ -221,10 +233,16 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .input((d) => d as Person)
+  .validator((d: Person) => d)
   .handler(async (ctx) => {
-    return `Hello, ${ctx.input.name}!`
+    return `Hello, ${ctx.data.name}!`
   })
+
+greet({
+  data: {
+    name: 'John',
+  },
+})
 ```
 
 ## JSON Parameters
@@ -240,10 +258,17 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' }).handler(
-  async ({ input }) => {
-    return `Hello, ${input.name}! You are ${input.age} years old.`
+  async ({ data }) => {
+    return `Hello, ${data.name}! You are ${data.age} years old.`
   },
 )
+
+greet({
+  data: {
+    name: 'John',
+    age: 34,
+  },
+})
 ```
 
 ## FormData Parameters
@@ -254,12 +279,12 @@ Server functions can accept `FormData` objects as parameters
 import { createServerFn } from '@tanstack/start'
 
 export const greetUser = createServerFn()
-  .input((input) => {
-    if (!(input instanceof FormData)) {
+  .validator((data) => {
+    if (!(data instanceof FormData)) {
       throw new Error('Invalid form data')
     }
-    const name = input.get('name')
-    const age = input.get('age')
+    const name = data.get('name')
+    const age = data.get('age')
 
     if (!name || !age) {
       throw new Error('Name and age are required')
@@ -270,7 +295,7 @@ export const greetUser = createServerFn()
       age: parseInt(age.toString(), 10),
     }
   })
-  .handler(async ({ input: { name, age } }) => {
+  .handler(async ({ data: { name, age } }) => {
     return `Hello, ${name}! You are ${age} years old.`
   })
 
@@ -281,7 +306,7 @@ function Test() {
       onSubmit={async (event) => {
         event.preventDefault()
         const formData = new FormData(event.target)
-        const response = await greetUser(formData)
+        const response = await greetUser({ data: formData })
         console.log(response)
       }}
     >
@@ -654,9 +679,9 @@ to send the form data to the server function.
 
 To do this, we can utilize the `url` property of the server function:
 
-```typescript
+```ts
 const yourFn = createServerFn()
-  .input((formData) => {
+  .validator((formData) => {
     const name = formData.get('name')
 
     if (!name) {
@@ -665,7 +690,7 @@ const yourFn = createServerFn()
 
     return name
   })
-  .handler(async ({ input: name }) => {
+  .handler(async ({ data: name }) => {
     console.log(name) // 'John'
   })
 
@@ -695,7 +720,7 @@ server function:
 
 ```tsx
 const yourFn = createServerFn()
-  .input((formData) => {
+  .validator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -708,7 +733,7 @@ const yourFn = createServerFn()
 
     return age.toString()
   })
-  .handler(async ({ input: formData }) => {
+  .handler(async ({ data: formData }) => {
     // `age` will be '123'
     const age = formData.get('age')
     // ...
@@ -735,7 +760,7 @@ the client.
 When JavaScript is enabled, this response can be accessed as the return value of the server function in the client's
 JavaScript code.
 
-```typescript
+```ts
 const yourFn = createServerFn().handler(async () => {
   return 'Hello, world!'
 })
@@ -773,7 +798,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn()
-  .input((formData) => {
+  .validator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -786,7 +811,7 @@ const updateCount = createServerFn()
 
     return parseInt(addBy.toString())
   })
-  .handler(async ({ input: addByAmount }) => {
+  .handler(async ({ data: addByAmount }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + addByAmount}`)
     // Reload the page to trigger the loader again

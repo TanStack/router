@@ -191,7 +191,7 @@ function handleCreateServerFnCallExpression(
   // }
 
   // Traverse the member expression and find the call expressions for
-  // the input, handler, and middleware methods. Check to make sure they
+  // the validator, handler, and middleware methods. Check to make sure they
   // are children of the createServerFn call expression.
 
   const calledOptions = path.node.arguments[0]
@@ -210,7 +210,7 @@ function handleCreateServerFnCallExpression(
 
   const callExpressionPaths = {
     middleware: null as babel.NodePath<t.CallExpression> | null,
-    input: null as babel.NodePath<t.CallExpression> | null,
+    validator: null as babel.NodePath<t.CallExpression> | null,
     handler: null as babel.NodePath<t.CallExpression> | null,
   }
 
@@ -249,23 +249,23 @@ function handleCreateServerFnCallExpression(
     },
   })
 
-  if (callExpressionPaths.input) {
-    const innerInputExpression = callExpressionPaths.input.node.arguments[0]
+  if (callExpressionPaths.validator) {
+    const innerInputExpression = callExpressionPaths.validator.node.arguments[0]
 
     if (!innerInputExpression) {
       throw new Error(
-        'createServerFn().input() must be called with an input validator!',
+        'createServerFn().validator() must be called with a validator!',
       )
     }
 
-    // If we're on the client, and we're not validating the client, remove the input call expression
+    // If we're on the client, and we're not validating the client, remove the validator call expression
     if (
       opts.env === 'client' &&
       !shouldValidateClient &&
-      t.isMemberExpression(callExpressionPaths.input.node.callee)
+      t.isMemberExpression(callExpressionPaths.validator.node.callee)
     ) {
-      callExpressionPaths.input.replaceWith(
-        callExpressionPaths.input.node.callee.object,
+      callExpressionPaths.validator.replaceWith(
+        callExpressionPaths.validator.node.callee.object,
       )
     }
   }
@@ -292,7 +292,7 @@ function handleCreateServerFnCallExpression(
   // The 'use server' extracted function will be called with the
   // payload from the client, then use the scoped serverFn ctx
   // to execute the handler function.
-  // This way, we can do things like input and middleware validation
+  // This way, we can do things like data and middleware validation
   // in the __execute function without having to AST transform the
   // handler function too much itself.
 
@@ -474,12 +474,12 @@ function handleCreateMiddlewareCallExpression(
   // }
 
   // Traverse the member expression and find the call expressions for
-  // the input, handler, and middleware methods. Check to make sure they
+  // the validator, handler, and middleware methods. Check to make sure they
   // are children of the createMiddleware call expression.
 
   const callExpressionPaths = {
     middleware: null as babel.NodePath<t.CallExpression> | null,
-    input: null as babel.NodePath<t.CallExpression> | null,
+    validator: null as babel.NodePath<t.CallExpression> | null,
     client: null as babel.NodePath<t.CallExpression> | null,
     server: null as babel.NodePath<t.CallExpression> | null,
   }
@@ -502,20 +502,20 @@ function handleCreateMiddlewareCallExpression(
     },
   })
 
-  if (callExpressionPaths.input) {
-    const innerInputExpression = callExpressionPaths.input.node.arguments[0]
+  if (callExpressionPaths.validator) {
+    const innerInputExpression = callExpressionPaths.validator.node.arguments[0]
 
     if (!innerInputExpression) {
       throw new Error(
-        'createMiddleware().input() must be called with an input validator!',
+        'createMiddleware().validator() must be called with a validator!',
       )
     }
 
-    // If we're on the client, remove the input call expression
+    // If we're on the client, remove the validator call expression
     if (opts.env === 'client') {
-      if (t.isMemberExpression(callExpressionPaths.input.node.callee)) {
-        callExpressionPaths.input.replaceWith(
-          callExpressionPaths.input.node.callee.object,
+      if (t.isMemberExpression(callExpressionPaths.validator.node.callee)) {
+        callExpressionPaths.validator.replaceWith(
+          callExpressionPaths.validator.node.callee.object,
         )
       }
     }

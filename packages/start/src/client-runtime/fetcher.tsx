@@ -18,7 +18,7 @@ export async function fetcher(
   // We need to handle the arguments differently
   if (isPlainObject(_first) && _first.method) {
     const first = _first as MiddlewareOptions
-    const type = first.input instanceof FormData ? 'formData' : 'payload'
+    const type = first.data instanceof FormData ? 'formData' : 'payload'
 
     // Arrange the headers
     const headers = new Headers({
@@ -38,7 +38,7 @@ export async function fetcher(
       // If the method is GET, we need to move the payload to the query string
       const encodedPayload = encode({
         payload: defaultTransformer.stringify({
-          input: first.input,
+          data: first.data,
           context: first.context,
         }),
       })
@@ -54,8 +54,8 @@ export async function fetcher(
         ? {
             body:
               type === 'formData'
-                ? first.input
-                : (defaultTransformer.stringify(first.input ?? null) as any),
+                ? first.data
+                : (defaultTransformer.stringify(first.data ?? null) as any),
           }
         : {}),
     })

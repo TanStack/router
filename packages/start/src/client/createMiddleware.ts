@@ -129,7 +129,7 @@ export interface MiddlewareOptions<
 > {
   validateClient?: boolean
   middleware?: TMiddlewares
-  input?: Constrain<TValidator, AnyValidator>
+  validator?: Constrain<TValidator, AnyValidator>
   client?: MiddlewareClientFn<
     TMiddlewares,
     TValidator,
@@ -159,7 +159,7 @@ export type MiddlewareServerFn<
   TNewServerContext,
   TNewClientAfterContext,
 > = (options: {
-  input: MergeAllValidatorOutputs<TMiddlewares, NonNullable<TValidator>>
+  data: MergeAllValidatorOutputs<TMiddlewares, NonNullable<TValidator>>
   context: MergeAllServerContext<TMiddlewares, NonNullable<TServerContext>>
   next: <
     TNewServerContext = undefined,
@@ -180,7 +180,7 @@ export type MiddlewareClientFn<
   TServerContext,
   TClientContext,
 > = (options: {
-  input: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
+  data: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
   context: MergeAllClientContext<TMiddlewares>
   sendContext?: unknown // cc Chris Horobin
   method: Method
@@ -200,7 +200,7 @@ export type MiddlewareClientAfterFn<
   TClientAfterContext,
   TNewClientAfterContext,
 > = (options: {
-  input: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
+  data: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
   context: MergeAllClientAfterContext<
     TMiddlewares,
     TClientContext,
@@ -263,7 +263,7 @@ export interface MiddlewareTypes<
   >
 }
 
-export interface MiddlewareInput<
+export interface MiddlewareValidator<
   TId,
   TMiddlewares,
   TValidator,
@@ -271,7 +271,7 @@ export interface MiddlewareInput<
   TClientContext,
   TClientAfterContext,
 > {
-  input: <TNewValidator>(
+  validator: <TNewValidator>(
     input: Constrain<TNewValidator, AnyValidator>,
   ) => MiddlewareAfterMiddleware<
     TId,
@@ -439,7 +439,7 @@ export interface MiddlewareAfterMiddleware<
       TClientContext,
       TClientAfterContext
     >,
-    MiddlewareInput<
+    MiddlewareValidator<
       TId,
       TMiddlewares,
       TValidator,
@@ -521,14 +521,14 @@ export function createMiddleware<
         TClientContext
       >(undefined, Object.assign(resolvedOptions, { middleware })) as any
     },
-    input: (input: any) => {
+    validator: (validator: any) => {
       return createMiddleware<
         TId,
         TMiddlewares,
         TValidator,
         TServerContext,
         TClientContext
-      >(undefined, Object.assign(resolvedOptions, { input })) as any
+      >(undefined, Object.assign(resolvedOptions, { validator })) as any
     },
     client: (client: any) => {
       return createMiddleware<

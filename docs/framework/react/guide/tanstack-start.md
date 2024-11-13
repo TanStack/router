@@ -178,7 +178,7 @@ import { createRouter } from './router'
 
 const router = createRouter()
 
-hydrateRoot(document.getElementById('root')!, <StartClient router={router} />)
+hydrateRoot(document!, <StartClient router={router} />)
 ```
 
 This enables us to kick off client-side routing once the user's initial server request has fulfilled.
@@ -258,10 +258,12 @@ const getCount = createServerFn({
   return readCount()
 })
 
-const updateCount = createServerFn().handler(async (addBy: number) => {
-  const count = await readCount()
-  await fs.promises.writeFile(filePath, `${count + addBy}`)
-})
+const updateCount = createServerFn()
+  .validator((d: number) => d)
+  .handler(async ({ data }) => {
+    const count = await readCount()
+    await fs.promises.writeFile(filePath, `${count + data}`)
+  })
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -275,7 +277,7 @@ function Home() {
   return (
     <button
       onClick={() => {
-        updateCount(1).then(() => {
+        updateCount({ data: 1 }).then(() => {
           router.invalidate()
         })
       }}

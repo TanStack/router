@@ -9,8 +9,8 @@ const getCount = createServerFn({ method: 'GET' }).handler(() => {
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .input((addBy: number) => addBy)
-  .handler(({ input: addBy }) => {
+  .validator((addBy: number) => addBy)
+  .handler(({ data: addBy }) => {
     count += addBy
   })
 

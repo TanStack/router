@@ -1,16 +1,12 @@
-import {
-  ErrorComponent,
-  ErrorComponentProps,
-  Link,
-  createFileRoute,
-} from '@tanstack/react-router'
-import { fetchPost } from '../utils/posts'
-import { NotFound } from '~/components/NotFound'
+import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
+import { fetchPost } from '../utils/posts'
+import type { ErrorComponentProps } from '@tanstack/react-router'
+import { NotFound } from '~/components/NotFound'
 
 const renderPost = createServerFn({ method: 'GET' })
-  .input((postId: string) => postId)
-  .handler(async ({ input: postId }) => {
+  .validator((postId: string) => postId)
+  .handler(async ({ data: postId }) => {
     const post = await fetchPost(postId)
 
     return (

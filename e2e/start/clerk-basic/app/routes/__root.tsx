@@ -16,19 +16,18 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Meta, Scripts, createServerFn } from '@tanstack/start'
 import * as React from 'react'
 import { getAuth } from '@clerk/tanstack-start/server'
+import { getWebRequest } from 'vinxi/http'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
-const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(
-  async (_, ctx) => {
-    const user = await getAuth(ctx.request)
+const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
+  const user = await getAuth(getWebRequest())
 
-    return {
-      user,
-    }
-  },
-)
+  return {
+    user,
+  }
+})
 
 export const Route = createRootRoute({
   meta: () => [

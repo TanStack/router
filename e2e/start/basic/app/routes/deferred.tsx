@@ -3,16 +3,16 @@ import { createServerFn } from '@tanstack/start'
 import { Suspense, useState } from 'react'
 
 const personServerFn = createServerFn({ method: 'GET' })
-  .input((input: { name: string }) => input)
-  .handler(({ input }) => {
-    return { name: input.name, randomNumber: Math.floor(Math.random() * 100) }
+  .validator((data: { name: string }) => data)
+  .handler(({ data }) => {
+    return { name: data.name, randomNumber: Math.floor(Math.random() * 100) }
   })
 
 const slowServerFn = createServerFn({ method: 'GET' })
-  .input((input: { name: string }) => input)
-  .handler(async ({ input }) => {
+  .validator((data: { name: string }) => data)
+  .handler(async ({ data }) => {
     await new Promise((r) => setTimeout(r, 1000))
-    return { name: input.name, randomNumber: Math.floor(Math.random() * 100) }
+    return { name: data.name, randomNumber: Math.floor(Math.random() * 100) }
   })
 
 export const Route = createFileRoute('/deferred')({

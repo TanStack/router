@@ -19,13 +19,13 @@ Middleware allows you to customized the behavior of server functions created wit
 
 ## Defining Middleware
 
-Middleware is defined using the `createMiddleware` function. This function returns a `Middleware` object that can be used to continue customizing the middleware with methods like `middleware`, `input`, `server`, and `client`.
+Middleware is defined using the `createMiddleware` function. This function returns a `Middleware` object that can be used to continue customizing the middleware with methods like `middleware`, `validator`, `server`, and `client`.
 
 ```tsx
 import { createMiddleware } from '@tanstack/start'
 
-const loggingMiddleware = createMiddleware().server(async ({ next, input }) => {
-  console.log('Request received:', input)
+const loggingMiddleware = createMiddleware().server(async ({ next, data }) => {
+  console.log('Request received:', data)
   const result = await next()
   console.log('Response processed:', result)
   return result
@@ -37,7 +37,7 @@ const loggingMiddleware = createMiddleware().server(async ({ next, input }) => {
 Several methods are available to customize the middleware. If you are (hopefully) using TypeScript, the order of these methods is enforced by the type system to ensure maximum inference and type safety.
 
 - `middleware`: Add a middleware to the chain.
-- `input`: Modify the input object before it is passed to this middleware and any nested middleware.
+- `validator`: Modify the data object before it is passed to this middleware and any nested middleware.
 - `server`: Define server-side logic that the middleware will execute before any nested middleware and ultimately a server function, and also provide the result to the next middleware.
 - `client`: Define client-side logic that the middleware will execute before any nested middleware and ultimately the client-side RPC function (or the server-side function), and also provide the result to the next middleware.
 
@@ -52,23 +52,23 @@ const loggingMiddleware = createMiddleware().middleware([
 ])
 ```
 
-Type-safe context and input validation are also inherited from parent middlewares!
+Type-safe context and payload validation are also inherited from parent middlewares!
 
-## The `input` method
+## The `validator` method
 
-The `input` method is used to modify the input object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the input object and returns a validated (and optionally modified) input object. It's common to use a validation library like `zod` to do this. Here is an example:
+The `validator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this. Here is an example:
 
 ```tsx
 import { z } from 'zod'
 
-const inputSchema = z.object({
+const mySchema = z.object({
   workspaceId: z.string(),
 })
 
 const workspaceMiddleware = createMiddleware()
-  .input(zodValidator(inputSchema))
-  .server(({ next, input }) => {
-    console.log('Workspace ID:', input.workspaceId)
+  .validator(zodValidator(mySchema))
+  .server(({ next, data }) => {
+    console.log('Workspace ID:', data.workspaceId)
     return next()
   })
 ```
@@ -78,7 +78,7 @@ const workspaceMiddleware = createMiddleware()
 The `server` method is used to define **server-side** logic that the middleware will execute both before and after any nested middleware and ultimately a server function. This method receives an object with the following properties:
 
 - `next`: A function that, when called, will execute the next middleware in the chain.
-- `input`: The input object that was passed to the server function.
+- `data`: The data object that was passed to the server function.
 - `context`: An object that stores data from parent middleware. It can be extended with additional data that will be passed to child middleware.
 
 ## Returning the required result from `next`
@@ -119,19 +119,19 @@ const loggingMiddleware = createMiddleware().server(
 
 Despite server functions being mostly server-side bound operations, there is still plenty of client-side logic surrounding the outgoing RPC request from the client. This means that we can also define client-side logic in middleware that will execute on the client side around any nested middleware and ultimately the RPC function and its response to the client.
 
-## Client-side Input Validation
+## Client-side Payload Validation
 
-By default, middleware validation is only performed on the server to keep the client bundle size small. However, you may also choose to validate input on the client side by passing the `validateClient: true` option to the `createMiddleware` function. This will cause the input to be validated on the client side before being sent to the server, potentially saving a round trip.
+By default, middleware validation is only performed on the server to keep the client bundle size small. However, you may also choose to validate data on the client side by passing the `validateClient: true` option to the `createMiddleware` function. This will cause the data to be validated on the client side before being sent to the server, potentially saving a round trip.
 
 > Why can't I pass a different validation schema for the client?
 >
-> The client-side validation schema is derived from the server-side schema. This is because the client-side validation schema is used to validate the input before it is sent to the server. If the client-side schema were different from the server-side schema, the server would receive input that it did not expect, which could lead to unexpected behavior.
+> The client-side validation schema is derived from the server-side schema. This is because the client-side validation schema is used to validate the data before it is sent to the server. If the client-side schema were different from the server-side schema, the server would receive data that it did not expect, which could lead to unexpected behavior.
 
 ```tsx
 const workspaceMiddleware = createMiddleware({ validateClient: true })
-  .input(zodValidator(inputSchema))
-  .server(({ next, input }) => {
-    console.log('Workspace ID:', input.workspaceId)
+  .validator(zodValidator(mySchema))
+  .server(({ next, data }) => {
+    console.log('Workspace ID:', data.workspaceId)
     return next()
   })
 ```
@@ -144,12 +144,12 @@ Client middleware logic is defined using the `client` method on a `Middleware` o
 
 - Requiring the `next` function to be called to continue the chain.
 - The ability to provide context to the next client middleware via the `next` function.
-- The ability to modify the input object before it is passed to the next client middleware.
+- The ability to modify the data object before it is passed to the next client middleware.
 
 Similar to the `server` function, it also receives an object with the following properties:
 
 - `next`: A function that, when called, will execute the next client middleware in the chain.
-- `input`: The input object that was passed to the client function.
+- `data`: The data object that was passed to the client function.
 - `context`: An object that stores data from parent middleware. It can be extended with additional data that will be passed to child middleware.
 
 ```tsx
@@ -163,7 +163,7 @@ const loggingMiddleware = createMiddleware().client(async ({ next }) => {
 
 ## Sending client context to the server
 
-**Client context is NOT sent to the server by default since this could end up unintentionally sending large payloads to the server.** If you need to send client context to the server, you must call the `next` function with a `sendContext` property and object to transmit any data to the server. Any properties passed to `sendContext` will be merged, serialized and sent to the server along with the input and will be available on the normal context object of any nested server middleware.
+**Client context is NOT sent to the server by default since this could end up unintentionally sending large payloads to the server.** If you need to send client context to the server, you must call the `next` function with a `sendContext` property and object to transmit any data to the server. Any properties passed to `sendContext` will be merged, serialized and sent to the server along with the data and will be available on the normal context object of any nested server middleware.
 
 ```tsx
 const requestLogger = createMiddleware()
@@ -175,7 +175,7 @@ const requestLogger = createMiddleware()
       },
     })
   })
-  .server(async ({ next, input, context }) => {
+  .server(async ({ next, data, context }) => {
     // Woah! We have the workspace ID from the client!
     console.log('Workspace ID:', context.workspaceId)
     return next()
@@ -195,7 +195,7 @@ const requestLogger = createMiddleware()
       },
     })
   })
-  .server(async ({ next, input, context }) => {
+  .server(async ({ next, data, context }) => {
     // Validate the workspace ID before using it
     const workspaceId = zodValidator(z.number()).parse(context.workspaceId)
     console.log('Workspace ID:', workspaceId)
@@ -290,4 +290,4 @@ const fn = createServerFn()
 Middleware functionality is tree-shaken based on the environment for each bundle produced.
 
 - On the server, nothing is tree-shaken, so all code used in middleware will be included in the server bundle.
-- On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. If `validateClient` is set to `true`, the client-side validation code will be included in the client bundle, otherwise `input` validation code will also be removed.
+- On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. If `validateClient` is set to `true`, the client-side validation code will be included in the client bundle, otherwise `data` validation code will also be removed.

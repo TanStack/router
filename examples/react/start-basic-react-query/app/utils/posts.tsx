@@ -24,11 +24,12 @@ export const postsQueryOptions = () =>
     queryFn: () => fetchPosts(),
   })
 
-export const fetchPost = createServerFn({ method: 'GET' }).handler(
-  async (postId: string) => {
-    console.info(`Fetching post with id ${postId}...`)
+export const fetchPost = createServerFn({ method: 'GET' })
+  .validator((d: string) => d)
+  .handler(async ({ data }) => {
+    console.info(`Fetching post with id ${data}...`)
     const post = await axios
-      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${data}`)
       .then((r) => r.data)
       .catch((err) => {
         console.error(err)
@@ -39,11 +40,10 @@ export const fetchPost = createServerFn({ method: 'GET' }).handler(
       })
 
     return post
-  },
-)
+  })
 
 export const postQueryOptions = (postId: string) =>
   queryOptions({
     queryKey: ['post', postId],
-    queryFn: () => fetchPost(postId),
+    queryFn: () => fetchPost({ data: postId }),
   })

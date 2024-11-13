@@ -41,8 +41,8 @@ export const getDocumentHeads = createServerFn({ method: 'GET' }).handler(
 )
 
 export const getDocument = createServerFn({ method: 'GET' })
-  .input((id: string) => id)
-  .handler(async ({ input: id }) => {
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
     await new Promise((resolve) => setTimeout(resolve, 200))
 
     const document = documents.find((doc) => doc.id === id)

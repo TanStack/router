@@ -15,10 +15,12 @@ const getCount = createServerFn({ method: 'GET' }).handler(() => {
   return readCount()
 })
 
-const updateCount = createServerFn().handler(async (addBy: number) => {
-  const count = await readCount()
-  await fs.promises.writeFile(filePath, `${count + addBy}`)
-})
+const updateCount = createServerFn()
+  .validator((addBy: number) => addBy)
+  .handler(async ({ data }) => {
+    const count = await readCount()
+    await fs.promises.writeFile(filePath, `${count + data}`)
+  })
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -32,7 +34,7 @@ function Home() {
   return (
     <button
       onClick={() => {
-        updateCount(1).then(() => {
+        updateCount({ data: 1 }).then(() => {
           router.invalidate()
         })
       }}

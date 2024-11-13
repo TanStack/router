@@ -7,21 +7,21 @@ test('createServerFn without middleware', () => {
     expectTypeOf(options).toEqualTypeOf<{
       method: 'GET'
       context: undefined
-      input: undefined
+      data: undefined
     }>()
   })
 })
 
-test('createServerFn with input', () => {
+test('createServerFn with validator', () => {
   createServerFn({ method: 'GET' })
-    .input(() => ({
+    .validator(() => ({
       a: 'a',
     }))
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
         context: undefined
-        input: {
+        data: {
           a: string
         }
       }>()
@@ -68,20 +68,20 @@ test('createServerFn with middleware and context', () => {
           readonly c: 'c'
           readonly d: 'd'
         }
-        input: undefined
+        data: undefined
       }>()
     })
 })
 
-test('createServerFn with middleware and input', async () => {
-  const middleware1 = createMiddleware().input(
+test('createServerFn with middleware and validator', () => {
+  const middleware1 = createMiddleware().validator(
     () =>
       ({
         a: 'a',
       }) as const,
   )
 
-  const middleware2 = createMiddleware().input(
+  const middleware2 = createMiddleware().validator(
     () =>
       ({
         b: 'b',
@@ -92,7 +92,7 @@ test('createServerFn with middleware and input', async () => {
 
   const fn = createServerFn({ method: 'GET' })
     .middleware([middleware3])
-    .input(
+    .validator(
       () =>
         ({
           c: 'c',
@@ -102,7 +102,7 @@ test('createServerFn with middleware and input', async () => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
         context: undefined
-        input: {
+        data: {
           readonly a: 'a'
           readonly b: 'b'
           readonly c: 'c'
@@ -124,26 +124,26 @@ test('createServerFn with middleware and input', async () => {
   expectTypeOf(fn).returns.resolves.toEqualTypeOf<'data'>()
 })
 
-test('createServerFn where input is a primitive', () => {
+test('createServerFn where validator is a primitive', () => {
   createServerFn({ method: 'GET' })
-    .input(() => 'c' as const)
+    .validator(() => 'c' as const)
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
         context: undefined
-        input: 'c'
+        data: 'c'
       }>()
     })
 })
 
-test('createServerFn where input is optional if object is optional', () => {
+test('createServerFn where validator is optional if object is optional', () => {
   const fn = createServerFn({ method: 'GET' })
-    .input(() => 'c' as 'c' | undefined)
+    .validator(() => 'c' as 'c' | undefined)
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
         context: undefined
-        input: 'c' | undefined
+        data: 'c' | undefined
       }>()
     })
 
@@ -156,12 +156,12 @@ test('createServerFn where input is optional if object is optional', () => {
   >()
 })
 
-test('createServerFn where input is optional if there is no input', () => {
+test('createServerFn where data is optional if there is no validator', () => {
   const fn = createServerFn({ method: 'GET' }).handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
       method: 'GET'
       context: undefined
-      input: undefined
+      data: undefined
     }>()
   })
 

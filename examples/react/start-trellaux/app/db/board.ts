@@ -1,8 +1,8 @@
 import crypto from 'node:crypto'
 import { createServerFn } from '@tanstack/start'
 import invariant from 'tiny-invariant'
+import * as z from 'zod'
 import {
-  columnSchema,
   deleteColumnSchema,
   deleteItemSchema,
   itemSchema,
@@ -10,8 +10,7 @@ import {
   updateBoardSchema,
   updateColumnSchema,
 } from './schema'
-import type { Board, Item } from './schema'
-import type { z } from 'zod'
+import type { Board } from './schema'
 
 const DELAY = 1000
 
@@ -33,20 +32,20 @@ export const getBoards = createServerFn({ method: 'GET' }).handler(async () => {
   return boards
 })
 
-export const getBoard = createServerFn({ method: 'GET' }).handler(
-  async (boardId: string) => {
+export const getBoard = createServerFn({ method: 'GET' })
+  .validator(z.string())
+  .handler(async ({ data }) => {
     await delay(DELAY)
-    const board = boards.find((b) => b.id === boardId)
+    const board = boards.find((b) => b.id === data)
     invariant(board, 'missing board')
     return board
-  },
-)
+  })
 
 export const createColumn = createServerFn()
-  .input(newColumnSchema)
-  .handler(async ({ input }) => {
+  .validator(newColumnSchema)
+  .handler(async ({ data }) => {
     await delay(DELAY)
-    const newColumn = newColumnSchema.parse(input)
+    const newColumn = newColumnSchema.parse(data)
 
     const board = boards.find((b) => b.id === newColumn.boardId)
 
@@ -63,10 +62,10 @@ export const createColumn = createServerFn()
   })
 
 export const createItem = createServerFn()
-  .input(itemSchema)
-  .handler(async ({ input }) => {
+  .validator(itemSchema)
+  .handler(async ({ data }) => {
     await delay(DELAY)
-    const item = itemSchema.parse(input)
+    const item = itemSchema.parse(data)
 
     const board = boards.find((b) => b.id === item.boardId)
 
@@ -76,20 +75,20 @@ export const createItem = createServerFn()
   })
 
 export const deleteItem = createServerFn({ method: 'GET' })
-  .input(deleteItemSchema)
-  .handler(async ({ input }) => {
+  .validator(deleteItemSchema)
+  .handler(async ({ data }) => {
     await delay(DELAY)
-    const { id } = deleteItemSchema.parse(input)
+    const { id } = deleteItemSchema.parse(data)
     const board = boards.find((b) => b.items.some((i) => i.id === id))
     invariant(board, 'missing board')
     board.items = board.items.filter((item) => item.id !== id)
   })
 
 export const updateItem = createServerFn()
-  .input(itemSchema)
-  .handler(async ({ input }) => {
+  .validator(itemSchema)
+  .handler(async ({ data }) => {
     await delay(DELAY)
-    const item = itemSchema.parse(input)
+    const item = itemSchema.parse(data)
     const board = boards.find((b) => b.id === item.boardId)
     invariant(board, 'missing board')
     const existingItem = board.items.find((i) => i.id === item.id)
@@ -98,10 +97,10 @@ export const updateItem = createServerFn()
   })
 
 export const updateColumn = createServerFn()
-  .input(updateColumnSchema)
-  .handler(async ({ input }) => {
+  .validator(updateColumnSchema)
+  .handler(async ({ data }) => {
     await delay(DELAY)
-    const column = updateColumnSchema.parse(input)
+    const column = updateColumnSchema.parse(data)
     const board = boards.find((b) => b.id === column.boardId)
     invariant(board, 'missing board')
     const existingColumn = board.columns.find((c) => c.id === column.id)
@@ -110,20 +109,20 @@ export const updateColumn = createServerFn()
   })
 
 export const updateBoard = createServerFn()
-  .input(updateBoardSchema)
-  .handler(async ({ input }) => {
+  .validator(updateBoardSchema)
+  .handler(async ({ data }) => {
     await delay(DELAY)
-    const update = updateBoardSchema.parse(input)
+    const update = updateBoardSchema.parse(data)
     const board = boards.find((b) => b.id === update.id)
     invariant(board, 'missing board')
     Object.assign(board, update)
   })
 
 export const deleteColumn = createServerFn({ method: 'GET' })
-  .input(deleteColumnSchema)
-  .handler(async ({ input }) => {
+  .validator(deleteColumnSchema)
+  .handler(async ({ data }) => {
     await delay(DELAY)
-    const { id } = deleteColumnSchema.parse(input)
+    const { id } = deleteColumnSchema.parse(data)
     const board = boards.find((b) => b.columns.some((c) => c.id === id))
     invariant(board, 'missing board')
     board.columns = board.columns.filter((column) => column.id !== id)

@@ -2493,6 +2493,10 @@ export class Router<
                         // to be preloaded before we resolve the match
                         await route._componentsPromise
                       } catch (err) {
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          loaderPromise: undefined,
+                        }))
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
                     }

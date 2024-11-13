@@ -25,7 +25,7 @@ export type Fetcher<TMiddlewares, TValidator, TResponse> = {
   url: string
   __executeServer: (opts: {
     method: Method
-    input: unknown
+    data: unknown
     headers?: HeadersInit
   }) => Promise<unknown>
 } & FetcherImpl<TMiddlewares, TValidator, TResponse>
@@ -86,7 +86,7 @@ export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
 
 export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
   method: TMethod
-  input: MergeAllValidatorOutputs<TMiddlewares, TValidator>
+  data: MergeAllValidatorOutputs<TMiddlewares, TValidator>
   context: MergeAllServerContext<TMiddlewares>
 }
 
@@ -104,7 +104,7 @@ type ServerFnBaseOptions<
   method: TMethod
   validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
-  input?: Constrain<TInput, AnyValidator>
+  validator?: Constrain<TInput, AnyValidator>
   extractedFn?: CompiledFetcherFn<TResponse>
   serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
@@ -122,10 +122,10 @@ type ServerFnBase<
     middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
   ) => Pick<
     ServerFnBase<TMethod, TResponse, TNewMiddlewares, TValidator>,
-    'input' | 'handler'
+    'validator' | 'handler'
   >
-  input: <TValidator>(
-    input: Constrain<TValidator, AnyValidator>,
+  validator: <TValidator>(
+    validator: Constrain<TValidator, AnyValidator>,
   ) => Pick<
     ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator>,
     'handler' | 'middleware'
@@ -161,10 +161,10 @@ export function createServerFn<
         Object.assign(resolvedOptions, { middleware }),
       ) as any
     },
-    input: (input) => {
+    validator: (validator) => {
       return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
         undefined,
-        Object.assign(resolvedOptions, { input }),
+        Object.assign(resolvedOptions, { validator }),
       ) as any
     },
     handler: (...args) => {
@@ -202,7 +202,7 @@ export function createServerFn<
           return executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             method: resolvedOptions.method,
-            input: opts?.data as any,
+            data: opts?.data as any,
             headers: opts?.headers,
             context: Object.assign({}, extractedFn),
           }).then((d) => d.result)
@@ -248,7 +248,7 @@ function flattenMiddlewares(
 
 export type MiddlewareOptions = {
   method: Method
-  input: any
+  data: any
   headers?: HeadersInit
   sendContext?: any
   context?: any
@@ -257,7 +257,7 @@ export type MiddlewareOptions = {
 export type MiddlewareResult = {
   context: any
   sendContext: any
-  input: any
+  data: any
   result: unknown
 }
 
@@ -271,9 +271,9 @@ const applyMiddleware = (
   nextFn: (ctx: MiddlewareOptions) => Promise<MiddlewareResult>,
 ) => {
   return middlewareFn({
-    input: mCtx.input,
-    context: mCtx.context as never,
-    sendContext: mCtx.sendContext as never,
+    data: mCtx.data,
+    context: mCtx.context,
+    sendContext: mCtx.sendContext,
     method: mCtx.method,
     next: ((userResult: any) => {
       // Take the user provided context
@@ -293,7 +293,7 @@ const applyMiddleware = (
       // Return the next middleware
       return nextFn({
         method: mCtx.method,
-        input: mCtx.input,
+        data: mCtx.data,
         context,
         sendContext,
         headers,
@@ -322,11 +322,11 @@ async function executeMiddleware(
     }
 
     if (
-      nextMiddleware.options.input &&
+      nextMiddleware.options.validator &&
       (env === 'client' ? nextMiddleware.options.validateClient : true)
     ) {
       // Execute the middleware's input function
-      ctx.input = await nextMiddleware.options.input(ctx.input)
+      ctx.data = await nextMiddleware.options.validator(ctx.data)
     }
 
     const middlewareFn =
@@ -376,7 +376,7 @@ function serverFnBaseToMiddleware(
   return {
     _types: undefined!,
     options: {
-      input: options.input,
+      validator: options.validator,
       validateClient: options.validateClient,
       client: async ({ next, sendContext, ...ctx }) => {
         // Execute the extracted function
