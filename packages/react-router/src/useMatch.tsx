@@ -1,7 +1,7 @@
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
-import { matchContext } from './matchContext'
+import { dummyMatchContext, matchContext } from './matchContext'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -84,7 +84,9 @@ export function useMatch<
     TStructuralSharing
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
-  const nearestMatchId = React.useContext(matchContext)
+  const nearestMatchId = React.useContext(
+    opts.from ? dummyMatchContext : matchContext,
+  )
 
   const matchSelection = useRouterState({
     select: (state: any) => {
