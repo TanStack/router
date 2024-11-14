@@ -228,7 +228,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <head>
         <Meta />
       </head>
-      <body>
+      <body id="root">
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -262,7 +262,9 @@ const getCount = createServerFn({
   return readCount()
 })
 
-const updateCount = createServerFn()
+const updateCount = createServerFn({
+  method: 'GET',
+})
   .validator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
@@ -282,7 +284,7 @@ function Home() {
     <button
       type="button"
       onClick={() => {
-        updateCount(1).then(() => {
+        updateCount({ data: 1 }).then(() => {
           router.invalidate()
         })
       }}
