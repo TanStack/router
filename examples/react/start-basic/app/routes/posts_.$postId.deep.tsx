@@ -3,7 +3,10 @@ import { fetchPost } from '../utils/posts'
 import { PostErrorComponent } from './posts.$postId'
 
 export const Route = createFileRoute('/posts_/$postId/deep')({
-  loader: async ({ params: { postId } }) => fetchPost(postId),
+  loader: async ({ params: { postId } }) =>
+    fetchPost({
+      data: postId,
+    }),
   errorComponent: PostErrorComponent as any,
   component: PostDeepComponent,
 })

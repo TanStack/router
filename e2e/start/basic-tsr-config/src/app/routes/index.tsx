@@ -4,13 +4,15 @@ import { createServerFn } from '@tanstack/start'
 
 let count = 0
 
-const getCount = createServerFn('GET', () => {
+const getCount = createServerFn({ method: 'GET' }).handler(() => {
   return count
 })
 
-const updateCount = createServerFn('POST', async (addBy: number) => {
-  count += addBy
-})
+const updateCount = createServerFn({ method: 'POST' })
+  .validator((addBy: number) => addBy)
+  .handler(({ data: addBy }) => {
+    count += addBy
+  })
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -24,7 +26,7 @@ function Home() {
   return (
     <button
       onClick={() => {
-        updateCount(1).then(() => {
+        updateCount({ data: 1 }).then(() => {
           router.invalidate()
         })
       }}

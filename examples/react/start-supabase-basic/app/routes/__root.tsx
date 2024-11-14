@@ -5,14 +5,7 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import {
-  Body,
-  Head,
-  Html,
-  Meta,
-  Scripts,
-  createServerFn,
-} from '@tanstack/start'
+import { Meta, Scripts, createServerFn } from '@tanstack/start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '../components/DefaultCatchBoundary'
 import { NotFound } from '../components/NotFound'
@@ -20,7 +13,7 @@ import appCss from '../styles/app.css?url'
 import { seo } from '../utils/seo'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-const fetchUser = createServerFn('GET', async () => {
+const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = await getSupabaseServerClient()
   const { data, error } = await supabase.auth.getUser()
 
@@ -98,11 +91,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const { user } = Route.useRouteContext()
 
   return (
-    <Html>
-      <Head>
+    <html>
+      <head>
         <Meta />
-      </Head>
-      <Body>
+      </head>
+      <body>
         <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -137,7 +130,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ScrollRestoration />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </Body>
-    </Html>
+      </body>
+    </html>
   )
 }

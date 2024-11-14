@@ -29,6 +29,20 @@ import type { Assign, Constrain, Expand, NoInfer } from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
+import type {
+  AnySchema,
+  AnyStandardSchemaValidator,
+  AnyValidator,
+  AnyValidatorAdapter,
+  AnyValidatorObj,
+  DefaultValidator,
+  ResolveValidatorInput,
+  ResolveValidatorOutput,
+  StandardSchemaValidator,
+  ValidatorAdapter,
+  ValidatorFn,
+  ValidatorObj,
+} from './validators'
 import type { UseRouteContextRoute } from './useRouteContext'
 
 export type AnyPathParams = {}
@@ -36,8 +50,6 @@ export type AnyPathParams = {}
 export type SearchSchemaInput = {
   __TSearchSchemaInput__: 'TSearchSchemaInput'
 }
-
-export type AnySearchSchema = {}
 
 export type AnyContext = {}
 
@@ -190,11 +202,7 @@ export type FileBaseRouteOptions<
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
 > = ParamsOptions<TPath, TParams> & {
-  validateSearch?: Constrain<
-    TSearchValidator,
-    AnySearchValidator,
-    DefaultSearchValidator
-  >
+  validateSearch?: Constrain<TSearchValidator, AnyValidator, DefaultValidator>
 
   shouldReload?:
     | boolean
@@ -499,65 +507,10 @@ type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
 
 export type RouteLinkEntry = {}
 
-export interface SearchValidatorObj<TInput, TOutput> {
-  parse: SearchValidatorFn<TInput, TOutput>
-}
-
-export type AnySearchValidatorObj = SearchValidatorObj<any, any>
-
-export interface SearchValidatorAdapter<TInput, TOutput> {
-  types: {
-    input: TInput
-    output: TOutput
-  }
-  parse: (input: unknown) => TOutput
-}
-
-export type AnySearchValidatorAdapter = SearchValidatorAdapter<any, any>
-
-export interface StandardSchemaValidatorProps<TInput, TOutput> {
-  readonly types?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
-  readonly validate: AnyStandardSchemaValidate
-}
-
-export interface StandardSchemaValidator<TInput, TOutput> {
-  readonly '~standard': StandardSchemaValidatorProps<TInput, TOutput>
-}
-
-export type AnyStandardSchemaValidator = StandardSchemaValidator<any, any>
-
-export interface StandardSchemaValidatorTypes<TInput, TOutput> {
-  readonly input: TInput
-  readonly output: TOutput
-}
-
-export interface AnyStandardSchemaValidateSuccess {
-  readonly value: any
-  readonly issues?: undefined
-}
-
-export interface AnyStandardSchemaValidateFailure {
-  readonly issues: ReadonlyArray<AnyStandardSchemaValidateIssue>
-}
-
-export interface AnyStandardSchemaValidateIssue {
-  readonly message: string
-}
-
-export type AnyStandardSchemaValidate = (
-  value: unknown,
-) =>
-  | (AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure)
-  | Promise<AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure>
-
-export type AnySearchValidatorFn = SearchValidatorFn<any, any>
-
-export type SearchValidatorFn<TInput, TOutput> = (input: TInput) => TOutput
-
 export type SearchValidator<TInput, TOutput> =
-  | SearchValidatorObj<TInput, TOutput>
-  | SearchValidatorFn<TInput, TOutput>
-  | SearchValidatorAdapter<TInput, TOutput>
+  | ValidatorObj<TInput, TOutput>
+  | ValidatorFn<TInput, TOutput>
+  | ValidatorAdapter<TInput, TOutput>
   | StandardSchemaValidator<TInput, TOutput>
   | undefined
 
@@ -565,7 +518,7 @@ export type AnySearchValidator = SearchValidator<any, any>
 
 export type DefaultSearchValidator = SearchValidator<
   Record<string, unknown>,
-  AnySearchSchema
+  AnySchema
 >
 
 export type RouteLoaderFn<
@@ -680,14 +633,14 @@ export type ResolveSearchSchemaFnInput<TSearchValidator> =
     ? TSearchSchemaInput extends SearchSchemaInput
       ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
       : ResolveSearchSchemaFn<TSearchValidator>
-    : AnySearchSchema
+    : AnySchema
 
 export type ResolveSearchSchemaInput<TSearchValidator> =
   TSearchValidator extends AnyStandardSchemaValidator
     ? NonNullable<TSearchValidator['~standard']['types']>['input']
-    : TSearchValidator extends AnySearchValidatorAdapter
+    : TSearchValidator extends AnyValidatorAdapter
       ? TSearchValidator['types']['input']
-      : TSearchValidator extends AnySearchValidatorObj
+      : TSearchValidator extends AnyValidatorObj
         ? ResolveSearchSchemaFnInput<TSearchValidator['parse']>
         : ResolveSearchSchemaFnInput<TSearchValidator>
 
@@ -695,16 +648,16 @@ export type ResolveSearchSchemaFn<TSearchValidator> = TSearchValidator extends (
   ...args: any
 ) => infer TSearchSchema
   ? TSearchSchema
-  : AnySearchSchema
+  : AnySchema
 
 export type ResolveSearchSchema<TSearchValidator> =
   unknown extends TSearchValidator
     ? TSearchValidator
     : TSearchValidator extends AnyStandardSchemaValidator
       ? NonNullable<TSearchValidator['~standard']['types']>['output']
-      : TSearchValidator extends AnySearchValidatorAdapter
+      : TSearchValidator extends AnyValidatorAdapter
         ? TSearchValidator['types']['output']
-        : TSearchValidator extends AnySearchValidatorObj
+        : TSearchValidator extends AnyValidatorObj
           ? ResolveSearchSchemaFn<TSearchValidator['parse']>
           : ResolveSearchSchemaFn<TSearchValidator>
 
@@ -712,10 +665,10 @@ export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
   TSearchValidator,
 > = unknown extends TParentRoute
-  ? ResolveSearchSchema<TSearchValidator>
+  ? ResolveValidatorOutput<TSearchValidator>
   : Assign<
       InferFullSearchSchema<TParentRoute>,
-      ResolveSearchSchema<TSearchValidator>
+      ResolveValidatorOutput<TSearchValidator>
     >
 
 export type ResolveFullSearchSchemaInput<
@@ -723,7 +676,7 @@ export type ResolveFullSearchSchemaInput<
   TSearchValidator,
 > = Assign<
   InferFullSearchSchemaInput<TParentRoute>,
-  ResolveSearchSchemaInput<TSearchValidator>
+  ResolveValidatorInput<TSearchValidator>
 >
 
 export type LooseReturnType<T> = T extends (
@@ -820,8 +773,8 @@ export type RouteConstraints = {
   TFullPath: string
   TCustomId: string
   TId: string
-  TSearchSchema: AnySearchSchema
-  TFullSearchSchema: AnySearchSchema
+  TSearchSchema: AnySchema
+  TFullSearchSchema: AnySchema
   TParams: Record<string, any>
   TAllParams: Record<string, any>
   TParentContext: AnyContext
@@ -1031,8 +984,8 @@ export class Route<
     fullPath: TFullPath
     customId: TCustomId
     id: TId
-    searchSchema: ResolveSearchSchema<TSearchValidator>
-    searchSchemaInput: ResolveSearchSchemaInput<TSearchValidator>
+    searchSchema: ResolveValidatorOutput<TSearchValidator>
+    searchSchemaInput: ResolveValidatorInput<TSearchValidator>
     searchValidator: TSearchValidator
     fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
     fullSearchSchemaInput: ResolveFullSearchSchemaInput<

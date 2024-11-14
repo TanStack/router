@@ -216,55 +216,6 @@ export const Meta = ({ children }: { children?: React.ReactNode }) => {
   return createPortal(all, document.head)
 }
 
-export function Html({ children, ...props }: React.HTMLProps<HTMLHtmlElement>) {
-  const router = useRouter()
-
-  // warning(
-  //   !Object.keys(props).length,
-  //   'Passing props other than children to the Html component will be supported very soon in React 19.',
-  // )
-
-  if (!router.isServer) {
-    return <>{children}</>
-  }
-
-  return <html>{children}</html>
-}
-
-export function Head({ children, ...props }: React.HTMLProps<HTMLHeadElement>) {
-  const router = useRouter()
-
-  // warning(
-  //   !Object.keys(props).length,
-  //   'Passing props other than children to the Head component will be supported very soon in React 19.',
-  // )
-
-  if (!router.isServer) {
-    return children
-  }
-
-  return <head>{children}</head>
-}
-
-export function Body({ children, ...props }: React.HTMLProps<HTMLBodyElement>) {
-  const router = useRouter()
-
-  // warning(
-  //   !Object.keys(props).length,
-  //   'Passing props other than children to the Body component will be supported very soon in React 19.',
-  // )
-
-  if (!router.isServer) {
-    return children
-  }
-
-  return (
-    <body>
-      <div id="root">{children}</div>
-    </body>
-  )
-}
-
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
   const seen = new Set<string>()
   return arr.filter((item) => {

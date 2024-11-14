@@ -42,8 +42,6 @@ import type {
   AnyContext,
   AnyRoute,
   AnyRouteWithContext,
-  AnySearchSchema,
-  AnySearchValidator,
   BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
@@ -84,6 +82,7 @@ import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { RouterTransformer } from './transformer'
+import type { AnySchema, AnyValidator } from './validators'
 
 declare global {
   interface Window {
@@ -579,10 +578,7 @@ function routeNeedsPreload(route: AnyRoute) {
   return false
 }
 
-function validateSearch(
-  validateSearch: AnySearchValidator,
-  input: unknown,
-): unknown {
+function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   if (validateSearch == null) return {}
 
   if ('~standard' in validateSearch) {
@@ -1075,7 +1071,7 @@ export class Router<
 */
   public matchRoutes(
     pathname: string,
-    locationSearch: AnySearchSchema,
+    locationSearch: AnySchema,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch>
   public matchRoutes(
@@ -1085,7 +1081,7 @@ export class Router<
 
   public matchRoutes(
     pathnameOrNext: string | ParsedLocation,
-    locationSearchOrOpts?: AnySearchSchema | MatchRoutesOpts,
+    locationSearchOrOpts?: AnySchema | MatchRoutesOpts,
     opts?: MatchRoutesOpts,
   ) {
     if (typeof pathnameOrNext === 'string') {
@@ -2560,6 +2556,10 @@ export class Router<
                         // to be preloaded before we resolve the match
                         await route._componentsPromise
                       } catch (err) {
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          loaderPromise: undefined,
+                        }))
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
                     }

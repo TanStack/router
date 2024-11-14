@@ -7,7 +7,10 @@ import { capitalize, seo } from '~/utils/seo'
 export const Route = createFileRoute(
   '/$project/$version/docs/framework/$framework/$',
 )({
-  loader: ({ params: { _splat } }) => getDocument(_splat!),
+  loader: ({ params: { _splat } }) =>
+    getDocument({
+      data: _splat!,
+    }),
   meta: ({ loaderData, params }) =>
     seo({
       title: `${loaderData.title} | TanStack ${capitalize(params.project)} ${capitalize(params.framework)}`,
