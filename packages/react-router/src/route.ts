@@ -31,10 +31,17 @@ import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
 import type {
   AnySchema,
+  AnyStandardSchemaValidator,
   AnyValidator,
+  AnyValidatorAdapter,
+  AnyValidatorObj,
   DefaultValidator,
   ResolveValidatorInput,
   ResolveValidatorOutput,
+  StandardSchemaValidator,
+  ValidatorAdapter,
+  ValidatorFn,
+  ValidatorObj,
 } from './validators'
 import type { UseRouteContextRoute } from './useRouteContext'
 
@@ -500,65 +507,10 @@ type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
 
 export type RouteLinkEntry = {}
 
-export interface SearchValidatorObj<TInput, TOutput> {
-  parse: SearchValidatorFn<TInput, TOutput>
-}
-
-export type AnySearchValidatorObj = SearchValidatorObj<any, any>
-
-export interface SearchValidatorAdapter<TInput, TOutput> {
-  types: {
-    input: TInput
-    output: TOutput
-  }
-  parse: (input: unknown) => TOutput
-}
-
-export type AnySearchValidatorAdapter = SearchValidatorAdapter<any, any>
-
-export interface StandardSchemaValidatorProps<TInput, TOutput> {
-  readonly types?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
-  readonly validate: AnyStandardSchemaValidate
-}
-
-export interface StandardSchemaValidator<TInput, TOutput> {
-  readonly '~standard': StandardSchemaValidatorProps<TInput, TOutput>
-}
-
-export type AnyStandardSchemaValidator = StandardSchemaValidator<any, any>
-
-export interface StandardSchemaValidatorTypes<TInput, TOutput> {
-  readonly input: TInput
-  readonly output: TOutput
-}
-
-export interface AnyStandardSchemaValidateSuccess {
-  readonly value: any
-  readonly issues?: undefined
-}
-
-export interface AnyStandardSchemaValidateFailure {
-  readonly issues: ReadonlyArray<AnyStandardSchemaValidateIssue>
-}
-
-export interface AnyStandardSchemaValidateIssue {
-  readonly message: string
-}
-
-export type AnyStandardSchemaValidate = (
-  value: unknown,
-) =>
-  | (AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure)
-  | Promise<AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure>
-
-export type AnySearchValidatorFn = SearchValidatorFn<any, any>
-
-export type SearchValidatorFn<TInput, TOutput> = (input: TInput) => TOutput
-
 export type SearchValidator<TInput, TOutput> =
-  | SearchValidatorObj<TInput, TOutput>
-  | SearchValidatorFn<TInput, TOutput>
-  | SearchValidatorAdapter<TInput, TOutput>
+  | ValidatorObj<TInput, TOutput>
+  | ValidatorFn<TInput, TOutput>
+  | ValidatorAdapter<TInput, TOutput>
   | StandardSchemaValidator<TInput, TOutput>
   | undefined
 
@@ -686,9 +638,9 @@ export type ResolveSearchSchemaFnInput<TSearchValidator> =
 export type ResolveSearchSchemaInput<TSearchValidator> =
   TSearchValidator extends AnyStandardSchemaValidator
     ? NonNullable<TSearchValidator['~standard']['types']>['input']
-    : TSearchValidator extends AnySearchValidatorAdapter
+    : TSearchValidator extends AnyValidatorAdapter
       ? TSearchValidator['types']['input']
-      : TSearchValidator extends AnySearchValidatorObj
+      : TSearchValidator extends AnyValidatorObj
         ? ResolveSearchSchemaFnInput<TSearchValidator['parse']>
         : ResolveSearchSchemaFnInput<TSearchValidator>
 
@@ -703,9 +655,9 @@ export type ResolveSearchSchema<TSearchValidator> =
     ? TSearchValidator
     : TSearchValidator extends AnyStandardSchemaValidator
       ? NonNullable<TSearchValidator['~standard']['types']>['output']
-      : TSearchValidator extends AnySearchValidatorAdapter
+      : TSearchValidator extends AnyValidatorAdapter
         ? TSearchValidator['types']['output']
-        : TSearchValidator extends AnySearchValidatorObj
+        : TSearchValidator extends AnyValidatorObj
           ? ResolveSearchSchemaFn<TSearchValidator['parse']>
           : ResolveSearchSchemaFn<TSearchValidator>
 

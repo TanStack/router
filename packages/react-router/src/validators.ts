@@ -1,8 +1,12 @@
 import type { SearchSchemaInput } from './route'
 
+export interface StandardSchemaValidatorProps<TInput, TOutput> {
+  readonly types?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
+  readonly validate: AnyStandardSchemaValidate
+}
+
 export interface StandardSchemaValidator<TInput, TOutput> {
-  readonly '~types'?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
-  readonly '~validate': AnyStandardSchemaValidate
+  readonly '~standard': StandardSchemaValidatorProps<TInput, TOutput>
 }
 
 export type AnyStandardSchemaValidator = StandardSchemaValidator<any, any>
@@ -14,6 +18,7 @@ export interface StandardSchemaValidatorTypes<TInput, TOutput> {
 
 export interface AnyStandardSchemaValidateSuccess {
   readonly value: any
+  readonly issues?: undefined
 }
 
 export interface AnyStandardSchemaValidateFailure {
@@ -29,8 +34,10 @@ export interface AnyStandardSchemaValidateInput {
 }
 
 export type AnyStandardSchemaValidate = (
-  input: AnyStandardSchemaValidateInput,
-) => AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure
+  value: unknown,
+) =>
+  | (AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure)
+  | Promise<AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure>
 
 export interface ValidatorObj<TInput, TOutput> {
   parse: ValidatorFn<TInput, TOutput>
@@ -75,7 +82,7 @@ export type ResolveValidatorInputFn<TValidator> = TValidator extends (
 
 export type ResolveValidatorInput<TValidator> =
   TValidator extends AnyStandardSchemaValidator
-    ? NonNullable<TValidator['~types']>['input']
+    ? NonNullable<TValidator['~standard']['types']>['input']
     : TValidator extends AnyValidatorAdapter
       ? TValidator['types']['input']
       : TValidator extends AnyValidatorObj
@@ -91,7 +98,7 @@ export type ResolveValidatorOutputFn<TValidator> = TValidator extends (
 export type ResolveValidatorOutput<TValidator> = unknown extends TValidator
   ? TValidator
   : TValidator extends AnyStandardSchemaValidator
-    ? NonNullable<TValidator['~types']>['output']
+    ? NonNullable<TValidator['~standard']['types']>['output']
     : TValidator extends AnyValidatorAdapter
       ? TValidator['types']['output']
       : TValidator extends AnyValidatorObj
