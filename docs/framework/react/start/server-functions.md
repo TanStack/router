@@ -81,9 +81,11 @@ import { createServerFn } from '@tanstack/start'
 
 export const greet = createServerFn({
   method: 'GET',
-}).handler(async (ctx) => {
-  return `Hello, ${ctx.data}!`
 })
+  .validator((data: string) => data)
+  .handler(async (ctx) => {
+    return `Hello, ${ctx.data}!`
+  })
 
 greet({
   data: 'John',
