@@ -581,8 +581,8 @@ function routeNeedsPreload(route: AnyRoute) {
 function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   if (validateSearch == null) return {}
 
-  if ('~standard' in validateSearch) {
-    const result = validateSearch['~standard'].validate(input)
+  if ('~validate' in validateSearch) {
+    const result = validateSearch['~validate']({ value: input })
 
     if ('value' in result) return result.value
 

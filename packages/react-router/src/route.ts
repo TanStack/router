@@ -566,7 +566,7 @@ export type AnySearchValidator = SearchValidator<any, any>
 
 export type DefaultSearchValidator = SearchValidator<
   Record<string, unknown>,
-  AnySearchSchema
+  AnySchema
 >
 
 export type RouteLoaderFn<
@@ -681,7 +681,7 @@ export type ResolveSearchSchemaFnInput<TSearchValidator> =
     ? TSearchSchemaInput extends SearchSchemaInput
       ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
       : ResolveSearchSchemaFn<TSearchValidator>
-    : AnySearchSchema
+    : AnySchema
 
 export type ResolveSearchSchemaInput<TSearchValidator> =
   TSearchValidator extends AnyStandardSchemaValidator
@@ -696,7 +696,7 @@ export type ResolveSearchSchemaFn<TSearchValidator> = TSearchValidator extends (
   ...args: any
 ) => infer TSearchSchema
   ? TSearchSchema
-  : AnySearchSchema
+  : AnySchema
 
 export type ResolveSearchSchema<TSearchValidator> =
   unknown extends TSearchValidator
