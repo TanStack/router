@@ -228,7 +228,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <head>
         <Meta />
       </head>
-      <body>
+      <body id="root">
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -262,7 +262,9 @@ const getCount = createServerFn({
   return readCount()
 })
 
-const updateCount = createServerFn()
+const updateCount = createServerFn({
+  method: 'GET',
+})
   .validator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
