@@ -10,7 +10,6 @@ import type {
   Router,
   RouterOptions,
 } from './router'
-import { useDebugger } from './debugger'
 
 export interface CommitLocationOptions {
   replace?: boolean
@@ -66,7 +65,6 @@ export function RouterContextProvider<
   children: React.ReactNode
 }) {
 
-  useDebugger({  })
   // Allow the router to update options on the router instance
   router.update({
     ...router.options,

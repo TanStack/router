@@ -15,9 +15,8 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
 import type { AnyRoute } from './route'
-import { useDebugger } from './debugger'
 
-export const Match = React.memo(function MatchImpl({
+export const Match = function MatchImpl({
   matchId,
 }: {
   matchId: string
@@ -41,7 +40,6 @@ export const Match = React.memo(function MatchImpl({
 
   const routeErrorComponent =
     route.options.errorComponent ?? router.options.defaultErrorComponent
-  useDebugger({ route, PendingComponent })
 
   const routeOnCatch = route.options.onCatch ?? router.options.defaultOnCatch
 
@@ -105,9 +103,9 @@ export const Match = React.memo(function MatchImpl({
       </ResolvedSuspenseBoundary>
     </matchContext.Provider>
   )
-})
+}
 
-export const MatchInner = React.memo(function MatchInnerImpl({
+export const MatchInner = function MatchInnerImpl({
   matchId,
 }: {
   matchId: string
@@ -130,10 +128,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
   const route = router.routesById[routeId]!
 
-  const out = React.useMemo(() => {
-    const Comp = route.options.component ?? router.options.defaultComponent
-    return Comp ? <Comp /> : <Outlet />
-  }, [route.options.component, router.options.defaultComponent])
+  const Comp = route.options.component ?? router.options.defaultComponent
+  const out = Comp ? <Comp /> : <Outlet />
 
   // function useChangedDiff(value: any) {
   //   const ref = React.useRef(value)
@@ -251,7 +247,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       ) : null}
     </>
   )
-})
+}
 
 export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()

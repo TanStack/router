@@ -1,83 +1,58 @@
+import { renderHook } from '@testing-library/react'
 import React from 'react'
-import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
-import {
-  cleanup,
-  configure,
-  fireEvent,
-  render,
-  renderHook,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { describe, expect, test } from 'vitest'
 
-import {
-  Link,
-  Outlet,
-  RouterProvider,
-  createLink,
-  createRootRoute,
-  createRootRouteWithContext,
-  createRoute,
-  createRouteMask,
-  createRouter,
-  redirect,
-  useLoaderData,
-  useMatchRoute,
-  useParams,
-  useRouteContext,
-  useRouterState,
-  useSearch,
-} from '../src'
-import { useDebugger } from '../src/debugger'
-
+import { RouterProvider, createRootRoute, createRouter } from '../src'
 
 describe('Rerender tests', () => {
-  test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
+  test('when using renderHook a rerender should trigger a rerender of the hook', () => {
     const useIsFirstRender = () => {
-      useDebugger({});
-      const renderRef = React.useRef(true);
-    
+      const renderRef = React.useRef(true)
+
       if (renderRef.current === true) {
-        renderRef.current = false;
-        return {isFirst: true};
+        renderRef.current = false
+        return { isFirst: true }
       }
-    
-      return {isFirst: renderRef.current};
-    };
 
-    let childrenContainer = <></>;
-    
-    
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => childrenContainer,
-    })
-    const routeTree = rootRoute.addChildren([indexRoute])
-    
-    const router = createRouter({
-      routeTree: routeTree,
-    })
+      return { isFirst: renderRef.current }
+    }
+
     const RouterContainer = ({ children }: { children: React.ReactNode }) => {
-      if (React.isValidElement(children)) {
-        childrenContainer = children;
-      }
-      useDebugger({});
-      return <RouterProvider router={router} />;
-    };
+      const TestComponent = React.useMemo(
+        () => () => {
+          return <>{children}</>
+        },
+        [children],
+      )
 
-    const { result, rerender } = renderHook(
-      () => useIsFirstRender(),
-      { wrapper: RouterContainer },
-    )
-    console.log("calling rerender first time")
-    rerender();
+      const componentRef = React.useRef(TestComponent)
+      componentRef.current = TestComponent
+
+      const routeTree = React.useMemo(() => {
+        const rootRoute = createRootRoute({
+          component: () => componentRef.current(),
+        })
+        return rootRoute
+      }, [])
+
+      const router = React.useMemo(
+        () =>
+          createRouter({
+            routeTree: routeTree,
+          }),
+        [routeTree],
+      )
+      return <RouterProvider router={router} />
+    }
+
+    const { result, rerender } = renderHook(() => useIsFirstRender(), {
+      wrapper: RouterContainer,
+    })
 
     expect(result.current).toBeTruthy()
     expect(result.current.isFirst).toBeTruthy()
-    console.log("calling rerender second time")
-    rerender();
+    rerender()
+
     expect(result.current.isFirst).toBeFalsy()
   })
 })
