@@ -1,18 +1,22 @@
 import invariant from 'tiny-invariant'
-import { useMatch } from './useMatch'
-import { useLoaderDeps } from './useLoaderDeps'
-import { useLoaderData } from './useLoaderData'
 import { joinPaths, trimPathLeft } from './path'
+import { useLoaderData } from './useLoaderData'
+import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { notFound } from './not-found'
 import { useNavigate } from './useNavigate'
 import { rootRouteId } from './root'
+import { useMatch } from './useMatch'
+import type { UseLoaderDataRoute } from './useLoaderData'
+import type { UseMatchRoute } from './useMatch'
+import type { UseLoaderDepsRoute } from './useLoaderDeps'
+import type { UseParamsRoute } from './useParams'
+import type { UseSearchRoute } from './useSearch'
 import type * as React from 'react'
 import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
 import type {
-  MakeRouteMatch,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
   RouteMatch,
@@ -32,6 +36,7 @@ import type {
   ResolveValidatorInput,
   ResolveValidatorOutput,
 } from './validators'
+import type { UseRouteContextRoute } from './useRouteContext'
 
 export type AnyPathParams = {}
 
@@ -126,8 +131,8 @@ export type StringifyParamsFn<TPath extends string, TParams> = (
 
 export type ParamsOptions<TPath extends string, TParams> = {
   params?: {
-    parse: ParseParamsFn<TPath, TParams>
-    stringify: StringifyParamsFn<TPath, TParams>
+    parse?: ParseParamsFn<TPath, TParams>
+    stringify?: StringifyParamsFn<TPath, TParams>
   }
 
   /** 
@@ -495,6 +500,75 @@ type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
 
 export type RouteLinkEntry = {}
 
+export interface SearchValidatorObj<TInput, TOutput> {
+  parse: SearchValidatorFn<TInput, TOutput>
+}
+
+export type AnySearchValidatorObj = SearchValidatorObj<any, any>
+
+export interface SearchValidatorAdapter<TInput, TOutput> {
+  types: {
+    input: TInput
+    output: TOutput
+  }
+  parse: (input: unknown) => TOutput
+}
+
+export type AnySearchValidatorAdapter = SearchValidatorAdapter<any, any>
+
+export interface StandardSchemaValidatorProps<TInput, TOutput> {
+  readonly types?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
+  readonly validate: AnyStandardSchemaValidate
+}
+
+export interface StandardSchemaValidator<TInput, TOutput> {
+  readonly '~standard': StandardSchemaValidatorProps<TInput, TOutput>
+}
+
+export type AnyStandardSchemaValidator = StandardSchemaValidator<any, any>
+
+export interface StandardSchemaValidatorTypes<TInput, TOutput> {
+  readonly input: TInput
+  readonly output: TOutput
+}
+
+export interface AnyStandardSchemaValidateSuccess {
+  readonly value: any
+  readonly issues?: undefined
+}
+
+export interface AnyStandardSchemaValidateFailure {
+  readonly issues: ReadonlyArray<AnyStandardSchemaValidateIssue>
+}
+
+export interface AnyStandardSchemaValidateIssue {
+  readonly message: string
+}
+
+export type AnyStandardSchemaValidate = (
+  value: unknown,
+) =>
+  | (AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure)
+  | Promise<AnyStandardSchemaValidateSuccess | AnyStandardSchemaValidateFailure>
+
+export type AnySearchValidatorFn = SearchValidatorFn<any, any>
+
+export type SearchValidatorFn<TInput, TOutput> = (input: TInput) => TOutput
+
+export type SearchValidator<TInput, TOutput> =
+  | SearchValidatorObj<TInput, TOutput>
+  | SearchValidatorFn<TInput, TOutput>
+  | SearchValidatorAdapter<TInput, TOutput>
+  | StandardSchemaValidator<TInput, TOutput>
+  | undefined
+
+export type AnySearchValidator = SearchValidator<any, any>
+
+export type DefaultSearchValidator = SearchValidator<
+  Record<string, unknown>,
+  AnySearchSchema
+>
+
 export type RouteLoaderFn<
   in out TParentRoute extends AnyRoute = AnyRoute,
   in out TId extends string = string,
@@ -601,6 +675,39 @@ export type InferAllContext<TRoute> = unknown extends TRoute
       }
     ? TAllContext
     : {}
+
+export type ResolveSearchSchemaFnInput<TSearchValidator> =
+  TSearchValidator extends (input: infer TSearchSchemaInput) => any
+    ? TSearchSchemaInput extends SearchSchemaInput
+      ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
+      : ResolveSearchSchemaFn<TSearchValidator>
+    : AnySearchSchema
+
+export type ResolveSearchSchemaInput<TSearchValidator> =
+  TSearchValidator extends AnyStandardSchemaValidator
+    ? NonNullable<TSearchValidator['~standard']['types']>['input']
+    : TSearchValidator extends AnySearchValidatorAdapter
+      ? TSearchValidator['types']['input']
+      : TSearchValidator extends AnySearchValidatorObj
+        ? ResolveSearchSchemaFnInput<TSearchValidator['parse']>
+        : ResolveSearchSchemaFnInput<TSearchValidator>
+
+export type ResolveSearchSchemaFn<TSearchValidator> = TSearchValidator extends (
+  ...args: any
+) => infer TSearchSchema
+  ? TSearchSchema
+  : AnySearchSchema
+
+export type ResolveSearchSchema<TSearchValidator> =
+  unknown extends TSearchValidator
+    ? TSearchValidator
+    : TSearchValidator extends AnyStandardSchemaValidator
+      ? NonNullable<TSearchValidator['~standard']['types']>['output']
+      : TSearchValidator extends AnySearchValidatorAdapter
+        ? TSearchValidator['types']['output']
+        : TSearchValidator extends AnySearchValidatorObj
+          ? ResolveSearchSchemaFn<TSearchValidator['parse']>
+          : ResolveSearchSchemaFn<TSearchValidator>
 
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
@@ -747,60 +854,42 @@ export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
     this.id = id as any
   }
 
-  useMatch = <
-    TRouteTree extends AnyRoute = TRouter['routeTree'],
-    TRouteMatch = MakeRouteMatch<TRouteTree, TId>,
-    TSelected = TRouteMatch,
-  >(opts?: {
-    select?: (match: TRouteMatch) => TSelected
-  }): TSelected => {
-    return useMatch({ select: opts?.select, from: this.id })
-  }
-
-  useRouteContext = <
-    TSelected = Expand<RouteTypesById<TRouter, TId>['allContext']>,
-  >(opts?: {
-    select?: (
-      s: Expand<RouteTypesById<TRouter, TId>['allContext']>,
-    ) => TSelected
-  }): TSelected => {
+  useMatch: UseMatchRoute<TId> = (opts) => {
     return useMatch({
+      select: opts?.select,
       from: this.id,
-      select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    })
+      structuralSharing: opts?.structuralSharing,
+    } as any) as any
   }
 
-  useSearch = <
-    TSelected = Expand<RouteTypesById<TRouter, TId>['fullSearchSchema']>,
-  >(opts?: {
-    select?: (
-      s: Expand<RouteTypesById<TRouter, TId>['fullSearchSchema']>,
-    ) => TSelected
-  }): TSelected => {
-    return useSearch({ ...opts, from: this.id })
+  useRouteContext: UseRouteContextRoute<TId> = (opts) => {
+    return useMatch({
+      from: this.id as any,
+      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
+    }) as any
   }
 
-  useParams = <
-    TSelected = Expand<RouteTypesById<TRouter, TId>['allParams']>,
-  >(opts?: {
-    select?: (s: Expand<RouteTypesById<TRouter, TId>['allParams']>) => TSelected
-  }): TSelected => {
-    return useParams({ ...opts, from: this.id })
+  useSearch: UseSearchRoute<TId> = (opts) => {
+    return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.id,
+    } as any)
   }
 
-  useLoaderDeps = <
-    TSelected = RouteTypesById<TRouter, TId>['loaderDeps'],
-  >(opts?: {
-    select?: (s: RouteTypesById<TRouter, TId>['loaderDeps']) => TSelected
-  }): TSelected => {
+  useParams: UseParamsRoute<TId> = (opts) => {
+    return useParams({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.id,
+    } as any)
+  }
+
+  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.id, strict: false } as any)
   }
 
-  useLoaderData = <
-    TSelected = RouteTypesById<TRouter, TId>['loaderData'],
-  >(opts?: {
-    select?: (s: RouteTypesById<TRouter, TId>['loaderData']) => TSelected
-  }): TSelected => {
+  useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
   }
 
@@ -1160,74 +1249,43 @@ export class Route<
     return this
   }
 
-  useMatch = <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TRouteTree extends AnyRoute = TRouter['routeTree'],
-    TRouteMatch = MakeRouteMatch<TRouteTree, TId>,
-    TSelected = TRouteMatch,
-  >(opts?: {
-    select?: (match: TRouteMatch) => TSelected
-  }): TSelected => {
-    return useMatch({ ...opts, from: this.id })
+  useMatch: UseMatchRoute<TId> = (opts) => {
+    return useMatch({
+      select: opts?.select,
+      from: this.id,
+      structuralSharing: opts?.structuralSharing,
+    } as any) as any
   }
 
-  useRouteContext = <
-    TSelected = Expand<
-      ResolveAllContext<
-        TParentRoute,
-        TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn
-      >
-    >,
-  >(opts?: {
-    select?: (
-      search: Expand<
-        ResolveAllContext<
-          TParentRoute,
-          TRouterContext,
-          TRouteContextFn,
-          TBeforeLoadFn
-        >
-      >,
-    ) => TSelected
-  }): TSelected => {
+  useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
     return useMatch({
       ...opts,
       from: this.id,
-      select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    })
+      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
+    }) as any
   }
 
-  useSearch = <
-    TSelected = Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>,
-  >(opts?: {
-    select?: (
-      search: Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>,
-    ) => TSelected
-  }): TSelected => {
-    return useSearch({ ...opts, from: this.id })
+  useSearch: UseSearchRoute<TId> = (opts) => {
+    return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.id,
+    } as any)
   }
 
-  useParams = <
-    TSelected = Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>,
-  >(opts?: {
-    select?: (
-      search: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>,
-    ) => TSelected
-  }): TSelected => {
-    return useParams({ ...opts, from: this.id })
+  useParams: UseParamsRoute<TId> = (opts) => {
+    return useParams({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.id,
+    } as any)
   }
 
-  useLoaderDeps = <TSelected = TLoaderDeps>(opts?: {
-    select?: (s: TLoaderDeps) => TSelected
-  }): TSelected => {
+  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.id } as any)
   }
 
-  useLoaderData = <TSelected = ResolveLoaderData<TLoaderFn>>(opts?: {
-    select?: (search: ResolveLoaderData<TLoaderFn>) => TSelected
-  }): TSelected => {
+  useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
     return useLoaderData({ ...opts, from: this.id } as any)
   }
 
@@ -1545,7 +1603,7 @@ export function createRouteMask<
 >(
   opts: {
     routeTree: TRouteTree
-  } & ToMaskOptions<Router<TRouteTree, 'never'>, TFrom, TTo>,
+  } & ToMaskOptions<Router<TRouteTree, 'never', boolean>, TFrom, TTo>,
 ): RouteMask<TRouteTree> {
   return opts as any
 }

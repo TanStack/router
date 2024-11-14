@@ -204,6 +204,8 @@ interface InterpolatePathOptions {
   params: Record<string, unknown>
   leaveWildcards?: boolean
   leaveParams?: boolean
+  // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
+  decodeCharMap?: Map<string, string>
 }
 
 export function interpolatePath({
@@ -211,6 +213,7 @@ export function interpolatePath({
   params,
   leaveWildcards,
   leaveParams,
+  decodeCharMap,
 }: InterpolatePathOptions) {
   const interpolatedPathSegments = parsePathname(path)
   const encodedParams: any = {}
@@ -222,7 +225,9 @@ export function interpolatePath({
       // the splat/catch-all routes shouldn't have the '/' encoded out
       encodedParams[key] = isValueString ? encodeURI(value) : value
     } else {
-      encodedParams[key] = isValueString ? encodeURIComponent(value) : value
+      encodedParams[key] = isValueString
+        ? encodePathParam(value, decodeCharMap)
+        : value
     }
   }
 
@@ -245,6 +250,16 @@ export function interpolatePath({
       return segment.value
     }),
   )
+}
+
+function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
+  let encoded = encodeURIComponent(value)
+  if (decodeCharMap) {
+    for (const [encodedChar, char] of decodeCharMap) {
+      encoded = encoded.replaceAll(encodedChar, char)
+    }
+  }
+  return encoded
 }
 
 export function matchPathname(

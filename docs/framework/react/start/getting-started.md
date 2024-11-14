@@ -195,10 +195,13 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // app/routes/__root.tsx
-import { createRootRoute } from '@tanstack/react-router'
-import { Outlet, ScrollRestoration } from '@tanstack/react-router'
+import {
+  Outlet,
+  ScrollRestoration,
+  createRootRoute,
+} from '@tanstack/react-router'
 import { Meta, Scripts } from '@tanstack/start'
-import * as React from 'react'
+import type { ReactNode } from 'react'
 
 export const Route = createRootRoute({
   meta: () => [
@@ -224,7 +227,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html>
       <head>

@@ -10,12 +10,12 @@
     "prisma-generate": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "5.21.1",
-    "@tanstack/react-router": "^1.77.9",
-    "@tanstack/router-devtools": "^1.77.9",
-    "@tanstack/start": "^1.77.9",
+    "@prisma/client": "5.22.0",
+    "@tanstack/react-router": "^1.81.5",
+    "@tanstack/router-devtools": "^1.81.5",
+    "@tanstack/start": "^1.81.5",
     "dotenv": "^16.4.5",
-    "prisma": "^5.21.1",
+    "prisma": "^5.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
@@ -29,9 +29,9 @@
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47",
+    "postcss": "^8.4.49",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.2",
-    "vite-tsconfig-paths": "^5.0.1"
+    "vite-tsconfig-paths": "^5.1.2"
   }
 }

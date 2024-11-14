@@ -1,4 +1,6 @@
 import * as React from 'react'
+import type { RouteIds } from './routeInfo'
+import type { AnyRouter } from './router'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
@@ -133,9 +135,15 @@ export type MergeAll<TUnion> =
   | MergeAllObjects<TUnion>
   | ExtractPrimitives<TUnion>
 
-export type Constrain<T, TConstaint, TDefault = TConstaint> =
-  | (T extends TConstaint ? T : never)
+export type Constrain<T, TConstraint, TDefault = TConstraint> =
+  | (T extends TConstraint ? T : never)
   | TDefault
+
+export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
+  ? unknown extends T
+    ? never
+    : 'Function is not serializable'
+  : { [K in keyof T]: ValidateJSON<T[K]> }
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
@@ -338,6 +346,7 @@ export type StringLiteral<T> = T extends string
   : never
 
 export type StrictOrFrom<
+  TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean = true,
 > = TStrict extends false
@@ -346,9 +355,13 @@ export type StrictOrFrom<
       strict: TStrict
     }
   : {
-      from: StringLiteral<TFrom> | TFrom
+      from: StringLiteral<Constrain<TFrom, RouteIds<TRouter['routeTree']>>>
       strict?: TStrict
     }
+
+export type ThrowOrOptional<T, TThrow extends boolean> = TThrow extends true
+  ? T
+  : T | undefined
 
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect

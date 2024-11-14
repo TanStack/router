@@ -38,6 +38,8 @@ import type * as vite from 'vite'
 
 import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
 
+type RouterType = 'client' | 'server' | 'ssr' | 'api'
+
 type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
 
 function getUserConfig(config?: StartUserViteConfig) {
@@ -204,6 +206,12 @@ const routersSchema = z.object({
       vite: viteSchema.optional(),
     })
     .optional(),
+  public: z
+    .object({
+      dir: z.string().optional(),
+      base: z.string().optional(),
+    })
+    .optional(),
 })
 
 const tsrConfig = configSchema.partial().extend({
@@ -218,11 +226,10 @@ const inlineConfigSchema = z.object({
   server: serverSchema.optional(),
 })
 
-export type TanStackStartDefineConfigOptions = z.infer<
-  typeof inlineConfigSchema
->
+export type TanStackStartInputConfig = z.input<typeof inlineConfigSchema>
+export type TanStackStartOutputConfig = z.infer<typeof inlineConfigSchema>
 
-function setTsrDefaults(config: TanStackStartDefineConfigOptions['tsr']) {
+function setTsrDefaults(config: TanStackStartOutputConfig['tsr']) {
   // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
   const appDirectory = config?.appDirectory ?? './app'
   return {
@@ -232,9 +239,6 @@ function setTsrDefaults(config: TanStackStartDefineConfigOptions['tsr']) {
       config?.routesDirectory ?? path.join(appDirectory, 'routes'),
     generatedRouteTree:
       config?.generatedRouteTree ?? path.join(appDirectory, 'routeTree.gen.ts'),
-    experimental: {
-      ...config?.experimental,
-    },
   }
 }
 
@@ -268,9 +272,7 @@ function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
   return ssrOptions
 }
 
-export function defineConfig(
-  inlineConfig: TanStackStartDefineConfigOptions = {},
-) {
+export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
   const { preset: configDeploymentPreset, ...serverOptions } =
@@ -296,6 +298,9 @@ export function defineConfig(
 
   const apiEntryExists = existsSync(apiEntry)
 
+  const publicDir = opts.routers?.public?.dir || './public'
+  const publicBase = opts.routers?.public?.base || '/'
+
   return createApp({
     server: {
       ...serverOptions,
@@ -309,8 +314,8 @@ export function defineConfig(
       {
         name: 'public',
         type: 'static',
-        dir: './public',
-        base: '/',
+        dir: publicDir,
+        base: publicBase,
       },
       withPlugins([
         config('start-vite-test', {
@@ -571,6 +576,43 @@ function withPlugins(prePlugins: Array<any>, postPlugins?: Array<any>) {
       ],
     }
   }
+}
+
+function withStartPlugins(opts: TanStackStartOutputConfig, router: RouterType) {
+  const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
+  const { userConfig } = getUserConfig(opts.vite)
+  const { userConfig: routerUserConfig } = getUserConfig(
+    opts.routers?.[router]?.vite,
+  )
+
+  return withPlugins(
+    [
+      config('start-vite', {
+        ...userConfig,
+        ...routerUserConfig,
+        ssr: mergeSsrOptions([
+          userConfig.ssr,
+          routerUserConfig.ssr,
+          { noExternal: ['@tanstack/start', 'tsr:routes-manifest'] },
+        ]),
+        optimizeDeps: {
+          entries: [],
+          ...(userConfig.optimizeDeps || {}),
+          ...(routerUserConfig.optimizeDeps || {}),
+          // include: ['@tanstack/start/server-runtime'],
+        },
+      }),
+      TanStackRouterVite({
+        ...tsrConfig,
+        autoCodeSplitting: true,
+        experimental: {
+          ...tsrConfig.experimental,
+        },
+      }),
+      TanStackStartVite(),
+    ],
+    [TanStackStartViteDeadCodeElimination()],
+  )
 }
 
 // function resolveRelativePath(p: string) {

@@ -31,19 +31,19 @@
     "gpt-generate": "node gpt/generate.js"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.16.4",
-    "@eslint-react/eslint-plugin": "^1.15.2",
+    "@arethetypeswrong/cli": "^0.17.0",
+    "@eslint-react/eslint-plugin": "^1.16.1",
     "@playwright/test": "^1.48.2",
-    "@tanstack/config": "^0.13.4",
+    "@tanstack/config": "^0.14.0",
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
-    "eslint": "^9.13.0",
+    "eslint": "^9.14.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
     "eslint-plugin-unused-imports": "^4.1.4",
     "glob": "^11.0.0",
     "jsdom": "^25.0.1",
-    "nx": "^19.8.8",
+    "nx": "^19.8.10",
     "prettier": "^3.3.3",
     "publint": "^0.2.12",
     "react": "^18.3.1",
@@ -56,7 +56,7 @@
     "typescript53": "npm:typescript@5.3",
     "typescript54": "npm:typescript@5.4",
     "typescript55": "npm:typescript@5.5",
-    "vite": "^5.4.10",
+    "vite": "^5.4.11",
     "vitest": "^2.1.4"
   },
   "resolutions": {

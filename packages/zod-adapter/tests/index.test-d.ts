@@ -48,8 +48,12 @@ test('when creating a route with zod validation', () => {
     .parameter(0)
     .toEqualTypeOf<{ page: number } | { page: number; indexPage: number }>()
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>
 })
 
 test('when creating a route with zod validation where input is output', () => {
@@ -93,8 +97,12 @@ test('when creating a route with zod validation where input is output', () => {
     .parameter(0)
     .toEqualTypeOf<{ page: number } | { page: number; indexPage: number }>()
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>
 })
 
 test('when creating a route with zod validation where output is input', () => {
@@ -139,8 +147,12 @@ test('when creating a route with zod validation where output is input', () => {
     .parameter(0)
     .toEqualTypeOf<{ page?: number } | { page?: number; indexPage?: number }>()
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page?: number }>()
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page?: number }>
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page?: number
+  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page?: number
+  }>
 })
 
 test('when using zod schema without adapter', () => {
@@ -179,8 +191,12 @@ test('when using zod schema without adapter', () => {
     .parameter(0)
     .toEqualTypeOf<{ page: number } | { page: number; indexPage: number }>()
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>
 })
 
 test('when using zod schema with function', () => {
@@ -225,6 +241,10 @@ test('when using zod schema with function', () => {
     .parameter(0)
     .toEqualTypeOf<{ page: number } | { page: number; indexPage: number }>()
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>
 })
