@@ -305,6 +305,28 @@ const applyMiddleware = (
   })
 }
 
+function execValidator(validator: AnyValidator, input: unknown): unknown {
+  if (validator == null) return {}
+
+  if ('~validate' in validator) {
+    const result = validator['~validate']({ value: input })
+
+    if ('value' in result) return result.value
+
+    throw new Error(JSON.stringify(result.issues, undefined, 2))
+  }
+
+  if ('parse' in validator) {
+    return validator.parse(input)
+  }
+
+  if (typeof validator === 'function') {
+    return validator(input)
+  }
+
+  throw new Error('Invalid validator type!')
+}
+
 async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
@@ -326,7 +348,7 @@ async function executeMiddleware(
       (env === 'client' ? nextMiddleware.options.validateClient : true)
     ) {
       // Execute the middleware's input function
-      ctx.data = await nextMiddleware.options.validator(ctx.data)
+      ctx.data = await execValidator(nextMiddleware.options.validator, ctx.data)
     }
 
     const middlewareFn =
