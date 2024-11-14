@@ -140,6 +140,7 @@
     "@vinxi/react-server-dom": "^0.0.3",
     "@vinxi/server-components": "^0.4.3",
     "@vinxi/server-functions": "^0.4.3",
+    "@vitejs/plugin-react": "^4.3.3",
     "import-meta-resolve": "^4.1.0",
     "isbot": "^5.1.17",
     "jsesc": "^3.0.2",
@@ -150,7 +151,6 @@
   "devDependencies": {
     "@types/jsesc": "^3.0.3",
     "@testing-library/react": "^16.0.1",
-    "@vitejs/plugin-react": "^4.3.3",
     "nitropack": "^2.10.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
