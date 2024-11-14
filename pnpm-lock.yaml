@@ -3267,6 +3267,9 @@ importers:
       '@vinxi/server-functions':
         specifier: ^0.4.3
         version: 0.4.3(vinxi@0.4.3(@types/node@22.9.0)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.6.3))
+      '@vitejs/plugin-react':
+        specifier: ^4.3.3
+        version: 4.3.3(vite@5.4.11(@types/node@22.9.0)(terser@5.36.0))
       import-meta-resolve:
         specifier: ^4.1.0
         version: 4.1.0
@@ -3292,9 +3295,6 @@ importers:
       '@types/jsesc':
         specifier: ^3.0.3
         version: 3.0.3
-      '@vitejs/plugin-react':
-        specifier: ^4.3.3
-        version: 4.3.3(vite@5.4.11(@types/node@22.9.0)(terser@5.36.0))
       nitropack:
         specifier: ^2.10.4
         version: 2.10.4(typescript@5.6.3)
