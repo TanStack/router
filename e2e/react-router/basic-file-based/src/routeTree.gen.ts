@@ -17,6 +17,7 @@ import { Route as PostsImport } from './routes/posts'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as StructuralSharingEnabledImport } from './routes/structural-sharing.$enabled'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as groupLazyinsideImport } from './routes/(group)/lazyinside'
@@ -61,6 +62,12 @@ const PostsIndexRoute = PostsIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
+} as any)
+
+const StructuralSharingEnabledRoute = StructuralSharingEnabledImport.update({
+  id: '/structural-sharing/$enabled',
+  path: '/structural-sharing/$enabled',
+  getParentRoute: () => rootRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
@@ -204,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdImport
       parentRoute: typeof PostsImport
     }
+    '/structural-sharing/$enabled': {
+      id: '/structural-sharing/$enabled'
+      path: '/structural-sharing/$enabled'
+      fullPath: '/structural-sharing/$enabled'
+      preLoaderRoute: typeof StructuralSharingEnabledImport
+      parentRoute: typeof rootRoute
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
@@ -324,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts/': typeof PostsIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
@@ -339,6 +354,7 @@ export interface FileRoutesByTo {
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts': typeof PostsIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
@@ -359,6 +375,7 @@ export interface FileRoutesById {
   '/(group)/lazyinside': typeof groupLazyinsideRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts/': typeof PostsIndexRoute
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
@@ -377,6 +394,7 @@ export interface FileRouteTypes {
     | '/inside'
     | '/lazyinside'
     | '/posts/$postId'
+    | '/structural-sharing/$enabled'
     | '/posts/'
     | '/insidelayout'
     | '/subfolder/inside'
@@ -391,6 +409,7 @@ export interface FileRouteTypes {
     | '/inside'
     | '/lazyinside'
     | '/posts/$postId'
+    | '/structural-sharing/$enabled'
     | '/posts'
     | '/insidelayout'
     | '/subfolder/inside'
@@ -409,6 +428,7 @@ export interface FileRouteTypes {
     | '/(group)/lazyinside'
     | '/_layout/_layout-2'
     | '/posts/$postId'
+    | '/structural-sharing/$enabled'
     | '/posts/'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
@@ -424,6 +444,7 @@ export interface RootRouteChildren {
   PostsRoute: typeof PostsRouteWithChildren
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
+  StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
 }
 
@@ -433,6 +454,7 @@ const rootRouteChildren: RootRouteChildren = {
   PostsRoute: PostsRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
+  StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
 }
 
@@ -451,6 +473,7 @@ export const routeTree = rootRoute
         "/posts",
         "/(another-group)/onlyrouteinside",
         "/(group)",
+        "/structural-sharing/$enabled",
         "/posts_/$postId/edit"
       ]
     },
@@ -508,6 +531,9 @@ export const routeTree = rootRoute
     "/posts/$postId": {
       "filePath": "posts.$postId.tsx",
       "parent": "/posts"
+    },
+    "/structural-sharing/$enabled": {
+      "filePath": "structural-sharing.$enabled.tsx"
     },
     "/posts/": {
       "filePath": "posts.index.tsx",

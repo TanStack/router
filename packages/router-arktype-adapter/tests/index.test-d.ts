@@ -48,8 +48,12 @@ test('when creating a route with arktype validation', () => {
     .parameter(0)
     .toEqualTypeOf<{ page: number } | { page: number; indexPage: number }>()
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>
 })
 
 test('when using arktype schema with function', () => {
@@ -90,6 +94,10 @@ test('when using arktype schema with function', () => {
     .parameter(0)
     .toEqualTypeOf<{ page: number } | { page: number; indexPage: number }>()
 
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>()
-  expectTypeOf(rootRoute.useSearch()).toEqualTypeOf<{ page: number }>
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+  }>
 })

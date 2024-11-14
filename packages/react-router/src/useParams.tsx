@@ -1,38 +1,87 @@
 import { useMatch } from './useMatch'
-import type { AnyRoute } from './route'
-import type { AllParams, RouteById, RouteIds } from './routeInfo'
-import type { RegisteredRouter } from './router'
-import type { Constrain, StrictOrFrom } from './utils'
+import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
+import type { AllParams, RouteById } from './routeInfo'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type { Expand, StrictOrFrom } from './utils'
 
-export type UseParamsOptions<
+export interface UseParamsBaseOptions<
+  TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
-  TParams,
   TSelected,
-> = StrictOrFrom<TFrom, TStrict> & {
-  select?: (params: TParams) => TSelected
+  TStructuralSharing,
+> {
+  select?: (
+    params: ResolveParams<TRouter, TFrom, TStrict>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
+export type UseParamsOptions<
+  TRouter extends AnyRouter,
+  TFrom extends string | undefined,
+  TStrict extends boolean,
+  TSelected,
+  TStructuralSharing,
+> = StrictOrFrom<TRouter, TFrom, TStrict> &
+  UseParamsBaseOptions<TRouter, TFrom, TStrict, TSelected, TStructuralSharing> &
+  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+
+export type ResolveParams<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean,
+> = TStrict extends false
+  ? AllParams<TRouter['routeTree']>
+  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['allParams']>
+
+export type UseParamsResult<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean,
+  TSelected,
+> = unknown extends TSelected
+  ? ResolveParams<TRouter, TFrom, TStrict>
+  : TSelected
+
+export type UseParamsRoute<out TFrom> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseParamsBaseOptions<
+    TRouter,
+    TFrom,
+    true,
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => UseParamsResult<TRouter, TFrom, true, TSelected>
+
 export function useParams<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
-  TParams = TStrict extends false
-    ? AllParams<TRouteTree>
-    : RouteById<TRouteTree, TFrom>['types']['allParams'],
-  TSelected = TParams,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
   opts: UseParamsOptions<
-    Constrain<TFrom, RouteIds<TRouteTree>>,
+    TRouter,
+    TFrom,
     TStrict,
-    TParams,
-    TSelected
+    TSelected,
+    TStructuralSharing
   >,
-): TSelected {
+): UseParamsResult<TRouter, TFrom, TStrict, TSelected> {
   return useMatch({
-    ...opts,
-    select: (match) => {
-      return opts.select ? opts.select(match.params as TParams) : match.params
+    from: opts.from!,
+    strict: opts.strict,
+    structuralSharing: opts.structuralSharing,
+    select: (match: any) => {
+      return opts.select ? opts.select(match.params) : match.params
     },
-  }) as TSelected
+  } as any) as UseParamsResult<TRouter, TFrom, TStrict, TSelected>
 }
