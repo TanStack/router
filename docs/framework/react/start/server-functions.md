@@ -117,7 +117,7 @@ export const greet = createServerFn({ method: 'GET' })
       throw new Error('Person must be an object')
     }
 
-    if (typeof person.name !== 'string') {
+    if ('name' in person && typeof person.name !== 'string') {
       throw new Error('Person.name must be a string')
     }
 
