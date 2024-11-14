@@ -25,6 +25,7 @@ import type {
   RouteIds,
   RoutePaths,
 } from './routeInfo'
+import { useDebugger } from './debugger'
 import type {
   Constrain,
   ControlledPromise,
@@ -206,6 +207,7 @@ export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 
 export function Matches() {
   const router = useRouter()
+  useDebugger({  })
 
   const pendingElement = router.options.defaultPendingComponent ? (
     <router.options.defaultPendingComponent />
@@ -241,6 +243,7 @@ function MatchesInner() {
   const resetKey = useRouterState({
     select: (s) => s.loadedAt,
   })
+  useDebugger({ matchId, resetKey })
 
   return (
     <matchContext.Provider value={matchId}>

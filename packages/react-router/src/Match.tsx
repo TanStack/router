@@ -15,6 +15,7 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
 import type { AnyRoute } from './route'
+import { useDebugger } from './debugger'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -40,6 +41,7 @@ export const Match = React.memo(function MatchImpl({
 
   const routeErrorComponent =
     route.options.errorComponent ?? router.options.defaultErrorComponent
+  useDebugger({ route, PendingComponent })
 
   const routeOnCatch = route.options.onCatch ?? router.options.defaultOnCatch
 
