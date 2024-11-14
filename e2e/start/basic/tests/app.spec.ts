@@ -19,14 +19,14 @@ test('Navigating nested layouts', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
-  await expect(page.locator('#app')).toContainText("I'm a layout")
-  await expect(page.locator('#app')).toContainText("I'm a nested layout")
+  await expect(page.locator('body')).toContainText("I'm a layout")
+  await expect(page.locator('body')).toContainText("I'm a nested layout")
 
   await page.getByRole('link', { name: 'Layout A' }).click()
-  await expect(page.locator('#app')).toContainText("I'm layout A!")
+  await expect(page.locator('body')).toContainText("I'm layout A!")
 
   await page.getByRole('link', { name: 'Layout B' }).click()
-  await expect(page.locator('#app')).toContainText("I'm layout B!")
+  await expect(page.locator('body')).toContainText("I'm layout B!")
 })
 
 test('Navigating to a not-found route', async ({ page }) => {
@@ -92,7 +92,10 @@ test('invoking a server function with custom response status code', async ({
       expect(response.status()).toBe(225)
       expect(response.statusText()).toBe('hello')
       expect(response.headers()['content-type']).toBe('application/json')
-      expect(await response.json()).toEqual({ hello: 'world' })
+      expect(await response.json()).toEqual({
+        result: { hello: 'world' },
+        context: {},
+      })
       resolve()
     })
   })

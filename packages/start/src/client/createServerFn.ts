@@ -146,7 +146,7 @@ export function createServerFn<
   },
   __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
 ): ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator> {
-  const resolvedOptions = (__opts || options) as ServerFnBaseOptions<
+  const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
     TMethod,
     TResponse,
     TMiddlewares,
