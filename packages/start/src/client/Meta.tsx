@@ -123,20 +123,23 @@ export const useMetaElements = () => {
 __TSR__ = {
   matches: [],
   streamedValues: {},
-  initMatch: (index) => {
-    Object.entries(__TSR__.matches[index].extracted).forEach(([id, ex]) => {
-      if (ex.type === 'stream') {
-        let controller;
-        ex.value = new ReadableStream({
-          start(c) { controller = c; }
-        })
-        ex.value.controller = controller
-      } else if (ex.type === 'promise') {
-        let r, j
-        ex.value = new Promise((r_, j_) => { r = r_, j = j_ })
-        ex.resolve = r; ex.reject = j
-      }
-    })
+  initMatch: (match) => {
+    if (!__TSR__.matches[match.index]) {
+      __TSR__.matches[match.index] = match
+      Object.entries(match.extracted).forEach(([id, ex]) => {
+        if (ex.type === 'stream') {
+          let controller;
+          ex.value = new ReadableStream({
+            start(c) { controller = c; }
+          })
+          ex.value.controller = controller
+        } else if (ex.type === 'promise') {
+          let r, j
+          ex.value = new Promise((r_, j_) => { r = r_, j = j_ })
+          ex.resolve = r; ex.reject = j
+        }
+      })
+    }
   },
   cleanScripts: () => {
     document.querySelectorAll('.tsr-once').forEach((el) => {
