@@ -235,14 +235,7 @@ export type ClientResultWithContext<TServerContext, TClientContext> = {
   headers: HeadersInit
 }
 
-export type AnyMiddleware = MiddlewareTypes<
-  any,
-  any,
-  AnyValidator,
-  any,
-  any,
-  any
->
+export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any, any>
 
 export interface MiddlewareTypes<
   TId,
