@@ -81,9 +81,11 @@ import { createServerFn } from '@tanstack/start'
 
 export const greet = createServerFn({
   method: 'GET',
-}).handler(async (ctx) => {
-  return `Hello, ${ctx.data}!`
 })
+  .validator((data: string) => data)
+  .handler(async (ctx) => {
+    return `Hello, ${ctx.data}!`
+  })
 
 greet({
   data: 'John',
@@ -117,7 +119,7 @@ export const greet = createServerFn({ method: 'GET' })
       throw new Error('Person must be an object')
     }
 
-    if (typeof person.name !== 'string') {
+    if ('name' in person && typeof person.name !== 'string') {
       throw new Error('Person.name must be a string')
     }
 
@@ -142,7 +144,6 @@ const Person = z.object({
 })
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator(zodValidator)
   .validator((person: unknown) => {
     return Person.parse(person)
   })
@@ -174,7 +175,7 @@ export const greet = createServerFn({ method: 'GET' })
       throw new Error('Person must be an object')
     }
 
-    if (typeof person.name !== 'string') {
+    if ('name' in person && typeof person.name !== 'string') {
       throw new Error('Person.name must be a string')
     }
 
@@ -257,11 +258,11 @@ type Person = {
   age: number
 }
 
-export const greet = createServerFn({ method: 'GET' }).handler(
-  async ({ data }) => {
+export const greet = createServerFn({ method: 'GET' })
+  .validator((data) => data)
+  .handler(async ({ data }) => {
     return `Hello, ${data.name}! You are ${data.age} years old.`
-  },
-)
+  })
 
 greet({
   data: {
