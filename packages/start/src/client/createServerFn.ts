@@ -153,6 +153,10 @@ export function createServerFn<
     TValidator
   >
 
+  if (typeof resolvedOptions.method === 'undefined') {
+    resolvedOptions.method = 'GET' as TMethod
+  }
+
   return {
     options: resolvedOptions as any,
     middleware: (middleware) => {

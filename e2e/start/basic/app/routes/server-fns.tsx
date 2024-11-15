@@ -15,13 +15,13 @@ function RouteComponent() {
 }
 
 // START CONSISTENT_SERVER_FN_CALLS
-const cons_getFn1 = createServerFn({ method: 'GET' })
+const cons_getFn1 = createServerFn()
   .validator((d: { username: string }) => d)
   .handler(async ({ data }) => {
     return { payload: data }
   })
 
-const cons_serverGetFn1 = createServerFn({ method: 'GET' })
+const cons_serverGetFn1 = createServerFn()
   .validator((d: { username: string }) => d)
   .handler(({ data }) => {
     return cons_getFn1({ data })
