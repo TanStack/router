@@ -101,3 +101,33 @@ test('invoking a server function with custom response status code', async ({
   })
   await requestPromise
 })
+
+test('Consistent server function returns both on client and server for GET and POST calls', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+  const expected =
+    (await page
+      .getByTestId('expected-consistent-server-fns-result')
+      .textContent()) || ''
+  expect(expected).not.toBe('')
+
+  await page.getByTestId('test-consistent-server-fn-calls-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  // GET calls
+  await expect(page.getByTestId('cons_serverGetFn1-response')).toContainText(
+    expected,
+  )
+  await expect(page.getByTestId('cons_getFn1-response')).toContainText(expected)
+
+  // POST calls
+  await expect(page.getByTestId('cons_serverPostFn1-response')).toContainText(
+    expected,
+  )
+  await expect(page.getByTestId('cons_postFn1-response')).toContainText(
+    expected,
+  )
+})

@@ -55,7 +55,10 @@ export async function fetcher(
             body:
               type === 'formData'
                 ? first.data
-                : (defaultTransformer.stringify(first.data ?? null) as any),
+                : (defaultTransformer.stringify({
+                    data: first.data ?? null,
+                    context: first.context,
+                  }) as any),
           }
         : {}),
     })
