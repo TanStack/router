@@ -179,12 +179,7 @@ import { createRouter } from './router'
 
 const router = createRouter()
 
-const root = document.getElementById('root')
-if (!root) {
-  throw new Error('Root element not found')
-}
-
-hydrateRoot(root, <StartClient router={router} />)
+hydrateRoot(document, <StartClient router={router} />)
 ```
 
 This enables us to kick off client-side routing once the user's initial server request has fulfilled.
@@ -200,7 +195,7 @@ import {
   ScrollRestoration,
   createRootRoute,
 } from '@tanstack/react-router'
-import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
+import { Meta, Scripts } from '@tanstack/start'
 import type { ReactNode } from 'react'
 
 export const Route = createRootRoute({
@@ -229,16 +224,16 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <Html>
-      <Head>
+    <html>
+      <head>
         <Meta />
-      </Head>
-      <Body>
+      </head>
+      <body>
         {children}
         <ScrollRestoration />
         <Scripts />
-      </Body>
-    </Html>
+      </body>
+    </html>
   )
 }
 ```
@@ -261,14 +256,18 @@ async function readCount() {
   )
 }
 
-const getCount = createServerFn('GET', () => {
+const getCount = createServerFn({
+  method: 'GET',
+}).handler(() => {
   return readCount()
 })
 
-const updateCount = createServerFn('POST', async (addBy: number) => {
-  const count = await readCount()
-  await fs.promises.writeFile(filePath, `${count + addBy}`)
-})
+const updateCount = createServerFn()
+  .validator((d: number) => d)
+  .handler(async ({ data }) => {
+    const count = await readCount()
+    await fs.promises.writeFile(filePath, `${count + data}`)
+  })
 
 export const Route = createFileRoute('/')({
   component: Home,

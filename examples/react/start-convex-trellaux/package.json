@@ -13,10 +13,10 @@
   "dependencies": {
     "@tanstack/react-query": "^5.59.20",
     "@tanstack/react-query-devtools": "^5.59.20",
-    "@tanstack/react-router": "^1.81.5",
-    "@tanstack/react-router-with-query": "^1.81.5",
-    "@tanstack/router-devtools": "^1.81.5",
-    "@tanstack/start": "^1.81.5",
+    "@tanstack/react-router": "^1.81.9",
+    "@tanstack/react-router-with-query": "^1.81.9",
+    "@tanstack/router-devtools": "^1.81.9",
+    "@tanstack/start": "^1.81.9",
     "@convex-dev/react-query": "0.0.0-alpha.8",
     "concurrently": "^8.2.2",
     "convex": "^1.17.0",
@@ -34,7 +34,6 @@
   "devDependencies": {
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
-    "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.14",

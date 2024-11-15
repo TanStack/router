@@ -15,7 +15,6 @@ import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
-  AnySearchValidator,
   FileBaseRouteOptions,
   ResolveParams,
   RootRoute,
@@ -26,6 +25,7 @@ import type {
 } from './route'
 import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
+import type { AnyValidator } from './validators'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
@@ -190,7 +190,7 @@ export type LazyRouteOptions = Pick<
     string,
     string,
     AnyPathParams,
-    AnySearchValidator,
+    AnyValidator,
     {},
     AnyContext,
     AnyContext,

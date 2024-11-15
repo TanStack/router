@@ -1,9 +1,9 @@
 import { fetcher } from './fetcher'
 import { getBaseUrl } from './getBaseUrl'
-import type { FetchFn } from '../client/createServerFn'
+import type { ServerFn } from '../client/createServerFn'
 
-export function createServerReference<TPayload, TResponse>(
-  _fn: FetchFn<TPayload, TResponse>,
+export function createServerReference(
+  _fn: ServerFn<any, any, any, any>,
   id: string,
   name: string,
 ) {
@@ -14,6 +14,8 @@ export function createServerReference<TPayload, TResponse>(
 
   return Object.assign(proxyFn, {
     url: base,
+    filename: id,
+    functionId: name,
   })
 }
 

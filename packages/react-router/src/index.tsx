@@ -150,8 +150,6 @@ export type {
   AnyPathParams,
   ResolveParams,
   SearchSchemaInput,
-  SearchValidatorAdapter,
-  AnySearchSchema,
   AnyContext,
   RouteContext,
   PreloadableObj,
@@ -202,20 +200,9 @@ export type {
   RouteContextOptions,
   BeforeLoadFn,
   BeforeLoadContextOptions,
-  AnySearchValidator,
-  DefaultSearchValidator,
   ContextOptions,
-  SearchValidatorObj,
-  AnySearchValidatorObj,
-  AnySearchValidatorAdapter,
-  AnySearchValidatorFn,
-  SearchValidatorFn,
-  SearchValidator,
   InferAllParams,
   InferAllContext,
-  ResolveSearchSchemaFnInput,
-  ResolveSearchSchemaInput,
-  ResolveSearchSchema,
   LooseReturnType,
   LooseAsyncReturnType,
   ContextReturnType,
@@ -226,7 +213,6 @@ export type {
   ResolveLoaderData,
   ResolveAllParamsFromParent,
   ResolveRouteContext,
-  ResolveSearchSchemaFn,
 } from './route'
 
 export type {
@@ -351,6 +337,23 @@ export type { NotFoundError } from './not-found'
 export type { Manifest, RouterManagedTag } from './manifest'
 
 export { createControlledPromise } from './utils'
-export type { ControlledPromise } from './utils'
+export type { ControlledPromise, Constrain, Expand, MergeAll } from './utils'
+
+export type {
+  ResolveValidatorInput,
+  ResolveValidatorOutput,
+  AnyValidator,
+  DefaultValidator,
+  ValidatorFn,
+  AnySchema,
+  AnyValidatorAdapter,
+  AnyValidatorFn,
+  AnyValidatorObj,
+  ResolveValidatorInputFn,
+  ResolveValidatorOutputFn,
+  Validator,
+  ValidatorAdapter,
+  ValidatorObj,
+} from './validators'
 
 export { retainSearchParams, stripSearchParams } from './searchMiddleware'

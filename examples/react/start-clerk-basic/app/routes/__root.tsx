@@ -13,22 +13,16 @@ import {
   UserButton,
 } from '@clerk/tanstack-start'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import {
-  Body,
-  Head,
-  Html,
-  Meta,
-  Scripts,
-  createServerFn,
-} from '@tanstack/start'
+import { Meta, Scripts, createServerFn } from '@tanstack/start'
 import * as React from 'react'
 import { getAuth } from '@clerk/tanstack-start/server'
+import { getWebRequest } from 'vinxi/http'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
-const fetchClerkAuth = createServerFn('GET', async (_, ctx) => {
-  const user = await getAuth(ctx.request)
+const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
+  const user = await getAuth(getWebRequest())
 
   return {
     user,
@@ -97,11 +91,11 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <Html>
-      <Head>
+    <html>
+      <head>
         <Meta />
-      </Head>
-      <Body>
+      </head>
+      <body>
         <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -134,7 +128,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ScrollRestoration />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </Body>
-    </Html>
+      </body>
+    </html>
   )
 }

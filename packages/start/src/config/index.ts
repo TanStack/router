@@ -562,9 +562,15 @@ function withStartPlugins(opts: TanStackStartOutputConfig, router: RouterType) {
           ...tsrConfig.experimental,
         },
       }),
-      TanStackStartVite(),
+      TanStackStartVite({
+        env: router === 'client' ? 'client' : 'server',
+      }),
     ],
-    [TanStackStartViteDeadCodeElimination()],
+    [
+      TanStackStartViteDeadCodeElimination({
+        env: router === 'client' ? 'client' : 'server',
+      }),
+    ],
   )
 }
 

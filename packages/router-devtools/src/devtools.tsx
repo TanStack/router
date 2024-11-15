@@ -111,8 +111,6 @@ interface DevtoolsPanelOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-const isServer = typeof window === 'undefined'
-
 function Logo(props: React.HTMLAttributes<HTMLButtonElement>) {
   const { className, ...rest } = props
   const styles = useStyles()
@@ -253,7 +251,7 @@ function FloatingTanStackRouterDevtools({
   } = toggleButtonProps
 
   // Do not render on the server
-  if (!isMounted()) return null
+  if (!isMounted) return null
 
   const resolvedHeight = devtoolsHeight ?? 500
 
@@ -1438,12 +1436,8 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
   }
 }
 
-let _styles: ReturnType<typeof stylesFactory> | null = null
-
 function useStyles() {
   const shadowDomTarget = React.useContext(ShadowDomTargetContext)
-  if (_styles) return _styles
-  _styles = stylesFactory(shadowDomTarget)
-
+  const [_styles] = React.useState(() => stylesFactory(shadowDomTarget))
   return _styles
 }
