@@ -256,46 +256,48 @@ function DehydratePromise({ entry }: { entry: ExtractedEntry }) {
 }
 
 function InnerDehydratePromise({ entry }: { entry: ExtractedEntry }) {
+  const router = useRouter()
   if (entry.value.status === 'pending') {
     throw entry.value
   }
 
-  return (
-    <ScriptOnce
-      children={`__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].resolve(${jsesc(
-        entry.value.data,
-        {
-          isScriptContext: true,
-          wrap: true,
-          json: true,
-        },
-      )})`}
-    />
-  )
+  const code = `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].resolve(${jsesc(
+    entry.value.data,
+    {
+      isScriptContext: true,
+      wrap: true,
+      json: true,
+    },
+  )})`
+
+  router.injectScript(code)
+
+  return <></>
 }
 
 function DehydrateStream({ entry }: { entry: ExtractedEntry }) {
   invariant(entry.streamState, 'StreamState should be defined')
+  const router = useRouter()
 
   return (
     <StreamChunks
       streamState={entry.streamState}
-      children={(chunk) => (
-        <ScriptOnce
-          children={
-            chunk
-              ? `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.enqueue(new TextEncoder().encode(${jsesc(
-                  chunk.toString(),
-                  {
-                    isScriptContext: true,
-                    wrap: true,
-                    json: true,
-                  },
-                )}))`
-              : `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.close()`
-          }
-        />
-      )}
+      children={(chunk) => {
+        const code = chunk
+          ? `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.enqueue(new TextEncoder().encode(${jsesc(
+              chunk.toString(),
+              {
+                isScriptContext: true,
+                wrap: true,
+                json: true,
+              },
+            )}))`
+          : `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.close()`
+
+        router.injectScript(code)
+
+        return <></>
+      }}
     />
   )
 }
