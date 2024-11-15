@@ -1,4 +1,3 @@
-import type { Method } from './createServerFn'
 import type {
   AnyValidator,
   Constrain,
@@ -7,6 +6,7 @@ import type {
   ResolveValidatorInput,
   ResolveValidatorOutput,
 } from '@tanstack/react-router'
+import type { Method } from './createServerFn'
 
 /**
  * Turns all middleware into a union
@@ -235,14 +235,7 @@ export type ClientResultWithContext<TServerContext, TClientContext> = {
   headers: HeadersInit
 }
 
-export type AnyMiddleware = MiddlewareTypes<
-  any,
-  any,
-  AnyValidator,
-  any,
-  any,
-  any
->
+export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any, any>
 
 export interface MiddlewareTypes<
   TId,
