@@ -79,7 +79,8 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
         }
 
         // For non-form, non-get
-        return await request.json()
+        const jsonPayloadAsString = await request.text()
+        return defaultTransformer.parse(jsonPayloadAsString)
       })()
 
       const result = await action(arg)
