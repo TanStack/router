@@ -1,3 +1,4 @@
+import type { Method } from './createServerFn'
 import type {
   AnyValidator,
   Constrain,
@@ -6,7 +7,6 @@ import type {
   ResolveValidatorInput,
   ResolveValidatorOutput,
 } from '@tanstack/react-router'
-import type { Method } from './createServerFn'
 
 /**
  * Turns all middleware into a union
