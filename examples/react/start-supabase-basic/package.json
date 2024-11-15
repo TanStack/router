@@ -17,7 +17,7 @@
     "@supabase/supabase-js": "^2.46.1",
     "@tanstack/react-router": "^1.81.10",
     "@tanstack/router-devtools": "^1.81.10",
-    "@tanstack/start": "^1.81.10",
+    "@tanstack/start": "^1.81.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vinxi": "0.4.3"
