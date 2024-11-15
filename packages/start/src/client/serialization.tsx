@@ -1,6 +1,5 @@
 import * as React from 'react'
 import {
-  ScriptOnce,
   createControlledPromise,
   defer,
   isPlainArray,
@@ -162,46 +161,54 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
       : fullMatch[dataType]
   })
 
-  return (
-    <>
-      {serializedBeforeLoadData !== undefined ||
-      serializedLoaderData !== undefined ||
-      extracted?.length ? (
-        <ScriptOnce
-          children={`__TSR__.matches[${props.matchIndex}] = ${jsesc(
-            {
-              __beforeLoadContext: router.options.transformer.stringify(
-                serializedBeforeLoadData,
-              ),
-              loaderData:
-                router.options.transformer.stringify(serializedLoaderData),
-              extracted: extracted
-                ? Object.fromEntries(
-                    extracted.map((entry) => {
-                      return [entry.id, pick(entry, ['type', 'path'])]
-                    }),
-                  )
-                : {},
-            },
-            {
-              isScriptContext: true,
-              wrap: true,
-              json: true,
-            },
-          )}; __TSR__.initMatch(${props.matchIndex})`}
-        />
-      ) : null}
-      {extracted
-        ? extracted.map((d, i) => {
-            if (d.type === 'stream') {
-              return <DehydrateStream key={d.id} entry={d} />
-            }
+  if (
+    serializedBeforeLoadData !== undefined ||
+    serializedLoaderData !== undefined ||
+    extracted?.length
+  ) {
+    router.injectScript(
+      `if (!__TSR__.matches[${props.matchIndex}]) {
+      __TSR__.matches[${props.matchIndex}] = ${jsesc(
+        {
+          __beforeLoadContext: router.options.transformer.stringify(
+            serializedBeforeLoadData,
+          ),
+          loaderData:
+            router.options.transformer.stringify(serializedLoaderData),
+          extracted: extracted
+            ? Object.fromEntries(
+                extracted.map((entry) => {
+                  return [entry.id, pick(entry, ['type', 'path'])]
+                }),
+              )
+            : {},
+        },
+        {
+          isScriptContext: true,
+          wrap: true,
+          json: true,
+        },
+      )}; __TSR__.initMatch(${props.matchIndex})
+}`,
+      { logScript: false },
+    )
 
-            return <DehydratePromise key={d.id} entry={d} />
-          })
-        : null}
-    </>
-  )
+    return (
+      <>
+        {extracted
+          ? extracted.map((d, i) => {
+              if (d.type === 'stream') {
+                return <DehydrateStream key={d.id} entry={d} />
+              }
+
+              return <DehydratePromise key={d.id} entry={d} />
+            })
+          : null}
+      </>
+    )
+  }
+
+  return null
 }
 
 export function replaceBy<T>(

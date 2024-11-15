@@ -2933,7 +2933,7 @@ export class Router<
   }
 
   injectedHtml: Array<() => string> = []
-  injectHtml: (html: string) => void = (html) => {
+  injectHtml = (html: string) => {
     const cb = () => {
       this.injectedHtml = this.injectedHtml.filter((d) => d !== cb)
       return html
@@ -2941,16 +2941,17 @@ export class Router<
 
     this.injectedHtml.push(cb)
   }
-  injectScript: (script: string) => void = (script) => {
+  injectScript = (script: string, opts?: { logScript?: boolean }) => {
     this.injectHtml(
       `<script class='tsr-once'>${script}${
-        process.env.NODE_ENV === 'development'
+        process.env.NODE_ENV === 'development' && (opts?.logScript ?? true)
           ? `; console.info(\`Injected From Server:
 ${script}\`)`
           : ''
       }; __TSR__.cleanScripts()</script>`,
     )
   }
+
   streamedKeys: Set<string> = new Set()
 
   getStreamedValue = <T>(key: string): T | undefined => {
