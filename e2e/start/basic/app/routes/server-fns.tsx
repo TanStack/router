@@ -61,14 +61,14 @@ function ConsistentServerFnCalls() {
         are the same, regardless of whether the server function is called
         directly from the client or from within the server function.
       </p>
-      <p>
+      <div>
         It should return{' '}
         <code>
           <pre data-testid="expected-consistent-server-fns-result">
             {JSON.stringify({ payload: { username: 'TEST' } })}
           </pre>
         </code>
-      </p>
+      </div>
       <p>
         {`GET: cons_getFn1 called from server cons_serverGetFn1 returns`}
         <br />
