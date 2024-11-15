@@ -1,6 +1,5 @@
 import { ScriptOnce, useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
-import { createPortal } from 'react-dom'
 import jsesc from 'jsesc'
 import { Context } from '@tanstack/react-cross-context'
 import { Asset } from './Asset'
@@ -114,7 +113,6 @@ export const useMetaElements = () => {
 
   return (
     <>
-      <meta name="tsr-meta" />
       {meta.map((asset, i) => (
         <Asset {...asset} key={`tsr-meta-${JSON.stringify(asset)}`} />
       ))}
@@ -158,7 +156,6 @@ __TSR__ = {
           )}`}
         />
       </>
-      <meta name="/tsr-meta" />
     </>
   )
 }
@@ -167,53 +164,8 @@ __TSR__ = {
  * @description The `Meta` component is used to render meta tags and links for the current route.
  * It should be rendered in the `<head>` of your document.
  */
-export const Meta = ({ children }: { children?: React.ReactNode }) => {
-  const router = useRouter()
-  const metaElements = useMetaElements()
-  const [mounted, setMounted] = React.useState(false)
-
-  React[
-    typeof document !== 'undefined' ? 'useLayoutEffect' : 'useEffect'
-  ](() => {
-    if (typeof document === 'undefined') {
-      return
-    }
-
-    // Remove all meta between the tsr meta tags
-    const start = document.head.querySelector('meta[name="tsr-meta"]')
-    const end = document.head.querySelector('meta[name="/tsr-meta"]')
-
-    // Iterate over all head children and remove them until we reach the end
-    let current = start?.nextElementSibling
-    while (current && current !== end) {
-      const next = current.nextElementSibling
-      current.remove()
-      current = next
-    }
-
-    // Remove the markers
-    start?.remove()
-    end?.remove()
-
-    setMounted(true)
-  }, [])
-
-  const all = (
-    <>
-      {metaElements}
-      {children}
-    </>
-  )
-
-  if (router.isServer) {
-    return all
-  }
-
-  if (!mounted) {
-    return null
-  }
-
-  return createPortal(all, document.head)
+export const Meta = () => {
+  return <>{useMetaElements()}</>
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
