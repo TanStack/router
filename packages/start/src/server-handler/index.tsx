@@ -58,7 +58,7 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
         ) {
           // We don't support GET requests with FormData payloads... that seems impossible
           invariant(
-            method.toLowerCase() === 'get',
+            method.toLowerCase() !== 'get',
             'GET requests with FormData payloads are not supported',
           )
 
