@@ -131,3 +131,23 @@ test('Consistent server function returns both on client and server for GET and P
     expected,
   )
 })
+
+test.only('Server function can return null for GET and POST calls', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+  await page.getByTestId('test-allow-server-fn-return-null-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  // GET call
+  await expect(
+    page.getByTestId('allow_return_null_getFn-response'),
+  ).toContainText(JSON.stringify(null))
+
+  // POST call
+  await expect(
+    page.getByTestId('allow_return_null_postFn-response'),
+  ).toContainText(JSON.stringify(null))
+})
