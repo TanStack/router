@@ -50,17 +50,7 @@ export async function fetcher(
     const request = new Request(base, {
       method: first.method,
       headers,
-      ...(first.method === 'POST'
-        ? {
-            body:
-              type === 'formData'
-                ? first.data
-                : (defaultTransformer.stringify({
-                    data: first.data ?? null,
-                    context: first.context,
-                  }) as any),
-          }
-        : {}),
+      ...getFetcherRequestOptions(first),
     })
 
     const handlerResponse = await handler(request)
@@ -109,6 +99,26 @@ export async function fetcher(
     // request instead
     return text
   }
+}
+
+function getFetcherRequestOptions(opts: MiddlewareOptions) {
+  if (opts.method === 'POST') {
+    if (opts.data instanceof FormData) {
+      opts.data.set('__TSR_CONTEXT', defaultTransformer.stringify(opts.context))
+      return {
+        body: opts.data,
+      }
+    }
+
+    return {
+      body: defaultTransformer.stringify({
+        data: opts.data ?? null,
+        context: opts.context,
+      }),
+    }
+  }
+
+  return {}
 }
 
 async function handleResponseErrors(response: Response) {
