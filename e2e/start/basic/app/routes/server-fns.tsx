@@ -56,7 +56,7 @@ function ConsistentServerFnCalls() {
 
   return (
     <div className="p-2 border m-2 grid gap-2">
-      <h3>Consistent Server Fn GET Calls</h3>
+      <h3>Consistent ServerFn GET/POST calls on client and server</h3>
       <p>
         This component checks whether the returned payloads from server function
         are the same, regardless of whether the server function is called
@@ -146,7 +146,7 @@ function AllowServerFnReturnNull() {
 
   return (
     <div className="p-2 border m-2 grid gap-2">
-      <h3>Allow Server Fn Return Null</h3>
+      <h3>Allow ServerFn to return `null`</h3>
       <p>
         This component checks whether the server function can return null
         without throwing an error.

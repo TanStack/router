@@ -132,7 +132,7 @@ test('Consistent server function returns both on client and server for GET and P
   )
 })
 
-test.only('Server function can return null for GET and POST calls', async ({
+test('Server function can return null for GET and POST calls', async ({
   page,
 }) => {
   await page.goto('/server-fns')
