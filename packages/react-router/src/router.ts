@@ -848,11 +848,11 @@ export class Router<
     ) {
       this.history =
         this.options.history ??
-        (this.isServer
+        ((this.isServer
           ? createMemoryHistory({
               initialEntries: [this.basepath || '/'],
             })
-          : createBrowserHistory()) as TRouterHistory
+          : createBrowserHistory()) as TRouterHistory)
       this.latestLocation = this.parseLocation()
     }
 
