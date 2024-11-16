@@ -216,15 +216,19 @@ export function createServerFn<
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: (opts: any) =>
-            executeMiddleware(resolvedMiddleware, 'server', {
+          __executeServer: (opts: any) => {
+            return executeMiddleware(resolvedMiddleware, 'server', {
               ...extractedFn,
               ...opts,
-            }).then((d) => ({
-              // Only send the result and sendContext back to the client
-              result: d.result,
-              context: d.sendContext,
-            })),
+              method: opts?.method ?? resolvedOptions.method,
+            }).then((d) => {
+              return {
+                // Only send the result and sendContext back to the client
+                result: d.result,
+                context: d.sendContext,
+              }
+            })
+          },
         },
       ) as any
     },
