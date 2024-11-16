@@ -126,7 +126,6 @@ function ConsistentServerFnCalls() {
 
 // END CONSISTENT_SERVER_FN_CALLS
 
-
 // START MULTIPART_FORMDATA_SERVER_FN_CALLS
 const multipartFormDataServerFn = createServerFn({ method: 'POST' })
   .validator((x: unknown) => {
@@ -231,7 +230,6 @@ function MultipartServerFnCall() {
 // END MULTIPART_FORMDATA_SERVER_FN_CALLS
 
 // START ALLOW_SERVER_FN_RETURN_NULL
-
 const $allow_return_null_getFn = createServerFn().handler(async () => {
   return null
 })
@@ -240,7 +238,7 @@ const $allow_return_null_postFn = createServerFn({ method: 'POST' }).handler(
     return null
   },
 )
- 
+
 /**
  * This component checks whether the server function can return null
  * without throwing an error.
@@ -288,7 +286,8 @@ function AllowServerFnReturnNull() {
       >
         Test Allow Server Fn Return Null
       </button>
-      )
-      }
-      
+    </div>
+  )
+}
+
 // END ALLOW_SERVER_FN_RETURN_NULL
