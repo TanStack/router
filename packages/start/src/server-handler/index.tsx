@@ -1,6 +1,5 @@
 /// <reference types="vinxi/types/server" />
 import {
-  decode,
   defaultTransformer,
   isNotFound,
   isRedirect,
@@ -24,9 +23,7 @@ async function handleServerAction(event: H3Event) {
 export async function handleServerRequest(request: Request, _event?: H3Event) {
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
-  const search = Object.fromEntries(
-    new URLSearchParams(url.search).entries(),
-  ) as {
+  const search = Object.fromEntries(url.searchParams.entries()) as {
     _serverFnId?: string
     _serverFnName?: string
     payload?: any
@@ -68,14 +65,12 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
         // Get requests use the query string
         if (method.toLowerCase() === 'get') {
           // First we need to get the ?payload query string
-          const payload = decode(url.search)?.payload
-
-          if (!payload) {
+          if (!search.payload) {
             return undefined
           }
 
           // If there's a payload, we need to parse it
-          return defaultTransformer.parse(payload)
+          return defaultTransformer.parse(search.payload)
         }
 
         // For non-form, non-get
