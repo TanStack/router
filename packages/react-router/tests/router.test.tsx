@@ -19,8 +19,10 @@ import {
   RouterState,
 } from '../src'
 import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
+import React from 'react'
 
 afterEach(() => {
+  // TODO: should we use same approach like in routeContext.test.tsx and specify history explicitly to all tests?
   // @ts-ignore
   window.__TSR__ROUTER__.history.destroy()
   vi.resetAllMocks()
