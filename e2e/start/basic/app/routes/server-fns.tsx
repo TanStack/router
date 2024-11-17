@@ -179,7 +179,7 @@ function MultipartServerFnCall() {
   return (
     <div className="p-2 border m-2 grid gap-2">
       <h3>Multipart Server Fn POST Call</h3>
-      <div>
+      <div className="overflow-y-auto">
         It should return{' '}
         <code>
           <pre data-testid="expected-multipart-server-fn-result">
