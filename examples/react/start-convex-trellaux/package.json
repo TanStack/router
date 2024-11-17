@@ -16,7 +16,7 @@
     "@tanstack/react-router": "^1.81.14",
     "@tanstack/react-router-with-query": "^1.81.14",
     "@tanstack/router-devtools": "^1.81.14",
-    "@tanstack/start": "^1.81.16",
+    "@tanstack/start": "^1.81.17",
     "@convex-dev/react-query": "0.0.0-alpha.8",
     "concurrently": "^8.2.2",
     "convex": "^1.17.0",
