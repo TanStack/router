@@ -1126,7 +1126,10 @@ describe('router state', () => {
     })
 
     // ensure the router is stable once idle and do not update its state
-    expect(stateHistory.slice(-2).map(s => s.status)).toStrictEqual(['pending', 'idle']);
+    expect(stateHistory.slice(-2).map((s) => s.status)).toStrictEqual([
+      'pending',
+      'idle',
+    ])
 
     // if the router is idle, all promises should be settled
     expect(
