@@ -1,7 +1,8 @@
 import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
-import { fetchPost } from '../utils/posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+
+import { fetchPost } from '~/utils/posts'
 import { NotFound } from '~/components/NotFound'
 
 const renderPost = createServerFn({ method: 'GET' })

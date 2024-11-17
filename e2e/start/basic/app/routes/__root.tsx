@@ -1,3 +1,4 @@
+import * as React from 'react'
 import {
   Link,
   Outlet,
@@ -6,7 +7,7 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Meta, Scripts } from '@tanstack/start'
-import * as React from 'react'
+
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'

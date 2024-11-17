@@ -7,6 +7,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Meta, Scripts, createServerFn } from '@tanstack/start'
 import * as React from 'react'
+
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
