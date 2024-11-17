@@ -2933,7 +2933,7 @@ export class Router<
   }
 
   injectedHtml: Array<() => string> = []
-  injectHtml: (html: string) => void = (html) => {
+  injectHtml = (html: string) => {
     const cb = () => {
       this.injectedHtml = this.injectedHtml.filter((d) => d !== cb)
       return html
@@ -2941,6 +2941,17 @@ export class Router<
 
     this.injectedHtml.push(cb)
   }
+  injectScript = (script: string, opts?: { logScript?: boolean }) => {
+    this.injectHtml(
+      `<script class='tsr-once'>${script}${
+        process.env.NODE_ENV === 'development' && (opts?.logScript ?? true)
+          ? `; console.info(\`Injected From Server:
+${script}\`)`
+          : ''
+      }; __TSR__.cleanScripts()</script>`,
+    )
+  }
+
   streamedKeys: Set<string> = new Set()
 
   getStreamedValue = <T>(key: string): T | undefined => {
@@ -2968,15 +2979,8 @@ export class Router<
     )
 
     this.streamedKeys.add(key)
-    const children = `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`
-
-    this.injectHtml(
-      `<script class='tsr-once'>${children}${
-        process.env.NODE_ENV === 'development'
-          ? `; console.info(\`Injected From Server:
-        ${children}\`)`
-          : ''
-      }; __TSR__.cleanScripts()</script>`,
+    this.injectScript(
+      `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`,
     )
   }
 

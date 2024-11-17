@@ -1,4 +1,5 @@
 import invariant from 'tiny-invariant'
+import { defaultTransformer } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import type { AnyValidator, Constrain } from '@tanstack/react-router'
 import type {
@@ -153,6 +154,10 @@ export function createServerFn<
     TValidator
   >
 
+  if (typeof resolvedOptions.method === 'undefined') {
+    resolvedOptions.method = 'GET' as TMethod
+  }
+
   return {
     options: resolvedOptions as any,
     middleware: (middleware) => {
@@ -212,18 +217,46 @@ export function createServerFn<
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: (opts: any) =>
-            executeMiddleware(resolvedMiddleware, 'server', {
+          __executeServer: (opts: any) => {
+            const parsedOpts =
+              opts instanceof FormData ? extractFormDataContext(opts) : opts
+
+            return executeMiddleware(resolvedMiddleware, 'server', {
               ...extractedFn,
-              ...opts,
+              ...parsedOpts,
             }).then((d) => ({
               // Only send the result and sendContext back to the client
               result: d.result,
               context: d.sendContext,
-            })),
+            }))
+          },
         },
       ) as any
     },
+  }
+}
+
+function extractFormDataContext(formData: FormData) {
+  const serializedContext = formData.get('__TSR_CONTEXT')
+  formData.delete('__TSR_CONTEXT')
+
+  if (typeof serializedContext !== 'string') {
+    return {
+      context: {},
+      data: formData,
+    }
+  }
+
+  try {
+    const context = defaultTransformer.parse(serializedContext)
+    return {
+      context,
+      data: formData,
+    }
+  } catch (e) {
+    return {
+      data: formData,
+    }
   }
 }
 
@@ -305,6 +338,31 @@ const applyMiddleware = (
   })
 }
 
+function execValidator(validator: AnyValidator, input: unknown): unknown {
+  if (validator == null) return {}
+
+  if ('~standard' in validator) {
+    const result = validator['~standard'].validate(input)
+
+    if ('value' in result) return result.value
+
+    if (result instanceof Promise)
+      throw new Error('Async validation not supported')
+
+    throw new Error(JSON.stringify(result.issues, undefined, 2))
+  }
+
+  if ('parse' in validator) {
+    return validator.parse(input)
+  }
+
+  if (typeof validator === 'function') {
+    return validator(input)
+  }
+
+  throw new Error('Invalid validator type!')
+}
+
 async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
@@ -326,7 +384,7 @@ async function executeMiddleware(
       (env === 'client' ? nextMiddleware.options.validateClient : true)
     ) {
       // Execute the middleware's input function
-      ctx.data = await nextMiddleware.options.validator(ctx.data)
+      ctx.data = await execValidator(nextMiddleware.options.validator, ctx.data)
     }
 
     const middlewareFn =
