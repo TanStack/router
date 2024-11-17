@@ -171,6 +171,6 @@ test('server fn url should not have a hardcoded origin of http://localhost:3000'
     .getByTestId('bounded-url-is-hardcoded')
     .textContent()
 
-  const doesContainOrigin = content!.startsWith('http://localhost:3000')
+  const doesContainOrigin = content!.startsWith('http://localhost')
   expect(doesContainOrigin).toBe(false)
 })
