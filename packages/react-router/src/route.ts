@@ -434,7 +434,10 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => void
-  meta?: (ctx: {
+  headers?: (ctx: {
+    loaderData: ResolveLoaderData<TLoaderFn>
+  }) => Record<string, string>
+  head?: (ctx: {
     matches: Array<
       RouteMatch<
         TRouteId,
@@ -466,13 +469,12 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >
     params: ResolveAllParamsFromParent<TParentRoute, TParams>
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Array<React.JSX.IntrinsicElements['meta']>
-  links?: () => Array<React.JSX.IntrinsicElements['link']>
-  scripts?: () => Array<React.JSX.IntrinsicElements['script']>
-  headers?: (ctx: {
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Record<string, string>
+    loaderData: ResolveLoaderData<TLoaderFn> | undefined
+  }) => {
+    links?: Array<React.JSX.IntrinsicElements['link']> | undefined
+    scripts?: Array<React.JSX.IntrinsicElements['script']> | undefined
+    meta?: Array<React.JSX.IntrinsicElements['meta']> | undefined
+  }
   ssr?: boolean
 }
 

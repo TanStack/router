@@ -9,39 +9,41 @@ import { Meta, Scripts } from '@tanstack/start'
 import type { RouterContext } from '../routerContext'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  meta: () => [
-    {
-      title: 'TanStack Router SSR Basic File Based',
-    },
-    {
-      charSet: 'UTF-8',
-    },
-    {
-      name: 'viewport',
-      content: 'width=device-width, initial-scale=1.0',
-    },
-  ],
-  scripts: () => [
-    {
-      src: 'https://cdn.tailwindcss.com',
-    },
-    {
-      type: 'module',
-      children: `import RefreshRuntime from "/@react-refresh"
-RefreshRuntime.injectIntoGlobalHook(window)
-window.$RefreshReg$ = () => {}
-window.$RefreshSig$ = () => (type) => type
-window.__vite_plugin_react_preamble_installed__ = true`,
-    },
-    {
-      type: 'module',
-      src: '/@vite/client',
-    },
-    {
-      type: 'module',
-      src: '/src/entry-client.tsx',
-    },
-  ],
+  head: () => ({
+    meta: [
+      {
+        title: 'TanStack Router SSR Basic File Based',
+      },
+      {
+        charSet: 'UTF-8',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1.0',
+      },
+    ],
+    scripts: [
+      {
+        src: 'https://cdn.tailwindcss.com',
+      },
+      {
+        type: 'module',
+        children: `import RefreshRuntime from "/@react-refresh"
+  RefreshRuntime.injectIntoGlobalHook(window)
+  window.$RefreshReg$ = () => {}
+  window.$RefreshSig$ = () => (type) => type
+  window.__vite_plugin_react_preamble_installed__ = true`,
+      },
+      {
+        type: 'module',
+        src: '/@vite/client',
+      },
+      {
+        type: 'module',
+        src: '/src/entry-client.tsx',
+      },
+    ],
+  }),
   component: RootComponent,
 })
 

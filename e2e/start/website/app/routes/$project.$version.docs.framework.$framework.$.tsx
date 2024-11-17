@@ -11,10 +11,11 @@ export const Route = createFileRoute(
     getDocument({
       data: _splat!,
     }),
-  meta: ({ loaderData, params }) =>
-    seo({
-      title: `${loaderData.title} | TanStack ${capitalize(params.project)} ${capitalize(params.framework)}`,
+  head: ({ loaderData, params }) => ({
+    meta: seo({
+      title: `${loaderData?.title || 'Project'} | TanStack ${capitalize(params.project)} ${capitalize(params.framework)}`,
     }),
+  }),
   errorComponent: PostErrorComponent,
   component: Page,
   notFoundComponent: () => {
