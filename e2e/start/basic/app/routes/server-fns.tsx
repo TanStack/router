@@ -1,7 +1,8 @@
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/start'
-import { useRef } from 'react'
+
+import { ConsistentServerFnCalls } from './-server-fns/consistent-fn-calls'
+import { MultipartServerFnCall } from './-server-fns/multipart-formdata-fn-call'
 
 export const Route = createFileRoute('/server-fns')({
   component: RouteComponent,
