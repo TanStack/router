@@ -4,7 +4,7 @@ import {
   Outlet,
   createRootRouteWithContext,
 } from '@tanstack/react-router'
-import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
+import { Meta, Scripts } from '@tanstack/start'
 import type { RouterContext } from '../routerContext'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
@@ -48,11 +48,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   return (
-    <Html lang="en">
-      <Head>
+    <html lang="en">
+      <head>
         <Meta />
-      </Head>
-      <Body>
+      </head>
+      <body>
         <div className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -84,7 +84,7 @@ function RootComponent() {
         <Outlet /> {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </Body>
-    </Html>
+      </body>
+    </html>
   )
 }

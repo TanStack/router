@@ -1,45 +1,96 @@
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
-import { matchContext } from './matchContext'
-import type { RegisteredRouter } from './router'
-import type { AnyRoute } from './route'
+import { dummyMatchContext, matchContext } from './matchContext'
+import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
+import type { AnyRouter, RegisteredRouter } from './router'
 import type { MakeRouteMatch } from './Matches'
-import type { RouteIds } from './routeInfo'
-import type { Constrain, StrictOrFrom } from './utils'
+import type { StrictOrFrom, ThrowOrOptional } from './utils'
 
-export type UseMatchOptions<
+export interface UseMatchBaseOptions<
+  TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
-  TRouteMatch,
+  TThrow,
   TSelected,
-  TThrow extends boolean,
-> = StrictOrFrom<TFrom, TStrict> & {
-  select?: (match: TRouteMatch) => TSelected
+  TStructuralSharing extends boolean,
+> {
+  select?: (
+    match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
   shouldThrow?: TThrow
 }
 
+export type UseMatchRoute<out TFrom> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseMatchBaseOptions<
+    TRouter,
+    TFrom,
+    true,
+    true,
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => UseMatchResult<TRouter, TFrom, true, TSelected>
+
+export type UseMatchOptions<
+  TRouter extends AnyRouter,
+  TFrom extends string | undefined,
+  TStrict extends boolean,
+  TSelected,
+  TThrow extends boolean,
+  TStructuralSharing extends boolean,
+> = StrictOrFrom<TRouter, TFrom, TStrict> &
+  UseMatchBaseOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    TThrow,
+    TSelected,
+    TStructuralSharing
+  > &
+  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+
+export type UseMatchResult<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean,
+  TSelected,
+> = unknown extends TSelected
+  ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+  : TSelected
+
 export function useMatch<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
-  TRouteMatch = MakeRouteMatch<TRouteTree, TFrom, TStrict>,
-  TSelected = TRouteMatch,
   TThrow extends boolean = true,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
   opts: UseMatchOptions<
-    Constrain<TFrom, RouteIds<TRouteTree>>,
+    TRouter,
+    TFrom,
     TStrict,
-    TRouteMatch,
     TSelected,
-    TThrow
+    TThrow,
+    TStructuralSharing
   >,
-): TThrow extends true ? TSelected : TSelected | undefined {
-  const nearestMatchId = React.useContext(matchContext)
+): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
+  const nearestMatchId = React.useContext(
+    opts.from ? dummyMatchContext : matchContext,
+  )
 
   const matchSelection = useRouterState({
-    select: (state) => {
-      const match = state.matches.find((d) =>
+    select: (state: any) => {
+      const match = state.matches.find((d: any) =>
         opts.from ? opts.from === d.routeId : d.id === nearestMatchId,
       )
       invariant(
@@ -51,9 +102,10 @@ export function useMatch<
         return undefined
       }
 
-      return opts.select ? opts.select(match as any) : match
+      return opts.select ? opts.select(match) : match
     },
-  })
+    structuralSharing: opts.structuralSharing,
+  } as any)
 
-  return matchSelection as TSelected
+  return matchSelection as any
 }

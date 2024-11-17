@@ -56,32 +56,34 @@ describe('getRouteApi', () => {
     })
   })
   test('useParams', () => {
-    expectTypeOf(invoiceRouteApi.useParams()).toEqualTypeOf<{
+    expectTypeOf(invoiceRouteApi.useParams<DefaultRouter>()).toEqualTypeOf<{
       invoiceId: string
     }>()
   })
   test('useContext', () => {
-    expectTypeOf(invoiceRouteApi.useRouteContext()).toEqualTypeOf<{
+    expectTypeOf(
+      invoiceRouteApi.useRouteContext<DefaultRouter>(),
+    ).toEqualTypeOf<{
       beforeLoadContext: number
     }>()
   })
   test('useSearch', () => {
-    expectTypeOf(invoiceRouteApi.useSearch()).toEqualTypeOf<{
+    expectTypeOf(invoiceRouteApi.useSearch<DefaultRouter>()).toEqualTypeOf<{
       page: number
     }>()
   })
   test('useLoaderData', () => {
-    expectTypeOf(invoiceRouteApi.useLoaderData()).toEqualTypeOf<{
+    expectTypeOf(invoiceRouteApi.useLoaderData<DefaultRouter>()).toEqualTypeOf<{
       data: number
     }>()
   })
   test('useLoaderDeps', () => {
-    expectTypeOf(invoiceRouteApi.useLoaderDeps()).toEqualTypeOf<{
+    expectTypeOf(invoiceRouteApi.useLoaderDeps<DefaultRouter>()).toEqualTypeOf<{
       dep: number
     }>()
   })
   test('useMatch', () => {
-    expectTypeOf(invoiceRouteApi.useMatch()).toEqualTypeOf<
+    expectTypeOf(invoiceRouteApi.useMatch<DefaultRouter>()).toEqualTypeOf<
       MakeRouteMatch<typeof routeTree, '/invoices/$invoiceId'>
     >()
   })

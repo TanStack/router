@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { fallback, zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { fallback, zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
@@ -30,7 +30,7 @@ const Zod = () => {
 }
 
 export const Route = createFileRoute('/users/zod/')({
-  validateSearch: zodSearchValidator(
+  validateSearch: zodValidator(
     z.object({
       search: fallback(z.string().optional(), undefined),
     }),

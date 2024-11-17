@@ -4,17 +4,16 @@ import { useMutation } from '../hooks/useMutation'
 import { Auth } from '../components/Auth'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-export const signupFn = createServerFn(
-  'POST',
-  async (payload: {
-    email: string
-    password: string
-    redirectUrl?: string
-  }) => {
+export const signupFn = createServerFn()
+  .validator(
+    (d: unknown) =>
+      d as { email: string; password: string; redirectUrl?: string },
+  )
+  .handler(async ({ data }) => {
     const supabase = await getSupabaseServerClient()
-    const { data, error } = await supabase.auth.signUp({
-      email: payload.email,
-      password: payload.password,
+    const { error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
     })
     if (error) {
       return {
@@ -25,10 +24,9 @@ export const signupFn = createServerFn(
 
     // Redirect to the prev page stored in the "redirect" search param
     throw redirect({
-      href: payload.redirectUrl || '/',
+      href: data.redirectUrl || '/',
     })
-  },
-)
+  })
 
 export const Route = createFileRoute('/signup')({
   component: SignupComp,
@@ -47,8 +45,10 @@ function SignupComp() {
         const formData = new FormData(e.target as HTMLFormElement)
 
         signupMutation.mutate({
-          email: formData.get('email') as string,
-          password: formData.get('password') as string,
+          data: {
+            email: formData.get('email') as string,
+            password: formData.get('password') as string,
+          },
         })
       }}
       afterSubmit={

@@ -204,6 +204,12 @@ const routersSchema = z.object({
       vite: viteSchema.optional(),
     })
     .optional(),
+  public: z
+    .object({
+      dir: z.string().optional(),
+      base: z.string().optional(),
+    })
+    .optional(),
 })
 
 const tsrConfig = configSchema.partial().extend({
@@ -290,6 +296,9 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
 
   const apiEntryExists = existsSync(apiEntry)
 
+  const publicDir = opts.routers?.public?.dir || './public'
+  const publicBase = opts.routers?.public?.base || '/'
+
   return createApp({
     server: {
       ...serverOptions,
@@ -303,8 +312,8 @@ export function defineConfig(inlineConfig: TanStackStartInputConfig = {}) {
       {
         name: 'public',
         type: 'static',
-        dir: './public',
-        base: '/',
+        dir: publicDir,
+        base: publicBase,
       },
       withStartPlugins(
         opts,
@@ -511,9 +520,15 @@ function withStartPlugins(opts: TanStackStartOutputConfig, router: RouterType) {
           ...tsrConfig.experimental,
         },
       }),
-      TanStackStartVite(),
+      TanStackStartVite({
+        env: router === 'client' ? 'client' : 'server',
+      }),
     ],
-    [TanStackStartViteDeadCodeElimination()],
+    [
+      TanStackStartViteDeadCodeElimination({
+        env: router === 'client' ? 'client' : 'server',
+      }),
+    ],
   )
 }
 

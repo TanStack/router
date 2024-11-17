@@ -45,6 +45,9 @@ export const configSchema = z.object({
   autoCodeSplitting: z.boolean().optional(),
   indexToken: z.string().optional().default('index'),
   routeToken: z.string().optional().default('route'),
+  pathParamsAllowedCharacters: z
+    .array(z.enum([';', ':', '@', '&', '=', '+', '$', ',']))
+    .optional(),
   customScaffolding: z
     .object({
       routeTemplate: z

@@ -19,14 +19,14 @@ test('Navigating nested layouts', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
-  await expect(page.locator('#root')).toContainText("I'm a layout")
-  await expect(page.locator('#root')).toContainText("I'm a nested layout")
+  await expect(page.locator('body')).toContainText("I'm a layout")
+  await expect(page.locator('body')).toContainText("I'm a nested layout")
 
   await page.getByRole('link', { name: 'Layout A' }).click()
-  await expect(page.locator('#root')).toContainText("I'm layout A!")
+  await expect(page.locator('body')).toContainText("I'm layout A!")
 
   await page.getByRole('link', { name: 'Layout B' }).click()
-  await expect(page.locator('#root')).toContainText("I'm layout B!")
+  await expect(page.locator('body')).toContainText("I'm layout B!")
 })
 
 test('Navigating to a not-found route', async ({ page }) => {
@@ -92,9 +92,70 @@ test('invoking a server function with custom response status code', async ({
       expect(response.status()).toBe(225)
       expect(response.statusText()).toBe('hello')
       expect(response.headers()['content-type']).toBe('application/json')
-      expect(await response.json()).toEqual({ hello: 'world' })
+      expect(await response.json()).toEqual({
+        result: { hello: 'world' },
+        context: {},
+      })
       resolve()
     })
   })
   await requestPromise
+})
+
+test('Consistent server function returns both on client and server for GET and POST calls', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+  const expected =
+    (await page
+      .getByTestId('expected-consistent-server-fns-result')
+      .textContent()) || ''
+  expect(expected).not.toBe('')
+
+  await page.getByTestId('test-consistent-server-fn-calls-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  // GET calls
+  await expect(page.getByTestId('cons_serverGetFn1-response')).toContainText(
+    expected,
+  )
+  await expect(page.getByTestId('cons_getFn1-response')).toContainText(expected)
+
+  // POST calls
+  await expect(page.getByTestId('cons_serverPostFn1-response')).toContainText(
+    expected,
+  )
+  await expect(page.getByTestId('cons_postFn1-response')).toContainText(
+    expected,
+  )
+})
+
+test('submitting multipart/form-data as server function input', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+  const expected =
+    (await page
+      .getByTestId('expected-multipart-server-fn-result')
+      .textContent()) || ''
+  expect(expected).not.toBe('')
+
+  const fileChooserPromise = page.waitForEvent('filechooser')
+  await page.getByTestId('multipart-form-file-input').click()
+  const fileChooser = await fileChooserPromise
+  await fileChooser.setFiles({
+    name: 'my_file.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('test data', 'utf-8'),
+  })
+  await page.getByText('Submit (onClick)').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('multipart-form-response')).toContainText(
+    expected,
+  )
 })
