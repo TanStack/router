@@ -21,6 +21,8 @@ import {
 import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
 
 afterEach(() => {
+  // @ts-ignore
+  window.__TSR__ROUTER__.history.destroy()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
@@ -1125,7 +1127,7 @@ describe('router state', () => {
       expect(router.state.status).toBe('idle')
     })
 
-    // ensure the router is stable once idle and do not update its state
+    // ensure the router is stable once idle and do not update its state since then
     expect(stateHistory.slice(-2).map((s) => s.status)).toStrictEqual([
       'pending',
       'idle',
