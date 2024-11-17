@@ -1,4 +1,5 @@
 import invariant from 'tiny-invariant'
+import { defaultTransformer } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import type { AnyValidator, Constrain } from '@tanstack/react-router'
 import type {
@@ -216,18 +217,46 @@ export function createServerFn<
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: (opts: any) =>
-            executeMiddleware(resolvedMiddleware, 'server', {
+          __executeServer: (opts: any) => {
+            const parsedOpts =
+              opts instanceof FormData ? extractFormDataContext(opts) : opts
+
+            return executeMiddleware(resolvedMiddleware, 'server', {
               ...extractedFn,
-              ...opts,
+              ...parsedOpts,
             }).then((d) => ({
               // Only send the result and sendContext back to the client
               result: d.result,
               context: d.sendContext,
-            })),
+            }))
+          },
         },
       ) as any
     },
+  }
+}
+
+function extractFormDataContext(formData: FormData) {
+  const serializedContext = formData.get('__TSR_CONTEXT')
+  formData.delete('__TSR_CONTEXT')
+
+  if (typeof serializedContext !== 'string') {
+    return {
+      context: {},
+      data: formData,
+    }
+  }
+
+  try {
+    const context = defaultTransformer.parse(serializedContext)
+    return {
+      context,
+      data: formData,
+    }
+  } catch (e) {
+    return {
+      data: formData,
+    }
   }
 }
 
