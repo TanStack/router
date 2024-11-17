@@ -4,9 +4,9 @@ import {
   createRootRoute,
   createRootRouteWithContext,
   createRoute,
-  createRouter
+  createRouter,
 } from '../src'
-import type { RouterHistory } from '../src';
+import type { RouterHistory } from '../src'
 
 test('when creating a router without context', () => {
   // eslint-disable-next-line unused-imports/no-unused-vars
@@ -239,10 +239,16 @@ test('when creating a router with default router history', () => {
   expectTypeOf(router.history).toEqualTypeOf<RouterHistory>()
 })
 
-test('when creating a router with custom router history', () => { 
-  const customRouterHistory = { ...createMemoryHistory(), _isCustomRouterHistory: true }
+test('when creating a router with custom router history', () => {
+  const customRouterHistory = {
+    ...createMemoryHistory(),
+    _isCustomRouterHistory: true,
+  }
 
-  const router = createRouter({ routeTree: createRootRoute(), history: customRouterHistory })
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: customRouterHistory,
+  })
 
   expectTypeOf(router.history).toMatchTypeOf<RouterHistory>()
   expectTypeOf(router.history).toEqualTypeOf<typeof customRouterHistory>()
