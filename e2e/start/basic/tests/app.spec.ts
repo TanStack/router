@@ -159,3 +159,18 @@ test('submitting multipart/form-data as server function input', async ({
     expected,
   )
 })
+
+test('server fn url should not have a hardcoded origin of http://localhost:3000', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+
+  const content = await page
+    .getByTestId('bounded-url-is-hardcoded')
+    .textContent()
+
+  const doesContainOrigin = content!.startsWith('http://localhost:3000')
+  expect(doesContainOrigin).toBe(false)
+})
