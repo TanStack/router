@@ -16,6 +16,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  RouterState,
 } from '../src'
 import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
 
@@ -1089,5 +1090,63 @@ describe('route id uniqueness', () => {
       expect(routeIdSet.has(route.id)).toBe(false)
       routeIdSet.add(route.id)
     })
+  })
+})
+
+describe('router state', () => {
+  it('status=idle only after all promises resolved', async () => {
+    const rootRoute = createRootRoute()
+
+    const IndexComponent = () => {
+      return (
+        <React.Fragment>
+          <h1>Index</h1>
+        </React.Fragment>
+      )
+    }
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    const stateHistory: RouterState[] = []
+    router.__store.subscribe(() => {
+      stateHistory.push(router.__store.state)
+    })
+
+    render(<RouterProvider router={router} />)
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    // ensure the router is stable once idle and do not update its state
+    expect(stateHistory.slice(-2).map(s => s.status)).toStrictEqual(['pending', 'idle']);
+
+    // if the router is idle, all promises should be settled
+    expect(
+      stateHistory
+        .map(({ matches, pendingMatches, status }) => {
+          return {
+            status: status,
+            matchesIsFetching: [...matches, ...(pendingMatches || [])].map(
+              (s) => s.isFetching,
+            ),
+          }
+        })
+        .filter(
+          (s) =>
+            s.status === 'idle' &&
+            s.matchesIsFetching.some(
+              (isFetching) =>
+                isFetching === 'loader' || isFetching === 'beforeLoad',
+            ),
+        ),
+    ).toStrictEqual([])
   })
 })
