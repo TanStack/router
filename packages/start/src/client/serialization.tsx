@@ -265,14 +265,11 @@ function InnerDehydratePromise({ entry }: { entry: ExtractedEntry }) {
     throw entry.value
   }
 
-  const code = `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].resolve(${jsesc(
-    entry.value.data,
-    {
-      isScriptContext: true,
-      wrap: true,
-      json: true,
-    },
-  )})`
+  const code = `__TSR__.resolvePromise(${jsesc(entry, {
+    isScriptContext: true,
+    wrap: true,
+    json: true,
+  })})`
 
   router.injectScript(code)
 
