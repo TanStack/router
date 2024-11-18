@@ -67,6 +67,8 @@ Deploy you application to Vercel using their one-click deployment process, and y
 
 ### Cloudflare Pages
 
+When deploying to Cloudflare, there are a few extra steps you'll need to complete before your users can start using your app.
+
 1. Installation
 
 First you will need to install `unenv`
