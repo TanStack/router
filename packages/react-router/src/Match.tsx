@@ -16,11 +16,7 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
 import type { AnyRoute } from './route'
 
-export const Match = function MatchImpl({
-  matchId,
-}: {
-  matchId: string
-}) {
+export const Match = function MatchImpl({ matchId }: { matchId: string }) {
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
