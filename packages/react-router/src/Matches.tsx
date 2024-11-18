@@ -206,6 +206,7 @@ export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 
 export function Matches() {
   const router = useRouter()
+  
   const pendingElement = router.options.defaultPendingComponent ? (
     <router.options.defaultPendingComponent />
   ) : null
