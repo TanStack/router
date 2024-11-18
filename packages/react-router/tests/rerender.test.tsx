@@ -4,8 +4,19 @@ import { describe, expect, test } from 'vitest'
 
 import { RouterProvider, createRootRoute, createRouter } from '../src'
 
+/**
+ * This test is to ensure that when using renderHook a rerender should trigger a rerender of the hook
+ * If this is not the case, then rerender of hooks that use tanstack router will not be possible.
+ */
 describe('Rerender tests', () => {
   test('when using renderHook a rerender should trigger a rerender of the hook', () => {
+    
+    /**
+     * This hook is used to determine if the component is being rendered for the first time
+     * In production code this test would do the opposite, it would ensure a rerender would not do any state changes.
+     * 
+     * @returns {isFirst: boolean}
+     */
     const useIsFirstRender = () => {
       const renderRef = React.useRef(true)
 
