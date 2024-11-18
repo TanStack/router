@@ -20,6 +20,8 @@ export const useMeta = () => {
     let title: RouterManagedTag | undefined
     ;[...routeMeta].reverse().forEach((metas) => {
       ;[...metas].reverse().forEach((m) => {
+        if (!m) return
+
         if (m.title) {
           if (!title) {
             title = {

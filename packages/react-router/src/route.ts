@@ -17,6 +17,7 @@ import type * as React from 'react'
 import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
 import type {
+  AnyRouteMatch,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
   RouteMatch,
@@ -471,9 +472,9 @@ export interface UpdatableRouteOptions<
     params: ResolveAllParamsFromParent<TParentRoute, TParams>
     loaderData: ResolveLoaderData<TLoaderFn> | undefined
   }) => {
-    links?: Array<React.JSX.IntrinsicElements['link']> | undefined
-    scripts?: Array<React.JSX.IntrinsicElements['script']> | undefined
-    meta?: Array<React.JSX.IntrinsicElements['meta']> | undefined
+    links?: AnyRouteMatch['links']
+    scripts?: AnyRouteMatch['scripts']
+    meta?: AnyRouteMatch['meta']
   }
   ssr?: boolean
 }
