@@ -10,11 +10,10 @@ import { RouterProvider, createRootRoute, createRouter } from '../src'
  */
 describe('Rerender tests', () => {
   test('when using renderHook a rerender should trigger a rerender of the hook', () => {
-    
     /**
      * This hook is used to determine if the component is being rendered for the first time
      * In production code this test would do the opposite, it would ensure a rerender would not do any state changes.
-     * 
+     *
      * @returns {isFirst: boolean}
      */
     const useIsFirstRender = () => {
