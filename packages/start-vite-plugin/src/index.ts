@@ -97,7 +97,10 @@ export function TanStackStartViteDeadCodeElimination(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (code.includes('createServerFn')) {
+      if (
+        code.includes('createServerFn') ||
+        code.includes('createMiddleware')
+      ) {
         const compiled = compileEliminateDeadCode({
           code,
           root: ROOT,

@@ -173,6 +173,8 @@ export function compileStartOutput(opts: ParseAstOptions) {
     },
   })
 
+  deadCodeElimination(ast)
+
   return generate(ast, {
     sourceMaps: true,
     minified: process.env.NODE_ENV === 'production',
