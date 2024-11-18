@@ -6,8 +6,8 @@ import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import {
-  TanStackStartVite,
   TanStackStartViteDeadCodeElimination,
+  TanStackStartViteServerFn,
 } from '@tanstack/start-vite-plugin'
 import {
   configSchema,
@@ -520,7 +520,7 @@ function withStartPlugins(opts: TanStackStartOutputConfig, router: RouterType) {
           ...tsrConfig.experimental,
         },
       }),
-      TanStackStartVite({
+      TanStackStartViteServerFn({
         env: router === 'client' ? 'client' : 'server',
       }),
     ],
@@ -606,6 +606,7 @@ function tsrRoutesManifest(opts: {
         try {
           routeTreeContent = readFileSync(routeTreePath, 'utf-8')
         } catch (err) {
+          console.error(err)
           throw new Error(
             `Could not find the generated route tree at '${routeTreePath}'!`,
           )
