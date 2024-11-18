@@ -72,12 +72,12 @@ Deploy you application to Vercel using their one-click deployment process, and y
 First you will need to install `unenv`
 
 ```sh
-npm install -D unenv
+npm install unenv
 ```
 
 2. Update `app.config.ts`
 
-Set the `server.preset` value to `cloudflare-pages` and `server.unenv` value to `cloudflare` in your `app.config.ts` file.
+Set the `server.preset` value to `cloudflare-pages` and the `server.unenv` value to the `cloudflare` from `unenv` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
