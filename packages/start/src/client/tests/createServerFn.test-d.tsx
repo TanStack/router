@@ -191,3 +191,11 @@ test('createServerFn returns RSC', () => {
     Promise<{ rscs: readonly [ReadableStream, ReadableStream] }>
   >()
 })
+
+test('createServerFn cannot return function', () => {
+  const fn = createServerFn().handler(() => ({
+    func: () => 'func',
+  }))
+
+  expectTypeOf(fn()).toEqualTypeOf<Promise<{ func: never }>>()
+})
