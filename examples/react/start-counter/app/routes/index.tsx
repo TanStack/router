@@ -14,7 +14,7 @@ const getCount = createServerFn({ method: 'GET' }).handler(() => {
   return readCount()
 })
 
-const updateCount = createServerFn()
+const updateCount = createServerFn({ method: 'POST' })
   .validator((addBy: number) => addBy)
   .handler(async ({ data }) => {
     const count = await readCount()

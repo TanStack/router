@@ -264,7 +264,7 @@ const getCount = createServerFn({
   return readCount()
 })
 
-const updateCount = createServerFn()
+const updateCount = createServerFn({ method: 'POST' })
   .validator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
