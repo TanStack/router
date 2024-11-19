@@ -173,3 +173,21 @@ test('createServerFn where data is optional if there is no validator', () => {
     | undefined
   >()
 })
+
+test('createServerFn returns Date', () => {
+  const fn = createServerFn().handler(() => ({
+    dates: [new Date(), new Date()] as const,
+  }))
+
+  expectTypeOf(fn()).toEqualTypeOf<Promise<{ dates: readonly [Date, Date] }>>()
+})
+
+test('createServerFn returns RSC', () => {
+  const fn = createServerFn().handler(() => ({
+    rscs: [<div>I'm an RSC</div>, <div>I'm an RSC</div>] as const,
+  }))
+
+  expectTypeOf(fn()).toEqualTypeOf<
+    Promise<{ rscs: readonly [ReadableStream, ReadableStream] }>
+  >()
+})

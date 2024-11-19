@@ -65,15 +65,11 @@ export type FetcherData<TResponse> = WrapRSCs<
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 >
 
-export type WrapRSCs<T> = T extends JSX.Element
-  ? ReadableStream
-  : T extends Record<string, any>
-    ? {
-        [K in keyof T]: WrapRSCs<T[K]>
-      }
-    : T extends Array<infer U>
-      ? Array<WrapRSCs<U>>
-      : T
+export type WrapRSCs<T> = T extends (...args: any[]) => any
+  ? T
+  : T extends JSX.Element
+    ? ReadableStream
+    : { [K in keyof T]: WrapRSCs<T[K]> }
 
 export type RscStream<T> = {
   __cacheState: T
