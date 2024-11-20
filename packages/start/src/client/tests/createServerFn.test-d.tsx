@@ -1,6 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
 import { createServerFn } from '../createServerFn'
 import { createMiddleware } from '../createMiddleware'
+import type { Constrain, Validator } from '@tanstack/react-router'
 
 test('createServerFn without middleware', () => {
   createServerFn({ method: 'GET' }).handler((options) => {
@@ -184,7 +185,10 @@ test('createServerFn returns Date', () => {
 
 test('createServerFn returns RSC', () => {
   const fn = createServerFn().handler(() => ({
-    rscs: [<div>I'm an RSC</div>, <div>I'm an RSC</div>] as const,
+    rscs: [
+      <div key="0">I'm an RSC</div>,
+      <div key="1">I'm an RSC</div>,
+    ] as const,
   }))
 
   expectTypeOf(fn()).toEqualTypeOf<
@@ -206,5 +210,18 @@ test('createServerFn cannot return function', () => {
     .returns.toEqualTypeOf<
       | { func: 'Function is not serializable' }
       | Promise<{ func: 'Function is not serializable' }>
+    >()
+})
+
+test('createServerFn cannot validate function', () => {
+  const validator = createServerFn().validator<() => { func: () => 'string' }>
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .toEqualTypeOf<
+      Constrain<
+        () => { func: () => 'string' },
+        Validator<{ func: 'Function is not serializable' }, any>
+      >
     >()
 })

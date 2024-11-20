@@ -6,6 +6,8 @@ import type {
   Constrain,
   DefaultTransformerParse,
   DefaultTransformerStringify,
+  ResolveValidatorInput,
+  Validator,
 } from '@tanstack/react-router'
 import type {
   AnyMiddleware,
@@ -106,12 +108,22 @@ type ServerFnBaseOptions<
   method: TMethod
   validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
-  validator?: Constrain<TInput, AnyValidator>
+  validator?: ConstrainValidator<TInput>
   extractedFn?: CompiledFetcherFn<TResponse>
   serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
   functionId: string
 }
+
+export type ConstrainValidator<TValidator> = unknown extends TValidator
+  ? TValidator
+  : Constrain<
+      TValidator,
+      Validator<
+        DefaultTransformerStringify<ResolveValidatorInput<TValidator>>,
+        any
+      >
+    >
 
 type ServerFnBase<
   TMethod extends Method = 'GET',
@@ -127,7 +139,7 @@ type ServerFnBase<
     'validator' | 'handler'
   >
   validator: <TValidator>(
-    validator: Constrain<TValidator, AnyValidator>,
+    validator: ConstrainValidator<TValidator>,
   ) => Pick<
     ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator>,
     'handler' | 'middleware'

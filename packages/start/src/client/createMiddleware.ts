@@ -1,7 +1,8 @@
-import type { Method } from './createServerFn'
+import type { ConstrainValidator, Method } from './createServerFn'
 import type {
   AnyValidator,
   Constrain,
+  DefaultTransformerStringify,
   Expand,
   MergeAll,
   ResolveValidatorInput,
@@ -129,7 +130,7 @@ export interface MiddlewareOptions<
 > {
   validateClient?: boolean
   middleware?: TMiddlewares
-  validator?: Constrain<TValidator, AnyValidator>
+  validator?: ConstrainValidator<TValidator>
   client?: MiddlewareClientFn<
     TMiddlewares,
     TValidator,
@@ -166,7 +167,7 @@ export type MiddlewareServerFn<
     TNewClientAfterContext = undefined,
   >(ctx?: {
     context?: TNewServerContext
-    sendContext?: TNewClientAfterContext
+    sendContext?: DefaultTransformerStringify<TNewClientAfterContext>
   }) => Promise<
     ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
   >
@@ -186,7 +187,7 @@ export type MiddlewareClientFn<
   method: Method
   next: <TNewServerContext = undefined, TNewClientContext = undefined>(ctx?: {
     context?: TNewClientContext
-    sendContext?: TNewServerContext
+    sendContext?: DefaultTransformerStringify<TNewServerContext>
     headers?: HeadersInit
   }) => Promise<ClientResultWithContext<TNewServerContext, TNewClientContext>>
 }) =>
@@ -272,7 +273,7 @@ export interface MiddlewareValidator<
   TClientAfterContext,
 > {
   validator: <TNewValidator extends AnyValidator>(
-    input: TNewValidator,
+    input: ConstrainValidator<TNewValidator>,
   ) => MiddlewareAfterMiddleware<
     TId,
     TMiddlewares,
