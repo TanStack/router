@@ -1,7 +1,12 @@
 import invariant from 'tiny-invariant'
 import { defaultTransformer } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
-import type { AnyValidator, Constrain } from '@tanstack/react-router'
+import type {
+  AnyValidator,
+  Constrain,
+  DefaultTransformerParse,
+  DefaultTransformerStringify,
+} from '@tanstack/react-router'
 import type {
   AnyMiddleware,
   MergeAllServerContext,
@@ -61,25 +66,13 @@ export interface OptionalFetcherDataOptions<TInput> extends FetcherBaseOptions {
   data?: TInput
 }
 
-export type FetcherData<TResponse> = WrapRSCs<
+export type FetcherData<TResponse> = DefaultTransformerParse<
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 >
 
-export type NonSerializable = (...args: any[]) => any
+export type NonSerializable = (...args: Array<any>) => any
 
 export type Serializable = Date | undefined
-
-export type WrapRSCs<T> = T extends Serializable
-  ? T
-  : T extends JSX.Element
-    ? ReadableStream
-    : { [K in keyof T]: WrapRSCs<T[K]> }
-
-export type ValidateRSCs<T> = T extends Serializable
-  ? T
-  : T extends NonSerializable
-    ? 'Function is not serializable'
-    : { [K in keyof T]: ValidateRSCs<T[K]> }
 
 export type RscStream<T> = {
   __cacheState: T
@@ -89,7 +82,9 @@ export type Method = 'GET' | 'POST'
 
 export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
   ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
-) => Promise<ValidateRSCs<TResponse>> | ValidateRSCs<TResponse>
+) =>
+  | Promise<DefaultTransformerStringify<TResponse>>
+  | DefaultTransformerStringify<TResponse>
 
 export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
   method: TMethod

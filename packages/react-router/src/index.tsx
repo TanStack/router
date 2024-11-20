@@ -290,7 +290,13 @@ export {
 export type { SearchSerializer, SearchParser } from './searchParams'
 
 export { defaultTransformer } from './transformer'
-export type { RouterTransformer } from './transformer'
+export type {
+  RouterTransformer,
+  TransformerParse,
+  TransformerStringify,
+  DefaultTransformerParse,
+  DefaultTransformerStringify,
+} from './transformer'
 
 export { useBlocker, Block } from './useBlocker'
 
