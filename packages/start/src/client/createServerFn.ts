@@ -73,9 +73,13 @@ export type WrapRSCs<T> = T extends Serializable
   ? T
   : T extends JSX.Element
     ? ReadableStream
-    : T extends NonSerializable
-      ? never
-      : { [K in keyof T]: WrapRSCs<T[K]> }
+    : { [K in keyof T]: WrapRSCs<T[K]> }
+
+export type ValidateRSCs<T> = T extends Serializable
+  ? T
+  : T extends NonSerializable
+    ? 'Function is not serializable'
+    : { [K in keyof T]: ValidateRSCs<T[K]> }
 
 export type RscStream<T> = {
   __cacheState: T
@@ -85,7 +89,7 @@ export type Method = 'GET' | 'POST'
 
 export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
   ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
-) => Promise<TResponse> | TResponse
+) => Promise<ValidateRSCs<TResponse>> | ValidateRSCs<TResponse>
 
 export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
   method: TMethod

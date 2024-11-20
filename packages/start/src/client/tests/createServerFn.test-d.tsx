@@ -192,10 +192,19 @@ test('createServerFn returns RSC', () => {
   >()
 })
 
-test('createServerFn cannot return function', () => {
+test('createServerFn returns undefined', () => {
   const fn = createServerFn().handler(() => ({
-    func: () => 'func',
+    nothing: undefined,
   }))
 
-  expectTypeOf(fn()).toEqualTypeOf<Promise<{ func: never }>>()
+  expectTypeOf(fn()).toEqualTypeOf<Promise<{ nothing: undefined }>>()
+})
+
+test('createServerFn cannot return function', () => {
+  expectTypeOf(createServerFn().handler<{ func: () => 'func' }>)
+    .parameter(0)
+    .returns.toEqualTypeOf<
+      | { func: 'Function is not serializable' }
+      | Promise<{ func: 'Function is not serializable' }>
+    >()
 })
