@@ -60,7 +60,7 @@ The `<Link>` and `navigate()` APIs both accept a `mask` option that can be used 
   to="/photos/$photoId/modal"
   params={{ photoId: 5 }}
   mask={{
-    to: "/photos/$photoId"
+    to: "/photos/$photoId",
     params: {
       photoId: 5,
     },
@@ -78,8 +78,9 @@ const navigate = useNavigate()
 function onOpenPhoto() {
   navigate({
     to: '/photos/$photoId/modal',
+    params: {  photoId: 5 },
     mask: {
-      to: '/photos/$photoId'
+      to: '/photos/$photoId',
       params: {
         photoId: 5,
       },
