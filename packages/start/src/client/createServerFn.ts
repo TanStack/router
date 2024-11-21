@@ -72,10 +72,6 @@ export type FetcherData<TResponse> = DefaultTransformerParse<
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 >
 
-export type NonSerializable = (...args: Array<any>) => any
-
-export type Serializable = Date | undefined
-
 export type RscStream<T> = {
   __cacheState: T
 }
