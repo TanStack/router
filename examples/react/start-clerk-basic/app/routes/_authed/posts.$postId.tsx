@@ -5,7 +5,7 @@ import { fetchPost } from '~/utils/posts.js'
 
 export const Route = createFileRoute('/_authed/posts/$postId')({
   loader: ({ params: { postId } }) => fetchPost({ data: postId }),
-  errorComponent: PostErrorComponent as any,
+  errorComponent: PostErrorComponent,
   component: PostComponent,
   notFoundComponent: () => {
     return <NotFound>Post not found</NotFound>

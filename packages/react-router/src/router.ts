@@ -1298,25 +1298,30 @@ export class Router<
             : loaderDeps,
           invalid: false,
           preload: false,
-          links: route.options.links?.(),
-          scripts: route.options.scripts?.(),
+          links: undefined,
+          scripts: undefined,
+          meta: undefined,
           staticData: route.options.staticData || {},
           loadPromise: createControlledPromise(),
           fullPath: route.fullPath,
         }
       }
 
-      // If it's already a success, update the meta and headers
+      const headFnContent = route.options.head?.({
+        matches,
+        match,
+        params: match.params,
+        loaderData: match.loaderData ?? undefined,
+      })
+
+      match.links = headFnContent?.links
+      match.scripts = headFnContent?.scripts
+      match.meta = headFnContent?.meta
+
+      // If it's already a success, update the headers
       // These may get updated again if the match is refreshed
       // due to being stale
       if (match.status === 'success') {
-        match.meta = route.options.meta?.({
-          matches,
-          match,
-          params: match.params,
-          loaderData: match.loaderData,
-        })
-
         match.headers = route.options.headers?.({
           loaderData: match.loaderData,
         })
@@ -2516,12 +2521,13 @@ export class Router<
 
                           await potentialPendingMinPromise()
 
-                          const meta = route.options.meta?.({
+                          const headFnContent = route.options.head?.({
                             matches,
                             match: this.getMatch(matchId)!,
                             params: this.getMatch(matchId)!.params,
                             loaderData,
                           })
+                          const meta = headFnContent?.meta
 
                           const headers = route.options.headers?.({
                             loaderData,

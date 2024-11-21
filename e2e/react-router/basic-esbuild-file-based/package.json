@@ -20,7 +20,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.2",
+    "@playwright/test": "^1.49.0",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "esbuild": "^0.24.0"

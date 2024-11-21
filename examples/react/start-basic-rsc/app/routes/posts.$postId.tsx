@@ -29,7 +29,7 @@ const renderPost = createServerFn({ method: 'GET' })
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => renderPost({ data: postId }),
-  errorComponent: PostErrorComponent as any,
+  errorComponent: PostErrorComponent,
   component: PostComponent,
   notFoundComponent: () => {
     return <NotFound>Post not found</NotFound>

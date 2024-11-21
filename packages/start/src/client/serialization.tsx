@@ -111,20 +111,17 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
       }
     }
 
-    const meta =
-      match.status === 'success'
-        ? route.options.meta?.({
-            matches: router.state.matches,
-            match,
-            params: match.params,
-            loaderData: match.loaderData,
-          })
-        : undefined
+    const headFnContent = route.options.head?.({
+      matches: router.state.matches,
+      match,
+      params: match.params,
+      loaderData: match.loaderData,
+    })
 
     Object.assign(match, {
-      meta,
-      links: route.options.links?.(),
-      scripts: route.options.scripts?.(),
+      meta: headFnContent?.meta,
+      links: headFnContent?.links,
+      scripts: headFnContent?.scripts,
     })
   })
 }

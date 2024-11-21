@@ -7,7 +7,7 @@ export const Route = createFileRoute('/posts_/$postId/deep')({
     fetchPost({
       data: postId,
     }),
-  errorComponent: PostErrorComponent as any,
+  errorComponent: PostErrorComponent,
   component: PostDeepComponent,
 })
 
