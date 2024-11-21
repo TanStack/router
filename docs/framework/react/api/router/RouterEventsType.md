@@ -7,6 +7,12 @@ The `RouterEvents` type contains all of the events that the router can emit. Eac
 
 ```tsx
 type RouterEvents = {
+  onBeforeNavigate: {
+    type: 'onBeforeNavigate'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
   onBeforeLoad: {
     type: 'onBeforeLoad'
     fromLocation: ParsedLocation
@@ -25,6 +31,12 @@ type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
   }
+  onBeforeRouteMount: {
+    type: 'onBeforeRouteMount'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+  }
 }
 ```
 
@@ -34,7 +46,7 @@ Once an event is emitted, the following properties will be present on the event 
 
 ### `type` property
 
-- Type: `onBeforeLoad | onLoad | onResolved`
+- Type: `onBeforeNavigate | onBeforeLoad | onLoad | onBeforeRouteMount | onResolved`
 - The type of the event
 - This is useful for discriminating between events in a listener function.
 

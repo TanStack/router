@@ -1,4 +1,3 @@
-import { serverFnReturnTypeHeader } from '../constants'
 import type { JsonResponse } from './createServerFn'
 
 export function json<TData>(
@@ -17,7 +16,6 @@ export function json<TData>(
     statusText,
     headers: {
       'Content-Type': 'application/json',
-      [serverFnReturnTypeHeader]: 'json',
       ...opts?.headers,
     },
   })

@@ -49,6 +49,45 @@ describe('removeBasepath', () => {
   ])('$name', ({ basepath, pathname, expected }) => {
     expect(removeBasepath(basepath, pathname)).toBe(expected)
   })
+  describe('case sensitivity', () => {
+    describe('caseSensitive = true', () => {
+      it.each([
+        {
+          name: 'should not remove basepath from the beginning of the pathname',
+          basepath: '/app',
+          pathname: '/App/path/App',
+          expected: '/App/path/App',
+        },
+        {
+          name: 'should not remove basepath from the beginning of the pathname with multiple segments',
+          basepath: '/app/New',
+          pathname: '/App/New/path/App',
+          expected: '/App/New/path/App',
+        },
+      ])('$name', ({ basepath, pathname, expected }) => {
+        expect(removeBasepath(basepath, pathname, true)).toBe(expected)
+      })
+    })
+
+    describe('caseSensitive = false', () => {
+      it.each([
+        {
+          name: 'should remove basepath from the beginning of the pathname',
+          basepath: '/App',
+          pathname: '/app/path/app',
+          expected: '/path/app',
+        },
+        {
+          name: 'should remove multisegment basepath from the beginning of the pathname',
+          basepath: '/App/New',
+          pathname: '/app/new/path/app',
+          expected: '/path/app',
+        },
+      ])('$name', ({ basepath, pathname, expected }) => {
+        expect(removeBasepath(basepath, pathname, false)).toBe(expected)
+      })
+    })
+  })
 })
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
@@ -270,9 +309,28 @@ describe('interpolatePath', () => {
       params: { id: 0 },
       result: '/users/0',
     },
+    {
+      name: 'should interpolate the path with URI component encoding',
+      path: '/users/$id',
+      params: { id: '?#@john+smith' },
+      result: '/users/%3F%23%40john%2Bsmith',
+    },
+    {
+      name: 'should interpolate the path without URI encoding characters in decodeCharMap',
+      path: '/users/$id',
+      params: { id: '?#@john+smith' },
+      result: '/users/%3F%23@john+smith',
+      decodeCharMap: new Map(
+        ['@', '+'].map((char) => [encodeURIComponent(char), char]),
+      ),
+    },
   ].forEach((exp) => {
     it(exp.name, () => {
-      const result = interpolatePath({ path: exp.path, params: exp.params })
+      const result = interpolatePath({
+        path: exp.path,
+        params: exp.params,
+        decodeCharMap: exp.decodeCharMap,
+      })
       expect(result).toBe(exp.result)
     })
   })

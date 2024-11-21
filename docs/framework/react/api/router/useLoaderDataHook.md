@@ -29,6 +29,13 @@ The `useLoaderData` hook accepts an `options` object.
 - `(loaderData: TLoaderData) => TSelected`
 - If supplied, this function will be called with the loader data and the return value will be returned from `useLoaderData`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
 
+### `opts.structuralSharing` option
+
+- Type: `boolean`
+- Optional
+- Configures whether structural sharing is enabled for the value returned by `select`.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+
 ## useLoaderData returns
 
 - If a `select` function is provided, the return value of the `select` function.

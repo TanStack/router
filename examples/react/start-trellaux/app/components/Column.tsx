@@ -3,7 +3,7 @@ import invariant from 'tiny-invariant'
 import { twMerge } from 'tailwind-merge'
 
 import { flushSync } from 'react-dom'
-import { CONTENT_TYPES, type RenderedItem } from '../types'
+import { CONTENT_TYPES } from '../types'
 import { Icon } from '../icons/icons'
 import {
   useDeleteColumnMutation,
@@ -13,6 +13,7 @@ import {
 import { EditableText } from './EditableText'
 import { NewCard } from './NewCard'
 import { Card } from './Card'
+import type { RenderedItem } from '../types'
 
 interface ColumnProps {
   name: string

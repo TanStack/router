@@ -9,8 +9,8 @@ export interface NavigateOptions {
 export interface RouterHistory {
   location: HistoryLocation
   length: number
-  subscribers: Set<() => void>
-  subscribe: (cb: () => void) => () => void
+  subscribers: Set<(opts: { location: HistoryLocation }) => void>
+  subscribe: (cb: (opts: { location: HistoryLocation }) => void) => () => void
   push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
   replace: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
   go: (index: number, navigateOpts?: NavigateOptions) => void
@@ -92,11 +92,11 @@ export function createHistory(opts: {
   setBlockers?: (blockers: Array<NavigationBlocker>) => void
 }): RouterHistory {
   let location = opts.getLocation()
-  const subscribers = new Set<() => void>()
+  const subscribers = new Set<(opts: { location: HistoryLocation }) => void>()
 
   const notify = () => {
     location = opts.getLocation()
-    subscribers.forEach((subscriber) => subscriber())
+    subscribers.forEach((subscriber) => subscriber({ location }))
   }
 
   const tryNavigation = async ({
@@ -141,7 +141,7 @@ export function createHistory(opts: {
       return opts.getLength()
     },
     subscribers,
-    subscribe: (cb: () => void) => {
+    subscribe: (cb: (opts: { location: HistoryLocation }) => void) => {
       subscribers.add(cb)
 
       return () => {

@@ -7,7 +7,7 @@ title: Search middleware to strip search params
 
 ## stripSearchParams props
 
-The `retainSearchParams` accepts one of the following inputs:
+`stripSearchParams` accepts one of the following inputs:
 
 - `true`: if the search schema has no required params, `true` can be used to strip all search params
 - a list of keys of those search params that shall be removed; only keys of optional search params are allowed.
@@ -18,7 +18,7 @@ The `retainSearchParams` accepts one of the following inputs:
 ```tsx
 import { z } from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
 const defaultValues = {
   one: 'abc',
@@ -31,7 +31,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/hello')({
-  validateSearch: zodSearchValidator(searchSchema),
+  validateSearch: zodValidator(searchSchema),
   search: {
     // strip default values
     middlewares: [stripSearchParams(defaultValues)],
@@ -42,7 +42,7 @@ export const Route = createFileRoute('/hello')({
 ```tsx
 import { z } from 'zod'
 import { createRootRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
 const searchSchema = z.object({
   hello: z.string().default('world'),
@@ -50,7 +50,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodSearchValidator(searchSchema),
+  validateSearch: zodValidator(searchSchema),
   search: {
     // always remove `hello`
     middlewares: [stripSearchParams(['hello'])],
@@ -61,7 +61,7 @@ export const Route = createRootRoute({
 ```tsx
 import { z } from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
 const searchSchema = z.object({
   one: z.string().default('abc'),
@@ -69,7 +69,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/hello')({
-  validateSearch: zodSearchValidator(searchSchema),
+  validateSearch: zodValidator(searchSchema),
   search: {
     // remove all search params
     middlewares: [stripSearchParams(true)],

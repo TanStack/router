@@ -406,6 +406,13 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                   ),
                 ]),
               )
+            } else if (t.isVariableDeclarator(splitNode)) {
+              programPath.pushContainer(
+                'body',
+                t.variableDeclaration('const', [
+                  t.variableDeclarator(t.identifier(splitType), splitNode.init),
+                ]),
+              )
             } else if (t.isCallExpression(splitNode)) {
               const outputSplitNodeCode = generate(splitNode).code
               const splitNodeAst = babel.parse(outputSplitNodeCode)

@@ -4,4 +4,4 @@ export type User = {
   email: string
 }
 
-export const DEPLOY_URL = 'http://localhost:3000'
+export const DEPLOY_URL = 'http://localhost:3002'
