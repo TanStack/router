@@ -1,5 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
+import type { Constrain, Validator } from '@tanstack/react-router'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
   const middleware = createMiddleware()
@@ -228,7 +229,7 @@ test('createMiddleware merges server context and client context, sends server co
         fromServer1: string
         fromServer2: string
         fromServer3: string
-        toServer1: string
+        toServer1: 'toServer1'
       }>()
       return next({
         context: { fromServer4: 'fromServer4' },
@@ -244,8 +245,45 @@ test('createMiddleware merges server context and client context, sends server co
         fromClient3: string
         clientAfter3: string
         fromClient4: string
-        toClient1: string
+        toClient1: 'toClient1'
       }>
       return next({ context: { clientAfter4: 'clientAfter4' } })
     })
+})
+
+test('createMiddleware sendContext cannot send a function', () => {
+  createMiddleware()
+    .client(({ next }) => {
+      expectTypeOf(next<{ func: () => 'func' }>)
+        .parameter(0)
+        .exclude<undefined>()
+        .toHaveProperty('sendContext')
+        .toEqualTypeOf<{ func: 'Function is not serializable' } | undefined>()
+
+      return next()
+    })
+    .server(({ next }) => {
+      expectTypeOf(next<undefined, { func: () => 'func' }>)
+        .parameter(0)
+        .exclude<undefined>()
+        .toHaveProperty('sendContext')
+        .toEqualTypeOf<{ func: 'Function is not serializable' } | undefined>()
+
+      return next()
+    })
+})
+
+test('createMiddleware cannot validate function', () => {
+  const validator = createMiddleware().validator<
+    (input: { func: () => 'string' }) => { output: 'string' }
+  >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .toEqualTypeOf<
+      Constrain<
+        (input: { func: () => 'string' }) => { output: 'string' },
+        Validator<{ func: 'Function is not serializable' }, any>
+      >
+    >()
 })
