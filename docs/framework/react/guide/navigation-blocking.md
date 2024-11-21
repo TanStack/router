@@ -20,11 +20,7 @@ Navigation blocking adds one or more layers of "blockers" to the entire underlyi
 - Custom UI
   - If the navigation is triggered by something we control at the router level, we can allow you to perform any task or show any UI you'd like to the user to confirm the action. Each blocker's `blocker` function will be asynchronously and sequentially executed. If any blocker function resolves or returns `true`, the navigation will be allowed and all other blockers will continue to do the same until all blockers have been allowed to proceed. If any single blocker resolves or returns `false`, the navigation will be canceled and the rest of the `blocker` functions will be ignored.
 - The `onbeforeunload` event
-  - For page events that we cannot control directly, we rely on the browser's `onbeforeunload` event. If the user attempts to close the tab or window, refresh, or "unload" the page assets in any way, the browser's generic "Are you sure you want to leave?" dialog will be shown. If the user confirms, all blockers will be bypassed and the page will unload. If the user cancels, the unload will be cancelled, and the page will remain as is. It's important to note that **custom blocker functions will not be executed** when the `onbeforeunload` flow is triggered.
-
-## What about the back button?
-
-The back button is a special case. When the user clicks the back button, we cannot intercept or control the browser's behavior in a reliable way, and there is no official way to block it that works across all browsers equally. If you encounter a situation where you need to block the back button, it's recommended to rethink your UI/UX to avoid the back button being destructive to any unsaved user data. Saving data to session storage and restoring it if the user returns to the page is a safe and reliable pattern.
+  - For page events that we cannot control directly, we rely on the browser's `onbeforeunload` event. If the user attempts to close the tab or window, refresh, or "unload" the page assets in any way, the browser's generic "Are you sure you want to leave?" dialog will be shown. If the user confirms, all blockers will be bypassed and the page will unload. If the user cancels, the unload will be cancelled, and the page will remain as is. 
 
 ## How do I use navigation blocking?
 
@@ -44,8 +40,12 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   useBlocker({
-    blockerFn: () => window.confirm('Are you sure you want to leave?'),
-    condition: formIsDirty,
+    shouldBlockFn: () => {
+        if (!formIsDirty) return false
+
+        const shouldLeave = confirm('Are you sure you want to leave?')
+        return !shouldLeave
+    }
   })
 
   // ...
@@ -66,8 +66,12 @@ function MyComponent() {
 
   return (
     <Block
-      blocker={() => window.confirm('Are you sure you want to leave?')}
-      condition={formIsDirty}
+      shouldBlockFn={() => {
+        if (!formIsDirty) return false
+
+        const shouldLeave = confirm('Are you sure you want to leave?')
+        return !shouldLeave
+      }}
     />
   )
 
@@ -75,8 +79,12 @@ function MyComponent() {
 
   return (
     <Block
-      blocker={() => window.confirm('Are you sure you want to leave?')}
-      condition={formIsDirty}
+      shouldBlockFn={() => {
+        if (!formIsDirty) return false
+
+        const shouldLeave = confirm('Are you sure you want to leave?')
+        return !shouldLeave
+      }}
     >
       {/* ... */}
     </Block>
@@ -101,7 +109,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   const { proceed, reset, status } = useBlocker({
-    condition: formIsDirty,
+    shouldBlockFn: () => formIsDirty,
   })
 
   // ...
@@ -131,7 +139,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   return (
-    <Block condition={formIsDirty}>
+    <Block shouldBlockFn={() => formIsDirty}>
       {({ status, proceed, reset }) => (
         <>
           {/* ... */}

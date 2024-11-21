@@ -15,17 +15,19 @@ describe('useBlocker', () => {
 
   describe('condition', () => {
     test('should not add a blocker if disabled is true', () => {
-      renderHook(() => useBlocker({ disabled: true, blockerFn: () => true }))
+      renderHook(() =>
+        useBlocker({ disabled: true, shouldBlockFn: () => true }),
+      )
       expect(block).not.toHaveBeenCalled()
     })
 
     test('should add the blocker if not disabled', () => {
-      renderHook(() => useBlocker({ blockerFn: () => true }))
+      renderHook(() => useBlocker({ shouldBlockFn: () => true }))
       expect(block).toHaveBeenCalledOnce()
     })
 
     test('Blocker object should be provided to blocker', () => {
-      renderHook(() => useBlocker({ blockerFn: () => true }))
+      renderHook(() => useBlocker({ shouldBlockFn: () => true }))
       expect(block).toHaveBeenCalledWith(
         expect.objectContaining({ blockerFn: expect.any(Function) }),
       )
@@ -33,7 +35,7 @@ describe('useBlocker', () => {
 
     test('enableBeforeUnload should be passed to history.block', () => {
       renderHook(() =>
-        useBlocker({ blockerFn: () => true, enableBeforeUnload: false }),
+        useBlocker({ shouldBlockFn: () => true, enableBeforeUnload: false }),
       )
       expect(block).toHaveBeenCalledWith(
         expect.objectContaining({ enableBeforeUnload: false }),

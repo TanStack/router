@@ -3,6 +3,7 @@ import { useRouter } from './useRouter'
 import { matchPathname } from './path'
 import type { MatchLocation } from './RouterProvider'
 import type { BlockerFn, BlockerFnArgs } from '@tanstack/history'
+import type { ReactNode } from './route'
 
 type Optional<T> =
   | T
@@ -17,11 +18,11 @@ type BlockerResolver = {
 }
 
 export type UseBlockerOpts = {
-  blockerFn: BlockerFn
+  shouldBlockFn: BlockerFn
 
   enableBeforeUnload?: boolean | (() => boolean)
   disabled?: boolean
-  skipResolver?: boolean
+  withResolver?: boolean
 } & Optional<{
   from: MatchLocation['to']
   fromMatchOpts?: Omit<MatchLocation, 'to'>
@@ -31,18 +32,87 @@ export type UseBlockerOpts = {
     toMatchOpts?: Omit<MatchLocation, 'to'>
   }>
 
-export function useBlocker({
-  blockerFn,
-  to,
-  toMatchOpts,
+type LegacyBlockerFn = () => Promise<any> | any
+type LegacyBlockerOpts = {
+  blockerFn?: LegacyBlockerFn
+  condition?: boolean | any
+}
 
-  from,
-  fromMatchOpts,
+function _resolveBlockerOpts(
+  opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
+  condition?: boolean | any,
+): UseBlockerOpts {
+  if (opts === undefined) {
+    return {
+      shouldBlockFn: () => true,
+      withResolver: false,
+    }
+  }
 
-  enableBeforeUnload = true,
-  disabled = false,
-  skipResolver = false,
-}: UseBlockerOpts): BlockerResolver {
+  if (typeof opts === 'function') {
+    const shouldBlock = Boolean(condition ?? true)
+
+    const _customBlockerFn: BlockerFn = async () => {
+      if (shouldBlock) return await opts()
+      return false
+    }
+
+    return {
+      shouldBlockFn: _customBlockerFn,
+      enableBeforeUnload: shouldBlock,
+      withResolver: false,
+    }
+  }
+
+  if ('shouldBlockFn' in opts) return opts
+
+  const shouldBlock = Boolean(opts.condition ?? true)
+  const fn = opts.blockerFn
+
+  const _customBlockerFn: BlockerFn = async () => {
+    if (shouldBlock && fn !== undefined) return await fn()
+    return shouldBlock
+  }
+
+  return {
+    shouldBlockFn: _customBlockerFn,
+    enableBeforeUnload: shouldBlock,
+    withResolver: fn === undefined,
+  }
+}
+
+/**
+ * @deprecated Use the shouldBlockFn property instead
+ */
+export function useBlocker(blockerFnOrOpts?: LegacyBlockerOpts): BlockerResolver
+
+/**
+ * @deprecated Use the BlockerOpts object syntax instead
+ */
+export function useBlocker(
+  blockerFn?: LegacyBlockerFn,
+  condition?: boolean | any,
+): BlockerResolver
+
+export function useBlocker(opts: UseBlockerOpts): BlockerResolver
+
+export function useBlocker(
+  opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
+  condition?: boolean | any,
+): BlockerResolver {
+  const {
+    shouldBlockFn,
+    to,
+    toMatchOpts,
+
+    from,
+    fromMatchOpts,
+
+    enableBeforeUnload = true,
+    disabled = false,
+    withResolver = false,
+  } = _resolveBlockerOpts(opts, condition)
+
   const router = useRouter()
   const { history } = router
 
@@ -83,8 +153,8 @@ export function useBlocker({
 
       if (!matchesFrom || !matchesTo) return false
 
-      const shouldBlock = await blockerFn(blockerFnArgs)
-      if (skipResolver) return shouldBlock
+      const shouldBlock = await shouldBlockFn(blockerFnArgs)
+      if (!withResolver) return shouldBlock
 
       if (!shouldBlock) return false
 
@@ -110,19 +180,51 @@ export function useBlocker({
     return disabled
       ? undefined
       : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
-  }, [blockerFn, enableBeforeUnload, disabled, skipResolver, history, from, to])
+  }, [
+    shouldBlockFn,
+    enableBeforeUnload,
+    disabled,
+    withResolver,
+    history,
+    from,
+    to,
+  ])
 
   return resolver
 }
 
-export function Block({
-  blockerFn,
-  from,
-  to,
-  disabled = false,
-  children,
-}: PromptProps) {
-  const resolver = useBlocker({ blockerFn, disabled, from, to })
+const _resolvePromptBlockerArgs = (
+  props: PromptProps | LegacyPromptProps,
+): UseBlockerOpts => {
+  if ('shouldBlockFn' in props) return { ...props }
+
+  const shouldBlock = Boolean(props.condition ?? true)
+  const fn = props.blockerFn
+
+  const _customBlockerFn: BlockerFn = async () => {
+    if (shouldBlock && fn !== undefined) return await fn()
+    return shouldBlock
+  }
+
+  return {
+    shouldBlockFn: _customBlockerFn,
+    enableBeforeUnload: shouldBlock,
+    withResolver: fn === undefined,
+  }
+}
+
+/**
+ *  @deprecated Use the shouldBlockFn property instead
+ */
+export function Block(opts: LegacyBlockerOpts): ReactNode
+
+export function Block(opts: UseBlockerOpts): ReactNode
+
+export function Block(opts: PromptProps | LegacyPromptProps): ReactNode {
+  const { children, ...rest } = opts
+  const args = _resolvePromptBlockerArgs(rest)
+
+  const resolver = useBlocker(args)
   return children
     ? typeof children === 'function'
       ? children(resolver)
@@ -130,12 +232,12 @@ export function Block({
     : null
 }
 
-export type PromptProps = {
-  blockerFn: BlockerFn
-  from: string
-  to: string
-  disabled?: boolean
-  children?:
-    | React.ReactNode
-    | (({ proceed, reset }: BlockerResolver) => React.ReactNode)
+type LegacyPromptProps = {
+  blockerFn?: LegacyBlockerFn
+  condition?: boolean | any
+  children?: ReactNode | (({ proceed, reset }: BlockerResolver) => ReactNode)
+}
+
+export type PromptProps = UseBlockerOpts & {
+  children?: ReactNode | (({ proceed, reset }: BlockerResolver) => ReactNode)
 }

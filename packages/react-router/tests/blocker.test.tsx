@@ -35,7 +35,7 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
     path: '/',
     component: function Setup() {
       const navigate = useNavigate()
-      useBlocker({ disabled, blockerFn: _mockBlockerFn })
+      useBlocker({ disabled, shouldBlockFn: _mockBlockerFn })
       return (
         <React.Fragment>
           <h1>Index</h1>

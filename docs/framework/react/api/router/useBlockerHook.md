@@ -9,7 +9,7 @@ The `useBlocker` method is a hook that [blocks navigation](../../guide/navigatio
 
 The `useBlocker` hook accepts a single _required argument, an option object:
 
-### `options.blockerFn` option
+### `options.shouldBlockFn` option
 
 - Required
 - Type: `BlockerFn`
@@ -29,11 +29,11 @@ The `useBlocker` hook accepts a single _required argument, an option object:
 - Type: `boolean | (() => boolean)`
 - Tell the blocker to sometimes or always block the browser `beforeUnload` event or not
 
-### `options.skipResolver` option
+### `options.withResolver` option
 
 - Optional - defaults to `false`
 - Type: `boolean`
-- Specify if your blockerFn itself provied all the information needed to handle the navigation and the resolver return should be ignored
+- Specify if your the resolver that the hook returns should be used or whether the information in your `shouldBlockFn` is enough the determine blocking
 
 ### `options.from` option
 
@@ -97,7 +97,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   const { proceed, reset, status } = useBlocker({
-    blockerFn: () => formIsDirty,
+    shouldBlockFn: () => formIsDirty,
   })
 
   // ...
@@ -125,7 +125,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   const { proceed, reset, status } = useBlocker({
-    blockerFn: ({ nextLocation }) => {
+    shouldBlockFn: ({ nextLocation }) => {
       if (nextLocation.pathname.includes('step/')) 
         return false
       
@@ -158,7 +158,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   const { proceed, reset, status } = useBlocker({
-    blockerFn: ({ nextLocation }) => {
+    shouldBlockFn: ({ nextLocation }) => {
       if (nextLocation.pathname.includes('step/')) 
         return false
       
