@@ -9,14 +9,14 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.59.20",
-    "@tanstack/react-query-devtools": "^5.59.20",
+    "@tanstack/react-query": "^5.61.0",
+    "@tanstack/react-query-devtools": "^5.61.0",
     "@tanstack/react-router": "^1.82.1",
     "@tanstack/react-router-with-query": "^1.82.1",
     "@tanstack/router-devtools": "^1.82.1",
     "@tanstack/start": "^1.82.1",
     "ky": "^1.7.2",
-    "msw": "^2.6.4",
+    "msw": "^2.6.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
@@ -31,8 +31,8 @@
     "@types/react-dom": "^18.2.21",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.14",
+    "tailwindcss": "^3.4.15",
     "typescript": "^5.6.2",
-    "vite-tsconfig-paths": "^5.1.2"
+    "vite-tsconfig-paths": "^5.1.3"
   }
 }
