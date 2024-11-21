@@ -16,7 +16,7 @@ export const useMeta = () => {
 
   const meta: Array<RouterManagedTag> = React.useMemo(() => {
     const resultMeta: Array<RouterManagedTag> = []
-    const metaByName: Record<string, true> = {}
+    const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
     ;[...routeMeta].reverse().forEach((metas) => {
       ;[...metas].reverse().forEach((m) => {
@@ -30,11 +30,12 @@ export const useMeta = () => {
             }
           }
         } else {
-          if (m.name) {
-            if (metaByName[m.name]) {
+          const attribute = m.name ?? m.property
+          if (attribute) {
+            if (metaByAttribute[attribute]) {
               return
             } else {
-              metaByName[m.name] = true
+              metaByAttribute[attribute] = true
             }
           }
 
