@@ -12,7 +12,7 @@
     "@clerk/tanstack-start": "0.5.1",
     "@tanstack/react-router": "^1.82.2",
     "@tanstack/router-devtools": "^1.82.2",
-    "@tanstack/start": "^1.82.2",
+    "@tanstack/start": "^1.82.3",
     "dotenv": "^16.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
