@@ -33,7 +33,7 @@
     "node": "^18.0.0 || >=20.0.0"
   },
   "devDependencies": {
-    "@inquirer/prompts": "^5.5.0",
+    "@inquirer/prompts": "^7.1.0",
     "@types/cross-spawn": "^6.0.6",
     "@types/validate-npm-package-name": "^4.0.2",
     "@types/which": "^3.0.4",
