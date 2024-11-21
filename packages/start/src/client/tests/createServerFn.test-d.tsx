@@ -14,9 +14,9 @@ test('createServerFn without middleware', () => {
 })
 
 test('createServerFn with validator', () => {
-  createServerFn({ method: 'GET' })
-    .validator(() => ({
-      a: 'a',
+  const fn = createServerFn({ method: 'GET' })
+    .validator((input: { input: string }) => ({
+      a: input.input,
     }))
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
@@ -27,6 +27,11 @@ test('createServerFn with validator', () => {
         }
       }>()
     })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: { input: string }
+    headers?: HeadersInit
+  }>()
 })
 
 test('createServerFn with middleware and context', () => {
@@ -76,16 +81,16 @@ test('createServerFn with middleware and context', () => {
 
 test('createServerFn with middleware and validator', () => {
   const middleware1 = createMiddleware().validator(
-    () =>
+    (input: { readonly inputA: 'inputA' }) =>
       ({
-        a: 'a',
+        outputA: 'outputA',
       }) as const,
   )
 
   const middleware2 = createMiddleware().validator(
-    () =>
+    (input: { readonly inputB: 'inputB' }) =>
       ({
-        b: 'b',
+        outputB: 'outputB',
       }) as const,
   )
 
@@ -94,9 +99,9 @@ test('createServerFn with middleware and validator', () => {
   const fn = createServerFn({ method: 'GET' })
     .middleware([middleware3])
     .validator(
-      () =>
+      (input: { readonly inputC: 'inputC' }) =>
         ({
-          c: 'c',
+          outputC: 'outputC',
         }) as const,
     )
     .handler((options) => {
@@ -104,9 +109,9 @@ test('createServerFn with middleware and validator', () => {
         method: 'GET'
         context: undefined
         data: {
-          readonly a: 'a'
-          readonly b: 'b'
-          readonly c: 'c'
+          readonly outputA: 'outputA'
+          readonly outputB: 'outputB'
+          readonly outputC: 'outputC'
         }
       }>()
 
@@ -115,9 +120,9 @@ test('createServerFn with middleware and validator', () => {
 
   expectTypeOf(fn).parameter(0).toEqualTypeOf<{
     data: {
-      readonly a: 'a'
-      readonly b: 'b'
-      readonly c: 'c'
+      readonly inputA: 'inputA'
+      readonly inputB: 'inputB'
+      readonly inputC: 'inputC'
     }
     headers?: HeadersInit
   }>()
@@ -139,7 +144,7 @@ test('createServerFn where validator is a primitive', () => {
 
 test('createServerFn where validator is optional if object is optional', () => {
   const fn = createServerFn({ method: 'GET' })
-    .validator(() => 'c' as 'c' | undefined)
+    .validator((input: 'c' | undefined) => input)
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
@@ -214,13 +219,15 @@ test('createServerFn cannot return function', () => {
 })
 
 test('createServerFn cannot validate function', () => {
-  const validator = createServerFn().validator<() => { func: () => 'string' }>
+  const validator = createServerFn().validator<
+    (input: { func: () => 'string' }) => { output: 'string' }
+  >
 
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
       Constrain<
-        () => { func: () => 'string' },
+        (input: { func: () => 'string' }) => { output: 'string' },
         Validator<{ func: 'Function is not serializable' }, any>
       >
     >()

@@ -357,6 +357,8 @@ export type {
   AnyValidatorObj,
   ResolveValidatorInputFn,
   ResolveValidatorOutputFn,
+  ResolveSearchValidatorInput,
+  ResolveSearchValidatorInputFn,
   Validator,
   ValidatorAdapter,
   ValidatorObj,

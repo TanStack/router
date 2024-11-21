@@ -1,6 +1,5 @@
 import type { ConstrainValidator, Method } from './createServerFn'
 import type {
-  AnyValidator,
   Constrain,
   DefaultTransformerStringify,
   Expand,
@@ -241,7 +240,7 @@ export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any, any>
 export interface MiddlewareTypes<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -267,12 +266,12 @@ export interface MiddlewareTypes<
 export interface MiddlewareValidator<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
 > {
-  validator: <TNewValidator extends AnyValidator>(
+  validator: <TNewValidator>(
     input: ConstrainValidator<TNewValidator>,
   ) => MiddlewareAfterMiddleware<
     TId,
@@ -287,7 +286,7 @@ export interface MiddlewareValidator<
 export interface MiddlewareClientAfter<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -313,7 +312,7 @@ export interface MiddlewareClientAfter<
 export interface MiddlewareAfterServer<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -337,7 +336,7 @@ export interface MiddlewareAfterServer<
 export interface MiddlewareServer<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -363,7 +362,7 @@ export interface MiddlewareServer<
 export interface MiddlewareAfterClient<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -387,7 +386,7 @@ export interface MiddlewareAfterClient<
 export interface MiddlewareClient<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -412,7 +411,7 @@ export interface MiddlewareClient<
 export interface MiddlewareAfterMiddleware<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -452,7 +451,7 @@ export interface MiddlewareAfterMiddleware<
 export interface Middleware<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -479,7 +478,7 @@ export interface Middleware<
 export function createMiddleware<
   const TId,
   const TMiddlewares,
-  TValidator extends AnyValidator = undefined,
+  TValidator = undefined,
   TServerContext = undefined,
   TClientContext = undefined,
   TClientAfterContext = undefined,

@@ -274,13 +274,15 @@ test('createMiddleware sendContext cannot send a function', () => {
 })
 
 test('createMiddleware cannot validate function', () => {
-  const validator = createMiddleware().validator<() => { func: () => 'string' }>
+  const validator = createMiddleware().validator<
+    (input: { func: () => 'string' }) => { output: 'string' }
+  >
 
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
       Constrain<
-        () => { func: () => 'string' },
+        (input: { func: () => 'string' }) => { output: 'string' },
         Validator<{ func: 'Function is not serializable' }, any>
       >
     >()

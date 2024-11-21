@@ -798,7 +798,7 @@ const getCount = createServerFn({
   return readCount()
 })
 
-const updateCount = createServerFn()
+const updateCount = createServerFn({ method: 'POST' })
   .validator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')

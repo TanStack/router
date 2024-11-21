@@ -37,7 +37,7 @@ import type {
   AnyValidatorAdapter,
   AnyValidatorObj,
   DefaultValidator,
-  ResolveValidatorInput,
+  ResolveSearchValidatorInput,
   ResolveValidatorOutput,
   StandardSchemaValidator,
   ValidatorAdapter,
@@ -679,7 +679,7 @@ export type ResolveFullSearchSchemaInput<
   TSearchValidator,
 > = Assign<
   InferFullSearchSchemaInput<TParentRoute>,
-  ResolveValidatorInput<TSearchValidator>
+  ResolveSearchValidatorInput<TSearchValidator>
 >
 
 export type LooseReturnType<T> = T extends (
@@ -988,7 +988,7 @@ export class Route<
     customId: TCustomId
     id: TId
     searchSchema: ResolveValidatorOutput<TSearchValidator>
-    searchSchemaInput: ResolveValidatorInput<TSearchValidator>
+    searchSchemaInput: ResolveSearchValidatorInput<TSearchValidator>
     searchValidator: TSearchValidator
     fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
     fullSearchSchemaInput: ResolveFullSearchSchemaInput<
