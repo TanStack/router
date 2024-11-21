@@ -21,7 +21,7 @@ function RootComponent() {
     from: '/editor-1',
     to: '/editor-1/editor-2',
     blockerFn: () => true,
-    disableBeforeUnload: true,
+    enableBeforeUnload: false,
   })
 
   return (
@@ -104,7 +104,7 @@ function Editor1Component() {
   // Block leaving editor-1 if there is text in the input
   const { proceed, reset, status } = useBlocker({
     blockerFn: () => value !== '',
-    disableBeforeUnload: () => value === '',
+    enableBeforeUnload: () => value !== '',
   })
 
   return (

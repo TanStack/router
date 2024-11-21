@@ -19,8 +19,9 @@ type BlockerResolver = {
 export type UseBlockerOpts = {
   blockerFn: BlockerFn
 
-  disableBeforeUnload?: boolean | (() => boolean)
+  enableBeforeUnload?: boolean | (() => boolean)
   disabled?: boolean
+  skipResolver?: boolean
 } & Optional<{
   from: MatchLocation['to']
   fromMatchOpts?: Omit<MatchLocation, 'to'>
@@ -38,8 +39,9 @@ export function useBlocker({
   from,
   fromMatchOpts,
 
-  disableBeforeUnload = false,
+  enableBeforeUnload = true,
   disabled = false,
+  skipResolver = false,
 }: UseBlockerOpts): BlockerResolver {
   const router = useRouter()
   const { history } = router
@@ -82,6 +84,8 @@ export function useBlocker({
       if (!matchesFrom || !matchesTo) return false
 
       const shouldBlock = await blockerFn(blockerFnArgs)
+      if (skipResolver) return shouldBlock
+
       if (!shouldBlock) return false
 
       const promise = new Promise<boolean>((resolve) => {
@@ -105,8 +109,8 @@ export function useBlocker({
 
     return disabled
       ? undefined
-      : history.block({ blockerFn: blockerFnComposed, disableBeforeUnload })
-  }, [blockerFn, disableBeforeUnload, disabled, history, from, to])
+      : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
+  }, [blockerFn, enableBeforeUnload, disabled, skipResolver, history, from, to])
 
   return resolver
 }

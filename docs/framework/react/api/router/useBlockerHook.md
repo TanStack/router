@@ -7,19 +7,58 @@ The `useBlocker` method is a hook that [blocks navigation](../../guide/navigatio
 
 ## useBlocker options
 
-The `useBlocker` hook accepts a single _optional_ argument, an option object:
+The `useBlocker` hook accepts a single _required argument, an option object:
 
 ### `options.blockerFn` option
 
-- Optional
+- Required
 - Type: `BlockerFn`
-- The function that returns a `boolean` or `Promise<boolean>` indicating whether to allow navigation.
+- This function should return a `boolean` or a `Promise<boolean>` that tells the blocker if it should block the current navigation
+- The function has the argument of type `BlockerFnArgs` passed to it, which tells you information about the current and next route and the action performed
+- Think of this function as telling the router if it should block the navigation, so returning `true` mean that it should block the navgation and `false` that it should be allowed
 
-### `options.condition` option
+### `options.disabled` option
+
+- Optional - defaults to `false`
+- Type: `boolean`
+- Specifies if the blocker should be entirely disabled or not
+
+### `options.enableBeforeUnload` option
 
 - Optional - defaults to `true`
+- Type: `boolean | (() => boolean)`
+- Tell the blocker to sometimes or always block the browser `beforeUnload` event or not
+
+### `options.skipResolver` option
+
+- Optional - defaults to `false`
 - Type: `boolean`
-- A navigation attempt is blocked when this condition is `true`.
+- Specify if your blockerFn itself provied all the information needed to handle the navigation and the resolver return should be ignored
+
+### `options.from` option
+
+- Optional
+- Type: `MatchLocation['to']`
+- Specify from which route pattern the blocker should block navigations from
+
+### `options.to` option
+
+- Optional
+- Type: `MatchLocation['to']`
+- Specify from which route pattern the blocker should block navigations to
+
+### `options.fromMatchOptions` option
+
+- Optional
+- Type: `Omit<MatchLocation, 'to'>`
+- Give additional arguments to the routeMatching from
+
+### `options.toMatchOptions` option
+
+- Optional
+- Type: `Omit<MatchLocation, 'to'>`
+- Give additional arguments to the routeMatching to
+
 
 ## useBlocker returns
 
@@ -42,8 +81,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   useBlocker({
-    blockerFn: () => window.confirm('Are you sure you want to leave?'),
-    condition: formIsDirty,
+    blockerFn: () => formIsDirty,
   })
 
   // ...
@@ -59,7 +97,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   const { proceed, reset, status } = useBlocker({
-    condition: formIsDirty,
+    blockerFn: () => formIsDirty,
   })
 
   // ...
@@ -75,5 +113,60 @@ function MyComponent() {
         </div>
       )}
     </>
+}
+```
+
+### Conditional blocking
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  const { proceed, reset, status } = useBlocker({
+    blockerFn: ({ nextLocation }) => {
+      if (nextLocation.pathname.includes('step/')) 
+        return false
+      
+      return true
+    }
+  })
+
+  // ...
+
+  return (
+    <>
+      {/* ... */}
+      {status === 'blocked' && (
+        <div>
+          <p>Are you sure you want to leave?</p>
+          <button onClick={proceed}>Yes</button>
+          <button onClick={reset}>No</button>
+        </div>
+      )}
+    </>
+}
+```
+
+### Skip resolver
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  const { proceed, reset, status } = useBlocker({
+    blockerFn: ({ nextLocation }) => {
+      if (nextLocation.pathname.includes('step/')) 
+        return false
+      
+      const shouldLeave = confirm('Are you sure you want to leave?')
+      return !shouldLeave
+    }
+  })
+
+  // ...
 }
 ```

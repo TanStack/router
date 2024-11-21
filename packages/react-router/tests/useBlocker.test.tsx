@@ -31,12 +31,12 @@ describe('useBlocker', () => {
       )
     })
 
-    test('disableBeforeUnload should be passed to history.block', () => {
+    test('enableBeforeUnload should be passed to history.block', () => {
       renderHook(() =>
-        useBlocker({ blockerFn: () => true, disableBeforeUnload: true }),
+        useBlocker({ blockerFn: () => true, enableBeforeUnload: false }),
       )
       expect(block).toHaveBeenCalledWith(
-        expect.objectContaining({ disableBeforeUnload: true }),
+        expect.objectContaining({ enableBeforeUnload: false }),
       )
     })
   })
