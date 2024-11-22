@@ -146,7 +146,7 @@ type ServerFnBase<
 }
 
 export function createServerFn<
-  TMethod extends Method = 'GET',
+  TMethod extends Method,
   TResponse = unknown,
   TMiddlewares = undefined,
   TValidator = undefined,
