@@ -3,6 +3,16 @@ import { createServerFn } from '../createServerFn'
 import { createMiddleware } from '../createMiddleware'
 import type { Constrain, Validator } from '@tanstack/react-router'
 
+test('createServerFn with method suggestion', () => {
+  createServerFn().handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET' | 'POST'
+      context: undefined
+      data: undefined
+    }>()
+  })
+})
+
 test('createServerFn without middleware', () => {
   createServerFn({ method: 'GET' }).handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
