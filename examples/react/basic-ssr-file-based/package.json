@@ -26,6 +26,7 @@
     "@rollup/plugin-babel": "^6.0.4",
     "@types/express": "^4.17.21",
     "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.7.2",
     "compression": "^1.7.5",
     "express": "^4.21.1",
     "isbot": "^5.1.17",
