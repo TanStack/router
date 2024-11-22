@@ -15,9 +15,9 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.46.1",
-    "@tanstack/react-router": "^1.82.0",
-    "@tanstack/router-devtools": "^1.82.0",
-    "@tanstack/start": "^1.82.0",
+    "@tanstack/react-router": "^1.82.2",
+    "@tanstack/router-devtools": "^1.82.2",
+    "@tanstack/start": "^1.82.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vinxi": "0.4.3"
@@ -27,8 +27,8 @@
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.14",
+    "tailwindcss": "^3.4.15",
     "typescript": "^5.6.2",
-    "vite-tsconfig-paths": "^5.1.2"
+    "vite-tsconfig-paths": "^5.1.3"
   }
 }

@@ -67,23 +67,41 @@ Deploy you application to Vercel using their one-click deployment process, and y
 
 ### Cloudflare Pages
 
-Set the `server.preset` value to `cloudflare-pages` in your `app.config.ts` file.
+When deploying to Cloudflare Pages, you'll need to complete a few extra steps before your users can start using your app.
+
+1. Installation
+
+First you will need to install `unenv`
+
+```sh
+npm install unenv
+```
+
+2. Update `app.config.ts`
+
+Set the `server.preset` value to `cloudflare-pages` and the `server.unenv` value to the `cloudflare` from `unenv` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
 import { defineConfig } from '@tanstack/start/config'
+import { cloudflare } from 'unenv'
 
 export default defineConfig({
   server: {
     preset: 'cloudflare-pages',
+    unenv: cloudflare,
   },
 })
 ```
 
-Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+3. Add a `wrangler.toml` config file
 
-```sh
-npm run build --preset cloudflare-pages
+```toml
+# wrangler.toml
+name = "your-cloudflare-project-name"
+pages_build_output_dir = "./dist"
+compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2024-11-13"
 ```
 
 Deploy you application to Cloudflare Pages using their one-click deployment process, and you're ready to go!

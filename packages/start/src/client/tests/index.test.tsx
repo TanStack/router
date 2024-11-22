@@ -103,6 +103,14 @@ describe('ssr meta', () => {
               name: 'image',
               content: 'image.jpg',
             },
+            {
+              property: 'og:image',
+              content: 'root-image.jpg',
+            },
+            {
+              property: 'og:description',
+              content: 'Root description',
+            },
           ],
         }
       },
@@ -136,6 +144,10 @@ describe('ssr meta', () => {
               name: 'last-modified',
               content: '2021-10-10',
             },
+            {
+              property: 'og:image',
+              content: 'index-image.jpg',
+            },
           ],
         }
       },
@@ -156,15 +168,18 @@ describe('ssr meta', () => {
       { title: 'Root' },
       { name: 'description', content: 'Root' },
       { name: 'image', content: 'image.jpg' },
+      { property: 'og:image', content: 'root-image.jpg' },
+      { property: 'og:description', content: 'Root description' },
       { title: 'Index' },
       { name: 'description', content: 'Index' },
       { name: 'last-modified', content: '2021-10-10' },
+      { property: 'og:image', content: 'index-image.jpg' },
     ])
 
     const { container } = render(<RouterProvider router={router} />)
 
     expect(container.innerHTML).toEqual(
-      `<title>Index</title><meta name="image" content="image.jpg"><meta name="description" content="Index"><meta name="last-modified" content="2021-10-10">`,
+      `<title>Index</title><meta name="image" content="image.jpg"><meta property="og:description" content="Root description"><meta name="description" content="Index"><meta name="last-modified" content="2021-10-10"><meta property="og:image" content="index-image.jpg">`,
     )
   })
 })
