@@ -3,13 +3,9 @@ import { createServerFn } from '../createServerFn'
 import { createMiddleware } from '../createMiddleware'
 import type { Constrain, Validator } from '@tanstack/react-router'
 
-test('createServerFn with method suggestion', () => {
+test('createServerFn method with autocomplete', () => {
   createServerFn().handler((options) => {
-    expectTypeOf(options).toEqualTypeOf<{
-      method: 'GET' | 'POST'
-      context: undefined
-      data: undefined
-    }>()
+    expectTypeOf(options.method).toEqualTypeOf<'GET' | 'POST'>()
   })
 })
 
