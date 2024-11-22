@@ -458,19 +458,19 @@ importers:
     devDependencies:
       '@playwright/test':
         specifier: ^1.45.3
-        version: 1.48.1
+        version: 1.49.0
       '@types/react':
         specifier: ^18.2.47
-        version: 18.3.11
+        version: 18.3.12
       '@types/react-dom':
         specifier: ^18.2.18
-        version: 18.3.0
+        version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.1
-        version: 4.3.3(vite@5.4.9(@types/node@22.7.4)(terser@5.31.1))
+        version: 4.3.3(vite@5.4.11(@types/node@22.9.0)(terser@5.36.0))
       vite:
         specifier: ^5.3.5
-        version: 5.4.9(@types/node@22.7.4)(terser@5.31.1)
+        version: 5.4.11(@types/node@22.9.0)(terser@5.36.0)
 
   e2e/start/basic:
     dependencies:
