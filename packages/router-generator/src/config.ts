@@ -3,6 +3,22 @@ import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
+const defaultTemplate = {
+  routeTemplate: [
+    'import * as React from "react";\n',
+    '%%tsrImports%%',
+    '\n\n',
+    '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+    'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
+  ].join(''),
+  apiTemplate: [
+    'import { json } from "@tanstack/start";\n',
+    '%%tsrImports%%',
+    '\n\n',
+    '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message:\'Hello "%%tsrPath%%"!\' }) }}%%tsrExportEnd%%\n',
+  ].join(''),
+}
+
 export const configSchema = z.object({
   virtualRouteConfig: virtualRootRouteSchema.optional(),
   routeFilePrefix: z.string().optional(),
@@ -21,18 +37,27 @@ export const configSchema = z.object({
     .array(z.string())
     .optional()
     .default([
-      '/* prettier-ignore-start */',
       '/* eslint-disable */',
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols',
     ]),
-  routeTreeFileFooter: z
-    .array(z.string())
-    .optional()
-    .default(['/* prettier-ignore-end */']),
+  routeTreeFileFooter: z.array(z.string()).optional().default([]),
   autoCodeSplitting: z.boolean().optional(),
   indexToken: z.string().optional().default('index'),
   routeToken: z.string().optional().default('route'),
+  pathParamsAllowedCharacters: z
+    .array(z.enum([';', ':', '@', '&', '=', '+', '$', ',']))
+    .optional(),
+  customScaffolding: z
+    .object({
+      routeTemplate: z
+        .string()
+        .optional()
+        .default(defaultTemplate.routeTemplate),
+      apiTemplate: z.string().optional().default(defaultTemplate.apiTemplate),
+    })
+    .optional()
+    .default(defaultTemplate),
   experimental: z
     .object({
       // TODO: Remove this option in the next major release (v2).

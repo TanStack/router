@@ -10,8 +10,8 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.75.0",
-    "@tanstack/start": "^1.76.0",
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/start": "workspace:^",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vinxi": "0.4.3"

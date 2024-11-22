@@ -21,6 +21,13 @@ The `useParams` hook accepts an optional `options` object.
 - `(params: AllParams) => TSelected`
 - If supplied, this function will be called with the params object and the return value will be returned from `useParams`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
 
+### `opts.structuralSharing` option
+
+- Type: `boolean`
+- Optional
+- Configures whether structural sharing is enabled for the value returned by `select`.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+
 ## useParams returns
 
 - An object of of the match's and parent match path params or `TSelected` if a `select` function is provided.

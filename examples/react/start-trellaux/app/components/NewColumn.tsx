@@ -3,7 +3,6 @@ import invariant from 'tiny-invariant'
 
 import { Icon } from '../icons/icons'
 import { useCreateColumnMutation } from '../queries'
-import { newColumnSchema } from '../db/schema'
 import { CancelButton } from '~/components/CancelButton'
 import { SaveButton } from '~/components/SaveButton'
 

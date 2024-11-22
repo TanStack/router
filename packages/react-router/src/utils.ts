@@ -1,4 +1,6 @@
 import * as React from 'react'
+import type { RouteIds } from './routeInfo'
+import type { AnyRouter } from './router'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
@@ -70,12 +72,12 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | TResult
   | ((prev: TPrevious) => TResult)
 
-export type MergeUnionObjects<TUnion> = TUnion extends MergeUnionPrimitive
+export type ExtractObjects<TUnion> = TUnion extends MergeAllPrimitive
   ? never
   : TUnion
 
-export type MergeUnionObject<TUnion> =
-  MergeUnionObjects<TUnion> extends infer TObj
+export type PartialMergeAllObject<TUnion> =
+  ExtractObjects<TUnion> extends infer TObj
     ? {
         [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
           ? TKey extends keyof TObj
@@ -85,27 +87,63 @@ export type MergeUnionObject<TUnion> =
       }
     : never
 
-export type MergeUnionPrimitive =
+export type MergeAllPrimitive =
   | ReadonlyArray<any>
   | number
   | string
   | bigint
   | boolean
   | symbol
+  | undefined
+  | null
 
-export type MergeUnionPrimitives<TUnion> = TUnion extends MergeUnionPrimitive
+export type ExtractPrimitives<TUnion> = TUnion extends MergeAllPrimitive
   ? TUnion
   : TUnion extends object
     ? never
     : TUnion
 
-export type MergeUnion<TUnion> =
-  | MergeUnionPrimitives<TUnion>
-  | MergeUnionObject<TUnion>
+export type PartialMergeAll<TUnion> =
+  | ExtractPrimitives<TUnion>
+  | PartialMergeAllObject<TUnion>
 
-export type Constrain<T, TConstaint, TDefault = TConstaint> =
-  | (T extends TConstaint ? T : never)
+/**
+ * To be added to router types
+ */
+export type UnionToIntersection<T> = (
+  T extends any ? (arg: T) => any : never
+) extends (arg: infer T) => any
+  ? T
+  : never
+
+/**
+ * Merges everything in a union into one object.
+ * This mapped type is homomorphic which means it preserves stuff! :)
+ */
+export type MergeAllObjects<
+  TUnion,
+  TIntersected = UnionToIntersection<ExtractObjects<TUnion>>,
+> = [keyof TIntersected] extends [never]
+  ? never
+  : {
+      [TKey in keyof TIntersected]: TUnion extends any
+        ? TUnion[TKey & keyof TUnion]
+        : never
+    }
+
+export type MergeAll<TUnion> =
+  | MergeAllObjects<TUnion>
+  | ExtractPrimitives<TUnion>
+
+export type Constrain<T, TConstraint, TDefault = TConstraint> =
+  | (T extends TConstraint ? T : never)
   | TDefault
+
+export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
+  ? unknown extends T
+    ? never
+    : 'Function is not serializable'
+  : { [K in keyof T]: ValidateJSON<T[K]> }
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
@@ -308,6 +346,7 @@ export type StringLiteral<T> = T extends string
   : never
 
 export type StrictOrFrom<
+  TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean = true,
 > = TStrict extends false
@@ -316,9 +355,13 @@ export type StrictOrFrom<
       strict: TStrict
     }
   : {
-      from: StringLiteral<TFrom> | TFrom
+      from: StringLiteral<Constrain<TFrom, RouteIds<TRouter['routeTree']>>>
       strict?: TStrict
     }
+
+export type ThrowOrOptional<T, TThrow extends boolean> = TThrow extends true
+  ? T
+  : T | undefined
 
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect

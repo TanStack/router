@@ -20,6 +20,7 @@ export type ParseAstOptions = {
   code: string
   filename: string
   root: string
+  env: 'server' | 'client'
 }
 
 export function parseAst(opts: ParseAstOptions) {
