@@ -95,14 +95,14 @@ export function compileStartOutput(opts: ParseAstOptions) {
 
             // handle a destructured imports being renamed like "import { createServerFn as myCreateServerFn } from '@tanstack/start';"
             path.node.specifiers.forEach((specifier) => {
-              identifierKeys.forEach((indentifierKey) => {
-                const identifier = identifiers[indentifierKey]
+              identifierKeys.forEach((identifierKey) => {
+                const identifier = identifiers[identifierKey]
 
                 if (
                   specifier.type === 'ImportSpecifier' &&
                   specifier.imported.type === 'Identifier'
                 ) {
-                  if (specifier.imported.name === indentifierKey) {
+                  if (specifier.imported.name === identifierKey) {
                     identifier.name = specifier.local.name
                     identifier.type = 'ImportSpecifier'
                   }
@@ -112,7 +112,7 @@ export function compileStartOutput(opts: ParseAstOptions) {
                 if (specifier.type === 'ImportNamespaceSpecifier') {
                   identifier.type = 'ImportNamespaceSpecifier'
                   identifier.namespaceId = specifier.local.name
-                  identifier.name = `${identifier.namespaceId}.${indentifierKey}`
+                  identifier.name = `${identifier.namespaceId}.${identifierKey}`
                 }
               })
             })
