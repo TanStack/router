@@ -130,7 +130,7 @@ Regardless if you are using the `@tanstack/router-plugin` package or manually ru
 Import the generated route tree and create a new router instance:
 
 ```tsx
-import React, { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 
@@ -167,7 +167,7 @@ If you are working with this pattern you should change the `id` of the root `<di
 > The following example shows how to configure routes using code, and for simplicity's sake is in a single file for this demo. While code-based generation allows you to declare many routes and even the router instance in a single file, we recommend splitting your routes into separate files for better organization and performance as your application grows.
 
 ```tsx
-import React, { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
