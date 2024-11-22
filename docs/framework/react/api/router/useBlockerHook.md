@@ -7,7 +7,7 @@ The `useBlocker` method is a hook that [blocks navigation](../../guide/navigatio
 
 ## useBlocker options
 
-The `useBlocker` hook accepts a single _required argument, an option object:
+The `useBlocker` hook accepts a single \_required argument, an option object:
 
 ### `options.shouldBlockFn` option
 
@@ -58,7 +58,6 @@ The `useBlocker` hook accepts a single _required argument, an option object:
 - Optional
 - Type: `Omit<MatchLocation, 'to'>`
 - Give additional arguments to the routeMatching to
-
 
 ## useBlocker returns
 
@@ -126,9 +125,9 @@ function MyComponent() {
 
   const { proceed, reset, status } = useBlocker({
     shouldBlockFn: ({ nextLocation }) => {
-      if (nextLocation.pathname.includes('step/')) 
+      if (nextLocation.pathname.includes('step/'))
         return false
-      
+
       return true
     }
   })
@@ -159,12 +158,11 @@ function MyComponent() {
 
   const { proceed, reset, status } = useBlocker({
     shouldBlockFn: ({ nextLocation }) => {
-      if (nextLocation.pathname.includes('step/')) 
-        return false
-      
+      if (nextLocation.pathname.includes('step/')) return false
+
       const shouldLeave = confirm('Are you sure you want to leave?')
       return !shouldLeave
-    }
+    },
   })
 
   // ...

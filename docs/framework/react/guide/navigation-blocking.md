@@ -20,7 +20,7 @@ Navigation blocking adds one or more layers of "blockers" to the entire underlyi
 - Custom UI
   - If the navigation is triggered by something we control at the router level, we can allow you to perform any task or show any UI you'd like to the user to confirm the action. Each blocker's `blocker` function will be asynchronously and sequentially executed. If any blocker function resolves or returns `true`, the navigation will be allowed and all other blockers will continue to do the same until all blockers have been allowed to proceed. If any single blocker resolves or returns `false`, the navigation will be canceled and the rest of the `blocker` functions will be ignored.
 - The `onbeforeunload` event
-  - For page events that we cannot control directly, we rely on the browser's `onbeforeunload` event. If the user attempts to close the tab or window, refresh, or "unload" the page assets in any way, the browser's generic "Are you sure you want to leave?" dialog will be shown. If the user confirms, all blockers will be bypassed and the page will unload. If the user cancels, the unload will be cancelled, and the page will remain as is. 
+  - For page events that we cannot control directly, we rely on the browser's `onbeforeunload` event. If the user attempts to close the tab or window, refresh, or "unload" the page assets in any way, the browser's generic "Are you sure you want to leave?" dialog will be shown. If the user confirms, all blockers will be bypassed and the page will unload. If the user cancels, the unload will be cancelled, and the page will remain as is.
 
 ## How do I use navigation blocking?
 
@@ -41,11 +41,11 @@ function MyComponent() {
 
   useBlocker({
     shouldBlockFn: () => {
-        if (!formIsDirty) return false
+      if (!formIsDirty) return false
 
-        const shouldLeave = confirm('Are you sure you want to leave?')
-        return !shouldLeave
-    }
+      const shouldLeave = confirm('Are you sure you want to leave?')
+      return !shouldLeave
+    },
   })
 
   // ...
