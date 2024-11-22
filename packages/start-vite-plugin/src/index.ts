@@ -10,13 +10,7 @@ export type TanStackStartViteOptions = {
   env: 'server' | 'client'
 }
 
-export function TanStackStartVite(
-  opts: TanStackStartViteOptions,
-): Array<Plugin> {
-  return [TanStackStartViteCreateServerFn(opts)]
-}
-
-export function TanStackStartViteCreateServerFn(
+export function TanStackStartViteServerFn(
   opts: TanStackStartViteOptions,
 ): Plugin {
   let ROOT: string = process.cwd()
@@ -97,7 +91,10 @@ export function TanStackStartViteDeadCodeElimination(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (code.includes('createServerFn')) {
+      if (
+        code.includes('createServerFn') ||
+        code.includes('createMiddleware')
+      ) {
         const compiled = compileEliminateDeadCode({
           code,
           root: ROOT,

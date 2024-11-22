@@ -204,6 +204,10 @@
               "to": "framework/react/start/server-functions"
             },
             {
+              "label": "Middleware",
+              "to": "framework/react/start/middleware"
+            },
+            {
               "label": "API Routes",
               "to": "framework/react/start/api-routes"
             },

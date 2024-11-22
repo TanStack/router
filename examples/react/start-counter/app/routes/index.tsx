@@ -1,4 +1,3 @@
-// app/routes/index.tsx
 import * as fs from 'node:fs'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
@@ -15,7 +14,7 @@ const getCount = createServerFn({ method: 'GET' }).handler(() => {
   return readCount()
 })
 
-const updateCount = createServerFn()
+const updateCount = createServerFn({ method: 'POST' })
   .validator((addBy: number) => addBy)
   .handler(async ({ data }) => {
     const count = await readCount()

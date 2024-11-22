@@ -5,6 +5,7 @@
     "jsx": "react-jsx",
     "module": "esnext",
     "types": ["vite/client"],
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"]
   }
 }

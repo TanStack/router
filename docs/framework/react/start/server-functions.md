@@ -32,7 +32,7 @@ Server functions can be defined anywhere in your application, but must be define
 
 ## Server Function Middleware
 
-Server functions can use middleware to share logic, context, common operations, prerequisites, and much more. To learn more about server function middleware, be sure to read about them in the [Middleware guide](../middleware).
+Server functions can use middleware to share logic, context, common operations, prerequisites, and much more. To learn more about server function middleware, be sure to read about them in the [Middleware guide](./middleware.md).
 
 ## Defining Server Functions
 
@@ -798,7 +798,7 @@ const getCount = createServerFn({
   return readCount()
 })
 
-const updateCount = createServerFn()
+const updateCount = createServerFn({ method: 'POST' })
   .validator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')

@@ -30,18 +30,19 @@ export const Scripts = () => {
 
   const { scripts } = useRouterState({
     select: (state) => ({
-      scripts: state.matches
-        .map((match) => match.scripts!)
-        .filter(Boolean)
-        .flat(1)
-        .map(({ children, ...script }) => ({
-          tag: 'script',
-          attrs: {
-            ...script,
-            suppressHydrationWarning: true,
-          },
-          children,
-        })),
+      scripts: (
+        state.matches
+          .map((match) => match.scripts!)
+          .filter(Boolean)
+          .flat(1) as Array<RouterManagedTag>
+      ).map(({ children, ...script }) => ({
+        tag: 'script',
+        attrs: {
+          ...script,
+          suppressHydrationWarning: true,
+        },
+        children,
+      })),
     }),
   })
 

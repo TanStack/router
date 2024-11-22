@@ -17,6 +17,7 @@ import type * as React from 'react'
 import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
 import type {
+  AnyRouteMatch,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
   RouteMatch,
@@ -36,7 +37,7 @@ import type {
   AnyValidatorAdapter,
   AnyValidatorObj,
   DefaultValidator,
-  ResolveValidatorInput,
+  ResolveSearchValidatorInput,
   ResolveValidatorOutput,
   StandardSchemaValidator,
   ValidatorAdapter,
@@ -434,7 +435,10 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => void
-  meta?: (ctx: {
+  headers?: (ctx: {
+    loaderData: ResolveLoaderData<TLoaderFn>
+  }) => Record<string, string>
+  head?: (ctx: {
     matches: Array<
       RouteMatch<
         TRouteId,
@@ -466,13 +470,12 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >
     params: ResolveAllParamsFromParent<TParentRoute, TParams>
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Array<React.JSX.IntrinsicElements['meta']>
-  links?: () => Array<React.JSX.IntrinsicElements['link']>
-  scripts?: () => Array<React.JSX.IntrinsicElements['script']>
-  headers?: (ctx: {
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Record<string, string>
+    loaderData: ResolveLoaderData<TLoaderFn> | undefined
+  }) => {
+    links?: AnyRouteMatch['links']
+    scripts?: AnyRouteMatch['scripts']
+    meta?: AnyRouteMatch['meta']
+  }
   ssr?: boolean
 }
 
@@ -676,7 +679,7 @@ export type ResolveFullSearchSchemaInput<
   TSearchValidator,
 > = Assign<
   InferFullSearchSchemaInput<TParentRoute>,
-  ResolveValidatorInput<TSearchValidator>
+  ResolveSearchValidatorInput<TSearchValidator>
 >
 
 export type LooseReturnType<T> = T extends (
@@ -985,7 +988,7 @@ export class Route<
     customId: TCustomId
     id: TId
     searchSchema: ResolveValidatorOutput<TSearchValidator>
-    searchSchemaInput: ResolveValidatorInput<TSearchValidator>
+    searchSchemaInput: ResolveSearchValidatorInput<TSearchValidator>
     searchValidator: TSearchValidator
     fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
     fullSearchSchemaInput: ResolveFullSearchSchemaInput<

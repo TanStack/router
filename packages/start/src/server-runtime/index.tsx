@@ -78,8 +78,10 @@ export function createIncomingMessage(
 //   } as const
 // }
 
+const fakeHost = 'http://localhost:3000'
+
 export function createServerReference(_fn: any, id: string, name: string) {
-  const functionUrl = getBaseUrl('http://localhost:3000', id, name)
+  const functionUrl = getBaseUrl(fakeHost, id, name)
 
   const proxyFn = (...args: Array<any>) => {
     invariant(
@@ -150,7 +152,7 @@ export function createServerReference(_fn: any, id: string, name: string) {
   }
 
   return Object.assign(proxyFn, {
-    url: functionUrl,
+    url: functionUrl.replace(fakeHost, ''),
     filename: id,
     functionId: name,
   })
