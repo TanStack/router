@@ -11,21 +11,26 @@ async function getFilenames() {
 describe('createServerFn compiles correctly', async () => {
   const filenames = await getFilenames()
 
-  test.each(filenames)('should handle "%s"', async (filename) => {
+  describe.each(filenames)('should handle "%s"', async (filename) => {
     const file = await readFile(
       path.resolve(import.meta.dirname, `./test-files/${filename}`),
     )
     const code = file.toString()
 
-    const compiledResult = compileStartOutput({
-      code,
-      root: './test-files',
-      filename,
-      env: 'server',
-    })
+    test.each(['client', 'server'] as const)(
+      `should compile for ${filename} %s`,
+      async (env) => {
+        const compiledResult = compileStartOutput({
+          env,
+          code,
+          root: './test-files',
+          filename,
+        })
 
-    await expect(compiledResult.code).toMatchFileSnapshot(
-      `./snapshots/${filename}`,
+        await expect(compiledResult.code).toMatchFileSnapshot(
+          `./snapshots/${env}/${filename}`,
+        )
+      },
     )
   })
 
