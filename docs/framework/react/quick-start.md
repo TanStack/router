@@ -64,7 +64,7 @@ Create the following files:
 - `src/routes/about.lazy.tsx`
 - `src/main.tsx`
 
-All routes/*.tsx files should export an object named **Route**, created using createRootRoute or createLazyFileRoute.
+All routes/\*.tsx files should export an object named **Route**, created using createRootRoute or createLazyFileRoute.
 
 > 🧠 Route files with the `.lazy.tsx` extension are lazy loaded via separate bundles to keep the main bundle size as lean as possible.
 
