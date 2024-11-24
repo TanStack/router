@@ -306,7 +306,7 @@ function Test() {
     <form
       onSubmit={async (event) => {
         event.preventDefault()
-        const formData = new FormData(event.target)
+        const formData = new FormData(event.currentTarget)
         const response = await greetUser({ data: formData })
         console.log(response)
       }}
