@@ -14,7 +14,7 @@
     "@tanstack/react-router": "^1.82.8",
     "@tanstack/react-router-with-query": "^1.82.8",
     "@tanstack/router-devtools": "^1.82.8",
-    "@tanstack/start": "^1.82.8",
+    "@tanstack/start": "^1.82.9",
     "ky": "^1.7.2",
     "msw": "^2.6.5",
     "react": "^18.3.1",
