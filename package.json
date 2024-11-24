@@ -43,7 +43,7 @@
     "eslint-plugin-unused-imports": "^4.1.4",
     "glob": "^11.0.0",
     "jsdom": "^25.0.1",
-    "nx": "^19.8.11",
+    "nx": "^20.1.3",
     "prettier": "^3.3.3",
     "publint": "^0.2.12",
     "react": "^18.3.1",
