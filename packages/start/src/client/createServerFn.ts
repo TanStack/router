@@ -7,6 +7,7 @@ import type {
   DefaultTransformerParse,
   DefaultTransformerStringify,
   ResolveValidatorInput,
+  TransformerStringify,
   Validator,
 } from '@tanstack/react-router'
 import type {
@@ -114,7 +115,10 @@ export type ConstrainValidator<TValidator> = unknown extends TValidator
   : Constrain<
       TValidator,
       Validator<
-        DefaultTransformerStringify<ResolveValidatorInput<TValidator>>,
+        TransformerStringify<
+          ResolveValidatorInput<TValidator>,
+          Date | undefined | FormData
+        >,
         any
       >
     >
