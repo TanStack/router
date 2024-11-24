@@ -584,12 +584,13 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   if ('~standard' in validateSearch) {
     const result = validateSearch['~standard'].validate(input)
 
-    if ('value' in result) return result.value
-
     if (result instanceof Promise)
       throw new SearchParamError('Async validation not supported')
 
-    throw new SearchParamError(JSON.stringify(result.issues, undefined, 2))
+    if (result.issues)
+      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2))
+
+    return result.value
   }
 
   if ('parse' in validateSearch) {
