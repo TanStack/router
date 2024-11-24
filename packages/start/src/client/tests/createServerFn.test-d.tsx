@@ -238,3 +238,30 @@ test('createServerFn cannot validate function', () => {
       >
     >()
 })
+
+test('createServerFn can validate Date', () => {
+  const validator = createServerFn().validator<
+    (input: Date) => { output: 'string' }
+  >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .toEqualTypeOf<
+      Constrain<(input: Date) => { output: 'string' }, Validator<Date, any>>
+    >()
+})
+
+test('createServerFn can validate FormData', () => {
+  const validator = createServerFn().validator<
+    (input: FormData) => { output: 'string' }
+  >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .toEqualTypeOf<
+      Constrain<
+        (input: FormData) => { output: 'string' },
+        Validator<FormData, any>
+      >
+    >()
+})

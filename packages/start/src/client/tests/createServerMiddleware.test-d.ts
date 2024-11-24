@@ -287,3 +287,30 @@ test('createMiddleware cannot validate function', () => {
       >
     >()
 })
+
+test('createMiddleware can validate Date', () => {
+  const validator = createMiddleware().validator<
+    (input: Date) => { output: 'string' }
+  >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .toEqualTypeOf<
+      Constrain<(input: Date) => { output: 'string' }, Validator<Date, any>>
+    >()
+})
+
+test('createMiddleware can validate FormData', () => {
+  const validator = createMiddleware().validator<
+    (input: FormData) => { output: 'string' }
+  >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .toEqualTypeOf<
+      Constrain<
+        (input: FormData) => { output: 'string' },
+        Validator<FormData, any>
+      >
+    >()
+})
