@@ -17,8 +17,6 @@ import type {
   ResolveAllValidators,
 } from './createMiddleware'
 
-//
-
 export interface JsonResponse<TData> extends Response {
   json: () => Promise<TData>
 }
@@ -353,12 +351,13 @@ function execValidator(validator: AnyValidator, input: unknown): unknown {
   if ('~standard' in validator) {
     const result = validator['~standard'].validate(input)
 
-    if ('value' in result) return result.value
-
     if (result instanceof Promise)
       throw new Error('Async validation not supported')
 
-    throw new Error(JSON.stringify(result.issues, undefined, 2))
+    if (result.issues)
+      throw new Error(JSON.stringify(result.issues, undefined, 2))
+
+    return result.value
   }
 
   if ('parse' in validator) {
