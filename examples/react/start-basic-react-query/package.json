@@ -14,7 +14,7 @@
     "@tanstack/react-router": "^1.82.2",
     "@tanstack/react-router-with-query": "^1.82.2",
     "@tanstack/router-devtools": "^1.82.2",
-    "@tanstack/start": "^1.82.6",
+    "@tanstack/start": "^1.82.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
