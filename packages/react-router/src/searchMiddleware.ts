@@ -11,11 +11,9 @@ export function retainSearchParams<TSearchSchema extends object>(
     if (keys === true) {
       return { ...search, ...result }
     }
-    // add missing keys from search to result
+    // just like above, but only overwrite explicitly mentioned keys
     keys.forEach((key) => {
-      if (!(key in result)) {
-        result[key] = search[key]
-      }
+      result[key] = search[key]
     })
     return result
   }
