@@ -190,20 +190,6 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
           >
             with both params
           </Link>
-          <Link
-            data-testid="link-with-root-params-explicit"
-            to="/searchWithDefault/check-root"
-            search={{ optional: 'o1', default: 'd2' }}
-          >
-            with root explicit params
-          </Link>
-          <Link
-            data-testid="link-with-root-params-default"
-            to="/searchWithDefault/check-root"
-            search={{ optional: 'o1' }}
-          >
-            with root default params
-          </Link>
         </>
       )
     },
