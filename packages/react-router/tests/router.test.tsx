@@ -230,9 +230,11 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
   })
 
   const searchRootWithDefaultsRoute = createRoute({
-    validateSearch: z.object({
-      default: z.string().default('d1'),
-    }),
+    validateSearch: z
+      .object({
+        default: z.string().default('d1'),
+      })
+      .passthrough(),
     search: {
       middlewares: [retainSearchParams(['default'])],
     },
