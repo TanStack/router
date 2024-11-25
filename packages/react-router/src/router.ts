@@ -2528,6 +2528,8 @@ export class Router<
                             loaderData,
                           })
                           const meta = headFnContent?.meta
+                          const links = headFnContent?.links
+                          const scripts = headFnContent?.scripts
 
                           const headers = route.options.headers?.({
                             loaderData,
@@ -2541,6 +2543,8 @@ export class Router<
                             updatedAt: Date.now(),
                             loaderData,
                             meta,
+                            links,
+                            scripts,
                             headers,
                           }))
                         } catch (e) {
