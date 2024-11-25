@@ -1,6 +1,15 @@
 import invariant from 'tiny-invariant'
+import { defaultTransformer } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
-import type { AnyValidator, Constrain } from '@tanstack/react-router'
+import type {
+  AnyValidator,
+  Constrain,
+  DefaultTransformerParse,
+  DefaultTransformerStringify,
+  ResolveValidatorInput,
+  TransformerStringify,
+  Validator,
+} from '@tanstack/react-router'
 import type {
   AnyMiddleware,
   MergeAllServerContext,
@@ -8,8 +17,6 @@ import type {
   MergeAllValidatorOutputs,
   ResolveAllValidators,
 } from './createMiddleware'
-
-//
 
 export interface JsonResponse<TData> extends Response {
   json: () => Promise<TData>
@@ -60,19 +67,9 @@ export interface OptionalFetcherDataOptions<TInput> extends FetcherBaseOptions {
   data?: TInput
 }
 
-export type FetcherData<TResponse> = WrapRSCs<
+export type FetcherData<TResponse> = DefaultTransformerParse<
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 >
-
-export type WrapRSCs<T> = T extends JSX.Element
-  ? ReadableStream
-  : T extends Record<string, any>
-    ? {
-        [K in keyof T]: WrapRSCs<T[K]>
-      }
-    : T extends Array<infer U>
-      ? Array<WrapRSCs<U>>
-      : T
 
 export type RscStream<T> = {
   __cacheState: T
@@ -82,7 +79,9 @@ export type Method = 'GET' | 'POST'
 
 export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
   ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
-) => Promise<TResponse> | TResponse
+) =>
+  | Promise<DefaultTransformerStringify<TResponse>>
+  | DefaultTransformerStringify<TResponse>
 
 export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
   method: TMethod
@@ -104,12 +103,25 @@ type ServerFnBaseOptions<
   method: TMethod
   validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
-  validator?: Constrain<TInput, AnyValidator>
+  validator?: ConstrainValidator<TInput>
   extractedFn?: CompiledFetcherFn<TResponse>
   serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
   functionId: string
 }
+
+export type ConstrainValidator<TValidator> = unknown extends TValidator
+  ? TValidator
+  : Constrain<
+      TValidator,
+      Validator<
+        TransformerStringify<
+          ResolveValidatorInput<TValidator>,
+          Date | undefined | FormData
+        >,
+        any
+      >
+    >
 
 type ServerFnBase<
   TMethod extends Method = 'GET',
@@ -125,7 +137,7 @@ type ServerFnBase<
     'validator' | 'handler'
   >
   validator: <TValidator>(
-    validator: Constrain<TValidator, AnyValidator>,
+    validator: ConstrainValidator<TValidator>,
   ) => Pick<
     ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator>,
     'handler' | 'middleware'
@@ -136,7 +148,7 @@ type ServerFnBase<
 }
 
 export function createServerFn<
-  TMethod extends Method = 'GET',
+  TMethod extends Method,
   TResponse = unknown,
   TMiddlewares = undefined,
   TValidator = undefined,
@@ -152,6 +164,10 @@ export function createServerFn<
     TMiddlewares,
     TValidator
   >
+
+  if (typeof resolvedOptions.method === 'undefined') {
+    resolvedOptions.method = 'GET' as TMethod
+  }
 
   return {
     options: resolvedOptions as any,
@@ -212,18 +228,46 @@ export function createServerFn<
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: (opts: any) =>
-            executeMiddleware(resolvedMiddleware, 'server', {
+          __executeServer: (opts: any) => {
+            const parsedOpts =
+              opts instanceof FormData ? extractFormDataContext(opts) : opts
+
+            return executeMiddleware(resolvedMiddleware, 'server', {
               ...extractedFn,
-              ...opts,
+              ...parsedOpts,
             }).then((d) => ({
               // Only send the result and sendContext back to the client
               result: d.result,
               context: d.sendContext,
-            })),
+            }))
+          },
         },
       ) as any
     },
+  }
+}
+
+function extractFormDataContext(formData: FormData) {
+  const serializedContext = formData.get('__TSR_CONTEXT')
+  formData.delete('__TSR_CONTEXT')
+
+  if (typeof serializedContext !== 'string') {
+    return {
+      context: {},
+      data: formData,
+    }
+  }
+
+  try {
+    const context = defaultTransformer.parse(serializedContext)
+    return {
+      context,
+      data: formData,
+    }
+  } catch (e) {
+    return {
+      data: formData,
+    }
   }
 }
 
@@ -311,12 +355,13 @@ function execValidator(validator: AnyValidator, input: unknown): unknown {
   if ('~standard' in validator) {
     const result = validator['~standard'].validate(input)
 
-    if ('value' in result) return result.value
-
     if (result instanceof Promise)
       throw new Error('Async validation not supported')
 
-    throw new Error(JSON.stringify(result.issues, undefined, 2))
+    if (result.issues)
+      throw new Error(JSON.stringify(result.issues, undefined, 2))
+
+    return result.value
   }
 
   if ('parse' in validator) {

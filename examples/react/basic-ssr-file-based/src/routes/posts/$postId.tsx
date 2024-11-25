@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
-import { PostType } from '../posts'
+import type { PostType } from '../posts'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params }) => {

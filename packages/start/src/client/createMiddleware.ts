@@ -1,7 +1,7 @@
-import type { Method } from './createServerFn'
+import type { ConstrainValidator, Method } from './createServerFn'
 import type {
-  AnyValidator,
   Constrain,
+  DefaultTransformerStringify,
   Expand,
   MergeAll,
   ResolveValidatorInput,
@@ -129,7 +129,7 @@ export interface MiddlewareOptions<
 > {
   validateClient?: boolean
   middleware?: TMiddlewares
-  validator?: Constrain<TValidator, AnyValidator>
+  validator?: ConstrainValidator<TValidator>
   client?: MiddlewareClientFn<
     TMiddlewares,
     TValidator,
@@ -166,7 +166,7 @@ export type MiddlewareServerFn<
     TNewClientAfterContext = undefined,
   >(ctx?: {
     context?: TNewServerContext
-    sendContext?: TNewClientAfterContext
+    sendContext?: DefaultTransformerStringify<TNewClientAfterContext>
   }) => Promise<
     ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
   >
@@ -186,7 +186,7 @@ export type MiddlewareClientFn<
   method: Method
   next: <TNewServerContext = undefined, TNewClientContext = undefined>(ctx?: {
     context?: TNewClientContext
-    sendContext?: TNewServerContext
+    sendContext?: DefaultTransformerStringify<TNewServerContext>
     headers?: HeadersInit
   }) => Promise<ClientResultWithContext<TNewServerContext, TNewClientContext>>
 }) =>
@@ -235,19 +235,12 @@ export type ClientResultWithContext<TServerContext, TClientContext> = {
   headers: HeadersInit
 }
 
-export type AnyMiddleware = MiddlewareTypes<
-  any,
-  any,
-  AnyValidator,
-  any,
-  any,
-  any
->
+export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any, any>
 
 export interface MiddlewareTypes<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -273,13 +266,13 @@ export interface MiddlewareTypes<
 export interface MiddlewareValidator<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
 > {
-  validator: <TNewValidator extends AnyValidator>(
-    input: TNewValidator,
+  validator: <TNewValidator>(
+    input: ConstrainValidator<TNewValidator>,
   ) => MiddlewareAfterMiddleware<
     TId,
     TMiddlewares,
@@ -293,7 +286,7 @@ export interface MiddlewareValidator<
 export interface MiddlewareClientAfter<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -319,7 +312,7 @@ export interface MiddlewareClientAfter<
 export interface MiddlewareAfterServer<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -343,7 +336,7 @@ export interface MiddlewareAfterServer<
 export interface MiddlewareServer<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -369,7 +362,7 @@ export interface MiddlewareServer<
 export interface MiddlewareAfterClient<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -393,7 +386,7 @@ export interface MiddlewareAfterClient<
 export interface MiddlewareClient<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -418,7 +411,7 @@ export interface MiddlewareClient<
 export interface MiddlewareAfterMiddleware<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -458,7 +451,7 @@ export interface MiddlewareAfterMiddleware<
 export interface Middleware<
   TId,
   TMiddlewares,
-  TValidator extends AnyValidator,
+  TValidator,
   TServerContext,
   TClientContext,
   TClientAfterContext,
@@ -485,7 +478,7 @@ export interface Middleware<
 export function createMiddleware<
   const TId,
   const TMiddlewares,
-  TValidator extends AnyValidator = undefined,
+  TValidator = undefined,
   TServerContext = undefined,
   TClientContext = undefined,
   TClientAfterContext = undefined,

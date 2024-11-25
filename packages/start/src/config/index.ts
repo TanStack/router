@@ -6,8 +6,8 @@ import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import {
-  TanStackStartVite,
   TanStackStartViteDeadCodeElimination,
+  TanStackStartViteServerFn,
 } from '@tanstack/start-vite-plugin'
 import {
   configSchema,
@@ -562,7 +562,7 @@ function withStartPlugins(opts: TanStackStartOutputConfig, router: RouterType) {
           ...tsrConfig.experimental,
         },
       }),
-      TanStackStartVite({
+      TanStackStartViteServerFn({
         env: router === 'client' ? 'client' : 'server',
       }),
     ],

@@ -584,12 +584,13 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   if ('~standard' in validateSearch) {
     const result = validateSearch['~standard'].validate(input)
 
-    if ('value' in result) return result.value
-
     if (result instanceof Promise)
       throw new SearchParamError('Async validation not supported')
 
-    throw new SearchParamError(JSON.stringify(result.issues, undefined, 2))
+    if (result.issues)
+      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2))
+
+    return result.value
   }
 
   if ('parse' in validateSearch) {
@@ -1298,25 +1299,30 @@ export class Router<
             : loaderDeps,
           invalid: false,
           preload: false,
-          links: route.options.links?.(),
-          scripts: route.options.scripts?.(),
+          links: undefined,
+          scripts: undefined,
+          meta: undefined,
           staticData: route.options.staticData || {},
           loadPromise: createControlledPromise(),
           fullPath: route.fullPath,
         }
       }
 
-      // If it's already a success, update the meta and headers
+      const headFnContent = route.options.head?.({
+        matches,
+        match,
+        params: match.params,
+        loaderData: match.loaderData ?? undefined,
+      })
+
+      match.links = headFnContent?.links
+      match.scripts = headFnContent?.scripts
+      match.meta = headFnContent?.meta
+
+      // If it's already a success, update the headers
       // These may get updated again if the match is refreshed
       // due to being stale
       if (match.status === 'success') {
-        match.meta = route.options.meta?.({
-          matches,
-          match,
-          params: match.params,
-          loaderData: match.loaderData,
-        })
-
         match.headers = route.options.headers?.({
           loaderData: match.loaderData,
         })
@@ -2516,12 +2522,13 @@ export class Router<
 
                           await potentialPendingMinPromise()
 
-                          const meta = route.options.meta?.({
+                          const headFnContent = route.options.head?.({
                             matches,
                             match: this.getMatch(matchId)!,
                             params: this.getMatch(matchId)!.params,
                             loaderData,
                           })
+                          const meta = headFnContent?.meta
 
                           const headers = route.options.headers?.({
                             loaderData,
@@ -2933,7 +2940,7 @@ export class Router<
   }
 
   injectedHtml: Array<() => string> = []
-  injectHtml: (html: string) => void = (html) => {
+  injectHtml = (html: string) => {
     const cb = () => {
       this.injectedHtml = this.injectedHtml.filter((d) => d !== cb)
       return html
@@ -2941,6 +2948,17 @@ export class Router<
 
     this.injectedHtml.push(cb)
   }
+  injectScript = (script: string, opts?: { logScript?: boolean }) => {
+    this.injectHtml(
+      `<script class='tsr-once'>${script}${
+        process.env.NODE_ENV === 'development' && (opts?.logScript ?? true)
+          ? `; console.info(\`Injected From Server:
+${script}\`)`
+          : ''
+      }; __TSR__.cleanScripts()</script>`,
+    )
+  }
+
   streamedKeys: Set<string> = new Set()
 
   getStreamedValue = <T>(key: string): T | undefined => {
@@ -2968,15 +2986,8 @@ export class Router<
     )
 
     this.streamedKeys.add(key)
-    const children = `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`
-
-    this.injectHtml(
-      `<script class='tsr-once'>${children}${
-        process.env.NODE_ENV === 'development'
-          ? `; console.info(\`Injected From Server:
-        ${children}\`)`
-          : ''
-      }; __TSR__.cleanScripts()</script>`,
+    this.injectScript(
+      `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`,
     )
   }
 

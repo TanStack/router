@@ -8,13 +8,13 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.81.9",
-    "@tanstack/router-devtools": "^1.81.9",
+    "@tanstack/react-router": "^1.82.8",
+    "@tanstack/router-devtools": "^1.82.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@rsbuild/core": "1.1.0",
+    "@rsbuild/core": "1.1.4",
     "@rsbuild/plugin-react": "1.0.7",
     "@tanstack/router-plugin": "^1.81.9",
     "@types/react": "^18.3.3",

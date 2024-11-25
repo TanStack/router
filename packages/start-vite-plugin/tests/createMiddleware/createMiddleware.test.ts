@@ -21,7 +21,7 @@ describe('createMiddleware compiles correctly', async () => {
       `should compile for ${filename} %s`,
       async (env) => {
         const compiledResult = compileStartOutput({
-          env: env,
+          env,
           code,
           root: './test-files',
           filename,

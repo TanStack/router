@@ -12,6 +12,7 @@ import {
   useLayoutEffect,
 } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
+import { useMatch } from './useMatch'
 import type { ParsedLocation } from './location'
 import type { HistoryState } from '@tanstack/history'
 import type {
@@ -649,6 +650,16 @@ export function useLinkProps<
     select: (s) => s.location.search,
     structuralSharing: true as any,
   })
+
+  // In the rare event that the user bypasses type-safety and doesn't supply a `from`
+  // we'll use the current route as the `from` location so relative routing works as expected
+  const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
+
+  // Use it as the default `from` location
+  options = {
+    from: parentRouteId,
+    ...options,
+  }
 
   const next = React.useMemo(
     () => router.buildLocation(options as any),
