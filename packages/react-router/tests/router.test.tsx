@@ -16,6 +16,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  retainSearchParams,
 } from '../src'
 import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
 
@@ -153,7 +154,6 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
   })
   const searchWithDefaultRoute = createRoute({
     getParentRoute: () => rootRoute,
-
     path: 'searchWithDefault',
   })
   const searchWithDefaultIndexRoute = createRoute({
@@ -190,6 +190,20 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
           >
             with both params
           </Link>
+          <Link
+            data-testid="link-with-root-params-explicit"
+            to="/searchWithDefault/check-root"
+            search={{ optional: 'o1', default: 'd2' }}
+          >
+            with root explicit params
+          </Link>
+          <Link
+            data-testid="link-with-root-params-default"
+            to="/searchWithDefault/check-root"
+            search={{ optional: 'o1' }}
+          >
+            with root default params
+          </Link>
         </>
       )
     },
@@ -212,6 +226,65 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
           </div>
         </>
       )
+    },
+  })
+
+  const searchRootWithDefaultsRoute = createRoute({
+    validateSearch: z.object({
+      default: z.string().default('d1'),
+    }),
+    search: {
+      middlewares: [retainSearchParams(['default'])],
+    },
+    getParentRoute: () => searchWithDefaultRoute,
+    path: 'root-check',
+    component: () => {
+      const search = searchRootWithDefaultsRoute.useSearch()
+      return (
+        <>
+          <div data-testid="search-default">{search.default}</div>
+          <div data-testid="search-optional">
+            {search.optional ?? '$undefined'}
+          </div>
+          <Link
+            data-testid="link-with-root-params-default-sub-a-no-change"
+            to="/searchWithDefault/root-check/a"
+          >
+            with root default params/a no change
+          </Link>
+          <Link
+            data-testid="link-with-root-params-default-sub-b-no-change"
+            to="/searchWithDefault/root-check/b"
+          >
+            with root default params/b no change
+          </Link>
+          <Link
+            data-testid="link-with-root-params-default-sub-a-change"
+            to="/searchWithDefault/root-check/a"
+            search={{ default: 'd2', optional: 'o1' }}
+          >
+            with root default params/a change to d2 (should stay as d2 after
+            navigation to no change routes)
+          </Link>
+          <Outlet />
+        </>
+      )
+    },
+  })
+
+  const searchRootWithDefaultsSubRouteA = createRoute({
+    getParentRoute: () => searchRootWithDefaultsRoute,
+    path: 'a',
+    component: () => {
+      return <>route a</>
+    },
+  })
+
+  const searchRootWithDefaultsSubRouteB = createRoute({
+    getParentRoute: () => searchRootWithDefaultsRoute,
+    path: 'b',
+    component: () => {
+      return <>route b</>
     },
   })
 
@@ -242,6 +315,10 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     searchWithDefaultRoute.addChildren([
       searchWithDefaultIndexRoute,
       searchWithDefaultCheckRoute,
+      searchRootWithDefaultsRoute.addChildren([
+        searchRootWithDefaultsSubRouteA,
+        searchRootWithDefaultsSubRouteB,
+      ]),
     ]),
   ])
 
@@ -1014,6 +1091,106 @@ describe('search params in URL', () => {
       fireEvent.click(link)
 
       await checkSearch({ default: 'd2', optional: 'o1' })
+    })
+
+    it('should set the default search params when not specified (for sub routes)', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault/root-check/`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const link = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-no-change',
+      )
+
+      expect(link).toBeInTheDocument()
+      fireEvent.click(link)
+
+      await checkSearch({ default: 'd1' })
+    })
+
+    it('should use and retain explicit search params when specified (for sub routes)', async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `/searchWithDefault/root-check/?default=d2`,
+      )
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const linkA = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-no-change',
+      )
+
+      expect(linkA).toBeInTheDocument()
+      fireEvent.click(linkA)
+
+      await checkSearch({ default: 'd2' })
+
+      const linkB = await screen.findByTestId(
+        'link-with-root-params-default-sub-b-no-change',
+      )
+
+      expect(linkB).toBeInTheDocument()
+      fireEvent.click(linkB)
+
+      await checkSearch({ default: 'd2' })
+    })
+
+    it('should retain default search params when not specified (after two navigation)', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault/root-check/`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const linkA = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-no-change',
+      )
+
+      expect(linkA).toBeInTheDocument()
+      fireEvent.click(linkA)
+
+      await checkSearch({ default: 'd1' })
+
+      const linkB = await screen.findByTestId(
+        'link-with-root-params-default-sub-b-no-change',
+      )
+
+      expect(linkB).toBeInTheDocument()
+      fireEvent.click(linkB)
+
+      await checkSearch({ default: 'd1' })
+    })
+
+    it('should retain default search params after it has changed (after two navigation)', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault/root-check/`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const linkA = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-no-change',
+      )
+
+      expect(linkA).toBeInTheDocument()
+      fireEvent.click(linkA)
+
+      await checkSearch({ default: 'd1' })
+
+      const linkB = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-change',
+      )
+
+      expect(linkB).toBeInTheDocument()
+      fireEvent.click(linkB)
+
+      await checkSearch({ default: 'd2', optional: 'o1' })
+
+      const linkC = await screen.findByTestId(
+        'link-with-root-params-default-sub-b-no-change',
+      )
+
+      expect(linkC).toBeInTheDocument()
+      fireEvent.click(linkC)
+
+      await checkSearch({ default: 'd2' })
     })
   })
 })
