@@ -209,7 +209,7 @@ function shouldThrow(folderName: string) {
 describe('generator works', async () => {
   const folderNames = await readDir()
 
-  it.each(['config-json'].map((folder) => [folder]))(
+  it.each(folderNames.map((folder) => [folder]))(
     'should wire-up the routes for a "%s" tree',
     async (folderName) => {
       const config = await setupConfig(folderName)
