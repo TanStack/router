@@ -9,12 +9,13 @@ import type {
   RegisteredRouter,
   Router,
   RouterOptions,
+  ViewTransitionOptions,
 } from './router'
 
 export interface CommitLocationOptions {
   replace?: boolean
   resetScroll?: boolean
-  viewTransition?: boolean
+  viewTransition?: boolean | ViewTransitionOptions
   /**
    * @deprecated All navigations use React transitions under the hood now
    **/

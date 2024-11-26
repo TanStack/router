@@ -85,5 +85,8 @@
       "temp-react": "0.0.0-experimental-035a41c4e-20230704",
       "temp-react-dom": "0.0.0-experimental-035a41c4e-20230704"
     }
+  },
+  "dependencies": {
+    "@tanstack/history": "^1.81.9"
   }
 }
