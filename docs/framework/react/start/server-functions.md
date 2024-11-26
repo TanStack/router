@@ -259,7 +259,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((data) => data)
+  .validator((data: Person) => data)
   .handler(async ({ data }) => {
     return `Hello, ${data.name}! You are ${data.age} years old.`
   })
@@ -306,7 +306,7 @@ function Test() {
     <form
       onSubmit={async (event) => {
         event.preventDefault()
-        const formData = new FormData(event.target)
+        const formData = new FormData(event.currentTarget)
         const response = await greetUser({ data: formData })
         console.log(response)
       }}
