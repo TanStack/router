@@ -92,7 +92,7 @@ To consume data from a `loader`, use the `useLoaderData` hook defined on your Ro
 const posts = Route.useLoaderData()
 ```
 
-If you don't have ready access to your route object (ie you're deep in the component tree for the current route), you can use `getRouteApi` to access the same hook (as well as the other hooks on the Route object). This should be preferred over importing the Route object, which is likely to create circular dependencies.
+If you don't have ready access to your route object (i.e. you're deep in the component tree for the current route), you can use `getRouteApi` to access the same hook (as well as the other hooks on the Route object). This should be preferred over importing the Route object, which is likely to create circular dependencies.
 
 ```tsx
 import { getRouteApi } from '@tanstack/react-router'
