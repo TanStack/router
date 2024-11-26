@@ -1,0 +1,5 @@
+{
+  "disableLogging": true,
+  "routesDirectory": "./configured-routes-path",
+  "generatedRouteTree": "./generated-route-tree.ts"
+}

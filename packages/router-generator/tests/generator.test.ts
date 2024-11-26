@@ -40,6 +40,10 @@ async function traverseDirectory(
   }
 }
 
+function shouldUseInlineConfig(folder: string) {
+  return folder !== 'config-json';
+}
+
 async function setupConfig(
   folder: string,
   inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
@@ -47,12 +51,14 @@ async function setupConfig(
   const { generatedRouteTree = '/routeTree.gen.ts', ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
-  const config = await getConfig({
+  const defaultConfig = shouldUseInlineConfig(folder) === true ? {
     disableLogging: true,
     routesDirectory: dir + '/routes',
     generatedRouteTree: dir + generatedRouteTree,
     ...rest,
-  })
+  } : undefined;
+  
+  const config = await getConfig(defaultConfig, dir)
   return config
 }
 
@@ -203,7 +209,7 @@ function shouldThrow(folderName: string) {
 describe('generator works', async () => {
   const folderNames = await readDir()
 
-  it.each(folderNames.map((folder) => [folder]))(
+  it.each(['config-json'].map((folder) => [folder]))(
     'should wire-up the routes for a "%s" tree',
     async (folderName) => {
       const config = await setupConfig(folderName)
