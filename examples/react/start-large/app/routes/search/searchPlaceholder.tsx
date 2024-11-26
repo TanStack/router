@@ -1,8 +1,8 @@
-import * as React from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 
 import * as v from 'valibot'
 import { queryOptions } from '@tanstack/react-query'
+import { createMiddleware, createServerFn } from '@tanstack/start'
 
 const search = v.object({
   searchPlaceholder: v.literal('searchPlaceholder'),
@@ -15,22 +15,51 @@ const loaderResult = v.object({
   searchPlaceholder: v.number(),
 })
 
-const searchQueryOptions = queryOptions({
-  queryKey: ['searchPlaceholder'],
-  queryFn: () => {
+const middleware = createMiddleware()
+  .validator(search)
+  .client(({ next }) => {
+    const context = { client: { searchPlaceholder: 'searchPlaceholder' } }
+    return next({
+      context,
+      sendContext: context,
+    })
+  })
+  .server(({ next }) => {
+    const context = { server: { searchPlaceholder: 'searchPlaceholder' } }
+    return next({
+      context,
+      sendContext: context,
+    })
+  })
+  .clientAfter(({ next }) => {
+    const context = { clientAfter: { searchPlaceholder: 'searchPlaceholder' } }
+    return next({
+      context,
+    })
+  })
+
+const fn = createServerFn()
+  .middleware([middleware])
+  .handler(() => {
     const result = v.parse(loaderResult, {
       searchPlaceholder: 0,
     })
 
     return result
-  },
-})
+  })
 
 export const Route = createFileRoute('/search/searchPlaceholder')({
   component: SearchComponent,
   validateSearch: search,
+  loaderDeps: ({ search }) => ({ search }),
+  context: (ctx) => ({
+    searchQueryOptions: queryOptions({
+      queryKey: ['searchPlaceholder'],
+      queryFn: () => fn({ data: ctx.deps.search }),
+    }),
+  }),
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(searchQueryOptions),
+    opts.context.queryClient.ensureQueryData(opts.context.searchQueryOptions),
 })
 
 function SearchComponent() {

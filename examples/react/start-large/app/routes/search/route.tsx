@@ -1,9 +1,8 @@
-import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as v from 'valibot'
 
-const search = z.object({
-  rootSearch: z.number(),
+const search = v.object({
+  rootSearch: v.number(),
 })
 
 export const Route = createFileRoute('/search')({

@@ -8,7 +8,6 @@ export const Route = createFileRoute('/absolute')({
 function AbsoluteComponent() {
   return (
     <div className="p-2 space-y-2">
-      <Link from="/search/search0" to="." />
       <Link
         to="/absolute"
         className="block py-1 text-blue-800 hover:text-blue-600"
