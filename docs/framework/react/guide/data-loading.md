@@ -84,6 +84,25 @@ The `loader` function receives a single object with the following properties:
 
 Using these parameters, we can do a lot of cool things, but first, let's take a look at how we can control it and when the `loader` function is called.
 
+## Consuming data from `loader`s
+
+To consume data from a `loader`, use the `useLoaderData` hook defined on your Route object.
+
+```tsx
+const posts = Route.useLoaderData()
+```
+
+If you don't have ready access to your route object (i.e. you're deep in the component tree for the current route), you can use `getRouteApi` to access the same hook (as well as the other hooks on the Route object). This should be preferred over importing the Route object, which is likely to create circular dependencies.
+
+```tsx
+import { getRouteApi } from '@tanstack/react-router'
+
+// in your component
+
+const routeApi = getRouteApi('/posts')
+const data = routeApi.useLoaderData()
+```
+
 ## Dependency-based Stale-While-Revalidate Caching
 
 TanStack Router provides a built-in Stale-While-Revalidate caching layer for route loaders that is keyed on the dependencies of a route:
