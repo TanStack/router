@@ -545,7 +545,7 @@ export interface DehydratedRouter {
 }
 
 export interface ViewTransitionOptions {
-  types: string[];
+  types: Array<string>;
 }
 
 export type RouterConstructorOptions<
@@ -694,6 +694,7 @@ export class Router<
   )}`
   resetNextScroll = true
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
+  isViewTransitionTypesSupported?: boolean = undefined;
   subscribers = new Set<RouterListener<RouterEvent>>()
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
@@ -769,6 +770,9 @@ export class Router<
 
     if (typeof document !== 'undefined') {
       ;(window as any).__TSR__ROUTER__ = this
+
+      // Only check for viewTransition types support on construction
+      this.isViewTransitionTypesSupported = CSS.supports('selector(:active-view-transition-type(a)')
     }
   }
 
@@ -2062,11 +2066,11 @@ export class Router<
       // TODO: Fix this when dom types are updated
       let startViewTransitionParams: any;
 
-      if (typeof shouldViewTransition === 'boolean') {
-        startViewTransitionParams = fn;
+      if (typeof shouldViewTransition === 'object' && this.isViewTransitionTypesSupported) {
+        startViewTransitionParams = {update: fn, types: shouldViewTransition.types}
       }
       else {
-        startViewTransitionParams = {update: fn, types: shouldViewTransition.types}
+        startViewTransitionParams = fn;
       }
 
       document.startViewTransition(startViewTransitionParams)
