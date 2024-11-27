@@ -20,6 +20,10 @@ import { rootPathId } from './filesystem/physical/rootPathId'
 import type { GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
+export const CONSTANTS = {
+  APIRouteExportVariable: 'APIRoute',
+}
+
 let latestTask = 0
 const routeGroupPatternRegex = /\(.+\)/g
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
@@ -368,7 +372,7 @@ export async function generator(config: Config) {
       const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
         tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
         tsrPath: escapedRoutePath,
-        tsrExportStart: `export const APIRoute = createAPIFileRoute('${escapedRoutePath}')(`,
+        tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
         tsrExportEnd: ');',
       })
 
