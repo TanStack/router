@@ -17,7 +17,7 @@ import { config } from 'vinxi/plugins/config' // // @ts-expect-error
 import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
-import { tanstackStartVinxiFileRouter } from './vinxi-router.js'
+import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
   getUserViteConfig,
