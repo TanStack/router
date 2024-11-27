@@ -287,7 +287,7 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
   const searchRootWithDefaultsSubRouteC = createRoute({
     getParentRoute: () => searchRootWithDefaultsRoute,
     path: 'c',
-    validateSearch: (prev) => ({ ...prev, default: 'd3' }),
+    validateSearch: () => ({ default: 'd3' }),
     component: () => {
       return <>route b</>
     },
