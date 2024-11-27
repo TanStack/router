@@ -545,7 +545,7 @@ export interface DehydratedRouter {
 }
 
 export interface ViewTransitionOptions {
-  types: Array<string>;
+  types: Array<string>
 }
 
 export type RouterConstructorOptions<
@@ -694,7 +694,7 @@ export class Router<
   )}`
   resetNextScroll = true
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
-  isViewTransitionTypesSupported?: boolean = undefined;
+  isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
@@ -860,7 +860,9 @@ export class Router<
     }
 
     if (!this.isServer) {
-      this.isViewTransitionTypesSupported = CSS.supports('selector(:active-view-transition-type(a)')
+      this.isViewTransitionTypesSupported = CSS.supports(
+        'selector(:active-view-transition-type(a)',
+      )
     }
   }
 
@@ -2065,13 +2067,18 @@ export class Router<
     ) {
       // lib.dom.ts doesn't support viewTransition types variant yet.
       // TODO: Fix this when dom types are updated
-      let startViewTransitionParams: any;
+      let startViewTransitionParams: any
 
-      if (typeof shouldViewTransition === 'object' && this.isViewTransitionTypesSupported) {
-        startViewTransitionParams = {update: fn, types: shouldViewTransition.types}
-      }
-      else {
-        startViewTransitionParams = fn;
+      if (
+        typeof shouldViewTransition === 'object' &&
+        this.isViewTransitionTypesSupported
+      ) {
+        startViewTransitionParams = {
+          update: fn,
+          types: shouldViewTransition.types,
+        }
+      } else {
+        startViewTransitionParams = fn
       }
 
       document.startViewTransition(startViewTransitionParams)

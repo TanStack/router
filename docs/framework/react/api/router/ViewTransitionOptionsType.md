@@ -8,7 +8,7 @@ The `ViewTransitionOptions` type is used to define a
 
 ```tsx
 interface ViewTransitionOptions {
-  types: Array<string>;
+  types: Array<string>
 }
 ```
 

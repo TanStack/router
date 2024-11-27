@@ -39,7 +39,9 @@ test('Navigating to a post page with viewTransition', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
-test('Navigating to a post page with viewTransition types', async ({ page }) => {
+test('Navigating to a post page with viewTransition types', async ({
+  page,
+}) => {
   await page.getByRole('link', { name: 'View Transition types' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')

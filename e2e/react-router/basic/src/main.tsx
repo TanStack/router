@@ -45,16 +45,10 @@ function RootComponent() {
         >
           Posts
         </Link>{' '}
-        <Link
-          to="/posts"
-          viewTransition
-        >
+        <Link to="/posts" viewTransition>
           View Transition
         </Link>{' '}
-        <Link
-          to="/posts"
-          viewTransition={{types: ["dummy"]}}
-        >
+        <Link to="/posts" viewTransition={{ types: ['dummy'] }}>
           View Transition types
         </Link>{' '}
         <Link
