@@ -21,6 +21,7 @@ import type { GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
 export const CONSTANTS = {
+  // When changing this, you'll want to update the import in `start/api/index.ts#defaultAPIFileRouteHandler`
   APIRouteExportVariable: 'APIRoute',
 }
 
