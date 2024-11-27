@@ -221,16 +221,16 @@ export async function generator(config: Config) {
         replaced = routeCode
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+            (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
           )
           .replace(
             /(import\s*\{.*)(create(Lazy)?FileRoute)(.*\}\s*from\s*['"]@tanstack\/react-router['"])/gs,
-            (match, p1, p2, p3, p4) =>
+            (_, p1, __, ___, p4) =>
               `${p1}${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
             /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3, p4) =>
+            (_, __, p2, ___, p4) =>
               `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
       }
@@ -368,7 +368,7 @@ export async function generator(config: Config) {
       const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
         tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
         tsrPath: escapedRoutePath,
-        tsrExportStart: `export const Route = createAPIFileRoute('${escapedRoutePath}')(`,
+        tsrExportStart: `export const APIRoute = createAPIFileRoute('${escapedRoutePath}')(`,
         tsrExportEnd: ');',
       })
 
