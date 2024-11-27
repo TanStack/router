@@ -959,8 +959,11 @@ describe('search params in URL', () => {
       validateSearchParams(expectedSearch, router)
     })
   })
+})
 
-  describe.each([false, true, undefined])('default search params', (strict) => {
+describe.each([false, true, undefined])(
+  'default search params in different contexts',
+  (strict) => {
     let router: AnyRouter
     beforeEach(() => {
       const result = createTestRouter({ search: { strict } })
@@ -1180,8 +1183,8 @@ describe('search params in URL', () => {
 
       await checkSearch({ default: 'd2' })
     })
-  })
-})
+  },
+)
 
 describe('route ids should be consistent after rebuilding the route tree', () => {
   it('should have the same route ids after rebuilding the route tree', async () => {
