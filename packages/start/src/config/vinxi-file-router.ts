@@ -3,7 +3,10 @@ import {
   analyzeModule as vinxiFsRouterAnalyzeModule,
   cleanPath as vinxiFsRouterCleanPath,
 } from 'vinxi/fs-router'
-import { startAPIRouteSegmentsFromTSRFilePath } from '@tanstack/router-generator'
+import {
+  CONSTANTS as GENERATOR_CONSTANTS,
+  startAPIRouteSegmentsFromTSRFilePath,
+} from '@tanstack/router-generator'
 import type { configSchema } from '@tanstack/router-generator'
 import type {
   AppOptions as VinxiAppOptions,
@@ -54,16 +57,18 @@ export function tanstackStartVinxiFileRouter(opts: {
 
         const [_, exports] = vinxiFsRouterAnalyzeModule(src)
 
-        const hasRoute = exports.find((exp) => exp.n === 'Route')
+        const hasAPIRoute = exports.find(
+          (exp) => exp.n === GENERATOR_CONSTANTS.APIRouteExportVariable,
+        )
 
         return {
           path: webPath,
           filePath: src,
           $APIRoute:
-            isAPIPath.test(webPath) && hasRoute
+            isAPIPath.test(webPath) && hasAPIRoute
               ? {
                   src,
-                  pick: ['Route'],
+                  pick: [GENERATOR_CONSTANTS.APIRouteExportVariable],
                 }
               : undefined,
         }
