@@ -9,10 +9,13 @@ export function retainSearchParams<TSearchSchema extends object>(
   return ({ search, next }) => {
     const result = next(search)
     if (keys === true) {
-      return { ...search, ...result }
+      return { ...result, ...search }
     }
     // just like above, but only overwrite explicitly mentioned keys
     keys.forEach((key) => {
+      if (!(key in search)) {
+        return
+      }
       result[key] = search[key]
     })
     return result
