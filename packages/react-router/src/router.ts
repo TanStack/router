@@ -770,9 +770,6 @@ export class Router<
 
     if (typeof document !== 'undefined') {
       ;(window as any).__TSR__ROUTER__ = this
-
-      // Only check for viewTransition types support on construction
-      this.isViewTransitionTypesSupported = CSS.supports('selector(:active-view-transition-type(a)')
     }
   }
 
@@ -860,6 +857,10 @@ export class Router<
           }
         },
       })
+    }
+
+    if (!this.isServer) {
+      this.isViewTransitionTypesSupported = CSS.supports('selector(:active-view-transition-type(a)')
     }
   }
 

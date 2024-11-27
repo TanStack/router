@@ -212,6 +212,7 @@ export interface NavigateOptionProps {
   /** @deprecated All navigations now use startTransition under the hood */
   startTransition?: boolean
   // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
+  // if set to `ViewTransitionOptions`, the router will pass the `types` field to document.startVireTransition({update: fn, types: viewTransition.types}) call
   viewTransition?: boolean | ViewTransitionOptions
   ignoreBlocker?: boolean
 }
