@@ -138,11 +138,15 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultViewTransition` property
 
-- Type: `boolean`
+- Type: `boolean | ViewTransitionOptions`
 - Optional
-- If `true`, route navigations will called using `document.startViewTransition()`.
+- If `true`, route navigations will be called using `document.startViewTransition()`.
+- If [`ViewTransitionOptions`](./ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
+  where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types,
+  the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
 - If the browser does not support this api, this option will be ignored.
 - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
+- See [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types) for more informations on viewTransition types
 
 ### `caseSensitive` property
 

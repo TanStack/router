@@ -299,7 +299,7 @@ export interface RouterOptions<
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultviewtransition-property)
    */
-  defaultViewTransition?: boolean
+  defaultViewTransition?: boolean | ViewTransitionOptions
   /**
    * @default 'fuzzy'
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundmode-property)
@@ -544,6 +544,10 @@ export interface DehydratedRouter {
   manifest?: Manifest
 }
 
+export interface ViewTransitionOptions {
+  types: Array<string>
+}
+
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
@@ -689,7 +693,8 @@ export class Router<
     Math.random() * 10000000,
   )}`
   resetNextScroll = true
-  shouldViewTransition?: boolean = undefined
+  shouldViewTransition?: boolean | ViewTransitionOptions = undefined
+  isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
@@ -852,6 +857,16 @@ export class Router<
           }
         },
       })
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      'CSS' in window &&
+      typeof window.CSS.supports === 'function'
+    ) {
+      this.isViewTransitionTypesSupported = window.CSS.supports(
+        'selector(:active-view-transition-type(a)',
+      )
     }
   }
 
@@ -1061,7 +1076,7 @@ export class Router<
     return this.routesById as Record<string, AnyRoute>
   }
 
-  /** 
+  /**
   @deprecated use the following signature instead
   ```ts
   matchRoutes (
@@ -2054,7 +2069,23 @@ export class Router<
       'startViewTransition' in document &&
       typeof document.startViewTransition === 'function'
     ) {
-      document.startViewTransition(fn)
+      // lib.dom.ts doesn't support viewTransition types variant yet.
+      // TODO: Fix this when dom types are updated
+      let startViewTransitionParams: any
+
+      if (
+        typeof shouldViewTransition === 'object' &&
+        this.isViewTransitionTypesSupported
+      ) {
+        startViewTransitionParams = {
+          update: fn,
+          types: shouldViewTransition.types,
+        }
+      } else {
+        startViewTransitionParams = fn
+      }
+
+      document.startViewTransition(startViewTransitionParams)
     } else {
       fn()
     }

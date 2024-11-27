@@ -28,7 +28,11 @@ import type {
   RouteToPath,
   TrailingSlashOptionByRouter,
 } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  ViewTransitionOptions,
+} from './router'
 import type {
   Constrain,
   Expand,
@@ -212,7 +216,8 @@ export interface NavigateOptionProps {
   /** @deprecated All navigations now use startTransition under the hood */
   startTransition?: boolean
   // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
-  viewTransition?: boolean
+  // if set to `ViewTransitionOptions`, the router will pass the `types` field to document.startViewTransition({update: fn, types: viewTransition.types}) call
+  viewTransition?: boolean | ViewTransitionOptions
   ignoreBlocker?: boolean
 }
 
