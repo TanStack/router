@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import * as z from 'zod'
 
 import {
   Link,
@@ -74,11 +73,8 @@ function setupTest(opts: {
   const navigateComponentRootRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/root-with-retained-search-params',
-    validateSearch: z.object({
-      default: z
-        .string()
-        .optional()
-        .transform((v) => undefined),
+    validateSearch: (sp) => ({
+      default: sp.default,
     }),
     search: {
       middlewares: [retainSearchParams(['default'])],
