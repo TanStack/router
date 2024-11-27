@@ -34,13 +34,13 @@ test('Navigating to a not-found route', async ({ page }) => {
 })
 
 test('Navigating to a post page with viewTransition', async ({ page }) => {
-  await page.getByText('View Transition').click()
+  await page.getByRole('link', { name: 'View Transition', exact: true }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
 test('Navigating to a post page with viewTransition types', async ({ page }) => {
-  await page.getByText('ViewTransition types').click()
+  await page.getByRole('link', { name: 'View Transition types' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
