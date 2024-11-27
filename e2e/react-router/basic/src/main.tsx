@@ -46,6 +46,18 @@ function RootComponent() {
           Posts
         </Link>{' '}
         <Link
+          to="/posts"
+          viewTransition
+        >
+          View Transition
+        </Link>{' '}
+        <Link
+          to="/posts"
+          viewTransition={{types: ["dummy"]}}
+        >
+          View Transition types
+        </Link>{' '}
+        <Link
           to="/layout-a"
           activeProps={{
             className: 'font-bold',
