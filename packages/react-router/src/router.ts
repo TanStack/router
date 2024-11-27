@@ -1594,11 +1594,11 @@ export class Router<
                   try {
                     const result = next(search)
                     const validatedSearch = {
+                      ...result,
                       ...(validateSearch(
                         route.options.validateSearch,
                         result,
                       ) ?? {}),
-                      ...result,
                     }
                     return validatedSearch
                   } catch (e) {
