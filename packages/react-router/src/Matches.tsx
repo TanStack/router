@@ -136,13 +136,13 @@ export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
 >
 
 export interface RouteMatch<
-  TRouteId,
-  TFullPath,
-  TAllParams,
-  TFullSearchSchema,
-  TLoaderData,
-  TAllContext,
-  TLoaderDeps,
+  out TRouteId,
+  out TFullPath,
+  out TAllParams,
+  out TFullSearchSchema,
+  out TLoaderData,
+  out TAllContext,
+  out TLoaderDeps,
 > {
   id: string
   routeId: TRouteId
