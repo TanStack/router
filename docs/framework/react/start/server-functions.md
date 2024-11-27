@@ -259,7 +259,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((data) => data)
+  .validator((data: Person) => data)
   .handler(async ({ data }) => {
     return `Hello, ${data.name}! You are ${data.age} years old.`
   })
