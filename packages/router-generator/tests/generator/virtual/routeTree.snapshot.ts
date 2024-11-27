@@ -8,12 +8,15 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/root'
 import { Route as layoutImport } from './routes/layout'
 import { Route as indexImport } from './routes/index'
 import { Route as dbDashboardImport } from './routes/db/dashboard'
+import { Route as pagesImport } from './routes/pages'
 import { Route as HelloIndexImport } from './routes/subtree/index'
 import { Route as dbDashboardInvoicesImport } from './routes/db/dashboard-invoices'
 import { Route as dbDashboardIndexImport } from './routes/db/dashboard-index'
@@ -22,10 +25,20 @@ import { Route as HelloFooIdImport } from './routes/subtree/foo/$id'
 import { Route as dbInvoiceDetailImport } from './routes/db/invoice-detail'
 import { Route as dbInvoicesIndexImport } from './routes/db/invoices-index'
 
+// Create Virtual Routes
+
+const LangImport = createFileRoute('/$lang')()
+
 // Create/Update Routes
 
 const layoutRoute = layoutImport.update({
   id: '/_layout',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LangRoute = LangImport.update({
+  id: '/$lang',
+  path: '/$lang',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -39,6 +52,12 @@ const dbDashboardRoute = dbDashboardImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => layoutRoute,
+} as any)
+
+const pagesRoute = pagesImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LangRoute,
 } as any)
 
 const HelloIndexRoute = HelloIndexImport.update({
@@ -94,12 +113,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof indexImport
       parentRoute: typeof rootRoute
     }
+    '/$lang': {
+      id: '/$lang'
+      path: '/$lang'
+      fullPath: '/$lang'
+      preLoaderRoute: typeof LangImport
+      parentRoute: typeof rootRoute
+    }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof layoutImport
       parentRoute: typeof rootRoute
+    }
+    '/$lang/': {
+      id: '/$lang/'
+      path: '/'
+      fullPath: '/$lang/'
+      preLoaderRoute: typeof pagesImport
+      parentRoute: typeof LangImport
     }
     '/_layout/dashboard': {
       id: '/_layout/dashboard'
@@ -162,6 +195,16 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
+interface LangRouteChildren {
+  pagesRoute: typeof pagesRoute
+}
+
+const LangRouteChildren: LangRouteChildren = {
+  pagesRoute: pagesRoute,
+}
+
+const LangRouteWithChildren = LangRoute._addFileChildren(LangRouteChildren)
+
 interface dbDashboardInvoicesRouteChildren {
   dbInvoicesIndexRoute: typeof dbInvoicesIndexRoute
   dbInvoiceDetailRoute: typeof dbInvoiceDetailRoute
@@ -208,7 +251,9 @@ const layoutRouteWithChildren =
 
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
+  '/$lang': typeof LangRouteWithChildren
   '': typeof layoutRouteWithChildren
+  '/$lang/': typeof pagesRoute
   '/dashboard': typeof dbDashboardRouteWithChildren
   '/dashboard/': typeof dbDashboardIndexRoute
   '/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
@@ -222,6 +267,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof indexRoute
   '': typeof layoutRouteWithChildren
+  '/$lang': typeof pagesRoute
   '/dashboard': typeof dbDashboardIndexRoute
   '/hello': typeof HelloIndexRoute
   '/dashboard/invoices': typeof dbInvoicesIndexRoute
@@ -233,7 +279,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof indexRoute
+  '/$lang': typeof LangRouteWithChildren
   '/_layout': typeof layoutRouteWithChildren
+  '/$lang/': typeof pagesRoute
   '/_layout/dashboard': typeof dbDashboardRouteWithChildren
   '/_layout/dashboard/': typeof dbDashboardIndexRoute
   '/_layout/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
@@ -248,7 +296,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$lang'
     | ''
+    | '/$lang/'
     | '/dashboard'
     | '/dashboard/'
     | '/dashboard/invoices'
@@ -261,6 +311,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | ''
+    | '/$lang'
     | '/dashboard'
     | '/hello'
     | '/dashboard/invoices'
@@ -270,7 +321,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$lang'
     | '/_layout'
+    | '/$lang/'
     | '/_layout/dashboard'
     | '/_layout/dashboard/'
     | '/_layout/dashboard/invoices'
@@ -284,11 +337,13 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   indexRoute: typeof indexRoute
+  LangRoute: typeof LangRouteWithChildren
   layoutRoute: typeof layoutRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
+  LangRoute: LangRouteWithChildren,
   layoutRoute: layoutRouteWithChildren,
 }
 
@@ -303,11 +358,18 @@ export const routeTree = rootRoute
       "filePath": "root.tsx",
       "children": [
         "/",
+        "/$lang",
         "/_layout"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/$lang": {
+      "filePath": "",
+      "children": [
+        "/$lang/"
+      ]
     },
     "/_layout": {
       "filePath": "layout.tsx",
@@ -317,6 +379,10 @@ export const routeTree = rootRoute
         "/_layout/hello/foo/$id",
         "/_layout/hello/foo/"
       ]
+    },
+    "/$lang/": {
+      "filePath": "pages.tsx",
+      "parent": "/$lang"
     },
     "/_layout/dashboard": {
       "filePath": "db/dashboard.tsx",

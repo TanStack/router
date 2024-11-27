@@ -9,16 +9,16 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.5.1",
-    "@tanstack/react-router": "^1.82.8",
-    "@tanstack/router-devtools": "^1.82.8",
-    "@tanstack/start": "^1.82.9",
+    "@clerk/tanstack-start": "0.5.3",
+    "@tanstack/react-router": "^1.83.1",
+    "@tanstack/router-devtools": "^1.83.1",
+    "@tanstack/start": "^1.83.1",
     "dotenv": "^16.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "remix-auth-form": "^1.5.0",
-    "tailwind-merge": "^2.5.4",
+    "tailwind-merge": "^2.5.5",
     "vinxi": "0.4.3"
   },
   "devDependencies": {

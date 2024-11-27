@@ -122,7 +122,7 @@ export async function getRouteNodesRecursive(
             routeNode = {
               filePath: '',
               fullPath: '',
-              variableName: '',
+              variableName: routePathToVariable(routePath),
               routePath,
               isLayout,
               isVirtual: true,
