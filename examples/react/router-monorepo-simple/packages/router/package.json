@@ -8,6 +8,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
+    "@tanstack/history": "^1.81.9",
     "@tanstack/react-router": "^1.84.4",
     "@tanstack/router-plugin": "^1.84.4",
     "redaxios": "^0.5.1",

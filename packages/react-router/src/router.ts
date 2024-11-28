@@ -110,10 +110,11 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<any, any, any, any, any>
+export type AnyRouter = Router<any, any, any, any, any, any>
 
 export type AnyRouterWithContext<TContext> = Router<
   AnyRouteWithContext<TContext>,
+  any,
   any,
   any,
   any
@@ -173,6 +174,7 @@ export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean = false,
+  TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 > {
@@ -184,7 +186,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#history-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/history-types)
    */
-  history?: RouterHistory
+  history?: TRouterHistory
   /**
    * A function that will be used to stringify search params when generating links.
    *
@@ -552,6 +554,7 @@ export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean,
+  TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
   TSerializedError extends Record<string, any>,
 > = Omit<
@@ -559,6 +562,7 @@ export type RouterConstructorOptions<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
+    TRouterHistory,
     TDehydrated,
     TSerializedError
   >,
@@ -657,6 +661,7 @@ export function createRouter<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean,
+  TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 >(
@@ -666,6 +671,7 @@ export function createRouter<
         TRouteTree,
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
+        TRouterHistory,
         TDehydrated,
         TSerializedError
       >,
@@ -674,6 +680,7 @@ export function createRouter<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
+    TRouterHistory,
     TDehydrated,
     TSerializedError
   >(options)
@@ -690,6 +697,7 @@ export class Router<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
   in out TDefaultStructuralSharingOption extends boolean,
+  in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
   in out TSerializedError extends Record<string, any> = Record<string, any>,
 > {
@@ -729,6 +737,7 @@ export class Router<
         TRouteTree,
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
+        TRouterHistory,
         TDehydrated,
         TSerializedError
       >,
@@ -738,7 +747,7 @@ export class Router<
     },
     'stringifySearch' | 'parseSearch' | 'context'
   >
-  history!: RouterHistory
+  history!: TRouterHistory
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
   routeTree!: TRouteTree
@@ -756,6 +765,7 @@ export class Router<
       TRouteTree,
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
+      TRouterHistory,
       TDehydrated,
       TSerializedError
     >,
@@ -788,6 +798,7 @@ export class Router<
       TRouteTree,
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
+      TRouterHistory,
       TDehydrated,
       TSerializedError
     >,
@@ -837,11 +848,11 @@ export class Router<
     ) {
       this.history =
         this.options.history ??
-        (this.isServer
+        ((this.isServer
           ? createMemoryHistory({
               initialEntries: [this.basepath || '/'],
             })
-          : createBrowserHistory())
+          : createBrowserHistory()) as TRouterHistory)
       this.latestLocation = this.parseLocation()
     }
 
@@ -2772,6 +2783,7 @@ export class Router<
         TRouteTree,
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
+        TRouterHistory,
         TDehydrated,
         TSerializedError
       >,
@@ -2852,6 +2864,7 @@ export class Router<
         TRouteTree,
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
+        TRouterHistory,
         TDehydrated,
         TSerializedError
       >,

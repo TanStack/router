@@ -2057,6 +2057,9 @@ importers:
       '@router-mono-react-query/post-query':
         specifier: workspace:*
         version: link:../post-query
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../../../packages/history
       '@tanstack/react-query':
         specifier: ^5.61.3
         version: 5.61.3(react@18.3.1)
@@ -2214,6 +2217,9 @@ importers:
 
   examples/react/router-monorepo-simple/packages/router:
     dependencies:
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../../../packages/history
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../../../packages/react-router
