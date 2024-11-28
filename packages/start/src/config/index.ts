@@ -147,6 +147,9 @@ export function defineConfig(
           sourcemap: true,
         },
         plugins: () => [
+          config('tss-config:client', {
+            define: {},
+          }),
           ...(getUserViteConfig(opts.vite).plugins || []),
           ...(getUserViteConfig(opts.routers?.client?.vite).plugins || []),
           serverFunctions.client({
@@ -170,6 +173,9 @@ export function defineConfig(
         target: 'server',
         handler: ssrEntry,
         plugins: () => [
+          config('tss-config:ssr', {
+            define: {},
+          }),
           tsrRoutesManifest({
             tsrConfig,
             clientBase,
@@ -201,6 +207,9 @@ export function defineConfig(
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => [
+          config('tss-config:ssr', {
+            define: {},
+          }),
           serverFunctions.server({
             runtime: '@tanstack/start/react-server-runtime',
             // TODO: RSCS - remove this
@@ -230,43 +239,47 @@ export function defineConfig(
 
   // If API routes handler exists, add a router for it
   if (apiEntryExists) {
-    vinxiApp = vinxiApp.addRouter(
-      withPlugins([
-        config('start-vite', {
-          ...getUserViteConfig(opts.vite).userConfig,
-          ...getUserViteConfig(opts.routers?.api?.vite).userConfig,
-          ssr: mergeSsrOptions([
-            getUserViteConfig(opts.vite).userConfig.ssr,
-            getUserViteConfig(opts.routers?.api?.vite).userConfig.ssr,
-            { noExternal: ['@tanstack/start', 'tsr:routes-manifest'] },
-          ]),
-          optimizeDeps: {
-            entries: [],
-            ...(getUserViteConfig(opts.vite).userConfig.optimizeDeps || {}),
-            ...(getUserViteConfig(opts.routers?.api?.vite).userConfig
-              .optimizeDeps || {}),
-          },
-        }),
-        TanStackRouterVite({
-          ...tsrConfig,
-          autoCodeSplitting: true,
-          experimental: {
-            ...tsrConfig.experimental,
-          },
-        }),
-      ])({
-        name: 'api',
-        type: 'http',
-        target: 'server',
-        base: apiBase,
-        handler: apiEntry,
-        routes: tanstackStartVinxiFileRouter({ tsrConfig, apiBase }),
-        plugins: () => [
-          ...(getUserViteConfig(opts.vite).plugins || []),
-          ...(getUserViteConfig(opts.routers?.api?.vite).plugins || []),
-        ],
-      }),
-    )
+    vinxiApp = vinxiApp.addRouter({
+      name: 'api',
+      type: 'http',
+      target: 'server',
+      base: apiBase,
+      handler: apiEntry,
+      routes: tanstackStartVinxiFileRouter({ tsrConfig, apiBase }),
+      plugins: () => {
+        const viteConfig = getUserViteConfig(opts.vite)
+        const vinxiRouterViteConfig = getUserViteConfig(opts.routers?.api?.vite)
+        return [
+          config('tsr-config:api', {
+            ...viteConfig.userConfig,
+            ...vinxiRouterViteConfig.userConfig,
+            ssr: mergeSsrOptions([
+              viteConfig.userConfig.ssr,
+              vinxiRouterViteConfig.userConfig.ssr,
+              { noExternal: ['@tanstack/start', 'tsr:routes-manifest'] },
+            ]),
+            optimizeDeps: {
+              entries: [],
+              ...(viteConfig.userConfig.optimizeDeps || {}),
+              ...(vinxiRouterViteConfig.userConfig.optimizeDeps || {}),
+            },
+            define: {
+              ...(viteConfig.userConfig.define || {}),
+              ...(vinxiRouterViteConfig.userConfig.define || {}),
+            },
+          }),
+          TanStackRouterVite({
+            ...tsrConfig,
+            autoCodeSplitting: true,
+            experimental: {
+              ...tsrConfig.experimental,
+            },
+          }),
+          ...(viteConfig.plugins || []),
+          ...(vinxiRouterViteConfig.plugins || []),
+        ]
+      },
+    })
   }
 
   return vinxiApp
