@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute , linkOptions } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
   component: HomeComponent,
@@ -16,17 +16,18 @@ function HomeComponent() {
       </p>
       {(
         [
-          '/normal-page',
-          '/lazy-page',
-          '/virtual-page',
-          '/lazy-with-loader-page',
+          linkOptions({to:'/normal-page'}),
+          linkOptions({to:'/lazy-page'}),
+          linkOptions({to:'/virtual-page'}),
+          linkOptions({to:'/lazy-with-loader-page'}),
+          linkOptions({to:'/page-with-search', search: { where: 'footer' }}),
         ] as const
-      ).map((href, i) => (
-        <div key={`index-page-tests-${href}-${i}`} className="border p-2">
-          <h4>{href} tests</h4>
+      ).map((options, i) => (
+        <div key={`index-page-tests-${options.to}-${i}`} className="border p-2">
+          <h4>{options.to} tests</h4>
           <p>
-            <Link to={href} hash="at-the-bottom">
-              {href}#at-the-bottom
+            <Link {...options} hash="at-the-bottom">
+              {options.to}#at-the-bottom
             </Link>
           </p>
         </div>

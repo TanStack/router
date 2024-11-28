@@ -4,6 +4,7 @@ import {
   Outlet,
   ScrollRestoration,
   createRootRoute,
+  linkOptions,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -41,20 +42,21 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
       </Link>{' '}
       {(
         [
-          '/normal-page',
-          '/lazy-page',
-          '/virtual-page',
-          '/lazy-with-loader-page',
+          linkOptions({to:'/normal-page'}),
+          linkOptions({to:'/lazy-page'}),
+          linkOptions({to:'/virtual-page'}),
+          linkOptions({to:'/lazy-with-loader-page'}),
+          linkOptions({to:'/page-with-search', search: { where: type }}),
         ] as const
-      ).map((href, i) => (
+      ).map((options, i) => (
         <Link
-          key={`${prefix}-${href}-${i}`}
-          to={href}
+          key={`${prefix}-${options.to}-${i}`}
+          {...options}
           activeProps={{
             className: 'font-bold',
           }}
         >
-          {prefix}-{href}
+          {prefix}-{options.to}
         </Link>
       ))}
     </Elem>
