@@ -9,7 +9,7 @@ const defaultTemplate = {
     '%%tsrImports%%',
     '\n\n',
     '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-    'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
+    'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
   ].join(''),
   apiTemplate: [
     'import { json } from "@tanstack/start";\n',

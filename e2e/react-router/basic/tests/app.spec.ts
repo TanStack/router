@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('Navigating to a post page', async ({ page }) => {
-  await page.getByRole('link', { name: 'Posts' }).click()
+  await page.getByRole('link', { name: 'Posts', exact: true }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
@@ -31,4 +31,18 @@ test('Navigating to a not-found route', async ({ page }) => {
   )
   await page.getByRole('link', { name: 'Start Over' }).click()
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
+})
+
+test('Navigating to a post page with viewTransition', async ({ page }) => {
+  await page.getByRole('link', { name: 'View Transition', exact: true }).click()
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await expect(page.getByRole('heading')).toContainText('sunt aut facere')
+})
+
+test('Navigating to a post page with viewTransition types', async ({
+  page,
+}) => {
+  await page.getByRole('link', { name: 'View Transition types' }).click()
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })

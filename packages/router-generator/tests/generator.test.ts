@@ -79,6 +79,7 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       {
         const virtualRouteConfig = rootRoute('root.tsx', [
           index('index.tsx'),
+          route('$lang', [index('pages.tsx')]),
           layout('layout.tsx', [
             route('/dashboard', 'db/dashboard.tsx', [
               index('db/dashboard-index.tsx'),

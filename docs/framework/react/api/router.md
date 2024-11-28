@@ -75,6 +75,7 @@ title: Router API
   - [`ToMaskOptions Type`](./router/ToMaskOptionsType.md)
   - [`ToOptions Type`](./router/ToOptionsType.md)
   - [`UseMatchRouteOptions Type`](./router/UseMatchRouteOptionsType.md)
+  - [`ViewTransitionOptions Type`](./router/ViewTransitionOptionsType.md)
 - ⚠️ Deprecated
   - [`FileRoute Class`](./router/FileRouteClass.md)
   - [`Route Class`](./router/RouteClass.md)
