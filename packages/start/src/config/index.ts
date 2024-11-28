@@ -11,7 +11,8 @@ import {
 } from '@tanstack/start-vite-plugin'
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
-import { config } from 'vinxi/plugins/config' // // @ts-expect-error
+import { config } from 'vinxi/plugins/config'
+// // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
 // @ts-expect-error
 import { serverFunctions } from '@vinxi/server-functions/plugin'
@@ -146,23 +147,33 @@ export function defineConfig(
         build: {
           sourcemap: true,
         },
-        plugins: () => [
-          config('tss-config:client', {
-            define: {},
-          }),
-          ...(getUserViteConfig(opts.vite).plugins || []),
-          ...(getUserViteConfig(opts.routers?.client?.vite).plugins || []),
-          serverFunctions.client({
-            runtime: '@tanstack/start/client-runtime',
-          }),
-          reactRefresh({
-            babel: opts.react?.babel,
-            exclude: opts.react?.exclude,
-            include: opts.react?.include,
-          }),
-          // TODO: RSCS - enable this
-          // serverComponents.client(),
-        ],
+        plugins: () => {
+          const viteConfig = getUserViteConfig(opts.vite)
+          const clientViteConfig = getUserViteConfig(opts.routers?.client?.vite)
+
+          return [
+            config('tss-vite-config-client', {
+              ...viteConfig.userConfig,
+              ...clientViteConfig.userConfig,
+              define: {
+                ...viteConfig.userConfig.define,
+                ...clientViteConfig.userConfig.define,
+              },
+            }),
+            ...(viteConfig.plugins || []),
+            ...(clientViteConfig.plugins || []),
+            serverFunctions.client({
+              runtime: '@tanstack/start/client-runtime',
+            }),
+            reactRefresh({
+              babel: opts.react?.babel,
+              exclude: opts.react?.exclude,
+              include: opts.react?.include,
+            }),
+            // TODO: RSCS - enable this
+            // serverComponents.client(),
+          ]
+        },
       }),
       withStartPlugins(
         opts,
@@ -172,25 +183,35 @@ export function defineConfig(
         type: 'http',
         target: 'server',
         handler: ssrEntry,
-        plugins: () => [
-          config('tss-config:ssr', {
-            define: {},
-          }),
-          tsrRoutesManifest({
-            tsrConfig,
-            clientBase,
-          }),
-          ...(getUserViteConfig(opts.vite).plugins || []),
-          ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
-          serverTransform({
-            runtime: '@tanstack/start/server-runtime',
-          }),
-          config('start-ssr', {
-            ssr: {
-              external: ['@vinxi/react-server-dom/client'],
-            },
-          }),
-        ],
+        plugins: () => {
+          const viteConfig = getUserViteConfig(opts.vite)
+          const ssrViteConfig = getUserViteConfig(opts.routers?.ssr?.vite)
+
+          return [
+            config('tss-vite-config-ssr', {
+              ...viteConfig.userConfig,
+              ...ssrViteConfig.userConfig,
+              define: {
+                ...viteConfig.userConfig.define,
+                ...ssrViteConfig.userConfig.define,
+              },
+            }),
+            tsrRoutesManifest({
+              tsrConfig,
+              clientBase,
+            }),
+            ...(getUserViteConfig(opts.vite).plugins || []),
+            ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
+            serverTransform({
+              runtime: '@tanstack/start/server-runtime',
+            }),
+            config('start-ssr', {
+              ssr: {
+                external: ['@vinxi/react-server-dom/client'],
+              },
+            }),
+          ]
+        },
         link: {
           client: 'client',
         },
@@ -206,33 +227,43 @@ export function defineConfig(
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
-        plugins: () => [
-          config('tss-config:ssr', {
-            define: {},
-          }),
-          serverFunctions.server({
-            runtime: '@tanstack/start/react-server-runtime',
-            // TODO: RSCS - remove this
-            resolve: {
-              conditions: [],
-            },
-          }),
-          // TODO: RSCs - add this
-          // serverComponents.serverActions({
-          //   resolve: {
-          //     conditions: [
-          //       'react-server',
-          //       // 'node',
-          //       'import',
-          //       process.env.NODE_ENV,
-          //     ],
-          //   },
-          //   runtime: '@vinxi/react-server-dom/runtime',
-          //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
-          // }),
-          ...(getUserViteConfig(opts.vite).plugins || []),
-          ...(getUserViteConfig(opts.routers?.server?.vite).plugins || []),
-        ],
+        plugins: () => {
+          const viteConfig = getUserViteConfig(opts.vite)
+          const serverViteConfig = getUserViteConfig(opts.routers?.server?.vite)
+
+          return [
+            config('tss-vite-config-ssr', {
+              ...viteConfig.userConfig,
+              ...serverViteConfig.userConfig,
+              define: {
+                ...viteConfig.userConfig.define,
+                ...serverViteConfig.userConfig.define,
+              },
+            }),
+            serverFunctions.server({
+              runtime: '@tanstack/start/react-server-runtime',
+              // TODO: RSCS - remove this
+              resolve: {
+                conditions: [],
+              },
+            }),
+            // TODO: RSCs - add this
+            // serverComponents.serverActions({
+            //   resolve: {
+            //     conditions: [
+            //       'react-server',
+            //       // 'node',
+            //       'import',
+            //       process.env.NODE_ENV,
+            //     ],
+            //   },
+            //   runtime: '@vinxi/react-server-dom/runtime',
+            //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
+            // }),
+            ...(viteConfig.plugins || []),
+            ...(serverViteConfig.plugins || []),
+          ]
+        },
       }),
     ],
   })
@@ -248,24 +279,25 @@ export function defineConfig(
       routes: tanstackStartVinxiFileRouter({ tsrConfig, apiBase }),
       plugins: () => {
         const viteConfig = getUserViteConfig(opts.vite)
-        const vinxiRouterViteConfig = getUserViteConfig(opts.routers?.api?.vite)
+        const apiViteConfig = getUserViteConfig(opts.routers?.api?.vite)
+
         return [
-          config('tsr-config:api', {
+          config('tsr-vite-config-api', {
             ...viteConfig.userConfig,
-            ...vinxiRouterViteConfig.userConfig,
+            ...apiViteConfig.userConfig,
             ssr: mergeSsrOptions([
               viteConfig.userConfig.ssr,
-              vinxiRouterViteConfig.userConfig.ssr,
+              apiViteConfig.userConfig.ssr,
               { noExternal: ['@tanstack/start', 'tsr:routes-manifest'] },
             ]),
             optimizeDeps: {
               entries: [],
               ...(viteConfig.userConfig.optimizeDeps || {}),
-              ...(vinxiRouterViteConfig.userConfig.optimizeDeps || {}),
+              ...(apiViteConfig.userConfig.optimizeDeps || {}),
             },
             define: {
               ...(viteConfig.userConfig.define || {}),
-              ...(vinxiRouterViteConfig.userConfig.define || {}),
+              ...(apiViteConfig.userConfig.define || {}),
             },
           }),
           TanStackRouterVite({
@@ -276,7 +308,7 @@ export function defineConfig(
             },
           }),
           ...(viteConfig.plugins || []),
-          ...(vinxiRouterViteConfig.plugins || []),
+          ...(apiViteConfig.plugins || []),
         ]
       },
     })
