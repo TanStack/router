@@ -41,7 +41,7 @@
     "eslint": "^9.15.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
     "eslint-plugin-unused-imports": "^4.1.4",
-    "glob": "^11.0.0",
+    "tinyglobby": "^0.2.10",
     "jsdom": "^25.0.1",
     "nx": "^20.1.3",
     "prettier": "^3.3.3",
