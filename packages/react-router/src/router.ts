@@ -614,30 +614,35 @@ export type RouterEvents = {
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onBeforeLoad: {
     type: 'onBeforeLoad'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onLoad: {
     type: 'onLoad'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onResolved: {
     type: 'onResolved'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
 }
 
@@ -1900,7 +1905,8 @@ export class Router<
         try {
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
-          const pathDidChange = prevLocation.href !== next.href
+          const hrefChanged = prevLocation.href !== next.href
+          const pathChanged = prevLocation.pathname !== next.pathname
 
           // Cancel any pending matches
           this.cancelMatches()
@@ -1934,7 +1940,8 @@ export class Router<
               type: 'onBeforeNavigate',
               fromLocation: prevLocation,
               toLocation: next,
-              pathChanged: pathDidChange,
+              pathChanged,
+              hrefChanged,
             })
           }
 
@@ -1942,7 +1949,8 @@ export class Router<
             type: 'onBeforeLoad',
             fromLocation: prevLocation,
             toLocation: next,
-            pathChanged: pathDidChange,
+            pathChanged,
+            hrefChanged,
           })
 
           await this.loadMatches({
