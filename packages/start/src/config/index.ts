@@ -156,8 +156,12 @@ export function defineConfig(
               ...viteConfig.userConfig,
               ...clientViteConfig.userConfig,
               define: {
-                ...viteConfig.userConfig.define,
-                ...clientViteConfig.userConfig.define,
+                ...(viteConfig.userConfig.define || {}),
+                ...(clientViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+                ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+                ...injectDefineEnv('TSS_API_BASE', apiBase),
               },
             }),
             ...(viteConfig.plugins || []),
@@ -192,8 +196,12 @@ export function defineConfig(
               ...viteConfig.userConfig,
               ...ssrViteConfig.userConfig,
               define: {
-                ...viteConfig.userConfig.define,
-                ...ssrViteConfig.userConfig.define,
+                ...(viteConfig.userConfig.define || {}),
+                ...(ssrViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+                ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+                ...injectDefineEnv('TSS_API_BASE', apiBase),
               },
             }),
             tsrRoutesManifest({
@@ -236,8 +244,12 @@ export function defineConfig(
               ...viteConfig.userConfig,
               ...serverViteConfig.userConfig,
               define: {
-                ...viteConfig.userConfig.define,
-                ...serverViteConfig.userConfig.define,
+                ...(viteConfig.userConfig.define || {}),
+                ...(serverViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+                ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+                ...injectDefineEnv('TSS_API_BASE', apiBase),
               },
             }),
             serverFunctions.server({
@@ -298,6 +310,10 @@ export function defineConfig(
             define: {
               ...(viteConfig.userConfig.define || {}),
               ...(apiViteConfig.userConfig.define || {}),
+              ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+              ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+              ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+              ...injectDefineEnv('TSS_API_BASE', apiBase),
             },
           }),
           TanStackRouterVite({
@@ -568,4 +584,14 @@ function tsrRoutesManifest(opts: {
       return
     },
   }
+}
+
+function injectDefineEnv<TKey extends string, TValue extends string>(
+  key: TKey,
+  value: TValue,
+): { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue } {
+  return {
+    [`process.env.${key}`]: JSON.stringify(value),
+    [`import.meta.env.${key}`]: JSON.stringify(value),
+  } as { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue }
 }
