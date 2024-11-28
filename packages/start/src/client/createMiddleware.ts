@@ -122,10 +122,10 @@ export type MergeAllValidatorOutputs<TMiddlewares, TValidator> = Expand<
 >
 
 export interface MiddlewareOptions<
-  TMiddlewares,
-  TValidator,
-  TServerContext,
-  TClientContext,
+  in out TMiddlewares,
+  in out TValidator,
+  in out TServerContext,
+  in out TClientContext,
 > {
   validateClient?: boolean
   middleware?: TMiddlewares
@@ -152,54 +152,83 @@ export interface MiddlewareOptions<
   >
 }
 
+export type MiddlewareServerNextFn = <
+  TNewServerContext = undefined,
+  TNewClientAfterContext = undefined,
+>(ctx?: {
+  context?: TNewServerContext
+  sendContext?: DefaultTransformerStringify<TNewClientAfterContext>
+}) => Promise<
+  ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
+>
+
+export interface MiddlewareServerFnOptions<
+  in out TMiddlewares,
+  in out TValidator,
+  in out TServerContext,
+> {
+  data: MergeAllValidatorOutputs<TMiddlewares, NonNullable<TValidator>>
+  context: MergeAllServerContext<TMiddlewares, NonNullable<TServerContext>>
+  next: MiddlewareServerNextFn
+}
+
 export type MiddlewareServerFn<
   TMiddlewares,
   TValidator,
   TServerContext,
   TNewServerContext,
   TNewClientAfterContext,
-> = (options: {
-  data: MergeAllValidatorOutputs<TMiddlewares, NonNullable<TValidator>>
-  context: MergeAllServerContext<TMiddlewares, NonNullable<TServerContext>>
-  next: <
-    TNewServerContext = undefined,
-    TNewClientAfterContext = undefined,
-  >(ctx?: {
-    context?: TNewServerContext
-    sendContext?: DefaultTransformerStringify<TNewClientAfterContext>
-  }) => Promise<
-    ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
-  >
-}) =>
+> = (
+  options: MiddlewareServerFnOptions<TMiddlewares, TValidator, TServerContext>,
+) =>
   | Promise<ServerResultWithContext<TNewServerContext, TNewClientAfterContext>>
   | ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
+
+export type MiddlewareClientNextFn = <
+  TNewServerContext = undefined,
+  TNewClientContext = undefined,
+>(ctx?: {
+  context?: TNewClientContext
+  sendContext?: DefaultTransformerStringify<TNewServerContext>
+  headers?: HeadersInit
+}) => Promise<ClientResultWithContext<TNewServerContext, TNewClientContext>>
+
+export interface MiddlewareClientFnOptions<
+  in out TMiddlewares,
+  in out TValidator,
+> {
+  data: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
+  context: MergeAllClientContext<TMiddlewares>
+  sendContext?: unknown // cc Chris Horobin
+  method: Method
+  next: MiddlewareClientNextFn
+}
 
 export type MiddlewareClientFn<
   TMiddlewares,
   TValidator,
   TServerContext,
   TClientContext,
-> = (options: {
-  data: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
-  context: MergeAllClientContext<TMiddlewares>
-  sendContext?: unknown // cc Chris Horobin
-  method: Method
-  next: <TNewServerContext = undefined, TNewClientContext = undefined>(ctx?: {
-    context?: TNewClientContext
-    sendContext?: DefaultTransformerStringify<TNewServerContext>
-    headers?: HeadersInit
-  }) => Promise<ClientResultWithContext<TNewServerContext, TNewClientContext>>
-}) =>
+> = (
+  options: MiddlewareClientFnOptions<TMiddlewares, TValidator>,
+) =>
   | Promise<ClientResultWithContext<TServerContext, TClientContext>>
   | ClientResultWithContext<TServerContext, TClientContext>
 
-export type MiddlewareClientAfterFn<
-  TMiddlewares,
-  TValidator,
-  TClientContext,
-  TClientAfterContext,
-  TNewClientAfterContext,
-> = (options: {
+export type MiddlewareClientAfterNextFn = <
+  TNewClientAfterContext = undefined,
+>(ctx?: {
+  context?: TNewClientAfterContext
+  sendContext?: never
+  headers?: HeadersInit
+}) => Promise<ClientAfterResultWithContext<TNewClientAfterContext>>
+
+export interface MiddlewareClientAfterFnOptions<
+  in out TMiddlewares,
+  in out TValidator,
+  in out TClientContext,
+  in out TClientAfterContext,
+> {
   data: MergeAllValidatorInputs<TMiddlewares, NonNullable<TValidator>>
   context: MergeAllClientAfterContext<
     TMiddlewares,
@@ -207,12 +236,23 @@ export type MiddlewareClientAfterFn<
     TClientAfterContext
   >
   method: Method
-  next: <TNewClientAfterContext = undefined>(ctx?: {
-    context?: TNewClientAfterContext
-    sendContext?: never
-    headers?: HeadersInit
-  }) => Promise<ClientAfterResultWithContext<TNewClientAfterContext>>
-}) =>
+  next: MiddlewareClientAfterNextFn
+}
+
+export type MiddlewareClientAfterFn<
+  TMiddlewares,
+  TValidator,
+  TClientContext,
+  TClientAfterContext,
+  TNewClientAfterContext,
+> = (
+  options: MiddlewareClientAfterFnOptions<
+    TMiddlewares,
+    TValidator,
+    TClientContext,
+    TClientAfterContext
+  >,
+) =>
   | Promise<ClientAfterResultWithContext<TNewClientAfterContext>>
   | ClientAfterResultWithContext<TNewClientAfterContext>
 
