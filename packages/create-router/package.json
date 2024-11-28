@@ -39,7 +39,7 @@
     "@types/which": "^3.0.4",
     "commander": "^12.1.0",
     "cross-spawn": "^7.0.6",
-    "fast-glob": "^3.3.2",
+    "tinyglobby": "^0.2.10",
     "picocolors": "^1.1.1",
     "unbuild": "^2.0.0",
     "validate-npm-package-name": "^5.0.1",
