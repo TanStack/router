@@ -444,7 +444,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/zod-adapter':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../packages/zod-adapter
       react:
         specifier: ^18.2.0
