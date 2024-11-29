@@ -19,7 +19,7 @@ yarn create @tanstack/router
 # or
 bun create @tanstack/router
 # or
-deno init npm:@tanstack/router
+deno init --npm @tanstack/router
 ```
 
 Follow the prompts to setup the project.
