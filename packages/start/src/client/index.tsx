@@ -17,7 +17,6 @@ export {
 } from './createServerFn'
 export {
   createMiddleware,
-  type ParseMiddlewares,
   type MergeAllValidatorInputs,
   type MergeAllValidatorOutputs,
   type MiddlewareServerFn,
