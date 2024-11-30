@@ -181,14 +181,6 @@ const routersSchema = z.object({
       base: z.string().optional(),
     })
     .optional(),
-  extras: z.array(z.object({
-    plugins: z.any().optional(),
-    dir: z.string().optional(),
-    base: z.string().optional(),
-    handler: z.string().optional(),
-    middleware: z.string().optional(),
-    extensions: z.string().array().optional(),
-  })).optional()
 })
 
 const tsrConfig = configSchema.partial().extend({
@@ -201,6 +193,7 @@ export const inlineConfigSchema = z.object({
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
   server: serverSchema.optional(),
+  routerExtras: z.array(z.any()).optional(),
 })
 
 export type TanStackStartInputConfig = z.input<typeof inlineConfigSchema>
