@@ -113,6 +113,9 @@ export function defineConfig(
 
   const apiBase = opts.tsr?.apiBase || '/api'
 
+  const apiMiddleware =
+    opts.routers?.api?.middleware || undefined;
+
   const clientEntry =
     opts.routers?.client?.entry || path.join(appDirectory, 'client.tsx')
   const ssrEntry =
@@ -300,6 +303,7 @@ export function defineConfig(
       target: 'server',
       base: apiBase,
       handler: apiEntry,
+      middleware: apiMiddleware,
       routes: tanstackStartVinxiFileRouter({ tsrConfig, apiBase }),
       plugins: () => {
         const viteConfig = getUserViteConfig(opts.vite)
