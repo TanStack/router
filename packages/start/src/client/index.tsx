@@ -28,6 +28,7 @@ export {
   type MiddlewareServer,
   type MiddlewareAfterClient,
   type MiddlewareAfterMiddleware,
+  type MiddlewareAfterServer,
   type Middleware,
 } from './createMiddleware'
 export { serverOnly } from './serverOnly'
