@@ -106,12 +106,21 @@ export function defineConfig(
 
   const clientBase = opts.routers?.client?.base || '/_build'
   const serverBase = opts.routers?.server?.base || '/_server'
+
+  const serverMiddlware =
+    opts.routers?.server?.middleware || undefined;
+
+
   const apiBase = opts.tsr?.apiBase || '/api'
 
   const clientEntry =
     opts.routers?.client?.entry || path.join(appDirectory, 'client.tsx')
   const ssrEntry =
     opts.routers?.ssr?.entry || path.join(appDirectory, 'ssr.tsx')
+  const ssrMiddleware =
+    opts.routers?.ssr?.middleware || undefined;
+
+
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
 
   const apiEntryExists = existsSync(apiEntry)
@@ -187,6 +196,7 @@ export function defineConfig(
         type: 'http',
         target: 'server',
         handler: ssrEntry,
+        middleware: ssrMiddleware,
         plugins: () => {
           const viteConfig = getUserViteConfig(opts.vite)
           const ssrViteConfig = getUserViteConfig(opts.routers?.ssr?.vite)
@@ -232,6 +242,7 @@ export function defineConfig(
         type: 'http',
         target: 'server',
         base: serverBase,
+        middleware: serverMiddlware,
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
@@ -277,6 +288,7 @@ export function defineConfig(
           ]
         },
       }),
+      ...opts.routers.extras
     ],
   })
 
