@@ -291,9 +291,13 @@ export function defineConfig(
           ]
         },
       }),
-      ...opts.routers.extras
     ],
   })
+
+  opts.routerExtras?.forEach((val => {
+    console.log('ive', val)
+    vinxiApp = vinxiApp.addRouter(val)
+  }))
 
   // If API routes handler exists, add a router for it
   if (apiEntryExists) {
