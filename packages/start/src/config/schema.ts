@@ -150,6 +150,7 @@ const routersSchema = z.object({
   ssr: z
     .object({
       entry: z.string().optional(),
+      middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
     .optional(),
@@ -163,12 +164,14 @@ const routersSchema = z.object({
   server: z
     .object({
       base: z.string().optional(),
+      middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
     .optional(),
   api: z
     .object({
       entry: z.string().optional(),
+      middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
     .optional(),
@@ -178,6 +181,14 @@ const routersSchema = z.object({
       base: z.string().optional(),
     })
     .optional(),
+  extras: z.array(z.object({
+    plugins: z.any().optional(),
+    dir: z.string().optional(),
+    base: z.string().optional(),
+    handler: z.string().optional(),
+    middleware: z.string().optional(),
+    extensions: z.string().array().optional(),
+  })).optional()
 })
 
 const tsrConfig = configSchema.partial().extend({
