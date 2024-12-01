@@ -65,7 +65,7 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
-This example is **obviously flawed**, but illustrates the point that you can use a route's `loader` option to seed your cache with data. Let's take a look at a more realistic example using TanStack Query.
+This example is **obviously flawed**, but illustrates the point that you can use a route's `loader` option to seed your cache with data. To implement this properly, you'll need to:
 
 - Replace `fetchPosts` with your preferred data fetching library's prefetching API
 - Replace `postsCache` with your preferred data fetching library's read-or-fetch API or hook
