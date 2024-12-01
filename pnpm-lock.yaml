@@ -60,9 +60,6 @@ importers:
       eslint-plugin-unused-imports:
         specifier: ^4.1.4
         version: 4.1.4(@typescript-eslint/eslint-plugin@8.15.0(@typescript-eslint/parser@8.15.0(eslint@9.15.0(jiti@2.4.0))(typescript@5.7.2))(eslint@9.15.0(jiti@2.4.0))(typescript@5.7.2))(eslint@9.15.0(jiti@2.4.0))
-      glob:
-        specifier: ^11.0.0
-        version: 11.0.0
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1
@@ -87,6 +84,9 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
+      tinyglobby:
+        specifier: ^0.2.10
+        version: 0.2.10
       typescript:
         specifier: ^5.6.3
         version: 5.7.2
@@ -430,6 +430,49 @@ importers:
         version: 4.3.3(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       vite:
         specifier: ^5.4.11
+        version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+
+  e2e/react-router/scroll-restoration-sandbox-vite:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/router-devtools
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/zod-adapter':
+        specifier: workspace:*
+        version: link:../../../packages/zod-adapter
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.45.3
+        version: 1.49.0
+      '@types/react':
+        specifier: ^18.2.47
+        version: 18.3.12
+      '@types/react-dom':
+        specifier: ^18.2.18
+        version: 18.3.1
+      '@vitejs/plugin-react':
+        specifier: ^4.3.1
+        version: 4.3.3(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      vite:
+        specifier: ^5.3.5
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
 
   e2e/start/basic:
@@ -2014,6 +2057,9 @@ importers:
       '@router-mono-react-query/post-query':
         specifier: workspace:*
         version: link:../post-query
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../../../packages/history
       '@tanstack/react-query':
         specifier: ^5.61.3
         version: 5.61.3(react@18.3.1)
@@ -2171,6 +2217,9 @@ importers:
 
   examples/react/router-monorepo-simple/packages/router:
     dependencies:
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../../../packages/history
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../../../packages/react-router
@@ -3115,12 +3164,12 @@ importers:
       cross-spawn:
         specifier: ^7.0.6
         version: 7.0.6
-      fast-glob:
-        specifier: ^3.3.2
-        version: 3.3.2
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
+      tinyglobby:
+        specifier: ^0.2.10
+        version: 0.2.10
       unbuild:
         specifier: ^2.0.0
         version: 2.0.0(typescript@5.7.2)(vue-tsc@2.0.29(typescript@5.7.2))

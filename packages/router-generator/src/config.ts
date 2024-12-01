@@ -5,7 +5,6 @@ import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
 const defaultTemplate = {
   routeTemplate: [
-    'import * as React from "react";\n',
     '%%tsrImports%%',
     '\n\n',
     '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
