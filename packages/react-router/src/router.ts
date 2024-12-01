@@ -878,7 +878,7 @@ export class Router<
     if (
       typeof window !== 'undefined' &&
       'CSS' in window &&
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       typeof window.CSS?.supports === 'function'
     ) {
       this.isViewTransitionTypesSupported = window.CSS.supports(
