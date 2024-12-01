@@ -9,19 +9,17 @@ export function retainSearchParams<TSearchSchema extends object>(
   return ({ search, next }) => {
     const result = next(search)
     if (keys === true) {
-      return { ...result, ...search }
+      return { ...search, ...result }
     }
-    // just like above, but only overwrite explicitly mentioned keys
+    // add missing keys from search to result
     keys.forEach((key) => {
-      if (search[key] === undefined) {
-        return
+      if (!(key in result)) {
+        result[key] = search[key]
       }
-      result[key] = search[key]
     })
     return result
   }
 }
-
 export function stripSearchParams<
   TSearchSchema,
   TOptionalProps = PickOptional<NoInfer<TSearchSchema>>,
