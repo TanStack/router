@@ -4,7 +4,7 @@
 import { isValidElement } from 'react'
 import invariant from 'tiny-invariant'
 
-export function renderRsc(input: any): JSX.Element {
+export function renderRsc(input: any): React.JSX.Element {
   if (isValidElement(input)) {
     return input
   }
