@@ -8,14 +8,14 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.61.3",
-    "@tanstack/react-query-devtools": "^5.61.3",
+    "@tanstack/react-query": "^5.62.0",
+    "@tanstack/react-query-devtools": "^5.62.0",
     "@tanstack/react-router": "^1.85.0",
     "@tanstack/router-devtools": "^1.85.0",
     "@tanstack/router-plugin": "^1.84.4",
-    "@trpc/client": "11.0.0-rc.645",
-    "@trpc/react-query": "11.0.0-rc.645",
-    "@trpc/server": "11.0.0-rc.645",
+    "@trpc/client": "11.0.0-rc.648",
+    "@trpc/react-query": "11.0.0-rc.648",
+    "@trpc/server": "11.0.0-rc.648",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1",
@@ -25,6 +25,6 @@
   "devDependencies": {
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.3.3"
+    "@vitejs/plugin-react": "^4.3.4"
   }
 }
