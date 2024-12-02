@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-devtools",
-  "version": "1.85.0",
+  "version": "1.85.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -66,7 +66,7 @@
     "goober": "^2.1.16"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router-with-query",
-  "version": "1.85.0",
+  "version": "1.85.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -64,11 +64,11 @@
     "node": ">=12"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "react": ">=18",
     "react-dom": ">=18",
     "@tanstack/react-router": "workspace:*",
-    "@tanstack/react-query": ">=5.61.3"
+    "@tanstack/react-query": ">=5.62.0"
   },
   "peerDependencies": {
     "react": ">=18",
