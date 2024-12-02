@@ -88,11 +88,8 @@ importers:
         specifier: ^0.2.10
         version: 0.2.10
       typescript:
-        specifier: ^5.6.3
+        specifier: ^5.7.2
         version: 5.7.2
-      typescript51:
-        specifier: npm:typescript@5.1
-        version: typescript@5.1.6
       typescript52:
         specifier: npm:typescript@5.2
         version: typescript@5.2.2
@@ -105,6 +102,9 @@ importers:
       typescript55:
         specifier: npm:typescript@5.5
         version: typescript@5.5.4
+      typescript56:
+        specifier: npm:typescript@5.6
+        version: typescript@5.6.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
@@ -530,7 +530,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -600,7 +600,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -667,7 +667,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -716,7 +716,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -750,7 +750,7 @@ importers:
         specifier: ^18.2.21
         version: 18.3.1
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
 
   e2e/start/clerk-basic:
@@ -814,7 +814,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -875,7 +875,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -1887,12 +1887,12 @@ importers:
         version: 18.3.1
       html-webpack-plugin:
         specifier: ^5.6.3
-        version: 5.6.3(@rspack/core@1.1.4(@swc/helpers@0.5.15))(webpack@5.96.1)
+        version: 5.6.3(@rspack/core@1.1.4(@swc/helpers@0.5.15))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
       swc-loader:
         specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.9.3(@swc/helpers@0.5.15))(webpack@5.96.1)
+        version: 0.2.6(@swc/core@1.9.3(@swc/helpers@0.5.15))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       webpack:
         specifier: ^5.96.1
@@ -1944,14 +1944,14 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: ^5.7.2
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
       vite-plugin-dts:
         specifier: ^4.3.0
-        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
 
   examples/react/router-monorepo-react-query/packages/app:
     dependencies:
@@ -1984,14 +1984,14 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: ^5.7.2
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
       vite-plugin-dts:
         specifier: ^4.3.0
-        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
 
   examples/react/router-monorepo-react-query/packages/post-feature:
     dependencies:
@@ -2021,14 +2021,14 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: ^5.7.2
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
       vite-plugin-dts:
         specifier: ^4.3.0
-        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
 
   examples/react/router-monorepo-react-query/packages/post-query:
     dependencies:
@@ -2092,14 +2092,14 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: ^5.7.2
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
       vite-plugin-dts:
         specifier: ^4.3.0
-        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
 
   examples/react/router-monorepo-simple:
     dependencies:
@@ -2135,14 +2135,14 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: ^5.7.2
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
       vite-plugin-dts:
         specifier: ^4.3.0
-        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
 
   examples/react/router-monorepo-simple/packages/app:
     dependencies:
@@ -2172,14 +2172,14 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: ^5.7.2
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
       vite-plugin-dts:
         specifier: ^4.3.0
-        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
 
   examples/react/router-monorepo-simple/packages/post-feature:
     dependencies:
@@ -2206,14 +2206,14 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: ^5.7.2
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
       vite-plugin-dts:
         specifier: ^4.3.0
-        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
 
   examples/react/router-monorepo-simple/packages/router:
     dependencies:
@@ -2249,14 +2249,14 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       typescript:
-        specifier: 5.6.2
-        version: 5.6.2
+        specifier: ^5.7.2
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
       vite-plugin-dts:
         specifier: ^4.3.0
-        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+        version: 4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
 
   examples/react/scroll-restoration:
     dependencies:
@@ -2399,7 +2399,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -2463,7 +2463,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -2524,7 +2524,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -2570,7 +2570,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -2631,7 +2631,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -2713,7 +2713,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -2747,7 +2747,7 @@ importers:
         specifier: ^18.2.21
         version: 18.3.1
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
 
   examples/react/start-large:
@@ -2802,7 +2802,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -2851,7 +2851,7 @@ importers:
         specifier: ^3.4.15
         version: 3.4.15
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -3117,7 +3117,7 @@ importers:
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       html-webpack-plugin:
         specifier: ^5.6.0
-        version: 5.6.3(@rspack/core@1.1.4(@swc/helpers@0.5.15))(webpack@5.96.1)
+        version: 5.6.3(@rspack/core@1.1.4(@swc/helpers@0.5.15))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -3126,9 +3126,9 @@ importers:
         version: 18.3.1(react@18.3.1)
       swc-loader:
         specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.9.3(@swc/helpers@0.5.15))(webpack@5.96.1)
+        version: 0.2.6(@swc/core@1.9.3(@swc/helpers@0.5.15))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
       vite:
         specifier: ^5.4.8
@@ -3466,7 +3466,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       typescript:
-        specifier: ^5.6.2
+        specifier: ^5.7.2
         version: 5.7.2
 
   packages/start-vite-plugin:
@@ -10299,11 +10299,6 @@ packages:
       typescript:
         optional: true
 
-  typescript@5.1.6:
-    resolution: {integrity: sha512-zaWCozRZ6DLEWAWFrVDz1H6FVXzUSfTy5FUMWsQlU8Ym5JP9eO4xkTIROFCQvhQf61z6O/G6ugw3SgAnvvm+HA==}
-    engines: {node: '>=14.17'}
-    hasBin: true
-
   typescript@5.2.2:
     resolution: {integrity: sha512-mI4WrpHsbCIcwT9cF4FZvr80QUeKvsUsUvKDoR+X/7XHQH98xYD8YHZg7ANtz2GtZt/CBq2QJ0thkGJMHfqc1w==}
     engines: {node: '>=14.17'}
@@ -13514,7 +13509,7 @@ snapshots:
     optionalDependencies:
       typescript: 5.7.2
 
-  '@vue/language-core@2.1.6(typescript@5.6.2)':
+  '@vue/language-core@2.1.6(typescript@5.7.2)':
     dependencies:
       '@volar/language-core': 2.4.10
       '@vue/compiler-dom': 3.5.13
@@ -13525,7 +13520,7 @@ snapshots:
       muggle-string: 0.4.1
       path-browserify: 1.0.1
     optionalDependencies:
-      typescript: 5.6.2
+      typescript: 5.7.2
 
   '@vue/shared@3.5.13': {}
 
@@ -13607,17 +13602,17 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
-  '@webpack-cli/configtest@2.1.1(webpack-cli@5.1.4)(webpack@5.96.1)':
+  '@webpack-cli/configtest@2.1.1(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))':
     dependencies:
       webpack: 5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1)
 
-  '@webpack-cli/info@2.0.2(webpack-cli@5.1.4)(webpack@5.96.1)':
+  '@webpack-cli/info@2.0.2(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))':
     dependencies:
       webpack: 5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1)
 
-  '@webpack-cli/serve@2.0.5(webpack-cli@5.1.4)(webpack-dev-server@5.1.0)(webpack@5.96.1)':
+  '@webpack-cli/serve@2.0.5(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1))(webpack-dev-server@5.1.0(webpack-cli@5.1.4)(webpack@5.96.1))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))':
     dependencies:
       webpack: 5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1)
@@ -15573,7 +15568,7 @@ snapshots:
 
   html-void-elements@3.0.0: {}
 
-  html-webpack-plugin@5.6.3(@rspack/core@1.1.4(@swc/helpers@0.5.15))(webpack@5.96.1):
+  html-webpack-plugin@5.6.3(@rspack/core@1.1.4(@swc/helpers@0.5.15))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)):
     dependencies:
       '@types/html-minifier-terser': 6.1.0
       html-minifier-terser: 6.1.0
@@ -17717,7 +17712,7 @@ snapshots:
       csso: 5.0.5
       picocolors: 1.1.1
 
-  swc-loader@0.2.6(@swc/core@1.9.3(@swc/helpers@0.5.15))(webpack@5.96.1):
+  swc-loader@0.2.6(@swc/core@1.9.3(@swc/helpers@0.5.15))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)):
     dependencies:
       '@swc/core': 1.9.3(@swc/helpers@0.5.15)
       '@swc/counter': 0.1.3
@@ -17787,6 +17782,18 @@ snapshots:
       mkdirp: 1.0.4
       yallist: 4.0.0
 
+  terser-webpack-plugin@5.3.10(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)):
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.25
+      jest-worker: 27.5.1
+      schema-utils: 3.3.0
+      serialize-javascript: 6.0.2
+      terser: 5.36.0
+      webpack: 5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)
+    optionalDependencies:
+      '@swc/core': 1.9.3(@swc/helpers@0.5.15)
+      esbuild: 0.24.0
+
   terser-webpack-plugin@5.3.10(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
@@ -17795,18 +17802,6 @@ snapshots:
       serialize-javascript: 6.0.2
       terser: 5.36.0
       webpack: 5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)
-    optionalDependencies:
-      '@swc/core': 1.9.3(@swc/helpers@0.5.15)
-      esbuild: 0.24.0
-
-  terser-webpack-plugin@5.3.10(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack@5.96.1):
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.25
-      jest-worker: 27.5.1
-      schema-utils: 3.3.0
-      serialize-javascript: 6.0.2
-      terser: 5.36.0
-      webpack: 5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)
     optionalDependencies:
       '@swc/core': 1.9.3(@swc/helpers@0.5.15)
       esbuild: 0.24.0
@@ -17979,8 +17974,6 @@ snapshots:
       typescript: 5.7.2
     transitivePeerDependencies:
       - supports-color
-
-  typescript@5.1.6: {}
 
   typescript@5.2.2: {}
 
@@ -18339,18 +18332,18 @@ snapshots:
       - rollup
       - supports-color
 
-  vite-plugin-dts@4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.6.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0)):
+  vite-plugin-dts@4.3.0(@types/node@22.9.3)(rollup@4.27.4)(typescript@5.7.2)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0)):
     dependencies:
       '@microsoft/api-extractor': 7.48.0(@types/node@22.9.3)
       '@rollup/pluginutils': 5.1.3(rollup@4.27.4)
       '@volar/typescript': 2.4.10
-      '@vue/language-core': 2.1.6(typescript@5.6.2)
+      '@vue/language-core': 2.1.6(typescript@5.7.2)
       compare-versions: 6.1.1
       debug: 4.3.7(supports-color@9.4.0)
       kolorist: 1.8.0
       local-pkg: 0.5.1
       magic-string: 0.30.13
-      typescript: 5.6.2
+      typescript: 5.7.2
     optionalDependencies:
       vite: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
     transitivePeerDependencies:
@@ -18454,9 +18447,9 @@ snapshots:
   webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1):
     dependencies:
       '@discoveryjs/json-ext': 0.5.7
-      '@webpack-cli/configtest': 2.1.1(webpack-cli@5.1.4)(webpack@5.96.1)
-      '@webpack-cli/info': 2.0.2(webpack-cli@5.1.4)(webpack@5.96.1)
-      '@webpack-cli/serve': 2.0.5(webpack-cli@5.1.4)(webpack-dev-server@5.1.0)(webpack@5.96.1)
+      '@webpack-cli/configtest': 2.1.1(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
+      '@webpack-cli/info': 2.0.2(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
+      '@webpack-cli/serve': 2.0.5(webpack-cli@5.1.4(webpack-dev-server@5.1.0)(webpack@5.96.1))(webpack-dev-server@5.1.0(webpack-cli@5.1.4)(webpack@5.96.1))(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
       colorette: 2.0.20
       commander: 10.0.1
       cross-spawn: 7.0.6
@@ -18470,7 +18463,7 @@ snapshots:
     optionalDependencies:
       webpack-dev-server: 5.1.0(webpack-cli@5.1.4)(webpack@5.96.1)
 
-  webpack-dev-middleware@7.4.2(webpack@5.96.1):
+  webpack-dev-middleware@7.4.2(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)):
     dependencies:
       colorette: 2.0.20
       memfs: 4.14.0
@@ -18509,7 +18502,7 @@ snapshots:
       serve-index: 1.9.1
       sockjs: 0.3.24
       spdy: 4.0.2
-      webpack-dev-middleware: 7.4.2(webpack@5.96.1)
+      webpack-dev-middleware: 7.4.2(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
       ws: 8.18.0
     optionalDependencies:
       webpack: 5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)
@@ -18582,7 +18575,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack@5.96.1)
+      terser-webpack-plugin: 5.3.10(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack@5.96.1(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4))
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     optionalDependencies:
