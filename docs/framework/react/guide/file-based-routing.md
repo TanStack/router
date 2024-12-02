@@ -97,9 +97,9 @@ Both flat and directory routes can be mixed together to create a route tree that
 
 Dynamic path params can be used in both flat and directory routes to create routes that can match a dynamic segment of the URL path. Dynamic path params are denoted by the `$` character in the filename:
 
-| Filename              | Route Path       | Component Output            |
-| --------------------- | ---------------- | --------------------------- |
-| ...                   | ...              | ...                         |
+| Filename              | Route Path       | Component Output      |
+| --------------------- | ---------------- | --------------------- |
+| ...                   | ...              | ...                   |
 | ʦ `posts.$postId.tsx` | `/posts/$postId` | `<Root><Posts><Post>` |
 
 We'll learn more about dynamic path params in the [Path Params](./path-params.md) guide.
