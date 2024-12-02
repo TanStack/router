@@ -233,7 +233,7 @@ export function defineConfig(
         target: 'server',
         base: serverBase,
         // TODO: RSCS - enable this
-        // worker: true,
+        worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
         plugins: () => {
           const viteConfig = getUserViteConfig(opts.vite)
@@ -255,9 +255,9 @@ export function defineConfig(
             serverFunctions.server({
               runtime: '@tanstack/start/react-server-runtime',
               // TODO: RSCS - remove this
-              resolve: {
-                conditions: [],
-              },
+              // resolve: {
+              //   conditions: [],
+              // },
             }),
             // TODO: RSCs - add this
             // serverComponents.serverActions({

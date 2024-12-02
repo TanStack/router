@@ -82,8 +82,16 @@
       "@tanstack/start": "workspace:*",
       "@tanstack/start-vite-plugin": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
-      "temp-react": "0.0.0-experimental-035a41c4e-20230704",
-      "temp-react-dom": "0.0.0-experimental-035a41c4e-20230704"
+      "react": "19.0.0-rc.1",
+      "react-dom": "19.0.0-rc.1"
+    },
+    "__packageExtensions": {
+      "tanstack-start-example-basic-rsc": {
+        "dependencies": {
+          "react": "19.0.0-rc.1",
+          "react-dom": "19.0.0-rc.1"
+        }
+      }
     }
   }
 }

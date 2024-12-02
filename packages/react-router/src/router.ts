@@ -2998,6 +2998,8 @@ export class Router<
       return html
     }
 
+    console.log('injectHtml', html)
+
     this.injectedHtml.push(cb)
   }
   injectScript = (script: string, opts?: { logScript?: boolean }) => {

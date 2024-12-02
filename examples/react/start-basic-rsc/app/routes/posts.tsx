@@ -3,11 +3,19 @@ import { createServerFn, renderRsc } from '@tanstack/start'
 import { renderPosts } from '~/utils/renderPosts'
 
 export const serverRenderPosts = createServerFn({ method: 'GET' }).handler(
-  renderPosts,
+  () => {
+    return renderPosts()
+  },
 )
 
 export const Route = createFileRoute('/posts')({
-  loader: async () => serverRenderPosts(),
+  loader: async () => {
+    if (typeof document === 'undefined') {
+      return null
+    }
+
+    serverRenderPosts()
+  },
   component: PostsComponent,
 })
 

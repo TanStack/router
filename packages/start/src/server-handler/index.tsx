@@ -4,11 +4,14 @@ import {
   isNotFound,
   isRedirect,
 } from '@tanstack/react-router'
+import { isValidElement } from 'react'
 import invariant from 'tiny-invariant'
 import {
   eventHandler,
   getEvent,
   getResponseStatus,
+  sendStream,
+  setHeaders,
   toWebRequest,
 } from 'vinxi/http'
 import { getManifest } from 'vinxi/manifest'
@@ -84,24 +87,27 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
         return result
       }
 
+      console.log('result', result)
+
       // TODO: RSCs
-      // if (isValidElement(result)) {
-      //   const { renderToPipeableStream } = await import(
-      //     // @ts-expect-error
-      //     '@vinxi/react-server-dom/server'
-      //   )
+      if (isValidElement(result)) {
+        const { renderToPipeableStream } = await import(
+          // @ts-expect-error
+          '@vinxi/react-server-dom/server'
+        )
 
-      //   const pipeableStream = renderToPipeableStream(result)
+        const pipeableStream = renderToPipeableStream(result)
 
-      //   setHeaders(event, {
-      //     'Content-Type': 'text/x-component',
-      //   } as any)
+        console.log('pipeableStream', pipeableStream)
 
-      //   sendStream(event, response)
-      //   event._handled = true
+        setHeaders({
+          'Content-Type': 'text/x-component',
+        } as any)
 
-      //   return new Response(null, { status: 200 })
-      // }
+        sendStream(pipeableStream)
+
+        return new Response(null, { status: 200 })
+      }
 
       if (isRedirect(result) || isNotFound(result)) {
         return redirectOrNotFoundResponse(result)
