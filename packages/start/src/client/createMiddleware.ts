@@ -58,7 +58,9 @@ export type MergeAllValidatorInputs<TMiddlewares, TValidator> =
     ? TValidator
     : Assign<
         MergeAllMiddleware<TMiddlewares, 'allInput'>,
-        ResolveValidatorInput<TValidator>
+        TValidator extends undefined
+          ? undefined
+          : ResolveValidatorInput<TValidator>
       >
 /**
  * Recursively merge the output type produced by a sequence of middleware
@@ -68,7 +70,9 @@ export type MergeAllValidatorOutputs<TMiddlewares, TValidator> =
     ? TValidator
     : Assign<
         MergeAllMiddleware<TMiddlewares, 'allOutput'>,
-        ResolveValidatorOutput<TValidator>
+        TValidator extends undefined
+          ? undefined
+          : ResolveValidatorOutput<TValidator>
       >
 
 export interface MiddlewareOptions<
