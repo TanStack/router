@@ -6,6 +6,7 @@ import type {
   Constrain,
   DefaultTransformerParse,
   DefaultTransformerStringify,
+  Expand,
   ResolveValidatorInput,
   TransformerStringify,
   Validator,
@@ -40,12 +41,12 @@ export type FetcherImpl<TMiddlewares, TValidator, TResponse> =
   undefined extends MergeAllValidatorInputs<TMiddlewares, TValidator>
     ? (
         opts?: OptionalFetcherDataOptions<
-          MergeAllValidatorInputs<TMiddlewares, TValidator>
+          Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
         >,
       ) => Promise<FetcherData<TResponse>>
     : (
         opts: RequiredFetcherDataOptions<
-          MergeAllValidatorInputs<TMiddlewares, TValidator>
+          Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
         >,
       ) => Promise<FetcherData<TResponse>>
 
@@ -79,8 +80,8 @@ export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
 
 export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
   method: TMethod
-  data: MergeAllValidatorOutputs<TMiddlewares, TValidator>
-  context: MergeAllServerContext<TMiddlewares>
+  data: Expand<MergeAllValidatorOutputs<TMiddlewares, TValidator>>
+  context: Expand<MergeAllServerContext<TMiddlewares>>
 }
 
 export type CompiledFetcherFn<TResponse> = {
@@ -118,7 +119,7 @@ export type ConstrainValidator<TValidator> = unknown extends TValidator
     >
 
 export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
-  middleware: <const TNewMiddlewares>(
+  middleware: <const TNewMiddlewares = undefined>(
     middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
   ) => ServerFnAfterMiddleware<TMethod, TNewMiddlewares, TValidator>
 }
