@@ -25,6 +25,7 @@ overrides:
   '@tanstack/eslint-plugin-router': workspace:*
   react: 19.0.0-rc.1
   react-dom: 19.0.0-rc.1
+  '@vinxi/react-server-dom': ^0.0.3
 
 importers:
 
@@ -51,6 +52,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.0
         version: 18.3.1
+      '@vinxi/react-server-dom':
+        specifier: ^0.0.3
+        version: 0.0.3(react-dom@19.0.0-rc.1(react@19.0.0-rc.1))(react@19.0.0-rc.1)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       eslint:
         specifier: ^9.15.0
         version: 9.15.0(jiti@2.4.0)
@@ -3221,6 +3225,9 @@ importers:
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
+      '@vinxi/react-server-dom':
+        specifier: ^0.0.3
+        version: 0.0.3(react-dom@19.0.0-rc.1(react@19.0.0-rc.1))(react@19.0.0-rc.1)(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2

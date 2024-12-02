@@ -1,3 +1,5 @@
+'use client'
+
 import { ScriptOnce, useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
 import jsesc from 'jsesc'

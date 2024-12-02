@@ -1,3 +1,5 @@
+'use client'
+
 import { useStore } from '@tanstack/react-store'
 import { useRef } from 'react'
 import { useRouter } from './useRouter'

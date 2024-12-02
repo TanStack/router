@@ -3,9 +3,7 @@ import { createServerFn, renderRsc } from '@tanstack/start'
 import { renderPosts } from '~/utils/renderPosts'
 
 export const serverRenderPosts = createServerFn({ method: 'GET' }).handler(
-  () => {
-    return renderPosts()
-  },
+  renderPosts,
 )
 
 export const Route = createFileRoute('/posts')({

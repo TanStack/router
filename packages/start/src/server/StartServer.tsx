@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { Context } from '@tanstack/react-cross-context'
 import { RouterProvider } from '@tanstack/react-router'

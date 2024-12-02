@@ -89,25 +89,28 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
 
       console.log('result', result)
 
-      // TODO: RSCs
-      if (isValidElement(result)) {
-        const { renderToPipeableStream } = await import(
-          // @ts-expect-error
-          '@vinxi/react-server-dom/server'
-        )
+      if ('result' in result) {
+        if (isValidElement(result)) {
+          const { renderToPipeableStream } = await import(
+            // @ts-expect-error
+            '@vinxi/react-server-dom/server'
+          )
 
-        const pipeableStream = renderToPipeableStream(result)
+          const pipeableStream = renderToPipeableStream(result)
 
-        console.log('pipeableStream', pipeableStream)
+          console.log('pipeableStream', pipeableStream)
 
-        setHeaders({
-          'Content-Type': 'text/x-component',
-        } as any)
+          setHeaders({
+            'Content-Type': 'text/x-component',
+          } as any)
 
-        sendStream(pipeableStream)
+          sendStream(pipeableStream)
 
-        return new Response(null, { status: 200 })
+          return new Response(null, { status: 200 })
+        }
       }
+
+      // TODO: RSCs
 
       if (isRedirect(result) || isNotFound(result)) {
         return redirectOrNotFoundResponse(result)

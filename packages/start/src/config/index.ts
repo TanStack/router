@@ -12,8 +12,8 @@ import {
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
-// // @ts-expect-error
-// import { serverComponents } from '@vinxi/server-components/plugin'
+// @ts-expect-error
+import { serverComponents } from '@vinxi/server-components/plugin'
 // @ts-expect-error
 import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
@@ -260,18 +260,24 @@ export function defineConfig(
               // },
             }),
             // TODO: RSCs - add this
-            // serverComponents.serverActions({
-            //   resolve: {
-            //     conditions: [
-            //       'react-server',
-            //       // 'node',
-            //       'import',
-            //       process.env.NODE_ENV,
-            //     ],
-            //   },
-            //   runtime: '@vinxi/react-server-dom/runtime',
-            //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
-            // }),
+            serverComponents.serverActions({
+              runtime: '@vinxi/react-server-dom/runtime',
+              resolve: {
+                conditions: [
+                  'react-server',
+                  'node',
+                  'import',
+                  process.env.NODE_ENV,
+                ],
+              },
+              transpileDeps: [
+                'react',
+                'react-dom',
+                '@vinxi/react-server-dom',
+                'use-sync-external-store',
+                'jsesc',
+              ],
+            }),
             ...(viteConfig.plugins || []),
             ...(serverViteConfig.plugins || []),
           ]

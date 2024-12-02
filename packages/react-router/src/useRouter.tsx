@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import warning from 'tiny-warning'
 import { getRouterContext } from './routerContext'

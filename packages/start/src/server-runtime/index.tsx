@@ -100,8 +100,8 @@ export function createServerReference(_fn: any, id: string, name: string) {
         }
       })
 
-      //   // For RSC, we need to proxy this request back to the server under
-      //   // the /_server path and let the RSC/Server-fn router handle it
+      // For RSC, we need to proxy this request back to the server under
+      // the /_server path and let the RSC/Server-fn router handle it
       // if (RSC) {
 
       //   const incomingMessage = createIncomingMessage(
