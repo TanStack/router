@@ -297,6 +297,8 @@ function Home() {
 
 That's it! 🤯 You've now set up a TanStack Start project and written your first route. 🎉
 
+Before you can start the server, you'll need to run `npm run build`. This will generate the code in `routeTree.gen.ts` needed to create the types required for the routing functionality (you're probably seeing errors in the `router.tsx` and `app/routes/index.tsx` files).
+
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
 
 You want to deploy your application? Check out the [hosting guide](./hosting.md).
