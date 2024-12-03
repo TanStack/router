@@ -6,9 +6,18 @@ export interface NavigateOptions {
   ignoreBlocker?: boolean
 }
 
+type SubscriberHistoryAction =
+  | {
+      action: HistoryAction | 'ROLLBACK'
+    }
+  | {
+      action: 'GO'
+      index: number
+    }
+
 type SubscriberArgs = {
   location: HistoryLocation
-  action: HistoryAction | 'ROLLBACK'
+  action: SubscriberHistoryAction
 }
 
 export interface RouterHistory {
@@ -25,7 +34,7 @@ export interface RouterHistory {
   block: (blocker: NavigationBlocker) => () => void
   flush: () => void
   destroy: () => void
-  notify: (action: HistoryAction) => void
+  notify: (action: SubscriberHistoryAction) => void
   _ignoreSubscribers?: boolean
 }
 
@@ -71,7 +80,7 @@ export type NavigationBlocker = {
 
 type TryNavigateArgs = {
   task: () => void
-  type: HistoryAction
+  type: 'PUSH' | 'REPLACE' | 'BACK' | 'FORWARD' | 'GO'
   navigateOpts?: NavigateOptions
 } & (
   | {
@@ -106,7 +115,7 @@ export function createHistory(opts: {
   let location = opts.getLocation()
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
 
-  const notify = (action: HistoryAction) => {
+  const notify = (action: SubscriberHistoryAction) => {
     location = opts.getLocation()
     subscribers.forEach((subscriber) => subscriber({ location, action }))
   }
@@ -114,7 +123,7 @@ export function createHistory(opts: {
   const _notifyRollback = () => {
     location = opts.getLocation()
     subscribers.forEach((subscriber) =>
-      subscriber({ location, action: 'ROLLBACK' }),
+      subscriber({ location, action: { action: 'ROLLBACK' } }),
     )
   }
 
@@ -170,7 +179,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.pushState(path, state)
-          notify('PUSH')
+          notify({ action: 'PUSH' })
         },
         navigateOpts,
         type: 'PUSH',
@@ -183,7 +192,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.replaceState(path, state)
-          notify('REPLACE')
+          notify({ action: 'REPLACE' })
         },
         navigateOpts,
         type: 'REPLACE',
@@ -195,7 +204,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.go(index)
-          notify('GO')
+          notify({ action: 'GO', index })
         },
         navigateOpts,
         type: 'GO',
@@ -205,7 +214,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.back(navigateOpts?.ignoreBlocker ?? false)
-          notify('BACK')
+          notify({ action: 'BACK' })
         },
         navigateOpts,
         type: 'BACK',
@@ -215,7 +224,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.forward(navigateOpts?.ignoreBlocker ?? false)
-          notify('FORWARD')
+          notify({ action: 'FORWARD' })
         },
         navigateOpts,
         type: 'FORWARD',
@@ -369,7 +378,7 @@ export function createBrowserHistory(opts?: {
 
   const onPushPop = () => {
     currentLocation = parseLocation()
-    history.notify('POP')
+    history.notify({ action: 'POP' })
   }
 
   const onPushPopEvent = async () => {
@@ -393,7 +402,7 @@ export function createBrowserHistory(opts?: {
           if (isBlocked) {
             ignoreNextPop = true
             win.history.go(1)
-            history.notify('POP')
+            history.notify({ action: 'POP' })
             return
           }
         }
