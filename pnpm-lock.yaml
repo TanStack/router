@@ -142,9 +142,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      get-port-please:
+        specifier: ^3.1.2
+        version: 3.1.2
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
 
   e2e/react-router/basic-esbuild-file-based:
     dependencies:
@@ -225,9 +234,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      get-port-please:
+        specifier: ^3.1.2
+        version: 3.1.2
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
 
   e2e/react-router/basic-file-based-code-splitting:
     dependencies:
@@ -262,9 +280,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      get-port-please:
+        specifier: ^3.1.2
+        version: 3.1.2
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
 
   e2e/react-router/basic-react-query:
     dependencies:
@@ -302,9 +329,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      get-port-please:
+        specifier: ^3.1.2
+        version: 3.1.2
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
 
   e2e/react-router/basic-react-query-file-based:
     dependencies:
@@ -348,9 +384,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      get-port-please:
+        specifier: ^3.1.2
+        version: 3.1.2
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
 
   e2e/react-router/basic-scroll-restoration:
     dependencies:
@@ -385,9 +430,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      get-port-please:
+        specifier: ^3.1.2
+        version: 3.1.2
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
 
   e2e/react-router/basic-virtual-file-based:
     dependencies:
@@ -428,9 +482,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      get-port-please:
+        specifier: ^3.1.2
+        version: 3.1.2
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
 
   e2e/react-router/scroll-restoration-sandbox-vite:
     dependencies:
@@ -471,9 +534,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@5.4.11(@types/node@22.9.3)(terser@5.36.0))
+      get-port-please:
+        specifier: ^3.1.2
+        version: 3.1.2
+      terminate:
+        specifier: ^2.8.0
+        version: 2.8.0
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.3)(terser@5.36.0)
+      wait-port:
+        specifier: ^1.1.0
+        version: 1.1.0
 
   e2e/start/basic:
     dependencies:

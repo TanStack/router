@@ -1,10 +1,16 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './utils'
+
+test.afterEach(async ({ setupApp }) => {
+  await setupApp.killProcess()
+})
 
 test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" and useLayoutEffect setup in the correct order', async ({
   page,
+  setupApp: { ADDR },
 }) => {
   // Navigate to the Home page
-  await page.goto('/')
+  await page.goto(ADDR + '/')
   await expect(page.locator('#greeting')).toContainText('Welcome Home!')
 
   let orders = await page.evaluate(() => window.invokeOrders)
@@ -28,7 +34,11 @@ test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" 
   expectItemOrder(orders, 'onBeforeRouteMount', 'about-useLayoutEffect')
 })
 
-function expectItemOrder<T>(array: T[], firstItem: T, secondItem: T) {
+function expectItemOrder<TItem>(
+  array: Array<TItem>,
+  firstItem: TItem,
+  secondItem: TItem,
+) {
   const firstIndex = array.findIndex((item) => item === firstItem)
   const secondIndex = array.findIndex((item) => item === secondItem)
 
