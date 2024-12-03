@@ -9,8 +9,8 @@
     "start": "dev"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.85.3",
-    "@tanstack/router-devtools": "^1.85.3",
+    "@tanstack/react-router": "^1.85.4",
+    "@tanstack/router-devtools": "^1.85.4",
     "@tanstack/router-plugin": "^1.85.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
