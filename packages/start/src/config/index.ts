@@ -104,32 +104,24 @@ export function defineConfig(
 
   const tsrConfig = getConfig(tsr)
 
+  const publicDir = opts.routers?.public?.dir || './public'
+
+  const publicBase = opts.routers?.public?.base || '/'
   const clientBase = opts.routers?.client?.base || '/_build'
+  const apiBase = opts.tsr?.apiBase || '/api'
   const serverBase = opts.routers?.server?.base || '/_server'
 
-  const serverMiddlware =
-    opts.routers?.server?.middleware || undefined;
-
-
-  const apiBase = opts.tsr?.apiBase || '/api'
-
-  const apiMiddleware =
-    opts.routers?.api?.middleware || undefined;
+  const apiMiddleware = opts.routers?.api?.middleware || undefined
+  const serverMiddleware = opts.routers?.server?.middleware || undefined
+  const ssrMiddleware = opts.routers?.ssr?.middleware || undefined
 
   const clientEntry =
     opts.routers?.client?.entry || path.join(appDirectory, 'client.tsx')
   const ssrEntry =
     opts.routers?.ssr?.entry || path.join(appDirectory, 'ssr.tsx')
-  const ssrMiddleware =
-    opts.routers?.ssr?.middleware || undefined;
-
-
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
 
   const apiEntryExists = existsSync(apiEntry)
-
-  const publicDir = opts.routers?.public?.dir || './public'
-  const publicBase = opts.routers?.public?.base || '/'
 
   let vinxiApp = createApp({
     server: {
@@ -245,7 +237,7 @@ export function defineConfig(
         type: 'http',
         target: 'server',
         base: serverBase,
-        middleware: serverMiddlware,
+        middleware: serverMiddleware,
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
@@ -293,11 +285,6 @@ export function defineConfig(
       }),
     ],
   })
-
-  opts.routerExtras?.forEach((val => {
-    console.log('ive', val)
-    vinxiApp = vinxiApp.addRouter(val)
-  }))
 
   // If API routes handler exists, add a router for it
   if (apiEntryExists) {

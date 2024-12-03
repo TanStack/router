@@ -193,7 +193,6 @@ export const inlineConfigSchema = z.object({
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),
   server: serverSchema.optional(),
-  routerExtras: z.array(z.any()).optional(),
 })
 
 export type TanStackStartInputConfig = z.input<typeof inlineConfigSchema>
