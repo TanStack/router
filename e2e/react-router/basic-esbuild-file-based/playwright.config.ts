@@ -10,12 +10,12 @@ export default defineConfig({
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3001/',
+    baseURL: 'http://localhost:3090/',
   },
 
   webServer: {
     command: 'pnpm run dev',
-    url: 'http://localhost:3001',
+    url: 'http://localhost:3090',
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
   },

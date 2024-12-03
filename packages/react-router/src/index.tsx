@@ -344,7 +344,13 @@ export type { NotFoundError } from './not-found'
 export type { Manifest, RouterManagedTag } from './manifest'
 
 export { createControlledPromise } from './utils'
-export type { ControlledPromise, Constrain, Expand, MergeAll } from './utils'
+export type {
+  ControlledPromise,
+  Constrain,
+  Expand,
+  MergeAll,
+  Assign,
+} from './utils'
 
 export type {
   ResolveValidatorInput,
