@@ -104,9 +104,16 @@ export function defineConfig(
 
   const tsrConfig = getConfig(tsr)
 
+  const publicDir = opts.routers?.public?.dir || './public'
+
+  const publicBase = opts.routers?.public?.base || '/'
   const clientBase = opts.routers?.client?.base || '/_build'
-  const serverBase = opts.routers?.server?.base || '/_server'
   const apiBase = opts.tsr?.apiBase || '/api'
+  const serverBase = opts.routers?.server?.base || '/_server'
+
+  const apiMiddleware = opts.routers?.api?.middleware || undefined
+  const serverMiddleware = opts.routers?.server?.middleware || undefined
+  const ssrMiddleware = opts.routers?.ssr?.middleware || undefined
 
   const clientEntry =
     opts.routers?.client?.entry || path.join(appDirectory, 'client.tsx')
@@ -115,9 +122,6 @@ export function defineConfig(
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
 
   const apiEntryExists = existsSync(apiEntry)
-
-  const publicDir = opts.routers?.public?.dir || './public'
-  const publicBase = opts.routers?.public?.base || '/'
 
   let vinxiApp = createApp({
     server: {
@@ -187,6 +191,7 @@ export function defineConfig(
         type: 'http',
         target: 'server',
         handler: ssrEntry,
+        middleware: ssrMiddleware,
         plugins: () => {
           const viteConfig = getUserViteConfig(opts.vite)
           const ssrViteConfig = getUserViteConfig(opts.routers?.ssr?.vite)
@@ -232,6 +237,7 @@ export function defineConfig(
         type: 'http',
         target: 'server',
         base: serverBase,
+        middleware: serverMiddleware,
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
@@ -288,6 +294,7 @@ export function defineConfig(
       target: 'server',
       base: apiBase,
       handler: apiEntry,
+      middleware: apiMiddleware,
       routes: tanstackStartVinxiFileRouter({ tsrConfig, apiBase }),
       plugins: () => {
         const viteConfig = getUserViteConfig(opts.vite)
