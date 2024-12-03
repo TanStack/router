@@ -3720,7 +3720,7 @@ describe('Link', () => {
     expect(stringifyParamsMock).toHaveBeenCalledWith({ postId: 0 })
   })
 
-  test.each([false, 'intent'] as const)(
+  test.each([false, 'intent', 'render'] as const)(
     'Router.preload="%s", should not trigger the IntersectionObserver\'s observe and disconnect methods',
     async (preload) => {
       const rootRoute = createRootRoute()
@@ -3747,6 +3747,37 @@ describe('Link', () => {
 
       expect(ioObserveMock).not.toBeCalled()
       expect(ioDisconnectMock).not.toBeCalled()
+    },
+  )
+
+  test.each([false, 'intent', 'viewport', 'render'] as const)(
+    'Router.preload="%s" with Link.preload="false", should not trigger the IntersectionObserver\'s observe method',
+    async (preload) => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <>
+            <h1>Index Heading</h1>
+            <Link to="/" preload={false}>
+              Index Link
+            </Link>
+          </>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        defaultPreload: preload,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+      expect(indexLink).toBeInTheDocument()
+
+      expect(ioObserveMock).not.toBeCalled()
     },
   )
 
@@ -3780,32 +3811,44 @@ describe('Link', () => {
     expect(ioDisconnectMock).toBeCalledTimes(1) // since React.StrictMode is enabled it should have disconnected
   })
 
-  test('Router.preload="viewport" with Link.preload="false", should not trigger the IntersectionObserver\'s observe method', async () => {
+  test("Router.preload='render', should trigger the route loader on render", async () => {
+    const mock = vi.fn()
+
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
+      loader: () => {
+        mock()
+      },
       component: () => (
         <>
           <h1>Index Heading</h1>
-          <Link to="/" preload={false}>
-            Index Link
-          </Link>
+          <Link to="/about">About Link</Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => (
+        <>
+          <h1>About Heading</h1>
         </>
       ),
     })
 
     const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute]),
-      defaultPreload: 'viewport',
+      routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
+      defaultPreload: 'render',
     })
 
     render(<RouterProvider router={router} />)
 
-    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
-    expect(indexLink).toBeInTheDocument()
+    const aboutLink = await screen.findByRole('link', { name: 'About Link' })
+    expect(aboutLink).toBeInTheDocument()
 
-    expect(ioObserveMock).not.toBeCalled()
+    expect(mock).toHaveBeenCalledTimes(1)
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
@@ -4212,7 +4255,7 @@ describe('search middleware', () => {
       }),
       search: {
         middlewares: [
-          // @ts-expect-error we cannot use zodSearchValidator here to due to circular dependency
+          // @ts-expect-error we cannot use zodValidator here to due to circular dependency
           // this means we cannot get the correct input type for this schema
           stripSearchParams({ foo: 'default' }),
           retainSearchParams(true),

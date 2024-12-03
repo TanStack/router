@@ -1,17 +1,22 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './utils'
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('/')
+test.beforeEach(async ({ page, setupApp }) => {
+  const { ADDR } = setupApp
+  await page.goto(ADDR + '/')
+})
+
+test.afterEach(async ({ setupApp }) => {
+  await setupApp.killProcess()
 })
 
 test('Navigating to a post page', async ({ page }) => {
-  await page.getByRole('link', { name: 'Posts' }).click()
+  await page.getByRole('link', { name: 'Posts', exact: true }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
 test('Navigating nested layouts', async ({ page }) => {
-  await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
   await expect(page.locator('#app')).toContainText("I'm a layout")
@@ -31,4 +36,18 @@ test('Navigating to a not-found route', async ({ page }) => {
   )
   await page.getByRole('link', { name: 'Start Over' }).click()
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
+})
+
+test('Navigating to a post page with viewTransition', async ({ page }) => {
+  await page.getByRole('link', { name: 'View Transition', exact: true }).click()
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await expect(page.getByRole('heading')).toContainText('sunt aut facere')
+})
+
+test('Navigating to a post page with viewTransition types', async ({
+  page,
+}) => {
+  await page.getByRole('link', { name: 'View Transition types' }).click()
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })

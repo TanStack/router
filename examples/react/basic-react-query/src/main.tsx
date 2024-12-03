@@ -2,7 +2,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   ErrorComponent,
-  type ErrorComponentProps,
   Link,
   Outlet,
   RouterProvider,
@@ -20,6 +19,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { NotFoundError, postQueryOptions, postsQueryOptions } from './posts'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -122,7 +122,7 @@ const postRoute = createRoute({
   component: PostRouteComponent,
 })
 
-function PostErrorComponent({ error, reset }: ErrorComponentProps) {
+function PostErrorComponent({ error }: ErrorComponentProps) {
   const router = useRouter()
   if (error instanceof NotFoundError) {
     return <div>{error.message}</div>

@@ -95,8 +95,8 @@ export async function getRouteNodes(
 
     await Promise.all(
       dirList.map(async (dirent) => {
-        const fullPath = path.join(fullDir, dirent.name)
-        const relativePath = path.join(dir, dirent.name)
+        const fullPath = path.posix.join(fullDir, dirent.name)
+        const relativePath = path.posix.join(dir, dirent.name)
 
         if (dirent.isDirectory()) {
           await recurse(relativePath)

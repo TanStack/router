@@ -1,7 +1,12 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './utils'
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('/')
+test.beforeEach(async ({ page, setupApp: { ADDR } }) => {
+  await page.goto(ADDR + '/')
+})
+
+test.afterEach(async ({ setupApp }) => {
+  await setupApp.killProcess()
 })
 
 test('Navigating to a post page', async ({ page }) => {
@@ -11,7 +16,6 @@ test('Navigating to a post page', async ({ page }) => {
 })
 
 test('Navigating nested layouts', async ({ page }) => {
-  await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
   await expect(page.locator('#app')).toContainText("I'm a layout")

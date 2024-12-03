@@ -5,6 +5,7 @@ import {
   MatchRoute,
   Outlet,
   createFileRoute,
+  retainSearchParams,
   useNavigate,
 } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -23,16 +24,11 @@ export const Route = createFileRoute('/dashboard/users')({
       })
       .optional(),
   }).parse,
-  preSearchFilters: [
-    // Persist (or set as default) the usersView search param
-    // while navigating within or to this route (or it's children!)
-    (search) => ({
-      ...search,
-      usersView: {
-        ...search.usersView,
-      },
-    }),
-  ],
+  search: {
+    // Retain the usersView search param while navigating
+    // within or to this route (or it's children!)
+    middlewares: [retainSearchParams(['usersView'])],
+  },
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(usersQueryOptions(opts.deps)),
   component: UsersComponent,
@@ -128,10 +124,9 @@ function UsersComponent() {
             <div key={user.id}>
               <Link
                 to="/dashboard/users/user"
-                search={(d) => ({
-                  ...d,
+                search={{
                   userId: user.id,
-                })}
+                }}
                 className="block py-2 px-3 text-blue-700"
                 activeProps={{ className: `font-bold` }}
               >

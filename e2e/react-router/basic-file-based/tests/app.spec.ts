@@ -1,7 +1,14 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './utils'
+import type { Page } from '@playwright/test'
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('/')
+test.beforeEach(async ({ page, setupApp }) => {
+  const { ADDR } = setupApp
+  await page.goto(ADDR + '/')
+})
+
+test.afterEach(async ({ setupApp }) => {
+  await setupApp.killProcess()
 })
 
 test('Navigating to a post page', async ({ page }) => {
@@ -11,7 +18,6 @@ test('Navigating to a post page', async ({ page }) => {
 })
 
 test('Navigating nested layouts', async ({ page }) => {
-  await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
   await expect(page.locator('#app')).toContainText("I'm a layout")
@@ -71,10 +77,54 @@ testCases.forEach(({ description, testId }) => {
   })
 })
 
-test('navigating to an unnested route', async ({ page }) => {
+test('navigating to an unnested route', async ({ page, setupApp }) => {
+  const { ADDR } = setupApp
   const postId = 'hello-world'
-  page.goto(`/posts/${postId}/edit`)
+  page.goto(ADDR + `/posts/${postId}/edit`)
   await expect(page.getByTestId('params-via-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-api')).toContainText(postId)
+})
+
+async function getRenderCount(page: Page) {
+  const renderCount = parseInt(
+    await page.getByTestId('render-count').innerText(),
+  )
+  return renderCount
+}
+async function structuralSharingTest(
+  page: Page,
+  baseUrl: string,
+  enabled: boolean,
+) {
+  page.goto(baseUrl + `/structural-sharing/${enabled}/?foo=f1&bar=b1`)
+  await expect(page.getByTestId('enabled')).toHaveText(JSON.stringify(enabled))
+
+  async function checkSearch({ foo, bar }: { foo: string; bar: string }) {
+    expect(page.url().endsWith(`?foo=${foo}&bar=${bar}`)).toBe(true)
+    const expectedSearch = JSON.stringify({ values: [foo, bar] })
+    await expect(page.getByTestId('search-via-hook')).toHaveText(expectedSearch)
+    await expect(page.getByTestId('search-via-route-hook')).toHaveText(
+      expectedSearch,
+    )
+    await expect(page.getByTestId('search-via-route-api-hook')).toHaveText(
+      expectedSearch,
+    )
+  }
+
+  await checkSearch({ bar: 'b1', foo: 'f1' })
+  await page.getByTestId('link').click()
+  await checkSearch({ bar: 'b2', foo: 'f2' })
+}
+
+test('structural sharing disabled', async ({ page, setupApp }) => {
+  await structuralSharingTest(page, setupApp.ADDR, false)
+  expect(await getRenderCount(page)).toBeGreaterThan(2)
+})
+
+test('structural sharing enabled', async ({ page, setupApp }) => {
+  await structuralSharingTest(page, setupApp.ADDR, true)
+  expect(await getRenderCount(page)).toBe(2)
+  await page.getByTestId('link').click()
+  expect(await getRenderCount(page)).toBe(2)
 })

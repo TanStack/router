@@ -1,18 +1,18 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/start'
-import { updateSession } from 'vinxi/http'
+
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
 import { useAppSession } from '~/utils/session'
 
-export const signupFn = createServerFn(
-  'POST',
-  async (payload: {
-    email: string
-    password: string
-    redirectUrl?: string
-  }) => {
+export const signupFn = createServerFn({
+  method: 'POST',
+})
+  .validator(
+    (data: { email: string; password: string; redirectUrl?: string }) => data,
+  )
+  .handler(async ({ data: payload }) => {
     // Check if the user already exists
     const found = await prismaClient.user.findUnique({
       where: {
@@ -63,8 +63,7 @@ export const signupFn = createServerFn(
     throw redirect({
       href: payload.redirectUrl || '/',
     })
-  },
-)
+  })
 
 export const Route = createFileRoute('/signup')({
   component: SignupComp,
@@ -83,8 +82,10 @@ function SignupComp() {
         const formData = new FormData(e.target as HTMLFormElement)
 
         signupMutation.mutate({
-          email: formData.get('email') as string,
-          password: formData.get('password') as string,
+          data: {
+            email: formData.get('email') as string,
+            password: formData.get('password') as string,
+          },
         })
       }}
       afterSubmit={

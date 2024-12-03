@@ -53,7 +53,7 @@ npm i @tanstack/start @tanstack/react-router vinxi
 You'll also need React and the Vite React plugin, so install them too:
 
 ```shell
-npm i react react-dom @vitejs/plugin-react
+npm i react react-dom; npm i -D @vitejs/plugin-react
 ```
 
 and some TypeScript:
@@ -66,15 +66,15 @@ npm i -D typescript @types/react @types/react-dom
 
 We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
 
-```jsonc
+```json
 {
   // ...
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
-  },
+    "start": "vinxi start"
+  }
 }
 ```
 
@@ -116,7 +116,7 @@ Once configuration is done, we'll have a file tree that looks like the following
 ## The Router Configuration
 
 This is the file that will dictate the behavior of TanStack Router used within Start. Here, you can configure everything
-from the default [preloading functionality](./preloading.md) to [caching staleness](./data-loading.md).
+from the default [preloading functionality](../guide/preloading.md) to [caching staleness](../guide/data-loading.md).
 
 ```tsx
 // app/router.tsx
@@ -179,12 +179,7 @@ import { createRouter } from './router'
 
 const router = createRouter()
 
-const root = document.getElementById('root')
-if (!root) {
-  throw new Error('Root element not found')
-}
-
-hydrateRoot(root, <StartClient router={router} />)
+hydrateRoot(document, <StartClient router={router} />)
 ```
 
 This enables us to kick off client-side routing once the user's initial server request has fulfilled.
@@ -195,24 +190,29 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // app/routes/__root.tsx
-import { createRootRoute } from '@tanstack/react-router'
-import { Outlet, ScrollRestoration } from '@tanstack/react-router'
-import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
-import * as React from 'react'
+import {
+  Outlet,
+  ScrollRestoration,
+  createRootRoute,
+} from '@tanstack/react-router'
+import { Meta, Scripts } from '@tanstack/start'
+import type { ReactNode } from 'react'
 
 export const Route = createRootRoute({
-  meta: () => [
-    {
-      charSet: 'utf-8',
-    },
-    {
-      name: 'viewport',
-      content: 'width=device-width, initial-scale=1',
-    },
-    {
-      title: 'TanStack Start Starter',
-    },
-  ],
+  head: () => ({
+    meta: [
+      {
+        charSet: 'utf-8',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+      {
+        title: 'TanStack Start Starter',
+      },
+    ],
+  }),
   component: RootComponent,
 })
 
@@ -224,18 +224,18 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <Html>
-      <Head>
+    <html>
+      <head>
         <Meta />
-      </Head>
-      <Body>
+      </head>
+      <body>
         {children}
         <ScrollRestoration />
         <Scripts />
-      </Body>
-    </Html>
+      </body>
+    </html>
   )
 }
 ```
@@ -258,14 +258,18 @@ async function readCount() {
   )
 }
 
-const getCount = createServerFn('GET', () => {
+const getCount = createServerFn({
+  method: 'GET',
+}).handler(() => {
   return readCount()
 })
 
-const updateCount = createServerFn('POST', async (addBy: number) => {
-  const count = await readCount()
-  await fs.promises.writeFile(filePath, `${count + addBy}`)
-})
+const updateCount = createServerFn({ method: 'POST' })
+  .validator((d: number) => d)
+  .handler(async ({ data }) => {
+    const count = await readCount()
+    await fs.promises.writeFile(filePath, `${count + data}`)
+  })
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -280,7 +284,7 @@ function Home() {
     <button
       type="button"
       onClick={() => {
-        updateCount(1).then(() => {
+        updateCount({ data: 1 }).then(() => {
           router.invalidate()
         })
       }}
