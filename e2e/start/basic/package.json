@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3002",
+    "dev": "vinxi dev --port 3000",
     "dev:e2e": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
