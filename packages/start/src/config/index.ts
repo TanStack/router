@@ -215,7 +215,7 @@ export function defineConfig(
             }),
             config('start-ssr', {
               ssr: {
-                external: ['@vinxi/react-server-dom/client'],
+                external: ['@vinxi/react-server-dom'],
               },
             }),
           ]

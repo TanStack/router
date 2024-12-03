@@ -110,8 +110,6 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
         }
       }
 
-      // TODO: RSCs
-
       if (isRedirect(result) || isNotFound(result)) {
         return redirectOrNotFoundResponse(result)
       }
