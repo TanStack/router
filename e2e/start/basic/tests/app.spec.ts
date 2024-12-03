@@ -1,22 +1,65 @@
+import { exec } from 'node:child_process'
 import { expect, test } from '@playwright/test'
+import { getRandomPort } from 'get-port-please'
+import terminate from 'terminate/promise'
+import waitPort from 'wait-port'
+
+async function setup(): Promise<{
+  PORT: number
+  PID: number
+  ADDR: string
+  KILL: () => Promise<void>
+}> {
+  const PORT = await getRandomPort()
+  const ADDR = `http://localhost:${PORT}`
+
+  const childProcess = exec(
+    `VITE_SERVER_PORT=${PORT} pnpm run dev:e2e --port ${PORT}`,
+  )
+  childProcess.stdout?.on('data', (data) => {
+    const message = data.toString()
+    console.log('Stdout:', message)
+  })
+  await waitPort({ port: PORT })
+
+  const PID = childProcess.pid!
+  const KILL = () => terminate(PID)
+
+  return { PORT, PID, ADDR, KILL }
+}
 
 test('Navigating to post', async ({ page }) => {
-  await page.goto('/')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/')
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await page.getByRole('link', { name: 'Deep View' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
+
+  // teardown
+  await KILL()
 })
 
 test('Navigating to user', async ({ page }) => {
-  await page.goto('/')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/')
   await page.getByRole('link', { name: 'Users' }).click()
   await page.getByRole('link', { name: 'Leanne Graham' }).click()
   await expect(page.getByRole('heading')).toContainText('Leanne Graham')
+
+  // teardown
+  await KILL()
 })
 
 test('Navigating nested layouts', async ({ page }) => {
-  await page.goto('/')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
   await expect(page.locator('body')).toContainText("I'm a layout")
@@ -27,17 +70,29 @@ test('Navigating nested layouts', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Layout B' }).click()
   await expect(page.locator('body')).toContainText("I'm layout B!")
+
+  // teardown
+  await KILL()
 })
 
 test('Navigating to a not-found route', async ({ page }) => {
-  await page.goto('/')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/')
   await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
   await page.getByRole('link', { name: 'Start Over' }).click()
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
+
+  // teardown
+  await KILL()
 })
 
 test('Navigating to deferred route', async ({ page }) => {
-  await page.goto('/')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/')
   await page.getByRole('link', { name: 'Deferred' }).click()
 
   await expect(page.getByTestId('regular-person')).toContainText('John Doe')
@@ -47,10 +102,16 @@ test('Navigating to deferred route', async ({ page }) => {
   await expect(page.getByTestId('deferred-stuff')).toContainText(
     'Hello deferred!',
   )
+
+  // teardown
+  await KILL()
 })
 
 test('Directly visiting the deferred route', async ({ page }) => {
-  await page.goto('/deferred')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/deferred')
 
   await expect(page.getByTestId('regular-person')).toContainText('John Doe')
   await expect(page.getByTestId('deferred-person')).toContainText(
@@ -59,30 +120,48 @@ test('Directly visiting the deferred route', async ({ page }) => {
   await expect(page.getByTestId('deferred-stuff')).toContainText(
     'Hello deferred!',
   )
+
+  // teardown
+  await KILL()
 })
 
 test('Directly visiting the search-params route without search param set', async ({
   page,
 }) => {
-  await page.goto('/search-params')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/search-params')
   await new Promise((r) => setTimeout(r, 500))
   await expect(page.getByTestId('search-param')).toContainText('a')
   expect(page.url().endsWith('/search-params?step=a'))
+
+  // teardown
+  await KILL()
 })
 
 test('Directly visiting the search-params route with search param set', async ({
   page,
 }) => {
-  await page.goto('/search-params?step=b')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/search-params?step=b')
   await new Promise((r) => setTimeout(r, 500))
   await expect(page.getByTestId('search-param')).toContainText('b')
   expect(page.url().endsWith('/search-params?step=b'))
+
+  // teardown
+  await KILL()
 })
 
 test('invoking a server function with custom response status code', async ({
   page,
 }) => {
-  await page.goto('/status')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/status')
 
   await page.waitForLoadState('networkidle')
   await page.getByTestId('invoke-server-fn').click()
@@ -100,12 +179,18 @@ test('invoking a server function with custom response status code', async ({
     })
   })
   await requestPromise
+
+  // teardown
+  await KILL()
 })
 
 test('Consistent server function returns both on client and server for GET and POST calls', async ({
   page,
 }) => {
-  await page.goto('/server-fns')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/server-fns')
 
   await page.waitForLoadState('networkidle')
   const expected =
@@ -130,12 +215,18 @@ test('Consistent server function returns both on client and server for GET and P
   await expect(page.getByTestId('cons_postFn1-response')).toContainText(
     expected,
   )
+
+  // teardown
+  await KILL()
 })
 
 test('submitting multipart/form-data as server function input', async ({
   page,
 }) => {
-  await page.goto('/server-fns')
+  // setup
+  const { ADDR, KILL } = await setup()
+
+  await page.goto(ADDR + '/server-fns')
 
   await page.waitForLoadState('networkidle')
   const expected =
@@ -158,4 +249,7 @@ test('submitting multipart/form-data as server function input', async ({
   await expect(page.getByTestId('multipart-form-response')).toContainText(
     expected,
   )
+
+  // teardown
+  await KILL()
 })
