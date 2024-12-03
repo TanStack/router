@@ -150,6 +150,7 @@ const routersSchema = z.object({
   ssr: z
     .object({
       entry: z.string().optional(),
+      middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
     .optional(),
@@ -163,12 +164,14 @@ const routersSchema = z.object({
   server: z
     .object({
       base: z.string().optional(),
+      middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
     .optional(),
   api: z
     .object({
       entry: z.string().optional(),
+      middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
     .optional(),

@@ -1,7 +1,12 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './utils'
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('/')
+test.beforeEach(async ({ page, setupApp }) => {
+  await page.goto(setupApp.ADDR + '/')
+})
+
+test.afterEach(async ({ setupApp }) => {
+  await setupApp.killProcess()
 })
 
 test('hovering a link with preload=intent to a route without a loader should preload route', async ({

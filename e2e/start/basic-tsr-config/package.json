@@ -4,7 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3002",
+    "dev": "vinxi dev --port 3000",
+    "dev:e2e": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
     "test:e2e": "playwright test --project=chromium"
@@ -20,6 +21,9 @@
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
-    "typescript": "^5.7.2"
+    "get-port-please": "^3.1.2",
+    "terminate": "^2.8.0",
+    "typescript": "^5.7.2",
+    "wait-port": "^1.1.0"
   }
 }
