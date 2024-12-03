@@ -3,6 +3,7 @@
 // import * as reactDom from '@vinxi/react-server-dom/client'
 import { isValidElement } from 'react'
 import invariant from 'tiny-invariant'
+import type React from 'react'
 
 export function renderRsc(input: any): React.JSX.Element {
   if (isValidElement(input)) {
