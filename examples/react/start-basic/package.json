@@ -9,9 +9,9 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.85.0",
-    "@tanstack/router-devtools": "^1.85.0",
-    "@tanstack/start": "^1.85.1",
+    "@tanstack/react-router": "^1.85.3",
+    "@tanstack/router-devtools": "^1.85.3",
+    "@tanstack/start": "^1.85.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
@@ -25,7 +25,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
-    "typescript": "^5.6.2",
+    "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.3"
   }
 }
