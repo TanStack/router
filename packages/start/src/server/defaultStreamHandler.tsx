@@ -24,9 +24,6 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
       <StartServer router={router} />,
       {
         signal: request.signal,
-        onError(error, errorInfo) {
-          console.error(error, errorInfo)
-        },
       },
     )
 
@@ -64,8 +61,8 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
                 pipeable.pipe(passthrough)
               },
             }),
-        onShellError(err) {
-          throw err
+        onError: (error, info) => {
+          console.log('Error in renderToPipeableStream:', error, info)
         },
       },
     )

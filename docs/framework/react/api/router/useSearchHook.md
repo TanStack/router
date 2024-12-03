@@ -21,6 +21,13 @@ The `useSearch` hook accepts an `options` object.
 - Optional
 - If supplied, this function will be called with the search object and the return value will be returned from `useSearch`.
 
+### `opts.structuralSharing` option
+
+- Type: `boolean`
+- Optional
+- Configures whether structural sharing is enabled for the value returned by `select`.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+
 ### `opts.strict` option
 
 - Type: `boolean`

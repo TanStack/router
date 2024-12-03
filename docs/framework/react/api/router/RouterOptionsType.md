@@ -46,12 +46,13 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultPreload` property
 
-- Type: `undefined | false | 'intent' | 'viewport'`
+- Type: `undefined | false | 'intent' | 'viewport' | 'render'`
 - Optional
 - Defaults to `false`
 - If `false`, routes will not be preloaded by default in any way.
 - If `'intent'`, routes will be preloaded by default when the user hovers over a link or a `touchstart` event is detected on a `<Link>`.
 - If `'viewport'`, routes will be preloaded by default when they are within the viewport of the browser.
+- If `'render'`, routes will be preloaded by default as soon as they are rendered in the DOM.
 
 ### `defaultPreloadDelay` property
 
@@ -137,11 +138,15 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultViewTransition` property
 
-- Type: `boolean`
+- Type: `boolean | ViewTransitionOptions`
 - Optional
-- If `true`, route navigations will called using `document.startViewTransition()`.
+- If `true`, route navigations will be called using `document.startViewTransition()`.
+- If [`ViewTransitionOptions`](./ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
+  where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types,
+  the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
 - If the browser does not support this api, this option will be ignored.
 - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
+- See [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types) for more informations on viewTransition types
 
 ### `caseSensitive` property
 
@@ -285,3 +290,17 @@ const router = createRouter({
 - Optional
 - Defaults to `never`
 - Configures how trailing slashes are treated. `'always'` will add a trailing slash if not present, `'never'` will remove the trailing slash if present and `'preserve'` will not modify the trailing slash.
+
+### `pathParamsAllowedCharacters` property
+
+- Type: `Array<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
+- Optional
+- Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+
+### `defaultStructuralSharing` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- Configures whether structural sharing is enabled by default for fine-grained selectors.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.

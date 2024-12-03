@@ -9,8 +9,10 @@ import {
   functionalUpdate,
   useForwardedRef,
   useIntersectionObserver,
+  useLayoutEffect,
 } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
+import { useMatch } from './useMatch'
 import type { ParsedLocation } from './location'
 import type { HistoryState } from '@tanstack/history'
 import type {
@@ -26,7 +28,11 @@ import type {
   RouteToPath,
   TrailingSlashOptionByRouter,
 } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  ViewTransitionOptions,
+} from './router'
 import type {
   Constrain,
   Expand,
@@ -210,7 +216,8 @@ export interface NavigateOptionProps {
   /** @deprecated All navigations now use startTransition under the hood */
   startTransition?: boolean
   // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
-  viewTransition?: boolean
+  // if set to `ViewTransitionOptions`, the router will pass the `types` field to document.startViewTransition({update: fn, types: viewTransition.types}) call
+  viewTransition?: boolean | ViewTransitionOptions
   ignoreBlocker?: boolean
 }
 
@@ -232,10 +239,10 @@ export interface MaskOptions<
 }
 
 export type ToMaskOptions<
-  TRouteTree extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TMaskFrom extends string = string,
   TMaskTo extends string = '.',
-> = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
+> = ToSubOptions<TRouter, TMaskFrom, TMaskTo> & {
   unmaskOnReload?: boolean
 }
 
@@ -497,7 +504,7 @@ export interface LinkOptionsProps {
    * - `'intent'` - Preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
    * - `'viewport'` - Preload the linked route when it enters the viewport
    */
-  preload?: false | 'intent' | 'viewport'
+  preload?: false | 'intent' | 'viewport' | 'render'
   /**
    * When a preload strategy is set, this delays the preload by this many milliseconds.
    * If the user exits the link before this delay, the preload will be cancelled.
@@ -589,6 +596,7 @@ export function useLinkProps<
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
+  const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
 
   const {
@@ -643,7 +651,20 @@ export function useLinkProps<
   }, [to])
 
   // subscribe to search params to re-build location if it changes
-  const currentSearch = useRouterState({ select: (s) => s.location.search })
+  const currentSearch = useRouterState({
+    select: (s) => s.location.search,
+    structuralSharing: true as any,
+  })
+
+  // In the rare event that the user bypasses type-safety and doesn't supply a `from`
+  // we'll use the current route as the `from` location so relative routing works as expected
+  const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
+
+  // Use it as the default `from` location
+  options = {
+    from: parentRouteId,
+    ...options,
+  }
 
   const next = React.useMemo(
     () => router.buildLocation(options as any),
@@ -722,8 +743,18 @@ export function useLinkProps<
     innerRef,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!disabled || preload !== 'viewport' },
+    { disabled: !!disabled || !(preload === 'viewport') },
   )
+
+  useLayoutEffect(() => {
+    if (hasRenderFetched.current) {
+      return
+    }
+    if (!disabled && preload === 'render') {
+      doPreload()
+      hasRenderFetched.current = true
+    }
+  }, [disabled, doPreload, preload])
 
   if (type === 'external') {
     return {

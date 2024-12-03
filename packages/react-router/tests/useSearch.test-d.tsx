@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useSearch } from '../src'
-import type { FullSearchSchema, SearchSchemaInput } from '../src'
+import type { SearchSchemaInput } from '../src'
 
 test('when there are no search params', () => {
   const rootRoute = createRootRoute()
@@ -30,41 +30,42 @@ test('when there are no search params', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree']>)
+  expectTypeOf(useSearch<DefaultRouter>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
       '/invoices' | '__root__' | '/invoices/$invoiceId' | '/invoices/' | '/'
     >()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree']>)
+  expectTypeOf(useSearch<DefaultRouter>)
     .parameter(0)
     .toHaveProperty('strict')
     .toEqualTypeOf<true | undefined>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useSearch<DefaultRouter, '/'>)
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
     .toEqualTypeOf<{}>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/'>)
+  expectTypeOf(useSearch<DefaultRouter, '/'>)
     .parameter(0)
     .toHaveProperty('select')
-    .returns.toEqualTypeOf<{}>()
+    .returns.toEqualTypeOf<unknown>()
+
+  expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{}>()
-
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/', false>({ strict: false }),
+    useSearch<DefaultRouter, '/', false>({
+      strict: false,
+    }),
   ).toEqualTypeOf<{}>()
 })
 
@@ -97,47 +98,152 @@ test('when there is one search params', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<{
+    page: number
+  }>()
+
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<((search: { page: number }) => unknown) | undefined>()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices'>,
-  ).returns.toEqualTypeOf<{ page: number }>()
+    useSearch<DefaultRouter, '/invoices', false>,
+  ).returns.toEqualTypeOf<{ page?: number }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<((search: { page?: number }) => unknown) | undefined>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter, '/invoices', false, number>,
+  ).returns.toEqualTypeOf<number>()
+
+  expectTypeOf(
+    useSearch<DefaultRouter, '/invoices', false, { func: () => void }>,
+  )
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
-      ((search: { page: number }) => { page: number }) | undefined
+      ((search: { page?: number }) => { func: () => void }) | undefined
     >()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
-  ).returns.toEqualTypeOf<{ page?: number }>()
+    useSearch<DefaultRouter, '/invoices', false, { func: () => void }>,
+  )
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<false | undefined>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(
+    useSearch<DefaultRouter, '/invoices', false, { func: () => void }, true>,
+  )
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
-      ((search: { page?: number }) => { page?: number }) | undefined
+      | ((search: { page?: number }) => {
+          func: 'Function is not serializable'
+        })
+      | undefined
+    >()
+
+  expectTypeOf(
+    useSearch<DefaultRouter, '/invoices', false, { func: () => void }, true>,
+  )
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<false | undefined>()
+
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false, { hi: any }, true>)
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: { page?: number }) => {
+          hi: never
+        })
+      | undefined
+    >()
+
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false, { hi: any }, true>)
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<false | undefined>()
+
+  const routerWithStructuralSharing = createRouter({
+    routeTree,
+    defaultStructuralSharing: true,
+  })
+
+  expectTypeOf(
+    useSearch<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      false,
+      { func: () => void }
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: { page?: number }) => {
+          func: 'Function is not serializable'
+        })
+      | undefined
     >()
 
   expectTypeOf(
     useSearch<
-      DefaultRouter['routeTree'],
+      typeof routerWithStructuralSharing,
       '/invoices',
       false,
-      FullSearchSchema<DefaultRouter['routeTree']>,
-      number
+      { date: () => void },
+      true
     >,
-  ).returns.toEqualTypeOf<number>()
+  )
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<false>()
+
+  expectTypeOf(
+    useSearch<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      false,
+      { hi: any },
+      true
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: { page?: number }) => {
+          hi: never
+        })
+      | undefined
+    >()
+
+  expectTypeOf(
+    useSearch<
+      typeof routerWithStructuralSharing,
+      '/invoices',
+      false,
+      { hi: any },
+      true
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<false>()
 })
 
 test('when there are multiple search params', () => {
@@ -170,40 +276,33 @@ test('when there are multiple search params', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices'>,
-  ).returns.toEqualTypeOf<{ page: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<{
+    page: number
+  }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>)
     .parameter(0)
     .toHaveProperty('select')
-    .toEqualTypeOf<
-      ((search: { page: number }) => { page: number }) | undefined
-    >()
+    .toEqualTypeOf<((search: { page: number }) => unknown) | undefined>()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
+    useSearch<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ page?: number; detail?: string }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
-      | ((search: { page?: number; detail?: string }) => {
-          page?: number
-          detail?: string
-        })
-      | undefined
+      ((search: { page?: number; detail?: string }) => unknown) | undefined
     >()
 })
 
@@ -244,33 +343,26 @@ test('when there are overlapping search params', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices'>,
-  ).returns.toEqualTypeOf<{ page: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<{
+    page: number
+  }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>)
     .parameter(0)
     .toHaveProperty('select')
-    .toEqualTypeOf<
-      ((search: { page: number }) => { page: number }) | undefined
-    >()
+    .toEqualTypeOf<((search: { page: number }) => unknown) | undefined>()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
+    useSearch<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ page?: number; detail?: 'detail' | 50 }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
-      | ((search: { page?: number; detail?: 'detail' | 50 }) => {
-          page?: number
-          detail?: 'detail' | 50
-        })
+      | ((search: { page?: number; detail?: 'detail' | 50 }) => unknown)
       | undefined
     >()
 })
@@ -304,39 +396,36 @@ test('when the root has no search params but the index route does', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{ indexPage: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<{
+    indexPage: number
+  }>()
+
+  expectTypeOf(useSearch<DefaultRouter, '__root__'>).returns.toEqualTypeOf<{}>()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '__root__'>,
+    useSearch<DefaultRouter, '/invoices'>,
   ).returns.toEqualTypeOf<{}>()
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices'>,
-  ).returns.toEqualTypeOf<{}>()
-
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>)
     .parameter(0)
     .toHaveProperty('select')
-    .toEqualTypeOf<((search: {}) => {}) | undefined>()
+    .toEqualTypeOf<((search: {}) => unknown) | undefined>()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
+    useSearch<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ indexPage?: number }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
-    .toEqualTypeOf<
-      ((search: { indexPage?: number }) => { indexPage?: number }) | undefined
-    >()
+    .toEqualTypeOf<((search: { indexPage?: number }) => unknown) | undefined>()
 })
 
 test('when the root has search params but the index route does not', () => {
@@ -369,41 +458,38 @@ test('when the root has search params but the index route does not', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{ rootPage: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<{
+    rootPage: number
+  }>()
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '__root__'>,
-  ).returns.toEqualTypeOf<{ rootPage: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '__root__'>).returns.toEqualTypeOf<{
+    rootPage: number
+  }>()
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices'>,
-  ).returns.toEqualTypeOf<{ rootPage: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<{
+    rootPage: number
+  }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>)
     .parameter(0)
     .toHaveProperty('select')
-    .toEqualTypeOf<
-      ((search: { rootPage: number }) => { rootPage: number }) | undefined
-    >()
+    .toEqualTypeOf<((search: { rootPage: number }) => unknown) | undefined>()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
+    useSearch<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
-    .toEqualTypeOf<
-      ((search: { rootPage?: number }) => { rootPage?: number }) | undefined
-    >()
+    .toEqualTypeOf<((search: { rootPage?: number }) => unknown) | undefined>()
 })
 
 test('when the root has search params but the index does', () => {
@@ -437,43 +523,40 @@ test('when the root has search params but the index does', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/'>,
-  ).returns.toEqualTypeOf<{ rootPage: number; indexPage: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<{
+    rootPage: number
+    indexPage: number
+  }>()
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '__root__'>,
-  ).returns.toEqualTypeOf<{ rootPage: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '__root__'>).returns.toEqualTypeOf<{
+    rootPage: number
+  }>()
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices'>,
-  ).returns.toEqualTypeOf<{ rootPage: number }>()
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<{
+    rootPage: number
+  }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices'>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices'>)
     .parameter(0)
     .toHaveProperty('select')
-    .toEqualTypeOf<
-      ((search: { rootPage: number }) => { rootPage: number }) | undefined
-    >()
+    .toEqualTypeOf<((search: { rootPage: number }) => unknown) | undefined>()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/invoices', false>,
+    useSearch<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<{ indexPage?: number; rootPage?: number }>()
 
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/invoices', false>)
+  expectTypeOf(useSearch<DefaultRouter, '/invoices', false>)
     .parameter(0)
     .toHaveProperty('select')
     .toEqualTypeOf<
-      | ((search: { indexPage?: number; rootPage?: number }) => {
-          indexPage?: number
-          rootPage?: number
-        })
+      | ((search: { indexPage?: number; rootPage?: number }) => unknown)
       | undefined
     >()
 })
@@ -490,8 +573,9 @@ test('when a route has search params using SearchSchemaInput', () => {
   })
 
   const routeTree = rootRoute.addChildren([indexRoute])
-
-  expectTypeOf(useSearch<typeof routeTree, '/'>).returns.toEqualTypeOf<{
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({ routeTree })
+  expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<{
     page: number
   }>
 })

@@ -6,223 +6,46 @@ import reactRefresh from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import {
-  TanStackStartVite,
   TanStackStartViteDeadCodeElimination,
+  TanStackStartViteServerFn,
 } from '@tanstack/start-vite-plugin'
-import {
-  configSchema,
-  getConfig,
-  startAPIRouteSegmentsFromTSRFilePath,
-} from '@tanstack/router-generator'
+import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
-import {
-  BaseFileSystemRouter as VinxiBaseFileSystemRouter,
-  analyzeModule as vinxiFsRouterAnalyzeModule,
-  cleanPath as vinxiFsRouterCleanPath,
-} from 'vinxi/fs-router'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
 // @ts-expect-error
 import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
-import { z } from 'zod'
+import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
+import {
+  checkDeploymentPresetInput,
+  getUserViteConfig,
+  inlineConfigSchema,
+  serverSchema,
+} from './schema.js'
+import type { configSchema } from '@tanstack/router-generator'
+import type { z } from 'zod'
 import type {
-  AppOptions as VinxiAppOptions,
+  TanStackStartInputConfig,
+  TanStackStartOutputConfig,
+} from './schema.js'
+import type {
+  App as VinxiApp,
   RouterSchemaInput as VinxiRouterSchemaInput,
 } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
-import type { NitroOptions } from 'nitropack'
 
-import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
+export type {
+  TanStackStartInputConfig,
+  TanStackStartOutputConfig,
+} from './schema.js'
 
 type RouterType = 'client' | 'server' | 'ssr' | 'api'
 
-type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
-
-function getUserConfig(config?: StartUserViteConfig) {
-  const { plugins, ...userConfig } =
-    typeof config === 'function' ? config() : { ...config }
-  return { plugins, userConfig }
-}
-/**
- * Not all the deployment presets are fully functional or tested.
- * @see https://github.com/TanStack/router/pull/2002
- */
-const vinxiDeploymentPresets = [
-  'alwaysdata', // untested
-  'aws-amplify', // untested
-  'aws-lambda', // untested
-  'azure', // untested
-  'azure-functions', // untested
-  'base-worker', // untested
-  'bun', // ✅ working
-  'cleavr', // untested
-  'cli', // untested
-  'cloudflare', // untested
-  'cloudflare-module', // untested
-  'cloudflare-pages', // ✅ working
-  'cloudflare-pages-static', // untested
-  'deno', // untested
-  'deno-deploy', // untested
-  'deno-server', // untested
-  'digital-ocean', // untested
-  'edgio', // untested
-  'firebase', // untested
-  'flight-control', // untested
-  'github-pages', // untested
-  'heroku', // untested
-  'iis', // untested
-  'iis-handler', // untested
-  'iis-node', // untested
-  'koyeb', // untested
-  'layer0', // untested
-  'netlify', // ✅ working
-  'netlify-builder', // untested
-  'netlify-edge', // untested
-  'netlify-static', // untested
-  'nitro-dev', // untested
-  'nitro-prerender', // untested
-  'node', // partially working
-  'node-cluster', // untested
-  'node-server', // ✅ working
-  'platform-sh', // untested
-  'service-worker', // untested
-  'static', // partially working
-  'stormkit', // untested
-  'vercel', // ✅ working
-  'vercel-edge', // untested
-  'vercel-static', // untested
-  'winterjs', // untested
-  'zeabur', // untested
-  'zeabur-static', // untested
-] as const
-
-type DeploymentPreset = (typeof vinxiDeploymentPresets)[number] | (string & {})
-
-const testedDeploymentPresets: Array<DeploymentPreset> = [
-  'bun',
-  'netlify',
-  'vercel',
-  'cloudflare-pages',
-  'node-server',
-]
-
-function checkDeploymentPresetInput(preset: string): DeploymentPreset {
-  if (!vinxiDeploymentPresets.includes(preset as any)) {
-    console.warn(
-      `Invalid deployment preset "${preset}". Available presets are: ${vinxiDeploymentPresets
-        .map((p) => `"${p}"`)
-        .join(', ')}.`,
-    )
-  }
-
-  if (!testedDeploymentPresets.includes(preset as any)) {
-    console.warn(
-      `The deployment preset '${preset}' is not fully supported yet and may not work as expected.`,
-    )
-  }
-
-  return preset
-}
-
-type HTTPSOptions = {
-  cert?: string
-  key?: string
-  pfx?: string
-  passphrase?: string
-  validityDays?: number
-  domains?: Array<string>
-}
-type ServerOptions_ = VinxiAppOptions['server'] & {
-  https?: boolean | HTTPSOptions
-}
-type ServerOptions = {
-  [K in keyof ServerOptions_]: ServerOptions_[K]
-}
-
-const serverSchema = z
-  .object({
-    routeRules: z.custom<NitroOptions['routeRules']>().optional(),
-    preset: z.custom<DeploymentPreset>().optional(),
-    static: z.boolean().optional(),
-    prerender: z
-      .object({
-        routes: z.array(z.string()),
-        ignore: z
-          .array(
-            z.custom<
-              string | RegExp | ((path: string) => undefined | null | boolean)
-            >(),
-          )
-          .optional(),
-        crawlLinks: z.boolean().optional(),
-      })
-      .optional(),
-  })
-  .and(z.custom<ServerOptions>())
-
-const viteSchema = z.custom<StartUserViteConfig>()
-
-const babelSchema = z.object({
-  plugins: z
-    .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
-    .optional(),
-})
-
-const reactSchema = z.object({
-  babel: babelSchema.optional(),
-  exclude: z.array(z.instanceof(RegExp)).optional(),
-  include: z.array(z.instanceof(RegExp)).optional(),
-})
-
-const routersSchema = z.object({
-  ssr: z
-    .object({
-      entry: z.string().optional(),
-      vite: viteSchema.optional(),
-    })
-    .optional(),
-  client: z
-    .object({
-      entry: z.string().optional(),
-      base: z.string().optional(),
-      vite: viteSchema.optional(),
-    })
-    .optional(),
-  server: z
-    .object({
-      base: z.string().optional(),
-      vite: viteSchema.optional(),
-    })
-    .optional(),
-  api: z
-    .object({
-      entry: z.string().optional(),
-      vite: viteSchema.optional(),
-    })
-    .optional(),
-})
-
-const tsrConfig = configSchema.partial().extend({
-  appDirectory: z.string().optional(),
-})
-
-const inlineConfigSchema = z.object({
-  react: reactSchema.optional(),
-  vite: viteSchema.optional(),
-  tsr: tsrConfig.optional(),
-  routers: routersSchema.optional(),
-  server: serverSchema.optional(),
-})
-
-export type TanStackStartDefineConfigOptions = z.infer<
-  typeof inlineConfigSchema
->
-
-function setTsrDefaults(config: TanStackStartDefineConfigOptions['tsr']) {
+function setTsrDefaults(config: TanStackStartOutputConfig['tsr']) {
   // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
   const appDirectory = config?.appDirectory ?? './app'
   return {
@@ -232,15 +55,42 @@ function setTsrDefaults(config: TanStackStartDefineConfigOptions['tsr']) {
       config?.routesDirectory ?? path.join(appDirectory, 'routes'),
     generatedRouteTree:
       config?.generatedRouteTree ?? path.join(appDirectory, 'routeTree.gen.ts'),
-    experimental: {
-      ...config?.experimental,
-    },
   }
 }
 
+function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
+  let ssrOptions: vite.SSROptions = {}
+  let noExternal: vite.SSROptions['noExternal'] = []
+  for (const option of options) {
+    if (!option) {
+      continue
+    }
+
+    if (option.noExternal) {
+      if (option.noExternal === true) {
+        noExternal = true
+      } else if (noExternal !== true) {
+        if (Array.isArray(option.noExternal)) {
+          noExternal.push(...option.noExternal)
+        } else {
+          noExternal.push(option.noExternal)
+        }
+      }
+    }
+
+    ssrOptions = {
+      ...ssrOptions,
+      ...option,
+      noExternal,
+    }
+  }
+
+  return ssrOptions
+}
+
 export function defineConfig(
-  inlineConfig: TanStackStartDefineConfigOptions = {},
-) {
+  inlineConfig: TanStackStartInputConfig = {},
+): VinxiApp {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
   const { preset: configDeploymentPreset, ...serverOptions } =
@@ -266,7 +116,10 @@ export function defineConfig(
 
   const apiEntryExists = existsSync(apiEntry)
 
-  return createApp({
+  const publicDir = opts.routers?.public?.dir || './public'
+  const publicBase = opts.routers?.public?.base || '/'
+
+  let vinxiApp = createApp({
     server: {
       ...serverOptions,
       preset: deploymentPreset,
@@ -279,8 +132,8 @@ export function defineConfig(
       {
         name: 'public',
         type: 'static',
-        dir: './public',
-        base: '/',
+        dir: publicDir,
+        base: publicBase,
       },
       withStartPlugins(
         opts,
@@ -294,66 +147,38 @@ export function defineConfig(
         build: {
           sourcemap: true,
         },
-        plugins: () => [
-          ...(getUserConfig(opts.vite).plugins || []),
-          ...(getUserConfig(opts.routers?.client?.vite).plugins || []),
-          serverFunctions.client({
-            runtime: '@tanstack/start/client-runtime',
-          }),
-          reactRefresh({
-            babel: opts.react?.babel,
-            exclude: opts.react?.exclude,
-            include: opts.react?.include,
-          }),
-          // TODO: RSCS - enable this
-          // serverComponents.client(),
-        ],
-      }),
-      ...(apiEntryExists
-        ? [
-            withPlugins([
-              config('start-vite', {
-                ...getUserConfig(opts.vite).userConfig,
-                ...getUserConfig(opts.routers?.api?.vite).userConfig,
-                ssr: {
-                  ...(getUserConfig(opts.vite).userConfig.ssr || {}),
-                  ...(getUserConfig(opts.routers?.api?.vite).userConfig.ssr ||
-                    {}),
-                  noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
-                },
-              }),
-              TanStackRouterVite({
-                ...tsrConfig,
-                autoCodeSplitting: true,
-                experimental: {
-                  ...tsrConfig.experimental,
-                },
-              }),
-            ])({
-              name: 'api',
-              type: 'http',
-              target: 'server',
-              base: apiBase,
-              handler: apiEntry,
-              routes: tsrFileRouter({ tsrConfig, apiBase }),
-              plugins: () => [
-                ...(getUserConfig(opts.vite).plugins || []),
-                ...(getUserConfig(opts.routers?.api?.vite).plugins || []),
-                // serverTransform({
-                //   runtime: '@tanstack/start/server-runtime',
-                // }),
-                // config('start-api', {
-                //   ssr: {
-                //     external: ['@vinxi/react-server-dom/client'],
-                //   },
-                // }),
-              ],
-              // link: {
-              //   client: 'client',
-              // },
+        plugins: () => {
+          const viteConfig = getUserViteConfig(opts.vite)
+          const clientViteConfig = getUserViteConfig(opts.routers?.client?.vite)
+
+          return [
+            config('tss-vite-config-client', {
+              ...viteConfig.userConfig,
+              ...clientViteConfig.userConfig,
+              define: {
+                ...(viteConfig.userConfig.define || {}),
+                ...(clientViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+                ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+                ...injectDefineEnv('TSS_API_BASE', apiBase),
+              },
             }),
+            ...(viteConfig.plugins || []),
+            ...(clientViteConfig.plugins || []),
+            serverFunctions.client({
+              runtime: '@tanstack/start/client-runtime',
+            }),
+            reactRefresh({
+              babel: opts.react?.babel,
+              exclude: opts.react?.exclude,
+              include: opts.react?.include,
+            }),
+            // TODO: RSCS - enable this
+            // serverComponents.client(),
           ]
-        : []),
+        },
+      }),
       withStartPlugins(
         opts,
         'ssr',
@@ -362,22 +187,39 @@ export function defineConfig(
         type: 'http',
         target: 'server',
         handler: ssrEntry,
-        plugins: () => [
-          tsrRoutesManifest({
-            tsrConfig,
-            clientBase,
-          }),
-          ...(getUserConfig(opts.vite).plugins || []),
-          ...(getUserConfig(opts.routers?.ssr?.vite).plugins || []),
-          serverTransform({
-            runtime: '@tanstack/start/server-runtime',
-          }),
-          config('start-ssr', {
-            ssr: {
-              external: ['@vinxi/react-server-dom/client'],
-            },
-          }),
-        ],
+        plugins: () => {
+          const viteConfig = getUserViteConfig(opts.vite)
+          const ssrViteConfig = getUserViteConfig(opts.routers?.ssr?.vite)
+
+          return [
+            config('tss-vite-config-ssr', {
+              ...viteConfig.userConfig,
+              ...ssrViteConfig.userConfig,
+              define: {
+                ...(viteConfig.userConfig.define || {}),
+                ...(ssrViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+                ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+                ...injectDefineEnv('TSS_API_BASE', apiBase),
+              },
+            }),
+            tsrRoutesManifest({
+              tsrConfig,
+              clientBase,
+            }),
+            ...(getUserViteConfig(opts.vite).plugins || []),
+            ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
+            serverTransform({
+              runtime: '@tanstack/start/server-runtime',
+            }),
+            config('start-ssr', {
+              ssr: {
+                external: ['@vinxi/react-server-dom/client'],
+              },
+            }),
+          ]
+        },
         link: {
           client: 'client',
         },
@@ -393,33 +235,102 @@ export function defineConfig(
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative('@tanstack/start/server-handler'),
-        plugins: () => [
-          serverFunctions.server({
-            runtime: '@tanstack/start/react-server-runtime',
-            // TODO: RSCS - remove this
-            resolve: {
-              conditions: [],
-            },
-          }),
-          // TODO: RSCs - add this
-          // serverComponents.serverActions({
-          //   resolve: {
-          //     conditions: [
-          //       'react-server',
-          //       // 'node',
-          //       'import',
-          //       process.env.NODE_ENV,
-          //     ],
-          //   },
-          //   runtime: '@vinxi/react-server-dom/runtime',
-          //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
-          // }),
-          ...(getUserConfig(opts.vite).plugins || []),
-          ...(getUserConfig(opts.routers?.server?.vite).plugins || []),
-        ],
+        plugins: () => {
+          const viteConfig = getUserViteConfig(opts.vite)
+          const serverViteConfig = getUserViteConfig(opts.routers?.server?.vite)
+
+          return [
+            config('tss-vite-config-ssr', {
+              ...viteConfig.userConfig,
+              ...serverViteConfig.userConfig,
+              define: {
+                ...(viteConfig.userConfig.define || {}),
+                ...(serverViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+                ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+                ...injectDefineEnv('TSS_API_BASE', apiBase),
+              },
+            }),
+            serverFunctions.server({
+              runtime: '@tanstack/start/react-server-runtime',
+              // TODO: RSCS - remove this
+              resolve: {
+                conditions: [],
+              },
+            }),
+            // TODO: RSCs - add this
+            // serverComponents.serverActions({
+            //   resolve: {
+            //     conditions: [
+            //       'react-server',
+            //       // 'node',
+            //       'import',
+            //       process.env.NODE_ENV,
+            //     ],
+            //   },
+            //   runtime: '@vinxi/react-server-dom/runtime',
+            //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
+            // }),
+            ...(viteConfig.plugins || []),
+            ...(serverViteConfig.plugins || []),
+          ]
+        },
       }),
     ],
   })
+
+  // If API routes handler exists, add a router for it
+  if (apiEntryExists) {
+    vinxiApp = vinxiApp.addRouter({
+      name: 'api',
+      type: 'http',
+      target: 'server',
+      base: apiBase,
+      handler: apiEntry,
+      routes: tanstackStartVinxiFileRouter({ tsrConfig, apiBase }),
+      plugins: () => {
+        const viteConfig = getUserViteConfig(opts.vite)
+        const apiViteConfig = getUserViteConfig(opts.routers?.api?.vite)
+
+        return [
+          config('tsr-vite-config-api', {
+            ...viteConfig.userConfig,
+            ...apiViteConfig.userConfig,
+            ssr: mergeSsrOptions([
+              viteConfig.userConfig.ssr,
+              apiViteConfig.userConfig.ssr,
+              { noExternal: ['@tanstack/start', 'tsr:routes-manifest'] },
+            ]),
+            optimizeDeps: {
+              entries: [],
+              ...(viteConfig.userConfig.optimizeDeps || {}),
+              ...(apiViteConfig.userConfig.optimizeDeps || {}),
+            },
+            define: {
+              ...(viteConfig.userConfig.define || {}),
+              ...(apiViteConfig.userConfig.define || {}),
+              ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+              ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+              ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+              ...injectDefineEnv('TSS_API_BASE', apiBase),
+            },
+          }),
+          TanStackRouterVite({
+            ...tsrConfig,
+            autoCodeSplitting: true,
+            experimental: {
+              ...tsrConfig.experimental,
+            },
+          }),
+          ...(viteConfig.plugins || []),
+          ...(apiViteConfig.plugins || []),
+        ]
+      },
+    })
+  }
+
+  return vinxiApp
 }
 
 type TempRouter = Extract<
@@ -451,13 +362,10 @@ function withPlugins(prePlugins: Array<any>, postPlugins?: Array<any>) {
   }
 }
 
-function withStartPlugins(
-  opts: TanStackStartDefineConfigOptions,
-  router: RouterType,
-) {
+function withStartPlugins(opts: TanStackStartOutputConfig, router: RouterType) {
   const tsrConfig = getConfig(setTsrDefaults(opts.tsr))
-  const { userConfig } = getUserConfig(opts.vite)
-  const { userConfig: routerUserConfig } = getUserConfig(
+  const { userConfig } = getUserViteConfig(opts.vite)
+  const { userConfig: routerUserConfig } = getUserViteConfig(
     opts.routers?.[router]?.vite,
   )
 
@@ -466,14 +374,17 @@ function withStartPlugins(
       config('start-vite', {
         ...userConfig,
         ...routerUserConfig,
-        ssr: {
-          ...(userConfig.ssr || {}),
-          ...(routerUserConfig.ssr || {}),
-          noExternal: ['@tanstack/start', 'tsr:routes-manifest'],
+        ssr: mergeSsrOptions([
+          userConfig.ssr,
+          routerUserConfig.ssr,
+          { noExternal: ['@tanstack/start', 'tsr:routes-manifest'] },
+        ]),
+        optimizeDeps: {
+          entries: [],
+          ...(userConfig.optimizeDeps || {}),
+          ...(routerUserConfig.optimizeDeps || {}),
+          // include: ['@tanstack/start/server-runtime'],
         },
-        // optimizeDeps: {
-        //   include: ['@tanstack/start/server-runtime'],
-        // },
       }),
       TanStackRouterVite({
         ...tsrConfig,
@@ -482,9 +393,15 @@ function withStartPlugins(
           ...tsrConfig.experimental,
         },
       }),
-      TanStackStartVite(),
+      TanStackStartViteServerFn({
+        env: router === 'client' ? 'client' : 'server',
+      }),
     ],
-    [TanStackStartViteDeadCodeElimination()],
+    [
+      TanStackStartViteDeadCodeElimination({
+        env: router === 'client' ? 'client' : 'server',
+      }),
+    ],
   )
 }
 
@@ -562,6 +479,7 @@ function tsrRoutesManifest(opts: {
         try {
           routeTreeContent = readFileSync(routeTreePath, 'utf-8')
         } catch (err) {
+          console.error(err)
           throw new Error(
             `Could not find the generated route tree at '${routeTreePath}'!`,
           )
@@ -650,7 +568,8 @@ function tsrRoutesManifest(opts: {
           }
         }
 
-        recurseRoute(routes.__root__!)
+        // @ts-expect-error
+        recurseRoute(routes.__root__)
 
         const routesManifest = {
           routes,
@@ -667,72 +586,12 @@ function tsrRoutesManifest(opts: {
   }
 }
 
-function tsrFileRouter(opts: {
-  tsrConfig: z.infer<typeof configSchema>
-  apiBase: string
-}) {
-  const apiBaseSegment = opts.apiBase.split('/').filter(Boolean).join('/')
-  const isAPIPath = new RegExp(`/${apiBaseSegment}/`)
-
-  return function (router: VinxiRouterSchemaInput, app: VinxiAppOptions) {
-    // Our own custom File Router that extends the VinxiBaseFileSystemRouter
-    // for splitting the API routes into its own "bundle"
-    // and adding the $APIRoute metadata to the route object
-    // This could be customized in future to support more complex splits
-    class TanStackStartFsRouter extends VinxiBaseFileSystemRouter {
-      toPath(src: string): string {
-        const inputPath = vinxiFsRouterCleanPath(src, this.config)
-
-        const segments = startAPIRouteSegmentsFromTSRFilePath(
-          inputPath,
-          opts.tsrConfig,
-        )
-
-        const pathname = segments
-          .map((part) => {
-            if (part.type === 'splat') {
-              return `*splat`
-            }
-
-            if (part.type === 'param') {
-              return `:${part.value}?`
-            }
-
-            return part.value
-          })
-          .join('/')
-
-        return pathname.length > 0 ? `/${pathname}` : '/'
-      }
-
-      toRoute(src: string) {
-        const webPath = this.toPath(src)
-
-        const [_, exports] = vinxiFsRouterAnalyzeModule(src)
-
-        const hasRoute = exports.find((exp) => exp.n === 'Route')
-
-        return {
-          path: webPath,
-          filePath: src,
-          $APIRoute:
-            isAPIPath.test(webPath) && hasRoute
-              ? {
-                  src,
-                  pick: ['Route'],
-                }
-              : undefined,
-        }
-      }
-    }
-
-    return new TanStackStartFsRouter(
-      {
-        dir: opts.tsrConfig.routesDirectory,
-        extensions: ['js', 'jsx', 'ts', 'tsx'],
-      },
-      router,
-      app,
-    )
-  }
+function injectDefineEnv<TKey extends string, TValue extends string>(
+  key: TKey,
+  value: TValue,
+): { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue } {
+  return {
+    [`process.env.${key}`]: JSON.stringify(value),
+    [`import.meta.env.${key}`]: JSON.stringify(value),
+  } as { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue }
 }

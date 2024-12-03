@@ -1,5 +1,5 @@
 import { decode, encode } from './qss'
-import type { AnySearchSchema } from './route'
+import type { AnySchema } from './validators'
 
 export const defaultParseSearch = parseSearchWith(JSON.parse)
 export const defaultStringifySearch = stringifySearchWith(
@@ -8,7 +8,7 @@ export const defaultStringifySearch = stringifySearchWith(
 )
 
 export function parseSearchWith(parser: (str: string) => any) {
-  return (searchStr: string): AnySearchSchema => {
+  return (searchStr: string): AnySchema => {
     if (searchStr.substring(0, 1) === '?') {
       searchStr = searchStr.substring(1)
     }

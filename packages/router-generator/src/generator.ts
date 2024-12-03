@@ -20,6 +20,11 @@ import { rootPathId } from './filesystem/physical/rootPathId'
 import type { GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
+export const CONSTANTS = {
+  // When changing this, you'll want to update the import in `start/api/index.ts#defaultAPIFileRouteHandler`
+  APIRouteExportVariable: 'APIRoute',
+}
+
 let latestTask = 0
 const routeGroupPatternRegex = /\(.+\)/g
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
@@ -125,19 +130,22 @@ export async function generator(config: Config) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const replaced = `import * as React from 'react';
-import { Outlet, createRootRoute } from '@tanstack/react-router';
-
-export const Route = createRootRoute({
-  component: () => (
-    <React.Fragment>
-      <div>Hello "${rootPathId}"!</div>
-      <Outlet />
-    </React.Fragment>
-  ),
-})
-
-`
+      const replaced = fillTemplate(
+        [
+          'import * as React from "react"\n',
+          '%%tsrImports%%',
+          '\n\n',
+          '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
+          'function RootComponent() { return (<React.Fragment><div>Hello "%%tsrPath%%"!</div><Outlet /></React.Fragment>) };\n',
+        ].join(''),
+        {
+          tsrImports:
+            "import { Outlet, createRootRoute } from '@tanstack/react-router';",
+          tsrPath: rootPathId,
+          tsrExportStart: `export const Route = createRootRoute(`,
+          tsrExportEnd: ');',
+        },
+      )
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
@@ -192,12 +200,13 @@ export const Route = createRootRoute({
 
       if (!routeCode) {
         if (node.isLazy) {
-          replaced = [
-            `import { createLazyFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createLazyFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-          ].join('\n\n')
+          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
+            tsrImports:
+              "import { createLazyFileRoute } from '@tanstack/react-router';",
+            tsrPath: escapedRoutePath,
+            tsrExportStart: `export const Route = createLazyFileRoute('${escapedRoutePath}')(`,
+            tsrExportEnd: ');',
+          })
         } else if (
           node.isRoute ||
           (!node.isComponent &&
@@ -205,27 +214,28 @@ export const Route = createRootRoute({
             !node.isPendingComponent &&
             !node.isLoader)
         ) {
-          replaced = [
-            `import { createFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-          ].join('\n\n')
+          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
+            tsrImports:
+              "import { createFileRoute } from '@tanstack/react-router';",
+            tsrPath: escapedRoutePath,
+            tsrExportStart: `export const Route = createFileRoute('${escapedRoutePath}')(`,
+            tsrExportEnd: ');',
+          })
         }
       } else {
         replaced = routeCode
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+            (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
           )
           .replace(
             /(import\s*\{.*)(create(Lazy)?FileRoute)(.*\}\s*from\s*['"]@tanstack\/react-router['"])/gs,
-            (match, p1, p2, p3, p4) =>
+            (_, p1, __, ___, p4) =>
               `${p1}${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
             /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3, p4) =>
+            (_, __, p2, ___, p4) =>
               `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
       }
@@ -360,16 +370,12 @@ export const Route = createRootRoute({
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
-      const replaced = `import { json } from '@tanstack/start'
-import { createAPIFileRoute } from '@tanstack/start/api'
-
-export const Route = createAPIFileRoute('${escapedRoutePath}')({
-  GET: ({ request, params }) => {
-    return json({ message: 'Hello ${escapedRoutePath}' })
-  },
-})
-
-`
+      const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
+        tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
+        tsrPath: escapedRoutePath,
+        tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
+        tsrExportEnd: ');',
+      })
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
@@ -478,7 +484,9 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   }
   const routeImports = [
     ...config.routeTreeFileHeader,
-    '// This file is auto-generated by TanStack Router',
+    `// This file was automatically generated by TanStack Router.
+// You should NOT make any changes in this file as it will be overwritten.
+// Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
     imports.length
       ? `import { ${imports.join(', ')} } from '@tanstack/react-router'\n`
       : '',
@@ -733,9 +741,9 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   )
 }
 
-function removeTrailingUnderscores(s?: string) {
-  return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
-}
+// function removeTrailingUnderscores(s?: string) {
+//   return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
+// }
 
 function removeGroups(s: string) {
   return s.replace(possiblyNestedRouteGroupPatternRegex, '')
@@ -1007,4 +1015,13 @@ export function startAPIRouteSegmentsFromTSRFilePath(
   })
 
   return segments
+}
+
+type TemplateTag = 'tsrImports' | 'tsrPath' | 'tsrExportStart' | 'tsrExportEnd'
+
+function fillTemplate(template: string, values: Record<TemplateTag, string>) {
+  return template.replace(
+    /%%(\w+)%%/g,
+    (_, key) => values[key as TemplateTag] || '',
+  )
 }
