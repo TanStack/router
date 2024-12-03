@@ -17,7 +17,6 @@ export {
 } from './createServerFn'
 export {
   createMiddleware,
-  type ParseMiddlewares,
   type MergeAllValidatorInputs,
   type MergeAllValidatorOutputs,
   type MiddlewareServerFn,
@@ -28,6 +27,7 @@ export {
   type MiddlewareServer,
   type MiddlewareAfterClient,
   type MiddlewareAfterMiddleware,
+  type MiddlewareAfterServer,
   type Middleware,
 } from './createMiddleware'
 export { serverOnly } from './serverOnly'

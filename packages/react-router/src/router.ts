@@ -110,10 +110,11 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<any, any, any, any, any>
+export type AnyRouter = Router<any, any, any, any, any, any>
 
 export type AnyRouterWithContext<TContext> = Router<
   AnyRouteWithContext<TContext>,
+  any,
   any,
   any,
   any
@@ -173,6 +174,7 @@ export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean = false,
+  TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 > {
@@ -184,7 +186,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#history-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/history-types)
    */
-  history?: RouterHistory
+  history?: TRouterHistory
   /**
    * A function that will be used to stringify search params when generating links.
    *
@@ -299,7 +301,7 @@ export interface RouterOptions<
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultviewtransition-property)
    */
-  defaultViewTransition?: boolean
+  defaultViewTransition?: boolean | ViewTransitionOptions
   /**
    * @default 'fuzzy'
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundmode-property)
@@ -544,10 +546,15 @@ export interface DehydratedRouter {
   manifest?: Manifest
 }
 
+export interface ViewTransitionOptions {
+  types: Array<string>
+}
+
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean,
+  TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
   TSerializedError extends Record<string, any>,
 > = Omit<
@@ -555,6 +562,7 @@ export type RouterConstructorOptions<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
+    TRouterHistory,
     TDehydrated,
     TSerializedError
   >,
@@ -610,30 +618,35 @@ export type RouterEvents = {
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onBeforeLoad: {
     type: 'onBeforeLoad'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onLoad: {
     type: 'onLoad'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onResolved: {
     type: 'onResolved'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
 }
 
@@ -648,6 +661,7 @@ export function createRouter<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean,
+  TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
 >(
@@ -657,6 +671,7 @@ export function createRouter<
         TRouteTree,
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
+        TRouterHistory,
         TDehydrated,
         TSerializedError
       >,
@@ -665,6 +680,7 @@ export function createRouter<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
+    TRouterHistory,
     TDehydrated,
     TSerializedError
   >(options)
@@ -681,6 +697,7 @@ export class Router<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
   in out TDefaultStructuralSharingOption extends boolean,
+  in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
   in out TSerializedError extends Record<string, any> = Record<string, any>,
 > {
@@ -689,7 +706,8 @@ export class Router<
     Math.random() * 10000000,
   )}`
   resetNextScroll = true
-  shouldViewTransition?: boolean = undefined
+  shouldViewTransition?: boolean | ViewTransitionOptions = undefined
+  isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
@@ -719,6 +737,7 @@ export class Router<
         TRouteTree,
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
+        TRouterHistory,
         TDehydrated,
         TSerializedError
       >,
@@ -728,7 +747,7 @@ export class Router<
     },
     'stringifySearch' | 'parseSearch' | 'context'
   >
-  history!: RouterHistory
+  history!: TRouterHistory
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
   routeTree!: TRouteTree
@@ -746,6 +765,7 @@ export class Router<
       TRouteTree,
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
+      TRouterHistory,
       TDehydrated,
       TSerializedError
     >,
@@ -778,6 +798,7 @@ export class Router<
       TRouteTree,
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
+      TRouterHistory,
       TDehydrated,
       TSerializedError
     >,
@@ -827,11 +848,11 @@ export class Router<
     ) {
       this.history =
         this.options.history ??
-        (this.isServer
+        ((this.isServer
           ? createMemoryHistory({
               initialEntries: [this.basepath || '/'],
             })
-          : createBrowserHistory())
+          : createBrowserHistory()) as TRouterHistory)
       this.latestLocation = this.parseLocation()
     }
 
@@ -852,6 +873,17 @@ export class Router<
           }
         },
       })
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      'CSS' in window &&
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      typeof window.CSS?.supports === 'function'
+    ) {
+      this.isViewTransitionTypesSupported = window.CSS.supports(
+        'selector(:active-view-transition-type(a)',
+      )
     }
   }
 
@@ -1061,7 +1093,7 @@ export class Router<
     return this.routesById as Record<string, AnyRoute>
   }
 
-  /** 
+  /**
   @deprecated use the following signature instead
   ```ts
   matchRoutes (
@@ -1885,7 +1917,8 @@ export class Router<
         try {
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
-          const pathDidChange = prevLocation.href !== next.href
+          const hrefChanged = prevLocation.href !== next.href
+          const pathChanged = prevLocation.pathname !== next.pathname
 
           // Cancel any pending matches
           this.cancelMatches()
@@ -1919,7 +1952,8 @@ export class Router<
               type: 'onBeforeNavigate',
               fromLocation: prevLocation,
               toLocation: next,
-              pathChanged: pathDidChange,
+              pathChanged,
+              hrefChanged,
             })
           }
 
@@ -1927,7 +1961,8 @@ export class Router<
             type: 'onBeforeLoad',
             fromLocation: prevLocation,
             toLocation: next,
-            pathChanged: pathDidChange,
+            pathChanged,
+            hrefChanged,
           })
 
           await this.loadMatches({
@@ -2054,7 +2089,23 @@ export class Router<
       'startViewTransition' in document &&
       typeof document.startViewTransition === 'function'
     ) {
-      document.startViewTransition(fn)
+      // lib.dom.ts doesn't support viewTransition types variant yet.
+      // TODO: Fix this when dom types are updated
+      let startViewTransitionParams: any
+
+      if (
+        typeof shouldViewTransition === 'object' &&
+        this.isViewTransitionTypesSupported
+      ) {
+        startViewTransitionParams = {
+          update: fn,
+          types: shouldViewTransition.types,
+        }
+      } else {
+        startViewTransitionParams = fn
+      }
+
+      document.startViewTransition(startViewTransitionParams)
     } else {
       fn()
     }
@@ -2733,6 +2784,7 @@ export class Router<
         TRouteTree,
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
+        TRouterHistory,
         TDehydrated,
         TSerializedError
       >,
@@ -2813,6 +2865,7 @@ export class Router<
         TRouteTree,
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
+        TRouterHistory,
         TDehydrated,
         TSerializedError
       >,

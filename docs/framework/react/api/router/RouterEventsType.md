@@ -12,30 +12,35 @@ type RouterEvents = {
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onBeforeLoad: {
     type: 'onBeforeLoad'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onLoad: {
     type: 'onLoad'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onResolved: {
     type: 'onResolved'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
 }
 ```
@@ -64,6 +69,11 @@ Once an event is emitted, the following properties will be present on the event 
 
 - Type: `boolean`
 - `true` if the path has changed between the `fromLocation` and `toLocation`.
+
+### `hrefChanged` property
+
+- Type: `boolean`
+- `true` if the href has changed between the `fromLocation` and `toLocation`.
 
 ## Example
 

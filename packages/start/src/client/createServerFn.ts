@@ -6,6 +6,7 @@ import type {
   Constrain,
   DefaultTransformerParse,
   DefaultTransformerStringify,
+  Expand,
   ResolveValidatorInput,
   TransformerStringify,
   Validator,
@@ -15,7 +16,6 @@ import type {
   MergeAllServerContext,
   MergeAllValidatorInputs,
   MergeAllValidatorOutputs,
-  ResolveAllValidators,
 } from './createMiddleware'
 
 export interface JsonResponse<TData> extends Response {
@@ -37,21 +37,16 @@ export type Fetcher<TMiddlewares, TValidator, TResponse> = {
   }) => Promise<unknown>
 } & FetcherImpl<TMiddlewares, TValidator, TResponse>
 
-export type IsDataOptional<TMiddlewares, TValidator> = ResolveAllValidators<
-  TMiddlewares,
-  TValidator
->
-
 export type FetcherImpl<TMiddlewares, TValidator, TResponse> =
   undefined extends MergeAllValidatorInputs<TMiddlewares, TValidator>
     ? (
         opts?: OptionalFetcherDataOptions<
-          MergeAllValidatorInputs<TMiddlewares, TValidator>
+          Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
         >,
       ) => Promise<FetcherData<TResponse>>
     : (
         opts: RequiredFetcherDataOptions<
-          MergeAllValidatorInputs<TMiddlewares, TValidator>
+          Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
         >,
       ) => Promise<FetcherData<TResponse>>
 
@@ -83,10 +78,10 @@ export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
   | Promise<DefaultTransformerStringify<TResponse>>
   | DefaultTransformerStringify<TResponse>
 
-export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
+export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
   method: TMethod
-  data: MergeAllValidatorOutputs<TMiddlewares, TValidator>
-  context: MergeAllServerContext<TMiddlewares>
+  data: Expand<MergeAllValidatorOutputs<TMiddlewares, TValidator>>
+  context: Expand<MergeAllServerContext<TMiddlewares>>
 }
 
 export type CompiledFetcherFn<TResponse> = {
@@ -123,28 +118,51 @@ export type ConstrainValidator<TValidator> = unknown extends TValidator
       >
     >
 
-type ServerFnBase<
+export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
+  middleware: <const TNewMiddlewares = undefined>(
+    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
+  ) => ServerFnAfterMiddleware<TMethod, TNewMiddlewares, TValidator>
+}
+
+export interface ServerFnAfterMiddleware<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> extends ServerFnValidator<TMethod, TMiddlewares>,
+    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+
+export interface ServerFnValidator<TMethod extends Method, TMiddlewares> {
+  validator: <TValidator>(
+    validator: ConstrainValidator<TValidator>,
+  ) => ServerFnAfterValidator<TMethod, TMiddlewares, TValidator>
+}
+
+export interface ServerFnAfterValidator<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> extends ServerFnMiddleware<TMethod, TValidator>,
+    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+
+export interface ServerFnHandler<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> {
+  handler: <TNewResponse>(
+    fn?: ServerFn<TMethod, TMiddlewares, TValidator, TNewResponse>,
+  ) => Fetcher<TMiddlewares, TValidator, TNewResponse>
+}
+
+export interface ServerFnBuilder<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares = unknown,
   TValidator = unknown,
-> = {
+> extends ServerFnMiddleware<TMethod, TValidator>,
+    ServerFnValidator<TMethod, TMiddlewares>,
+    ServerFnHandler<TMethod, TMiddlewares, TValidator> {
   options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
-  middleware: <const TNewMiddlewares>(
-    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => Pick<
-    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TValidator>,
-    'validator' | 'handler'
-  >
-  validator: <TValidator>(
-    validator: ConstrainValidator<TValidator>,
-  ) => Pick<
-    ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator>,
-    'handler' | 'middleware'
-  >
-  handler: <TNewResponse>(
-    fn?: ServerFn<TMethod, TMiddlewares, TValidator, TNewResponse>,
-  ) => Fetcher<TMiddlewares, TValidator, TNewResponse>
 }
 
 export function createServerFn<
@@ -157,7 +175,7 @@ export function createServerFn<
     method: TMethod
   },
   __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
-): ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator> {
+): ServerFnBuilder<TMethod, TResponse, TMiddlewares, TValidator> {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
     TMethod,
     TResponse,

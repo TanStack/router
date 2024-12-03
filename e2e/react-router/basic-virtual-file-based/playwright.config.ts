@@ -8,17 +8,17 @@ export default defineConfig({
 
   reporter: [['line']],
 
-  use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3001/',
-  },
+  // use: {
+  //   /* Base URL to use in actions like `await page.goto('/')`. */
+  //   baseURL: 'http://localhost:3001/',
+  // },
 
-  webServer: {
-    command: 'pnpm run dev',
-    url: 'http://localhost:3001',
-    reuseExistingServer: !process.env.CI,
-    stdout: 'pipe',
-  },
+  // webServer: {
+  //   command: 'pnpm run dev',
+  //   url: 'http://localhost:3001',
+  //   reuseExistingServer: !process.env.CI,
+  //   stdout: 'pipe',
+  // },
 
   projects: [
     {

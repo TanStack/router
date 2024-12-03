@@ -84,12 +84,14 @@ export function Transitioner() {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
     }
   }, [previousIsLoading, router, isLoading])
@@ -100,12 +102,14 @@ export function Transitioner() {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onBeforeRouteMount',
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
     }
   }, [isPagePending, previousIsPagePending, router])
@@ -116,12 +120,14 @@ export function Transitioner() {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onResolved',
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
 
       router.__store.setState((s) => ({

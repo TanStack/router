@@ -56,7 +56,7 @@ export type TransformerStringify<T, TSerializable> = T extends TSerializable
 
 export type TransformerParse<T, TSerializable> = T extends TSerializable
   ? T
-  : T extends JSX.Element
+  : T extends React.JSX.Element
     ? ReadableStream
     : { [K in keyof T]: TransformerParse<T[K], TSerializable> }
 
