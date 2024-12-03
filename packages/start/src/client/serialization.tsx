@@ -341,7 +341,7 @@ function StreamChunks({
   __index = 0,
 }: {
   streamState: StreamState
-  children: (chunk: string | null) => JSX.Element
+  children: (chunk: string | null) => React.JSX.Element
   __index?: number
 }) {
   const promise = streamState.promises[__index]

@@ -152,6 +152,85 @@ test('createServerFn with middleware and validator', () => {
   expectTypeOf(fn).returns.resolves.toEqualTypeOf<'data'>()
 })
 
+test('createServerFn overrides properties', () => {
+  const middleware1 = createMiddleware()
+    .validator(
+      () =>
+        ({
+          input: 'a',
+        }) as const,
+    )
+    .client(({ context, next }) => {
+      expectTypeOf(context).toEqualTypeOf<undefined>()
+
+      const newContext = { context: 'a' } as const
+      return next({ sendContext: newContext, context: newContext })
+    })
+    .server(({ data, context, next }) => {
+      expectTypeOf(data).toEqualTypeOf<{ readonly input: 'a' }>()
+
+      expectTypeOf(context).toEqualTypeOf<{
+        readonly context: 'a'
+      }>()
+
+      const newContext = { context: 'b' } as const
+      return next({ sendContext: newContext, context: newContext })
+    })
+    .clientAfter(({ context, next }) => {
+      expectTypeOf(context).toEqualTypeOf<{
+        readonly context: 'b'
+      }>
+
+      const newContext = { context: 'c' } as const
+      return next({ context: newContext })
+    })
+
+  const middleware2 = createMiddleware()
+    .middleware([middleware1])
+    .validator(
+      () =>
+        ({
+          input: 'b',
+        }) as const,
+    )
+    .client(({ context, next }) => {
+      expectTypeOf(context).toEqualTypeOf<{ readonly context: 'a' }>()
+
+      const newContext = { context: 'aa' } as const
+
+      return next({ sendContext: newContext, context: newContext })
+    })
+    .server(({ context, next }) => {
+      expectTypeOf(context).toEqualTypeOf<{ readonly context: 'aa' }>()
+
+      const newContext = { context: 'bb' } as const
+
+      return next({ sendContext: newContext, context: newContext })
+    })
+    .clientAfter(({ context, next }) => {
+      expectTypeOf(context).toEqualTypeOf<{ readonly context: 'bb' }>()
+
+      const newContext = { context: 'cc' } as const
+
+      return next({ context: newContext })
+    })
+
+  createServerFn()
+    .middleware([middleware2])
+    .validator(
+      () =>
+        ({
+          input: 'c',
+        }) as const,
+    )
+    .handler(({ data, context }) => {
+      expectTypeOf(data).toEqualTypeOf<{
+        readonly input: 'c'
+      }>()
+      expectTypeOf(context).toEqualTypeOf<{ readonly context: 'bb' }>()
+    })
+})
+
 test('createServerFn where validator is a primitive', () => {
   createServerFn({ method: 'GET' })
     .validator(() => 'c' as const)

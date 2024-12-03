@@ -1,6 +1,10 @@
-import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
+import { test } from './utils'
 
-test('loads', async ({ page }) => {
-  await page.goto('http://localhost:3000')
+test.afterEach(async ({ setupApp }) => {
+  await setupApp.killProcess()
+})
+
+test('loads', async ({ page, setupApp }) => {
+  const { ADDR } = setupApp
+  await page.goto(ADDR + '/')
 })
