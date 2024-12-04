@@ -571,8 +571,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -653,8 +653,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@playwright/test':
         specifier: ^1.49.0
@@ -729,8 +729,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@playwright/test':
         specifier: ^1.49.0
@@ -793,8 +793,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/react':
         specifier: ^18.2.65
@@ -836,8 +836,8 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -894,8 +894,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@playwright/test':
         specifier: ^1.49.0
@@ -961,8 +961,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -2503,8 +2503,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -2567,8 +2567,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -2628,8 +2628,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -2677,8 +2677,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/react':
         specifier: ^18.2.65
@@ -2735,8 +2735,8 @@ importers:
         specifier: ^2.5.5
         version: 2.5.5
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -2817,8 +2817,8 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -2860,8 +2860,8 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -2906,8 +2906,8 @@ importers:
         specifier: ^1.0.0-beta.9
         version: 1.0.0-beta.9(typescript@5.7.2)
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -2958,8 +2958,8 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/react':
         specifier: ^18.3.5
@@ -3028,8 +3028,8 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -3123,8 +3123,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -3175,8 +3175,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       vinxi:
-        specifier: 0.4.3
-        version: 0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2)
+        specifier: 0.5.0
+        version: 0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -7064,14 +7064,6 @@ packages:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
 
-  crossws@0.2.4:
-    resolution: {integrity: sha512-DAxroI2uSOgUKLz00NX6A8U/8EE3SZHmIND+10jkVSaypvyt57J5JEOxAQOL6lQxyzi/wZbTIwssU1uy69h5Vg==}
-    peerDependencies:
-      uWebSockets.js: '*'
-    peerDependenciesMeta:
-      uWebSockets.js:
-        optional: true
-
   crossws@0.3.1:
     resolution: {integrity: sha512-HsZgeVYaG+b5zA+9PbIPGq4+J/CJynJuearykPsXx4V/eMhyQ5EDVg3Ak2FBZtVXCiOLu/U7IiwDHTr9MA+IKw==}
 
@@ -8016,9 +8008,6 @@ packages:
   gzip-size@7.0.0:
     resolution: {integrity: sha512-O1Ld7Dr+nqPnmGpdhzLmMTQ4vAsD+rHwMm1NLUmoUFFymBOMKxCCrtDxqdBRYXdeEPEi3SyoR4TizJLQrnKBNA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
-
-  h3@1.11.1:
-    resolution: {integrity: sha512-AbaH6IDnZN6nmbnJOH72y3c5Wwh9P97soSVdGSBbcDACRdkC0FEWf25pzx4f/NuOCK6quHmW18yF2Wx+G4Zi1A==}
 
   h3@1.13.0:
     resolution: {integrity: sha512-vFEAu/yf8UMUcB4s43OaDaigcqpQd14yanmOsn+NcRX3/guSKncyE2rOYhq8RIchgJrPSs/QiIddnTTR1ddiAg==}
@@ -10675,10 +10664,6 @@ packages:
 
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
-
-  vinxi@0.4.3:
-    resolution: {integrity: sha512-RgJz7RWftML5h/qfPsp3QKVc2FSlvV4+HevpE0yEY2j+PS/I2ULjoSsZDXaR8Ks2WYuFFDzQr8yrox7v8aqkng==}
-    hasBin: true
 
   vinxi@0.5.0:
     resolution: {integrity: sha512-uR6GuA3ik0pDoeFjBEowzvfm0SlpTQkVl3Tk95dklfW4crC76eOwEnOXow8tIevyHtRv9aJI3SmyePJrs9INXQ==}
@@ -14419,8 +14404,6 @@ snapshots:
       shebang-command: 2.0.0
       which: 2.0.2
 
-  crossws@0.2.4: {}
-
   crossws@0.3.1:
     dependencies:
       uncrypto: 0.1.3
@@ -15604,21 +15587,6 @@ snapshots:
   gzip-size@7.0.0:
     dependencies:
       duplexer: 0.1.2
-
-  h3@1.11.1:
-    dependencies:
-      cookie-es: 1.2.2
-      crossws: 0.2.4
-      defu: 6.1.4
-      destr: 2.0.3
-      iron-webcrypto: 1.2.1
-      ohash: 1.1.4
-      radix3: 1.1.2
-      ufo: 1.5.4
-      uncrypto: 0.1.3
-      unenv: 1.10.0
-    transitivePeerDependencies:
-      - uWebSockets.js
 
   h3@1.13.0:
     dependencies:
@@ -18383,76 +18351,6 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
       vfile-message: 4.0.2
-
-  vinxi@0.4.3(@types/node@22.10.1)(ioredis@5.4.1)(terser@5.36.0)(typescript@5.7.2):
-    dependencies:
-      '@babel/core': 7.26.0
-      '@babel/plugin-syntax-jsx': 7.25.9(@babel/core@7.26.0)
-      '@babel/plugin-syntax-typescript': 7.25.9(@babel/core@7.26.0)
-      '@types/micromatch': 4.0.9
-      '@vinxi/listhen': 1.5.6
-      boxen: 7.1.1
-      chokidar: 3.6.0
-      citty: 0.1.6
-      consola: 3.2.3
-      crossws: 0.2.4
-      dax-sh: 0.39.2
-      defu: 6.1.4
-      es-module-lexer: 1.5.4
-      esbuild: 0.20.2
-      fast-glob: 3.3.2
-      get-port-please: 3.1.2
-      h3: 1.11.1
-      hookable: 5.5.3
-      http-proxy: 1.18.1
-      micromatch: 4.0.8
-      nitropack: 2.10.4(typescript@5.7.2)
-      node-fetch-native: 1.6.4
-      path-to-regexp: 6.3.0
-      pathe: 1.1.2
-      radix3: 1.1.2
-      resolve: 1.22.8
-      serve-placeholder: 2.0.2
-      serve-static: 1.16.2
-      ufo: 1.5.4
-      unctx: 2.3.1
-      unenv: 1.10.0
-      unstorage: 1.13.1(ioredis@5.4.1)
-      vite: 5.4.11(@types/node@22.10.1)(terser@5.36.0)
-      zod: 3.23.8
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@electric-sql/pglite'
-      - '@libsql/client'
-      - '@netlify/blobs'
-      - '@planetscale/database'
-      - '@types/node'
-      - '@upstash/redis'
-      - '@vercel/kv'
-      - better-sqlite3
-      - debug
-      - drizzle-orm
-      - encoding
-      - idb-keyval
-      - ioredis
-      - less
-      - lightningcss
-      - mysql2
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - typescript
-      - uWebSockets.js
-      - xml2js
 
   vinxi@0.5.0(@types/node@22.10.1)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1):
     dependencies:
