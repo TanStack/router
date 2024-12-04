@@ -47,6 +47,8 @@ test('createServerFn with validator', () => {
   expectTypeOf(fn).parameter(0).toEqualTypeOf<{
     data: { input: string }
     headers?: HeadersInit
+    type?: 'static' | 'dynamic'
+    fullResponse?: boolean
   }>()
 })
 
@@ -147,9 +149,27 @@ test('createServerFn with middleware and validator', () => {
       readonly inputC: 'inputC'
     }
     headers?: HeadersInit
+    type?: 'static' | 'dynamic'
+    fullResponse?: boolean
   }>()
 
-  expectTypeOf(fn).returns.resolves.toEqualTypeOf<'data'>()
+  expectTypeOf(() =>
+    fn({
+      fullResponse: false,
+      data: { inputA: 'inputA', inputB: 'inputB', inputC: 'inputC' },
+    }),
+  ).returns.resolves.toEqualTypeOf<'data'>()
+
+  expectTypeOf(() =>
+    fn({
+      fullResponse: true,
+      data: { inputA: 'inputA', inputB: 'inputB', inputC: 'inputC' },
+    }),
+  ).returns.resolves.toEqualTypeOf<{
+    result: 'data'
+    context: undefined
+    error: unknown
+  }>()
 })
 
 test('createServerFn overrides properties', () => {
@@ -258,6 +278,8 @@ test('createServerFn where validator is optional if object is optional', () => {
     | {
         data?: 'c' | undefined
         headers?: HeadersInit
+        type?: 'static' | 'dynamic'
+        fullResponse?: boolean
       }
     | undefined
   >()
@@ -276,6 +298,8 @@ test('createServerFn where data is optional if there is no validator', () => {
     | {
         data?: undefined
         headers?: HeadersInit
+        type?: 'static' | 'dynamic'
+        fullResponse?: boolean
       }
     | undefined
   >()
