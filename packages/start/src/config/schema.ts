@@ -7,7 +7,10 @@ import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
 
 type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
 
-export function getUserViteConfig(config?: StartUserViteConfig) {
+export function getUserViteConfig(config?: StartUserViteConfig): {
+  userConfig: Omit<CustomizableConfig, 'plugins'>
+  plugins: CustomizableConfig['plugins']
+} {
   const { plugins, ...userConfig } =
     typeof config === 'function' ? config() : { ...config }
   return { plugins, userConfig }
