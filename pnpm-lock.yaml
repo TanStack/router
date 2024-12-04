@@ -3243,7 +3243,7 @@ importers:
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.2
-        version: 4.3.4(vite@5.4.11(@types/node@22.10.1)(terser@5.36.0))
+        version: 4.3.4(vite@6.0.2(@types/node@22.10.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))
       html-webpack-plugin:
         specifier: ^5.6.0
         version: 5.6.3(@rspack/core@1.1.5(@swc/helpers@0.5.15))(webpack@5.97.0)
@@ -3260,8 +3260,8 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
       vite:
-        specifier: ^5.4.8
-        version: 5.4.11(@types/node@22.10.1)(terser@5.36.0)
+        specifier: ^6.0.2
+        version: 6.0.2(@types/node@22.10.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1)
       webpack:
         specifier: ^5.94.0
         version: 5.97.0(@swc/core@1.9.3(@swc/helpers@0.5.15))(esbuild@0.24.0)(webpack-cli@5.1.4)
