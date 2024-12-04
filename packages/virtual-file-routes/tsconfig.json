@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ESNext",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "Bundler"
   },
   "include": ["src", "tests", "vite.config.ts"]
 }
