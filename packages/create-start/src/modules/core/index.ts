@@ -3,17 +3,17 @@
 // // - ide module - to set ide specific settings
 // // - packageJson module - create a packageJson file with up-to-date packages
 
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import createPackageJson from '../createPackageJson'
 import { createModule } from '../../module'
 import { ideModule } from '../ide'
-import addDependencies from '../addDependencies'
 import packageJson from '../../../package.json' assert { type: 'json' }
 import packageManager from '../packageManager'
 import { gitModule } from '../git'
 import { initHelpers } from '../../utils/helpers'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+import type addDependencies from '../addDependencies'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -29,8 +29,8 @@ const deps = async (
   Exclude<z.infer<typeof addDependencies._schema>['dependencies'], undefined>
 > => {
   const result = await Promise.all(
-    depsArray.map(async (d) => {
-      let version =
+    depsArray.map((d) => {
+      const version =
         packageJson['peerDependencies'][d] === 'workspace:^'
           ? 'latest' // Use latest in development
           : packageJson['peerDependencies'][d]

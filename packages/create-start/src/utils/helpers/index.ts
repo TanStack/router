@@ -3,10 +3,10 @@ import {
   createCopyTemplateFiles,
   createGetTemplateFilesThatWouldBeOverwritten,
 } from './copyTemplateFiles'
-import { Ctx } from './helperFactory'
 import { checkFileExists } from './base-utils'
 import { createReadTargetFile } from './readTargetFile'
 import { createWriteTargetFile } from './writeTargetFile'
+import type { Ctx } from './helperFactory'
 
 export const initHelpers = (modulePath: string, targetPath: string) => {
   const getFullModulePath = (relativePath: string) => {

@@ -1,10 +1,16 @@
-/** @type { import("eslint").Linter.Config[] } */
+import rootConfig from '../../eslint.config.js'
+
 export default [
+  ...rootConfig,
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
-    ignores: ['./templates/barebones/template/'],
-    parserOptions: {
-      project: './tsconfig.eslint.json',
+    files: ['src/templates/**/template/**/*', 'src/modules/**/template/**/*'],
+    rules: {
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        {
+          'ts-nocheck': false,
+        },
+      ],
     },
   },
 ]

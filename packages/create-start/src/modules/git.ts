@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { createModule } from '../module'
 import { select } from '@inquirer/prompts'
+import { createModule } from '../module'
 import { initGit } from '../utils/runCmd'
 
 export const gitModule = createModule(

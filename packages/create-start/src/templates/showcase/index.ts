@@ -1,8 +1,8 @@
+import { fileURLToPath } from 'node:url'
+import { dirname } from 'node:path'
 import { createModule } from '../../module'
 import { coreModule } from '../../modules/core'
 import { initHelpers } from '../../utils/helpers'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)

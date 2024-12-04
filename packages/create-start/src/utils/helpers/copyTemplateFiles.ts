@@ -1,16 +1,16 @@
-import invariant from 'tiny-invariant'
-import { checkFileExists, checkFolderExists } from './base-utils'
-import { helperFactory } from './helperFactory'
-import fastGlob from 'fast-glob'
 import {
   copyFile,
   mkdir,
-  readdir,
   readFile,
+  readdir,
   stat,
   writeFile,
 } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import invariant from 'tiny-invariant'
+import fastGlob from 'fast-glob'
+import { checkFileExists, checkFolderExists } from './base-utils'
+import { helperFactory } from './helperFactory'
 
 const DOT_PREFIX = '_dot_'
 
@@ -53,7 +53,7 @@ async function copy(src: string, dest: string) {
 }
 
 export const createGetTemplateFilesThatWouldBeOverwritten = helperFactory(
-  ({ ctx, modulePath, targetPath }) =>
+  ({ ctx }) =>
     async ({
       file,
       templateFolder,
@@ -65,7 +65,7 @@ export const createGetTemplateFilesThatWouldBeOverwritten = helperFactory(
       targetFolder: string
       overwrite: boolean
     }) => {
-      const overwrittenFiles: string[] = []
+      const overwrittenFiles: Array<string> = []
 
       if (overwrite) []
 
@@ -91,7 +91,7 @@ export const createGetTemplateFilesThatWouldBeOverwritten = helperFactory(
 )
 
 export const createCopyTemplateFiles = helperFactory(
-  ({ ctx, modulePath, targetPath }) =>
+  ({ ctx }) =>
     async ({
       file,
       templateFolder,

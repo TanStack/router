@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { createModule } from '../module'
-import { createOption, InvalidArgumentError } from '@commander-js/extra-typings'
+import { InvalidArgumentError, createOption } from '@commander-js/extra-typings'
 import { select } from '@inquirer/prompts'
+import { createModule } from '../module'
 import { SUPPORTED_PACKAGE_MANAGERS } from '../constants'
 import { getPackageManager } from '../utils/getPackageManager'
 import { install } from '../utils/runPackageManagerCommand'
@@ -28,13 +28,13 @@ export const packageManagerOption = createOption(
 })
 
 const packageManager = createModule(schema)
-  .initFn(async ({ cfg }) => {
+  .initFn(({ cfg }) => {
     return {
       ...cfg,
       packageManager: cfg.packageManager ?? getPackageManager(),
     }
   })
-  .promptFn(async ({ state, targetPath }) => {
+  .promptFn(async ({ state }) => {
     const packageManager =
       state.packageManager != undefined
         ? state.packageManager

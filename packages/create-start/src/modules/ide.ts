@@ -1,8 +1,8 @@
-import { createOption, InvalidArgumentError } from '@commander-js/extra-typings'
+import { InvalidArgumentError, createOption } from '@commander-js/extra-typings'
 import { z } from 'zod'
+import { select } from '@inquirer/prompts'
 import { createModule } from '../module'
 import { vsCodeModule } from './vscode'
-import { select } from '@inquirer/prompts'
 
 const schema = z.object({
   ide: z.enum(['vscode', 'cursor', 'other']),
@@ -39,7 +39,7 @@ export const ideModule = createModule(schema)
     }
   })
   .validateFn(async ({ state, targetPath }) => {
-    const issues: string[] = []
+    const issues: Array<string> = []
 
     if (state.ide === 'vscode') {
       const issuesVsCode = await vsCodeModule._validate({ state, targetPath })

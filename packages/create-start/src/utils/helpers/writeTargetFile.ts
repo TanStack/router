@@ -1,11 +1,11 @@
-import invariant from 'tiny-invariant'
-import { helperFactory } from './helperFactory'
 import { resolve } from 'node:path'
 import { writeFile } from 'node:fs/promises'
+import invariant from 'tiny-invariant'
+import { helperFactory } from './helperFactory'
 import { checkFileExists } from './base-utils'
 
 export const createWriteTargetFile = helperFactory(
-  ({ ctx, modulePath, targetPath }) =>
+  ({ targetPath }) =>
     async (
       relativePath: string,
       content: string,

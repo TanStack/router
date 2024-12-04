@@ -2,15 +2,14 @@ import { Command, createOption } from '@commander-js/extra-typings'
 import { packageManagerOption } from './modules/packageManager'
 import { logo } from './logo'
 import {
-  DEFAULT_TEMPLATE,
   scaffoldTemplate,
-  TEMPLATE_NAME,
   templateCliOption,
   templatePrompt,
 } from './templates'
 import { getAbsolutePath, newProjectDirectoryPrompt } from './directory'
 import { packageNameCliOption } from './modules/createPackageJson'
 import { ideCliOption } from './modules/ide'
+import type { TEMPLATE_NAME } from './templates'
 
 const options = {
   template: templateCliOption,
@@ -85,7 +84,7 @@ const program = addNewProjectOptions(
     })
   })
 
-export async function runCli(argv: string[]) {
+export async function runCli(argv: Array<string>) {
   if (!argv.includes('--hide-logo')) {
     logo()
   }

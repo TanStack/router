@@ -5,6 +5,5 @@
     "module": "ESNext"
   },
   "moduleResolution": "Bundler",
-  "include": ["src", "tests", "vite.config.ts", "eslint.config.ts", "*.ts"],
-  "exclude": ["src/templates/barebones/template"]
+  "include": ["src", "tests", "build.config.ts", "playwright.config.ts"]
 }

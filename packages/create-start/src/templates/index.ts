@@ -1,10 +1,10 @@
 import { select } from '@inquirer/prompts'
-import { barebonesTemplate } from './barebones'
-import { createOption, InvalidArgumentError } from '@commander-js/extra-typings'
+import { InvalidArgumentError, createOption } from '@commander-js/extra-typings'
 import invariant from 'tiny-invariant'
-import { z } from 'zod'
-import { coreModule } from '../modules/core'
+import { barebonesTemplate } from './barebones'
 import { showcaseTemplate } from './showcase'
+import type { coreModule } from '../modules/core'
+import type { z } from 'zod'
 
 const templates = [
   {

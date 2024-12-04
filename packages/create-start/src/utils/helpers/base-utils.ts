@@ -1,4 +1,3 @@
-import path, { resolve } from 'node:path'
 import fs, { access, readdir } from 'node:fs/promises'
 
 export const checkFileExists = async (path: string): Promise<boolean> => {

@@ -1,8 +1,8 @@
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import { initHelpers } from '../../utils/helpers'
 import { createModule } from '../../module'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)

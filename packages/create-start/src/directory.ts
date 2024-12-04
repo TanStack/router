@@ -1,7 +1,7 @@
-import { createOption, InvalidArgumentError } from '@commander-js/extra-typings'
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { input } from '@inquirer/prompts'
+import { createOption } from '@commander-js/extra-typings'
+import { InvalidArgumentError, input } from '@inquirer/prompts'
 import {
   checkFolderExists,
   checkFolderIsEmpty,
@@ -38,7 +38,7 @@ const generateDefaultName = async () => {
   let folderName = DEFAULT_NAME
   let absolutePath = getAbsolutePath(folderName)
   let pathExists = await doesPathExist(absolutePath)
-  let counter: number = 1
+  let counter = 1
   while (pathExists) {
     folderName = `${DEFAULT_NAME}-${counter}`
     absolutePath = getAbsolutePath(folderName)
@@ -53,7 +53,7 @@ export const newProjectDirectoryCliOption = createOption(
   'The directory to scaffold your app in',
 ).argParser(async (directory) => {
   const absolutePath = getAbsolutePath(directory)
-  const pathExists = doesPathExist(absolutePath)
+  const pathExists = await doesPathExist(absolutePath)
   if (!pathExists) return directory
   const folderEmpty = await isFolderEmpty(absolutePath)
   if (folderEmpty) return directory

@@ -1,9 +1,9 @@
+import { fileURLToPath } from 'node:url'
+import { dirname } from 'node:path'
+import invariant from 'tiny-invariant'
 import { z } from 'zod'
 import { initHelpers } from '../utils/helpers'
-import invariant from 'tiny-invariant'
 import { createModule } from '../module'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)

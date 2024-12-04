@@ -1,14 +1,14 @@
+import { basename, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
-import { initHelpers } from '../utils/helpers'
-import addDependencies from './addDependencies'
-import { createModule } from '../module'
 import { input } from '@inquirer/prompts'
-import { basename, resolve } from 'path'
-import addScripts from './addScripts'
-import { createOption, InvalidArgumentError } from '@commander-js/extra-typings'
+import { InvalidArgumentError, createOption } from '@commander-js/extra-typings'
+import { initHelpers } from '../utils/helpers'
+import { createModule } from '../module'
 import { validateProjectName } from '../utils/validateProjectName'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+import addDependencies from './addDependencies'
+
+import addScripts from './addScripts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -18,7 +18,7 @@ export const packageNameCliOption = createOption(
   'The name to use in the package.json',
 ).argParser((name) => {
   const validation = validateProjectName(name)
-  if (!validation) {
+  if (!validation.valid) {
     throw new InvalidArgumentError(`The project name ${name} is invalid`)
   }
   return name

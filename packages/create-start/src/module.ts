@@ -1,11 +1,12 @@
-import { resolve } from 'node:path'
-import { z, ZodObject } from 'zod'
+import { mkdir } from 'node:fs/promises'
+import yoctoSpinner from 'yocto-spinner'
 import {
   checkFolderExists,
   checkFolderIsEmpty,
 } from './utils/helpers/base-utils'
-import yoctoSpinner, { Spinner } from 'yocto-spinner'
-import { mkdir } from 'fs/promises'
+
+import type { ZodObject, z } from 'zod'
+import type { Spinner } from 'yocto-spinner'
 
 type Schema = ZodObject<any, any, any>
 type State<TSchema extends Schema> = Partial<z.infer<TSchema>>
@@ -13,32 +14,32 @@ type State<TSchema extends Schema> = Partial<z.infer<TSchema>>
 type InitFn<TSchema extends ZodObject<any, any, any>> = (ctx: {
   cfg: State<TSchema>
   targetPath: string
-}) => Promise<State<TSchema>>
+}) => Promise<State<TSchema>> | State<TSchema>
 
 type PromptFn<TSchema extends Schema> = (ctx: {
   state: State<TSchema>
   targetPath: string
-}) => Promise<State<TSchema>>
+}) => Promise<State<TSchema>> | State<TSchema>
 
 type ValidateFn<TSchema extends Schema> = (ctx: {
   state: z.infer<TSchema>
   targetPath: string
-}) => Promise<string[]>
+}) => Promise<Array<string>> | Array<string>
 
 type ApplyFn<TSchema extends Schema> = (ctx: {
   state: z.infer<TSchema>
   targetPath: string
 }) => Promise<void>
 
-type SpinnerConfigFn<TSchema extends Schema> = (ctx: {
-  state: z.infer<TSchema>
-}) => SpinnerOptions | undefined
-
 type SpinnerOptions = {
   success: string
   error: string
   inProgress: string
 }
+
+type SpinnerConfigFn<TSchema extends Schema> = (ctx: {
+  state: z.infer<TSchema>
+}) => SpinnerOptions | undefined
 
 export class Module<
   TSchema extends Schema,
@@ -259,7 +260,7 @@ export class Module<
   }: {
     state: z.infer<TSchema>
     targetPath: string
-  }): Promise<string[]> {
+  }): Promise<Array<string>> {
     const parsed = this._schema.safeParse(state)
     if (!parsed.success) {
       return parsed.error.issues.map((i) => `${i.path} => ${i.message}`)
@@ -291,7 +292,7 @@ const runWithSpinner = async ({
 
   if (spinnerOptions != undefined) {
     spinner = yoctoSpinner({
-      text: spinnerOptions?.inProgress,
+      text: spinnerOptions.inProgress,
     }).start()
   }
 
