@@ -28,7 +28,9 @@ import { Route as aImport } from './routes/a'
 
 // Create Virtual Routes
 
-const Import = createFileRoute('/_first/_second-layout/route-without-file')()
+const FirstSecondLayoutRouteWithoutFileImport = createFileRoute(
+  '/_first/_second-layout/route-without-file',
+)()
 
 // Create/Update Routes
 
@@ -90,22 +92,23 @@ const ClassicHelloUniverseRoute = ClassicHelloUniverseImport.update({
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 
-const Route = Import.update({
-  id: '/route-without-file',
-  path: '/route-without-file',
-  getParentRoute: () => layoutSecondLayoutRoute,
-} as any)
+const FirstSecondLayoutRouteWithoutFileRoute =
+  FirstSecondLayoutRouteWithoutFileImport.update({
+    id: '/route-without-file',
+    path: '/route-without-file',
+    getParentRoute: () => layoutSecondLayoutRoute,
+  } as any)
 
 const bRoute = bImport.update({
   id: '/layout-b',
   path: '/layout-b',
-  getParentRoute: () => Route,
+  getParentRoute: () => FirstSecondLayoutRouteWithoutFileRoute,
 } as any)
 
 const aRoute = aImport.update({
   id: '/layout-a',
   path: '/layout-a',
-  getParentRoute: () => Route,
+  getParentRoute: () => FirstSecondLayoutRouteWithoutFileRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -165,7 +168,7 @@ declare module '@tanstack/react-router' {
       id: '/_first/_second-layout/route-without-file'
       path: '/route-without-file'
       fullPath: '/route-without-file'
-      preLoaderRoute: typeof Import
+      preLoaderRoute: typeof FirstSecondLayoutRouteWithoutFileImport
       parentRoute: typeof layoutSecondLayoutImport
     }
     '/classic/hello/universe': {
@@ -194,38 +197,43 @@ declare module '@tanstack/react-router' {
       path: '/layout-a'
       fullPath: '/route-without-file/layout-a'
       preLoaderRoute: typeof aImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof FirstSecondLayoutRouteWithoutFileImport
     }
     '/_first/_second-layout/route-without-file/layout-b': {
       id: '/_first/_second-layout/route-without-file/layout-b'
       path: '/layout-b'
       fullPath: '/route-without-file/layout-b'
       preLoaderRoute: typeof bImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof FirstSecondLayoutRouteWithoutFileImport
     }
   }
 }
 
 // Create and export the route tree
 
-interface RouteChildren {
+interface FirstSecondLayoutRouteWithoutFileRouteChildren {
   aRoute: typeof aRoute
   bRoute: typeof bRoute
 }
 
-const RouteChildren: RouteChildren = {
-  aRoute: aRoute,
-  bRoute: bRoute,
-}
+const FirstSecondLayoutRouteWithoutFileRouteChildren: FirstSecondLayoutRouteWithoutFileRouteChildren =
+  {
+    aRoute: aRoute,
+    bRoute: bRoute,
+  }
 
-const RouteWithChildren = Route._addFileChildren(RouteChildren)
+const FirstSecondLayoutRouteWithoutFileRouteWithChildren =
+  FirstSecondLayoutRouteWithoutFileRoute._addFileChildren(
+    FirstSecondLayoutRouteWithoutFileRouteChildren,
+  )
 
 interface layoutSecondLayoutRouteChildren {
-  Route: typeof RouteWithChildren
+  FirstSecondLayoutRouteWithoutFileRoute: typeof FirstSecondLayoutRouteWithoutFileRouteWithChildren
 }
 
 const layoutSecondLayoutRouteChildren: layoutSecondLayoutRouteChildren = {
-  Route: RouteWithChildren,
+  FirstSecondLayoutRouteWithoutFileRoute:
+    FirstSecondLayoutRouteWithoutFileRouteWithChildren,
 }
 
 const layoutSecondLayoutRouteWithChildren =
@@ -278,7 +286,7 @@ export interface FileRoutesByFullPath {
   '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
   '/posts/': typeof postsPostsHomeRoute
   '/posts/$postId': typeof postsPostsDetailRoute
-  '/route-without-file': typeof RouteWithChildren
+  '/route-without-file': typeof FirstSecondLayoutRouteWithoutFileRouteWithChildren
   '/classic/hello/universe': typeof ClassicHelloUniverseRoute
   '/classic/hello/world': typeof ClassicHelloWorldRoute
   '/classic/hello/': typeof ClassicHelloIndexRoute
@@ -291,7 +299,7 @@ export interface FileRoutesByTo {
   '': typeof layoutSecondLayoutRouteWithChildren
   '/posts': typeof postsPostsHomeRoute
   '/posts/$postId': typeof postsPostsDetailRoute
-  '/route-without-file': typeof RouteWithChildren
+  '/route-without-file': typeof FirstSecondLayoutRouteWithoutFileRouteWithChildren
   '/classic/hello/universe': typeof ClassicHelloUniverseRoute
   '/classic/hello/world': typeof ClassicHelloWorldRoute
   '/classic/hello': typeof ClassicHelloIndexRoute
@@ -308,7 +316,7 @@ export interface FileRoutesById {
   '/posts/': typeof postsPostsHomeRoute
   '/_first/_second-layout': typeof layoutSecondLayoutRouteWithChildren
   '/posts/$postId': typeof postsPostsDetailRoute
-  '/_first/_second-layout/route-without-file': typeof RouteWithChildren
+  '/_first/_second-layout/route-without-file': typeof FirstSecondLayoutRouteWithoutFileRouteWithChildren
   '/classic/hello/universe': typeof ClassicHelloUniverseRoute
   '/classic/hello/world': typeof ClassicHelloWorldRoute
   '/classic/hello/': typeof ClassicHelloIndexRoute

@@ -20,7 +20,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
     "@tanstack/router-devtools": "^1.85.5",
-    "vite": "^5.4.11",
+    "vite": "^6.0.2",
     "vite-plugin-dts": "^4.3.0"
   },
   "nx": {
