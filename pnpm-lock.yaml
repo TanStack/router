@@ -3510,8 +3510,8 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0
       unplugin:
-        specifier: ^1.12.2
-        version: 1.16.0
+        specifier: 2.0.0-beta.2
+        version: 2.0.0-beta.2
       vite:
         specifier: '>=5.0.0'
         version: 5.4.11(@types/node@22.10.1)(terser@5.36.0)
@@ -10526,6 +10526,10 @@ packages:
   unplugin@1.16.0:
     resolution: {integrity: sha512-5liCNPuJW8dqh3+DM6uNM2EI3MLLpCKp/KY+9pB5M2S2SR2qvvDHhKgBOaTWEbZTAws3CXfB0rKTIolWKL05VQ==}
     engines: {node: '>=14.0.0'}
+
+  unplugin@2.0.0-beta.2:
+    resolution: {integrity: sha512-gWIFAjTFKFsHI9xSWQGhhoLkAqMoG/JzVZ0T4W0VeC02kitb8zIdiTjUBJXX5tCt0bdfr/0cJaOf2S7ujuVqtw==}
+    engines: {node: '>=18.12.0'}
 
   unstorage@1.13.1:
     resolution: {integrity: sha512-ELexQHUrG05QVIM/iUeQNdl9FXDZhqLJ4yP59fnmn2jGUh0TEulwOgov1ubOb3Gt2ZGK/VMchJwPDNVEGWQpRg==}
@@ -18241,6 +18245,11 @@ snapshots:
   unpipe@1.0.0: {}
 
   unplugin@1.16.0:
+    dependencies:
+      acorn: 8.14.0
+      webpack-virtual-modules: 0.6.2
+
+  unplugin@2.0.0-beta.2:
     dependencies:
       acorn: 8.14.0
       webpack-virtual-modules: 0.6.2
