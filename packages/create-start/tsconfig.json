@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext"
+  },
+  "moduleResolution": "Bundler",
+  "include": ["src", "tests", "vite.config.ts", "eslint.config.ts", "*.ts"],
+  "exclude": ["src/templates/barebones/template"]
+}
