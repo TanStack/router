@@ -104,6 +104,7 @@ type ServerFnBaseOptions<
   serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
   functionId: string
+  static?: boolean
 }
 
 export type ConstrainValidator<TValidator> = unknown extends TValidator
@@ -173,7 +174,8 @@ export function createServerFn<
   TValidator = undefined,
 >(
   options?: {
-    method: TMethod
+    method?: TMethod
+    static?: boolean
   },
   __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
 ): ServerFnBuilder<TMethod, TResponse, TMiddlewares, TValidator> {
@@ -220,7 +222,7 @@ export function createServerFn<
       })
 
       invariant(
-        extractedFn.url,
+        resolvedOptions.static ? true : extractedFn.url,
         `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/start-vite-plugin ?`,
       )
 
@@ -235,8 +237,7 @@ export function createServerFn<
         async (opts?: CompiledFetcherFnOptions) => {
           // Start by executing the client-side middleware chain
           return executeMiddleware(resolvedMiddleware, 'client', {
-            ...extractedFn,
-            method: resolvedOptions.method,
+            ...resolvedOptions,
             data: opts?.data as any,
             headers: opts?.headers,
             context: Object.assign({}, extractedFn),
@@ -247,18 +248,87 @@ export function createServerFn<
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: (opts: any) => {
-            const parsedOpts =
-              opts instanceof FormData ? extractFormDataContext(opts) : opts
+          __executeServer: async (opts: any) => {
+            if (process.env.ROUTER !== 'client') {
+              const parsedOpts =
+                opts instanceof FormData ? extractFormDataContext(opts) : opts
 
-            return executeMiddleware(resolvedMiddleware, 'server', {
-              ...extractedFn,
-              ...parsedOpts,
-            }).then((d) => ({
-              // Only send the result and sendContext back to the client
-              result: d.result,
-              context: d.sendContext,
-            }))
+              const ctx = {
+                ...resolvedOptions,
+                ...parsedOpts,
+              }
+
+              const run = async () =>
+                executeMiddleware(resolvedMiddleware, 'server', ctx).then(
+                  (d) => ({
+                    // Only send the result and sendContext back to the client
+                    result: d.result,
+                    context: d.sendContext,
+                  }),
+                )
+
+              if (ctx.static) {
+                const hash = jsonToFilenameSafeString(ctx.data)
+                const url = getStaticCacheUrl(ctx, hash)
+                const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
+
+                // Use fs instead of fetch to read from filesystem
+                const fs = await import('node:fs/promises')
+                const path = await import('node:path')
+                const filePath = path.join(publicUrl, url)
+
+                const [cachedResult, readError] = await fs
+                  .readFile(filePath, 'utf-8')
+                  .then((c) => [
+                    defaultTransformer.parse(c) as {
+                      ctx: unknown
+                      error: any
+                    },
+                    null,
+                  ])
+                  .catch((e) => [null, e])
+
+                if (readError) {
+                  if (readError.code !== 'ENOENT') {
+                    throw readError
+                  }
+
+                  // If file doesn't exist or other error,
+                  // execute the server function and store the result
+                  const [ctx, error] = await run()
+                    .then((d) => [d, null])
+                    .catch((e) => [null, e])
+
+                  // Ensure the directory exists
+                  await fs.mkdir(path.dirname(filePath), { recursive: true })
+
+                  // Store the result with fs
+                  await fs.writeFile(
+                    filePath,
+                    defaultTransformer.stringify({
+                      ctx,
+                      error,
+                    }),
+                  )
+
+                  if (error) {
+                    throw error
+                  }
+
+                  return ctx
+                }
+
+                if (cachedResult.error) {
+                  throw cachedResult.error
+                }
+
+                return cachedResult.ctx
+              }
+
+              return run()
+            }
+
+            return undefined
           },
         },
       ) as any
@@ -339,10 +409,7 @@ const applyMiddleware = (
   nextFn: (ctx: MiddlewareOptions) => Promise<MiddlewareResult>,
 ) => {
   return middlewareFn({
-    data: mCtx.data,
-    context: mCtx.context,
-    sendContext: mCtx.sendContext,
-    method: mCtx.method,
+    ...mCtx,
     next: ((userResult: any) => {
       // Take the user provided context
       // and merge it with the current context
@@ -360,8 +427,7 @@ const applyMiddleware = (
 
       // Return the next middleware
       return nextFn({
-        method: mCtx.method,
-        data: mCtx.data,
+        ...mCtx,
         context,
         sendContext,
         headers,
@@ -370,7 +436,7 @@ const applyMiddleware = (
         method: Method
       })
     }) as any,
-  })
+  } as any)
 }
 
 function execValidator(validator: AnyValidator, input: unknown): unknown {
@@ -440,11 +506,11 @@ async function executeMiddleware(
           // If there is a clientAfter function and we are on the client
           if (env === 'client' && nextMiddleware.options.clientAfter) {
             // We need to await the next middleware and get the result
-            const result = await next(userCtx)
+            const resultCtx = await next(userCtx)
             // Then we can execute the clientAfter function
             return applyMiddleware(
               nextMiddleware.options.clientAfter,
-              result as any,
+              resultCtx as any,
               // Identity, because there "next" is just returning
               (d: any) => d,
             ) as any
@@ -467,6 +533,16 @@ async function executeMiddleware(
   })
 }
 
+function getStaticCacheUrl(
+  options: ServerFnBaseOptions<any, any, any, any>,
+  hash: string,
+) {
+  return `/__tsr/staticServerFnCache/${options.filename}__${options.functionId}__${hash}.json`
+}
+
+const staticClientCache =
+  typeof document !== 'undefined' ? new Map<string, any>() : null
+
 function serverFnBaseToMiddleware(
   options: ServerFnBaseOptions<any, any, any, any>,
 ): AnyMiddleware {
@@ -476,24 +552,77 @@ function serverFnBaseToMiddleware(
       validator: options.validator,
       validateClient: options.validateClient,
       client: async ({ next, sendContext, ...ctx }) => {
-        // Execute the extracted function
-        // but not before serializing the context
-        const res = await options.extractedFn?.({
+        const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
-        } as any)
+        } as any
+
+        if (
+          options.static &&
+          process.env.NODE_ENV === 'production' &&
+          typeof document !== 'undefined'
+        ) {
+          const hash = jsonToFilenameSafeString(payload.data)
+          const url = getStaticCacheUrl(payload, hash)
+          let result: any = staticClientCache?.get(url)
+
+          if (!result) {
+            result = await fetch(url, {
+              method: 'GET',
+            })
+              .then((r) => r.text())
+              .then((d) => defaultTransformer.parse(d))
+
+            staticClientCache?.set(url, result)
+          }
+
+          if (result.error) {
+            throw result.error
+          }
+
+          return next(result.ctx)
+        }
+
+        // Execute the extracted function
+        // but not before serializing the context
+        const res = await options.extractedFn?.(payload)
 
         return next(res)
       },
       server: async ({ next, ...ctx }) => {
-        // Execute the server function
-        const result = await options.serverFn?.(ctx as any)
+        if (process.env.ROUTER !== 'client') {
+          // Execute the server function
+          const result = await options.serverFn?.(ctx as any)
 
-        return next({
-          result,
-        } as any)
+          return next({
+            result,
+          } as any)
+        }
+
+        throw new Error('Server function called from the client!')
       },
     },
   }
+}
+
+function jsonToFilenameSafeString(json: any) {
+  // Custom replacer to sort keys
+  const sortedKeysReplacer = (key: string, value: any) =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.keys(value)
+          .sort()
+          .reduce((acc: any, curr: string) => {
+            acc[curr] = value[curr]
+            return acc
+          }, {})
+      : value
+
+  // Convert JSON to string with sorted keys
+  const jsonString = JSON.stringify(json ?? '', sortedKeysReplacer)
+
+  // Replace characters invalid in filenames
+  return jsonString
+    .replace(/[/\\?%*:|"<>]/g, '-') // Replace invalid characters with a dash
+    .replace(/\s+/g, '_') // Optionally replace whitespace with underscores
 }
