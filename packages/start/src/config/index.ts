@@ -18,6 +18,7 @@ import { config } from 'vinxi/plugins/config'
 import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
+import { createNitro } from 'nitropack'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
@@ -32,6 +33,7 @@ import type {
   TanStackStartOutputConfig,
 } from './schema.js'
 import type {
+  RouterSchemaInput,
   App as VinxiApp,
   RouterSchemaInput as VinxiRouterSchemaInput,
 } from 'vinxi'
@@ -88,9 +90,9 @@ function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
   return ssrOptions
 }
 
-export function defineConfig(
+export async function defineConfig(
   inlineConfig: TanStackStartInputConfig = {},
-): VinxiApp {
+): Promise<VinxiApp> {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
   const { preset: configDeploymentPreset, ...serverOptions } =
@@ -122,6 +124,17 @@ export function defineConfig(
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
 
   const apiEntryExists = existsSync(apiEntry)
+
+  const publicDir = opts.routers?.public?.dir || './public'
+  const publicBase = opts.routers?.public?.base || '/'
+
+  // Create a dummy nitro app to get the resolved public output path
+  const dummyNitroApp = await createNitro({
+    preset: deploymentPreset,
+  })
+
+  const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
+  await dummyNitroApp.close()
 
   let vinxiApp = createApp({
     server: {
@@ -162,10 +175,15 @@ export function defineConfig(
               define: {
                 ...(viteConfig.userConfig.define || {}),
                 ...(clientViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('ROUTER_BASE', 'client'),
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
               },
             }),
             ...(viteConfig.plugins || []),
@@ -183,52 +201,57 @@ export function defineConfig(
           ]
         },
       }),
-      withStartPlugins(
-        opts,
-        'ssr',
-      )({
-        name: 'ssr',
-        type: 'http',
-        target: 'server',
-        handler: ssrEntry,
-        middleware: ssrMiddleware,
+        withStartPlugins(
+          opts,
+          'ssr',
+        )({
+          name: 'ssr',
+          type: 'http',
+          target: 'server',
+          handler: ssrEntry,
+          middleware: ssrMiddleware,
         plugins: () => {
-          const viteConfig = getUserViteConfig(opts.vite)
-          const ssrViteConfig = getUserViteConfig(opts.routers?.ssr?.vite)
+            const viteConfig = getUserViteConfig(opts.vite)
+            const ssrViteConfig = getUserViteConfig(opts.routers?.ssr?.vite)
 
-          return [
-            config('tss-vite-config-ssr', {
-              ...viteConfig.userConfig,
-              ...ssrViteConfig.userConfig,
-              define: {
-                ...(viteConfig.userConfig.define || {}),
-                ...(ssrViteConfig.userConfig.define || {}),
-                ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
-                ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
-                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
-                ...injectDefineEnv('TSS_API_BASE', apiBase),
-              },
-            }),
-            tsrRoutesManifest({
-              tsrConfig,
-              clientBase,
-            }),
-            ...(getUserViteConfig(opts.vite).plugins || []),
-            ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
-            serverTransform({
-              runtime: '@tanstack/start/server-runtime',
-            }),
-            config('start-ssr', {
-              ssr: {
-                external: ['@vinxi/react-server-dom/client'],
-              },
-            }),
-          ]
-        },
-        link: {
-          client: 'client',
-        },
-      }),
+            return [
+              config('tss-vite-config-ssr', {
+                ...viteConfig.userConfig,
+                ...ssrViteConfig.userConfig,
+                define: {
+                  ...(viteConfig.userConfig.define || {}),
+                  ...(ssrViteConfig.userConfig.define || {}),
+                  ...injectDefineEnv('ROUTER_BASE', 'ssr'),
+                  ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+                  ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+                  ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+                  ...injectDefineEnv('TSS_API_BASE', apiBase),
+                  ...injectDefineEnv(
+                    'TSS_OUTPUT_PUBLIC_DIR',
+                    nitroOutputPublicDir,
+                  ),
+                },
+              }),
+              tsrRoutesManifest({
+                tsrConfig,
+                clientBase,
+              }),
+              ...(getUserViteConfig(opts.vite).plugins || []),
+              ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
+              serverTransform({
+                runtime: '@tanstack/start/server-runtime',
+              }),
+              config('start-ssr', {
+                ssr: {
+                  external: ['@vinxi/react-server-dom/client'],
+                },
+              }),
+            ]
+          },
+          link: {
+            client: 'client',
+          },
+        }),
       withStartPlugins(
         opts,
         'server',
@@ -252,10 +275,15 @@ export function defineConfig(
               define: {
                 ...(viteConfig.userConfig.define || {}),
                 ...(serverViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('ROUTER_BASE', 'server'),
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
               },
             }),
             serverFunctions.server({
@@ -317,10 +345,12 @@ export function defineConfig(
             define: {
               ...(viteConfig.userConfig.define || {}),
               ...(apiViteConfig.userConfig.define || {}),
+              ...injectDefineEnv('ROUTER_BASE', 'api'),
               ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
               ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
               ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
               ...injectDefineEnv('TSS_API_BASE', apiBase),
+              ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
             },
           }),
           TanStackRouterVite({
