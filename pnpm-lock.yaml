@@ -3513,7 +3513,7 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2
       vite:
-        specifier: '>=5.0.0'
+        specifier: '>=5.0.0 || >=6.0.0'
         version: 6.0.2(@types/node@22.10.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1)
       webpack:
         specifier: '>=5.92.0'
