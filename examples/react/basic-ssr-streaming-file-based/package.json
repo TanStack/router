@@ -27,13 +27,13 @@
     "@rollup/plugin-babel": "^6.0.4",
     "@types/express": "^4.17.21",
     "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "^5.7.2",
     "compression": "^1.7.5",
     "express": "^4.21.1",
     "isbot": "^5.1.17",
     "node-fetch": "^3.3.2",
     "serve-static": "^1.16.2",
-    "vite": "^5.4.11",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.2",
     "vite-plugin-babel": "^1.2.0"
   }
 }
