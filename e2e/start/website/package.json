@@ -18,7 +18,7 @@
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.5",
-    "vinxi": "0.4.3",
+    "vinxi": "0.5.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
