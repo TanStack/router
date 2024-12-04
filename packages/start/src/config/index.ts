@@ -37,6 +37,7 @@ import type {
 } from 'vinxi'
 import type { Manifest } from '@tanstack/react-router'
 import type * as vite from 'vite'
+import type { CustomizableConfig as CustomizableViteConfig } from 'vinxi/dist/types/lib/vite-dev'
 
 export type {
   TanStackStartInputConfig,
@@ -58,9 +59,13 @@ function setTsrDefaults(config: TanStackStartOutputConfig['tsr']) {
   }
 }
 
-function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
-  let ssrOptions: vite.SSROptions = {}
-  let noExternal: vite.SSROptions['noExternal'] = []
+type ViteSSROptions = NonNullable<CustomizableViteConfig['ssr']>
+
+function mergeSsrOptions(
+  options: Array<ViteSSROptions | undefined>,
+): ViteSSROptions {
+  let ssrOptions: ViteSSROptions = {}
+  let noExternal: ViteSSROptions['noExternal'] = []
   for (const option of options) {
     if (!option) {
       continue
