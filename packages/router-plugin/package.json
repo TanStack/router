@@ -119,7 +119,7 @@
     "@types/babel__traverse": "^7.20.6",
     "babel-dead-code-elimination": "^1.0.6",
     "chokidar": "^3.6.0",
-    "unplugin": "^1.12.2",
+    "unplugin": "2.0.0-beta.2",
     "zod": "^3.23.8"
   },
   "peerDependencies": {
