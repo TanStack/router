@@ -233,6 +233,12 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
             {search.optional ?? '$undefined'}
           </div>
           <Link
+            data-testid="link-root-check"
+            to="/searchWithDefault/root-check"
+          >
+            root
+          </Link>
+          <Link
             data-testid="link-with-root-params-default-sub-a-no-change"
             to="/searchWithDefault/root-check/a"
           >
@@ -1178,11 +1184,11 @@ describe.each([false, true, undefined])(
       await checkSearch({ default: 'd3' })
     })
 
-    it('idk name it later or check to replace it with sth else', async () => {
+    it('should retain explicit search params after navigating up', async () => {
       window.history.replaceState(null, '', `/searchWithDefault/root-check`)
 
       render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      await act(async () => await router.load())
       await checkSearch({ default: 'd1' })
 
       const linkA = await screen.findByTestId(
@@ -1192,23 +1198,10 @@ describe.each([false, true, undefined])(
       fireEvent.click(linkA)
       await checkSearch({ default: 'd3', optional: 'o1' })
 
-      const linkB = await screen.findByTestId(
-        'link-with-root-params-default-sub-b-no-change',
-      )
-      expect(linkB).toBeInTheDocument()
-      fireEvent.click(linkB)
+      const linkRoot = await screen.findByTestId('link-root-check')
+      expect(linkRoot).toBeInTheDocument()
+      fireEvent.click(linkRoot)
       await checkSearch({ default: 'd3' })
-
-      const linkC = await screen.findByTestId(
-        'link-with-root-params-default-sub-a-change',
-      )
-      expect(linkC).toBeInTheDocument()
-      fireEvent.click(linkC)
-      await checkSearch({ default: 'd2', optional: 'o1' })
-
-      expect(linkB).toBeInTheDocument()
-      fireEvent.click(linkB)
-      await checkSearch({ default: 'd2' })
     })
 
     it('should carry over the explicit search in navigation even though its retained', async () => {

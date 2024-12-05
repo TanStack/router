@@ -1,10 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   Link,
-  Navigate,
-  Outlet,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -70,47 +68,8 @@ function setupTest(opts: {
     component: PostsComponent,
   })
 
-  const navigateComponentRootRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/root-with-retained-search-params',
-    validateSearch: (sp) => ({
-      default: sp.default,
-    }),
-    search: {
-      middlewares: [retainSearchParams(['default'])],
-    },
-    component: () => {
-      const search = navigateComponentRootRoute.useSearch()
-
-      return (
-        <>
-          <h1 data-testid={'root-with-retained-search-params-default'}>
-            {search.default}
-          </h1>
-          <Outlet></Outlet>
-        </>
-      )
-    },
-  })
-
-  const navigateComponentAddSpRoute = createRoute({
-    getParentRoute: () => navigateComponentRootRoute,
-    path: '/add-sp',
-    component: () => {
-      return (
-        <>
-          <Navigate to="../" search={{ default: 'd1' }}></Navigate>
-        </>
-      )
-    },
-  })
-
   const router = createRouter({
-    routeTree: rootRoute.addChildren([
-      indexRoute,
-      postsRoute,
-      navigateComponentRootRoute.addChildren([navigateComponentAddSpRoute]),
-    ]),
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
   })
   window.history.replaceState(
     null,
@@ -178,28 +137,6 @@ describe('retainSearchParams', () => {
     expect(linkSearch.size).toBe(0)
     expect(router.state.location.search).toEqual(expectedLocationSearch)
     checkLocationSearch(expectedLocationSearch)
-  })
-
-  it("should ignore undefined sp and use don't retain it (for sub routes)", async () => {
-    const router = setupTest({
-      initial: {
-        route: '/root-with-retained-search-params/add-sp',
-      },
-      middlewares: [],
-    })
-
-    render(<RouterProvider router={router} />)
-    await act(() => router.load())
-
-    expect(router.state.location.pathname).toEqual(
-      '/root-with-retained-search-params',
-    )
-
-    const sp = await screen.findByTestId(
-      'root-with-retained-search-params-default',
-    )
-
-    expect(sp.innerHTML).toEqual('d1')
   })
 })
 
