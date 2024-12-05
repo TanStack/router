@@ -10,6 +10,7 @@ export default defineConfig({
     ],
   },
   server: {
+    preset: 'netlify',
     prerender: {
       routes: ['/'],
       crawlLinks: true,

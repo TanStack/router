@@ -5,7 +5,7 @@ import {
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
-import type { MiddlewareOptions } from '../client/createServerFn'
+import type { MiddlewareCtx } from '../client/createServerFn'
 
 export async function fetcher(
   base: string,
@@ -17,7 +17,7 @@ export async function fetcher(
   // If createServerFn was used to wrap the fetcher,
   // We need to handle the arguments differently
   if (isPlainObject(_first) && _first.method) {
-    const first = _first as MiddlewareOptions
+    const first = _first as MiddlewareCtx
     const type = first.data instanceof FormData ? 'formData' : 'payload'
 
     // Arrange the headers
@@ -30,7 +30,7 @@ export async function fetcher(
         : {}),
       ...(first.headers instanceof Headers
         ? Object.fromEntries(first.headers.entries())
-        : first.headers || {}),
+        : first.headers),
     })
 
     // If the method is GET, we need to move the payload to the query string
@@ -40,6 +40,7 @@ export async function fetcher(
         payload: defaultTransformer.stringify({
           data: first.data,
           context: first.context,
+          ...(typeof first.type !== 'function' && { type: first.type }),
         }),
       })
 
@@ -101,7 +102,7 @@ export async function fetcher(
   }
 }
 
-function getFetcherRequestOptions(opts: MiddlewareOptions) {
+function getFetcherRequestOptions(opts: MiddlewareCtx) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {
       opts.data.set('__TSR_CONTEXT', defaultTransformer.stringify(opts.context))

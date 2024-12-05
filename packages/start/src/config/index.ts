@@ -33,7 +33,6 @@ import type {
   TanStackStartOutputConfig,
 } from './schema.js'
 import type {
-  RouterSchemaInput,
   App as VinxiApp,
   RouterSchemaInput as VinxiRouterSchemaInput,
 } from 'vinxi'
@@ -125,9 +124,6 @@ export async function defineConfig(
 
   const apiEntryExists = existsSync(apiEntry)
 
-  const publicDir = opts.routers?.public?.dir || './public'
-  const publicBase = opts.routers?.public?.base || '/'
-
   // Create a dummy nitro app to get the resolved public output path
   const dummyNitroApp = await createNitro({
     preset: deploymentPreset,
@@ -201,57 +197,57 @@ export async function defineConfig(
           ]
         },
       }),
-        withStartPlugins(
-          opts,
-          'ssr',
-        )({
-          name: 'ssr',
-          type: 'http',
-          target: 'server',
-          handler: ssrEntry,
-          middleware: ssrMiddleware,
+      withStartPlugins(
+        opts,
+        'ssr',
+      )({
+        name: 'ssr',
+        type: 'http',
+        target: 'server',
+        handler: ssrEntry,
+        middleware: ssrMiddleware,
         plugins: () => {
-            const viteConfig = getUserViteConfig(opts.vite)
-            const ssrViteConfig = getUserViteConfig(opts.routers?.ssr?.vite)
+          const viteConfig = getUserViteConfig(opts.vite)
+          const ssrViteConfig = getUserViteConfig(opts.routers?.ssr?.vite)
 
-            return [
-              config('tss-vite-config-ssr', {
-                ...viteConfig.userConfig,
-                ...ssrViteConfig.userConfig,
-                define: {
-                  ...(viteConfig.userConfig.define || {}),
-                  ...(ssrViteConfig.userConfig.define || {}),
-                  ...injectDefineEnv('ROUTER_BASE', 'ssr'),
-                  ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
-                  ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
-                  ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
-                  ...injectDefineEnv('TSS_API_BASE', apiBase),
-                  ...injectDefineEnv(
-                    'TSS_OUTPUT_PUBLIC_DIR',
-                    nitroOutputPublicDir,
-                  ),
-                },
-              }),
-              tsrRoutesManifest({
-                tsrConfig,
-                clientBase,
-              }),
-              ...(getUserViteConfig(opts.vite).plugins || []),
-              ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
-              serverTransform({
-                runtime: '@tanstack/start/server-runtime',
-              }),
-              config('start-ssr', {
-                ssr: {
-                  external: ['@vinxi/react-server-dom/client'],
-                },
-              }),
-            ]
-          },
-          link: {
-            client: 'client',
-          },
-        }),
+          return [
+            config('tss-vite-config-ssr', {
+              ...viteConfig.userConfig,
+              ...ssrViteConfig.userConfig,
+              define: {
+                ...(viteConfig.userConfig.define || {}),
+                ...(ssrViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('ROUTER_BASE', 'ssr'),
+                ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
+                ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
+                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
+                ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
+              },
+            }),
+            tsrRoutesManifest({
+              tsrConfig,
+              clientBase,
+            }),
+            ...(getUserViteConfig(opts.vite).plugins || []),
+            ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
+            serverTransform({
+              runtime: '@tanstack/start/server-runtime',
+            }),
+            config('start-ssr', {
+              ssr: {
+                external: ['@vinxi/react-server-dom/client'],
+              },
+            }),
+          ]
+        },
+        link: {
+          client: 'client',
+        },
+      }),
       withStartPlugins(
         opts,
         'server',

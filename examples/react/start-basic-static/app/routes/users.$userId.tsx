@@ -6,19 +6,18 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 import type { User } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
 
-const fetchUser = createServerFn({ method: 'GET', static: true })
+const fetchUser = createServerFn({ method: 'GET' })
   .validator((d: string) => d)
+  .type(({ data }) => (+data % 2 === 0 ? 'static' : 'dynamic'))
   .handler(async ({ data: userId }) => {
     try {
-      const res = await axios.get<User>(
-        'https://jsonplaceholder.typicode.com/users/' + userId,
-      )
-
-      return {
-        id: res.data.id,
-        name: res.data.name,
-        email: res.data.email,
-      }
+      return axios
+        .get<User>('https://jsonplaceholder.typicode.com/users/' + userId)
+        .then((d) => ({
+          id: d.data.id,
+          name: d.data.name,
+          email: d.data.email,
+        }))
     } catch (e) {
       console.error(e)
       setResponseStatus(404)
@@ -28,7 +27,7 @@ const fetchUser = createServerFn({ method: 'GET', static: true })
   })
 
 export const Route = createFileRoute('/users/$userId')({
-  loader: async ({ params: { userId } }) => fetchUser({ data: userId }),
+  loader: ({ params: { userId } }) => fetchUser({ data: userId }),
   errorComponent: UserErrorComponent,
   component: UserComponent,
   notFoundComponent: () => {
@@ -42,6 +41,10 @@ export function UserErrorComponent({ error }: ErrorComponentProps) {
 
 function UserComponent() {
   const user = Route.useLoaderData()
+
+  if ('error' in user) {
+    return <NotFound>User not found</NotFound>
+  }
 
   return (
     <div className="space-y-2">
