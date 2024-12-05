@@ -9,6 +9,7 @@ dotenv.config()
  */
 export default defineConfig({
   testDir: './tests',
+  workers: 1,
 
   reporter: [['line']],
 
