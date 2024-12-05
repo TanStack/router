@@ -1,4 +1,4 @@
-import { defaultTransformer } from '@tanstack/react-router'
+import { defaultTransformer, invariant } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import { globalMiddleware } from './registerGlobalMiddleware'
 import type {
@@ -200,6 +200,89 @@ export interface ServerFnBuilder<
   options: ServerFnInternalOptions<TMethod, TResponse, TMiddlewares, TValidator>
 }
 
+type StaticCachedResult = {
+  ctx?: {
+    result: any
+    context: any
+  }
+  error?: any
+}
+
+export type ServerFnStaticCache = {
+  getItem: (ctx: MiddlewareCtx) => Promise<StaticCachedResult | undefined>
+  setItem: (ctx: MiddlewareCtx, response: StaticCachedResult) => Promise<void>
+}
+
+let serverFnStaticCache: ServerFnStaticCache | undefined
+
+export function setServerFnStaticCache(
+  cache?: ServerFnStaticCache | (() => ServerFnStaticCache | undefined),
+) {
+  const previousCache = serverFnStaticCache
+  serverFnStaticCache = typeof cache === 'function' ? cache() : cache
+
+  return () => {
+    serverFnStaticCache = previousCache
+  }
+}
+
+export function createServerFnStaticCache(
+  serverFnStaticCache: ServerFnStaticCache,
+) {
+  return serverFnStaticCache
+}
+
+setServerFnStaticCache(() => {
+  if (typeof document === 'undefined') {
+    return createServerFnStaticCache({
+      getItem: async (ctx) => {
+        const hash = jsonToFilenameSafeString(ctx.data)
+        const url = getStaticCacheUrl(ctx, hash)
+        const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
+
+        // Use fs instead of fetch to read from filesystem
+        const fs = await import('node:fs/promises')
+        const path = await import('node:path')
+        const filePath = path.join(publicUrl, url)
+
+        const [cachedResult, readError] = await fs
+          .readFile(filePath, 'utf-8')
+          .then((c) => [
+            defaultTransformer.parse(c) as {
+              ctx: unknown
+              error: any
+            },
+            null,
+          ])
+          .catch((e) => [null, e])
+
+        if (readError && readError.code !== 'ENOENT') {
+          throw readError
+        }
+
+        return cachedResult as StaticCachedResult
+      },
+      setItem: async (ctx, response) => {
+        const fs = await import('node:fs/promises')
+        const path = await import('node:path')
+
+        const hash = jsonToFilenameSafeString(ctx.data)
+        const url = getStaticCacheUrl(ctx, hash)
+        const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
+        const filePath = path.join(publicUrl, url)
+
+        // Ensure the directory exists
+        await fs.mkdir(path.dirname(filePath), { recursive: true })
+
+        // Store the result with fs
+        await fs.writeFile(filePath, defaultTransformer.stringify(response))
+      },
+    })
+  }
+
+  return undefined
+})
+
 export function createServerFn<
   TMethod extends Method,
   TResponse = unknown,
@@ -310,61 +393,45 @@ export function createServerFn<
                 )
 
               if (ctx.type === 'static') {
-                const hash = jsonToFilenameSafeString(ctx.data)
-                const url = getStaticCacheUrl(ctx, hash)
-                const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
+                let response: StaticCachedResult | undefined
 
-                // Use fs instead of fetch to read from filesystem
-                const fs = await import('node:fs/promises')
-                const path = await import('node:path')
-                const filePath = path.join(publicUrl, url)
-
-                const [cachedResult, readError] = await fs
-                  .readFile(filePath, 'utf-8')
-                  .then((c) => [
-                    defaultTransformer.parse(c) as {
-                      ctx: unknown
-                      error: any
-                    },
-                    null,
-                  ])
-                  .catch((e) => [null, e])
-
-                if (readError) {
-                  if (readError.code !== 'ENOENT') {
-                    throw readError
-                  }
-
-                  // If file doesn't exist or other error,
-                  // execute the server function and store the result
-                  const [ctx, error] = await run()
-                    .then((d) => [d, null])
-                    .catch((e) => [null, e])
-
-                  // Ensure the directory exists
-                  await fs.mkdir(path.dirname(filePath), { recursive: true })
-
-                  // Store the result with fs
-                  await fs.writeFile(
-                    filePath,
-                    defaultTransformer.stringify({
-                      ctx,
-                      error,
-                    }),
-                  )
-
-                  if (error) {
-                    throw error
-                  }
-
-                  return ctx
+                // If we can get the cached item, try to get it
+                if (serverFnStaticCache?.getItem) {
+                  // If this throws, it's okay to let it bubble up
+                  response = await serverFnStaticCache.getItem(ctx)
                 }
 
-                if (cachedResult.error) {
-                  throw cachedResult.error
+                if (!response) {
+                  // If there's no cached item, execute the server function
+                  response = await run()
+                    .then((d) => {
+                      return {
+                        ctx: d,
+                        error: null,
+                      }
+                    })
+                    .catch((e) => {
+                      return {
+                        ctx: undefined,
+                        error: e,
+                      }
+                    })
+
+                  if (serverFnStaticCache?.setItem) {
+                    await serverFnStaticCache.setItem(ctx, response)
+                  }
                 }
 
-                return cachedResult.ctx
+                invariant(
+                  response,
+                  'No response from both server and static cache!',
+                )
+
+                if (response.error) {
+                  throw response.error
+                }
+
+                return response.ctx
               }
 
               return run()
@@ -395,7 +462,7 @@ function extractFormDataContext(formData: FormData) {
       context,
       data: formData,
     }
-  } catch (e) {
+  } catch {
     return {
       data: formData,
     }
@@ -434,6 +501,8 @@ export type MiddlewareCtx = {
   method: Method
   type: 'static' | 'dynamic'
   headers: HeadersInit
+  filename: string
+  functionId: string
 }
 
 const applyMiddleware = (
@@ -568,10 +637,7 @@ async function executeMiddleware(
   })
 }
 
-function getStaticCacheUrl(
-  options: ServerFnInternalOptions<any, any, any, any>,
-  hash: string,
-) {
+function getStaticCacheUrl(options: MiddlewareCtx, hash: string) {
   return `/__tsr/staticServerFnCache/${options.filename}__${options.functionId}__${hash}.json`
 }
 
