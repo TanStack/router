@@ -1,4 +1,4 @@
-import { defaultTransformer, invariant } from '@tanstack/react-router'
+import { defaultTransformer, invariant, warning } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import { globalMiddleware } from './registerGlobalMiddleware'
 import type {
@@ -209,8 +209,13 @@ type StaticCachedResult = {
 }
 
 export type ServerFnStaticCache = {
-  getItem: (ctx: MiddlewareCtx) => Promise<StaticCachedResult | undefined>
+  getItem: (
+    ctx: MiddlewareCtx,
+  ) => StaticCachedResult | Promise<StaticCachedResult | undefined>
   setItem: (ctx: MiddlewareCtx, response: StaticCachedResult) => Promise<void>
+  fetchItem: (
+    ctx: MiddlewareCtx,
+  ) => StaticCachedResult | Promise<StaticCachedResult | undefined>
 }
 
 let serverFnStaticCache: ServerFnStaticCache | undefined
@@ -233,9 +238,37 @@ export function createServerFnStaticCache(
 }
 
 setServerFnStaticCache(() => {
-  if (typeof document === 'undefined') {
-    return createServerFnStaticCache({
-      getItem: async (ctx) => {
+  const getStaticCacheUrl = (options: MiddlewareCtx, hash: string) => {
+    return `/__tsr/staticServerFnCache/${options.filename}__${options.functionId}__${hash}.json`
+  }
+
+  const jsonToFilenameSafeString = (json: any) => {
+    // Custom replacer to sort keys
+    const sortedKeysReplacer = (key: string, value: any) =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.keys(value)
+            .sort()
+            .reduce((acc: any, curr: string) => {
+              acc[curr] = value[curr]
+              return acc
+            }, {})
+        : value
+
+    // Convert JSON to string with sorted keys
+    const jsonString = JSON.stringify(json ?? '', sortedKeysReplacer)
+
+    // Replace characters invalid in filenames
+    return jsonString
+      .replace(/[/\\?%*:|"<>]/g, '-') // Replace invalid characters with a dash
+      .replace(/\s+/g, '_') // Optionally replace whitespace with underscores
+  }
+
+  const staticClientCache =
+    typeof document !== 'undefined' ? new Map<string, any>() : null
+
+  return createServerFnStaticCache({
+    getItem: async (ctx) => {
+      if (typeof document === 'undefined') {
         const hash = jsonToFilenameSafeString(ctx.data)
         const url = getStaticCacheUrl(ctx, hash)
         const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
@@ -261,26 +294,42 @@ setServerFnStaticCache(() => {
         }
 
         return cachedResult as StaticCachedResult
-      },
-      setItem: async (ctx, response) => {
-        const fs = await import('node:fs/promises')
-        const path = await import('node:path')
+      }
+    },
+    setItem: async (ctx, response) => {
+      const fs = await import('node:fs/promises')
+      const path = await import('node:path')
 
-        const hash = jsonToFilenameSafeString(ctx.data)
-        const url = getStaticCacheUrl(ctx, hash)
-        const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
-        const filePath = path.join(publicUrl, url)
+      const hash = jsonToFilenameSafeString(ctx.data)
+      const url = getStaticCacheUrl(ctx, hash)
+      const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
+      const filePath = path.join(publicUrl, url)
 
-        // Ensure the directory exists
-        await fs.mkdir(path.dirname(filePath), { recursive: true })
+      // Ensure the directory exists
+      await fs.mkdir(path.dirname(filePath), { recursive: true })
 
-        // Store the result with fs
-        await fs.writeFile(filePath, defaultTransformer.stringify(response))
-      },
-    })
-  }
+      // Store the result with fs
+      await fs.writeFile(filePath, defaultTransformer.stringify(response))
+    },
+    fetchItem: async (ctx) => {
+      const hash = jsonToFilenameSafeString(ctx.data)
+      const url = getStaticCacheUrl(ctx, hash)
 
-  return undefined
+      let result: any = staticClientCache?.get(url)
+
+      if (!result) {
+        result = await fetch(url, {
+          method: 'GET',
+        })
+          .then((r) => r.text())
+          .then((d) => defaultTransformer.parse(d))
+
+        staticClientCache?.set(url, result)
+      }
+
+      return result
+    },
+  })
 })
 
 export function createServerFn<
@@ -637,13 +686,6 @@ async function executeMiddleware(
   })
 }
 
-function getStaticCacheUrl(options: MiddlewareCtx, hash: string) {
-  return `/__tsr/staticServerFnCache/${options.filename}__${options.functionId}__${hash}.json`
-}
-
-const staticClientCache =
-  typeof document !== 'undefined' ? new Map<string, any>() : null
-
 function serverFnBaseToMiddleware(
   options: ServerFnInternalOptions<any, any, any, any>,
 ): AnyMiddleware {
@@ -663,27 +705,23 @@ function serverFnBaseToMiddleware(
         if (
           ctx.type === 'static' &&
           process.env.NODE_ENV === 'production' &&
-          typeof document !== 'undefined'
+          typeof document !== 'undefined' &&
+          serverFnStaticCache?.fetchItem
         ) {
-          const hash = jsonToFilenameSafeString(payload.data)
-          const url = getStaticCacheUrl(payload, hash)
-          let result: any = staticClientCache?.get(url)
+          const result = await serverFnStaticCache.fetchItem(payload)
 
-          if (!result) {
-            result = await fetch(url, {
-              method: 'GET',
-            })
-              .then((r) => r.text())
-              .then((d) => defaultTransformer.parse(d))
+          if (result) {
+            if (result.error) {
+              throw result.error
+            }
 
-            staticClientCache?.set(url, result)
+            return next(result.ctx)
           }
 
-          if (result.error) {
-            throw result.error
-          }
-
-          return next(result.ctx)
+          warning(
+            result,
+            `No static cache item found for ${payload.filename}__${payload.functionId}__${JSON.stringify(payload.data)}, falling back to server function...`,
+          )
         }
 
         // Execute the extracted function
@@ -706,25 +744,4 @@ function serverFnBaseToMiddleware(
       },
     },
   }
-}
-
-function jsonToFilenameSafeString(json: any) {
-  // Custom replacer to sort keys
-  const sortedKeysReplacer = (key: string, value: any) =>
-    value && typeof value === 'object' && !Array.isArray(value)
-      ? Object.keys(value)
-          .sort()
-          .reduce((acc: any, curr: string) => {
-            acc[curr] = value[curr]
-            return acc
-          }, {})
-      : value
-
-  // Convert JSON to string with sorted keys
-  const jsonString = JSON.stringify(json ?? '', sortedKeysReplacer)
-
-  // Replace characters invalid in filenames
-  return jsonString
-    .replace(/[/\\?%*:|"<>]/g, '-') // Replace invalid characters with a dash
-    .replace(/\s+/g, '_') // Optionally replace whitespace with underscores
 }
