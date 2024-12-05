@@ -15,7 +15,7 @@
     "@tanstack/start": "workspace:^",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.5",
-    "vinxi": "0.4.3"
+    "vinxi": "0.5.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.65",

@@ -119,12 +119,12 @@
     "@types/babel__traverse": "^7.20.6",
     "babel-dead-code-elimination": "^1.0.6",
     "chokidar": "^3.6.0",
-    "unplugin": "^1.12.2",
+    "unplugin": "^1.16.0",
     "zod": "^3.23.8"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2",
-    "vite": ">=5.0.0",
+    "vite": ">=5.0.0 || >=6.0.0",
     "webpack": ">=5.92.0"
   },
   "peerDependenciesMeta": {

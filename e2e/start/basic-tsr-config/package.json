@@ -15,15 +15,12 @@
     "@tanstack/start": "workspace:^",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vinxi": "0.4.3"
+    "vinxi": "0.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
-    "get-port-please": "^3.1.2",
-    "terminate": "^2.8.0",
-    "typescript": "^5.7.2",
-    "wait-port": "^1.1.0"
+    "typescript": "^5.7.2"
   }
 }

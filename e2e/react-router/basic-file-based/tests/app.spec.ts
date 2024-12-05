@@ -1,14 +1,8 @@
-import { expect } from '@playwright/test'
-import { test } from './utils'
+import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-test.beforeEach(async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/')
-})
-
-test.afterEach(async ({ setupApp }) => {
-  await setupApp.killProcess()
+test.beforeEach(async ({ page }) => {
+  await page.goto('/')
 })
 
 test('Navigating to a post page', async ({ page }) => {
@@ -77,10 +71,9 @@ testCases.forEach(({ description, testId }) => {
   })
 })
 
-test('navigating to an unnested route', async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
+test('navigating to an unnested route', async ({ page }) => {
   const postId = 'hello-world'
-  page.goto(ADDR + `/posts/${postId}/edit`)
+  page.goto(`/posts/${postId}/edit`)
   await expect(page.getByTestId('params-via-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-api')).toContainText(postId)
@@ -92,12 +85,8 @@ async function getRenderCount(page: Page) {
   )
   return renderCount
 }
-async function structuralSharingTest(
-  page: Page,
-  baseUrl: string,
-  enabled: boolean,
-) {
-  page.goto(baseUrl + `/structural-sharing/${enabled}/?foo=f1&bar=b1`)
+async function structuralSharingTest(page: Page, enabled: boolean) {
+  page.goto(`/structural-sharing/${enabled}/?foo=f1&bar=b1`)
   await expect(page.getByTestId('enabled')).toHaveText(JSON.stringify(enabled))
 
   async function checkSearch({ foo, bar }: { foo: string; bar: string }) {
@@ -117,13 +106,13 @@ async function structuralSharingTest(
   await checkSearch({ bar: 'b2', foo: 'f2' })
 }
 
-test('structural sharing disabled', async ({ page, setupApp }) => {
-  await structuralSharingTest(page, setupApp.ADDR, false)
+test('structural sharing disabled', async ({ page }) => {
+  await structuralSharingTest(page, false)
   expect(await getRenderCount(page)).toBeGreaterThan(2)
 })
 
-test('structural sharing enabled', async ({ page, setupApp }) => {
-  await structuralSharingTest(page, setupApp.ADDR, true)
+test('structural sharing enabled', async ({ page }) => {
+  await structuralSharingTest(page, true)
   expect(await getRenderCount(page)).toBe(2)
   await page.getByTestId('link').click()
   expect(await getRenderCount(page)).toBe(2)

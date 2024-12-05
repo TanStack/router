@@ -19,7 +19,7 @@
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.5",
-    "vinxi": "0.4.3"
+    "vinxi": "0.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
