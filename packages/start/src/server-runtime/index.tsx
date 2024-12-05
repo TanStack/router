@@ -154,7 +154,7 @@ export function createServerReference(_fn: any, id: string, name: string) {
   return Object.assign(proxyFn, {
     url: functionUrl
       .replace(fakeHost, '')
-      .replace(fakeHost.replace('https:', 'https:'), ''),
+      .replace(fakeHost.replace('http:', 'https:'), ''),
     filename: id,
     functionId: name,
   })
