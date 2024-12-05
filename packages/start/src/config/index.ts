@@ -97,7 +97,7 @@ export function defineConfig(
     serverSchema.parse(opts.server || {})
 
   const deploymentPreset = checkDeploymentPresetInput(
-    configDeploymentPreset || 'vercel',
+    configDeploymentPreset || 'node-server',
   )
   const tsr = setTsrDefaults(opts.tsr)
   const appDirectory = tsr.appDirectory
