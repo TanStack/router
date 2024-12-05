@@ -1,16 +1,10 @@
-import { expect } from '@playwright/test'
-import { test } from './utils'
-
-test.afterEach(async ({ setupApp }) => {
-  await setupApp.killProcess()
-})
+import { expect, test } from '@playwright/test'
 
 test('restore scroll positions by page, home pages top message should not display "shown" on navigating back', async ({
   page,
-  setupApp: { ADDR },
 }) => {
   // Step 1: Navigate to the home page
-  await page.goto(ADDR + '/')
+  await page.goto('/')
 
   await expect(page.locator('#greeting')).toContainText('Welcome Home!')
   await expect(page.locator('#top-message')).toContainText('shown')
@@ -45,10 +39,9 @@ test('restore scroll positions by page, home pages top message should not displa
 
 test('restore scroll positions by element, first regular list item should not display "shown" on navigating back', async ({
   page,
-  setupApp: { ADDR },
 }) => {
   // Step 1: Navigate to the by-element page
-  await page.goto(ADDR + '/by-element')
+  await page.goto('/by-element')
 
   // Step 2: Scroll to a position that hides the first list item in regular list
   const targetScrollPosition = 1000

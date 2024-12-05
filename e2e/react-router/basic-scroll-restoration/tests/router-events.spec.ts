@@ -1,16 +1,10 @@
-import { expect } from '@playwright/test'
-import { test } from './utils'
-
-test.afterEach(async ({ setupApp }) => {
-  await setupApp.killProcess()
-})
+import { expect, test } from '@playwright/test'
 
 test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" and useLayoutEffect setup in the correct order', async ({
   page,
-  setupApp: { ADDR },
 }) => {
   // Navigate to the Home page
-  await page.goto(ADDR + '/')
+  await page.goto('/')
   await expect(page.locator('#greeting')).toContainText('Welcome Home!')
 
   let orders = await page.evaluate(() => window.invokeOrders)
