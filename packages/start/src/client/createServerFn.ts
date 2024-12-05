@@ -1,4 +1,3 @@
-import invariant from 'tiny-invariant'
 import { defaultTransformer } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import type {
@@ -52,7 +51,10 @@ export type FetcherImpl<TMiddlewares, TValidator, TResponse> =
 
 export type FetcherBaseOptions = {
   headers?: HeadersInit
+  type?: ServerFnType
 }
+
+export type ServerFnType = 'static' | 'dynamic'
 
 export interface RequiredFetcherDataOptions<TInput> extends FetcherBaseOptions {
   data: TInput
@@ -85,11 +87,11 @@ export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
 }
 
 export type CompiledFetcherFn<TResponse> = {
-  (opts: CompiledFetcherFnOptions & ServerFnBaseOptions): Promise<TResponse>
+  (opts: CompiledFetcherFnOptions & ServerFnInternalOptions): Promise<TResponse>
   url: string
 }
 
-type ServerFnBaseOptions<
+type ServerFnInternalOptions<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares = unknown,
@@ -103,7 +105,7 @@ type ServerFnBaseOptions<
   serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
   functionId: string
-  static?: boolean
+  type: ServerFnTypeOrTypeFn<TMethod, TMiddlewares, AnyValidator>
 }
 
 export type ConstrainValidator<TValidator> = unknown extends TValidator
@@ -119,19 +121,7 @@ export type ConstrainValidator<TValidator> = unknown extends TValidator
       >
     >
 
-export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
-  middleware: <const TNewMiddlewares = undefined>(
-    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => ServerFnAfterMiddleware<TMethod, TNewMiddlewares, TValidator>
-}
-
-export interface ServerFnAfterMiddleware<
-  TMethod extends Method,
-  TMiddlewares,
-  TValidator,
-> extends ServerFnValidator<TMethod, TMiddlewares>,
-    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
-
+// Validator
 export interface ServerFnValidator<TMethod extends Method, TMiddlewares> {
   validator: <TValidator>(
     validator: ConstrainValidator<TValidator>,
@@ -143,8 +133,50 @@ export interface ServerFnAfterValidator<
   TMiddlewares,
   TValidator,
 > extends ServerFnMiddleware<TMethod, TValidator>,
+    ServerFnTyper<TMethod, TMiddlewares, TValidator>,
     ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
 
+// Middleware
+export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
+  middleware: <const TNewMiddlewares = undefined>(
+    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
+  ) => ServerFnAfterMiddleware<TMethod, TNewMiddlewares, TValidator>
+}
+
+export interface ServerFnAfterMiddleware<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> extends ServerFnValidator<TMethod, TMiddlewares>,
+    ServerFnTyper<TMethod, TMiddlewares, TValidator>,
+    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+
+// Typer
+export interface ServerFnTyper<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> {
+  type: (
+    typer: ServerFnTypeOrTypeFn<TMethod, TMiddlewares, TValidator>,
+  ) => ServerFnAfterTyper<TMethod, TMiddlewares, TValidator>
+}
+
+export type ServerFnTypeOrTypeFn<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> =
+  | ServerFnType
+  | ((ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>) => ServerFnType)
+
+export interface ServerFnAfterTyper<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> extends ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+
+// Handler
 export interface ServerFnHandler<
   TMethod extends Method,
   TMiddlewares,
@@ -160,10 +192,11 @@ export interface ServerFnBuilder<
   TResponse = unknown,
   TMiddlewares = unknown,
   TValidator = unknown,
-> extends ServerFnMiddleware<TMethod, TValidator>,
-    ServerFnValidator<TMethod, TMiddlewares>,
+> extends ServerFnValidator<TMethod, TMiddlewares>,
+    ServerFnMiddleware<TMethod, TValidator>,
+    ServerFnTyper<TMethod, TMiddlewares, TValidator>,
     ServerFnHandler<TMethod, TMiddlewares, TValidator> {
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
+  options: ServerFnInternalOptions<TMethod, TResponse, TMiddlewares, TValidator>
 }
 
 export function createServerFn<
@@ -174,11 +207,15 @@ export function createServerFn<
 >(
   options?: {
     method?: TMethod
-    static?: boolean
   },
-  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
+  __opts?: ServerFnInternalOptions<
+    TMethod,
+    TResponse,
+    TMiddlewares,
+    TValidator
+  >,
 ): ServerFnBuilder<TMethod, TResponse, TMiddlewares, TValidator> {
-  const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
+  const resolvedOptions = (__opts || options || {}) as ServerFnInternalOptions<
     TMethod,
     TResponse,
     TMiddlewares,
@@ -203,6 +240,12 @@ export function createServerFn<
         Object.assign(resolvedOptions, { validator }),
       ) as any
     },
+    type: (type) => {
+      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
+        undefined,
+        Object.assign(resolvedOptions, { type }),
+      ) as any
+    },
     handler: (...args) => {
       // This function signature changes due to AST transformations
       // in the babel plugin. We need to cast it to the correct
@@ -220,11 +263,6 @@ export function createServerFn<
         serverFn,
       })
 
-      invariant(
-        resolvedOptions.static ? true : extractedFn.url,
-        `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/start-vite-plugin ?`,
-      )
-
       const resolvedMiddleware = [
         ...(resolvedOptions.middleware || []),
         serverFnBaseToMiddleware(resolvedOptions),
@@ -237,8 +275,7 @@ export function createServerFn<
           // Start by executing the client-side middleware chain
           return executeMiddleware(resolvedMiddleware, 'client', {
             ...resolvedOptions,
-            data: opts?.data as any,
-            headers: opts?.headers,
+            ...(opts as any),
             context: Object.assign({}, extractedFn),
           }).then((d) => d.result)
         },
@@ -257,6 +294,11 @@ export function createServerFn<
                 ...parsedOpts,
               }
 
+              ctx.type =
+                typeof resolvedOptions.type === 'function'
+                  ? resolvedOptions.type(ctx)
+                  : resolvedOptions.type
+
               const run = async () =>
                 executeMiddleware(resolvedMiddleware, 'server', ctx).then(
                   (d) => ({
@@ -266,7 +308,7 @@ export function createServerFn<
                   }),
                 )
 
-              if (ctx.static) {
+              if (ctx.type === 'static') {
                 const hash = jsonToFilenameSafeString(ctx.data)
                 const url = getStaticCacheUrl(ctx, hash)
                 const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
@@ -378,19 +420,14 @@ function flattenMiddlewares(
   return flattened
 }
 
-export type MiddlewareOptions = {
-  method: Method
-  data: any
-  headers?: HeadersInit
-  sendContext?: any
-  context?: any
-}
-
-export type MiddlewareResult = {
+export type MiddlewareCtx = {
   context: any
   sendContext: any
   data: any
   result: unknown
+  method: Method
+  type: 'static' | 'dynamic'
+  headers: HeadersInit
 }
 
 const applyMiddleware = (
@@ -399,8 +436,8 @@ const applyMiddleware = (
     | AnyMiddleware['options']['server']
     | AnyMiddleware['options']['clientAfter']
   >,
-  mCtx: MiddlewareOptions,
-  nextFn: (ctx: MiddlewareOptions) => Promise<MiddlewareResult>,
+  mCtx: MiddlewareCtx,
+  nextFn: (ctx: MiddlewareCtx) => Promise<MiddlewareCtx>,
 ) => {
   return middlewareFn({
     ...mCtx,
@@ -426,8 +463,6 @@ const applyMiddleware = (
         sendContext,
         headers,
         result: userResult?.result ?? (mCtx as any).result,
-      } as MiddlewareResult & {
-        method: Method
       })
     }) as any,
   } as any)
@@ -462,11 +497,11 @@ function execValidator(validator: AnyValidator, input: unknown): unknown {
 async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
-  opts: MiddlewareOptions,
-): Promise<MiddlewareResult> {
+  ctx: Omit<MiddlewareCtx, 'headers'> & { headers?: HeadersInit },
+): Promise<MiddlewareCtx> {
   const flattenedMiddlewares = flattenMiddlewares(middlewares)
 
-  const next = async (ctx: MiddlewareOptions): Promise<MiddlewareResult> => {
+  const next = async (ctx: MiddlewareCtx): Promise<MiddlewareCtx> => {
     // Get the next middleware
     const nextMiddleware = flattenedMiddlewares.shift()
 
@@ -493,7 +528,7 @@ async function executeMiddleware(
       return applyMiddleware(
         middlewareFn,
         ctx,
-        async (userCtx): Promise<MiddlewareResult> => {
+        async (userCtx): Promise<MiddlewareCtx> => {
           // If there is a clientAfter function and we are on the client
           if (env === 'client' && nextMiddleware.options.clientAfter) {
             // We need to await the next middleware and get the result
@@ -517,15 +552,15 @@ async function executeMiddleware(
 
   // Start the middleware chain
   return next({
-    ...opts,
-    headers: opts.headers || {},
-    sendContext: (opts as any).sendContext || {},
-    context: opts.context || {},
+    ...ctx,
+    headers: ctx.headers || {},
+    sendContext: (ctx as any).sendContext || {},
+    context: ctx.context || {},
   })
 }
 
 function getStaticCacheUrl(
-  options: ServerFnBaseOptions<any, any, any, any>,
+  options: ServerFnInternalOptions<any, any, any, any>,
   hash: string,
 ) {
   return `/__tsr/staticServerFnCache/${options.filename}__${options.functionId}__${hash}.json`
@@ -535,7 +570,7 @@ const staticClientCache =
   typeof document !== 'undefined' ? new Map<string, any>() : null
 
 function serverFnBaseToMiddleware(
-  options: ServerFnBaseOptions<any, any, any, any>,
+  options: ServerFnInternalOptions<any, any, any, any>,
 ): AnyMiddleware {
   return {
     _types: undefined!,
@@ -547,10 +582,11 @@ function serverFnBaseToMiddleware(
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
+          type: typeof ctx.type === 'function' ? ctx.type(ctx) : ctx.type,
         } as any
 
         if (
-          options.static &&
+          ctx.type === 'static' &&
           process.env.NODE_ENV === 'production' &&
           typeof document !== 'undefined'
         ) {
