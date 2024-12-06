@@ -34,7 +34,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     setLock(true)
 
     try {
-      await generator(userConfig)
+      await generator(userConfig, process.cwd())
     } catch (err) {
       console.error(err)
       console.info()
