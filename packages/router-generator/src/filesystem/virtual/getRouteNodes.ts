@@ -37,6 +37,7 @@ function flattenTree(node: RouteNode): Array<RouteNode> {
 
 export async function getRouteNodes(
   tsrConfig: Config,
+  root: string,
 ): Promise<GetRouteNodesResult> {
   const fullDir = resolve(tsrConfig.routesDirectory)
   if (tsrConfig.virtualRouteConfig === undefined) {
@@ -45,12 +46,16 @@ export async function getRouteNodes(
   let virtualRouteConfig: VirtualRootRoute
   let children: Array<RouteNode> = []
   if (typeof tsrConfig.virtualRouteConfig === 'string') {
-    virtualRouteConfig = await getVirtualRouteConfigFromFileExport(tsrConfig)
+    virtualRouteConfig = await getVirtualRouteConfigFromFileExport(
+      tsrConfig,
+      root,
+    )
   } else {
     virtualRouteConfig = tsrConfig.virtualRouteConfig
   }
   children = await getRouteNodesRecursive(
     tsrConfig,
+    root,
     fullDir,
     virtualRouteConfig.children,
   )
@@ -85,6 +90,7 @@ export async function getRouteNodes(
  */
 async function getVirtualRouteConfigFromFileExport(
   tsrConfig: Config,
+  root: string,
 ): Promise<VirtualRootRoute> {
   if (
     tsrConfig.virtualRouteConfig === undefined ||
@@ -93,9 +99,7 @@ async function getVirtualRouteConfigFromFileExport(
   ) {
     throw new Error(`virtualRouteConfig is undefined or empty`)
   }
-  const exports = await import(
-    join(process.cwd(), tsrConfig.virtualRouteConfig)
-  )
+  const exports = await import(join(root, tsrConfig.virtualRouteConfig))
 
   if (!('routes' in exports) && !('default' in exports)) {
     throw new Error(
@@ -111,6 +115,7 @@ async function getVirtualRouteConfigFromFileExport(
 
 export async function getRouteNodesRecursive(
   tsrConfig: Config,
+  root: string,
   fullDir: string,
   nodes?: Array<VirtualRouteNode>,
   parent?: RouteNode,
@@ -121,10 +126,13 @@ export async function getRouteNodesRecursive(
   const children = await Promise.all(
     nodes.map(async (node) => {
       if (node.type === 'physical') {
-        const { routeNodes } = await getRouteNodesPhysical({
-          ...tsrConfig,
-          routesDirectory: resolve(fullDir, node.directory),
-        })
+        const { routeNodes } = await getRouteNodesPhysical(
+          {
+            ...tsrConfig,
+            routesDirectory: resolve(fullDir, node.directory),
+          },
+          root,
+        )
         routeNodes.forEach((subtreeNode) => {
           subtreeNode.variableName = routePathToVariable(
             `${node.pathPrefix}/${removeExt(subtreeNode.filePath)}`,
@@ -184,6 +192,7 @@ export async function getRouteNodesRecursive(
           if (node.children !== undefined) {
             const children = await getRouteNodesRecursive(
               tsrConfig,
+              root,
               fullDir,
               node.children,
               routeNode,
@@ -216,6 +225,7 @@ export async function getRouteNodesRecursive(
           if (node.children !== undefined) {
             const children = await getRouteNodesRecursive(
               tsrConfig,
+              root,
               fullDir,
               node.children,
               routeNode,
