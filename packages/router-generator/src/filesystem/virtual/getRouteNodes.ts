@@ -1,3 +1,4 @@
+import 'tsx/esm'
 import path, { join, resolve } from 'node:path'
 import {
   removeExt,
@@ -6,7 +7,11 @@ import {
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesPhysical } from '../physical/getRouteNodes'
-import type { VirtualRouteNode } from '@tanstack/virtual-file-routes'
+import { virtualRootRouteSchema } from './config'
+import type {
+  VirtualRootRoute,
+  VirtualRouteNode,
+} from '@tanstack/virtual-file-routes'
 import type { GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 
@@ -37,15 +42,22 @@ export async function getRouteNodes(
   if (tsrConfig.virtualRouteConfig === undefined) {
     throw new Error(`virtualRouteConfig is undefined`)
   }
-  const children = await getRouteNodesRecursive(
+  let virtualRouteConfig: VirtualRootRoute
+  let children: Array<RouteNode> = []
+  if (typeof tsrConfig.virtualRouteConfig === 'string') {
+    virtualRouteConfig = await getVirtualRouteConfigFromFileExport(tsrConfig)
+  } else {
+    virtualRouteConfig = tsrConfig.virtualRouteConfig
+  }
+  children = await getRouteNodesRecursive(
     tsrConfig,
     fullDir,
-    tsrConfig.virtualRouteConfig.children,
+    virtualRouteConfig.children,
   )
   const allNodes = flattenTree({
     children,
-    filePath: tsrConfig.virtualRouteConfig.file,
-    fullPath: join(fullDir, tsrConfig.virtualRouteConfig.file),
+    filePath: virtualRouteConfig.file,
+    fullPath: join(fullDir, virtualRouteConfig.file),
     variableName: 'rootRoute',
     routePath: '/',
     isRoot: true,
@@ -55,6 +67,46 @@ export async function getRouteNodes(
   const routeNodes = allNodes.slice(1)
 
   return { rootRouteNode, routeNodes }
+}
+
+/**
+ * Get the virtual route config from a file export
+ *
+ * @example
+ * ```ts
+ * // routes.ts
+ * import { rootRoute } from '@tanstack/virtual-file-routes'
+ *
+ * export const routes = rootRoute({ ... })
+ * // or
+ * export default rootRoute({ ... })
+ * ```
+ *
+ */
+async function getVirtualRouteConfigFromFileExport(
+  tsrConfig: Config,
+): Promise<VirtualRootRoute> {
+  if (
+    tsrConfig.virtualRouteConfig === undefined ||
+    typeof tsrConfig.virtualRouteConfig !== 'string' ||
+    tsrConfig.virtualRouteConfig === ''
+  ) {
+    throw new Error(`virtualRouteConfig is undefined or empty`)
+  }
+  const exports = await import(
+    join(process.cwd(), tsrConfig.virtualRouteConfig)
+  )
+
+  if (!('routes' in exports) && !('default' in exports)) {
+    throw new Error(
+      `routes not found in ${tsrConfig.virtualRouteConfig}. The routes export must be named like 'export const routes = ...' or done using 'export default ...'`,
+    )
+  }
+
+  const virtualRouteConfig =
+    'default' in exports ? exports.default : exports.routes
+
+  return virtualRootRouteSchema.parse(virtualRouteConfig)
 }
 
 export async function getRouteNodesRecursive(
