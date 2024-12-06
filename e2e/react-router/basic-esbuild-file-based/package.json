@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "dev": "esbuild src/main.tsx --serve=5601 --bundle --outfile=dist/main.js --watch --servedir=.",
-    "dev:e2e": "esbuild src/main.tsx --bundle --outfile=dist/main.js --watch --servedir=.",
     "build": "esbuild src/main.tsx --bundle --outfile=dist/main.js",
     "serve": "esbuild src/main.tsx --bundle --outfile=dist/main.js --servedir=.",
     "start": "dev",
