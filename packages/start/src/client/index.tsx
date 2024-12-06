@@ -31,6 +31,10 @@ export {
   type MiddlewareAfterServer,
   type Middleware,
 } from './createMiddleware'
+export {
+  registerGlobalMiddleware,
+  globalMiddleware,
+} from './registerGlobalMiddleware'
 export { serverOnly } from './serverOnly'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'

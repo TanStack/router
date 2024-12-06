@@ -1,5 +1,6 @@
 import { defaultTransformer, invariant, warning } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
+import { globalMiddleware } from './registerGlobalMiddleware'
 import type {
   AnyValidator,
   Constrain,
@@ -520,6 +521,7 @@ function extractFormDataContext(formData: FormData) {
 function flattenMiddlewares(
   middlewares: Array<AnyMiddleware>,
 ): Array<AnyMiddleware> {
+  const seen = new Set<AnyMiddleware>()
   const flattened: Array<AnyMiddleware> = []
 
   const recurse = (middleware: Array<AnyMiddleware>) => {
@@ -527,7 +529,11 @@ function flattenMiddlewares(
       if (m.options.middleware) {
         recurse(m.options.middleware)
       }
-      flattened.push(m)
+
+      if (!seen.has(m)) {
+        seen.add(m)
+        flattened.push(m)
+      }
     })
   }
 
@@ -617,7 +623,10 @@ async function executeMiddleware(
   env: 'client' | 'server',
   ctx: Omit<MiddlewareCtx, 'headers'> & { headers?: HeadersInit },
 ): Promise<MiddlewareCtx> {
-  const flattenedMiddlewares = flattenMiddlewares(middlewares)
+  const flattenedMiddlewares = flattenMiddlewares([
+    ...globalMiddleware,
+    ...middlewares,
+  ])
 
   const next = async (ctx: MiddlewareCtx): Promise<MiddlewareCtx> => {
     // Get the next middleware
