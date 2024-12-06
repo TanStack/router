@@ -18,6 +18,7 @@ import { config } from 'vinxi/plugins/config'
 import { serverFunctions } from '@vinxi/server-functions/plugin'
 // @ts-expect-error
 import { serverTransform } from '@vinxi/server-functions/server'
+import { createNitro } from 'nitropack'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
@@ -88,9 +89,9 @@ function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
   return ssrOptions
 }
 
-export function defineConfig(
+export async function defineConfig(
   inlineConfig: TanStackStartInputConfig = {},
-): VinxiApp {
+): Promise<VinxiApp> {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
   const { preset: configDeploymentPreset, ...serverOptions } =
@@ -122,6 +123,14 @@ export function defineConfig(
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
 
   const apiEntryExists = existsSync(apiEntry)
+
+  // Create a dummy nitro app to get the resolved public output path
+  const dummyNitroApp = await createNitro({
+    preset: deploymentPreset,
+  })
+
+  const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
+  await dummyNitroApp.close()
 
   let vinxiApp = createApp({
     server: {
@@ -162,10 +171,15 @@ export function defineConfig(
               define: {
                 ...(viteConfig.userConfig.define || {}),
                 ...(clientViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('ROUTER_BASE', 'client'),
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
               },
             }),
             ...(viteConfig.plugins || []),
@@ -203,10 +217,15 @@ export function defineConfig(
               define: {
                 ...(viteConfig.userConfig.define || {}),
                 ...(ssrViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('ROUTER_BASE', 'ssr'),
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
               },
             }),
             tsrRoutesManifest({
@@ -252,10 +271,15 @@ export function defineConfig(
               define: {
                 ...(viteConfig.userConfig.define || {}),
                 ...(serverViteConfig.userConfig.define || {}),
+                ...injectDefineEnv('ROUTER_BASE', 'server'),
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
               },
             }),
             serverFunctions.server({
@@ -317,10 +341,12 @@ export function defineConfig(
             define: {
               ...(viteConfig.userConfig.define || {}),
               ...(apiViteConfig.userConfig.define || {}),
+              ...injectDefineEnv('ROUTER_BASE', 'api'),
               ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
               ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
               ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
               ...injectDefineEnv('TSS_API_BASE', apiBase),
+              ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
             },
           }),
           TanStackRouterVite({

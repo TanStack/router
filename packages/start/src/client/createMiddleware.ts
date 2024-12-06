@@ -1,4 +1,8 @@
-import type { ConstrainValidator, Method } from './createServerFn'
+import type {
+  ConstrainValidator,
+  Method,
+  ServerFnTypeOrTypeFn,
+} from './createServerFn'
 import type {
   Assign,
   Constrain,
@@ -156,6 +160,7 @@ export interface MiddlewareClientFnOptions<
   sendContext?: unknown // cc Chris Horobin
   method: Method
   next: MiddlewareClientNextFn
+  type: ServerFnTypeOrTypeFn<Method, TMiddlewares, TValidator>
 }
 
 export type MiddlewareClientFn<

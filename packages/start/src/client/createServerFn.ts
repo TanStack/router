@@ -1,5 +1,4 @@
-import invariant from 'tiny-invariant'
-import { defaultTransformer } from '@tanstack/react-router'
+import { defaultTransformer, invariant, warning } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import type {
   AnyValidator,
@@ -52,7 +51,10 @@ export type FetcherImpl<TMiddlewares, TValidator, TResponse> =
 
 export type FetcherBaseOptions = {
   headers?: HeadersInit
+  type?: ServerFnType
 }
+
+export type ServerFnType = 'static' | 'dynamic'
 
 export interface RequiredFetcherDataOptions<TInput> extends FetcherBaseOptions {
   data: TInput
@@ -85,11 +87,11 @@ export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
 }
 
 export type CompiledFetcherFn<TResponse> = {
-  (opts: CompiledFetcherFnOptions & ServerFnBaseOptions): Promise<TResponse>
+  (opts: CompiledFetcherFnOptions & ServerFnInternalOptions): Promise<TResponse>
   url: string
 }
 
-type ServerFnBaseOptions<
+type ServerFnInternalOptions<
   TMethod extends Method = 'GET',
   TResponse = unknown,
   TMiddlewares = unknown,
@@ -103,6 +105,7 @@ type ServerFnBaseOptions<
   serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
   functionId: string
+  type: ServerFnTypeOrTypeFn<TMethod, TMiddlewares, AnyValidator>
 }
 
 export type ConstrainValidator<TValidator> = unknown extends TValidator
@@ -118,19 +121,7 @@ export type ConstrainValidator<TValidator> = unknown extends TValidator
       >
     >
 
-export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
-  middleware: <const TNewMiddlewares = undefined>(
-    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => ServerFnAfterMiddleware<TMethod, TNewMiddlewares, TValidator>
-}
-
-export interface ServerFnAfterMiddleware<
-  TMethod extends Method,
-  TMiddlewares,
-  TValidator,
-> extends ServerFnValidator<TMethod, TMiddlewares>,
-    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
-
+// Validator
 export interface ServerFnValidator<TMethod extends Method, TMiddlewares> {
   validator: <TValidator>(
     validator: ConstrainValidator<TValidator>,
@@ -142,8 +133,50 @@ export interface ServerFnAfterValidator<
   TMiddlewares,
   TValidator,
 > extends ServerFnMiddleware<TMethod, TValidator>,
+    ServerFnTyper<TMethod, TMiddlewares, TValidator>,
     ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
 
+// Middleware
+export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
+  middleware: <const TNewMiddlewares = undefined>(
+    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
+  ) => ServerFnAfterMiddleware<TMethod, TNewMiddlewares, TValidator>
+}
+
+export interface ServerFnAfterMiddleware<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> extends ServerFnValidator<TMethod, TMiddlewares>,
+    ServerFnTyper<TMethod, TMiddlewares, TValidator>,
+    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+
+// Typer
+export interface ServerFnTyper<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> {
+  type: (
+    typer: ServerFnTypeOrTypeFn<TMethod, TMiddlewares, TValidator>,
+  ) => ServerFnAfterTyper<TMethod, TMiddlewares, TValidator>
+}
+
+export type ServerFnTypeOrTypeFn<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> =
+  | ServerFnType
+  | ((ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>) => ServerFnType)
+
+export interface ServerFnAfterTyper<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> extends ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+
+// Handler
 export interface ServerFnHandler<
   TMethod extends Method,
   TMiddlewares,
@@ -159,11 +192,144 @@ export interface ServerFnBuilder<
   TResponse = unknown,
   TMiddlewares = unknown,
   TValidator = unknown,
-> extends ServerFnMiddleware<TMethod, TValidator>,
-    ServerFnValidator<TMethod, TMiddlewares>,
+> extends ServerFnValidator<TMethod, TMiddlewares>,
+    ServerFnMiddleware<TMethod, TValidator>,
+    ServerFnTyper<TMethod, TMiddlewares, TValidator>,
     ServerFnHandler<TMethod, TMiddlewares, TValidator> {
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
+  options: ServerFnInternalOptions<TMethod, TResponse, TMiddlewares, TValidator>
 }
+
+type StaticCachedResult = {
+  ctx?: {
+    result: any
+    context: any
+  }
+  error?: any
+}
+
+export type ServerFnStaticCache = {
+  getItem: (
+    ctx: MiddlewareCtx,
+  ) => StaticCachedResult | Promise<StaticCachedResult | undefined>
+  setItem: (ctx: MiddlewareCtx, response: StaticCachedResult) => Promise<void>
+  fetchItem: (
+    ctx: MiddlewareCtx,
+  ) => StaticCachedResult | Promise<StaticCachedResult | undefined>
+}
+
+let serverFnStaticCache: ServerFnStaticCache | undefined
+
+export function setServerFnStaticCache(
+  cache?: ServerFnStaticCache | (() => ServerFnStaticCache | undefined),
+) {
+  const previousCache = serverFnStaticCache
+  serverFnStaticCache = typeof cache === 'function' ? cache() : cache
+
+  return () => {
+    serverFnStaticCache = previousCache
+  }
+}
+
+export function createServerFnStaticCache(
+  serverFnStaticCache: ServerFnStaticCache,
+) {
+  return serverFnStaticCache
+}
+
+setServerFnStaticCache(() => {
+  const getStaticCacheUrl = (options: MiddlewareCtx, hash: string) => {
+    return `/__tsr/staticServerFnCache/${options.filename}__${options.functionId}__${hash}.json`
+  }
+
+  const jsonToFilenameSafeString = (json: any) => {
+    // Custom replacer to sort keys
+    const sortedKeysReplacer = (key: string, value: any) =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.keys(value)
+            .sort()
+            .reduce((acc: any, curr: string) => {
+              acc[curr] = value[curr]
+              return acc
+            }, {})
+        : value
+
+    // Convert JSON to string with sorted keys
+    const jsonString = JSON.stringify(json ?? '', sortedKeysReplacer)
+
+    // Replace characters invalid in filenames
+    return jsonString
+      .replace(/[/\\?%*:|"<>]/g, '-') // Replace invalid characters with a dash
+      .replace(/\s+/g, '_') // Optionally replace whitespace with underscores
+  }
+
+  const staticClientCache =
+    typeof document !== 'undefined' ? new Map<string, any>() : null
+
+  return createServerFnStaticCache({
+    getItem: async (ctx) => {
+      if (typeof document === 'undefined') {
+        const hash = jsonToFilenameSafeString(ctx.data)
+        const url = getStaticCacheUrl(ctx, hash)
+        const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
+
+        // Use fs instead of fetch to read from filesystem
+        const fs = await import('node:fs/promises')
+        const path = await import('node:path')
+        const filePath = path.join(publicUrl, url)
+
+        const [cachedResult, readError] = await fs
+          .readFile(filePath, 'utf-8')
+          .then((c) => [
+            defaultTransformer.parse(c) as {
+              ctx: unknown
+              error: any
+            },
+            null,
+          ])
+          .catch((e) => [null, e])
+
+        if (readError && readError.code !== 'ENOENT') {
+          throw readError
+        }
+
+        return cachedResult as StaticCachedResult
+      }
+    },
+    setItem: async (ctx, response) => {
+      const fs = await import('node:fs/promises')
+      const path = await import('node:path')
+
+      const hash = jsonToFilenameSafeString(ctx.data)
+      const url = getStaticCacheUrl(ctx, hash)
+      const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
+      const filePath = path.join(publicUrl, url)
+
+      // Ensure the directory exists
+      await fs.mkdir(path.dirname(filePath), { recursive: true })
+
+      // Store the result with fs
+      await fs.writeFile(filePath, defaultTransformer.stringify(response))
+    },
+    fetchItem: async (ctx) => {
+      const hash = jsonToFilenameSafeString(ctx.data)
+      const url = getStaticCacheUrl(ctx, hash)
+
+      let result: any = staticClientCache?.get(url)
+
+      if (!result) {
+        result = await fetch(url, {
+          method: 'GET',
+        })
+          .then((r) => r.text())
+          .then((d) => defaultTransformer.parse(d))
+
+        staticClientCache?.set(url, result)
+      }
+
+      return result
+    },
+  })
+})
 
 export function createServerFn<
   TMethod extends Method,
@@ -172,11 +338,16 @@ export function createServerFn<
   TValidator = undefined,
 >(
   options?: {
-    method: TMethod
+    method?: TMethod
   },
-  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
+  __opts?: ServerFnInternalOptions<
+    TMethod,
+    TResponse,
+    TMiddlewares,
+    TValidator
+  >,
 ): ServerFnBuilder<TMethod, TResponse, TMiddlewares, TValidator> {
-  const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
+  const resolvedOptions = (__opts || options || {}) as ServerFnInternalOptions<
     TMethod,
     TResponse,
     TMiddlewares,
@@ -201,6 +372,12 @@ export function createServerFn<
         Object.assign(resolvedOptions, { validator }),
       ) as any
     },
+    type: (type) => {
+      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
+        undefined,
+        Object.assign(resolvedOptions, { type }),
+      ) as any
+    },
     handler: (...args) => {
       // This function signature changes due to AST transformations
       // in the babel plugin. We need to cast it to the correct
@@ -218,11 +395,6 @@ export function createServerFn<
         serverFn,
       })
 
-      invariant(
-        extractedFn.url,
-        `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/start-vite-plugin ?`,
-      )
-
       const resolvedMiddleware = [
         ...(resolvedOptions.middleware || []),
         serverFnBaseToMiddleware(resolvedOptions),
@@ -234,10 +406,8 @@ export function createServerFn<
         async (opts?: CompiledFetcherFnOptions) => {
           // Start by executing the client-side middleware chain
           return executeMiddleware(resolvedMiddleware, 'client', {
-            ...extractedFn,
-            method: resolvedOptions.method,
-            data: opts?.data as any,
-            headers: opts?.headers,
+            ...resolvedOptions,
+            ...(opts as any),
             context: Object.assign({}, extractedFn),
           }).then((d) => d.result)
         },
@@ -246,18 +416,76 @@ export function createServerFn<
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: (opts: any) => {
-            const parsedOpts =
-              opts instanceof FormData ? extractFormDataContext(opts) : opts
+          __executeServer: async (opts: any) => {
+            if (process.env.ROUTER !== 'client') {
+              const parsedOpts =
+                opts instanceof FormData ? extractFormDataContext(opts) : opts
 
-            return executeMiddleware(resolvedMiddleware, 'server', {
-              ...extractedFn,
-              ...parsedOpts,
-            }).then((d) => ({
-              // Only send the result and sendContext back to the client
-              result: d.result,
-              context: d.sendContext,
-            }))
+              const ctx = {
+                ...resolvedOptions,
+                ...parsedOpts,
+              }
+
+              ctx.type =
+                typeof resolvedOptions.type === 'function'
+                  ? resolvedOptions.type(ctx)
+                  : resolvedOptions.type
+
+              const run = async () =>
+                executeMiddleware(resolvedMiddleware, 'server', ctx).then(
+                  (d) => ({
+                    // Only send the result and sendContext back to the client
+                    result: d.result,
+                    context: d.sendContext,
+                  }),
+                )
+
+              if (ctx.type === 'static') {
+                let response: StaticCachedResult | undefined
+
+                // If we can get the cached item, try to get it
+                if (serverFnStaticCache?.getItem) {
+                  // If this throws, it's okay to let it bubble up
+                  response = await serverFnStaticCache.getItem(ctx)
+                }
+
+                if (!response) {
+                  // If there's no cached item, execute the server function
+                  response = await run()
+                    .then((d) => {
+                      return {
+                        ctx: d,
+                        error: null,
+                      }
+                    })
+                    .catch((e) => {
+                      return {
+                        ctx: undefined,
+                        error: e,
+                      }
+                    })
+
+                  if (serverFnStaticCache?.setItem) {
+                    await serverFnStaticCache.setItem(ctx, response)
+                  }
+                }
+
+                invariant(
+                  response,
+                  'No response from both server and static cache!',
+                )
+
+                if (response.error) {
+                  throw response.error
+                }
+
+                return response.ctx
+              }
+
+              return run()
+            }
+
+            return undefined
           },
         },
       ) as any
@@ -282,7 +510,7 @@ function extractFormDataContext(formData: FormData) {
       context,
       data: formData,
     }
-  } catch (e) {
+  } catch {
     return {
       data: formData,
     }
@@ -308,19 +536,16 @@ function flattenMiddlewares(
   return flattened
 }
 
-export type MiddlewareOptions = {
-  method: Method
-  data: any
-  headers?: HeadersInit
-  sendContext?: any
-  context?: any
-}
-
-export type MiddlewareResult = {
+export type MiddlewareCtx = {
   context: any
   sendContext: any
   data: any
   result: unknown
+  method: Method
+  type: 'static' | 'dynamic'
+  headers: HeadersInit
+  filename: string
+  functionId: string
 }
 
 const applyMiddleware = (
@@ -329,14 +554,11 @@ const applyMiddleware = (
     | AnyMiddleware['options']['server']
     | AnyMiddleware['options']['clientAfter']
   >,
-  mCtx: MiddlewareOptions,
-  nextFn: (ctx: MiddlewareOptions) => Promise<MiddlewareResult>,
+  mCtx: MiddlewareCtx,
+  nextFn: (ctx: MiddlewareCtx) => Promise<MiddlewareCtx>,
 ) => {
   return middlewareFn({
-    data: mCtx.data,
-    context: mCtx.context,
-    sendContext: mCtx.sendContext,
-    method: mCtx.method,
+    ...mCtx,
     next: ((userResult: any) => {
       // Take the user provided context
       // and merge it with the current context
@@ -354,17 +576,14 @@ const applyMiddleware = (
 
       // Return the next middleware
       return nextFn({
-        method: mCtx.method,
-        data: mCtx.data,
+        ...mCtx,
         context,
         sendContext,
         headers,
         result: userResult?.result ?? (mCtx as any).result,
-      } as MiddlewareResult & {
-        method: Method
       })
     }) as any,
-  })
+  } as any)
 }
 
 function execValidator(validator: AnyValidator, input: unknown): unknown {
@@ -396,11 +615,11 @@ function execValidator(validator: AnyValidator, input: unknown): unknown {
 async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
-  opts: MiddlewareOptions,
-): Promise<MiddlewareResult> {
+  ctx: Omit<MiddlewareCtx, 'headers'> & { headers?: HeadersInit },
+): Promise<MiddlewareCtx> {
   const flattenedMiddlewares = flattenMiddlewares(middlewares)
 
-  const next = async (ctx: MiddlewareOptions): Promise<MiddlewareResult> => {
+  const next = async (ctx: MiddlewareCtx): Promise<MiddlewareCtx> => {
     // Get the next middleware
     const nextMiddleware = flattenedMiddlewares.shift()
 
@@ -427,15 +646,15 @@ async function executeMiddleware(
       return applyMiddleware(
         middlewareFn,
         ctx,
-        async (userCtx): Promise<MiddlewareResult> => {
+        async (userCtx): Promise<MiddlewareCtx> => {
           // If there is a clientAfter function and we are on the client
           if (env === 'client' && nextMiddleware.options.clientAfter) {
             // We need to await the next middleware and get the result
-            const result = await next(userCtx)
+            const resultCtx = await next(userCtx)
             // Then we can execute the clientAfter function
             return applyMiddleware(
               nextMiddleware.options.clientAfter,
-              result as any,
+              resultCtx as any,
               // Identity, because there "next" is just returning
               (d: any) => d,
             ) as any
@@ -451,15 +670,15 @@ async function executeMiddleware(
 
   // Start the middleware chain
   return next({
-    ...opts,
-    headers: opts.headers || {},
-    sendContext: (opts as any).sendContext || {},
-    context: opts.context || {},
+    ...ctx,
+    headers: ctx.headers || {},
+    sendContext: (ctx as any).sendContext || {},
+    context: ctx.context || {},
   })
 }
 
 function serverFnBaseToMiddleware(
-  options: ServerFnBaseOptions<any, any, any, any>,
+  options: ServerFnInternalOptions<any, any, any, any>,
 ): AnyMiddleware {
   return {
     _types: undefined!,
@@ -467,23 +686,52 @@ function serverFnBaseToMiddleware(
       validator: options.validator,
       validateClient: options.validateClient,
       client: async ({ next, sendContext, ...ctx }) => {
-        // Execute the extracted function
-        // but not before serializing the context
-        const res = await options.extractedFn?.({
+        const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
-        } as any)
+          type: typeof ctx.type === 'function' ? ctx.type(ctx) : ctx.type,
+        } as any
+
+        if (
+          ctx.type === 'static' &&
+          process.env.NODE_ENV === 'production' &&
+          typeof document !== 'undefined' &&
+          serverFnStaticCache?.fetchItem
+        ) {
+          const result = await serverFnStaticCache.fetchItem(payload)
+
+          if (result) {
+            if (result.error) {
+              throw result.error
+            }
+
+            return next(result.ctx)
+          }
+
+          warning(
+            result,
+            `No static cache item found for ${payload.filename}__${payload.functionId}__${JSON.stringify(payload.data)}, falling back to server function...`,
+          )
+        }
+
+        // Execute the extracted function
+        // but not before serializing the context
+        const res = await options.extractedFn?.(payload)
 
         return next(res)
       },
       server: async ({ next, ...ctx }) => {
-        // Execute the server function
-        const result = await options.serverFn?.(ctx as any)
+        if (process.env.ROUTER !== 'client') {
+          // Execute the server function
+          const result = await options.serverFn?.(ctx as any)
 
-        return next({
-          result,
-        } as any)
+          return next({
+            result,
+          } as any)
+        }
+
+        throw new Error('Server function called from the client!')
       },
     },
   }

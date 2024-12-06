@@ -14,6 +14,7 @@ export {
   type FetcherBaseOptions,
   type ServerFn,
   type ServerFnCtx,
+  type MiddlewareCtx,
 } from './createServerFn'
 export {
   createMiddleware,

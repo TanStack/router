@@ -10,5 +10,7 @@ export function createServerReference<TPayload, TResponse>(
 
   return Object.assign(fn, {
     url: functionUrl,
+    filename: id,
+    functionId: name,
   })
 }
