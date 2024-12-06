@@ -74,7 +74,7 @@ import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { rootRoute } from '@tanstack/virtual-file-routes'
 
-export const routes = rootRoute('root.tsx', [
+const routes = rootRoute('root.tsx', [
   // ... the rest of your virtual route tree
 ])
 
