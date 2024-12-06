@@ -50,6 +50,7 @@ Virtual file routes can be configured either via:
 If you're using the `TanStackRouter` plugin for Vite/Rspack/Webpack, you can configure virtual file routes by passing the path of your routes file to the `virtualRoutesConfig` option when setting up the plugin:
 
 ```tsx
+// vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
@@ -96,6 +97,7 @@ To create virtual file routes, you'll need to import the `@tanstack/virtual-file
 The `rootRoute` function is used to create a virtual root route. It takes a file name and an array of children routes. Here's an example of a virtual root route:
 
 ```tsx
+// routes.ts
 import { rootRoute } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
@@ -108,6 +110,7 @@ export const routes = rootRoute('root.tsx', [
 The `route` function is used to create a virtual route. It takes a path, a file name, and an array of children routes. Here's an example of a virtual route:
 
 ```tsx
+// routes.ts
 import { route } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
@@ -120,6 +123,7 @@ export const routes = rootRoute('root.tsx', [
 You can also define a virtual route without a file name. This allows to set a common path prefix for its children:
 
 ```tsx
+// routes.ts
 import { route } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
@@ -145,6 +149,7 @@ const routes = rootRoute('root.tsx', [index('index.tsx')])
 The `layout` function is used to create a virtual layout route. It takes a file name, an array of children routes, and an optional layout ID. Here's an example of a virtual layout route:
 
 ```tsx
+// routes.ts
 import { layout } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
@@ -157,6 +162,7 @@ export const routes = rootRoute('root.tsx', [
 You can also specify a layout ID to give the layout a unique identifier that is different from the filename:
 
 ```tsx
+// routes.ts
 import { layout } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
@@ -198,6 +204,7 @@ Consider the following file structure:
 Let's use virtual routes to customize our route tree for everything but `posts`, then use physical virtual routes to mount the `posts` directory under the `/posts` path:
 
 ```tsx
+// routes.ts
 export const routes = rootRoute('root.tsx', [
   // Set up your virtual routes as normal
   index('index.tsx'),
@@ -241,6 +248,7 @@ Let's look at the `bar` directory which contains a special file named `__virtual
 `__virtual.ts` configures the virtual routes for that particular subtree of the route tree. It uses the same API as explained above, with the only difference being that no `rootRoute` is defined for that subtree:
 
 ```tsx
+// routes/foo/bar/__virtual.ts
 import {
   defineVirtualSubtreeConfig,
   index,
