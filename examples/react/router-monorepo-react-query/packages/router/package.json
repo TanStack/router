@@ -10,7 +10,7 @@
   "dependencies": {
     "@tanstack/history": "^1.85.3",
     "@tanstack/react-query": "^5.62.0",
-    "@tanstack/react-router": "^1.85.5",
+    "@tanstack/react-router": "^1.85.10",
     "@tanstack/router-plugin": "^1.85.9",
     "@router-mono-react-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
