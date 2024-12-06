@@ -107,6 +107,7 @@ export type RouterProps<
     TRouter['routeTree'],
     NonNullable<TRouter['options']['trailingSlash']>,
     NonNullable<TRouter['options']['defaultStructuralSharing']>,
+    TRouter['history'],
     TDehydrated
   >,
   'context'
@@ -114,13 +115,15 @@ export type RouterProps<
   router: Router<
     TRouter['routeTree'],
     NonNullable<TRouter['options']['trailingSlash']>,
-    NonNullable<TRouter['options']['defaultStructuralSharing']>
+    NonNullable<TRouter['options']['defaultStructuralSharing']>,
+    TRouter['history']
   >
   context?: Partial<
     RouterOptions<
       TRouter['routeTree'],
       NonNullable<TRouter['options']['trailingSlash']>,
       NonNullable<TRouter['options']['defaultStructuralSharing']>,
+      TRouter['history'],
       TDehydrated
     >['context']
   >

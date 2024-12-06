@@ -12,7 +12,6 @@ test('Navigating to a post page', async ({ page }) => {
 })
 
 test('Navigating nested layouts', async ({ page }) => {
-  await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
   await expect(page.locator('#app')).toContainText("I'm a layout")

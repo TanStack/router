@@ -40,7 +40,7 @@ type RouteSubNode = {
   lazy?: RouteNode
 }
 
-export async function generator(config: Config) {
+export async function generator(config: Config, root: string) {
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
@@ -78,9 +78,9 @@ export async function generator(config: Config) {
   let getRouteNodesResult: GetRouteNodesResult
 
   if (config.virtualRouteConfig) {
-    getRouteNodesResult = await virtualGetRouteNodes(config)
+    getRouteNodesResult = await virtualGetRouteNodes(config, root)
   } else {
-    getRouteNodesResult = await physicalGetRouteNodes(config)
+    getRouteNodesResult = await physicalGetRouteNodes(config, root)
   }
 
   const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult

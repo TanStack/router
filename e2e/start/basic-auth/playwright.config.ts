@@ -1,44 +1,32 @@
 import { defineConfig, devices } from '@playwright/test'
 
-import dotenv from 'dotenv'
-
-dotenv.config()
-
+const PORT = 5610
+const baseURL = `http://localhost:${PORT}`
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: './tests',
+  workers: 1,
 
   reporter: [['line']],
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3002/',
+    baseURL,
   },
 
   webServer: {
-    // TODO: build && start seems broken, use that if it's working
-    command: 'pnpm dev',
-    url: 'http://localhost:3002',
+    command: `VITE_SERVER_PORT=${PORT} pnpm build && VITE_SERVER_PORT=${PORT} pnpm start --port ${PORT}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
   },
 
   projects: [
     {
-      name: 'mock-db-setup',
-      testMatch: 'tests/mock-db-setup.test.ts',
-      teardown: 'cleanup-mock-db',
-    },
-    {
-      name: 'cleanup-mock-db',
-      testMatch: 'tests/mock-db-teardown.test.ts',
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['mock-db-setup'],
     },
   ],
 })

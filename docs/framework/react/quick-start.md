@@ -18,6 +18,8 @@ pnpm create @tanstack/router
 yarn create @tanstack/router
 # or
 bun create @tanstack/router
+# or
+deno init --npm @tanstack/router
 ```
 
 Follow the prompts to setup the project.
@@ -34,6 +36,8 @@ pnpm add -D @tanstack/router-plugin @tanstack/router-devtools
 yarn add -D @tanstack/router-plugin @tanstack/router-devtools
 # or
 bun add -D @tanstack/router-plugin @tanstack/router-devtools
+# or
+deno add npm:@tanstack/router-plugin npm:@tanstack/router-devtools
 ```
 
 #### Configure the Vite Plugin

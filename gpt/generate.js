@@ -1,7 +1,7 @@
 // @ts-check
 
 import fs from 'node:fs'
-import { glob } from 'glob'
+import { glob } from 'tinyglobby'
 
 const outputPath = './gpt/db.json'
 const packages = []
@@ -21,7 +21,7 @@ Promise.resolve()
           packages.push(pkg)
 
           return glob(`./${dir}/src/**/*`, {
-            nodir: true,
+            onlyFiles: true,
           }).then((files) => {
             files.forEach((file) => {
               const content = fs.readFileSync(file, 'utf8')
@@ -58,7 +58,7 @@ Promise.resolve()
           examples.push(example)
 
           return glob(`./${dir}/src/**/*`, {
-            nodir: true,
+            onlyFiles: true,
           }).then((files) => {
             files.forEach((file) => {
               const content = fs.readFileSync(file, 'utf8')

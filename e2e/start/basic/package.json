@@ -4,7 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3002",
+    "dev": "vinxi dev --port 3000",
+    "dev:e2e": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
     "test:e2e": "playwright test --project=chromium"
@@ -17,7 +18,7 @@
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.5",
-    "vinxi": "0.4.3",
+    "vinxi": "0.5.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -25,11 +26,11 @@
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
-    "@vitejs/plugin-react": "^4.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
-    "typescript": "^5.6.2",
+    "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.3"
   }
 }

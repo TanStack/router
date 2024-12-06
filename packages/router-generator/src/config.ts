@@ -5,7 +5,6 @@ import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
 const defaultTemplate = {
   routeTemplate: [
-    'import * as React from "react";\n',
     '%%tsrImports%%',
     '\n\n',
     '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
@@ -20,7 +19,7 @@ const defaultTemplate = {
 }
 
 export const configSchema = z.object({
-  virtualRouteConfig: virtualRootRouteSchema.optional(),
+  virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
   routeFileIgnorePattern: z.string().optional(),

@@ -2,10 +2,8 @@ import path from 'node:path'
 import chokidar from 'chokidar'
 import { generator, getConfig } from '@tanstack/router-generator'
 
-export function watch() {
-  const configWatcher = chokidar.watch(
-    path.resolve(process.cwd(), 'tsr.config.json'),
-  )
+export function watch(root: string) {
+  const configWatcher = chokidar.watch(path.resolve(root, 'tsr.config.json'))
 
   let watcher = new chokidar.FSWatcher({})
 
@@ -20,7 +18,7 @@ export function watch() {
     watcher.on('ready', async () => {
       const handle = async () => {
         try {
-          await generator(config)
+          await generator(config, root)
         } catch (err) {
           console.error(err)
           console.info()
@@ -31,7 +29,7 @@ export function watch() {
 
       let timeout: ReturnType<typeof setTimeout> | undefined
 
-      const deduped = (file: string) => {
+      const deduped = (_file: string) => {
         if (timeout) {
           clearTimeout(timeout)
         }
