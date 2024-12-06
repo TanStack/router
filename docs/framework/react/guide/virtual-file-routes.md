@@ -68,6 +68,7 @@ export default defineConfig({
 Or, you choose to define the virtual routes directly in the configuration:
 
 ```tsx
+// vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
