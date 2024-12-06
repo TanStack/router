@@ -4,6 +4,11 @@
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "target": "ESNext",
-    "moduleResolution": "Bundler"
-  }
+    "moduleResolution": "Bundler",
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": true
+  },
+  "exclude": ["node_modules", "dist"]
 }

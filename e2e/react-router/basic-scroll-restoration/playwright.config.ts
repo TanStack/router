@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
+import { derivePort } from '../../utils.js'
+import packageJson from './package.json' with { type: 'json' }
 
-const PORT = 5606
+const PORT = derivePort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 /**
  * See https://playwright.dev/docs/test-configuration.
