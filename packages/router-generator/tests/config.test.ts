@@ -19,14 +19,14 @@ describe('load config tests', () => {
   ] satisfies TestCases)(
     'should load config correctly: $folder',
     async ({ folder }) => {
-      const absPath = makeFolderDir(folder);
-      const resolvedConfig = getConfig({},absPath);
+      const absPath = makeFolderDir(folder)
+      const resolvedConfig = getConfig({}, absPath)
       expect(resolvedConfig).toEqual(
         expect.objectContaining({
-          "disableLogging": true,
-          "routesDirectory": join(absPath, "./configured-routes-path"),
-          "generatedRouteTree": join(absPath, "./routeTree.gen.ts")
-        })
+          disableLogging: true,
+          routesDirectory: join(absPath, './configured-routes-path'),
+          generatedRouteTree: join(absPath, './routeTree.gen.ts'),
+        }),
       )
     },
   )
