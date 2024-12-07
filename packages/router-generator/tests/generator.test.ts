@@ -94,6 +94,12 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         config.virtualRouteConfig = virtualRouteConfig
       }
       break
+    case 'virtual-config-file-named-export':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-config-file-default-export':
+      config.virtualRouteConfig = './routes.ts'
+      break
     case 'types-disabled':
       config.disableTypes = true
       config.generatedRouteTree =
@@ -207,6 +213,8 @@ describe('generator works', async () => {
   it.each(folderNames.map((folder) => [folder]))(
     'should wire-up the routes for a "%s" tree',
     async (folderName) => {
+      const folderRoot = makeFolderDir(folderName)
+
       const config = await setupConfig(folderName)
 
       rewriteConfigByFolderName(folderName, config)
@@ -214,9 +222,9 @@ describe('generator works', async () => {
       await preprocess(folderName)
       const error = shouldThrow(folderName)
       if (error) {
-        expect(() => generator(config)).rejects.toThrowError(error)
+        expect(() => generator(config, folderRoot)).rejects.toThrowError(error)
       } else {
-        await generator(config)
+        await generator(config, folderRoot)
 
         const generatedRouteTree = await getRouteTreeFileText(config)
 

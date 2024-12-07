@@ -1,5 +1,6 @@
 import { configSchema } from '@tanstack/router-generator'
 import { z } from 'zod'
+import type { PluginOption } from 'vite'
 import type { AppOptions as VinxiAppOptions } from 'vinxi'
 import type { NitroOptions } from 'nitropack'
 
@@ -7,7 +8,10 @@ import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
 
 type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
 
-export function getUserViteConfig(config?: StartUserViteConfig) {
+export function getUserViteConfig(config?: StartUserViteConfig): {
+  plugins: Array<PluginOption> | undefined
+  userConfig: CustomizableConfig
+} {
   const { plugins, ...userConfig } =
     typeof config === 'function' ? config() : { ...config }
   return { plugins, userConfig }
