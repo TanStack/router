@@ -8,7 +8,7 @@ async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
 }
 
-describe('createServerFn compiles correctly', async () => {
+describe('createIsomorphicFn compiles correctly', async () => {
   const filenames = await getFilenames()
 
   describe.each(filenames)('should handle "%s"', async (filename) => {
