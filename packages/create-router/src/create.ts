@@ -77,6 +77,7 @@ export async function create({
     ],
     overrides: bundlerResult.overrides,
   })
+  console.log('package.json\n', packageJson)
 
   await writeTemplateFile('package.json', targetFolder, packageJson)
 
