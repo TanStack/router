@@ -52,6 +52,32 @@ function RootComponent() {
         >
           This Route Does Not Exist
         </Link>
+        <Link
+          to="/sync-error"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          sync-error
+        </Link>{' '}
+        <Link
+          preload={"intent"}
+          to="/async-error"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          async-error with preload intent
+        </Link>{' '}
+        <Link
+          preload={false}
+          to="/async-error"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          async-error without preload 
+        </Link>{' '}
       </div>
       <hr />
       <Outlet />

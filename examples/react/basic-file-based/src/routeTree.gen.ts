@@ -11,7 +11,9 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as SyncErrorImport } from './routes/sync-error'
 import { Route as PostsImport } from './routes/posts'
+import { Route as AsyncErrorImport } from './routes/async-error'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
@@ -22,9 +24,21 @@ import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/
 
 // Create/Update Routes
 
+const SyncErrorRoute = SyncErrorImport.update({
+  id: '/sync-error',
+  path: '/sync-error',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const PostsRoute = PostsImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AsyncErrorRoute = AsyncErrorImport.update({
+  id: '/async-error',
+  path: '/async-error',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -86,11 +100,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
+    '/async-error': {
+      id: '/async-error'
+      path: '/async-error'
+      fullPath: '/async-error'
+      preLoaderRoute: typeof AsyncErrorImport
+      parentRoute: typeof rootRoute
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsImport
+      parentRoute: typeof rootRoute
+    }
+    '/sync-error': {
+      id: '/sync-error'
+      path: '/sync-error'
+      fullPath: '/sync-error'
+      preLoaderRoute: typeof SyncErrorImport
       parentRoute: typeof rootRoute
     }
     '/_layout/_layout-2': {
@@ -173,7 +201,9 @@ const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
+  '/async-error': typeof AsyncErrorRoute
   '/posts': typeof PostsRouteWithChildren
+  '/sync-error': typeof SyncErrorRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -183,6 +213,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
+  '/async-error': typeof AsyncErrorRoute
+  '/sync-error': typeof SyncErrorRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -193,7 +225,9 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
+  '/async-error': typeof AsyncErrorRoute
   '/posts': typeof PostsRouteWithChildren
+  '/sync-error': typeof SyncErrorRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
@@ -206,18 +240,30 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | ''
+    | '/async-error'
     | '/posts'
+    | '/sync-error'
     | '/posts/$postId'
     | '/posts/'
     | '/layout-a'
     | '/layout-b'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
+  to:
+    | '/'
+    | ''
+    | '/async-error'
+    | '/sync-error'
+    | '/posts/$postId'
+    | '/posts'
+    | '/layout-a'
+    | '/layout-b'
   id:
     | '__root__'
     | '/'
     | '/_layout'
+    | '/async-error'
     | '/posts'
+    | '/sync-error'
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/posts/'
@@ -229,13 +275,17 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
+  AsyncErrorRoute: typeof AsyncErrorRoute
   PostsRoute: typeof PostsRouteWithChildren
+  SyncErrorRoute: typeof SyncErrorRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
+  AsyncErrorRoute: AsyncErrorRoute,
   PostsRoute: PostsRouteWithChildren,
+  SyncErrorRoute: SyncErrorRoute,
 }
 
 export const routeTree = rootRoute
@@ -250,7 +300,9 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/_layout",
-        "/posts"
+        "/async-error",
+        "/posts",
+        "/sync-error"
       ]
     },
     "/": {
@@ -262,12 +314,18 @@ export const routeTree = rootRoute
         "/_layout/_layout-2"
       ]
     },
+    "/async-error": {
+      "filePath": "async-error.tsx"
+    },
     "/posts": {
       "filePath": "posts.tsx",
       "children": [
         "/posts/$postId",
         "/posts/"
       ]
+    },
+    "/sync-error": {
+      "filePath": "sync-error.tsx"
     },
     "/_layout/_layout-2": {
       "filePath": "_layout/_layout-2.tsx",
