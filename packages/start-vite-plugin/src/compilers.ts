@@ -59,6 +59,7 @@ export function compileStartOutput(opts: ParseAstOptions) {
           createServerFn: IdentifierConfig
           createMiddleware: IdentifierConfig
           serverOnly: IdentifierConfig
+          createIsomorphicFn: IdentifierConfig
         } = {
           createServerFn: {
             name: 'createServerFn',
@@ -79,6 +80,13 @@ export function compileStartOutput(opts: ParseAstOptions) {
             type: 'ImportSpecifier',
             namespaceId: '',
             handleCallExpression: handleServerOnlyCallExpression,
+            paths: [],
+          },
+          createIsomorphicFn: {
+            name: 'createIsomorphicFn',
+            type: 'ImportSpecifier',
+            namespaceId: '',
+            handleCallExpression: handleCreateIsomorphicFnCallExpression,
             paths: [],
           },
         }
@@ -570,6 +578,82 @@ function handleServerOnlyCallExpression(
       ]),
     ),
   )
+}
+
+function handleCreateIsomorphicFnCallExpression(
+  path: babel.NodePath<t.CallExpression>,
+  opts: ParseAstOptions,
+) {
+  const rootCallExpression = getRootCallExpression(path)
+
+  if (debug)
+    console.info(
+      'Handling createIsomorphicFn call expression:',
+      rootCallExpression.toString(),
+    )
+
+  // Check if the call is assigned to a variable
+  if (!rootCallExpression.parentPath.isVariableDeclarator()) {
+    throw new Error('createIsomorphicFn must be assigned to a variable!')
+  }
+
+  const callExpressionPaths = {
+    client: null as babel.NodePath<t.CallExpression> | null,
+    server: null as babel.NodePath<t.CallExpression> | null,
+  }
+
+  const validMethods = Object.keys(callExpressionPaths)
+
+  rootCallExpression.traverse({
+    MemberExpression(memberExpressionPath) {
+      if (t.isIdentifier(memberExpressionPath.node.property)) {
+        const name = memberExpressionPath.node.property
+          .name as keyof typeof callExpressionPaths
+
+        if (
+          validMethods.includes(name) &&
+          memberExpressionPath.parentPath.isCallExpression()
+        ) {
+          callExpressionPaths[name] = memberExpressionPath.parentPath
+        }
+      }
+    },
+  })
+
+  if (
+    validMethods.every(
+      (method) =>
+        !callExpressionPaths[method as keyof typeof callExpressionPaths],
+    )
+  ) {
+    const variableId = rootCallExpression.parentPath.node.id
+    console.warn(
+      'createIsomorphicFn called without a client or server implementation!',
+      'This will result in a no-op function.',
+      'Variable name:',
+      t.isIdentifier(variableId) ? variableId.name : 'unknown',
+    )
+  }
+
+  const envCallExpression = callExpressionPaths[opts.env]
+
+  if (!envCallExpression) {
+    // if we don't have an implementation for this environment, default to a no-op
+    rootCallExpression.replaceWith(
+      t.arrowFunctionExpression([], t.blockStatement([])),
+    )
+    return
+  }
+
+  const innerInputExpression = envCallExpression.node.arguments[0]
+
+  if (!t.isExpression(innerInputExpression)) {
+    throw new Error(
+      `createIsomorphicFn().${opts.env}(func) must be called with a function!`,
+    )
+  }
+
+  rootCallExpression.replaceWith(innerInputExpression)
 }
 
 function getRootCallExpression(path: babel.NodePath<t.CallExpression>) {

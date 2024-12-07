@@ -146,3 +146,24 @@ test('submitting multipart/form-data as server function input', async ({
     expected,
   )
 })
+
+test('isomorphic functions can have different implementations on client and server', async ({
+  page,
+}) => {
+  await page.goto('/isomorphic-fns')
+
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-isomorphic-results-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('server-result')).toContainText('server')
+  await expect(page.getByTestId('client-result')).toContainText('client')
+
+  await expect(page.getByTestId('server-echo-result')).toContainText(
+    'server received hello',
+  )
+  await expect(page.getByTestId('client-echo-result')).toContainText(
+    'client received hello',
+  )
+})
