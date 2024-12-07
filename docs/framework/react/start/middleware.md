@@ -293,10 +293,12 @@ Here's an example of how this works:
 ```tsx
 import { authMiddleware } from './authMiddleware'
 
-const fn = createServerFn().middleware([authMiddleware]).handler(async ({ context }) => {
-  console.log(context.user)
-  // ...
-})
+const fn = createServerFn()
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    console.log(context.user)
+    // ...
+  })
 ```
 
 ## Middleware Execution Order
