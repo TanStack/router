@@ -2821,24 +2821,11 @@ export class Router<
       })
     })
 
-    const activeMatchIds = new Set(
-      [...this.state.matches, ...(this.state.pendingMatches ?? [])].map(
-        (d) => d.id,
-      ),
-    )
-
     try {
       matches = await this.loadMatches({
         matches,
         location: next,
         preload: true,
-        updateMatch: (id, updater) => {
-          if (activeMatchIds.has(id)) {
-            matches = matches.map((d) => (d.id === id ? updater(d) : d))
-          } else {
-            this.updateMatch(id, updater)
-          }
-        },
       })
 
       return matches
