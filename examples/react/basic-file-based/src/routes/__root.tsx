@@ -61,7 +61,7 @@ function RootComponent() {
           sync-error
         </Link>{' '}
         <Link
-          preload={"intent"}
+          preload={'intent'}
           to="/async-error"
           activeProps={{
             className: 'font-bold',
@@ -76,7 +76,7 @@ function RootComponent() {
             className: 'font-bold',
           }}
         >
-          async-error without preload 
+          async-error without preload
         </Link>{' '}
       </div>
       <hr />
