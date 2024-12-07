@@ -2278,7 +2278,7 @@ export class Router<
               const shouldPending = !!(
                 onReady &&
                 !this.isServer &&
-                resolvePreload(matchId) &&
+                !resolvePreload(matchId) &&
                 (route.options.loader || route.options.beforeLoad) &&
                 typeof pendingMs === 'number' &&
                 pendingMs !== Infinity &&
