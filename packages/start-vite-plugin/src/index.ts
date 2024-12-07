@@ -26,11 +26,12 @@ export function TanStackStartViteServerFn(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      const includesToken = /createServerFn|createMiddleware|serverOnly/.test(
-        code,
-      )
+      const includesToken =
+        /createServerFn|createMiddleware|serverOnly|createIsomorphicFn/.test(
+          code,
+        )
       const includesEitherFunc =
-        /(function createServerFn|function createMiddleware|function serverOnly)/.test(
+        /(function createServerFn|function createMiddleware|function serverOnly|function createIsomorphicFn)/.test(
           code,
         )
 
