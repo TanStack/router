@@ -2150,7 +2150,7 @@ export class Router<
   loadMatches = async ({
     location,
     matches,
-    preload,
+    preload: allPreload,
     onReady,
     updateMatch = this.updateMatch,
   }: {
@@ -2172,6 +2172,10 @@ export class Router<
         rendered = true
         await onReady?.()
       }
+    }
+
+    const resolvePreload = (matchId: string) => {
+      return !!(allPreload && !this.state.matches.find((d) => d.id === matchId))
     }
 
     if (!this.isServer && !this.state.matches.length) {
@@ -2271,13 +2275,10 @@ export class Router<
               const pendingMs =
                 route.options.pendingMs ?? this.options.defaultPendingMs
 
-              preload =
-                preload && !this.state.matches.find((d) => d.id === matchId)
-
               const shouldPending = !!(
                 onReady &&
                 !this.isServer &&
-                !preload &&
+                resolvePreload(matchId) &&
                 (route.options.loader || route.options.beforeLoad) &&
                 typeof pendingMs === 'number' &&
                 pendingMs !== Infinity &&
@@ -2361,6 +2362,8 @@ export class Router<
                   const { search, params, context, cause } =
                     this.getMatch(matchId)!
 
+                  const preload = resolvePreload(matchId)
+
                   const beforeLoadFnContext: BeforeLoadContextOptions<
                     any,
                     any,
@@ -2371,7 +2374,7 @@ export class Router<
                     search,
                     abortController,
                     params,
-                    preload: !!preload,
+                    preload,
                     context,
                     location,
                     navigate: (opts: any) =>
@@ -2457,9 +2460,7 @@ export class Router<
                         cause,
                       } = this.getMatch(matchId)!
 
-                      preload =
-                        preload &&
-                        !this.state.matches.find((d) => d.id === matchId)
+                      const preload = resolvePreload(matchId)
 
                       return {
                         params,
@@ -2479,9 +2480,7 @@ export class Router<
                     // This is where all of the stale-while-revalidate magic happens
                     const age = Date.now() - this.getMatch(matchId)!.updatedAt
 
-                    preload =
-                      preload &&
-                      !this.state.matches.find((d) => d.id === matchId)
+                    const preload = resolvePreload(matchId)
 
                     const staleAge = preload
                       ? (route.options.preloadStaleTime ??
@@ -2653,10 +2652,6 @@ export class Router<
                       }
                     }
 
-                    preload =
-                      preload &&
-                      !this.state.matches.find((d) => d.id === matchId)
-
                     // If the route is successful and still fresh, just resolve
                     const { status, invalid } = this.getMatch(matchId)!
                     loaderRunningAsync =
@@ -2707,7 +2702,7 @@ export class Router<
       await triggerOnReady()
     } catch (err) {
       if (isRedirect(err) || isNotFound(err)) {
-        if (isNotFound(err) && !preload) {
+        if (isNotFound(err) && !allPreload) {
           await triggerOnReady()
         }
         throw err
