@@ -28,7 +28,7 @@ However, they are similar to regular API routes in that:
 Server functions can be defined anywhere in your application, but must be defined at the top level of a file. They can be called from anywhere in your application, including loaders, hooks, etc. Traditionally, this pattern is known as a Remote Procedure Call (RPC), but due to the isomorphic nature of these functions, we refer to them as server functions.
 
 - On the server bundle, server functions logic is left alone. Nothing needs to be done since they are already in the correct place.
-- On the client, server functions are modified to remove server-only logic out of the client bundle and replaced with a function that, when called, makes a `fetch` request to the server instructing it to execute the server function in the server bundle and then send the response back to the client.
+- On the client, server functions will be removed; they exist only on the server. Any calls to the server function on the client will be replaced with a `fetch` request to the server to execute the server function, and send the response back to the client.
 
 ## Server Function Middleware
 
@@ -38,7 +38,7 @@ Server functions can use middleware to share logic, context, common operations, 
 
 > We'd like to thank the [tRPC](https://trpc.io/) team for both the inspiration of TanStack Start's server function design and guidance while implementing it. We love (and recommend) using tRPC for API routes so much that we insisted on server functions getting the same 1st class treatment and developer experience. Thank you!
 
-Server functions are defined using the `createServerFn` function, exported from the `@tanstack/start` package. This function must be called with an HTTP verb, and an async function that will be executed on the server. Here's an example:
+Server functions are defined with the `createServerFn` function, from the `@tanstack/start` package. This function takes an optional `options` argument for specifying the http verb, and allows you to chain off the result to define things like the body of the server function, input validation, middleware, etc. Here's a simple example:
 
 ```tsx
 // getServerTime.ts
@@ -63,7 +63,7 @@ export const getServerTime = createServerFn().handler(async () => {
 
 Server functions accept a single parameter, which can be a variety of types:
 
-- Primitives
+- Standard JavaScript types
   - `string`
   - `number`
   - `boolean`
@@ -92,15 +92,13 @@ greet({
 })
 ```
 
-## Validation / Runtime Type Safety
+## Runtime Input Validation / Type Safety
 
-Server functions can be configured to validate their input data at runtime. This is useful for ensuring that the input is of the correct type before executing the server function, can provide more friendly error messages, and even power type-safety if configured correctly.
+Server functions can be configured to validate their input data at runtime, while adding type safety. This is useful for ensuring the input is of the correct type before executing the server function, and providing more friendly error messages.
 
-To enable validation, call the `validator` method on the server function. You can pass a variety of things:
+This is done with `validator` method. It will accept whatever input is passed to the server function. Whatever you return from this function, will be passed to the actual server function handler; moreover, the return type of what you return from the `validator` will be the type of the input data in the `handler` function.
 
-- A function that returns the valid value and type
-- A thrown error, to indicate that the input is invalid
-- Schema objects that define the shape of the input data (the exact shape of the schema object depends on the validation library you choose to use)
+Validators also integrate seamlessly with external validators, if you want to use something like Zod.
 
 ### Basic Validation
 
@@ -132,7 +130,7 @@ export const greet = createServerFn({ method: 'GET' })
 
 ### Using a Validation Library
 
-You can also use a validation library like Zod to validate the input parameter:
+Validation libraries like Zod can be used like so:
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
@@ -160,7 +158,7 @@ greet({
 
 ## Type Safety
 
-Since server-functions cross the network boundary, it's important to ensure that the data being passed to them is not only just the right type, but also validated at runtime. This is especially important wheen dealing with user input, as it can be unpredictable. To help ensure developers validate their I/O data, types are reliant on using the `input` validation, which is then used to infer the input and output types of the server function.
+Since server-functions cross the network boundary, it's important to ensure that the data being passed to them is not only the right type, but also validated at runtime. This is especially important when dealing with user input, as it can be unpredictable. To ensure developers validate their I/O data, types are reliant on validation. The return type of the `validator` function will be the input to the server function's handler.
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
@@ -197,7 +195,7 @@ function test() {
 
 ## Inference
 
-Server functions infer their input and output types based on the `validator` handler and the return type of the `handler` function. In fact, the `validator` you pass can even have it's own separate input/output types, which can be useful if your validator performs some kind of transformation on the input data.
+Server functions infer their input and output types based on the `validator` handler and the return type of the `handler` function. In fact, the `validator` you pass can even have its own separate input/output types, which can be useful if your validator performs some kind of transformation on the input data.
 
 To illustrate this, let's take a look at an example using the `zod` validation library:
 
