@@ -158,7 +158,7 @@ greet({
 
 ## Type Safety
 
-Since server-functions cross the network boundary, it's important to ensure that the data being passed to them is not only the right type, but also validated at runtime. This is especially important when dealing with user input, as it can be unpredictable. To ensure developers validate their I/O data, types are reliant on validation. The return type of the `validator` function will be the input to the server function's handler.
+Since server-functions cross the network boundary, it's important to ensure the data being passed to them is not only the right type, but also validated at runtime. This is especially important when dealing with user input, as it can be unpredictable. To ensure developers validate their I/O data, types are reliant on validation. The return type of the `validator` function will be the input to the server function's handler.
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
@@ -195,7 +195,7 @@ function test() {
 
 ## Inference
 
-Server functions infer their input and output types based on the `validator` handler and the return type of the `handler` function. In fact, the `validator` you pass can even have its own separate input/output types, which can be useful if your validator performs some kind of transformation on the input data.
+Server functions infer their input, and output types based on the input to the `validator`, and return value of `handler` functions, respectively. In fact, the `validator` you define can even have its own separate input/output types, which can be useful if your validator performs transformations on the input data.
 
 To illustrate this, let's take a look at an example using the `zod` validation library:
 
@@ -222,7 +222,7 @@ createTransaction({
 
 ## Non-Validated Inference
 
-While we highly recommend using a validation library to validate your network I/O data, you may for whatever reason _not_ want to validate your data, but still have the type-safety. To do this, you can still provide type information to the server function using an identity function as the `validator` handler that casts the input and or output to the correct type:
+While we highly recommend using a validation library to validate your network I/O data, you may, for whatever reason _not_ want to validate your data, but still have type safety. To do this, provide type information to the server function using an identity function as the `validator`, that types the input, and or output to the correct types:
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
@@ -319,7 +319,7 @@ function Test() {
 
 ## Server Function Context
 
-In addition to the single parameter that server functions accept, you can also access server request context from within any server function using many utilities from `vinxi/http`. Under the hood, Vinxi uses `unjs`'s `h3` package to perform cross-platform HTTP requests.
+In addition to the single parameter that server functions accept, you can also access server request context from within any server function using utilities from `vinxi/http`. Under the hood, Vinxi uses `unjs`'s `h3` package to perform cross-platform HTTP requests.
 
 There are many context functions available to you for things like:
 
@@ -851,5 +851,5 @@ The process looks like this:
 - If the `use server` directive is missing, it is added to the top of the function
 - On the client, the inner function is extracted out of the client bundle and into a separate server bundle
 - The client-side server function is replaced with a proxy function that sends a request to the server to execute the function that was extracted
-- On the server, the server function is no extracted and is executed as-is
+- On the server, the server function is not extracted, and is executed as-is
 - After extraction occurs, each bundle applies a dead-code elimination process to remove any unused code from each bundle.
