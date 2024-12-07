@@ -2170,7 +2170,11 @@ export class Router<
       }
     }
 
-    if (!this.isServer && !this.state.matches.length) {
+    if (
+      !this.isServer &&
+      !this.state.matches.length &&
+      !this.state.pendingMatches?.length
+    ) {
       triggerOnReady()
     }
 
