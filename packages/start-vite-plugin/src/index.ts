@@ -96,6 +96,7 @@ export function TanStackStartViteDeadCodeElimination(
         code.includes('createServerFn') ||
         code.includes('createMiddleware') ||
         code.includes('serverOnly') ||
+        code.includes('clientOnly') ||
         code.includes('createIsomorphicFn')
       ) {
         const compiled = compileEliminateDeadCode({
