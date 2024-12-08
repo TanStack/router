@@ -6,7 +6,8 @@ export function json<TData>(
 ): JsonResponse<TData> {
   const headers = new Headers(init?.headers)
 
-  headers.set('Content-Type', 'application/json')
+  if (!headers.has('Content-Type'))
+    headers.set('Content-Type', 'application/json')
 
   return new Response(JSON.stringify(payload), {
     ...init,

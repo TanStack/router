@@ -13,6 +13,11 @@ describe('json', () => {
 
     await expect(response.json()).resolves.toEqual(data)
   })
+  it("doesn't override the content type if it's already set", () => {
+    const response = json(null, { headers: { 'Content-Type': 'text/plain' } })
+
+    expect(response.headers.get('Content-Type')).toBe('text/plain')
+  })
   it('reflects passed status and statusText', () => {
     const response = json(null, { status: 404, statusText: 'Not Found' })
 
