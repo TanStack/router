@@ -2286,6 +2286,7 @@ export class Router<
                   this.options.defaultPendingComponent)
               )
 
+              let executeBeforeLoad = true
               if (
                 // If we are in the middle of a load, either of these will be present
                 // (not to be confused with `loadPromise`, which is always defined)
@@ -2304,8 +2305,10 @@ export class Router<
 
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch.beforeLoadPromise
-              } else {
-                // If we are not in the middle of a load, start it
+                executeBeforeLoad = this.getMatch(matchId)!.status !== 'success'
+              }
+              if (executeBeforeLoad) {
+                // If we are not in the middle of a load OR the previous load failed, start it
                 try {
                   updateMatch(matchId, (prev) => ({
                     ...prev,
