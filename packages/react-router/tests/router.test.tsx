@@ -16,6 +16,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  retainSearchParams,
 } from '../src'
 import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
 
@@ -153,7 +154,6 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
   })
   const searchWithDefaultRoute = createRoute({
     getParentRoute: () => rootRoute,
-
     path: 'searchWithDefault',
   })
   const searchWithDefaultIndexRoute = createRoute({
@@ -215,6 +215,77 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     },
   })
 
+  const searchRootWithDefaultsRoute = createRoute({
+    validateSearch: z.object({
+      default: z.string().default('d1'),
+    }),
+    search: {
+      middlewares: [retainSearchParams(['default'])],
+    },
+    getParentRoute: () => searchWithDefaultRoute,
+    path: 'root-check',
+    component: () => {
+      const search = searchRootWithDefaultsRoute.useSearch()
+      return (
+        <>
+          <div data-testid="search-default">{search.default}</div>
+          <div data-testid="search-optional">
+            {search.optional ?? '$undefined'}
+          </div>
+          <Link
+            data-testid="link-root-check"
+            to="/searchWithDefault/root-check"
+          >
+            root
+          </Link>
+          <Link
+            data-testid="link-with-root-params-default-sub-a-no-change"
+            to="/searchWithDefault/root-check/a"
+          >
+            with root default params/a no change
+          </Link>
+          <Link
+            data-testid="link-with-root-params-default-sub-b-no-change"
+            to="/searchWithDefault/root-check/b"
+          >
+            with root default params/b no change
+          </Link>
+          <Link
+            data-testid="link-with-root-params-default-sub-a-change"
+            to="/searchWithDefault/root-check/a"
+            search={{ default: 'd2', optional: 'o1' }}
+          >
+            with root default params/a change to d2
+          </Link>
+          <Link
+            data-testid="link-with-root-params-default-sub-c-explicit"
+            to="/searchWithDefault/root-check/a"
+            search={{ default: 'd3', optional: 'o1' }}
+          >
+            with root default params/a set too d3
+          </Link>
+          <Outlet />
+        </>
+      )
+    },
+  })
+
+  const searchRootWithDefaultsSubRouteA = createRoute({
+    getParentRoute: () => searchRootWithDefaultsRoute,
+    path: 'a',
+  })
+
+  const searchRootWithDefaultsSubRouteB = createRoute({
+    getParentRoute: () => searchRootWithDefaultsRoute,
+    path: 'b',
+  })
+
+  const searchRootWithDefaultsSubRouteC = createRoute({
+    getParentRoute: () => searchRootWithDefaultsRoute,
+    path: 'c',
+    validateSearch: () => ({ default: 'd3' }),
+  })
+
   const routeTree = rootRoute.addChildren([
     indexRoute,
     postsRoute.addChildren([postIdRoute]),
@@ -242,6 +313,11 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     searchWithDefaultRoute.addChildren([
       searchWithDefaultIndexRoute,
       searchWithDefaultCheckRoute,
+      searchRootWithDefaultsRoute.addChildren([
+        searchRootWithDefaultsSubRouteA,
+        searchRootWithDefaultsSubRouteB,
+        searchRootWithDefaultsSubRouteC,
+      ]),
     ]),
   ])
 
@@ -894,8 +970,11 @@ describe('search params in URL', () => {
       validateSearchParams(expectedSearch, router)
     })
   })
+})
 
-  describe.each([false, true, undefined])('default search params', (strict) => {
+describe.each([false, true, undefined])(
+  'default search params in different contexts',
+  (strict) => {
     let router: AnyRouter
     beforeEach(() => {
       const result = createTestRouter({ search: { strict } })
@@ -1015,8 +1094,136 @@ describe('search params in URL', () => {
 
       await checkSearch({ default: 'd2', optional: 'o1' })
     })
-  })
-})
+
+    it('should set the default search params when not specified (for sub routes)', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault/root-check/`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const link = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-no-change',
+      )
+
+      expect(link).toBeInTheDocument()
+      fireEvent.click(link)
+
+      await checkSearch({ default: 'd1' })
+    })
+
+    it('should use and retain explicit search params when specified (for sub routes)', async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `/searchWithDefault/root-check/?default=d2`,
+      )
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const linkA = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-no-change',
+      )
+
+      expect(linkA).toBeInTheDocument()
+      fireEvent.click(linkA)
+
+      await checkSearch({ default: 'd2' })
+
+      const linkB = await screen.findByTestId(
+        'link-with-root-params-default-sub-b-no-change',
+      )
+
+      expect(linkB).toBeInTheDocument()
+      fireEvent.click(linkB)
+
+      await checkSearch({ default: 'd2' })
+    })
+
+    it('should retain default search params when not specified (after two navigation)', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault/root-check/`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const linkA = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-no-change',
+      )
+
+      expect(linkA).toBeInTheDocument()
+      fireEvent.click(linkA)
+
+      await checkSearch({ default: 'd1' })
+
+      const linkB = await screen.findByTestId(
+        'link-with-root-params-default-sub-b-no-change',
+      )
+
+      expect(linkB).toBeInTheDocument()
+      fireEvent.click(linkB)
+
+      await checkSearch({ default: 'd1' })
+    })
+
+    it('should retain default search params after it has changed (after two navigation)', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault/root-check/c`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      await checkSearch({ default: 'd3' })
+
+      const linkA = await screen.findByTestId(
+        'link-with-root-params-default-sub-a-no-change',
+      )
+      expect(linkA).toBeInTheDocument()
+      fireEvent.click(linkA)
+      await checkSearch({ default: 'd3' })
+
+      const linkB = await screen.findByTestId(
+        'link-with-root-params-default-sub-b-no-change',
+      )
+      expect(linkB).toBeInTheDocument()
+      fireEvent.click(linkB)
+      await checkSearch({ default: 'd3' })
+    })
+
+    it('should retain explicit search params after navigating up', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault/root-check`)
+
+      render(<RouterProvider router={router} />)
+      await act(async () => await router.load())
+      await checkSearch({ default: 'd1' })
+
+      const linkA = await screen.findByTestId(
+        'link-with-root-params-default-sub-c-explicit',
+      )
+      expect(linkA).toBeInTheDocument()
+      fireEvent.click(linkA)
+      await checkSearch({ default: 'd3', optional: 'o1' })
+
+      const linkRoot = await screen.findByTestId('link-root-check')
+      expect(linkRoot).toBeInTheDocument()
+      fireEvent.click(linkRoot)
+      await checkSearch({ default: 'd3' })
+    })
+
+    it('should carry over the explicit search in navigation even though its retained', async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `/searchWithDefault/root-check/a?default=d2`,
+      )
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      await checkSearch({ default: 'd2' })
+
+      const linkA = await screen.findByTestId(
+        'link-with-root-params-default-sub-c-explicit',
+      )
+      expect(linkA).toBeInTheDocument()
+      fireEvent.click(linkA)
+      await checkSearch({ default: 'd3', optional: 'o1' })
+    })
+  },
+)
 
 describe('route ids should be consistent after rebuilding the route tree', () => {
   it('should have the same route ids after rebuilding the route tree', async () => {

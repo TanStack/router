@@ -20,7 +20,6 @@ export function retainSearchParams<TSearchSchema extends object>(
     return result
   }
 }
-
 export function stripSearchParams<
   TSearchSchema,
   TOptionalProps = PickOptional<NoInfer<TSearchSchema>>,

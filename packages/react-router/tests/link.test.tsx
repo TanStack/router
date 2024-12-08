@@ -4247,7 +4247,7 @@ describe('search middleware', () => {
               to="/posts"
             >
               posts
-            </Link>{' '}
+            </Link>
             <Link data-testid="root-link-invoices" to="/invoices">
               invoices
             </Link>
@@ -4318,7 +4318,10 @@ describe('search middleware', () => {
     expect(searchValue).toHaveTextContent('default')
 
     expect(router.state.location.pathname).toBe('/posts')
-    expect(router.state.location.search).toEqual({ root: 'abc' })
+    expect(router.state.location.search).toEqual({
+      root: 'abc',
+      foo: 'default',
+    })
 
     // link to sibling does not retain search param
     const invoicesLink = await screen.findByTestId('root-link-invoices')
