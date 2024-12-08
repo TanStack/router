@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { PluginOption } from 'vite'
 import type { AppOptions as VinxiAppOptions } from 'vinxi'
 import type { NitroOptions } from 'nitropack'
-
+import type { Options as ViteReactOptions } from '@vitejs/plugin-react'
 import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
 
 type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
@@ -138,17 +138,7 @@ export const serverSchema = z
 
 const viteSchema = z.custom<StartUserViteConfig>()
 
-const babelSchema = z.object({
-  plugins: z
-    .array(z.union([z.tuple([z.string(), z.any()]), z.string()]))
-    .optional(),
-})
-
-const reactSchema = z.object({
-  babel: babelSchema.optional(),
-  exclude: z.array(z.instanceof(RegExp)).optional(),
-  include: z.array(z.instanceof(RegExp)).optional(),
-})
+const viteReactSchema = z.custom<ViteReactOptions>()
 
 const routersSchema = z.object({
   ssr: z
@@ -192,7 +182,7 @@ const tsrConfig = configSchema.partial().extend({
 })
 
 export const inlineConfigSchema = z.object({
-  react: reactSchema.optional(),
+  react: viteReactSchema.optional(),
   vite: viteSchema.optional(),
   tsr: tsrConfig.optional(),
   routers: routersSchema.optional(),

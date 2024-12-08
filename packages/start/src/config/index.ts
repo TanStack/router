@@ -2,7 +2,7 @@ import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import reactRefresh from '@vitejs/plugin-react'
+import viteReact from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import {
@@ -173,11 +173,7 @@ export function defineConfig(
             serverFunctions.client({
               runtime: '@tanstack/start/client-runtime',
             }),
-            reactRefresh({
-              babel: opts.react?.babel,
-              exclude: opts.react?.exclude,
-              include: opts.react?.include,
-            }),
+            viteReact(opts.react),
             // TODO: RSCS - enable this
             // serverComponents.client(),
           ]
