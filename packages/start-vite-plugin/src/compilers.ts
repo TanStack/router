@@ -32,6 +32,12 @@ export function compileEliminateDeadCode(opts: ParseAstOptions) {
 
 const debug = process.env.TSR_VITE_DEBUG === 'true'
 
+// build these once and reuse them
+const handleServerOnlyCallExpression =
+  buildEnvOnlyCallExpressionHandler('server')
+const handleClientOnlyCallExpression =
+  buildEnvOnlyCallExpressionHandler('client')
+
 type IdentifierConfig = {
   name: string
   type: 'ImportSpecifier' | 'ImportNamespaceSpecifier'
@@ -80,14 +86,14 @@ export function compileStartOutput(opts: ParseAstOptions) {
             name: 'serverOnly',
             type: 'ImportSpecifier',
             namespaceId: '',
-            handleCallExpression: buildEnvOnlyCallExpressionHandler('server'),
+            handleCallExpression: handleServerOnlyCallExpression,
             paths: [],
           },
           clientOnly: {
             name: 'clientOnly',
             type: 'ImportSpecifier',
             namespaceId: '',
-            handleCallExpression: buildEnvOnlyCallExpressionHandler('client'),
+            handleCallExpression: handleClientOnlyCallExpression,
             paths: [],
           },
           createIsomorphicFn: {
