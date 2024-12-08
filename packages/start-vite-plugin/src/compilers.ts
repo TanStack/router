@@ -570,6 +570,10 @@ function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
     if (debug)
       console.info(`Handling ${env}Only call expression:`, path.toString())
 
+    if (!path.parentPath.isVariableDeclarator()) {
+      throw new Error(`${env}Only() functions must be assigned to a variable!`)
+    }
+
     if (opts.env === env) {
       // extract the inner function from the call expression
       const innerInputExpression = path.node.arguments[0]
