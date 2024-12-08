@@ -88,7 +88,9 @@ export type ParsePathParams<
         ? TAcc
         : TPossiblyParam | TAcc
     : TAcc
-  : TAcc
+  : T extends `${string}[${infer TBrackets}]${infer TRest}`
+    ? ParsePathParams<TRest, TBrackets extends '' ? TAcc : TBrackets | TAcc>
+    : TAcc
 
 export type Join<T, TDelimiter extends string = '/'> = T extends []
   ? ''
