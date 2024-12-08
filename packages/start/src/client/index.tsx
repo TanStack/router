@@ -41,7 +41,7 @@ export {
   registerGlobalMiddleware,
   globalMiddleware,
 } from './registerGlobalMiddleware'
-export { serverOnly } from './serverOnly'
+export { serverOnly, clientOnly } from './envOnly'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'
 export { Meta } from './Meta'

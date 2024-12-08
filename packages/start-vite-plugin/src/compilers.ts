@@ -32,6 +32,12 @@ export function compileEliminateDeadCode(opts: ParseAstOptions) {
 
 const debug = process.env.TSR_VITE_DEBUG === 'true'
 
+// build these once and reuse them
+const handleServerOnlyCallExpression =
+  buildEnvOnlyCallExpressionHandler('server')
+const handleClientOnlyCallExpression =
+  buildEnvOnlyCallExpressionHandler('client')
+
 type IdentifierConfig = {
   name: string
   type: 'ImportSpecifier' | 'ImportNamespaceSpecifier'
@@ -59,6 +65,7 @@ export function compileStartOutput(opts: ParseAstOptions) {
           createServerFn: IdentifierConfig
           createMiddleware: IdentifierConfig
           serverOnly: IdentifierConfig
+          clientOnly: IdentifierConfig
           createIsomorphicFn: IdentifierConfig
         } = {
           createServerFn: {
@@ -80,6 +87,13 @@ export function compileStartOutput(opts: ParseAstOptions) {
             type: 'ImportSpecifier',
             namespaceId: '',
             handleCallExpression: handleServerOnlyCallExpression,
+            paths: [],
+          },
+          clientOnly: {
+            name: 'clientOnly',
+            type: 'ImportSpecifier',
+            namespaceId: '',
+            handleCallExpression: handleClientOnlyCallExpression,
             paths: [],
           },
           createIsomorphicFn: {
@@ -548,36 +562,49 @@ function handleCreateMiddlewareCallExpression(
   }
 }
 
-function handleServerOnlyCallExpression(
-  path: babel.NodePath<t.CallExpression>,
-  opts: ParseAstOptions,
-) {
-  if (debug)
-    console.info('Handling serverOnly call expression:', path.toString())
+function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
+  return function envOnlyCallExpressionHandler(
+    path: babel.NodePath<t.CallExpression>,
+    opts: ParseAstOptions,
+  ) {
+    if (debug)
+      console.info(`Handling ${env}Only call expression:`, path.toString())
 
-  if (opts.env === 'server') {
-    // Do nothing on the server.
-    return
+    if (!path.parentPath.isVariableDeclarator()) {
+      throw new Error(`${env}Only() functions must be assigned to a variable!`)
+    }
+
+    if (opts.env === env) {
+      // extract the inner function from the call expression
+      const innerInputExpression = path.node.arguments[0]
+
+      if (!t.isExpression(innerInputExpression)) {
+        throw new Error(
+          `${env}Only() functions must be called with a function!`,
+        )
+      }
+
+      path.replaceWith(innerInputExpression)
+      return
+    }
+
+    // If we're on the wrong environment, replace the call expression
+    // with a function that always throws an error.
+    path.replaceWith(
+      t.arrowFunctionExpression(
+        [],
+        t.blockStatement([
+          t.throwStatement(
+            t.newExpression(t.identifier('Error'), [
+              t.stringLiteral(
+                `${env}Only() functions can only be called on the ${env}!`,
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    )
   }
-
-  // If we're on the client, replace the call expression with a function
-  // that has a single always-triggering invariant.
-
-  path.replaceWith(
-    t.arrowFunctionExpression(
-      [],
-      t.blockStatement([
-        t.expressionStatement(
-          t.callExpression(t.identifier('invariant'), [
-            t.booleanLiteral(false),
-            t.stringLiteral(
-              'serverOnly() functions can only be called on the server!',
-            ),
-          ]),
-        ),
-      ]),
-    ),
-  )
 }
 
 function handleCreateIsomorphicFnCallExpression(

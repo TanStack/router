@@ -167,3 +167,28 @@ test('isomorphic functions can have different implementations on client and serv
     'client received hello',
   )
 })
+
+test('env-only functions can only be called on the server or client respectively', async ({
+  page,
+}) => {
+  await page.goto('/env-only')
+
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-env-only-results-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('server-on-server')).toContainText(
+    'server got: hello',
+  )
+  await expect(page.getByTestId('server-on-client')).toContainText(
+    'serverEcho threw an error: serverOnly() functions can only be called on the server!',
+  )
+
+  await expect(page.getByTestId('client-on-server')).toContainText(
+    'clientEcho threw an error: clientOnly() functions can only be called on the client!',
+  )
+  await expect(page.getByTestId('client-on-client')).toContainText(
+    'client got: hello',
+  )
+})
