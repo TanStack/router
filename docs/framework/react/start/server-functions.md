@@ -96,7 +96,7 @@ greet({
 
 Server functions can be configured to validate their input data at runtime, while adding type safety. This is useful for ensuring the input is of the correct type before executing the server function, and providing more friendly error messages.
 
-This is done with the `validator` method. It will accept whatever input is passed to the server function. The value (and type) you return from this function will become the input to the passed to the actual server function handler.
+This is done with the `validator` method. It will accept whatever input is passed to the server function. The value (and type) you return from this function will become the input passed to the actual server function handler.
 
 Validators also integrate seamlessly with external validators, if you want to use something like Zod.
 
