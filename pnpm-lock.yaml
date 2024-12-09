@@ -12629,19 +12629,6 @@ snapshots:
       '@swc/helpers': 0.5.15
       core-js: 3.39.0
 
-  '@rsbuild/core@1.1.9':
-    dependencies:
-      '@rspack/core': 1.1.5(@swc/helpers@0.5.15)
-      '@rspack/lite-tapable': 1.0.1
-      '@swc/helpers': 0.5.15
-      core-js: 3.39.0
-
-  '@rsbuild/plugin-react@1.1.0(@rsbuild/core@1.1.9)':
-    dependencies:
-      '@rsbuild/core': 1.1.9
-      '@rspack/plugin-react-refresh': 1.0.0(react-refresh@0.16.0)
-      react-refresh: 0.16.0
-
   '@rsbuild/plugin-react@1.1.0(@rsbuild/core@1.1.9)':
     dependencies:
       '@rsbuild/core': 1.1.9
@@ -12697,13 +12684,6 @@ snapshots:
       '@swc/helpers': 0.5.15
 
   '@rspack/lite-tapable@1.0.1': {}
-
-  '@rspack/plugin-react-refresh@1.0.0(react-refresh@0.16.0)':
-    dependencies:
-      error-stack-parser: 2.1.4
-      html-entities: 2.5.2
-    optionalDependencies:
-      react-refresh: 0.16.0
 
   '@rspack/plugin-react-refresh@1.0.0(react-refresh@0.16.0)':
     dependencies:
