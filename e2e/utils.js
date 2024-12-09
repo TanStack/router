@@ -16,5 +16,8 @@ export function derivePort(input, min = 5600, max = 65535) {
 
   // Map hash value to the port range
   const port = min + (hashInt % (max - min + 1))
+
+  console.info(`Mapped "${input}" to port ${port}`)
+
   return port
 }
