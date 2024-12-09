@@ -55,26 +55,4 @@ describe('envOnly functions compile correctly', async () => {
       })
     }).toThrowError()
   })
-  test('should be assigned to a variable', () => {
-    expect(() => {
-      compileStartOutput({
-        env: 'server',
-        code: `
-        import { serverOnly } from '@tanstack/start'
-        serverOnly()`,
-        root: './test-files',
-        filename: 'no-fn.ts',
-      })
-    }).toThrowError()
-    expect(() => {
-      compileStartOutput({
-        env: 'client',
-        code: `
-        import { clientOnly } from '@tanstack/start'
-        clientOnly()`,
-        root: './test-files',
-        filename: 'no-fn.ts',
-      })
-    }).toThrowError()
-  })
 })

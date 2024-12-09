@@ -570,10 +570,6 @@ function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
     if (debug)
       console.info(`Handling ${env}Only call expression:`, path.toString())
 
-    if (!path.parentPath.isVariableDeclarator()) {
-      throw new Error(`${env}Only() functions must be assigned to a variable!`)
-    }
-
     if (opts.env === env) {
       // extract the inner function from the call expression
       const innerInputExpression = path.node.arguments[0]
@@ -619,11 +615,6 @@ function handleCreateIsomorphicFnCallExpression(
       rootCallExpression.toString(),
     )
 
-  // Check if the call is assigned to a variable
-  if (!rootCallExpression.parentPath.isVariableDeclarator()) {
-    throw new Error('createIsomorphicFn must be assigned to a variable!')
-  }
-
   const callExpressionPaths = {
     client: null as babel.NodePath<t.CallExpression> | null,
     server: null as babel.NodePath<t.CallExpression> | null,
@@ -653,7 +644,9 @@ function handleCreateIsomorphicFnCallExpression(
         !callExpressionPaths[method as keyof typeof callExpressionPaths],
     )
   ) {
-    const variableId = rootCallExpression.parentPath.node.id
+    const variableId = rootCallExpression.parentPath.isVariableDeclarator()
+      ? rootCallExpression.parentPath.node.id
+      : null
     console.warn(
       'createIsomorphicFn called without a client or server implementation!',
       'This will result in a no-op function.',
