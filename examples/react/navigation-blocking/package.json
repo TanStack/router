@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.62.0",
+    "@tanstack/react-query": "^5.62.3",
     "@tanstack/react-router": "^1.87.2",
     "@tanstack/router-devtools": "^1.87.2",
     "redaxios": "^0.5.1",

@@ -74,7 +74,7 @@
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.0.1",
+    "@testing-library/react": "^16.1.0",
     "@types/jsesc": "^3.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "combinate": "^1.1.11",

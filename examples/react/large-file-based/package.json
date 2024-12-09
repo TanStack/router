@@ -11,7 +11,7 @@
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.62.0",
+    "@tanstack/react-query": "^5.62.3",
     "@tanstack/react-router": "^1.87.2",
     "@tanstack/router-devtools": "^1.87.2",
     "@tanstack/router-plugin": "^1.86.0",
