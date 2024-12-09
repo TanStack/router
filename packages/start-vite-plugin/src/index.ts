@@ -10,6 +10,18 @@ export type TanStackStartViteOptions = {
   env: 'server' | 'client'
 }
 
+const transformFuncs = [
+  'createServerFn',
+  'createMiddleware',
+  'serverOnly',
+  'clientOnly',
+  'createIsomorphicFn',
+]
+const tokenRegex = new RegExp(transformFuncs.join('|'))
+const eitherFuncRegex = new RegExp(
+  `(function ${transformFuncs.join('|function ')})`,
+)
+
 export function TanStackStartViteServerFn(
   opts: TanStackStartViteOptions,
 ): Plugin {
@@ -26,13 +38,8 @@ export function TanStackStartViteServerFn(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      const includesToken = /createServerFn|createMiddleware|serverOnly/.test(
-        code,
-      )
-      const includesEitherFunc =
-        /(function createServerFn|function createMiddleware|function serverOnly)/.test(
-          code,
-        )
+      const includesToken = tokenRegex.test(code)
+      const includesEitherFunc = eitherFuncRegex.test(code)
 
       if (
         !includesToken ||
@@ -91,10 +98,7 @@ export function TanStackStartViteDeadCodeElimination(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (
-        code.includes('createServerFn') ||
-        code.includes('createMiddleware')
-      ) {
+      if (transformFuncs.some((fn) => code.includes(fn))) {
         const compiled = compileEliminateDeadCode({
           code,
           root: ROOT,

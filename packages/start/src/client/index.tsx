@@ -1,6 +1,13 @@
 /// <reference types="vinxi/types/client" />
 export { Asset } from './Asset'
 export {
+  createIsomorphicFn,
+  type IsomorphicFn,
+  type ServerOnlyFn,
+  type ClientOnlyFn,
+  type IsomorphicFnBase,
+} from './createIsomorphicFn'
+export {
   createServerFn,
   type JsonResponse,
   type ServerFn as FetchFn,
@@ -35,7 +42,7 @@ export {
   registerGlobalMiddleware,
   globalMiddleware,
 } from './registerGlobalMiddleware'
-export { serverOnly } from './serverOnly'
+export { serverOnly, clientOnly } from './envOnly'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'
 export { Meta } from './Meta'

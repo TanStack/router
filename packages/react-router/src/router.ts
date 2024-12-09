@@ -1743,7 +1743,6 @@ export class Router<
           }
           maskedNext = build(maskedDest)
         }
-        // console.log('buildWithMatches', {foundMask, dest, maskedDest, maskedNext})
       }
 
       const nextMatches = this.getMatchedRoutes(next, dest)
@@ -2118,19 +2117,24 @@ export class Router<
     let updated!: AnyRouteMatch
     const isPending = this.state.pendingMatches?.find((d) => d.id === id)
     const isMatched = this.state.matches.find((d) => d.id === id)
+    const isCached = this.state.cachedMatches.find((d) => d.id === id)
 
     const matchesKey = isPending
       ? 'pendingMatches'
       : isMatched
         ? 'matches'
-        : 'cachedMatches'
+        : isCached
+          ? 'cachedMatches'
+          : ''
 
-    this.__store.setState((s) => ({
-      ...s,
-      [matchesKey]: s[matchesKey]?.map((d) =>
-        d.id === id ? (updated = updater(d)) : d,
-      ),
-    }))
+    if (matchesKey) {
+      this.__store.setState((s) => ({
+        ...s,
+        [matchesKey]: s[matchesKey]?.map((d) =>
+          d.id === id ? (updated = updater(d)) : d,
+        ),
+      }))
+    }
 
     return updated
   }
@@ -2146,7 +2150,7 @@ export class Router<
   loadMatches = async ({
     location,
     matches,
-    preload,
+    preload: allPreload,
     onReady,
     updateMatch = this.updateMatch,
   }: {
@@ -2168,6 +2172,10 @@ export class Router<
         rendered = true
         await onReady?.()
       }
+    }
+
+    const resolvePreload = (matchId: string) => {
+      return !!(allPreload && !this.state.matches.find((d) => d.id === matchId))
     }
 
     if (!this.isServer && !this.state.matches.length) {
@@ -2270,7 +2278,7 @@ export class Router<
               const shouldPending = !!(
                 onReady &&
                 !this.isServer &&
-                !preload &&
+                !resolvePreload(matchId) &&
                 (route.options.loader || route.options.beforeLoad) &&
                 typeof pendingMs === 'number' &&
                 pendingMs !== Infinity &&
@@ -2278,6 +2286,7 @@ export class Router<
                   this.options.defaultPendingComponent)
               )
 
+              let executeBeforeLoad = true
               if (
                 // If we are in the middle of a load, either of these will be present
                 // (not to be confused with `loadPromise`, which is always defined)
@@ -2296,8 +2305,10 @@ export class Router<
 
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch.beforeLoadPromise
-              } else {
-                // If we are not in the middle of a load, start it
+                executeBeforeLoad = this.getMatch(matchId)!.status !== 'success'
+              }
+              if (executeBeforeLoad) {
+                // If we are not in the middle of a load OR the previous load failed, start it
                 try {
                   updateMatch(matchId, (prev) => ({
                     ...prev,
@@ -2354,6 +2365,8 @@ export class Router<
                   const { search, params, context, cause } =
                     this.getMatch(matchId)!
 
+                  const preload = resolvePreload(matchId)
+
                   const beforeLoadFnContext: BeforeLoadContextOptions<
                     any,
                     any,
@@ -2364,7 +2377,7 @@ export class Router<
                     search,
                     abortController,
                     params,
-                    preload: !!preload,
+                    preload,
                     context,
                     location,
                     navigate: (opts: any) =>
@@ -2432,7 +2445,9 @@ export class Router<
                 (async () => {
                   const { loaderPromise: prevLoaderPromise } =
                     this.getMatch(matchId)!
+
                   let loaderRunningAsync = false
+
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
                   } else {
@@ -2447,6 +2462,8 @@ export class Router<
                         context,
                         cause,
                       } = this.getMatch(matchId)!
+
+                      const preload = resolvePreload(matchId)
 
                       return {
                         params,
@@ -2465,6 +2482,8 @@ export class Router<
 
                     // This is where all of the stale-while-revalidate magic happens
                     const age = Date.now() - this.getMatch(matchId)!.updatedAt
+
+                    const preload = resolvePreload(matchId)
 
                     const staleAge = preload
                       ? (route.options.preloadStaleTime ??
@@ -2686,7 +2705,7 @@ export class Router<
       await triggerOnReady()
     } catch (err) {
       if (isRedirect(err) || isNotFound(err)) {
-        if (isNotFound(err) && !preload) {
+        if (isNotFound(err) && !allPreload) {
           await triggerOnReady()
         }
         throw err
@@ -2806,17 +2825,21 @@ export class Router<
       dest: opts,
     })
 
-    const loadedMatchIds = Object.fromEntries(
-      [
-        ...this.state.matches,
-        ...(this.state.pendingMatches ?? []),
-        ...this.state.cachedMatches,
-      ].map((d) => [d.id, true]),
+    const activeMatchIds = new Set(
+      [...this.state.matches, ...(this.state.pendingMatches ?? [])].map(
+        (d) => d.id,
+      ),
     )
 
+    const loadedMatchIds = new Set([
+      ...activeMatchIds,
+      ...this.state.cachedMatches.map((d) => d.id),
+    ])
+
+    // If the matches are already loaded, we need to add them to the cachedMatches
     this.__store.batch(() => {
       matches.forEach((match) => {
-        if (!loadedMatchIds[match.id]) {
+        if (!loadedMatchIds.has(match.id)) {
           this.__store.setState((s) => ({
             ...s,
             cachedMatches: [...(s.cachedMatches as any), match],
@@ -2830,6 +2853,14 @@ export class Router<
         matches,
         location: next,
         preload: true,
+        updateMatch: (id, updater) => {
+          // Don't update the match if it's currently loaded
+          if (activeMatchIds.has(id)) {
+            matches = matches.map((d) => (d.id === id ? updater(d) : d))
+          } else {
+            this.updateMatch(id, updater)
+          }
+        },
       })
 
       return matches

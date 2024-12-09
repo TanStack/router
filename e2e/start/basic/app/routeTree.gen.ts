@@ -17,6 +17,8 @@ import { Route as ServerFnsImport } from './routes/server-fns'
 import { Route as SearchParamsImport } from './routes/search-params'
 import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
+import { Route as IsomorphicFnsImport } from './routes/isomorphic-fns'
+import { Route as EnvOnlyImport } from './routes/env-only'
 import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
@@ -64,6 +66,18 @@ const RedirectRoute = RedirectImport.update({
 const PostsRoute = PostsImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const IsomorphicFnsRoute = IsomorphicFnsImport.update({
+  id: '/isomorphic-fns',
+  path: '/isomorphic-fns',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const EnvOnlyRoute = EnvOnlyImport.update({
+  id: '/env-only',
+  path: '/env-only',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -154,6 +168,20 @@ declare module '@tanstack/react-router' {
       path: '/deferred'
       fullPath: '/deferred'
       preLoaderRoute: typeof DeferredImport
+      parentRoute: typeof rootRoute
+    }
+    '/env-only': {
+      id: '/env-only'
+      path: '/env-only'
+      fullPath: '/env-only'
+      preLoaderRoute: typeof EnvOnlyImport
+      parentRoute: typeof rootRoute
+    }
+    '/isomorphic-fns': {
+      id: '/isomorphic-fns'
+      path: '/isomorphic-fns'
+      fullPath: '/isomorphic-fns'
+      preLoaderRoute: typeof IsomorphicFnsImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
@@ -312,6 +340,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/env-only': typeof EnvOnlyRoute
+  '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/search-params': typeof SearchParamsRoute
@@ -331,6 +361,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/env-only': typeof EnvOnlyRoute
+  '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/redirect': typeof RedirectRoute
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
@@ -349,6 +381,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/env-only': typeof EnvOnlyRoute
+  '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/search-params': typeof SearchParamsRoute
@@ -371,6 +405,8 @@ export interface FileRouteTypes {
     | '/'
     | ''
     | '/deferred'
+    | '/env-only'
+    | '/isomorphic-fns'
     | '/posts'
     | '/redirect'
     | '/search-params'
@@ -389,6 +425,8 @@ export interface FileRouteTypes {
     | '/'
     | ''
     | '/deferred'
+    | '/env-only'
+    | '/isomorphic-fns'
     | '/redirect'
     | '/search-params'
     | '/server-fns'
@@ -405,6 +443,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_layout'
     | '/deferred'
+    | '/env-only'
+    | '/isomorphic-fns'
     | '/posts'
     | '/redirect'
     | '/search-params'
@@ -426,6 +466,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
+  EnvOnlyRoute: typeof EnvOnlyRoute
+  IsomorphicFnsRoute: typeof IsomorphicFnsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
   SearchParamsRoute: typeof SearchParamsRoute
@@ -439,6 +481,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
+  EnvOnlyRoute: EnvOnlyRoute,
+  IsomorphicFnsRoute: IsomorphicFnsRoute,
   PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
   SearchParamsRoute: SearchParamsRoute,
@@ -461,6 +505,8 @@ export const routeTree = rootRoute
         "/",
         "/_layout",
         "/deferred",
+        "/env-only",
+        "/isomorphic-fns",
         "/posts",
         "/redirect",
         "/search-params",
@@ -481,6 +527,12 @@ export const routeTree = rootRoute
     },
     "/deferred": {
       "filePath": "deferred.tsx"
+    },
+    "/env-only": {
+      "filePath": "env-only.tsx"
+    },
+    "/isomorphic-fns": {
+      "filePath": "isomorphic-fns.tsx"
     },
     "/posts": {
       "filePath": "posts.tsx",

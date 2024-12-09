@@ -45,7 +45,7 @@ async function copy(src: string, dest: string) {
   const statResult = await stat(src)
   const replacedDest = dest.replace(DOT_PREFIX, '.')
   if (statResult.isDirectory()) {
-    copyDir(src, replacedDest)
+    await copyDir(src, replacedDest)
   } else {
     await copyFile(src, replacedDest)
   }
