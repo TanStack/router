@@ -30,9 +30,9 @@ export function Transitioner() {
     router.startReactTransition = (fn: () => void) => {
       setIsTransitioning(true)
       React.startTransition(() => {
-        fn();
-        setIsTransitioning(false);
-      });
+        fn()
+        setIsTransitioning(false)
+      })
     }
   }
 
