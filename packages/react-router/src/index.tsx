@@ -19,7 +19,7 @@ export type { AwaitOptions } from './awaited'
 
 export { ScriptOnce } from './ScriptOnce'
 
-export { defer } from './defer'
+export { defer, TSR_DEFERRED_PROMISE } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -262,6 +262,8 @@ export type {
   RouterListener,
   AnyRouterWithContext,
   ExtractedEntry,
+  ExtractedStream,
+  ExtractedPromise,
   StreamState,
 } from './router'
 
