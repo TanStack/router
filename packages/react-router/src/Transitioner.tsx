@@ -11,7 +11,7 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
-  const [isTransitioning, startReactTransition_] = React.useTransition()
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
@@ -27,7 +27,13 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startReactTransition = startReactTransition_
+    router.startReactTransition = (fn: () => void) => {
+      setIsTransitioning(true)
+      React.startTransition(() => {
+        fn();
+        setIsTransitioning(false);
+      });
+    }
   }
 
   // Subscribe to location changes
