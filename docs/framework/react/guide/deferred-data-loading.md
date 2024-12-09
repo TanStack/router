@@ -9,9 +9,9 @@ Deferred data loading is a pattern that allows the router to render the next loc
 
 If you are using a library like [TanStack Query](https://react-query.tanstack.com) or any other data fetching library, then deferred data loading works a bit differently. Skip ahead to the [Deferred Data Loading with External Libraries](#deferred-data-loading-with-external-libraries) section for more information.
 
-## Deferred Data Loading with `defer` and `Await`
+## Deferred Data Loading with and `Await`
 
-To defer slow or non-critical data, wrap an **unawaited/unresolved** promise in the `defer` function and return it anywhere in your loader response:
+To defer slow or non-critical data, return an **unawaited/unresolved** promise anywhere in your loader response:
 
 ```tsx
 // src/routes/posts.$postId.tsx
@@ -28,8 +28,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
     return {
       fastData,
-      // Wrap the slow promise in `defer()`
-      deferredSlowData: defer(slowDataPromise),
+      deferredSlowData: slowDataPromise,
     }
   },
 })
@@ -70,6 +69,9 @@ function PostIdComponent() {
 The `Await` component resolves the promise by triggering the nearest suspense boundary until it is resolved, after which it renders the component's `children` as a function with the resolved data.
 
 If the promise is rejected, the `Await` component will throw the serialized error, which can be caught by the nearest error boundary.
+
+> [!TIP]
+> In React 19, you can use the `use()` hook instead of `Await`
 
 ## Deferred Data Loading with External libraries
 
@@ -142,7 +144,7 @@ Please read the entire [SSR Guide](/docs/guide/server-streaming) for step by ste
 The following is a high-level overview of how deferred data streaming works with TanStack Router:
 
 - Server
-  - Promises wrapped in `defer()` are marked and tracked as they are returned from route loaders
+  - Promises are marked and tracked as they are returned from route loaders
   - All loaders resolve and any deferred promises are serialized and embedded into the html
   - The route begins to render
   - Deferred promises rendered with the `<Await>` component trigger suspense boundaries, allowing the server to stream html up to that point

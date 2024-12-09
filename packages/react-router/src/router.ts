@@ -30,6 +30,7 @@ import {
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
 import { defaultTransformer } from './transformer'
+import type { DeferredPromiseState } from './defer'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -145,15 +146,25 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
     ? TRouterContext
     : AnyContext
 
-export type ExtractedEntry = {
+export interface ExtractedBaseEntry {
   dataType: '__beforeLoadContext' | 'loaderData'
-  type: 'promise' | 'stream'
+  type: string
   path: Array<string>
-  value: any
   id: number
-  streamState?: StreamState
   matchIndex: number
 }
+
+export interface ExtractedStream extends ExtractedBaseEntry {
+  type: 'stream'
+  streamState: StreamState
+}
+
+export interface ExtractedPromise extends ExtractedBaseEntry {
+  type: 'promise'
+  promiseState: DeferredPromiseState<any>
+}
+
+export type ExtractedEntry = ExtractedStream | ExtractedPromise
 
 export type StreamState = {
   promises: Array<ControlledPromise<string | null>>
