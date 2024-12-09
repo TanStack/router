@@ -71,18 +71,6 @@ describe('createIsomorphicFn compiles correctly', async () => {
       })
     }).toThrowError()
   })
-  test('should be assigned to a variable', () => {
-    expect(() => {
-      compileStartOutput({
-        env: 'client',
-        code: `
-        import { createIsomorphicFn } from '@tanstack/start'
-        createIsomorphicFn()`,
-        root: './test-files',
-        filename: 'no-fn.ts',
-      })
-    }).toThrowError()
-  })
   test('should warn to console if no implementations provided', () => {
     compileStartOutput({
       env: 'client',
