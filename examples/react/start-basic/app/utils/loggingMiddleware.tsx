@@ -2,6 +2,7 @@ import { createMiddleware } from '@tanstack/start'
 
 export const logMiddleware = createMiddleware()
   .client(async (ctx) => {
+    console.log(ctx.context.clientRandom)
     const clientTime = new Date()
 
     return ctx.next({

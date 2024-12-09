@@ -1,3 +1,4 @@
+import type { RegisteredGlobalMiddleware } from './registerGlobalMiddleware'
 import type { ConstrainValidator, Method } from './createServerFn'
 import type {
   Assign,
@@ -499,7 +500,7 @@ export function createMiddleware<
   >,
 ): Middleware<
   TId,
-  TMiddlewares,
+  RegisteredGlobalMiddleware,
   TValidator,
   TServerContext,
   TClientContext,
@@ -564,7 +565,7 @@ export function createMiddleware<
     },
   } as unknown as Middleware<
     TId,
-    TMiddlewares,
+    RegisteredGlobalMiddleware,
     TValidator,
     TServerContext,
     TClientContext,

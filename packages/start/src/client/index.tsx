@@ -40,6 +40,9 @@ export {
 export {
   registerGlobalMiddleware,
   globalMiddleware,
+  type GlobalMiddleware,
+  type Register,
+  type RegisteredGlobalMiddleware,
 } from './registerGlobalMiddleware'
 export { serverOnly, clientOnly } from './envOnly'
 export { DehydrateRouter } from './DehydrateRouter'
