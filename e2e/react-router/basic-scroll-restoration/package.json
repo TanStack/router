@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-virtual": "^3.10.9",
+    "@tanstack/react-virtual": "^3.11.1",
     "@tanstack/router-devtools": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
