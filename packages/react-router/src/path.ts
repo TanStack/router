@@ -174,7 +174,10 @@ export function parsePathname(pathname?: string): Array<Segment> {
         }
       }
 
-      if (part.charAt(0) === '$') {
+      if (
+        part.charAt(0) === '$' ||
+        (part.includes('[') && part.includes(']'))
+      ) {
         return {
           type: 'param',
           value: part,
@@ -197,6 +200,63 @@ export function parsePathname(pathname?: string): Array<Segment> {
   }
 
   return segments
+}
+
+function parseSquareBrackets(
+  template: string,
+  input: string,
+  decodeCharMap?: Map<string, string>,
+): {
+  params: Array<{ key: string; value: string }> | null
+  isExactMatch: boolean
+} {
+  // Regular expression to find placeholders in the format [key]
+  const regex = /\[([^\]]+)\]/g
+  const keys: Array<string> = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  // Extract keys and static parts from the template
+  let pattern = '^' // Start of string
+  while ((match = regex.exec(template)) !== null) {
+    if (match[1]) {
+      keys.push(match[1])
+    }
+    // Add text between placeholders as fixed text in the pattern
+    pattern +=
+      escapeRegExp(template.substring(lastIndex, match.index)) + '([^\\-]*)'
+    lastIndex = regex.lastIndex
+  }
+  pattern += escapeRegExp(template.substring(lastIndex)) + '$' // End of string
+
+  // Match the input against the dynamic regex pattern
+  const patternRegex = new RegExp(pattern)
+  const inputMatch = patternRegex.exec(input)
+
+  // Ensure that input matches the template in its entirety
+  const isExactMatch = !!inputMatch
+
+  // The first element in the match is the full match, so start at index 1
+  if (!inputMatch || inputMatch.length - 1 !== keys.length) {
+    return { params: null, isExactMatch: false }
+  }
+
+  // Map the extracted parts to their respective keys
+  const params: Array<{ key: string; value: string }> = []
+  keys.forEach((key, index) => {
+    const value = inputMatch[index + 1] || ''
+    params.push({
+      key,
+      value: encodePathParam(value, decodeCharMap),
+    })
+  })
+
+  return { params, isExactMatch }
+}
+
+// Helper function to escape special characters for use in regex
+function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 interface InterpolatePathOptions {
@@ -224,6 +284,12 @@ export function interpolatePath({
     if (['*', '_splat'].includes(key)) {
       // the splat/catch-all routes shouldn't have the '/' encoded out
       encodedParams[key] = isValueString ? encodeURI(value) : value
+    } else if (isValueString && key.includes('[') && key.includes(']')) {
+      parseSquareBrackets(key, value, decodeCharMap).params?.forEach(
+        ({ key, value }) => {
+          encodedParams[key] = encodePathParam(value, decodeCharMap)
+        },
+      )
     } else {
       encodedParams[key] = isValueString
         ? encodePathParam(value, decodeCharMap)
@@ -406,10 +472,35 @@ export function matchByPath(
           if (baseSegment.value === '/') {
             return false
           }
+
           if (baseSegment.value.charAt(0) !== '$') {
-            params[routeSegment.value.substring(1)] = decodeURIComponent(
-              baseSegment.value,
-            )
+            // params[routeSegment.value.substring(1).replaceAll(/(\[|\])/g, '')] =
+            const routeSegmentValue = routeSegment.value
+            if (
+              routeSegmentValue.includes('[') &&
+              routeSegmentValue.includes(']')
+            ) {
+              if (
+                !routeSegment.value.startsWith('[') &&
+                routeSegment.value.charAt(0) !== baseSegment.value.charAt(0)
+              ) {
+                return false
+              }
+              const parsed = parseSquareBrackets(
+                routeSegmentValue,
+                baseSegment.value,
+              )
+              // if (!parsed.isExactMatch && !matchLocation.fuzzy) {
+              if (!parsed.isExactMatch) {
+                return false
+              }
+              parsed.params?.forEach(({ key, value }) => {
+                params[key] = decodeURIComponent(value)
+              })
+            } else {
+              const key = routeSegmentValue.substring(1)
+              params[key] = decodeURIComponent(baseSegment.value)
+            }
           }
         }
       }
