@@ -93,7 +93,9 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       userConfig = getConfig(options, ROOT)
 
       if (compiler.options.mode === 'production') {
-        await run(generate)
+        compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
+          await run(generate)
+        })
       } else {
         // rspack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
@@ -117,7 +119,9 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       userConfig = getConfig(options, ROOT)
 
       if (compiler.options.mode === 'production') {
-        await run(generate)
+        compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
+          await run(generate)
+        })
       } else {
         // webpack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
