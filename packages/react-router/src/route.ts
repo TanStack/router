@@ -124,14 +124,14 @@ export interface SplatParams {
 
 export type ResolveParams<TPath extends string> =
   ParseSplatParams<TPath> extends never
-    ? Record<ParsePathParams<TPath>, string>
-    : Record<ParsePathParams<TPath>, string> & SplatParams
+    ? Record<Extract<ParsePathParams<TPath>, string>, string>
+    : Record<Extract<ParsePathParams<TPath>, string>, string> & SplatParams
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: ResolveParams<TPath>,
 ) => TParams extends Record<ParsePathParams<TPath>, any>
   ? TParams
-  : Record<ParsePathParams<TPath>, any>
+  : Record<Extract<ParsePathParams<TPath>, string>, any>
 
 export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
