@@ -1,4 +1,3 @@
-import 'tsx/esm'
 import path, { join, resolve } from 'node:path'
 import {
   removeExt,
@@ -8,6 +7,7 @@ import {
 } from '../../utils'
 import { getRouteNodes as getRouteNodesPhysical } from '../physical/getRouteNodes'
 import { virtualRootRouteSchema } from './config'
+import { loadConfigFile } from './loadConfigFile'
 import type {
   VirtualRootRoute,
   VirtualRouteNode,
@@ -99,7 +99,7 @@ async function getVirtualRouteConfigFromFileExport(
   ) {
     throw new Error(`virtualRouteConfig is undefined or empty`)
   }
-  const exports = await import(join(root, tsrConfig.virtualRouteConfig))
+  const exports = await loadConfigFile(join(root, tsrConfig.virtualRouteConfig))
 
   if (!('routes' in exports) && !('default' in exports)) {
     throw new Error(
