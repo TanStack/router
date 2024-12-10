@@ -39,7 +39,6 @@ export function defer<T>(
     .then((data) => {
       promise[TSR_DEFERRED_PROMISE].status = 'success'
       promise[TSR_DEFERRED_PROMISE].data = data
-      console.log('defer then', promise[TSR_DEFERRED_PROMISE])
     })
     .catch((error) => {
       promise[TSR_DEFERRED_PROMISE].status = 'error'
