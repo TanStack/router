@@ -67,6 +67,14 @@ export const configSchema = z.object({
 
 export type Config = z.infer<typeof configSchema>
 
+type ResolveParams = {
+  configDirectory: string
+}
+
+export function resolveConfigPath({ configDirectory }: ResolveParams) {
+  return path.resolve(configDirectory, 'tsr.config.json')
+}
+
 export function getConfig(
   inlineConfig: Partial<Config> = {},
   configDirectory?: string,
@@ -74,7 +82,7 @@ export function getConfig(
   if (configDirectory === undefined) {
     configDirectory = process.cwd()
   }
-  const configFilePathJson = path.resolve(configDirectory, 'tsr.config.json')
+  const configFilePathJson = resolveConfigPath({ configDirectory })
   const exists = existsSync(configFilePathJson)
 
   let config: Config
