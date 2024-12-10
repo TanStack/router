@@ -107,12 +107,6 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
 
       if (extracted) {
         Object.entries(extracted).forEach(([_, ex]: any) => {
-          if (ex.value instanceof Promise) {
-            const og = ex.value
-            ex.value = og.then((data: any) => {
-              return data
-            })
-          }
           deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
         })
       }

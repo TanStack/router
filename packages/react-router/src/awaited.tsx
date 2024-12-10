@@ -42,7 +42,6 @@ export function useAwaited<T>({
       }
     }
   }
-  console.log('useAwaited', promise[TSR_DEFERRED_PROMISE])
   return [promise[TSR_DEFERRED_PROMISE].data, promise]
 }
 
@@ -66,7 +65,6 @@ function AwaitInner<T>(
   },
 ): React.JSX.Element {
   const [data] = useAwaited(props)
-  console.log('AwaitInner', data)
 
   return props.children(data) as React.JSX.Element
 }
