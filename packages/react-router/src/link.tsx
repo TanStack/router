@@ -34,6 +34,7 @@ import type {
   ViewTransitionOptions,
 } from './router'
 import type {
+  Assign,
   Constrain,
   Expand,
   MakeDifferenceOptional,
@@ -938,7 +939,7 @@ export type ActiveLinkOptions<
   ActiveLinkOptionProps<TComp>
 
 type ActiveLinkProps<TComp> = Partial<
-  LinkComponentReactProps<TComp> & {
+  UseLinkReactProps<TComp> & {
     [key: `data-${string}`]: unknown
   }
 >
@@ -976,11 +977,6 @@ export interface LinkPropsChildren {
       }) => React.ReactNode)
 }
 
-type LinkComponentReactProps<TComp> = Omit<
-  UseLinkReactProps<TComp>,
-  keyof CreateLinkProps
->
-
 export type LinkComponentProps<
   TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
@@ -988,8 +984,10 @@ export type LinkComponentProps<
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = LinkComponentReactProps<TComp> &
-  LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+> = Assign<
+  LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  UseLinkReactProps<TComp>
+>
 
 export type CreateLinkProps = LinkProps<
   any,
