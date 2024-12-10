@@ -20,7 +20,12 @@ export function getFullRouterManifest() {
   if (process.env.NODE_ENV === 'development') {
     rootRoute.assets.push({
       tag: 'script',
-      children: `window.__vite_plugin_react_preamble_installed__ = true`,
+      attrs: { type: 'module' },
+      children: `import RefreshRuntime from "/_build/@react-refresh";
+RefreshRuntime.injectIntoGlobalHook(window)
+window.$RefreshReg$ = () => {}
+window.$RefreshSig$ = () => (type) => type
+window.__vite_plugin_react_preamble_installed__ = true`,
     })
   }
 
