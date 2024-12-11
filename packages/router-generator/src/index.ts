@@ -1,4 +1,4 @@
-export { configSchema, getConfig } from './config'
+export { configSchema, getConfig, resolveConfigPath } from './config'
 export type { Config } from './config'
 
 export {
