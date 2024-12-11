@@ -3041,7 +3041,7 @@ export class Router<
           ? `; console.info(\`Injected From Server:
 ${script}\`)`
           : ''
-      }; __TSR__.cleanScripts()</script>`,
+      }; if (__TSR__) __TSR__.cleanScripts()</script>`,
     )
   }
 
