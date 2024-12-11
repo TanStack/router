@@ -481,6 +481,34 @@ export interface Middleware<
   >
 }
 
+export function createGlobalMiddleware<
+  const TId,
+  const TMiddlewares,
+  TValidator = undefined,
+  TServerContext = undefined,
+  TClientContext = undefined,
+  TClientAfterContext = undefined,
+>(
+  options?: {
+    validateClient?: boolean
+  },
+  __opts?: MiddlewareOptions<
+    TMiddlewares,
+    TValidator,
+    TServerContext,
+    TClientContext
+  >,
+): Middleware<
+  TId,
+  TMiddlewares,
+  TValidator,
+  TServerContext,
+  TClientContext,
+  TClientAfterContext
+> {
+  return createMiddleware(options, __opts) as any
+}
+
 export function createMiddleware<
   const TId,
   const TMiddlewares,

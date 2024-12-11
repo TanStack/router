@@ -1,6 +1,6 @@
-import { createMiddleware } from '@tanstack/start'
+import { createGlobalMiddleware } from '@tanstack/start'
 
-export const randomMiddleware = createMiddleware()
+export const randomMiddleware = createGlobalMiddleware()
   .client((ctx) => {
     return ctx.next({
       context: {

@@ -24,6 +24,7 @@ export {
 } from './createServerFn'
 export {
   createMiddleware,
+  createGlobalMiddleware,
   type MergeAllValidatorInputs,
   type MergeAllValidatorOutputs,
   type MiddlewareServerFn,
