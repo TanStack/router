@@ -14,10 +14,7 @@ import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
-// @ts-expect-error
-import { serverFunctions } from '@vinxi/server-functions/plugin'
-// @ts-expect-error
-import { serverTransform } from '@vinxi/server-functions/server'
+import { createServerFunctionsPlugin } from '@tanstack/start/server-functions-plugin'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
@@ -123,6 +120,8 @@ export function defineConfig(
 
   const apiEntryExists = existsSync(apiEntry)
 
+  const serverFunctionsPlugin = createServerFunctionsPlugin()
+
   let vinxiApp = createApp({
     server: {
       ...serverOptions,
@@ -170,8 +169,10 @@ export function defineConfig(
             }),
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
-            serverFunctions.client({
-              runtime: '@tanstack/start/client-runtime',
+            serverFunctionsPlugin.client({
+              runtimeCode: `import { createClientRpc } from '@tanstack/start/client-runtime'`,
+              replacer: (opts) =>
+                `createClientRpc('${opts.filename}', '${opts.functionId}')`,
             }),
             viteReact(opts.react),
             // TODO: RSCS - enable this
@@ -211,8 +212,10 @@ export function defineConfig(
             }),
             ...(getUserViteConfig(opts.vite).plugins || []),
             ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
-            serverTransform({
-              runtime: '@tanstack/start/server-runtime',
+            serverFunctionsPlugin.server({
+              runtimeCode: `import { createServerRpc } from '@tanstack/start/ssr-runtime'`,
+              replacer: (opts) =>
+                `createSsrRpc('${opts.filename}', '${opts.functionId}')`,
             }),
             config('start-ssr', {
               ssr: {
@@ -254,12 +257,14 @@ export function defineConfig(
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
               },
             }),
-            serverFunctions.server({
-              runtime: '@tanstack/start/react-server-runtime',
+            serverFunctionsPlugin.server({
+              runtimeCode: `import { createServerRpc } from '@tanstack/start/server-runtime'`,
+              replacer: (opts) =>
+                `createServerRpc('${opts.filename}', '${opts.functionId}')`,
               // TODO: RSCS - remove this
-              resolve: {
-                conditions: [],
-              },
+              // resolve: {
+              //   conditions: [],
+              // },
             }),
             // TODO: RSCs - add this
             // serverComponents.serverActions({

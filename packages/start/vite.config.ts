@@ -20,10 +20,10 @@ export default mergeConfig(
     entry: [
       './src/client/index.tsx',
       './src/server/index.tsx',
-      './src/client-runtime/index.tsx',
       './src/api/index.ts',
+      './src/client-runtime/index.tsx',
       './src/server-runtime/index.tsx',
-      './src/react-server-runtime/index.tsx',
+      './src/ssr-runtime/index.tsx',
       './src/server-handler/index.tsx',
     ],
     srcDir: './src',
