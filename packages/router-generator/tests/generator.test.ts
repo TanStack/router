@@ -191,7 +191,9 @@ async function postprocess(folderName: string) {
       await traverseDirectory(startDir, async (filePath) => {
         const relativePath = relative(startDir, filePath)
         if (filePath.endsWith('.tsx')) {
-          await expect(await fs.readFile(filePath, 'utf-8')).toMatchFileSnapshot(
+          await expect(
+            await fs.readFile(filePath, 'utf-8'),
+          ).toMatchFileSnapshot(
             join('generator', folderName, 'snapshot', relativePath),
           )
         }
@@ -222,7 +224,9 @@ describe('generator works', async () => {
       await preprocess(folderName)
       const error = shouldThrow(folderName)
       if (error) {
-        await expect(() => generator(config, folderRoot)).rejects.toThrowError(error)
+        await expect(() => generator(config, folderRoot)).rejects.toThrowError(
+          error,
+        )
       } else {
         await generator(config, folderRoot)
 
