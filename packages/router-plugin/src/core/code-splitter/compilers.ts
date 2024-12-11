@@ -2,7 +2,10 @@ import * as t from '@babel/types'
 import babel from '@babel/core'
 import _generate from '@babel/generator'
 import * as template from '@babel/template'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
+import {
+  deadCodeElimination,
+  findReferencedIdentifiers,
+} from 'babel-dead-code-elimination'
 
 import { splitPrefix } from '../constants'
 import { parseAst } from './ast'
@@ -43,6 +46,8 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
       `Failed to compile ast for compileCodeSplitReferenceRoute() for the file: ${opts.filename}`,
     )
   }
+
+  const referenced = findReferencedIdentifiers(ast)
 
   babel.traverse(ast, {
     Program: {
@@ -255,7 +260,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
     },
   })
 
-  deadCodeElimination(ast)
+  deadCodeElimination(ast, referenced)
 
   return generate(ast, {
     sourceMaps: true,
@@ -275,6 +280,8 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
   }
 
   const knownExportedIdents = new Set<string>()
+
+  const referenced = findReferencedIdentifiers(ast)
 
   babel.traverse(ast, {
     Program: {
@@ -497,7 +504,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
     },
   })
 
-  deadCodeElimination(ast)
+  deadCodeElimination(ast, referenced)
 
   // if there are exported identifiers, then we need to add a warning
   // to the file to let the user know that the exported identifiers
