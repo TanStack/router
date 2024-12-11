@@ -57,7 +57,7 @@ describe('deny-route-group-config throws', () => {
       const config = await setupConfig(folder)
       const folderRoot = makeFolderDir(folder)
 
-      expect(() => generator(config, folderRoot)).rejects.toThrowError(
+      await expect(() => generator(config, folderRoot)).rejects.toThrowError(
         expectedError,
       )
     },
