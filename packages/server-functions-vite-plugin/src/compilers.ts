@@ -1,7 +1,6 @@
 import path from 'node:path'
 import * as babel from '@babel/core'
 import _generate from '@babel/generator'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
 
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { parseAst } from './ast'
@@ -13,14 +12,20 @@ if ('default' in generate) {
   generate = generate.default as typeof generate
 }
 
-export function compileEliminateDeadCode(opts: ParseAstOptions) {
-  const ast = parseAst(opts)
-  deadCodeElimination(ast)
-
-  return generate(ast, {
-    sourceMaps: true,
-  })
+interface ServerFunctionInfo {
+  nodePath: babel.NodePath
+  functionName: string
+  functionId: string
 }
+
+// export function compileEliminateDeadCode(opts: ParseAstOptions) {
+//   const ast = parseAst(opts)
+//   deadCodeElimination(ast)
+
+//   return generate(ast, {
+//     sourceMaps: true,
+//   })
+// }
 
 // const debug = process.env.TSR_VITE_DEBUG === 'true'
 
@@ -123,52 +128,133 @@ function makeFileLocationUrlSafe(location: string): string {
 export function compileServerFnClient(
   opts: ParseAstOptions & {
     getRuntimeCode: (opts: {
-      serverFnPathsByFunctionId: Record<
-        string,
-        { nodePath: babel.NodePath; functionName: string; functionId: string }
-      >
+      serverFnPathsByFunctionId: Record<string, ServerFunctionInfo>
     }) => string
     replacer: (opts: { filename: string; functionId: string }) => string
   },
 ) {
   const ast = parseAst(opts)
-  const serverFnPathsByFunctionId: Record<
-    string,
-    {
-      nodePath: babel.NodePath
-      functionName: string
-      functionId: string
+  const serverFnPathsByFunctionId = findServerFunctions(ast, opts)
+
+  // Add runtime code if there are server functions
+  if (Object.keys(serverFnPathsByFunctionId).length > 0) {
+    const runtimeImport = babel.template.statement(
+      opts.getRuntimeCode({ serverFnPathsByFunctionId }),
+    )()
+    ast.program.body.unshift(runtimeImport)
+  }
+
+  // Replace server functions with client-side stubs
+  for (const [functionId, { nodePath }] of Object.entries(
+    serverFnPathsByFunctionId,
+  )) {
+    const replacementCode = opts.replacer({
+      filename: opts.filename,
+      functionId: functionId,
+    })
+
+    // Check to see if we can do this:
+    if (
+      babel.types.isArrowFunctionExpression(nodePath.node) ||
+      babel.types.isFunctionExpression(nodePath.node) ||
+      babel.types.isFunctionDeclaration(nodePath.node) ||
+      babel.types.isObjectMethod(nodePath.node) ||
+      babel.types.isClassMethod(nodePath.node)
+    ) {
+      nodePath.node.params = [
+        babel.types.restElement(babel.types.identifier('args')),
+      ]
     }
-  > = {}
+
+    // Get the function body statements
+    const bodyStatements: Array<babel.types.Statement> = []
+
+    // Remove 'use server' directive
+    if (babel.types.isBlockStatement(nodePath.node.body)) {
+      nodePath.node.body.directives = nodePath.node.body.directives.filter(
+        (directive) => directive.value.value !== 'use server',
+      )
+    }
+
+    const replacement = babel.template.expression(
+      `(${replacementCode})(...args)`,
+    )()
+
+    if (babel.types.isArrowFunctionExpression(nodePath.node)) {
+      if (babel.types.isBlockStatement(nodePath.node.body)) {
+        nodePath.node.body.body = [babel.types.returnStatement(replacement)]
+      } else {
+        nodePath.node.body = babel.types.blockStatement([
+          babel.types.returnStatement(replacement),
+        ])
+      }
+    } else if (
+      babel.types.isFunctionExpression(nodePath.node) ||
+      babel.types.isFunctionDeclaration(nodePath.node) ||
+      babel.types.isObjectMethod(nodePath.node) ||
+      babel.types.isClassMethod(nodePath.node)
+    ) {
+      nodePath.node.body.body = [babel.types.returnStatement(replacement)]
+    }
+  }
+
+  const compiledCode = generate(ast, {
+    sourceMaps: true,
+    minified: process.env.NODE_ENV === 'production',
+  })
+
+  return {
+    compiledCode,
+    serverFns: serverFnPathsByFunctionId,
+  }
+}
+
+export function compileServerFnServer(opts: ParseAstOptions) {
+  const ast = parseAst(opts)
+  const serverFnPathsByFunctionId = findServerFunctions(ast, opts)
+
+  const compiledCode = generate(ast, {
+    sourceMaps: true,
+    minified: process.env.NODE_ENV === 'production',
+  })
+
+  return {
+    compiledCode,
+    serverFns: serverFnPathsByFunctionId,
+  }
+}
+
+function findServerFunctions(ast: babel.types.File, opts: ParseAstOptions) {
+  const serverFnPathsByFunctionId: Record<string, ServerFunctionInfo> = {}
   const counts: Record<string, number> = {}
+
+  const recordServerFunction = (nodePath: babel.NodePath) => {
+    const fnName = findNearestVariableName(nodePath)
+
+    const baseLabel = makeFileLocationUrlSafe(
+      `${opts.filename.replace(
+        path.extname(opts.filename),
+        '',
+      )}--${fnName}`.replace(opts.root, ''),
+    )
+
+    counts[baseLabel] = (counts[baseLabel] || 0) + 1
+
+    const functionId =
+      counts[baseLabel] > 1
+        ? `${baseLabel}_${counts[baseLabel] - 1}`
+        : baseLabel
+
+    serverFnPathsByFunctionId[functionId] = {
+      nodePath,
+      functionName: fnName || '',
+      functionId: functionId,
+    }
+  }
 
   babel.traverse(ast, {
     Program: {
       enter(programPath) {
-        const recordServerFunction = (nodePath: babel.NodePath) => {
-          const fnName = findNearestVariableName(nodePath)
-
-          const baseLabel = makeFileLocationUrlSafe(
-            `${opts.filename.replace(
-              path.extname(opts.filename),
-              '',
-            )}--${fnName}`.replace(opts.root, ''),
-          )
-
-          counts[baseLabel] = (counts[baseLabel] || 0) + 1
-
-          const functionId =
-            counts[baseLabel] > 1
-              ? `${baseLabel}_${counts[baseLabel] - 1}`
-              : baseLabel
-
-          serverFnPathsByFunctionId[functionId] = {
-            nodePath,
-            functionName: fnName || '',
-            functionId: functionId,
-          }
-        }
-
         programPath.traverse({
           enter(path) {
             // Function declarations
@@ -241,75 +327,11 @@ export function compileServerFnClient(
             }
           },
         })
-
-        if (Object.keys(serverFnPathsByFunctionId).length > 0) {
-          const runtimeImport = babel.template.statement(
-            opts.getRuntimeCode({ serverFnPathsByFunctionId }),
-          )()
-          ast.program.body.unshift(runtimeImport)
-        }
-
-        // Replace server functions with client-side stubs
-        for (const [functionId, fnPath] of Object.entries(
-          serverFnPathsByFunctionId,
-        )) {
-          const replacementCode = opts.replacer({
-            filename: opts.filename,
-            functionId: functionId,
-          })
-          const replacement = babel.template.expression(replacementCode)()
-
-          // For variable declarations, replace the init
-          if (fnPath.nodePath.isVariableDeclarator()) {
-            fnPath.nodePath.get('init').replaceWith(replacement)
-          }
-          // For class/object methods, replace the whole method
-          else if (
-            fnPath.nodePath.isClassMethod() ||
-            fnPath.nodePath.isObjectMethod()
-          ) {
-            fnPath.nodePath.replaceWith(
-              babel.types.classMethod(
-                fnPath.nodePath.node.kind,
-                fnPath.nodePath.node.key,
-                fnPath.nodePath.node.params,
-                babel.types.blockStatement([
-                  babel.types.returnStatement(replacement),
-                ]),
-              ),
-            )
-          }
-          // For function expressions, replace the whole path
-          else {
-            fnPath.nodePath.replaceWith(replacement)
-          }
-        }
       },
     },
   })
 
-  const compiledCode = generate(ast, {
-    sourceMaps: true,
-    minified: process.env.NODE_ENV === 'production',
-  })
-
-  return {
-    compiledCode,
-    serverFns: serverFnPathsByFunctionId,
-  }
-}
-
-export function compileServerFnServer(opts: ParseAstOptions) {
-  const ast = parseAst(opts)
-
-  const compiledCode = generate(ast, {
-    sourceMaps: true,
-    minified: process.env.NODE_ENV === 'production',
-  })
-
-  return {
-    compiledCode,
-  }
+  return serverFnPathsByFunctionId
 }
 
 // function codeFrameError(

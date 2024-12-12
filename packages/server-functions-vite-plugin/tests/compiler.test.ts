@@ -30,10 +30,12 @@ describe('server function compilation', () => {
     const client = compileServerFnClient({ ...clientConfig, code })
     await expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
-      createClientRpc({
-        filename: "test.ts",
-        functionId: "test--useServer"
-      });"
+      function useServer(...args) {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--useServer"
+        })(...args);
+      }"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
@@ -57,10 +59,12 @@ describe('server function compilation', () => {
     const client = compileServerFnClient({ ...clientConfig, code })
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
-      const fn = createClientRpc({
-        filename: "test.ts",
-        functionId: "test--fn_1"
-      });"
+      const fn = (...args) => {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--fn_1"
+        })(...args);
+      };"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
@@ -83,10 +87,12 @@ describe('server function compilation', () => {
     const client = compileServerFnClient({ ...clientConfig, code })
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
-      const anonymousFn = createClientRpc({
-        filename: "test.ts",
-        functionId: "test--anonymousFn_1"
-      });"
+      const anonymousFn = function (...args) {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--anonymousFn_1"
+        })(...args);
+      };"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
@@ -116,17 +122,17 @@ describe('server function compilation', () => {
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
       class TestClass {
-        method() {
+        method(...args) {
           return createClientRpc({
             filename: "test.ts",
             functionId: "test--method"
-          });
+          })(...args);
         }
-        staticMethod() {
+        static staticMethod(...args) {
           return createClientRpc({
             filename: "test.ts",
             functionId: "test--staticMethod"
-          });
+          })(...args);
         }
       }"
     `)
@@ -162,11 +168,11 @@ describe('server function compilation', () => {
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
       const obj = {
-        method() {
+        method(...args) {
           return createClientRpc({
             filename: "test.ts",
             functionId: "test--obj_method"
-          });
+          })(...args);
         }
       };"
     `)
@@ -199,14 +205,18 @@ describe('server function compilation', () => {
     const client = compileServerFnClient({ ...clientConfig, code })
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
-      createClientRpc({
-        filename: "test.ts",
-        functionId: "test--asyncServer"
-      });
-      const asyncArrow = createClientRpc({
-        filename: "test.ts",
-        functionId: "test--asyncArrow_1"
-      });"
+      async function asyncServer(...args) {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--asyncServer"
+        })(...args);
+      }
+      const asyncArrow = async (...args) => {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--asyncArrow_1"
+        })(...args);
+      };"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
@@ -240,14 +250,18 @@ describe('server function compilation', () => {
     const client = compileServerFnClient({ ...clientConfig, code })
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
-      createClientRpc({
-        filename: "test.ts",
-        functionId: "test--generatorServer"
-      });
-      createClientRpc({
-        filename: "test.ts",
-        functionId: "test--asyncGeneratorServer"
-      });"
+      function* generatorServer(...args) {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--generatorServer"
+        })(...args);
+      }
+      async function* asyncGeneratorServer(...args) {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--asyncGeneratorServer"
+        })(...args);
+      }"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
@@ -280,10 +294,12 @@ describe('server function compilation', () => {
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
       function outer() {
-        createClientRpc({
-          filename: "test.ts",
-          functionId: "test--outer_inner"
-        });
+        function inner(...args) {
+          return createClientRpc({
+            filename: "test.ts",
+            functionId: "test--outer_inner"
+          })(...args);
+        }
         return inner;
       }"
     `)
@@ -313,10 +329,14 @@ describe('server function compilation', () => {
     const client = compileServerFnClient({ ...clientConfig, code })
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
-      createClientRpc({
-        filename: "test.ts",
-        functionId: "test--multiDirective"
-      });"
+      function multiDirective(...args) {
+        'use strict';
+
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--multiDirective"
+        })(...args);
+      }"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
@@ -341,10 +361,12 @@ describe('server function compilation', () => {
     const client = compileServerFnClient({ ...clientConfig, code })
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
-      createClientRpc({
-        filename: "test.ts",
-        functionId: "test--withParams"
-      });"
+      function withParams(...args) {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--withParams"
+        })(...args);
+      }"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
@@ -368,10 +390,12 @@ describe('server function compilation', () => {
     const client = compileServerFnClient({ ...clientConfig, code })
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
-      const iife = createClientRpc({
-        filename: "test.ts",
-        functionId: "test--iife"
-      })();"
+      const iife = function (...args) {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--iife"
+        })(...args);
+      }();"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
@@ -398,10 +422,12 @@ describe('server function compilation', () => {
     expect(client.compiledCode.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib";
       function higherOrder() {
-        return createClientRpc({
-          filename: "test.ts",
-          functionId: "test--higherOrder"
-        });
+        return function (...args) {
+          return createClientRpc({
+            filename: "test.ts",
+            functionId: "test--higherOrder"
+          })(...args);
+        };
       }"
     `)
 
@@ -441,18 +467,22 @@ describe('server function compilation', () => {
       "import { createClientRpc } from "my-rpc-lib";
       function main() {
         function middle() {
-          const useServer = createClientRpc({
-            filename: "test.ts",
-            functionId: "test--main_middle_useServer_1"
-          });
+          const useServer = function (...args) {
+            return createClientRpc({
+              filename: "test.ts",
+              functionId: "test--main_middle_useServer_1"
+            })(...args);
+          };
           return useServer;
         }
         return middle;
       }
-      main().middle(createClientRpc({
-        filename: "test.ts",
-        functionId: "test--main_middle_useServer_2"
-      }));"
+      main().middle(function useServer(...args) {
+        return createClientRpc({
+          filename: "test.ts",
+          functionId: "test--main_middle_useServer_2"
+        })(...args);
+      });"
     `)
 
     const server = compileServerFnServer({ ...serverConfig, code })
