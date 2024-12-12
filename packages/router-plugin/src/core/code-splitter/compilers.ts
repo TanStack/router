@@ -503,7 +503,6 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
   if (debug) console.info('')
   if (debug) console.info('Dead Code Elimination Input 2:')
-  console.log(JSON.stringify(ast, null, 2))
   if (debug) console.info(generate(ast, { sourceMaps: true }).code)
   if (debug) console.info('')
   if (debug) console.info('')
