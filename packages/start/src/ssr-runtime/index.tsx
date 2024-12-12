@@ -4,7 +4,7 @@ import invariant from 'tiny-invariant'
 import { fetcher } from '../client-runtime/fetcher'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
 import { handleServerRequest } from '../server-handler/index'
-import type { CreateRpcFn } from '@tanstack/start/server-functions-plugin'
+import type { CreateRpcFn } from '@tanstack/server-functions-plugin'
 
 export function createIncomingMessage(
   url: string,
@@ -78,12 +78,8 @@ export function createIncomingMessage(
 
 const fakeHost = 'http://localhost:3000'
 
-export const createSsrRpc: CreateRpcFn = (
-  _fn: any,
-  filename: string,
-  functionId: string,
-) => {
-  const functionUrl = getBaseUrl(fakeHost, filename, functionId)
+export const createSsrRpc: CreateRpcFn = (opts) => {
+  const functionUrl = getBaseUrl(fakeHost, opts.filename, opts.functionId)
 
   const proxyFn = (...args: Array<any>) => {
     invariant(
@@ -155,7 +151,7 @@ export const createSsrRpc: CreateRpcFn = (
 
   return Object.assign(proxyFn, {
     url: functionUrl.replace(fakeHost, ''),
-    filename,
-    functionId,
+    filename: opts.filename,
+    functionId: opts.functionId,
   })
 }

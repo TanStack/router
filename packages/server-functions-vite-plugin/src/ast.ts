@@ -1,44 +1,20 @@
-import * as babel from '@babel/core'
-import '@babel/parser'
-// @ts-expect-error
-import _babelPluginJsx from '@babel/plugin-syntax-jsx'
-// @ts-expect-error
-import _babelPluginTypeScript from '@babel/plugin-syntax-typescript'
-
-let babelPluginJsx = _babelPluginJsx
-let babelPluginTypeScript = _babelPluginTypeScript
-
-if (babelPluginJsx.default) {
-  babelPluginJsx = babelPluginJsx.default
-}
-
-if (babelPluginTypeScript.default) {
-  babelPluginTypeScript = babelPluginTypeScript.default
-}
+import { parse } from '@babel/parser'
+import type { ParseResult } from '@babel/parser'
 
 export type ParseAstOptions = {
   code: string
   filename: string
   root: string
-  env: 'server' | 'client'
 }
 
-export function parseAst(opts: ParseAstOptions) {
-  const babelPlugins: Array<babel.PluginItem> = [
-    babelPluginJsx,
-    [
-      babelPluginTypeScript,
-      {
-        isTSX: true,
-      },
-    ],
-  ]
-
-  return babel.parse(opts.code, {
-    plugins: babelPlugins,
-    root: opts.root,
-    filename: opts.filename,
-    sourceMaps: true,
+export function parseAst(opts: ParseAstOptions): ParseResult<babel.types.File> {
+  return parse(opts.code, {
+    plugins: ['jsx', 'typescript'],
     sourceType: 'module',
+    ...{
+      root: opts.root,
+      filename: opts.filename,
+      sourceMaps: true,
+    },
   })
 }

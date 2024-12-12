@@ -14,7 +14,10 @@ import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
-import { createServerFunctionsPlugin } from '@tanstack/start/server-functions-plugin'
+import {
+  TanStackServerFnPluginClient,
+  TanStackServerFnPluginServer,
+} from '@tanstack/server-functions-plugin'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
@@ -120,8 +123,6 @@ export function defineConfig(
 
   const apiEntryExists = existsSync(apiEntry)
 
-  const serverFunctionsPlugin = createServerFunctionsPlugin()
-
   let vinxiApp = createApp({
     server: {
       ...serverOptions,
@@ -169,7 +170,7 @@ export function defineConfig(
             }),
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
-            serverFunctionsPlugin.client({
+            TanStackServerFnPluginClient({
               runtimeCode: `import { createClientRpc } from '@tanstack/start/client-runtime'`,
               replacer: (opts) =>
                 `createClientRpc('${opts.filename}', '${opts.functionId}')`,
@@ -212,7 +213,7 @@ export function defineConfig(
             }),
             ...(getUserViteConfig(opts.vite).plugins || []),
             ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
-            serverFunctionsPlugin.server({
+            TanStackServerFnPluginServer({
               runtimeCode: `import { createServerRpc } from '@tanstack/start/ssr-runtime'`,
               replacer: (opts) =>
                 `createSsrRpc('${opts.filename}', '${opts.functionId}')`,
@@ -257,7 +258,7 @@ export function defineConfig(
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
               },
             }),
-            serverFunctionsPlugin.server({
+            TanStackServerFnPluginServer({
               runtimeCode: `import { createServerRpc } from '@tanstack/start/server-runtime'`,
               replacer: (opts) =>
                 `createServerRpc('${opts.filename}', '${opts.functionId}')`,

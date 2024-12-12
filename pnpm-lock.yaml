@@ -3501,6 +3501,57 @@ importers:
         specifier: workspace:*
         version: link:../router-plugin
 
+  packages/server-functions-vite-plugin:
+    dependencies:
+      '@babel/code-frame':
+        specifier: 7.26.2
+        version: 7.26.2
+      '@babel/core':
+        specifier: ^7.26.0
+        version: 7.26.0
+      '@babel/generator':
+        specifier: ^7.26.3
+        version: 7.26.3
+      '@babel/parser':
+        specifier: ^7.26.3
+        version: 7.26.3
+      '@babel/plugin-syntax-jsx':
+        specifier: ^7.25.9
+        version: 7.25.9(@babel/core@7.26.0)
+      '@babel/plugin-syntax-typescript':
+        specifier: ^7.25.9
+        version: 7.25.9(@babel/core@7.26.0)
+      '@babel/template':
+        specifier: ^7.25.9
+        version: 7.25.9
+      '@babel/traverse':
+        specifier: ^7.26.4
+        version: 7.26.4
+      '@babel/types':
+        specifier: ^7.26.3
+        version: 7.26.3
+      '@types/babel__code-frame':
+        specifier: ^7.0.6
+        version: 7.0.6
+      '@types/babel__core':
+        specifier: ^7.20.5
+        version: 7.20.5
+      '@types/babel__generator':
+        specifier: ^7.6.8
+        version: 7.6.8
+      '@types/babel__template':
+        specifier: ^7.4.4
+        version: 7.4.4
+      '@types/babel__traverse':
+        specifier: ^7.20.6
+        version: 7.20.6
+      babel-dead-code-elimination:
+        specifier: ^1.0.6
+        version: 1.0.6
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+
   packages/start:
     dependencies:
       '@tanstack/react-cross-context':
@@ -3515,6 +3566,9 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../router-plugin
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:^
+        version: link:../server-functions-vite-plugin
       '@tanstack/start-vite-plugin':
         specifier: workspace:*
         version: link:../start-vite-plugin

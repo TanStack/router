@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/start-vite-plugin",
+  "name": "@tanstack/server-functions-plugin",
   "version": "1.87.3",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/start-vite-plugin"
+    "directory": "packages/server-functions-plugin"
   },
   "homepage": "https://tanstack.com/start",
   "funding": {

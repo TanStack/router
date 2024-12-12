@@ -139,6 +139,7 @@
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/start-vite-plugin": "workspace:^",
+    "@tanstack/server-functions-plugin": "workspace:^",
     "@vinxi/react": "0.2.5",
     "@vinxi/react-server-dom": "^0.0.3",
     "@vinxi/server-components": "0.5.0",
