@@ -99,6 +99,16 @@ export function TanStackStartViteDeadCodeElimination(
       id = fileURLToPath(url).replace(/\\/g, '/')
 
       if (transformFuncs.some((fn) => code.includes(fn))) {
+        if (debug) console.info('Handling dead code elimination: ', id)
+
+        if (debug) console.info('')
+        if (debug) console.info('Dead Code Elimination Input:')
+        if (debug) console.info('')
+        if (debug) console.info(code)
+        if (debug) console.info('')
+        if (debug) console.info('')
+        if (debug) console.info('')
+
         const compiled = compileEliminateDeadCode({
           code,
           root: ROOT,
@@ -107,7 +117,7 @@ export function TanStackStartViteDeadCodeElimination(
         })
 
         if (debug) console.info('')
-        if (debug) console.info('Output after dead code elimination')
+        if (debug) console.info('Dead Code Elimination Output:')
         if (debug) console.info('')
         if (debug) console.info(compiled.code)
         if (debug) console.info('')
