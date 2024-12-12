@@ -1001,7 +1001,7 @@ export type CreateLinkProps = LinkProps<
 >
 
 export type LinkComponent<TComp> = <
-  TRouter extends RegisteredRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
