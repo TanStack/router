@@ -36,10 +36,10 @@
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "pnpm build:config && pnpm build:router-manifest && pnpm build:vite",
+    "build": "pnpm build:vite && pnpm build:config && pnpm build:router-manifest",
+    "build:vite": "vite build",
     "build:config": "tsc --project tsconfigs/config.tsconfig.json",
-    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json",
-    "build:vite": "vite build"
+    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json"
   },
   "type": "module",
   "exports": {
