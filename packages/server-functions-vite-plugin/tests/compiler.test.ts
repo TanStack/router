@@ -40,10 +40,8 @@ describe('server function compilation', () => {
 
     const server = compileServerFnServer({ ...serverConfig, code })
     await expect(server.compiledCode.code).toMatchInlineSnapshot(`
-      "function useServer() {
-        'use server';
-
-        return 'hello';
+      "function useServer(...args) {
+        return import("test.ts?tsr-serverfn-split=test--useServer").then(mod => mod.serverFn(...args));
       }"
     `)
   })
@@ -69,10 +67,8 @@ describe('server function compilation', () => {
 
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
-      "const fn = () => {
-        'use server';
-
-        return 'hello';
+      "const fn = (...args) => {
+        return import("test.ts?tsr-serverfn-split=test--fn_1").then(mod => mod.serverFn(...args));
       };"
     `)
   })
@@ -97,8 +93,8 @@ describe('server function compilation', () => {
 
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
-      "const anonymousFn = function () {
-        'use server';
+      "const anonymousFn = function (...args) {
+        return import("test.ts?tsr-serverfn-split=test--anonymousFn_1").then(mod => mod.serverFn(...args));
       };"
     `)
   })
@@ -140,15 +136,11 @@ describe('server function compilation', () => {
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
       "class TestClass {
-        method() {
-          'use server';
-
-          return 'hello';
+        method(...args) {
+          return import("test.ts?tsr-serverfn-split=test--method").then(mod => mod.serverFn(...args));
         }
-        static staticMethod() {
-          'use server';
-
-          return 'hello';
+        static staticMethod(...args) {
+          return import("test.ts?tsr-serverfn-split=test--staticMethod").then(mod => mod.serverFn(...args));
         }
       }"
     `)
@@ -180,10 +172,8 @@ describe('server function compilation', () => {
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
       "const obj = {
-        method() {
-          'use server';
-
-          return 'hello';
+        method(...args) {
+          return import("test.ts?tsr-serverfn-split=test--obj_method").then(mod => mod.serverFn(...args));
         }
       };"
     `)
@@ -221,15 +211,11 @@ describe('server function compilation', () => {
 
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
-      "async function asyncServer() {
-        'use server';
-
-        return 'hello';
+      "async function asyncServer(...args) {
+        return import("test.ts?tsr-serverfn-split=test--asyncServer").then(mod => mod.serverFn(...args));
       }
-      const asyncArrow = async () => {
-        'use server';
-
-        return 'hello';
+      const asyncArrow = async (...args) => {
+        return import("test.ts?tsr-serverfn-split=test--asyncArrow_1").then(mod => mod.serverFn(...args));
       };"
     `)
   })
@@ -266,15 +252,11 @@ describe('server function compilation', () => {
 
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
-      "function* generatorServer() {
-        'use server';
-
-        yield 'hello';
+      "function* generatorServer(...args) {
+        return import("test.ts?tsr-serverfn-split=test--generatorServer").then(mod => mod.serverFn(...args));
       }
-      async function* asyncGeneratorServer() {
-        'use server';
-
-        yield 'hello';
+      async function* asyncGeneratorServer(...args) {
+        return import("test.ts?tsr-serverfn-split=test--asyncGeneratorServer").then(mod => mod.serverFn(...args));
       }"
     `)
   })
@@ -307,10 +289,8 @@ describe('server function compilation', () => {
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
       "function outer() {
-        function inner() {
-          'use server';
-
-          return 'hello';
+        function inner(...args) {
+          return import("test.ts?tsr-serverfn-split=test--outer_inner").then(mod => mod.serverFn(...args));
         }
         return inner;
       }"
@@ -341,11 +321,10 @@ describe('server function compilation', () => {
 
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
-      "function multiDirective() {
+      "function multiDirective(...args) {
         'use strict';
-        'use server';
 
-        return 'hello';
+        return import("test.ts?tsr-serverfn-split=test--multiDirective").then(mod => mod.serverFn(...args));
       }"
     `)
   })
@@ -371,10 +350,8 @@ describe('server function compilation', () => {
 
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
-      "function withParams(a: string, b: number) {
-        'use server';
-
-        return \`\${a} \${b}\`;
+      "function withParams(...args) {
+        return import("test.ts?tsr-serverfn-split=test--withParams").then(mod => mod.serverFn(...args));
       }"
     `)
   })
@@ -400,10 +377,8 @@ describe('server function compilation', () => {
 
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
-      "const iife = function () {
-        'use server';
-
-        return 'hello';
+      "const iife = function (...args) {
+        return import("test.ts?tsr-serverfn-split=test--iife").then(mod => mod.serverFn(...args));
       }();"
     `)
   })
@@ -434,10 +409,8 @@ describe('server function compilation', () => {
     const server = compileServerFnServer({ ...serverConfig, code })
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
       "function higherOrder() {
-        return function () {
-          'use server';
-
-          return 'hello';
+        return function (...args) {
+          return import("test.ts?tsr-serverfn-split=test--higherOrder").then(mod => mod.serverFn(...args));
         };
       }"
     `)
@@ -489,19 +462,15 @@ describe('server function compilation', () => {
     expect(server.compiledCode.code).toMatchInlineSnapshot(`
       "function main() {
         function middle() {
-          const useServer = function () {
-            'use server';
-
-            return 'hello';
+          const useServer = function (...args) {
+            return import("test.ts?tsr-serverfn-split=test--main_middle_useServer_1").then(mod => mod.serverFn(...args));
           };
           return useServer;
         }
         return middle;
       }
-      main().middle(function useServer() {
-        'use server';
-
-        return 'hello';
+      main().middle(function useServer(...args) {
+        return import("test.ts?tsr-serverfn-split=test--main_middle_useServer_2").then(mod => mod.serverFn(...args));
       });"
     `)
   })

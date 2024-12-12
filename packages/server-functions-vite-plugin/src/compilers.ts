@@ -24,6 +24,8 @@ interface ServerFunctionInfo {
 
 //   return generate(ast, {
 //     sourceMaps: true,
+//     sourceFileName: opts.filename,
+//     minified: process.env.NODE_ENV === 'production',
 //   })
 // }
 
@@ -118,6 +120,23 @@ function findNearestVariableName(path: babel.NodePath): string {
   return nameParts.length > 0 ? nameParts.join('_') : 'anonymous'
 }
 
+function isFunctionDeclaration(
+  node: babel.types.Node,
+): node is
+  | babel.types.FunctionDeclaration
+  | babel.types.FunctionExpression
+  | babel.types.ArrowFunctionExpression
+  | babel.types.ClassMethod
+  | babel.types.ObjectMethod {
+  return (
+    babel.types.isFunctionDeclaration(node) ||
+    babel.types.isFunctionExpression(node) ||
+    babel.types.isArrowFunctionExpression(node) ||
+    babel.types.isClassMethod(node) ||
+    babel.types.isObjectMethod(node)
+  )
+}
+
 function makeFileLocationUrlSafe(location: string): string {
   return location
     .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
@@ -153,28 +172,29 @@ export function compileServerFnClient(
       functionId: functionId,
     })
 
-    // Check to see if we can do this:
-    if (
-      babel.types.isArrowFunctionExpression(nodePath.node) ||
-      babel.types.isFunctionExpression(nodePath.node) ||
-      babel.types.isFunctionDeclaration(nodePath.node) ||
-      babel.types.isObjectMethod(nodePath.node) ||
-      babel.types.isClassMethod(nodePath.node)
-    ) {
-      nodePath.node.params = [
-        babel.types.restElement(babel.types.identifier('args')),
-      ]
-    }
-
-    // Get the function body statements
-    const bodyStatements: Array<babel.types.Statement> = []
-
-    // Remove 'use server' directive
-    if (babel.types.isBlockStatement(nodePath.node.body)) {
-      nodePath.node.body.directives = nodePath.node.body.directives.filter(
-        (directive) => directive.value.value !== 'use server',
+    // Check to see if the function is a valid function declaration
+    if (!isFunctionDeclaration(nodePath.node)) {
+      throw new Error(
+        `Server function is not a function declaration: ${nodePath.node}`,
       )
     }
+
+    nodePath.node.params = [
+      babel.types.restElement(babel.types.identifier('args')),
+    ]
+
+    // Remove 'use server' directive
+    // Check if the node body is a block statement
+    if (!babel.types.isBlockStatement(nodePath.node.body)) {
+      throw new Error(
+        `Server function body is not a block statement: ${nodePath.node.body}`,
+      )
+    }
+
+    const nodeBody = nodePath.node.body
+    nodeBody.directives = nodeBody.directives.filter(
+      (directive) => directive.value.value !== 'use server',
+    )
 
     const replacement = babel.template.expression(
       `(${replacementCode})(...args)`,
@@ -200,6 +220,7 @@ export function compileServerFnClient(
 
   const compiledCode = generate(ast, {
     sourceMaps: true,
+    sourceFileName: opts.filename,
     minified: process.env.NODE_ENV === 'production',
   })
 
@@ -213,8 +234,64 @@ export function compileServerFnServer(opts: ParseAstOptions) {
   const ast = parseAst(opts)
   const serverFnPathsByFunctionId = findServerFunctions(ast, opts)
 
+  // Replace server function bodies with dynamic imports
+  Object.entries(serverFnPathsByFunctionId).forEach(
+    ([functionId, { nodePath }]) => {
+      // Check if the node is a function declaration
+      if (!isFunctionDeclaration(nodePath.node)) {
+        throw new Error(
+          `Server function is not a function declaration: ${nodePath.node}`,
+        )
+      }
+
+      nodePath.node.params = [
+        babel.types.restElement(babel.types.identifier('args')),
+      ]
+
+      // Check if the node body is a block statement
+      if (!babel.types.isBlockStatement(nodePath.node.body)) {
+        throw new Error(
+          `Server function body is not a block statement: ${nodePath.node.body}`,
+        )
+      }
+
+      const nodeBody = nodePath.node.body
+      nodeBody.directives = nodeBody.directives.filter(
+        (directive) => directive.value.value !== 'use server',
+      )
+
+      // Create the dynamic import expression
+      const importExpression = babel.template.expression(`
+      import(${JSON.stringify(`${opts.filename}?tsr-serverfn-split=${functionId}`)})
+        .then(mod => mod.serverFn(...args))
+    `)()
+
+      if (babel.types.isArrowFunctionExpression(nodePath.node)) {
+        if (babel.types.isBlockStatement(nodePath.node.body)) {
+          nodePath.node.body.body = [
+            babel.types.returnStatement(importExpression),
+          ]
+        } else {
+          nodePath.node.body = babel.types.blockStatement([
+            babel.types.returnStatement(importExpression),
+          ])
+        }
+      } else if (
+        babel.types.isFunctionExpression(nodePath.node) ||
+        babel.types.isFunctionDeclaration(nodePath.node) ||
+        babel.types.isObjectMethod(nodePath.node) ||
+        babel.types.isClassMethod(nodePath.node)
+      ) {
+        nodePath.node.body.body = [
+          babel.types.returnStatement(importExpression),
+        ]
+      }
+    },
+  )
+
   const compiledCode = generate(ast, {
     sourceMaps: true,
+    sourceFileName: opts.filename,
     minified: process.env.NODE_ENV === 'production',
   })
 
