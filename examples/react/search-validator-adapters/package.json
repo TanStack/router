@@ -14,7 +14,7 @@
     "@tanstack/react-router": "^1.87.9",
     "@tanstack/arktype-adapter": "^1.87.9",
     "@tanstack/router-devtools": "^1.87.9",
-    "@tanstack/router-plugin": "^1.87.7",
+    "@tanstack/router-plugin": "^1.87.10",
     "@tanstack/valibot-adapter": "^1.87.9",
     "@tanstack/zod-adapter": "^1.87.9",
     "arktype": "2.0.0-rc.26",
