@@ -52,6 +52,8 @@ export function TanStackServerFnPluginClient(
           code,
           root: ROOT,
           filename: id,
+          runtimeCode: opts.runtimeCode,
+          replacer: opts.replacer,
         })
 
         if (debug) console.info('')
