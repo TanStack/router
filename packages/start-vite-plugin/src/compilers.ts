@@ -18,13 +18,7 @@ if (!generate) {
 
 export function compileEliminateDeadCode(opts: ParseAstOptions) {
   const ast = parseAst(opts)
-  if (!ast) {
-    throw new Error(
-      `Failed to compile ast for compileEliminateDeadCode() for the file: ${opts.filename}`,
-    )
-  }
   deadCodeElimination(ast)
-
   return generate(ast, {
     sourceMaps: true,
   })
@@ -51,12 +45,6 @@ type IdentifierConfig = {
 
 export function compileStartOutput(opts: ParseAstOptions) {
   const ast = parseAst(opts)
-
-  if (!ast) {
-    throw new Error(
-      `Failed to compile ast for compileStartOutput() for the file: ${opts.filename}`,
-    )
-  }
 
   babel.traverse(ast, {
     Program: {
