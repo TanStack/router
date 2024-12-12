@@ -717,6 +717,7 @@ export class Router<
     Math.random() * 10000000,
   )}`
   resetNextScroll = true
+  scrollOnNextHashChange = true
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
@@ -1808,7 +1809,7 @@ export class Router<
       this.load()
     } else {
       // eslint-disable-next-line prefer-const
-      let { maskedLocation, ...nextHistory } = next
+      let { maskedLocation, hashChangeScrollIntoView, ...nextHistory } = next
 
       if (maskedLocation) {
         nextHistory = {
@@ -1838,6 +1839,9 @@ export class Router<
         }
       }
 
+      nextHistory.state.__hashChangeScrollIntoViewOptions =
+        hashChangeScrollIntoView ?? true
+
       this.shouldViewTransition = viewTransition
 
       this.history[next.replace ? 'replace' : 'push'](
@@ -1859,6 +1863,7 @@ export class Router<
   buildAndCommitLocation = ({
     replace,
     resetScroll,
+    hashChangeScrollIntoView,
     viewTransition,
     ignoreBlocker,
     ...rest
@@ -1881,6 +1886,7 @@ export class Router<
       viewTransition,
       replace,
       resetScroll,
+      hashChangeScrollIntoView,
       ignoreBlocker,
     })
   }

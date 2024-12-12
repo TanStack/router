@@ -143,10 +143,15 @@ export function Transitioner() {
       }))
 
       if (typeof document !== 'undefined' && (document as any).querySelector) {
-        if (router.state.location.hash !== '') {
+        if (
+          router.state.location.state.__hashChangeScrollIntoViewOptions &&
+          router.state.location.hash !== ''
+        ) {
           const el = document.getElementById(router.state.location.hash)
           if (el) {
-            el.scrollIntoView()
+            el.scrollIntoView(
+              router.latestLocation.state.__hashChangeScrollIntoViewOptions,
+            )
           }
         }
       }
