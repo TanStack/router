@@ -1,12 +1,22 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { compileServerFnClient } from './compilers'
+import { logDiff } from './logger'
 import type { Plugin } from 'vite'
 
-const debug = Boolean(process.env.TSR_VITE_DEBUG)
+const debug = Boolean(process.env.TSR_VITE_DEBUG) || (true as boolean)
 
 export type ServerFunctionsViteOptions = {
-  runtimeCode: string
+  getRuntimeCode: (opts: {
+    serverFnPathsByFunctionId: Record<
+      string,
+      {
+        nodePath: babel.NodePath
+        functionName: string
+        functionId: string
+      }
+    >
+  }) => string
   replacer: (opts: { filename: string; functionId: string }) => string
 }
 
@@ -40,29 +50,16 @@ export function TanStackServerFnPluginClient(
           return null
         }
 
-        if (debug) console.info('')
-        if (debug) console.info('Compiled createServerFn Input')
-        if (debug) console.info('')
-        if (debug) console.info(code)
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-
         const { compiledCode, serverFns } = compileServerFnClient({
           code,
           root: ROOT,
           filename: id,
-          runtimeCode: opts.runtimeCode,
+          getRuntimeCode: opts.getRuntimeCode,
           replacer: opts.replacer,
         })
 
-        if (debug) console.info('')
-        if (debug) console.info('Compiled createServerFn Output')
-        if (debug) console.info('')
-        if (debug) console.info(compiledCode)
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
+        if (debug) console.info('createServerFn Input/Output')
+        if (debug) logDiff(code, compiledCode.code.replace(/ctx/g, 'blah'))
 
         return compiledCode
       },

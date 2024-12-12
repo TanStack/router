@@ -171,7 +171,8 @@ export function defineConfig(
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
             TanStackServerFnPluginClient({
-              runtimeCode: `import { createClientRpc } from '@tanstack/start/client-runtime'`,
+              getRuntimeCode: (opts) =>
+                `import { createClientRpc } from '@tanstack/start/client-runtime'`,
               replacer: (opts) =>
                 `createClientRpc('${opts.filename}', '${opts.functionId}')`,
             }),
@@ -214,7 +215,8 @@ export function defineConfig(
             ...(getUserViteConfig(opts.vite).plugins || []),
             ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
             TanStackServerFnPluginServer({
-              runtimeCode: `import { createServerRpc } from '@tanstack/start/ssr-runtime'`,
+              getRuntimeCode: (opts) =>
+                `import { createServerRpc } from '@tanstack/start/ssr-runtime'`,
               replacer: (opts) =>
                 `createSsrRpc('${opts.filename}', '${opts.functionId}')`,
             }),
@@ -259,7 +261,8 @@ export function defineConfig(
               },
             }),
             TanStackServerFnPluginServer({
-              runtimeCode: `import { createServerRpc } from '@tanstack/start/server-runtime'`,
+              getRuntimeCode: (opts) =>
+                `import { createServerRpc } from '@tanstack/start/server-runtime'`,
               replacer: (opts) =>
                 `createServerRpc('${opts.filename}', '${opts.functionId}')`,
               // TODO: RSCS - remove this

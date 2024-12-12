@@ -122,12 +122,17 @@ function makeFileLocationUrlSafe(location: string): string {
 
 export function compileServerFnClient(
   opts: ParseAstOptions & {
-    runtimeCode: string
+    getRuntimeCode: (opts: {
+      serverFnPathsByFunctionId: Record<
+        string,
+        { nodePath: babel.NodePath; functionName: string; functionId: string }
+      >
+    }) => string
     replacer: (opts: { filename: string; functionId: string }) => string
   },
 ) {
   const ast = parseAst(opts)
-  const serverFnPathsByLabel: Record<
+  const serverFnPathsByFunctionId: Record<
     string,
     {
       nodePath: babel.NodePath
@@ -152,15 +157,15 @@ export function compileServerFnClient(
 
           counts[baseLabel] = (counts[baseLabel] || 0) + 1
 
-          const label =
+          const functionId =
             counts[baseLabel] > 1
               ? `${baseLabel}_${counts[baseLabel] - 1}`
               : baseLabel
 
-          serverFnPathsByLabel[label] = {
+          serverFnPathsByFunctionId[functionId] = {
             nodePath,
             functionName: fnName || '',
-            functionId: label,
+            functionId: functionId,
           }
         }
 
@@ -236,6 +241,49 @@ export function compileServerFnClient(
             }
           },
         })
+
+        if (Object.keys(serverFnPathsByFunctionId).length > 0) {
+          const runtimeImport = babel.template.statement(
+            opts.getRuntimeCode({ serverFnPathsByFunctionId }),
+          )()
+          ast.program.body.unshift(runtimeImport)
+        }
+
+        // Replace server functions with client-side stubs
+        for (const [functionId, fnPath] of Object.entries(
+          serverFnPathsByFunctionId,
+        )) {
+          const replacementCode = opts.replacer({
+            filename: opts.filename,
+            functionId: functionId,
+          })
+          const replacement = babel.template.expression(replacementCode)()
+
+          // For variable declarations, replace the init
+          if (fnPath.nodePath.isVariableDeclarator()) {
+            fnPath.nodePath.get('init').replaceWith(replacement)
+          }
+          // For class/object methods, replace the whole method
+          else if (
+            fnPath.nodePath.isClassMethod() ||
+            fnPath.nodePath.isObjectMethod()
+          ) {
+            fnPath.nodePath.replaceWith(
+              babel.types.classMethod(
+                fnPath.nodePath.node.kind,
+                fnPath.nodePath.node.key,
+                fnPath.nodePath.node.params,
+                babel.types.blockStatement([
+                  babel.types.returnStatement(replacement),
+                ]),
+              ),
+            )
+          }
+          // For function expressions, replace the whole path
+          else {
+            fnPath.nodePath.replaceWith(replacement)
+          }
+        }
       },
     },
   })
@@ -245,21 +293,23 @@ export function compileServerFnClient(
     minified: process.env.NODE_ENV === 'production',
   })
 
-  console.log(serverFnPathsByLabel)
-
   return {
     compiledCode,
-    serverFns: serverFnPathsByLabel,
+    serverFns: serverFnPathsByFunctionId,
   }
 }
 
 export function compileServerFnServer(opts: ParseAstOptions) {
   const ast = parseAst(opts)
 
-  return generate(ast, {
+  const compiledCode = generate(ast, {
     sourceMaps: true,
     minified: process.env.NODE_ENV === 'production',
   })
+
+  return {
+    compiledCode,
+  }
 }
 
 // function codeFrameError(
