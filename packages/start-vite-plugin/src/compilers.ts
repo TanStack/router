@@ -21,6 +21,7 @@ export function compileEliminateDeadCode(opts: ParseAstOptions) {
   deadCodeElimination(ast)
   return generate(ast, {
     sourceMaps: true,
+    filename: opts.filename,
   })
 }
 
@@ -185,6 +186,7 @@ export function compileStartOutput(opts: ParseAstOptions) {
 
   return generate(ast, {
     sourceMaps: true,
+    filename: opts.filename,
     minified: process.env.NODE_ENV === 'production',
   })
 }
