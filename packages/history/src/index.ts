@@ -405,7 +405,7 @@ export function createMemoryHistory(
     createHref: (path) => path,
   })
 
-  return history;
+  return history
 }
 
 export function parseHref(
