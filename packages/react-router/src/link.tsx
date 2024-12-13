@@ -219,6 +219,8 @@ export interface NavigateOptionProps {
   // if set to `ViewTransitionOptions`, the router will pass the `types` field to document.startViewTransition({update: fn, types: viewTransition.types}) call
   viewTransition?: boolean | ViewTransitionOptions
   ignoreBlocker?: boolean
+  reloadDocument?: boolean
+  href?: string
 }
 
 export type ToOptions<
@@ -643,6 +645,9 @@ export function useLinkProps<
   // null for LinkUtils
 
   const type: 'internal' | 'external' = React.useMemo(() => {
+    if (rest.reloadDocument) {
+      return 'external'
+    }
     try {
       new URL(`${to}`)
       return 'external'

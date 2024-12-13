@@ -7,8 +7,9 @@ The `Redirect` type is used to represent a redirect action in TanStack Router.
 
 ```tsx
 export type Redirect = {
-  code?: number
+  statusCode?: number
   throw?: any
+  headers?: HeadersInit
 } & NavigateOptions
 ```
 
@@ -18,7 +19,7 @@ export type Redirect = {
 
 The `Redirect` object accepts/contains the following properties:
 
-### `code` property
+### `statusCode` property
 
 - Type: `number`
 - Optional
@@ -29,3 +30,9 @@ The `Redirect` object accepts/contains the following properties:
 - Type: `any`
 - Optional
 - If provided, will throw the redirect object instead of returning it. This can be useful in places where `throwing` in a function might cause it to have a return type of `never`. In that case, you can use `redirect({ throw: true })` to throw the redirect object instead of returning it.
+
+### `headers` property
+
+- Type: `HeadersInit`
+- Optional
+- The HTTP headers to use when redirecting.

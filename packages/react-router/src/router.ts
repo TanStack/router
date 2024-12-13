@@ -536,6 +536,7 @@ export interface BuildNextOptions {
   }
   from?: string
   _fromLocation?: ParsedLocation
+  href?: string
 }
 
 export interface MatchedRoutesResult {
@@ -1861,9 +1862,9 @@ export class Router<
     resetScroll,
     viewTransition,
     ignoreBlocker,
+    href,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
-    const href = (rest as any).href
     if (href) {
       const parsed = parseHref(href, {})
       rest.to = parsed.pathname
@@ -1885,29 +1886,24 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn = ({ to, ...rest }) => {
-    // If this link simply reloads the current route,
-    // make sure it has a new key so it will trigger a data refresh
-
-    // If this `to` is a valid external URL, return
-    // null for LinkUtils
-    const toString = String(to)
-    let isExternal
-
-    try {
-      new URL(`${toString}`)
-      isExternal = true
-    } catch (e) {}
-
-    invariant(
-      !isExternal,
-      'Attempting to navigate to external url with router.navigate!',
-    )
+  navigate: NavigateFn = ({ to, reloadDocument, href, ...rest }) => {
+    if (reloadDocument) {
+      if (!href) {
+        const location = this.buildLocation({ to, ...rest } as any)
+        href = location.href
+      }
+      if (rest.replace) {
+        window.location.replace(href)
+      } else {
+        window.location.href = href
+      }
+      return
+    }
 
     return this.buildAndCommitLocation({
       ...rest,
+      href,
       to: to as string,
-      // to: toString,
     })
   }
 
@@ -2041,7 +2037,7 @@ export class Router<
             redirect = err
             if (!this.isServer) {
               this.navigate({
-                ...err,
+                ...redirect,
                 replace: true,
                 ignoreBlocker: true,
               })
@@ -2194,7 +2190,11 @@ export class Router<
     }
 
     const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
-      if (isResolvedRedirect(err)) throw err
+      if (isResolvedRedirect(err)) {
+        if (!err.reloadDocument) {
+          throw err
+        }
+      }
 
       if (isRedirect(err) || isNotFound(err)) {
         updateMatch(match.id, (prev) => ({
@@ -2877,6 +2877,9 @@ export class Router<
       return matches
     } catch (err) {
       if (isRedirect(err)) {
+        if (err.reloadDocument) {
+          return undefined
+        }
         return await this.preloadRoute({
           ...(err as any),
           _fromLocation: next,

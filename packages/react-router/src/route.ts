@@ -569,7 +569,7 @@ export interface LoaderFnContext<
   /**
    * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
    **/
-  navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+  navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
   // root route does not have a parent match
   parentMatchPromise: TId extends RootRouteId
     ? never
