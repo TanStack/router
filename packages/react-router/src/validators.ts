@@ -72,13 +72,28 @@ export type AnySchema = {}
 
 export type DefaultValidator = Validator<Record<string, unknown>, AnySchema>
 
-export type ResolveValidatorInputFn<TValidator> = TValidator extends (
+export type ResolveSearchValidatorInputFn<TValidator> = TValidator extends (
   input: infer TSchemaInput,
 ) => any
   ? TSchemaInput extends SearchSchemaInput
     ? Omit<TSchemaInput, keyof SearchSchemaInput>
     : ResolveValidatorOutputFn<TValidator>
   : AnySchema
+
+export type ResolveSearchValidatorInput<TValidator> =
+  TValidator extends AnyStandardSchemaValidator
+    ? NonNullable<TValidator['~standard']['types']>['input']
+    : TValidator extends AnyValidatorAdapter
+      ? TValidator['types']['input']
+      : TValidator extends AnyValidatorObj
+        ? ResolveSearchValidatorInputFn<TValidator['parse']>
+        : ResolveSearchValidatorInputFn<TValidator>
+
+export type ResolveValidatorInputFn<TValidator> = TValidator extends (
+  input: infer TInput,
+) => any
+  ? TInput
+  : undefined
 
 export type ResolveValidatorInput<TValidator> =
   TValidator extends AnyStandardSchemaValidator

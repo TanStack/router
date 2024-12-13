@@ -10,13 +10,19 @@ export type TanStackStartViteOptions = {
   env: 'server' | 'client'
 }
 
-export function TanStackStartVite(
-  opts: TanStackStartViteOptions,
-): Array<Plugin> {
-  return [TanStackStartViteCreateServerFn(opts)]
-}
+const transformFuncs = [
+  'createServerFn',
+  'createMiddleware',
+  'serverOnly',
+  'clientOnly',
+  'createIsomorphicFn',
+]
+const tokenRegex = new RegExp(transformFuncs.join('|'))
+const eitherFuncRegex = new RegExp(
+  `(function ${transformFuncs.join('|function ')})`,
+)
 
-export function TanStackStartViteCreateServerFn(
+export function TanStackStartViteServerFn(
   opts: TanStackStartViteOptions,
 ): Plugin {
   let ROOT: string = process.cwd()
@@ -32,13 +38,8 @@ export function TanStackStartViteCreateServerFn(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      const includesToken = /createServerFn|createMiddleware|serverOnly/.test(
-        code,
-      )
-      const includesEitherFunc =
-        /(function createServerFn|function createMiddleware|function serverOnly)/.test(
-          code,
-        )
+      const includesToken = tokenRegex.test(code)
+      const includesEitherFunc = eitherFuncRegex.test(code)
 
       if (
         !includesToken ||
@@ -97,7 +98,17 @@ export function TanStackStartViteDeadCodeElimination(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (code.includes('createServerFn')) {
+      if (transformFuncs.some((fn) => code.includes(fn))) {
+        if (debug) console.info('Handling dead code elimination: ', id)
+
+        if (debug) console.info('')
+        if (debug) console.info('Dead Code Elimination Input:')
+        if (debug) console.info('')
+        if (debug) console.info(code)
+        if (debug) console.info('')
+        if (debug) console.info('')
+        if (debug) console.info('')
+
         const compiled = compileEliminateDeadCode({
           code,
           root: ROOT,
@@ -106,7 +117,7 @@ export function TanStackStartViteDeadCodeElimination(
         })
 
         if (debug) console.info('')
-        if (debug) console.info('Output after dead code elimination')
+        if (debug) console.info('Dead Code Elimination Output:')
         if (debug) console.info('')
         if (debug) console.info(compiled.code)
         if (debug) console.info('')

@@ -1,16 +1,23 @@
 import invariant from 'tiny-invariant'
 import { defaultTransformer } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
-import type { AnyValidator, Constrain } from '@tanstack/react-router'
+import { globalMiddleware } from './registerGlobalMiddleware'
+import type {
+  AnyValidator,
+  Constrain,
+  DefaultTransformerParse,
+  DefaultTransformerStringify,
+  Expand,
+  ResolveValidatorInput,
+  TransformerStringify,
+  Validator,
+} from '@tanstack/react-router'
 import type {
   AnyMiddleware,
   MergeAllServerContext,
   MergeAllValidatorInputs,
   MergeAllValidatorOutputs,
-  ResolveAllValidators,
 } from './createMiddleware'
-
-//
 
 export interface JsonResponse<TData> extends Response {
   json: () => Promise<TData>
@@ -31,21 +38,16 @@ export type Fetcher<TMiddlewares, TValidator, TResponse> = {
   }) => Promise<unknown>
 } & FetcherImpl<TMiddlewares, TValidator, TResponse>
 
-export type IsDataOptional<TMiddlewares, TValidator> = ResolveAllValidators<
-  TMiddlewares,
-  TValidator
->
-
 export type FetcherImpl<TMiddlewares, TValidator, TResponse> =
   undefined extends MergeAllValidatorInputs<TMiddlewares, TValidator>
     ? (
         opts?: OptionalFetcherDataOptions<
-          MergeAllValidatorInputs<TMiddlewares, TValidator>
+          Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
         >,
       ) => Promise<FetcherData<TResponse>>
     : (
         opts: RequiredFetcherDataOptions<
-          MergeAllValidatorInputs<TMiddlewares, TValidator>
+          Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
         >,
       ) => Promise<FetcherData<TResponse>>
 
@@ -61,19 +63,9 @@ export interface OptionalFetcherDataOptions<TInput> extends FetcherBaseOptions {
   data?: TInput
 }
 
-export type FetcherData<TResponse> = WrapRSCs<
+export type FetcherData<TResponse> = DefaultTransformerParse<
   TResponse extends JsonResponse<infer TData> ? TData : TResponse
 >
-
-export type WrapRSCs<T> = T extends JSX.Element
-  ? ReadableStream
-  : T extends Record<string, any>
-    ? {
-        [K in keyof T]: WrapRSCs<T[K]>
-      }
-    : T extends Array<infer U>
-      ? Array<WrapRSCs<U>>
-      : T
 
 export type RscStream<T> = {
   __cacheState: T
@@ -83,12 +75,14 @@ export type Method = 'GET' | 'POST'
 
 export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
   ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
-) => Promise<TResponse> | TResponse
+) =>
+  | Promise<DefaultTransformerStringify<TResponse>>
+  | DefaultTransformerStringify<TResponse>
 
-export type ServerFnCtx<TMethod, TMiddlewares, TValidator> = {
+export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
   method: TMethod
-  data: MergeAllValidatorOutputs<TMiddlewares, TValidator>
-  context: MergeAllServerContext<TMiddlewares>
+  data: Expand<MergeAllValidatorOutputs<TMiddlewares, TValidator>>
+  context: Expand<MergeAllServerContext<TMiddlewares>>
 }
 
 export type CompiledFetcherFn<TResponse> = {
@@ -105,39 +99,75 @@ type ServerFnBaseOptions<
   method: TMethod
   validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
-  validator?: Constrain<TInput, AnyValidator>
+  validator?: ConstrainValidator<TInput>
   extractedFn?: CompiledFetcherFn<TResponse>
   serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
   filename: string
   functionId: string
 }
 
-type ServerFnBase<
-  TMethod extends Method = 'GET',
-  TResponse = unknown,
-  TMiddlewares = unknown,
-  TValidator = unknown,
-> = {
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
-  middleware: <const TNewMiddlewares>(
+export type ConstrainValidator<TValidator> = unknown extends TValidator
+  ? TValidator
+  : Constrain<
+      TValidator,
+      Validator<
+        TransformerStringify<
+          ResolveValidatorInput<TValidator>,
+          Date | undefined | FormData
+        >,
+        any
+      >
+    >
+
+export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
+  middleware: <const TNewMiddlewares = undefined>(
     middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => Pick<
-    ServerFnBase<TMethod, TResponse, TNewMiddlewares, TValidator>,
-    'validator' | 'handler'
-  >
+  ) => ServerFnAfterMiddleware<TMethod, TNewMiddlewares, TValidator>
+}
+
+export interface ServerFnAfterMiddleware<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> extends ServerFnValidator<TMethod, TMiddlewares>,
+    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+
+export interface ServerFnValidator<TMethod extends Method, TMiddlewares> {
   validator: <TValidator>(
-    validator: Constrain<TValidator, AnyValidator>,
-  ) => Pick<
-    ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator>,
-    'handler' | 'middleware'
-  >
+    validator: ConstrainValidator<TValidator>,
+  ) => ServerFnAfterValidator<TMethod, TMiddlewares, TValidator>
+}
+
+export interface ServerFnAfterValidator<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> extends ServerFnMiddleware<TMethod, TValidator>,
+    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+
+export interface ServerFnHandler<
+  TMethod extends Method,
+  TMiddlewares,
+  TValidator,
+> {
   handler: <TNewResponse>(
     fn?: ServerFn<TMethod, TMiddlewares, TValidator, TNewResponse>,
   ) => Fetcher<TMiddlewares, TValidator, TNewResponse>
 }
 
-export function createServerFn<
+export interface ServerFnBuilder<
   TMethod extends Method = 'GET',
+  TResponse = unknown,
+  TMiddlewares = unknown,
+  TValidator = unknown,
+> extends ServerFnMiddleware<TMethod, TValidator>,
+    ServerFnValidator<TMethod, TMiddlewares>,
+    ServerFnHandler<TMethod, TMiddlewares, TValidator> {
+  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
+}
+
+export function createServerFn<
+  TMethod extends Method,
   TResponse = unknown,
   TMiddlewares = undefined,
   TValidator = undefined,
@@ -146,7 +176,7 @@ export function createServerFn<
     method: TMethod
   },
   __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
-): ServerFnBase<TMethod, TResponse, TMiddlewares, TValidator> {
+): ServerFnBuilder<TMethod, TResponse, TMiddlewares, TValidator> {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
     TMethod,
     TResponse,
@@ -263,6 +293,7 @@ function extractFormDataContext(formData: FormData) {
 function flattenMiddlewares(
   middlewares: Array<AnyMiddleware>,
 ): Array<AnyMiddleware> {
+  const seen = new Set<AnyMiddleware>()
   const flattened: Array<AnyMiddleware> = []
 
   const recurse = (middleware: Array<AnyMiddleware>) => {
@@ -270,7 +301,11 @@ function flattenMiddlewares(
       if (m.options.middleware) {
         recurse(m.options.middleware)
       }
-      flattened.push(m)
+
+      if (!seen.has(m)) {
+        seen.add(m)
+        flattened.push(m)
+      }
     })
   }
 
@@ -344,12 +379,13 @@ function execValidator(validator: AnyValidator, input: unknown): unknown {
   if ('~standard' in validator) {
     const result = validator['~standard'].validate(input)
 
-    if ('value' in result) return result.value
-
     if (result instanceof Promise)
       throw new Error('Async validation not supported')
 
-    throw new Error(JSON.stringify(result.issues, undefined, 2))
+    if (result.issues)
+      throw new Error(JSON.stringify(result.issues, undefined, 2))
+
+    return result.value
   }
 
   if ('parse' in validator) {
@@ -368,7 +404,10 @@ async function executeMiddleware(
   env: 'client' | 'server',
   opts: MiddlewareOptions,
 ): Promise<MiddlewareResult> {
-  const flattenedMiddlewares = flattenMiddlewares(middlewares)
+  const flattenedMiddlewares = flattenMiddlewares([
+    ...globalMiddleware,
+    ...middlewares,
+  ])
 
   const next = async (ctx: MiddlewareOptions): Promise<MiddlewareResult> => {
     // Get the next middleware

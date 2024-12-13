@@ -4,7 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3002",
+    "dev": "vinxi dev --port 3000",
+    "dev:e2e": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
     "test:e2e": "playwright test --project=chromium"
@@ -14,12 +15,12 @@
     "@tanstack/start": "workspace:^",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vinxi": "0.4.3"
+    "vinxi": "0.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
-    "typescript": "^5.6.2"
+    "typescript": "^5.7.2"
   }
 }

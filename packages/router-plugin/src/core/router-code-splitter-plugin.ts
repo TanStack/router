@@ -70,6 +70,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   const handleSplittingFile = (code: string, id: string) => {
     if (debug) console.info('Splitting route: ', id)
 
+    if (debug) console.info('')
+    if (debug) console.info('Split Route Input: ', id)
+    if (debug) console.info('')
+    if (debug) console.info(code)
+    if (debug) console.info('')
+    if (debug) console.info('')
+    if (debug) console.info('')
+
     const compiledVirtualRoute = compileCodeSplitVirtualRoute({
       code,
       root: ROOT,
@@ -77,7 +85,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     })
 
     if (debug) console.info('')
-    if (debug) console.info('Split Output')
+    if (debug) console.info('Split Route Output: ', id)
     if (debug) console.info('')
     if (debug) console.info(compiledVirtualRoute.code)
     if (debug) console.info('')
@@ -97,7 +105,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     })
 
     if (debug) console.info('')
-    if (debug) console.info('Compiled Output')
+    if (debug) console.info('Handling createRoute output: ', id)
     if (debug) console.info('')
     if (debug) console.info(compiledReferenceRoute.code)
     if (debug) console.info('')

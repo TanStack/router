@@ -19,7 +19,7 @@ export type { AwaitOptions } from './awaited'
 
 export { ScriptOnce } from './ScriptOnce'
 
-export { defer } from './defer'
+export { defer, TSR_DEFERRED_PROMISE } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -76,6 +76,7 @@ export type {
   LinkComponentProps,
   CreateLinkProps,
   MakeOptionalPathParams,
+  CheckFromPath,
 } from './link'
 
 export type { ParsedLocation } from './location'
@@ -261,6 +262,8 @@ export type {
   RouterListener,
   AnyRouterWithContext,
   ExtractedEntry,
+  ExtractedStream,
+  ExtractedPromise,
   StreamState,
 } from './router'
 
@@ -290,7 +293,13 @@ export {
 export type { SearchSerializer, SearchParser } from './searchParams'
 
 export { defaultTransformer } from './transformer'
-export type { RouterTransformer } from './transformer'
+export type {
+  RouterTransformer,
+  TransformerParse,
+  TransformerStringify,
+  DefaultTransformerParse,
+  DefaultTransformerStringify,
+} from './transformer'
 
 export type { UseBlockerOpts } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
@@ -338,7 +347,13 @@ export type { NotFoundError } from './not-found'
 export type { Manifest, RouterManagedTag } from './manifest'
 
 export { createControlledPromise } from './utils'
-export type { ControlledPromise, Constrain, Expand, MergeAll } from './utils'
+export type {
+  ControlledPromise,
+  Constrain,
+  Expand,
+  MergeAll,
+  Assign,
+} from './utils'
 
 export type {
   ResolveValidatorInput,
@@ -352,6 +367,8 @@ export type {
   AnyValidatorObj,
   ResolveValidatorInputFn,
   ResolveValidatorOutputFn,
+  ResolveSearchValidatorInput,
+  ResolveSearchValidatorInputFn,
   Validator,
   ValidatorAdapter,
   ValidatorObj,

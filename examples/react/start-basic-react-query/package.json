@@ -9,17 +9,17 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.59.20",
-    "@tanstack/react-query-devtools": "^5.59.20",
-    "@tanstack/react-router": "^1.82.1",
-    "@tanstack/react-router-with-query": "^1.82.1",
-    "@tanstack/router-devtools": "^1.82.1",
-    "@tanstack/start": "^1.82.1",
+    "@tanstack/react-query": "^5.62.3",
+    "@tanstack/react-query-devtools": "^5.62.3",
+    "@tanstack/react-router": "^1.88.0",
+    "@tanstack/react-router-with-query": "^1.88.0",
+    "@tanstack/router-devtools": "^1.88.0",
+    "@tanstack/start": "^1.88.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.5.4",
-    "vinxi": "0.4.3"
+    "tailwind-merge": "^2.5.5",
+    "vinxi": "0.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
@@ -27,8 +27,8 @@
     "@types/react-dom": "^18.2.21",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.14",
-    "typescript": "^5.6.2",
-    "vite-tsconfig-paths": "^5.1.2"
+    "tailwindcss": "^3.4.16",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

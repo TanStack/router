@@ -22,10 +22,10 @@ import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
 const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const user = await getAuth(getWebRequest())
+  const { userId } = await getAuth(getWebRequest())
 
   return {
-    user,
+    userId,
   }
 })
 
@@ -64,10 +64,10 @@ export const Route = createRootRoute({
     ],
   }),
   beforeLoad: async () => {
-    const { user } = await fetchClerkAuth()
+    const { userId } = await fetchClerkAuth()
 
     return {
-      user,
+      userId,
     }
   },
   errorComponent: (props) => {

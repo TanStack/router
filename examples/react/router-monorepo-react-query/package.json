@@ -10,11 +10,11 @@
     "dev": "pnpm post-query build && pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.59.20",
-    "@tanstack/react-query-devtools": "^5.59.20",
-    "@tanstack/react-router": "^1.82.1",
-    "@tanstack/router-devtools": "^1.82.1",
-    "@tanstack/router-plugin": "^1.81.9",
+    "@tanstack/react-query": "^5.62.3",
+    "@tanstack/react-query-devtools": "^5.62.3",
+    "@tanstack/react-router": "^1.88.0",
+    "@tanstack/router-devtools": "^1.88.0",
+    "@tanstack/router-plugin": "^1.87.13",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1"
@@ -23,9 +23,9 @@
     "@types/node": "^22.7.4",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.3.3",
-    "typescript": "5.6.2",
-    "vite": "^5.4.11",
+    "typescript": "^5.7.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.3",
     "vite-plugin-dts": "^4.3.0"
   },
   "keywords": [],

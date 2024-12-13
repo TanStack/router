@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/arktype-adapter",
-  "version": "1.82.1",
+  "version": "1.88.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -29,7 +29,8 @@
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
-    "test:types:ts56": "tsc",
+    "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
+    "test:types:ts57": "tsc",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --typecheck",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
@@ -62,9 +63,9 @@
   },
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",
-    "arktype": "^2.0.0-rc.21",
+    "arktype": "^2.0.0-rc.26",
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.0.1",
+    "@testing-library/react": "^16.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

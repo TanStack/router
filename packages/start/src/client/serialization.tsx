@@ -1,6 +1,7 @@
 import * as React from 'react'
 import {
   ScriptOnce,
+  TSR_DEFERRED_PROMISE,
   createControlledPromise,
   defer,
   isPlainArray,
@@ -14,6 +15,8 @@ import type {
   AnyRouteMatch,
   AnyRouter,
   ExtractedEntry,
+  ExtractedPromise,
+  ExtractedStream,
   StreamState,
 } from '@tanstack/react-router'
 
@@ -41,27 +44,31 @@ export function serializeLoaderData(
           ? 'promise'
           : undefined
 
-    if (type) {
-      const entry: ExtractedEntry = {
+    // If it's a stream, we need to tee it so we can read it multiple times
+    if (type === 'stream') {
+      const [copy1, copy2] = value.tee()
+      const entry: ExtractedStream = {
         dataType,
         type,
         path,
         id: extracted.length,
-        value,
         matchIndex: ctx.match.index,
+        streamState: createStreamState({ stream: copy2 }),
       }
 
       extracted.push(entry)
-
-      // If it's a stream, we need to tee it so we can read it multiple times
-      if (type === 'stream') {
-        const [copy1, copy2] = value.tee()
-        entry.streamState = createStreamState({ stream: copy2 })
-
-        return copy1
-      } else {
-        defer(value)
+      return copy1
+    } else if (type === 'promise') {
+      defer(value)
+      const entry: ExtractedPromise = {
+        dataType,
+        type,
+        path,
+        id: extracted.length,
+        matchIndex: ctx.match.index,
+        promiseState: value,
       }
+      extracted.push(entry)
     }
 
     return value
@@ -100,12 +107,6 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
 
       if (extracted) {
         Object.entries(extracted).forEach(([_, ex]: any) => {
-          if (ex.value instanceof Promise) {
-            const og = ex.value
-            ex.value = og.then((data: any) => {
-              return data
-            })
-          }
           deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
         })
       }
@@ -246,7 +247,7 @@ export function replaceBy<T>(
   return obj
 }
 
-function DehydratePromise({ entry }: { entry: ExtractedEntry }) {
+function DehydratePromise({ entry }: { entry: ExtractedPromise }) {
   return (
     <div className="tsr-once">
       <React.Suspense fallback={null}>
@@ -256,24 +257,27 @@ function DehydratePromise({ entry }: { entry: ExtractedEntry }) {
   )
 }
 
-function InnerDehydratePromise({ entry }: { entry: ExtractedEntry }) {
+function InnerDehydratePromise({ entry }: { entry: ExtractedPromise }) {
   const router = useRouter()
-  if (entry.value.status === 'pending') {
-    throw entry.value
+  if (entry.promiseState[TSR_DEFERRED_PROMISE].status === 'pending') {
+    throw entry.promiseState
   }
 
-  const code = `__TSR__.resolvePromise(${jsesc(entry, {
-    isScriptContext: true,
-    wrap: true,
-    json: true,
-  })})`
+  const code = `__TSR__.resolvePromise(${jsesc(
+    { ...entry, value: entry.promiseState[TSR_DEFERRED_PROMISE] },
+    {
+      isScriptContext: true,
+      wrap: true,
+      json: true,
+    },
+  )})`
 
   router.injectScript(code)
 
   return <></>
 }
 
-function DehydrateStream({ entry }: { entry: ExtractedEntry }) {
+function DehydrateStream({ entry }: { entry: ExtractedStream }) {
   invariant(entry.streamState, 'StreamState should be defined')
   const router = useRouter()
 
@@ -341,7 +345,7 @@ function StreamChunks({
   __index = 0,
 }: {
   streamState: StreamState
-  children: (chunk: string | null) => JSX.Element
+  children: (chunk: string | null) => React.JSX.Element
   __index?: number
 }) {
   const promise = streamState.promises[__index]

@@ -37,7 +37,7 @@ import type {
   AnyValidatorAdapter,
   AnyValidatorObj,
   DefaultValidator,
-  ResolveValidatorInput,
+  ResolveSearchValidatorInput,
   ResolveValidatorOutput,
   StandardSchemaValidator,
   ValidatorAdapter,
@@ -127,17 +127,17 @@ export type ResolveParams<TPath extends string> =
     ? Record<ParsePathParams<TPath>, string>
     : Record<ParsePathParams<TPath>, string> & SplatParams
 
-export type ParseParamsFn<TPath extends string, TParams> = (
+export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: ResolveParams<TPath>,
 ) => TParams extends Record<ParsePathParams<TPath>, any>
   ? TParams
   : Record<ParsePathParams<TPath>, any>
 
-export type StringifyParamsFn<TPath extends string, TParams> = (
+export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
 ) => ResolveParams<TPath>
 
-export type ParamsOptions<TPath extends string, TParams> = {
+export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
     parse?: ParseParamsFn<TPath, TParams>
     stringify?: StringifyParamsFn<TPath, TParams>
@@ -569,7 +569,7 @@ export interface LoaderFnContext<
   /**
    * @deprecated Use `throw redirect({ to: '/somewhere' })` instead
    **/
-  navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+  navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
   // root route does not have a parent match
   parentMatchPromise: TId extends RootRouteId
     ? never
@@ -679,7 +679,7 @@ export type ResolveFullSearchSchemaInput<
   TSearchValidator,
 > = Assign<
   InferFullSearchSchemaInput<TParentRoute>,
-  ResolveValidatorInput<TSearchValidator>
+  ResolveSearchValidatorInput<TSearchValidator>
 >
 
 export type LooseReturnType<T> = T extends (
@@ -988,7 +988,7 @@ export class Route<
     customId: TCustomId
     id: TId
     searchSchema: ResolveValidatorOutput<TSearchValidator>
-    searchSchemaInput: ResolveValidatorInput<TSearchValidator>
+    searchSchemaInput: ResolveSearchValidatorInput<TSearchValidator>
     searchValidator: TSearchValidator
     fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
     fullSearchSchemaInput: ResolveFullSearchSchemaInput<
@@ -1083,12 +1083,11 @@ export class Route<
     this._ssr = options?.ssr ?? opts.defaultSsr ?? true
   }
 
-  addChildren<
-    const TNewChildren extends
-      | Record<string, AnyRoute>
-      | ReadonlyArray<AnyRoute>,
-  >(
-    children: TNewChildren,
+  addChildren<const TNewChildren>(
+    children: Constrain<
+      TNewChildren,
+      ReadonlyArray<AnyRoute> | Record<string, AnyRoute>
+    >,
   ): Route<
     TParentRoute,
     TPath,
@@ -1104,7 +1103,21 @@ export class Route<
     TLoaderFn,
     TNewChildren
   > {
-    return this._addFileChildren(children)
+    return this._addFileChildren(children) as Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TNewChildren
+    >
   }
 
   _addFileChildren<const TNewChildren>(
@@ -1302,7 +1315,7 @@ export function createRoute<
   >(options)
 }
 
-export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any>
+export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
 
 export type RootRouteOptions<
   TSearchValidator = undefined,
@@ -1408,12 +1421,11 @@ export class RootRoute<
     super(options as any)
   }
 
-  addChildren<
-    const TNewChildren extends
-      | Record<string, AnyRoute>
-      | ReadonlyArray<AnyRoute>,
-  >(
-    children: TNewChildren,
+  addChildren<const TNewChildren>(
+    children: Constrain<
+      TNewChildren,
+      ReadonlyArray<AnyRoute> | Record<string, AnyRoute>
+    >,
   ): RootRoute<
     TSearchValidator,
     TRouterContext,

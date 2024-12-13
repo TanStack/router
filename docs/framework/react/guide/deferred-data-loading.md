@@ -7,13 +7,14 @@ TanStack Router is designed to run loaders in parallel and wait for all of them 
 
 Deferred data loading is a pattern that allows the router to render the next location's critical data/markup while slower, non-critical route data is resolved in the background. This process works on both the client and server (via streaming) and is a great way to improve the perceived performance of your application.
 
-## Deferred Data Loading with `defer` and `Await`
+If you are using a library like [TanStack Query](https://react-query.tanstack.com) or any other data fetching library, then deferred data loading works a bit differently. Skip ahead to the [Deferred Data Loading with External Libraries](#deferred-data-loading-with-external-libraries) section for more information.
 
-To defer slow or non-critical data, wrap an **unawaited/unresolved** promise in the `defer` function and return it anywhere in your loader response:
+## Deferred Data Loading with and `Await`
+
+To defer slow or non-critical data, return an **unawaited/unresolved** promise anywhere in your loader response:
 
 ```tsx
 // src/routes/posts.$postId.tsx
-
 import * as React from 'react'
 import { createFileRoute, defer } from '@tanstack/react-router'
 
@@ -27,8 +28,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
     return {
       fastData,
-      // Wrap the slow promise in `defer()`
-      deferredSlowData: defer(slowDataPromise),
+      deferredSlowData: slowDataPromise,
     }
   },
 })
@@ -40,7 +40,6 @@ In the component, deferred promises can be resolved and utilized using the `Awai
 
 ```tsx
 // src/routes/posts.$postId.tsx
-
 import * as React from 'react'
 import { createFileRoute, Await } from '@tanstack/react-router'
 
@@ -50,7 +49,9 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 
 function PostIdComponent() {
-  const { deferredSlowData } = Route.useLoaderData()
+  const { deferredSlowData, fastData } = Route.useLoaderData()
+
+  // do something with fastData
 
   return (
     <Await promise={deferredSlowData} fallback={<div>Loading...</div>}>
@@ -69,6 +70,65 @@ The `Await` component resolves the promise by triggering the nearest suspense bo
 
 If the promise is rejected, the `Await` component will throw the serialized error, which can be caught by the nearest error boundary.
 
+> [!TIP]
+> In React 19, you can use the `use()` hook instead of `Await`
+
+## Deferred Data Loading with External libraries
+
+When your strategy for fetching information for the route relies on [External Data Loading](./external-data-loading.md) with an external library like [TanStack Query](https://react-query.tanstack.com), deferred data loading works a bit differently, as the library handles the data fetching and caching for you outside of TanStack Router.
+
+So, instead of using `defer` and `Await`, you'll instead want to use the Route's `loader` to kick off the data fetching and then use the library's hooks to access the data in your components.
+
+```tsx
+// src/routes/posts.$postId.tsx
+import * as React from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { slowDataOptions, fastDataOptions } from '~/api/query-options'
+
+export const Route = createFileRoute('/posts/$postId')({
+  loader: async ({ context: { queryClient } }) => {
+    // Kick off the fetching of some slower data, but do not await it
+    queryClient.prefetchQuery(slowDataOptions())
+
+    // Fetch and await some data that resolves quickly
+    await queryClient.ensureQueryData(fastDataOptions())
+  },
+})
+```
+
+Then in your component, you can use the library's hooks to access the data:
+
+```tsx
+// src/routes/posts.$postId.tsx
+import * as React from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { slowDataOptions, fastDataOptions } from '~/api/query-options'
+
+export const Route = createFileRoute('/posts/$postId')({
+  // ...
+  component: PostIdComponent,
+})
+
+function PostIdComponent() {
+  const fastData = useSuspenseQuery(fastDataOptions())
+
+  // do something with fastData
+
+  return (
+    <React.Suspense fallback={<div>Loading...</div>}>
+      <SlowDataComponent />
+    </React.Suspense>
+  )
+}
+
+function SlowDataComponent() {
+  const data = useSuspenseQuery(slowDataOptions())
+
+  return <div>{data}</div>
+}
+```
+
 ## Caching and Invalidation
 
 Streamed promises follow the same lifecycle as the loader data they are associated with. They can even be preloaded!
@@ -84,7 +144,7 @@ Please read the entire [SSR Guide](/docs/guide/server-streaming) for step by ste
 The following is a high-level overview of how deferred data streaming works with TanStack Router:
 
 - Server
-  - Promises wrapped in `defer()` are marked and tracked as they are returned from route loaders
+  - Promises are marked and tracked as they are returned from route loaders
   - All loaders resolve and any deferred promises are serialized and embedded into the html
   - The route begins to render
   - Deferred promises rendered with the `<Await>` component trigger suspense boundaries, allowing the server to stream html up to that point
