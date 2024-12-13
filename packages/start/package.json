@@ -146,6 +146,11 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@tanstack/react-cross-context": ">=1.87.6",
+    "@tanstack/router-generator": ">=1.87.7",
+    "@tanstack/router-plugin": ">=1.87.13",
+    "@tanstack/start-vite-plugin": ">=1.87.14",
+
     "@types/jsesc": "^3.0.3",
     "@testing-library/react": "^16.1.0",
     "nitropack": "^2.10.4",
@@ -156,11 +161,6 @@
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0",
-    "@tanstack/react-cross-context": ">=1.87.6",
-    "@tanstack/react-router": ">=1.87.12",
-    "@tanstack/router-generator": ">=1.87.7",
-    "@tanstack/router-plugin": ">=1.87.13",
-    "@tanstack/start-vite-plugin": ">=1.87.14",
-
+    "@tanstack/react-router": ">=1.87.12"
   }
 }
