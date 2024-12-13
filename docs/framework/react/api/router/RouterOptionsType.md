@@ -148,6 +148,13 @@ The `RouterOptions` type accepts an object with the following properties and met
 - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
 - See [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types) for more informations on viewTransition types
 
+### `defaultHashChangeScrollIntoView` property
+- Type: `boolean | ScrollIntoViewOptions`
+- Optional
+- Defaults to `true` so the element with an id matching the hash will be scrolled into view after the location is committed to history.
+- If `false`, the element with an id matching the hash will not be scrolled into view after the location is committed to history.
+- If an object is provided, it will be passed to the `scrollIntoView` method as options.
+
 ### `caseSensitive` property
 
 - Type: `boolean`

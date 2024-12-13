@@ -314,6 +314,14 @@ export interface RouterOptions<
    */
   defaultViewTransition?: boolean | ViewTransitionOptions
   /**
+   * The default `hashChangeScrollIntoView` a route should use if no hashChangeScrollIntoView is provided while navigating
+   *
+   * See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulthashchangescrollintoview-property)
+   */
+  defaultHashChangeScrollIntoView?: boolean | ScrollIntoViewOptions
+  /**
    * @default 'fuzzy'
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundmode-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
@@ -717,7 +725,6 @@ export class Router<
     Math.random() * 10000000,
   )}`
   resetNextScroll = true
-  scrollOnNextHashChange = true
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
@@ -1840,7 +1847,9 @@ export class Router<
       }
 
       nextHistory.state.__hashChangeScrollIntoViewOptions =
-        hashChangeScrollIntoView ?? true
+        hashChangeScrollIntoView ??
+        this.options.defaultHashChangeScrollIntoView ??
+        true
 
       this.shouldViewTransition = viewTransition
 
