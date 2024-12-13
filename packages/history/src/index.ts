@@ -410,7 +410,7 @@ export function createBrowserHistory(opts?: {
     }
 
     currentLocation = parseLocation()
-    history.notify('POP')
+    history.notify({ action: 'POP' })
   }
 
   const onBeforeUnload = (e: BeforeUnloadEvent) => {
