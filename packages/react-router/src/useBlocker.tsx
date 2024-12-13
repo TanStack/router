@@ -136,7 +136,9 @@ export function useBlocker(
             ...fromMatchOpts,
           },
         )
-        if (!match) matchesFrom = false
+        if (!match) {
+          matchesFrom = false
+        }
       }
 
       if (to) {
@@ -148,15 +150,23 @@ export function useBlocker(
             ...toMatchOpts,
           },
         )
-        if (!match) matchesTo = false
+        if (!match) {
+          matchesTo = false
+        }
       }
 
-      if (!matchesFrom || !matchesTo) return false
+      if (!matchesFrom || !matchesTo) {
+        return false
+      }
 
       const shouldBlock = await shouldBlockFn(blockerFnArgs)
-      if (!withResolver) return shouldBlock
+      if (!withResolver) {
+        return shouldBlock
+      }
 
-      if (!shouldBlock) return false
+      if (!shouldBlock) {
+        return false
+      }
 
       const promise = new Promise<boolean>((resolve) => {
         setResolver({
@@ -196,13 +206,17 @@ export function useBlocker(
 const _resolvePromptBlockerArgs = (
   props: PromptProps | LegacyPromptProps,
 ): UseBlockerOpts => {
-  if ('shouldBlockFn' in props) return { ...props }
+  if ('shouldBlockFn' in props) {
+    return { ...props }
+  }
 
   const shouldBlock = Boolean(props.condition ?? true)
   const fn = props.blockerFn
 
   const _customBlockerFn: BlockerFn = async () => {
-    if (shouldBlock && fn !== undefined) return await fn()
+    if (shouldBlock && fn !== undefined) {
+      return await fn()
+    }
     return shouldBlock
   }
 
