@@ -61,7 +61,11 @@ function AnchorSection({ id, title }: { id: string; title: string }) {
 
   return (
     <div id={id} className="p-2 min-h-dvh">
-      <h1 className="font-bold text-xl pt-10" ref={elementRef}>
+      <h1
+        data-testId={`heading-${id}`}
+        className="font-bold text-xl pt-10"
+        ref={elementRef}
+      >
         {title}
         {hasShown ? ' (shown)' : ''}
       </h1>
@@ -81,10 +85,11 @@ function AnchorComponent() {
           {anchors.map((anchor) => (
             <li key={anchor.id}>
               <Link
+                data-testid={`link-${anchor.id}`}
                 hash={anchor.id}
                 activeOptions={{ includeHash: true }}
                 activeProps={{
-                  className: 'font-bold',
+                  className: 'font-bold active',
                 }}
                 hashChangeScrollIntoView={anchor.hashChangeScrollIntoView}
               >
@@ -125,6 +130,7 @@ function AnchorComponent() {
               <span>Target Anchor</span>
               <select
                 className="border border-opacity-50 rounded p-2 w-full"
+                data-testId="hash-select"
                 defaultValue={location.hash || anchors[0].id}
                 name="hash"
               >
@@ -138,9 +144,10 @@ function AnchorComponent() {
             <div>
               <label>
                 <input
-                  type="checkbox"
                   checked={withScroll}
+                  data-testId="with-scroll"
                   onChange={(e) => setWithScroll(e.target.checked)}
+                  type="checkbox"
                 />{' '}
                 Scroll Into View
               </label>
@@ -153,6 +160,7 @@ function AnchorComponent() {
                   <span>Behavior</span>
                   <select
                     className="border border-opacity-50 rounded p-2 w-full"
+                    data-testId="behavior-select"
                     defaultValue="instant"
                     name="scrollBehavior"
                   >
@@ -168,6 +176,7 @@ function AnchorComponent() {
                   <span>Block</span>
                   <select
                     className="border border-opacity-50 rounded p-2 w-full"
+                    data-testId="block-select"
                     defaultValue="start"
                     name="scrollBlock"
                   >
@@ -184,6 +193,7 @@ function AnchorComponent() {
                   <span>Inline</span>
                   <select
                     className="border border-opacity-50 rounded p-2 w-full"
+                    data-testId="inline-select"
                     defaultValue="nearest"
                     name="scrollInline"
                   >
@@ -197,7 +207,10 @@ function AnchorComponent() {
             </>
           ) : null}
           <div>
-            <button className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50">
+            <button
+              className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+              data-testId="navigate-button"
+            >
               Navigate
             </button>
           </div>
