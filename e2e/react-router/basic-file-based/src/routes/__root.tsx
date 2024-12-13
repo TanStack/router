@@ -94,6 +94,14 @@ function RootComponent() {
           Lazy Inside Group
         </Link>{' '}
         <Link
+          to="/redirect"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          redirect
+        </Link>{' '}
+        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{

@@ -578,6 +578,20 @@ export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
 })
 ```
 
+You can also redirect to an external target using `href`: 
+
+```tsx
+import { redirect } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
+
+export const auth = createServerFn({ method: 'GET' }).handler(async () => {
+  // Redirect the user to the auth provider
+  throw redirect({
+    href: 'https://authprovider.com/login',
+  })
+})
+```
+
 > ⚠️ Do not use Vinxi's `sendRedirect` function to send soft redirects from within server functions. This will send the redirect using the `Location` header and will force a full page hard navigation on the client.
 
 ## Redirect Headers
