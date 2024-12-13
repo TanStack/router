@@ -7,7 +7,7 @@ The `useBlocker` method is a hook that [blocks navigation](../../guide/navigatio
 
 ## useBlocker options
 
-The `useBlocker` hook accepts a single \_required argument, an option object:
+The `useBlocker` hook accepts a single _required_ argument, an option object:
 
 ### `options.shouldBlockFn` option
 
@@ -33,7 +33,7 @@ The `useBlocker` hook accepts a single \_required argument, an option object:
 
 - Optional - defaults to `false`
 - Type: `boolean`
-- Specify if your the resolver that the hook returns should be used or whether the information in your `shouldBlockFn` is enough the determine blocking
+- Specify if the resolver returned by the hook should be used or whether your `shouldBlockFn` function itself resolves the blocking
 
 ### `options.from` option
 
@@ -58,6 +58,18 @@ The `useBlocker` hook accepts a single \_required argument, an option object:
 - Optional
 - Type: `Omit<MatchLocation, 'to'>`
 - Give additional arguments to the routeMatching to
+
+### `options.blockerFn` option (⚠️ deprecated)
+
+- Optional
+- Type: `BlockerFn`
+- The function that returns a `boolean` or `Promise<boolean>` indicating whether to allow navigation.
+
+### `options.condition` option (⚠️ deprecated)
+
+- Optional - defaults to `true`
+- Type: `boolean`
+- A navigation attempt is blocked when this condition is `true`.
 
 ## useBlocker returns
 
