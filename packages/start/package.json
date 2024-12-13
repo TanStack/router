@@ -133,11 +133,6 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/react-cross-context": "workspace:^",
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/router-generator": "workspace:^",
-    "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/start-vite-plugin": "workspace:^",
     "@vinxi/react": "0.2.5",
     "@vinxi/react-server-dom": "^0.0.3",
     "@vinxi/server-components": "0.5.0",
@@ -160,6 +155,12 @@
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",
-    "react-dom": ">=18.0.0 || >=19.0.0"
+    "react-dom": ">=18.0.0 || >=19.0.0",
+    "@tanstack/react-cross-context": ">=1.87.6",
+    "@tanstack/react-router": ">=1.87.12",
+    "@tanstack/router-generator": ">=1.87.7",
+    "@tanstack/router-plugin": ">=1.87.13",
+    "@tanstack/start-vite-plugin": ">=1.87.14",
+
   }
 }
