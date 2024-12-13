@@ -18,6 +18,8 @@ pnpm create @tanstack/router
 yarn create @tanstack/router
 # or
 bun create @tanstack/router
+# or
+deno init --npm @tanstack/router
 ```
 
 Follow the prompts to setup the project.
@@ -34,6 +36,8 @@ pnpm add -D @tanstack/router-plugin @tanstack/router-devtools
 yarn add -D @tanstack/router-plugin @tanstack/router-devtools
 # or
 bun add -D @tanstack/router-plugin @tanstack/router-devtools
+# or
+deno add npm:@tanstack/router-plugin npm:@tanstack/router-devtools
 ```
 
 #### Configure the Vite Plugin
@@ -63,6 +67,8 @@ Create the following files:
 - `src/routes/index.lazy.tsx`
 - `src/routes/about.lazy.tsx`
 - `src/main.tsx`
+
+All routes/\*.tsx files should export an object named **Route**, created using createRootRoute or createLazyFileRoute.
 
 > 🧠 Route files with the `.lazy.tsx` extension are lazy loaded via separate bundles to keep the main bundle size as lean as possible.
 
@@ -130,7 +136,7 @@ Regardless if you are using the `@tanstack/router-plugin` package or manually ru
 Import the generated route tree and create a new router instance:
 
 ```tsx
-import React, { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 
@@ -167,7 +173,7 @@ If you are working with this pattern you should change the `id` of the root `<di
 > The following example shows how to configure routes using code, and for simplicity's sake is in a single file for this demo. While code-based generation allows you to declare many routes and even the router instance in a single file, we recommend splitting your routes into separate files for better organization and performance as your application grows.
 
 ```tsx
-import React, { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,

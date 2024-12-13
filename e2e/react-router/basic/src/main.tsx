@@ -1,7 +1,6 @@
 import ReactDOM from 'react-dom/client'
 import {
   ErrorComponent,
-  type ErrorComponentProps,
   Link,
   Outlet,
   RouterProvider,
@@ -11,6 +10,7 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 const rootRoute = createRootRoute({
   component: RootComponent,
@@ -44,6 +44,12 @@ function RootComponent() {
           }}
         >
           Posts
+        </Link>{' '}
+        <Link to="/posts" viewTransition>
+          View Transition
+        </Link>{' '}
+        <Link to="/posts" viewTransition={{ types: ['dummy'] }}>
+          View Transition types
         </Link>{' '}
         <Link
           to="/layout-a"

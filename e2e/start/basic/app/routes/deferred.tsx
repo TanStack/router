@@ -1,4 +1,4 @@
-import { Await, createFileRoute, defer } from '@tanstack/react-router'
+import { Await, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
 import { Suspense, useState } from 'react'
 
@@ -18,12 +18,10 @@ const slowServerFn = createServerFn({ method: 'GET' })
 export const Route = createFileRoute('/deferred')({
   loader: async () => {
     return {
-      deferredStuff: defer(
-        new Promise<string>((r) =>
-          setTimeout(() => r('Hello deferred!'), 2000),
-        ),
+      deferredStuff: new Promise<string>((r) =>
+        setTimeout(() => r('Hello deferred!'), 2000),
       ),
-      deferredPerson: defer(slowServerFn({ data: { name: 'Tanner Linsley' } })),
+      deferredPerson: slowServerFn({ data: { name: 'Tanner Linsley' } }),
       person: await personServerFn({ data: { name: 'John Doe' } }),
     }
   },

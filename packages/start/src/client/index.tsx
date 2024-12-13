@@ -1,6 +1,13 @@
 /// <reference types="vinxi/types/client" />
 export { Asset } from './Asset'
 export {
+  createIsomorphicFn,
+  type IsomorphicFn,
+  type ServerOnlyFn,
+  type ClientOnlyFn,
+  type IsomorphicFnBase,
+} from './createIsomorphicFn'
+export {
   createServerFn,
   type JsonResponse,
   type ServerFn as FetchFn,
@@ -9,7 +16,6 @@ export {
   type CompiledFetcherFn,
   type Fetcher,
   type RscStream,
-  type WrapRSCs,
   type FetcherImpl,
   type FetcherData,
   type FetcherBaseOptions,
@@ -18,7 +24,6 @@ export {
 } from './createServerFn'
 export {
   createMiddleware,
-  type ParseMiddlewares,
   type MergeAllValidatorInputs,
   type MergeAllValidatorOutputs,
   type MiddlewareServerFn,
@@ -29,9 +34,14 @@ export {
   type MiddlewareServer,
   type MiddlewareAfterClient,
   type MiddlewareAfterMiddleware,
+  type MiddlewareAfterServer,
   type Middleware,
 } from './createMiddleware'
-export { serverOnly } from './serverOnly'
+export {
+  registerGlobalMiddleware,
+  globalMiddleware,
+} from './registerGlobalMiddleware'
+export { serverOnly, clientOnly } from './envOnly'
 export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'
 export { Meta } from './Meta'

@@ -1,7 +1,8 @@
 import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
-import { fetchPost } from '../utils/posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+
+import { fetchPost } from '~/utils/posts'
 import { NotFound } from '~/components/NotFound'
 
 const renderPost = createServerFn({ method: 'GET' })
@@ -29,7 +30,7 @@ const renderPost = createServerFn({ method: 'GET' })
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => renderPost({ data: postId }),
-  errorComponent: PostErrorComponent as any,
+  errorComponent: PostErrorComponent,
   component: PostComponent,
   notFoundComponent: () => {
     return <NotFound>Post not found</NotFound>

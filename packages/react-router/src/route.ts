@@ -17,6 +17,7 @@ import type * as React from 'react'
 import type { RootRouteId } from './root'
 import type { UseNavigateResult } from './useNavigate'
 import type {
+  AnyRouteMatch,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
   RouteMatch,
@@ -36,7 +37,7 @@ import type {
   AnyValidatorAdapter,
   AnyValidatorObj,
   DefaultValidator,
-  ResolveValidatorInput,
+  ResolveSearchValidatorInput,
   ResolveValidatorOutput,
   StandardSchemaValidator,
   ValidatorAdapter,
@@ -126,17 +127,17 @@ export type ResolveParams<TPath extends string> =
     ? Record<ParsePathParams<TPath>, string>
     : Record<ParsePathParams<TPath>, string> & SplatParams
 
-export type ParseParamsFn<TPath extends string, TParams> = (
+export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: ResolveParams<TPath>,
 ) => TParams extends Record<ParsePathParams<TPath>, any>
   ? TParams
   : Record<ParsePathParams<TPath>, any>
 
-export type StringifyParamsFn<TPath extends string, TParams> = (
+export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
 ) => ResolveParams<TPath>
 
-export type ParamsOptions<TPath extends string, TParams> = {
+export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
     parse?: ParseParamsFn<TPath, TParams>
     stringify?: StringifyParamsFn<TPath, TParams>
@@ -434,7 +435,10 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => void
-  meta?: (ctx: {
+  headers?: (ctx: {
+    loaderData: ResolveLoaderData<TLoaderFn>
+  }) => Record<string, string>
+  head?: (ctx: {
     matches: Array<
       RouteMatch<
         TRouteId,
@@ -466,13 +470,12 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >
     params: ResolveAllParamsFromParent<TParentRoute, TParams>
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Array<React.JSX.IntrinsicElements['meta']>
-  links?: () => Array<React.JSX.IntrinsicElements['link']>
-  scripts?: () => Array<React.JSX.IntrinsicElements['script']>
-  headers?: (ctx: {
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Record<string, string>
+    loaderData: ResolveLoaderData<TLoaderFn> | undefined
+  }) => {
+    links?: AnyRouteMatch['links']
+    scripts?: AnyRouteMatch['scripts']
+    meta?: AnyRouteMatch['meta']
+  }
   ssr?: boolean
 }
 
@@ -676,7 +679,7 @@ export type ResolveFullSearchSchemaInput<
   TSearchValidator,
 > = Assign<
   InferFullSearchSchemaInput<TParentRoute>,
-  ResolveValidatorInput<TSearchValidator>
+  ResolveSearchValidatorInput<TSearchValidator>
 >
 
 export type LooseReturnType<T> = T extends (
@@ -985,7 +988,7 @@ export class Route<
     customId: TCustomId
     id: TId
     searchSchema: ResolveValidatorOutput<TSearchValidator>
-    searchSchemaInput: ResolveValidatorInput<TSearchValidator>
+    searchSchemaInput: ResolveSearchValidatorInput<TSearchValidator>
     searchValidator: TSearchValidator
     fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
     fullSearchSchemaInput: ResolveFullSearchSchemaInput<
@@ -1080,12 +1083,11 @@ export class Route<
     this._ssr = options?.ssr ?? opts.defaultSsr ?? true
   }
 
-  addChildren<
-    const TNewChildren extends
-      | Record<string, AnyRoute>
-      | ReadonlyArray<AnyRoute>,
-  >(
-    children: TNewChildren,
+  addChildren<const TNewChildren>(
+    children: Constrain<
+      TNewChildren,
+      ReadonlyArray<AnyRoute> | Record<string, AnyRoute>
+    >,
   ): Route<
     TParentRoute,
     TPath,
@@ -1101,7 +1103,21 @@ export class Route<
     TLoaderFn,
     TNewChildren
   > {
-    return this._addFileChildren(children)
+    return this._addFileChildren(children) as Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TNewChildren
+    >
   }
 
   _addFileChildren<const TNewChildren>(
@@ -1299,7 +1315,7 @@ export function createRoute<
   >(options)
 }
 
-export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any>
+export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
 
 export type RootRouteOptions<
   TSearchValidator = undefined,
@@ -1405,12 +1421,11 @@ export class RootRoute<
     super(options as any)
   }
 
-  addChildren<
-    const TNewChildren extends
-      | Record<string, AnyRoute>
-      | ReadonlyArray<AnyRoute>,
-  >(
-    children: TNewChildren,
+  addChildren<const TNewChildren>(
+    children: Constrain<
+      TNewChildren,
+      ReadonlyArray<AnyRoute> | Record<string, AnyRoute>
+    >,
   ): RootRoute<
     TSearchValidator,
     TRouterContext,

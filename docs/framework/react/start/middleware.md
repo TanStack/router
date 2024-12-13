@@ -248,11 +248,85 @@ const authMiddleware = createMiddleware().client(async ({ next }) => {
 })
 ```
 
-## Middleware Execution Order
+## Using Middleware
 
-Middleware is executed dependency-first, so the following example will execute `a`, `b`, `c` and `d` in that order:
+Middleware can be used in two different ways:
+
+- **Global Middleware**: Middleware that should be executed for every request.
+- **Server Function Middleware**: Middleware that should be executed for a specific server function.
+
+## Global Middleware
+
+Global middleware is registered using the `registerGlobalMiddleware` function. This function receives an array of middleware to be appended to the global middleware array. There is currently no way to remove global middleware once it has been registered. If you need this functionality, please let us know by opening an issue on GitHub.
+
+Here's an example of registering global middleware:
 
 ```tsx
+import { registerGlobalMiddleware } from '@tanstack/start'
+
+registerGlobalMiddleware({
+  middleware: [authMiddleware, loggingMiddleware],
+})
+```
+
+### Global Middleware Type Safety
+
+Global middleware types are inherently **detached** from server functions themselves. This means that if a global middleware supplies additional context to server functions or other server function specific middleware, the types will not be automatically passed through to the server function or other server function specific middleware.
+
+```tsx
+// globalMiddleware.ts
+registerGlobalMiddleware({
+  middleware: [authMiddleware],
+})
+
+// serverFunction.ts
+const authMiddleware = createMiddleware().server(({ next, context }) => {
+  console.log(context.user) // <-- This will not be typed!
+  // ...
+})
+```
+
+To solve this, add the global middleware you are trying to reference to the server function's middleware array. **The global middleware will be deduped to a single entry (the global instance), and your server function will receive the correct types.**
+
+Here's an example of how this works:
+
+```tsx
+import { authMiddleware } from './authMiddleware'
+
+const fn = createServerFn()
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    console.log(context.user)
+    // ...
+  })
+```
+
+## Middleware Execution Order
+
+Middleware is executed dependency-first, starting with global middleware, followed by server function middleware. The following example will log the following in this order:
+
+- `globalMiddleware1`
+- `globalMiddleware2`
+- `a`
+- `b`
+- `c`
+- `d`
+
+```tsx
+const globalMiddleware1 = createMiddleware().server(async ({ next }) => {
+  console.log('globalMiddleware1')
+  return next()
+})
+
+const globalMiddleware2 = createMiddleware().server(async ({ next }) => {
+  console.log('globalMiddleware2')
+  return next()
+})
+
+registerGlobalMiddleware({
+  middleware: [globalMiddleware1, globalMiddleware2],
+})
+
 const a = createMiddleware().server(async ({ next }) => {
   console.log('a')
   return next()

@@ -11,7 +11,7 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
-  const [isTransitioning, startReactTransition_] = React.useTransition()
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
@@ -27,7 +27,13 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startReactTransition = startReactTransition_
+    router.startReactTransition = (fn: () => void) => {
+      setIsTransitioning(true)
+      React.startTransition(() => {
+        fn()
+        setIsTransitioning(false)
+      })
+    }
   }
 
   // Subscribe to location changes
@@ -84,12 +90,14 @@ export function Transitioner() {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
     }
   }, [previousIsLoading, router, isLoading])
@@ -100,12 +108,14 @@ export function Transitioner() {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onBeforeRouteMount',
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
     }
   }, [isPagePending, previousIsPagePending, router])
@@ -116,12 +126,14 @@ export function Transitioner() {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onResolved',
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
 
       router.__store.setState((s) => ({

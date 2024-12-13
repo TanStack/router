@@ -1,10 +1,12 @@
 import { expectTypeOf, test } from 'vitest'
 import {
+  createMemoryHistory,
   createRootRoute,
   createRootRouteWithContext,
   createRoute,
   createRouter,
 } from '../src'
+import type { RouterHistory } from '../src'
 
 test('when creating a router without context', () => {
   // eslint-disable-next-line unused-imports/no-unused-vars
@@ -229,4 +231,25 @@ test('invalidate and clearCache narrowing in filter', () => {
       return true
     },
   })
+})
+
+test('when creating a router with default router history', () => {
+  const router = createRouter({ routeTree: createRootRoute() })
+
+  expectTypeOf(router.history).toEqualTypeOf<RouterHistory>()
+})
+
+test('when creating a router with custom router history', () => {
+  const customRouterHistory = {
+    ...createMemoryHistory(),
+    _isCustomRouterHistory: true,
+  }
+
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: customRouterHistory,
+  })
+
+  expectTypeOf(router.history).toMatchTypeOf<RouterHistory>()
+  expectTypeOf(router.history).toEqualTypeOf<typeof customRouterHistory>()
 })

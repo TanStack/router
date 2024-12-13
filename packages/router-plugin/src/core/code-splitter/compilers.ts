@@ -8,6 +8,8 @@ import { splitPrefix } from '../constants'
 import { parseAst } from './ast'
 import type { ParseAstOptions } from './ast'
 
+const debug = process.env.TSR_VITE_DEBUG
+
 // Babel is a CJS package and uses `default` as named binding (`exports.default =`).
 // https://github.com/babel/babel/issues/15269.
 let generate = (_generate as any)['default'] as typeof _generate
@@ -37,12 +39,6 @@ interface State {
 
 export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
-
-  if (!ast) {
-    throw new Error(
-      `Failed to compile ast for compileCodeSplitReferenceRoute() for the file: ${opts.filename}`,
-    )
-  }
 
   babel.traverse(ast, {
     Program: {
@@ -255,10 +251,25 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
     },
   })
 
+  if (debug) console.info('')
+  if (debug) console.info('Dead Code Elimination Input 1:')
+  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
+  if (debug) console.info('')
+  if (debug) console.info('')
+  if (debug) console.info('')
+
   deadCodeElimination(ast)
+
+  if (debug) console.info('')
+  if (debug) console.info('Dead Code Elimination Output 1:')
+  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
+  if (debug) console.info('')
+  if (debug) console.info('')
+  if (debug) console.info('')
 
   return generate(ast, {
     sourceMaps: true,
+    sourceFileName: opts.filename,
   })
 }
 
@@ -267,12 +278,6 @@ type SplitNodeType = (typeof splitNodeTypes)[number]
 
 export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
-
-  if (!ast) {
-    throw new Error(
-      `Failed to compile ast for compileCodeSplitVirtualRoute() for the file: ${opts.filename}`,
-    )
-  }
 
   const knownExportedIdents = new Set<string>()
 
@@ -497,7 +502,21 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
     },
   })
 
+  if (debug) console.info('')
+  if (debug) console.info('Dead Code Elimination Input 2:')
+  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
+  if (debug) console.info('')
+  if (debug) console.info('')
+  if (debug) console.info('')
+
   deadCodeElimination(ast)
+
+  if (debug) console.info('')
+  if (debug) console.info('Dead Code Elimination Output 2:')
+  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
+  if (debug) console.info('')
+  if (debug) console.info('')
+  if (debug) console.info('')
 
   // if there are exported identifiers, then we need to add a warning
   // to the file to let the user know that the exported identifiers
@@ -523,6 +542,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
   return generate(ast, {
     sourceMaps: true,
+    sourceFileName: opts.filename,
   })
 }
 

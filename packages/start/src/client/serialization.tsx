@@ -1,6 +1,7 @@
 import * as React from 'react'
 import {
   ScriptOnce,
+  TSR_DEFERRED_PROMISE,
   createControlledPromise,
   defer,
   isPlainArray,
@@ -14,6 +15,8 @@ import type {
   AnyRouteMatch,
   AnyRouter,
   ExtractedEntry,
+  ExtractedPromise,
+  ExtractedStream,
   StreamState,
 } from '@tanstack/react-router'
 
@@ -41,27 +44,31 @@ export function serializeLoaderData(
           ? 'promise'
           : undefined
 
-    if (type) {
-      const entry: ExtractedEntry = {
+    // If it's a stream, we need to tee it so we can read it multiple times
+    if (type === 'stream') {
+      const [copy1, copy2] = value.tee()
+      const entry: ExtractedStream = {
         dataType,
         type,
         path,
         id: extracted.length,
-        value,
         matchIndex: ctx.match.index,
+        streamState: createStreamState({ stream: copy2 }),
       }
 
       extracted.push(entry)
-
-      // If it's a stream, we need to tee it so we can read it multiple times
-      if (type === 'stream') {
-        const [copy1, copy2] = value.tee()
-        entry.streamState = createStreamState({ stream: copy2 })
-
-        return copy1
-      } else {
-        defer(value)
+      return copy1
+    } else if (type === 'promise') {
+      defer(value)
+      const entry: ExtractedPromise = {
+        dataType,
+        type,
+        path,
+        id: extracted.length,
+        matchIndex: ctx.match.index,
+        promiseState: value,
       }
+      extracted.push(entry)
     }
 
     return value
@@ -100,31 +107,22 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
 
       if (extracted) {
         Object.entries(extracted).forEach(([_, ex]: any) => {
-          if (ex.value instanceof Promise) {
-            const og = ex.value
-            ex.value = og.then((data: any) => {
-              return data
-            })
-          }
           deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
         })
       }
     }
 
-    const meta =
-      match.status === 'success'
-        ? route.options.meta?.({
-            matches: router.state.matches,
-            match,
-            params: match.params,
-            loaderData: match.loaderData,
-          })
-        : undefined
+    const headFnContent = route.options.head?.({
+      matches: router.state.matches,
+      match,
+      params: match.params,
+      loaderData: match.loaderData,
+    })
 
     Object.assign(match, {
-      meta,
-      links: route.options.links?.(),
-      scripts: route.options.scripts?.(),
+      meta: headFnContent?.meta,
+      links: headFnContent?.links,
+      scripts: headFnContent?.scripts,
     })
   })
 }
@@ -162,46 +160,50 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
       : fullMatch[dataType]
   })
 
-  return (
-    <>
-      {serializedBeforeLoadData !== undefined ||
-      serializedLoaderData !== undefined ||
-      extracted?.length ? (
-        <ScriptOnce
-          children={`__TSR__.matches[${props.matchIndex}] = ${jsesc(
-            {
-              __beforeLoadContext: router.options.transformer.stringify(
-                serializedBeforeLoadData,
-              ),
-              loaderData:
-                router.options.transformer.stringify(serializedLoaderData),
-              extracted: extracted
-                ? Object.fromEntries(
-                    extracted.map((entry) => {
-                      return [entry.id, pick(entry, ['type', 'path'])]
-                    }),
-                  )
-                : {},
-            },
-            {
-              isScriptContext: true,
-              wrap: true,
-              json: true,
-            },
-          )}; __TSR__.initMatch(${props.matchIndex})`}
-        />
-      ) : null}
-      {extracted
-        ? extracted.map((d, i) => {
-            if (d.type === 'stream') {
-              return <DehydrateStream key={d.id} entry={d} />
-            }
+  if (
+    serializedBeforeLoadData !== undefined ||
+    serializedLoaderData !== undefined ||
+    extracted?.length
+  ) {
+    const initCode = `__TSR__.initMatch(${jsesc(
+      {
+        index: props.matchIndex,
+        __beforeLoadContext: router.options.transformer.stringify(
+          serializedBeforeLoadData,
+        ),
+        loaderData: router.options.transformer.stringify(serializedLoaderData),
+        extracted: extracted
+          ? Object.fromEntries(
+              extracted.map((entry) => {
+                return [entry.id, pick(entry, ['type', 'path'])]
+              }),
+            )
+          : {},
+      },
+      {
+        isScriptContext: true,
+        wrap: true,
+        json: true,
+      },
+    )})`
 
-            return <DehydratePromise key={d.id} entry={d} />
-          })
-        : null}
-    </>
-  )
+    return (
+      <>
+        <ScriptOnce children={initCode} />
+        {extracted
+          ? extracted.map((d) => {
+              if (d.type === 'stream') {
+                return <DehydrateStream key={d.id} entry={d} />
+              }
+
+              return <DehydratePromise key={d.id} entry={d} />
+            })
+          : null}
+      </>
+    )
+  }
+
+  return null
 }
 
 export function replaceBy<T>(
@@ -245,7 +247,7 @@ export function replaceBy<T>(
   return obj
 }
 
-function DehydratePromise({ entry }: { entry: ExtractedEntry }) {
+function DehydratePromise({ entry }: { entry: ExtractedPromise }) {
   return (
     <div className="tsr-once">
       <React.Suspense fallback={null}>
@@ -255,47 +257,49 @@ function DehydratePromise({ entry }: { entry: ExtractedEntry }) {
   )
 }
 
-function InnerDehydratePromise({ entry }: { entry: ExtractedEntry }) {
-  if (entry.value.status === 'pending') {
-    throw entry.value
+function InnerDehydratePromise({ entry }: { entry: ExtractedPromise }) {
+  const router = useRouter()
+  if (entry.promiseState[TSR_DEFERRED_PROMISE].status === 'pending') {
+    throw entry.promiseState
   }
 
-  return (
-    <ScriptOnce
-      children={`__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].resolve(${jsesc(
-        entry.value.data,
-        {
-          isScriptContext: true,
-          wrap: true,
-          json: true,
-        },
-      )})`}
-    />
-  )
+  const code = `__TSR__.resolvePromise(${jsesc(
+    { ...entry, value: entry.promiseState[TSR_DEFERRED_PROMISE] },
+    {
+      isScriptContext: true,
+      wrap: true,
+      json: true,
+    },
+  )})`
+
+  router.injectScript(code)
+
+  return <></>
 }
 
-function DehydrateStream({ entry }: { entry: ExtractedEntry }) {
+function DehydrateStream({ entry }: { entry: ExtractedStream }) {
   invariant(entry.streamState, 'StreamState should be defined')
+  const router = useRouter()
 
   return (
     <StreamChunks
       streamState={entry.streamState}
-      children={(chunk) => (
-        <ScriptOnce
-          children={
-            chunk
-              ? `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.enqueue(new TextEncoder().encode(${jsesc(
-                  chunk.toString(),
-                  {
-                    isScriptContext: true,
-                    wrap: true,
-                    json: true,
-                  },
-                )}))`
-              : `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.close()`
-          }
-        />
-      )}
+      children={(chunk) => {
+        const code = chunk
+          ? `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.enqueue(new TextEncoder().encode(${jsesc(
+              chunk.toString(),
+              {
+                isScriptContext: true,
+                wrap: true,
+                json: true,
+              },
+            )}))`
+          : `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.close()`
+
+        router.injectScript(code)
+
+        return <></>
+      }}
     />
   )
 }
@@ -341,7 +345,7 @@ function StreamChunks({
   __index = 0,
 }: {
   streamState: StreamState
-  children: (chunk: string | null) => JSX.Element
+  children: (chunk: string | null) => React.JSX.Element
   __index?: number
 }) {
   const promise = streamState.promises[__index]

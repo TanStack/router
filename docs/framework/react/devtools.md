@@ -12,8 +12,28 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 
 ## Installation
 
+The devtools are a separate package that you need to install:
+
 ```sh
-npm install @tanstack/router-devtools --save
+npm install -D @tanstack/router-devtools
+```
+
+or
+
+```sh
+pnpm add -D @tanstack/router-devtools
+```
+
+or
+
+```sh
+yarn add -D @tanstack/router-devtools
+```
+
+or
+
+```sh
+bun add -D @tanstack/router-devtools
 ```
 
 ## Import the Devtools

@@ -28,7 +28,11 @@ test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" 
   expectItemOrder(orders, 'onBeforeRouteMount', 'about-useLayoutEffect')
 })
 
-function expectItemOrder<T>(array: T[], firstItem: T, secondItem: T) {
+function expectItemOrder<TItem>(
+  array: Array<TItem>,
+  firstItem: TItem,
+  secondItem: TItem,
+) {
   const firstIndex = array.findIndex((item) => item === firstItem)
   const secondIndex = array.findIndex((item) => item === secondItem)
 

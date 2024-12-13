@@ -136,13 +136,13 @@ export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
 >
 
 export interface RouteMatch<
-  TRouteId,
-  TFullPath,
-  TAllParams,
-  TFullSearchSchema,
-  TLoaderData,
-  TAllContext,
-  TLoaderDeps,
+  out TRouteId,
+  out TFullPath,
+  out TAllParams,
+  out TFullSearchSchema,
+  out TLoaderData,
+  out TAllContext,
+  out TLoaderDeps,
 > {
   id: string
   routeId: TRouteId
@@ -170,9 +170,9 @@ export interface RouteMatch<
   loaderDeps: TLoaderDeps
   preload: boolean
   invalid: boolean
-  meta?: Array<React.JSX.IntrinsicElements['meta']>
-  links?: Array<React.JSX.IntrinsicElements['link']>
-  scripts?: Array<React.JSX.IntrinsicElements['script']>
+  meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
+  links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
+  scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption

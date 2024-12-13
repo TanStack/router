@@ -1,4 +1,3 @@
-// app/routes/index.tsx
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
 
