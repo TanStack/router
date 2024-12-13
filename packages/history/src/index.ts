@@ -119,32 +119,27 @@ export function createHistory(opts: {
       state = assignKey(state)
       tryNavigation(() => {
         opts.pushState(path, state)
-        notify()
       }, navigateOpts)
     },
     replace: (path, state, navigateOpts) => {
       state = assignKey(state)
       tryNavigation(() => {
         opts.replaceState(path, state)
-        notify()
       }, navigateOpts)
     },
     go: (index, navigateOpts) => {
       tryNavigation(() => {
         opts.go(index)
-        notify()
       }, navigateOpts)
     },
     back: (navigateOpts) => {
       tryNavigation(() => {
         opts.back()
-        notify()
       }, navigateOpts)
     },
     forward: (navigateOpts) => {
       tryNavigation(() => {
         opts.forward()
-        notify()
       }, navigateOpts)
     },
     createHref: (str) => opts.createHref(str),
@@ -299,8 +294,14 @@ export function createBrowserHistory(opts?: {
   const history = createHistory({
     getLocation,
     getLength: () => win.history.length,
-    pushState: (href, state) => queueHistoryAction('push', href, state),
-    replaceState: (href, state) => queueHistoryAction('replace', href, state),
+    pushState: (href, state) => {
+      queueHistoryAction('push', href, state)
+      history.notify()
+    },
+    replaceState: (href, state) => {
+      queueHistoryAction('replace', href, state)
+      history.notify()
+    },
     back: () => win.history.back(),
     forward: () => win.history.forward(),
     go: (n) => win.history.go(n),
@@ -370,7 +371,7 @@ export function createMemoryHistory(
 
   const getLocation = () => parseHref(entries[index]!, states[index])
 
-  return createHistory({
+  const history = createHistory({
     getLocation,
     getLength: () => entries.length,
     pushState: (path, state) => {
@@ -382,22 +383,29 @@ export function createMemoryHistory(
       states.push(state)
       entries.push(path)
       index = Math.max(entries.length - 1, 0)
+      history.notify()
     },
     replaceState: (path, state) => {
       states[index] = state
       entries[index] = path
+      history.notify()
     },
     back: () => {
       index = Math.max(index - 1, 0)
+      history.notify()
     },
     forward: () => {
       index = Math.min(index + 1, entries.length - 1)
+      history.notify()
     },
     go: (n) => {
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
+      history.notify()
     },
     createHref: (path) => path,
   })
+
+  return history;
 }
 
 export function parseHref(
