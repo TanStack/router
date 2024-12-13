@@ -578,7 +578,7 @@ export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
 })
 ```
 
-You can also redirect to an external target using `href`: 
+You can also redirect to an external target using `href`:
 
 ```tsx
 import { redirect } from '@tanstack/react-router'
