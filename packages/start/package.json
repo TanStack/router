@@ -134,7 +134,6 @@
   },
   "dependencies": {
     "@tanstack/react-cross-context": "workspace:^",
-    "@tanstack/react-router": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/start-vite-plugin": "workspace:^",
@@ -159,6 +158,7 @@
     "typescript": "^5.7.2"
   },
   "peerDependencies": {
+    "@tanstack/react-router": "workspace:^",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0"
   }
