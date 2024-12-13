@@ -93,7 +93,6 @@ type TryNavigateArgs = {
     }
 )
 
-const pushStateEvent = 'pushstate'
 const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
 
@@ -472,7 +471,6 @@ export function createBrowserHistory(opts?: {
       win.removeEventListener(beforeUnloadEvent, onBeforeUnload, {
         capture: true,
       })
-      win.removeEventListener(pushStateEvent, onPushPopEvent)
       win.removeEventListener(popStateEvent, onPushPopEvent)
     },
     onBlocked: (onUpdate) => {
@@ -489,7 +487,6 @@ export function createBrowserHistory(opts?: {
   })
 
   win.addEventListener(beforeUnloadEvent, onBeforeUnload, { capture: true })
-  win.addEventListener(pushStateEvent, onPushPopEvent)
   win.addEventListener(popStateEvent, onPushPopEvent)
 
   win.history.pushState = function (...args: Array<any>) {
