@@ -93,7 +93,7 @@ Commits a new location object to the browser history.
     location: ParsedLocation & {
       replace?: boolean
       resetScroll?: boolean
-      hashChangeScrollIntoView?: boolean | ScrollIntoViewOptions
+      hashScrollIntoView?: boolean | ScrollIntoViewOptions
       ignoreBlocker?: boolean
     },
   ) => Promise<void>
@@ -113,12 +113,13 @@ Commits a new location object to the browser history.
     - Optional
     - Defaults to `true` so that the scroll position will be reset to 0,0 after the location is committed to the browser history.
     - If `false`, the scroll position will not be reset to 0,0 after the location is committed to history.
-  - `hashChangeScrollIntoView`
+  - `hashScrollIntoView`
     - Type: `boolean | ScrollIntoViewOptions`
     - Optional
     - Defaults to `true` so the element with an id matching the hash will be scrolled into view after the location is committed to history.
     - If `false`, the element with an id matching the hash will not be scrolled into view after the location is committed to history.
     - If an object is provided, it will be passed to the `scrollIntoView` method as options.
+    - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
   - `ignoreBlocker`
     - Type: `boolean`
     - Optional

@@ -4,6 +4,6 @@ declare module '@tanstack/history' {
   interface HistoryState {
     __tempLocation?: HistoryLocation
     __tempKey?: string
-    __hashChangeScrollIntoViewOptions?: boolean | ScrollIntoViewOptions
+    __hashScrollIntoViewOptions?: boolean | ScrollIntoViewOptions
   }
 }

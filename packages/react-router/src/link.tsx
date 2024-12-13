@@ -213,7 +213,7 @@ export interface NavigateOptionProps {
   // if set to `true`, the router will scroll the element with an id matching the hash into view with default ScrollIntoViewOptions.
   // if set to `false`, the router will not scroll the element with an id matching the hash into view.
   // if set to `ScrollIntoViewOptions`, the router will scroll the element with an id matching the hash into view with the provided options.
-  hashChangeScrollIntoView?: boolean | ScrollIntoViewOptions
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
   resetScroll?: boolean
@@ -611,7 +611,7 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    hashChangeScrollIntoView,
+    hashScrollIntoView,
     replace,
     startTransition,
     resetScroll,
@@ -806,7 +806,7 @@ export function useLinkProps<
         ...options,
         replace,
         resetScroll,
-        hashChangeScrollIntoView,
+        hashScrollIntoView,
         startTransition,
         viewTransition,
         ignoreBlocker,

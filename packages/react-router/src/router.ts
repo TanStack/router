@@ -314,13 +314,13 @@ export interface RouterOptions<
    */
   defaultViewTransition?: boolean | ViewTransitionOptions
   /**
-   * The default `hashChangeScrollIntoView` a route should use if no hashChangeScrollIntoView is provided while navigating
+   * The default `hashScrollIntoView` a route should use if no hashScrollIntoView is provided while navigating
    *
    * See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
    *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulthashchangescrollintoview-property)
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulthashscrollintoview-property)
    */
-  defaultHashChangeScrollIntoView?: boolean | ScrollIntoViewOptions
+  defaultHashScrollIntoView?: boolean | ScrollIntoViewOptions
   /**
    * @default 'fuzzy'
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundmode-property)
@@ -1816,7 +1816,7 @@ export class Router<
       this.load()
     } else {
       // eslint-disable-next-line prefer-const
-      let { maskedLocation, hashChangeScrollIntoView, ...nextHistory } = next
+      let { maskedLocation, hashScrollIntoView, ...nextHistory } = next
 
       if (maskedLocation) {
         nextHistory = {
@@ -1846,10 +1846,8 @@ export class Router<
         }
       }
 
-      nextHistory.state.__hashChangeScrollIntoViewOptions =
-        hashChangeScrollIntoView ??
-        this.options.defaultHashChangeScrollIntoView ??
-        true
+      nextHistory.state.__hashScrollIntoViewOptions =
+        hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
 
       this.shouldViewTransition = viewTransition
 
@@ -1872,7 +1870,7 @@ export class Router<
   buildAndCommitLocation = ({
     replace,
     resetScroll,
-    hashChangeScrollIntoView,
+    hashScrollIntoView,
     viewTransition,
     ignoreBlocker,
     ...rest
@@ -1895,7 +1893,7 @@ export class Router<
       viewTransition,
       replace,
       resetScroll,
-      hashChangeScrollIntoView,
+      hashScrollIntoView,
       ignoreBlocker,
     })
   }

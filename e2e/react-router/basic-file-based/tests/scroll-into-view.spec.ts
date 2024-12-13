@@ -32,7 +32,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/anchor')
 })
 
-// Testing the `Link` component with the `hashChangeScrollIntoView` prop
+// Testing the `Link` component with the `hashScrollIntoView` prop
 test('Navigating via anchor `Link` with default hash scrolling behavior', async ({
   page,
 }) => {
@@ -103,7 +103,7 @@ test('Navigating via anchor `Link` with smooth hash scrolling behavior', async (
   )
 })
 
-// Testing the `useNavigate` hook with the `hashChangeScrollIntoView` option
+// Testing the `useNavigate` hook with the `hashScrollIntoView` option
 test('Navigating via `useNavigate` with instant scroll behavior', async ({
   page,
 }) => {

@@ -15,7 +15,7 @@ import type {
 export interface CommitLocationOptions {
   replace?: boolean
   resetScroll?: boolean
-  hashChangeScrollIntoView?: boolean | ScrollIntoViewOptions
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
   viewTransition?: boolean | ViewTransitionOptions
   /**
    * @deprecated All navigations use React transitions under the hood now

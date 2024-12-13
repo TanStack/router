@@ -144,13 +144,13 @@ export function Transitioner() {
 
       if (typeof document !== 'undefined' && (document as any).querySelector) {
         if (
-          router.state.location.state.__hashChangeScrollIntoViewOptions &&
+          router.state.location.state.__hashScrollIntoViewOptions &&
           router.state.location.hash !== ''
         ) {
           const el = document.getElementById(router.state.location.hash)
           if (el) {
             el.scrollIntoView(
-              router.latestLocation.state.__hashChangeScrollIntoViewOptions,
+              router.latestLocation.state.__hashScrollIntoViewOptions,
             )
           }
         }
