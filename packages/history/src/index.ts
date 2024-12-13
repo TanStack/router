@@ -8,10 +8,10 @@ export interface NavigateOptions {
 
 type SubscriberHistoryAction =
   | {
-      action: HistoryAction | 'ROLLBACK'
+      type: HistoryAction | 'ROLLBACK'
     }
   | {
-      action: 'GO'
+      type: 'GO'
       index: number
     }
 
@@ -123,7 +123,7 @@ export function createHistory(opts: {
   const _notifyRollback = () => {
     location = opts.getLocation()
     subscribers.forEach((subscriber) =>
-      subscriber({ location, action: { action: 'ROLLBACK' } }),
+      subscriber({ location, action: { type: 'ROLLBACK' } }),
     )
   }
 
@@ -179,7 +179,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.pushState(path, state)
-          notify({ action: 'PUSH' })
+          notify({ type: 'PUSH' })
         },
         navigateOpts,
         type: 'PUSH',
@@ -192,7 +192,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.replaceState(path, state)
-          notify({ action: 'REPLACE' })
+          notify({ type: 'REPLACE' })
         },
         navigateOpts,
         type: 'REPLACE',
@@ -204,7 +204,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.go(index)
-          notify({ action: 'GO', index })
+          notify({ type: 'GO', index })
         },
         navigateOpts,
         type: 'GO',
@@ -214,7 +214,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.back(navigateOpts?.ignoreBlocker ?? false)
-          notify({ action: 'BACK' })
+          notify({ type: 'BACK' })
         },
         navigateOpts,
         type: 'BACK',
@@ -224,7 +224,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.forward(navigateOpts?.ignoreBlocker ?? false)
-          notify({ action: 'FORWARD' })
+          notify({ type: 'FORWARD' })
         },
         navigateOpts,
         type: 'FORWARD',
@@ -378,7 +378,7 @@ export function createBrowserHistory(opts?: {
 
   const onPushPop = () => {
     currentLocation = parseLocation()
-    history.notify({ action: 'POP' })
+    history.notify({ type: 'POP' })
   }
 
   const onPushPopEvent = async () => {
@@ -402,7 +402,7 @@ export function createBrowserHistory(opts?: {
           if (isBlocked) {
             ignoreNextPop = true
             win.history.go(1)
-            history.notify({ action: 'POP' })
+            history.notify({ type: 'POP' })
             return
           }
         }
@@ -410,7 +410,7 @@ export function createBrowserHistory(opts?: {
     }
 
     currentLocation = parseLocation()
-    history.notify({ action: 'POP' })
+    history.notify({ type: 'POP' })
   }
 
   const onBeforeUnload = (e: BeforeUnloadEvent) => {
