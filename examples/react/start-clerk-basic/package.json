@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@clerk/tanstack-start": "0.6.5",
-    "@tanstack/react-router": "^1.89.0",
-    "@tanstack/router-devtools": "^1.89.0",
-    "@tanstack/start": "^1.89.0",
+    "@tanstack/react-router": "^1.89.1",
+    "@tanstack/router-devtools": "^1.89.1",
+    "@tanstack/start": "^1.89.1",
     "dotenv": "^16.4.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
