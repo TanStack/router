@@ -78,15 +78,8 @@ function MyComponent() {
   // OR
 
   return (
-    <Block
-      shouldBlockFn={() => {
-        if (!formIsDirty) return false
-
-        const shouldLeave = confirm('Are you sure you want to leave?')
-        return !shouldLeave
-      }}
-    >
-      {/* ... */}
+    <Block shouldBlockFn={() => !formIsDirty} withResolver>
+      {({ status, proceed, reset }) => <>{/* ... */}</>}
     </Block>
   )
 }
@@ -94,13 +87,13 @@ function MyComponent() {
 
 ## How can I show a custom UI?
 
-In most cases, passing `window.confirm` to the `blockerFn` field of the hook input is enough since it will clearly show the user that the navigation is being blocked.
+In most cases, using `window.confirm` in the `shouldBlockFn` function with `withResolver: false` in the hook is enough since it will clearly show the user that the navigation is being blocked and resolve the blocking based on their response.
 
 However, in some situations, you might want to show a custom UI that is intentionally less disruptive and more integrated with your app's design.
 
-**Note:** The return value of `blockerFn` takes precedence, do not pass it if you want to use the manual `proceed` and `reset` functions.
+**Note:** The return value of `shouldBlockFn` does not resolve the blocking if `withResolver` is `true`.
 
-### Hook/logical-based custom UI
+### Hook/logical-based custom UI with resolver
 
 ```tsx
 import { useBlocker } from '@tanstack/react-router'
@@ -110,6 +103,7 @@ function MyComponent() {
 
   const { proceed, reset, status } = useBlocker({
     shouldBlockFn: () => formIsDirty,
+    withResolver: true,
   })
 
   // ...
@@ -128,6 +122,45 @@ function MyComponent() {
 }
 ```
 
+### Hook/logical-based custom UI without resolver
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  const { proceed, reset, status } = useBlocker({
+    shouldBlockFn: () => {
+      if (!formIsDirty) return false
+
+      const shouldLeave = new Promise<boolean>((resolve) => {
+        // Using a modal manager of your choice
+        modals.open({
+          title: 'Are you sure you want to leave?',
+          children: (
+            <SaveBlocker
+              confirm={() => {
+                modals.closeAll()
+                resolve(true)
+              }}
+              reject={() => {
+                modals.closeAll()
+                resolve(true)
+              }}
+            />
+          ),
+          onClose: () => resolve(false),
+        })
+      })
+      return !shouldLeave
+    },
+  })
+
+  // ...
+}
+```
+
 ### Component-based custom UI
 
 Similarly to the hook, the `Block` component returns the same state and functions as render props:
@@ -139,7 +172,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   return (
-    <Block shouldBlockFn={() => formIsDirty}>
+    <Block shouldBlockFn={() => formIsDirty} withResolver>
       {({ status, proceed, reset }) => (
         <>
           {/* ... */}

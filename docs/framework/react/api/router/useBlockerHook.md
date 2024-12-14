@@ -12,10 +12,26 @@ The `useBlocker` hook accepts a single _required_ argument, an option object:
 ### `options.shouldBlockFn` option
 
 - Required
-- Type: `BlockerFn`
+- Type: `ShouldBlockFn`
 - This function should return a `boolean` or a `Promise<boolean>` that tells the blocker if it should block the current navigation
-- The function has the argument of type `BlockerFnArgs` passed to it, which tells you information about the current and next route and the action performed
+- The function has the argument of type `ShouldBlockFnArgs` passed to it, which tells you information about the current and next route and the action performed
 - Think of this function as telling the router if it should block the navigation, so returning `true` mean that it should block the navgation and `false` that it should be allowed
+
+```ts
+interface ShouldBlockFnLocation<...> {
+  routeId: TRouteId
+  fullPath: TFullPath
+  pathname: string
+  params: TAllParams
+  search: TFullSearchSchema
+}
+
+type ShouldBlockFnArgs = {
+  current: ShouldBlockFnLocation
+  next: ShouldBlockFnLocation
+  action: HistoryAction
+}
+```
 
 ### `options.disabled` option
 
@@ -35,30 +51,6 @@ The `useBlocker` hook accepts a single _required_ argument, an option object:
 - Type: `boolean`
 - Specify if the resolver returned by the hook should be used or whether your `shouldBlockFn` function itself resolves the blocking
 
-### `options.from` option
-
-- Optional
-- Type: `MatchLocation['to']`
-- Specify from which route pattern the blocker should block navigations from
-
-### `options.to` option
-
-- Optional
-- Type: `MatchLocation['to']`
-- Specify from which route pattern the blocker should block navigations to
-
-### `options.fromMatchOptions` option
-
-- Optional
-- Type: `Omit<MatchLocation, 'to'>`
-- Give additional arguments to the routeMatching from
-
-### `options.toMatchOptions` option
-
-- Optional
-- Type: `Omit<MatchLocation, 'to'>`
-- Give additional arguments to the routeMatching to
-
 ### `options.blockerFn` option (⚠️ deprecated)
 
 - Optional
@@ -76,8 +68,15 @@ The `useBlocker` hook accepts a single _required_ argument, an option object:
 An object with the controls to allow manual blocking and unblocking of navigation.
 
 - `status` - A string literal that can be either `'blocked'` or `'idle'`
+- `next` - When status is `blocked`, a type narrrowable object that contains information about the next location
+- `current` - When status is `blocked`, a type narrrowable object that contains information about the current location
+- `action` - When status is `blocked`, a `HistoryAction` string that shows the action that triggered the navigation
 - `proceed` - A function that allows navigation to continue
 - `reset` - A function that cancels navigation (`status` will be be reset to `'idle'`)
+
+or
+
+`void` when `withResolver` is `false`
 
 ## Examples
 
@@ -92,7 +91,7 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   useBlocker({
-    blockerFn: () => formIsDirty,
+    shouldBlockFn: () => formIsDirty,
   })
 
   // ...
@@ -107,8 +106,9 @@ import { useBlocker } from '@tanstack/react-router'
 function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
-  const { proceed, reset, status } = useBlocker({
+  const { proceed, reset, status, next } = useBlocker({
     shouldBlockFn: () => formIsDirty,
+    withResolver: true,
   })
 
   // ...
@@ -118,6 +118,7 @@ function MyComponent() {
       {/* ... */}
       {status === 'blocked' && (
         <div>
+          <p>You are navigating to {next.pathname}</p>
           <p>Are you sure you want to leave?</p>
           <button onClick={proceed}>Yes</button>
           <button onClick={reset}>No</button>
@@ -141,7 +142,8 @@ function MyComponent() {
         return false
 
       return true
-    }
+    },
+    withResolver: true,
   })
 
   // ...
@@ -175,6 +177,35 @@ function MyComponent() {
       const shouldLeave = confirm('Are you sure you want to leave?')
       return !shouldLeave
     },
+  })
+
+  // ...
+}
+```
+
+### Type narrowing
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  // block going from editor-1 to /foo/123?hello=world
+  const { proceed, reset, status } = useBlocker({
+    shouldBlockFn: ({ current, next }) => {
+      if (
+        current.routeId === '/editor-1' &&
+        next.fullPath === '/foo/$id' &&
+        next.params.id === '123' &&
+        next.search.hello === 'world'
+      ) {
+        return true
+      }
+      return false
+    },
+    enableBeforeUnload: false,
+    withResolver: true,
   })
 
   // ...
