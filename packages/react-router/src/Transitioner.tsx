@@ -143,10 +143,13 @@ export function Transitioner() {
       }))
 
       if (typeof document !== 'undefined' && (document as any).querySelector) {
-        if (router.state.location.hash !== '') {
+        const hashScrollIntoViewOptions =
+          router.state.location.state.__hashScrollIntoViewOptions ?? true
+
+        if (hashScrollIntoViewOptions && router.state.location.hash !== '') {
           const el = document.getElementById(router.state.location.hash)
           if (el) {
-            el.scrollIntoView()
+            el.scrollIntoView(hashScrollIntoViewOptions)
           }
         }
       }
