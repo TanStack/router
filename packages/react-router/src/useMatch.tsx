@@ -7,7 +7,7 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { MakeRouteMatch } from './Matches'
+import type { MakeRouteMatch, MakeRouteMatchUnion } from './Matches'
 import type { StrictOrFrom, ThrowOrOptional } from './utils'
 
 export interface UseMatchBaseOptions<
@@ -64,8 +64,15 @@ export type UseMatchResult<
   TStrict extends boolean,
   TSelected,
 > = unknown extends TSelected
-  ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+  ? TStrict extends true
+    ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+    : MakeRouteMatchUnion<TRouter>
   : TSelected
+
+type ThrowConstraint<
+  TStrict extends boolean,
+  TThrow extends boolean,
+> = TStrict extends false ? (TThrow extends true ? never : TThrow) : TThrow
 
 export function useMatch<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -80,7 +87,7 @@ export function useMatch<
     TFrom,
     TStrict,
     TSelected,
-    TThrow,
+    ThrowConstraint<TStrict, TThrow>,
     TStructuralSharing
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
