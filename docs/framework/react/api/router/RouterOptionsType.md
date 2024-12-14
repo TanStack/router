@@ -149,6 +149,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 - See [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types) for more informations on viewTransition types
 
 ### `defaultHashScrollIntoView` property
+
 - Type: `boolean | ScrollIntoViewOptions`
 - Optional
 - Defaults to `true` so the element with an id matching the hash will be scrolled into view after the location is committed to history.
