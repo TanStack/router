@@ -314,6 +314,14 @@ export interface RouterOptions<
    */
   defaultViewTransition?: boolean | ViewTransitionOptions
   /**
+   * The default `hashScrollIntoView` a route should use if no hashScrollIntoView is provided while navigating
+   *
+   * See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulthashscrollintoview-property)
+   */
+  defaultHashScrollIntoView?: boolean | ScrollIntoViewOptions
+  /**
    * @default 'fuzzy'
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundmode-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
@@ -1809,7 +1817,7 @@ export class Router<
       this.load()
     } else {
       // eslint-disable-next-line prefer-const
-      let { maskedLocation, ...nextHistory } = next
+      let { maskedLocation, hashScrollIntoView, ...nextHistory } = next
 
       if (maskedLocation) {
         nextHistory = {
@@ -1839,6 +1847,9 @@ export class Router<
         }
       }
 
+      nextHistory.state.__hashScrollIntoViewOptions =
+        hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
+
       this.shouldViewTransition = viewTransition
 
       this.history[next.replace ? 'replace' : 'push'](
@@ -1860,6 +1871,7 @@ export class Router<
   buildAndCommitLocation = ({
     replace,
     resetScroll,
+    hashScrollIntoView,
     viewTransition,
     ignoreBlocker,
     href,
@@ -1882,6 +1894,7 @@ export class Router<
       viewTransition,
       replace,
       resetScroll,
+      hashScrollIntoView,
       ignoreBlocker,
     })
   }
