@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import {
   Link,
   Outlet,
@@ -16,12 +17,21 @@ const rootRoute = createRootRoute({
 })
 
 function RootComponent() {
-  // Always block going from editor-1 to editor-2
+  // block going from editor-1 to /foo/123?hello=world
   const { proceed, reset, status } = useBlocker({
-    from: '/editor-1',
-    to: '/editor-1/editor-2',
-    shouldBlockFn: () => true,
+    shouldBlockFn: ({ current, next }) => {
+      if (
+        current.routeId === '/editor-1' &&
+        next.fullPath === '/foo/$id' &&
+        next.params.id === '123' &&
+        next.search.hello === 'world'
+      ) {
+        return true
+      }
+      return false
+    },
     enableBeforeUnload: false,
+    withResolver: true,
   })
 
   return (
@@ -43,7 +53,7 @@ function RootComponent() {
           }}
         >
           Editor 1
-        </Link>
+        </Link>{' '}
         <Link
           to={'/editor-1/editor-2'}
           activeProps={{
@@ -51,13 +61,37 @@ function RootComponent() {
           }}
         >
           Editor 2
-        </Link>
+        </Link>{' '}
+        <Link
+          to="/foo/$id"
+          params={{ id: '123' }}
+          search={{ hello: 'world' }}
+          activeProps={{
+            className: 'font-bold',
+          }}
+          activeOptions={{ exact: true, includeSearch: true }}
+        >
+          foo 123
+        </Link>{' '}
+        <Link
+          to="/foo/$id"
+          params={{ id: '456' }}
+          search={{ hello: 'universe' }}
+          activeProps={{
+            className: 'font-bold',
+          }}
+          activeOptions={{ exact: true, includeSearch: true }}
+        >
+          foo 456
+        </Link>{' '}
       </div>
       <hr />
 
       {status === 'blocked' && (
         <div className="mt-2">
-          <div>Are you sure you want to leave home for editor-2?</div>
+          <div>
+            Are you sure you want to leave home for /foo/123?hello=world ?
+          </div>
           <button
             className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
             onClick={proceed}
@@ -92,6 +126,13 @@ function IndexComponent() {
   )
 }
 
+const fooRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'foo/$id',
+  validateSearch: z.object({ hello: z.string() }),
+  component: () => <>foo {fooRoute.useParams().id}</>,
+})
+
 const editor1Route = createRoute({
   getParentRoute: () => rootRoute,
   path: 'editor-1',
@@ -105,6 +146,7 @@ function Editor1Component() {
   const { proceed, reset, status } = useBlocker({
     shouldBlockFn: () => value !== '',
     enableBeforeUnload: () => value !== '',
+    withResolver: true,
   })
 
   return (
@@ -165,6 +207,7 @@ function Editor2Component() {
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  fooRoute,
   editor1Route.addChildren([editor2Route]),
 ])
 

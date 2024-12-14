@@ -1,36 +1,58 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
-import { matchPathname } from './path'
-import type { MatchLocation } from './RouterProvider'
-import type { BlockerFn, BlockerFnArgs } from '@tanstack/history'
-import type { ReactNode } from './route'
-
-type Optional<T> =
-  | T
-  | {
-      [K in keyof T]?: never
-    }
+import type {
+  BlockerFnArgs,
+  HistoryAction,
+  HistoryLocation,
+} from '@tanstack/history'
+import type { AnyRoute, ReactNode } from './route'
+import type { ParseRoute } from './routeInfo'
+import type { AnyRouter, RegisteredRouter } from './router'
 
 type BlockerResolver = {
   status: 'idle' | 'blocked'
+  // TODO should we return current and next here as well?
   proceed: () => void
   reset: () => void
 }
+interface ShouldBlockFnLocation<
+  out TRouteId,
+  out TFullPath,
+  out TAllParams,
+  out TFullSearchSchema,
+> {
+  routeId: TRouteId
+  fullPath: TFullPath
+  pathname: string
+  params: TAllParams
+  search: TFullSearchSchema
+}
 
-export type UseBlockerOpts = {
-  shouldBlockFn: BlockerFn
+type AnyShouldBlockFnLocation = ShouldBlockFnLocation<any, any, any, any>
 
+type MakeShouldBlockFnLocationUnion<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+> = TRoute extends any
+  ? ShouldBlockFnLocation<
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema']
+    >
+  : never
+type ShouldBlockFnArgs = {
+  current: MakeShouldBlockFnLocationUnion
+  next: MakeShouldBlockFnLocationUnion
+  action: HistoryAction
+}
+type ShouldBlockFn = (args: ShouldBlockFnArgs) => boolean | Promise<boolean>
+export type UseBlockerOpts<TWithResolver extends boolean = boolean> = {
+  shouldBlockFn: ShouldBlockFn
   enableBeforeUnload?: boolean | (() => boolean)
   disabled?: boolean
-  withResolver?: boolean
-} & Optional<{
-  from: MatchLocation['to']
-  fromMatchOpts?: Omit<MatchLocation, 'to'>
-}> &
-  Optional<{
-    to: MatchLocation['to']
-    toMatchOpts?: Omit<MatchLocation, 'to'>
-  }>
+  withResolver?: TWithResolver
+}
 
 type LegacyBlockerFn = () => Promise<any> | any
 type LegacyBlockerOpts = {
@@ -49,10 +71,14 @@ function _resolveBlockerOpts(
     }
   }
 
+  if ('shouldBlockFn' in opts) {
+    return opts
+  }
+
   if (typeof opts === 'function') {
     const shouldBlock = Boolean(condition ?? true)
 
-    const _customBlockerFn: BlockerFn = async () => {
+    const _customBlockerFn = async () => {
       if (shouldBlock) return await opts()
       return false
     }
@@ -64,13 +90,13 @@ function _resolveBlockerOpts(
     }
   }
 
-  if ('shouldBlockFn' in opts) return opts
-
   const shouldBlock = Boolean(opts.condition ?? true)
   const fn = opts.blockerFn
 
-  const _customBlockerFn: BlockerFn = async () => {
-    if (shouldBlock && fn !== undefined) return await fn()
+  const _customBlockerFn = async () => {
+    if (shouldBlock && fn !== undefined) {
+      return await fn()
+    }
     return shouldBlock
   }
 
@@ -87,27 +113,23 @@ function _resolveBlockerOpts(
 export function useBlocker(blockerFnOrOpts?: LegacyBlockerOpts): BlockerResolver
 
 /**
- * @deprecated Use the BlockerOpts object syntax instead
+ * @deprecated Use the UseBlockerOpts object syntax instead
  */
 export function useBlocker(
   blockerFn?: LegacyBlockerFn,
   condition?: boolean | any,
 ): BlockerResolver
 
-export function useBlocker(opts: UseBlockerOpts): BlockerResolver
+export function useBlocker<TWithResolver extends boolean = false>(
+  opts: UseBlockerOpts<TWithResolver>,
+): TWithResolver extends true ? BlockerResolver : void
 
 export function useBlocker(
   opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
   condition?: boolean | any,
-): BlockerResolver {
+): BlockerResolver | void {
   const {
     shouldBlockFn,
-    to,
-    toMatchOpts,
-
-    from,
-    fromMatchOpts,
-
     enableBeforeUnload = true,
     disabled = false,
     withResolver = false,
@@ -124,42 +146,31 @@ export function useBlocker(
 
   React.useEffect(() => {
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
-      let matchesFrom = true
-      let matchesTo = true
-
-      if (from) {
-        const match = matchPathname(
-          router.basepath,
-          blockerFnArgs.currentLocation.pathname,
-          {
-            to: from,
-            ...fromMatchOpts,
-          },
-        )
-        if (!match) {
-          matchesFrom = false
+      function getLocation(
+        location: HistoryLocation,
+      ): AnyShouldBlockFnLocation {
+        const parsedLocation = router.parseLocation(undefined, location)
+        const matchedRoutes = router.getMatchedRoutes(parsedLocation)
+        if (matchedRoutes.foundRoute === undefined) {
+          throw new Error(`No route found for location ${location.href}`)
+        }
+        return {
+          routeId: matchedRoutes.foundRoute.id,
+          fullPath: matchedRoutes.foundRoute.fullPath,
+          pathname: parsedLocation.pathname,
+          params: matchedRoutes.routeParams,
+          search: parsedLocation.search,
         }
       }
 
-      if (to) {
-        const match = matchPathname(
-          router.basepath,
-          blockerFnArgs.nextLocation.pathname,
-          {
-            to,
-            ...toMatchOpts,
-          },
-        )
-        if (!match) {
-          matchesTo = false
-        }
-      }
+      const current = getLocation(blockerFnArgs.currentLocation)
+      const next = getLocation(blockerFnArgs.nextLocation)
 
-      if (!matchesFrom || !matchesTo) {
-        return false
-      }
-
-      const shouldBlock = await shouldBlockFn(blockerFnArgs)
+      const shouldBlock = await shouldBlockFn({
+        action: blockerFnArgs.action,
+        current,
+        next,
+      })
       if (!withResolver) {
         return shouldBlock
       }
@@ -177,7 +188,6 @@ export function useBlocker(
       })
 
       const canNavigateAsync = await promise
-
       setResolver({
         status: 'idle',
         proceed: () => {},
@@ -190,17 +200,11 @@ export function useBlocker(
     return disabled
       ? undefined
       : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
-  }, [
-    shouldBlockFn,
-    enableBeforeUnload,
-    disabled,
-    withResolver,
-    history,
-    from,
-    to,
-  ])
+  }, [shouldBlockFn, enableBeforeUnload, disabled, withResolver, history])
 
-  return resolver
+  if (withResolver) {
+    return resolver
+  }
 }
 
 const _resolvePromptBlockerArgs = (
@@ -213,7 +217,7 @@ const _resolvePromptBlockerArgs = (
   const shouldBlock = Boolean(props.condition ?? true)
   const fn = props.blockerFn
 
-  const _customBlockerFn: BlockerFn = async () => {
+  const _customBlockerFn = async () => {
     if (shouldBlock && fn !== undefined) {
       return await fn()
     }
@@ -228,7 +232,7 @@ const _resolvePromptBlockerArgs = (
 }
 
 /**
- *  @deprecated Use the shouldBlockFn property instead
+ *  @deprecated Use the UseBlockerOpts property instead
  */
 export function Block(opts: LegacyBlockerOpts): ReactNode
 
