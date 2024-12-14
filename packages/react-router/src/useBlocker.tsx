@@ -35,15 +35,14 @@ type MakeShouldBlockFnLocationUnion<
     >
   : never
 
-type BlockerResolver = {
-  status: 'idle' | 'blocked'
+type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> = {
   proceed: () => void
   reset: () => void
 } & (
   | {
       status: 'blocked'
-      current: MakeShouldBlockFnLocationUnion
-      next: MakeShouldBlockFnLocationUnion
+      current: MakeShouldBlockFnLocationUnion<TRouter>
+      next: MakeShouldBlockFnLocationUnion<TRouter>
       action: HistoryAction
     }
   | {
@@ -54,16 +53,20 @@ type BlockerResolver = {
     }
 )
 
-type ShouldBlockFnArgs = {
-  current: MakeShouldBlockFnLocationUnion
-  next: MakeShouldBlockFnLocationUnion
+type ShouldBlockFnArgs<TRouter extends AnyRouter = RegisteredRouter> = {
+  current: MakeShouldBlockFnLocationUnion<TRouter>
+  next: MakeShouldBlockFnLocationUnion<TRouter>
   action: HistoryAction
 }
-export type ShouldBlockFn = (
-  args: ShouldBlockFnArgs,
+
+export type ShouldBlockFn<TRouter extends AnyRouter = RegisteredRouter> = (
+  args: ShouldBlockFnArgs<TRouter>,
 ) => boolean | Promise<boolean>
-export type UseBlockerOpts<TWithResolver extends boolean = boolean> = {
-  shouldBlockFn: ShouldBlockFn
+export type UseBlockerOpts<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TWithResolver extends boolean = boolean,
+> = {
+  shouldBlockFn: ShouldBlockFn<TRouter>
   enableBeforeUnload?: boolean | (() => boolean)
   disabled?: boolean
   withResolver?: TWithResolver
@@ -122,6 +125,13 @@ function _resolveBlockerOpts(
   }
 }
 
+export function useBlocker<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TWithResolver extends boolean = false,
+>(
+  opts: UseBlockerOpts<TRouter, TWithResolver>,
+): TWithResolver extends true ? BlockerResolver<TRouter> : void
+
 /**
  * @deprecated Use the shouldBlockFn property instead
  */
@@ -134,10 +144,6 @@ export function useBlocker(
   blockerFn?: LegacyBlockerFn,
   condition?: boolean | any,
 ): BlockerResolver
-
-export function useBlocker<TWithResolver extends boolean = false>(
-  opts: UseBlockerOpts<TWithResolver>,
-): TWithResolver extends true ? BlockerResolver : void
 
 export function useBlocker(
   opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
@@ -255,12 +261,14 @@ const _resolvePromptBlockerArgs = (
   }
 }
 
+export function Block<TRouter extends AnyRouter = RegisteredRouter>(
+  opts: UseBlockerOpts<TRouter>,
+): ReactNode
+
 /**
  *  @deprecated Use the UseBlockerOpts property instead
  */
 export function Block(opts: LegacyBlockerOpts): ReactNode
-
-export function Block(opts: UseBlockerOpts): ReactNode
 
 export function Block(opts: PromptProps | LegacyPromptProps): ReactNode {
   const { children, ...rest } = opts
