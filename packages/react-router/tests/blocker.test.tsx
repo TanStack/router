@@ -13,7 +13,7 @@ import {
   useBlocker,
   useNavigate,
 } from '../src'
-import type { BlockerFn } from '@tanstack/history'
+import type { ShouldBlockFn } from '../src'
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
@@ -22,7 +22,7 @@ afterEach(() => {
 })
 
 interface BlockerTestOpts {
-  blockerFn: BlockerFn
+  blockerFn: ShouldBlockFn
   disabled?: boolean
   ignoreBlocker?: boolean
 }
@@ -118,7 +118,8 @@ describe('Blocker', () => {
         ignoreBlocker: undefined,
       },
       {
-        blockerFn: async () => await new Promise((resolve) => resolve(false)),
+        blockerFn: async () =>
+          await new Promise<boolean>((resolve) => resolve(false)),
         disabled: false,
         ignoreBlocker: false,
       },
@@ -158,7 +159,8 @@ describe('Blocker', () => {
         ignoreBlocker: undefined,
       },
       {
-        blockerFn: async () => await new Promise((resolve) => resolve(true)),
+        blockerFn: async () =>
+          await new Promise<boolean>((resolve) => resolve(true)),
         disabled: false,
         ignoreBlocker: false,
       },

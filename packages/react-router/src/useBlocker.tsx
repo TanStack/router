@@ -9,12 +9,6 @@ import type { AnyRoute, ReactNode } from './route'
 import type { ParseRoute } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
-type BlockerResolver = {
-  status: 'idle' | 'blocked'
-  // TODO should we return current and next here as well?
-  proceed: () => void
-  reset: () => void
-}
 interface ShouldBlockFnLocation<
   out TRouteId,
   out TFullPath,
@@ -29,7 +23,6 @@ interface ShouldBlockFnLocation<
 }
 
 type AnyShouldBlockFnLocation = ShouldBlockFnLocation<any, any, any, any>
-
 type MakeShouldBlockFnLocationUnion<
   TRouter extends AnyRouter = RegisteredRouter,
   TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
@@ -41,12 +34,34 @@ type MakeShouldBlockFnLocationUnion<
       TRoute['types']['fullSearchSchema']
     >
   : never
+
+type BlockerResolver = {
+  status: 'idle' | 'blocked'
+  proceed: () => void
+  reset: () => void
+} & (
+  | {
+      status: 'blocked'
+      current: MakeShouldBlockFnLocationUnion
+      next: MakeShouldBlockFnLocationUnion
+      action: HistoryAction
+    }
+  | {
+      status: 'idle'
+      current: undefined
+      next: undefined
+      action: undefined
+    }
+)
+
 type ShouldBlockFnArgs = {
   current: MakeShouldBlockFnLocationUnion
   next: MakeShouldBlockFnLocationUnion
   action: HistoryAction
 }
-type ShouldBlockFn = (args: ShouldBlockFnArgs) => boolean | Promise<boolean>
+export type ShouldBlockFn = (
+  args: ShouldBlockFnArgs,
+) => boolean | Promise<boolean>
 export type UseBlockerOpts<TWithResolver extends boolean = boolean> = {
   shouldBlockFn: ShouldBlockFn
   enableBeforeUnload?: boolean | (() => boolean)
@@ -140,6 +155,9 @@ export function useBlocker(
 
   const [resolver, setResolver] = React.useState<BlockerResolver>({
     status: 'idle',
+    current: undefined,
+    next: undefined,
+    action: undefined,
     proceed: () => {},
     reset: () => {},
   })
@@ -182,6 +200,9 @@ export function useBlocker(
       const promise = new Promise<boolean>((resolve) => {
         setResolver({
           status: 'blocked',
+          current,
+          next,
+          action: blockerFnArgs.action,
           proceed: () => resolve(false),
           reset: () => resolve(true),
         })
@@ -190,6 +211,9 @@ export function useBlocker(
       const canNavigateAsync = await promise
       setResolver({
         status: 'idle',
+        current: undefined,
+        next: undefined,
+        action: undefined,
         proceed: () => {},
         reset: () => {},
       })

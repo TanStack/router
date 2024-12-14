@@ -90,7 +90,7 @@ function RootComponent() {
       {status === 'blocked' && (
         <div className="mt-2">
           <div>
-            Are you sure you want to leave home for /foo/123?hello=world ?
+            Are you sure you want to leave editor 1 for /foo/123?hello=world ?
           </div>
           <button
             className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
@@ -143,7 +143,7 @@ function Editor1Component() {
   const [value, setValue] = React.useState('')
 
   // Block leaving editor-1 if there is text in the input
-  const { proceed, reset, status } = useBlocker({
+  const { proceed, reset, next, current, status } = useBlocker({
     shouldBlockFn: () => value !== '',
     enableBeforeUnload: () => value !== '',
     withResolver: true,
@@ -166,6 +166,9 @@ function Editor1Component() {
       {status === 'blocked' && (
         <div className="mt-2">
           <div>Are you sure you want to leave editor 1?</div>
+          <div>
+            You are going from {current.pathname} to {next.pathname}
+          </div>
           <button
             className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
             onClick={proceed}
