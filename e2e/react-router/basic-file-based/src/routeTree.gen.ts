@@ -14,8 +14,6 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as PostsImport } from './routes/posts'
-import { Route as EditingBImport } from './routes/editing-b'
-import { Route as EditingAImport } from './routes/editing-a'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as RedirectIndexImport } from './routes/redirect/index'
@@ -51,18 +49,6 @@ const groupRoute = groupImport.update({
 const PostsRoute = PostsImport.update({
   id: '/posts',
   path: '/posts',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const EditingBRoute = EditingBImport.update({
-  id: '/editing-b',
-  path: '/editing-b',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const EditingARoute = EditingAImport.update({
-  id: '/editing-a',
-  path: '/editing-a',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -203,20 +189,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof LayoutImport
-      parentRoute: typeof rootRoute
-    }
-    '/editing-a': {
-      id: '/editing-a'
-      path: '/editing-a'
-      fullPath: '/editing-a'
-      preLoaderRoute: typeof EditingAImport
-      parentRoute: typeof rootRoute
-    }
-    '/editing-b': {
-      id: '/editing-b'
-      path: '/editing-b'
-      fullPath: '/editing-b'
-      preLoaderRoute: typeof EditingBImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
@@ -448,8 +420,6 @@ const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
-  '/editing-a': typeof EditingARoute
-  '/editing-b': typeof EditingBRoute
   '/posts': typeof PostsRouteWithChildren
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
@@ -472,8 +442,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
-  '/editing-a': typeof EditingARoute
-  '/editing-b': typeof EditingBRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
@@ -495,8 +463,6 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
-  '/editing-a': typeof EditingARoute
-  '/editing-b': typeof EditingBRoute
   '/posts': typeof PostsRouteWithChildren
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)': typeof groupRouteWithChildren
@@ -524,8 +490,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | ''
-    | '/editing-a'
-    | '/editing-b'
     | '/posts'
     | '/onlyrouteinside'
     | '/inside'
@@ -547,8 +511,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | ''
-    | '/editing-a'
-    | '/editing-b'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
@@ -568,8 +530,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_layout'
-    | '/editing-a'
-    | '/editing-b'
     | '/posts'
     | '/(another-group)/onlyrouteinside'
     | '/(group)'
@@ -596,8 +556,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
-  EditingARoute: typeof EditingARoute
-  EditingBRoute: typeof EditingBRoute
   PostsRoute: typeof PostsRouteWithChildren
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
@@ -610,8 +568,6 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
-  EditingARoute: EditingARoute,
-  EditingBRoute: EditingBRoute,
   PostsRoute: PostsRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
@@ -633,8 +589,6 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/_layout",
-        "/editing-a",
-        "/editing-b",
         "/posts",
         "/(another-group)/onlyrouteinside",
         "/(group)",
@@ -652,12 +606,6 @@ export const routeTree = rootRoute
       "children": [
         "/_layout/_layout-2"
       ]
-    },
-    "/editing-a": {
-      "filePath": "editing-a.tsx"
-    },
-    "/editing-b": {
-      "filePath": "editing-b.tsx"
     },
     "/posts": {
       "filePath": "posts.tsx",
