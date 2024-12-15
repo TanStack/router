@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import {
   Link,
   Outlet,
@@ -129,7 +128,7 @@ function IndexComponent() {
 const fooRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'foo/$id',
-  validateSearch: z.object({ hello: z.string() }),
+  validateSearch: (search) => ({ hello: search.hello }) as { hello: string },
   component: () => <>foo {fooRoute.useParams().id}</>,
 })
 
