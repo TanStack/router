@@ -2636,12 +2636,11 @@ export class Router<
                             status: 'error',
                             isFetching: false,
                           }))
-                          return Promise.resolve();
                         }
 
                         // Last but not least, wait for the the components
                         // to be preloaded before we resolve the match
-                        return route._componentsPromise
+                        await route._componentsPromise
                       } catch (err) {
                         updateMatch(matchId, (prev) => ({
                           ...prev,
