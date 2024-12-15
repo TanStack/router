@@ -122,13 +122,14 @@ function Component() {
 ```
 
 If you need to preload only js chunk of the route, you can use the router's `preloadRouteChunk` method. It accepts route object and returns a promise that resolves when the route chunk is preloaded.
+
 ```tsx
 function Component() {
   const router = useRouter()
 
   useEffect(() => {
     try {
-      const postsRoute = router.routesByPath['/posts'];
+      const postsRoute = router.routesByPath['/posts']
       await Promise.all([
         router.preloadRouteChunk(router.routesByPath['/']),
         router.preloadRouteChunk(postsRoute),

@@ -2553,7 +2553,7 @@ export class Router<
 
                         // Actually run the loader and handle the result
                         try {
-                          this.preloadRouteChunk(route);
+                          this.preloadRouteChunk(route)
 
                           updateMatch(matchId, (prev) => ({
                             ...prev,
@@ -2794,14 +2794,11 @@ export class Router<
   preloadRouteChunk = (route: AnyRoute) => {
     if (route._lazyPromise === undefined) {
       if (route.lazyFn) {
-        route._lazyPromise = route
-          .lazyFn()
-          .then((lazyRoute) => {
-            // explicitly don't copy over the lazy route's id
-            const { id: _id, ...options } =
-              lazyRoute.options
-            Object.assign(route.options, options)
-          })
+        route._lazyPromise = route.lazyFn().then((lazyRoute) => {
+          // explicitly don't copy over the lazy route's id
+          const { id: _id, ...options } = lazyRoute.options
+          Object.assign(route.options, options)
+        })
       } else {
         route._lazyPromise = Promise.resolve()
       }
@@ -2811,19 +2808,18 @@ export class Router<
     // We'll wait for that before pre attempt to preload any
     // components themselves.
     if (route._componentsPromise === undefined) {
-      route._componentsPromise = route._lazyPromise.then(
-        () =>
-          Promise.all(
-            componentTypes.map(async (type) => {
-              const component = route.options[type]
-              if ((component as any)?.preload) {
-                await (component as any).preload()
-              }
-            }),
-          ),
+      route._componentsPromise = route._lazyPromise.then(() =>
+        Promise.all(
+          componentTypes.map(async (type) => {
+            const component = route.options[type]
+            if ((component as any)?.preload) {
+              await (component as any).preload()
+            }
+          }),
+        ),
       )
     }
-    return route._componentsPromise;
+    return route._componentsPromise
   }
 
   preloadRoute = async <
