@@ -5,7 +5,7 @@ import type {
   HistoryAction,
   HistoryLocation,
 } from '@tanstack/history'
-import type { AnyRoute, ReactNode } from './route'
+import type { AnyRoute } from './route'
 import type { ParseRoute } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
@@ -261,23 +261,24 @@ const _resolvePromptBlockerArgs = (
   }
 }
 
-export function Block<TRouter extends AnyRouter = RegisteredRouter>(
-  opts: UseBlockerOpts<TRouter>,
-): ReactNode
+export function Block<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TWithResolver extends boolean = boolean,
+>(opts: PromptProps<TRouter, TWithResolver>): React.ReactNode
 
 /**
  *  @deprecated Use the UseBlockerOpts property instead
  */
-export function Block(opts: LegacyBlockerOpts): ReactNode
+export function Block(opts: LegacyPromptProps): React.ReactNode
 
-export function Block(opts: PromptProps | LegacyPromptProps): ReactNode {
+export function Block(opts: PromptProps | LegacyPromptProps): React.ReactNode {
   const { children, ...rest } = opts
   const args = _resolvePromptBlockerArgs(rest)
 
   const resolver = useBlocker(args)
   return children
     ? typeof children === 'function'
-      ? children(resolver)
+      ? children(resolver as any)
       : children
     : null
 }
@@ -285,9 +286,13 @@ export function Block(opts: PromptProps | LegacyPromptProps): ReactNode {
 type LegacyPromptProps = {
   blockerFn?: LegacyBlockerFn
   condition?: boolean | any
-  children?: ReactNode | (({ proceed, reset }: BlockerResolver) => ReactNode)
+  children?: React.ReactNode | ((params: BlockerResolver) => React.ReactNode)
 }
 
-export type PromptProps = UseBlockerOpts & {
-  children?: ReactNode | (({ proceed, reset }: BlockerResolver) => ReactNode)
+type PromptProps<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TWithResolver extends boolean = boolean,
+  TParams = TWithResolver extends true ? BlockerResolver<TRouter> : void,
+> = UseBlockerOpts<TRouter, TWithResolver> & {
+  children?: React.ReactNode | ((params: TParams) => React.ReactNode)
 }
