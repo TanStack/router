@@ -2823,6 +2823,7 @@ export class Router<
           ),
       )
     }
+    return route._componentsPromise;
   }
 
   preloadRoute = async <
