@@ -1,4 +1,6 @@
 import * as React from 'react'
+import type { RouteIds } from './routeInfo'
+import type { AnyRouter } from './router'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
@@ -13,6 +15,10 @@ export type PickAsRequired<TValue, TKey extends keyof TValue> = Omit<
 
 export type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
+}
+
+export type PickOptional<T> = {
+  [K in keyof T as undefined extends T[K] ? K : never]: T[K]
 }
 
 // from https://stackoverflow.com/a/76458160
@@ -48,13 +54,17 @@ export type IsUnion<T, U extends T = T> = (
   ? false
   : true
 
-export type Assign<TLeft, TRight> = keyof TLeft extends never
-  ? TRight
-  : keyof TRight extends never
-    ? TLeft
-    : keyof TLeft & keyof TRight extends never
-      ? TLeft & TRight
-      : Omit<TLeft, keyof TRight> & TRight
+export type Assign<TLeft, TRight> = TLeft extends any
+  ? TRight extends any
+    ? keyof TLeft extends never
+      ? TRight
+      : keyof TRight extends never
+        ? TLeft
+        : keyof TLeft & keyof TRight extends never
+          ? TLeft & TRight
+          : Omit<TLeft, keyof TRight> & TRight
+    : never
+  : never
 
 export type Timeout = ReturnType<typeof setTimeout>
 
@@ -66,12 +76,12 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | TResult
   | ((prev: TPrevious) => TResult)
 
-export type MergeUnionObjects<TUnion> = TUnion extends MergeUnionPrimitive
+export type ExtractObjects<TUnion> = TUnion extends MergeAllPrimitive
   ? never
   : TUnion
 
-export type MergeUnionObject<TUnion> =
-  MergeUnionObjects<TUnion> extends infer TObj
+export type PartialMergeAllObject<TUnion> =
+  ExtractObjects<TUnion> extends infer TObj
     ? {
         [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
           ? TKey extends keyof TObj
@@ -81,31 +91,66 @@ export type MergeUnionObject<TUnion> =
       }
     : never
 
-export type MergeUnionPrimitive =
+export type MergeAllPrimitive =
   | ReadonlyArray<any>
   | number
   | string
   | bigint
   | boolean
   | symbol
+  | undefined
+  | null
 
-export type MergeUnionPrimitives<TUnion> = TUnion extends MergeUnionPrimitive
+export type ExtractPrimitives<TUnion> = TUnion extends MergeAllPrimitive
   ? TUnion
   : TUnion extends object
     ? never
     : TUnion
 
-export type MergeUnion<TUnion> =
-  | MergeUnionPrimitives<TUnion>
-  | MergeUnionObject<TUnion>
+export type PartialMergeAll<TUnion> =
+  | ExtractPrimitives<TUnion>
+  | PartialMergeAllObject<TUnion>
 
 export type Constrain<T, TConstraint, TDefault = TConstraint> =
   | (T extends TConstraint ? T : never)
   | TDefault
 
-export type ConstrainLiteral<T, TConstraint, TDefault = TConstraint> =
-  | (T & TConstraint)
-  | TDefault
+export type ConstrainLiteral<T, TConstraint, TDefault = TConstraint> = T &
+  TConstraint
+
+/**
+ * To be added to router types
+ */
+export type UnionToIntersection<T> = (
+  T extends any ? (arg: T) => any : never
+) extends (arg: infer T) => any
+  ? T
+  : never
+
+/**
+ * Merges everything in a union into one object.
+ * This mapped type is homomorphic which means it preserves stuff! :)
+ */
+export type MergeAllObjects<
+  TUnion,
+  TIntersected = UnionToIntersection<ExtractObjects<TUnion>>,
+> = [keyof TIntersected] extends [never]
+  ? never
+  : {
+      [TKey in keyof TIntersected]: TUnion extends any
+        ? TUnion[TKey & keyof TUnion]
+        : never
+    }
+
+export type MergeAll<TUnion> =
+  | MergeAllObjects<TUnion>
+  | ExtractPrimitives<TUnion>
+
+export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
+  ? unknown extends T
+    ? never
+    : 'Function is not serializable'
+  : { [K in keyof T]: ValidateJSON<T[K]> }
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
@@ -218,7 +263,19 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
-export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
+function getObjectKeys(obj: any, ignoreUndefined: boolean) {
+  let keys = Object.keys(obj)
+  if (ignoreUndefined) {
+    keys = keys.filter((key) => obj[key] !== undefined)
+  }
+  return keys
+}
+
+export function deepEqual(
+  a: any,
+  b: any,
+  opts?: { partial?: boolean; ignoreUndefined?: boolean },
+): boolean {
   if (a === b) {
     return true
   }
@@ -228,23 +285,22 @@ export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const aKeys = Object.keys(a).filter((key) => a[key] !== undefined)
-    const bKeys = Object.keys(b).filter((key) => b[key] !== undefined)
+    const ignoreUndefined = opts?.ignoreUndefined ?? true
+    const aKeys = getObjectKeys(a, ignoreUndefined)
+    const bKeys = getObjectKeys(b, ignoreUndefined)
 
-    if (!partial && aKeys.length !== bKeys.length) {
+    if (!opts?.partial && aKeys.length !== bKeys.length) {
       return false
     }
 
-    return !bKeys.some(
-      (key) => !(key in a) || !deepEqual(a[key], b[key], partial),
-    )
+    return bKeys.every((key) => deepEqual(a[key], b[key], opts))
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) {
       return false
     }
-    return !a.some((item, index) => !deepEqual(item, b[index], partial))
+    return !a.some((item, index) => !deepEqual(item, b[index], opts))
   }
 
   return false
@@ -297,6 +353,7 @@ export type StringLiteral<T> = T extends string
   : never
 
 export type StrictOrFrom<
+  TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean = true,
 > = TStrict extends false
@@ -305,9 +362,15 @@ export type StrictOrFrom<
       strict: TStrict
     }
   : {
-      from: StringLiteral<TFrom> | TFrom
+      from: StringLiteral<
+        ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
+      >
       strict?: TStrict
     }
+
+export type ThrowOrOptional<T, TThrow extends boolean> = TThrow extends true
+  ? T
+  : T | undefined
 
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect

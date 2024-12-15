@@ -9,8 +9,10 @@ import {
   functionalUpdate,
   useForwardedRef,
   useIntersectionObserver,
+  useLayoutEffect,
 } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
+import { useMatch } from './useMatch'
 import type { ParsedLocation } from './location'
 import type { HistoryState } from '@tanstack/history'
 import type {
@@ -26,7 +28,11 @@ import type {
   RouteToPath,
   TrailingSlashOptionByRouter,
 } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  ViewTransitionOptions,
+} from './router'
 import type {
   Constrain,
   ConstrainLiteral,
@@ -168,14 +174,21 @@ export type NavigateOptions<
 > = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & NavigateOptionProps
 
 export interface NavigateOptionProps {
+  // if set to `true`, the router will scroll the element with an id matching the hash into view with default ScrollIntoViewOptions.
+  // if set to `false`, the router will not scroll the element with an id matching the hash into view.
+  // if set to `ScrollIntoViewOptions`, the router will scroll the element with an id matching the hash into view with the provided options.
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
   resetScroll?: boolean
   /** @deprecated All navigations now use startTransition under the hood */
   startTransition?: boolean
   // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
-  viewTransition?: boolean
+  // if set to `ViewTransitionOptions`, the router will pass the `types` field to document.startViewTransition({update: fn, types: viewTransition.types}) call
+  viewTransition?: boolean | ViewTransitionOptions
   ignoreBlocker?: boolean
+  reloadDocument?: boolean
+  href?: string
 }
 
 export type ToOptions<
@@ -196,10 +209,10 @@ export interface MaskOptions<
 }
 
 export type ToMaskOptions<
-  TRouteTree extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TMaskFrom extends string = string,
   TMaskTo extends string = '.',
-> = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
+> = ToSubOptions<TRouter, TMaskFrom, TMaskTo> & {
   unmaskOnReload?: boolean
 }
 
@@ -320,7 +333,7 @@ type ResolveRelativeToParams<
         TToParams
       >
 
-interface MakeOptionalSearchParams<
+export interface MakeOptionalSearchParams<
   in out TRouter extends AnyRouter,
   in out TFrom,
   in out TTo,
@@ -328,7 +341,7 @@ interface MakeOptionalSearchParams<
   search?: true | (ParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {})
 }
 
-interface MakeOptionalPathParams<
+export interface MakeOptionalPathParams<
   in out TRouter extends AnyRouter,
   in out TFrom,
   in out TTo,
@@ -420,6 +433,7 @@ export interface ActiveOptions {
   exact?: boolean
   includeHash?: boolean
   includeSearch?: boolean
+  explicitUndefined?: boolean
 }
 
 export type LinkOptions<
@@ -446,7 +460,7 @@ export interface LinkOptionsProps {
    * - `'intent'` - Preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
    * - `'viewport'` - Preload the linked route when it enters the viewport
    */
-  preload?: false | 'intent' | 'viewport'
+  preload?: false | 'intent' | 'viewport' | 'render'
   /**
    * When a preload strategy is set, this delays the preload by this many milliseconds.
    * If the user exits the link before this delay, the preload will be cancelled.
@@ -551,6 +565,7 @@ export function useLinkProps<
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
+  const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
 
   const {
@@ -558,14 +573,10 @@ export function useLinkProps<
     activeProps = () => ({ className: 'active' }),
     inactiveProps = () => ({}),
     activeOptions,
-    hash,
-    search,
-    params,
     to,
-    state,
-    mask,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
+    hashScrollIntoView,
     replace,
     startTransition,
     resetScroll,
@@ -585,6 +596,16 @@ export function useLinkProps<
     ...rest
   } = options
 
+  const {
+    // prevent these from being returned
+    params: _params,
+    search: _search,
+    hash: _hash,
+    state: _state,
+    mask: _mask,
+    ...propsSafeToSpread
+  } = rest
+
   // If this link simply reloads the current route,
   // make sure it has a new key so it will trigger a data refresh
 
@@ -592,6 +613,9 @@ export function useLinkProps<
   // null for LinkUtils
 
   const type: 'internal' | 'external' = React.useMemo(() => {
+    if (rest.reloadDocument) {
+      return 'external'
+    }
     try {
       new URL(`${to}`)
       return 'external'
@@ -599,9 +623,25 @@ export function useLinkProps<
     return 'internal'
   }, [to])
 
+  // subscribe to search params to re-build location if it changes
+  const currentSearch = useRouterState({
+    select: (s) => s.location.search,
+    structuralSharing: true as any,
+  })
+
+  // In the rare event that the user bypasses type-safety and doesn't supply a `from`
+  // we'll use the current route as the `from` location so relative routing works as expected
+  const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
+
+  // Use it as the default `from` location
+  options = {
+    from: parentRouteId,
+    ...options,
+  }
+
   const next = React.useMemo(
     () => router.buildLocation(options as any),
-    [router, options],
+    [router, options, currentSearch],
   )
   const preload = React.useMemo(
     () => userPreload ?? router.options.defaultPreload,
@@ -612,32 +652,47 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
-      // Compare path/hash for matches
-      const currentPathSplit = removeTrailingSlash(
-        s.location.pathname,
-        router.basepath,
-      ).split('/')
-      const nextPathSplit = removeTrailingSlash(
-        next.pathname,
-        router.basepath,
-      ).split('/')
-      const pathIsFuzzyEqual = nextPathSplit.every(
-        (d, i) => d === currentPathSplit[i],
-      )
-      // Combine the matches based on user router.options
-      const pathTest = activeOptions?.exact
-        ? exactPathTest(s.location.pathname, next.pathname, router.basepath)
-        : pathIsFuzzyEqual
-      const hashTest = activeOptions?.includeHash
-        ? s.location.hash === next.hash
-        : true
-      const searchTest =
-        (activeOptions?.includeSearch ?? true)
-          ? deepEqual(s.location.search, next.search, !activeOptions?.exact)
-          : true
+      if (activeOptions?.exact) {
+        const testExact = exactPathTest(
+          s.location.pathname,
+          next.pathname,
+          router.basepath,
+        )
+        if (!testExact) {
+          return false
+        }
+      } else {
+        const currentPathSplit = removeTrailingSlash(
+          s.location.pathname,
+          router.basepath,
+        ).split('/')
+        const nextPathSplit = removeTrailingSlash(
+          next.pathname,
+          router.basepath,
+        ).split('/')
 
-      // The final "active" test
-      return pathTest && hashTest && searchTest
+        const pathIsFuzzyEqual = nextPathSplit.every(
+          (d, i) => d === currentPathSplit[i],
+        )
+        if (!pathIsFuzzyEqual) {
+          return false
+        }
+      }
+
+      if (activeOptions?.includeSearch ?? true) {
+        const searchTest = deepEqual(s.location.search, next.search, {
+          partial: !activeOptions?.exact,
+          ignoreUndefined: !activeOptions?.explicitUndefined,
+        })
+        if (!searchTest) {
+          return false
+        }
+      }
+
+      if (activeOptions?.includeHash) {
+        return s.location.hash === next.hash
+      }
+      return true
     },
   })
 
@@ -661,12 +716,22 @@ export function useLinkProps<
     innerRef,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!disabled || preload !== 'viewport' },
+    { disabled: !!disabled || !(preload === 'viewport') },
   )
+
+  useLayoutEffect(() => {
+    if (hasRenderFetched.current) {
+      return
+    }
+    if (!disabled && preload === 'render') {
+      doPreload()
+      hasRenderFetched.current = true
+    }
+  }, [disabled, doPreload, preload])
 
   if (type === 'external') {
     return {
-      ...rest,
+      ...propsSafeToSpread,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       type,
       href: to,
@@ -704,10 +769,12 @@ export function useLinkProps<
       })
 
       // All is well? Navigate!
-      router.commitLocation({
-        ...next,
+      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
+      router.buildAndCommitLocation({
+        ...options,
         replace,
         resetScroll,
+        hashScrollIntoView,
         startTransition,
         viewTransition,
         ignoreBlocker,
@@ -785,7 +852,7 @@ export function useLinkProps<
   }
 
   return {
-    ...rest,
+    ...propsSafeToSpread,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
     href: disabled
@@ -812,8 +879,8 @@ export function useLinkProps<
   }
 }
 
-type UseLinkReactProps<TComp> = TComp extends keyof JSX.IntrinsicElements
-  ? JSX.IntrinsicElements[TComp]
+type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
+  ? React.JSX.IntrinsicElements[TComp]
   : React.PropsWithoutRef<
       TComp extends React.ComponentType<infer TProps> ? TProps : never
     > &
@@ -908,7 +975,7 @@ export type CreateLinkProps = LinkProps<
 >
 
 export type LinkComponent<TComp> = <
-  TRouter extends RegisteredRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
@@ -928,7 +995,7 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    const { type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
+    const { type: _type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
 
     const children =
       typeof rest.children === 'function'
@@ -938,7 +1005,7 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
         : rest.children
 
     if (typeof _asChild === 'undefined') {
-      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a delete prop
+      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
       // @ts-expect-error
       delete linkProps.disabled
     }
@@ -956,4 +1023,22 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+export type LinkOptionsFn<TComp> = <
+  const TProps,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '',
+>(
+  options: Constrain<
+    TProps,
+    LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  >,
+) => TProps
+
+export const linkOptions: LinkOptionsFn<'a'> = (options) => {
+  return options as any
 }

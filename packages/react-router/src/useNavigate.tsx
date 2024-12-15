@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
 import type { FromPathOption, NavigateOptions } from './link'
-import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <

@@ -3,6 +3,9 @@ id: deferFunction
 title: defer function
 ---
 
+> [!CAUTION]
+> You don't need to call `defer` manually anymore, Promises are handled automatically now.
+
 The `defer` function wraps a promise with a deferred state object that can be used to inspect the promise's state. This deferred promise can then be passed to the [`useAwaited`](./useAwaitedHook.md) hook or the [`<Await>`](./awaitComponent.md) component for suspending until the promise is resolved or rejected.
 
 The `defer` function accepts a single argument, the `promise` to wrap with a deferred state object.
@@ -15,7 +18,7 @@ The `defer` function accepts a single argument, the `promise` to wrap with a def
 
 ## defer returns
 
-- A [`DeferredPromise<T>`](./DeferredPromiseType.md) that can be passed to the [`useAwaited`](./useAwaitedHook.md) hook or the [`<Await>`](./awaitComponent.md) component.
+- A promise that can be passed to the [`useAwaited`](./useAwaitedHook.md) hook or the [`<Await>`](./awaitComponent.md) component.
 
 ## Examples
 

@@ -2,7 +2,7 @@ import * as React from 'react'
 import warning from 'tiny-warning'
 import { useRouter } from './useRouter'
 import { defaultSerializeError } from './router'
-import { defer } from './defer'
+import { TSR_DEFERRED_PROMISE, defer } from './defer'
 import { defaultDeserializeError, isServerSideError } from './isServerSideError'
 import type { DeferredPromise } from './defer'
 
@@ -14,38 +14,35 @@ export function useAwaited<T>({
   promise: _promise,
 }: AwaitOptions<T>): [T, DeferredPromise<T>] {
   const router = useRouter()
-  const promise = _promise as DeferredPromise<T>
+  const promise = defer(_promise)
 
-  defer(promise)
-
-  if (promise.status === 'pending') {
+  if (promise[TSR_DEFERRED_PROMISE].status === 'pending') {
     throw promise
   }
 
-  if (promise.status === 'error') {
+  if (promise[TSR_DEFERRED_PROMISE].status === 'error') {
     if (typeof document !== 'undefined') {
-      if (isServerSideError(promise.error)) {
+      if (isServerSideError(promise[TSR_DEFERRED_PROMISE].error)) {
         throw (
           router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-        )(promise.error.data as any)
+        )(promise[TSR_DEFERRED_PROMISE].error.data as any)
       } else {
         warning(
           false,
           "Encountered a server-side error that doesn't fit the expected shape",
         )
-        throw promise.error
+        throw promise[TSR_DEFERRED_PROMISE].error
       }
     } else {
       throw {
         data: (
           router.options.errorSerializer?.serialize ?? defaultSerializeError
-        )(promise.error),
+        )(promise[TSR_DEFERRED_PROMISE].error),
         __isServerError: true,
       }
     }
   }
-
-  return [promise.data as any, promise]
+  return [promise[TSR_DEFERRED_PROMISE].data, promise]
 }
 
 export function Await<T>(
@@ -68,5 +65,6 @@ function AwaitInner<T>(
   },
 ): React.JSX.Element {
   const [data] = useAwaited(props)
+
   return props.children(data) as React.JSX.Element
 }

@@ -1,31 +1,35 @@
 {
-  "name": "tanstack-router-search-validator-adapters",
+  "name": "tanstack-search-validator-adapters",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --port=3001",
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
-    "start": "vite"
+    "start": "vite",
+    "test:unit": "vitest"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.58.16",
-    "@tanstack/router-devtools": "^1.58.16",
-    "@tanstack/router-plugin": "^1.58.12",
-    "@tanstack/router-zod-adapter": "^1.58.16",
-    "@tanstack/router-valibot-adapter": "^1.58.16",
-    "@tanstack/router-arktype-adapter": "^1.58.16",
-    "@tanstack/react-query": "^5.56.2",
+    "@tanstack/react-query": "^5.62.3",
+    "@tanstack/react-router": "^1.90.0",
+    "@tanstack/arktype-adapter": "^1.90.0",
+    "@tanstack/router-devtools": "^1.90.0",
+    "@tanstack/router-plugin": "^1.87.13",
+    "@tanstack/valibot-adapter": "^1.90.0",
+    "@tanstack/zod-adapter": "^1.90.0",
+    "arktype": "2.0.0-rc.26",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zod": "^3.23.8",
-    "valibot": "^0.42.0",
-    "arktype": "^2.0.0-rc.8"
+    "valibot": "1.0.0-beta.9",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.5"
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0"
   }
 }

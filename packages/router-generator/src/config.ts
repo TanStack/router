@@ -3,8 +3,23 @@ import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
+const defaultTemplate = {
+  routeTemplate: [
+    '%%tsrImports%%',
+    '\n\n',
+    '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+    'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
+  ].join(''),
+  apiTemplate: [
+    'import { json } from "@tanstack/start";\n',
+    '%%tsrImports%%',
+    '\n\n',
+    '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message:\'Hello "%%tsrPath%%"!\' }) }}%%tsrExportEnd%%\n',
+  ].join(''),
+}
+
 export const configSchema = z.object({
-  virtualRouteConfig: virtualRootRouteSchema.optional(),
+  virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
   routeFileIgnorePattern: z.string().optional(),
@@ -21,18 +36,27 @@ export const configSchema = z.object({
     .array(z.string())
     .optional()
     .default([
-      '/* prettier-ignore-start */',
       '/* eslint-disable */',
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols',
     ]),
-  routeTreeFileFooter: z
-    .array(z.string())
-    .optional()
-    .default(['/* prettier-ignore-end */']),
+  routeTreeFileFooter: z.array(z.string()).optional().default([]),
   autoCodeSplitting: z.boolean().optional(),
   indexToken: z.string().optional().default('index'),
   routeToken: z.string().optional().default('route'),
+  pathParamsAllowedCharacters: z
+    .array(z.enum([';', ':', '@', '&', '=', '+', '$', ',']))
+    .optional(),
+  customScaffolding: z
+    .object({
+      routeTemplate: z
+        .string()
+        .optional()
+        .default(defaultTemplate.routeTemplate),
+      apiTemplate: z.string().optional().default(defaultTemplate.apiTemplate),
+    })
+    .optional()
+    .default(defaultTemplate),
   experimental: z
     .object({
       // TODO: Remove this option in the next major release (v2).
@@ -43,6 +67,14 @@ export const configSchema = z.object({
 
 export type Config = z.infer<typeof configSchema>
 
+type ResolveParams = {
+  configDirectory: string
+}
+
+export function resolveConfigPath({ configDirectory }: ResolveParams) {
+  return path.resolve(configDirectory, 'tsr.config.json')
+}
+
 export function getConfig(
   inlineConfig: Partial<Config> = {},
   configDirectory?: string,
@@ -50,7 +82,7 @@ export function getConfig(
   if (configDirectory === undefined) {
     configDirectory = process.cwd()
   }
-  const configFilePathJson = path.resolve(configDirectory, 'tsr.config.json')
+  const configFilePathJson = resolveConfigPath({ configDirectory })
   const exists = existsSync(configFilePathJson)
 
   let config: Config

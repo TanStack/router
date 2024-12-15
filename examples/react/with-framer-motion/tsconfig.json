@@ -2,6 +2,8 @@
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"]
   }
 }

@@ -17,8 +17,11 @@ title: Router API
   - [`isNotFound`](./router/isNotFoundFunction.md)
   - [`isRedirect`](./router/isRedirectFunction.md)
   - [`lazyRouteComponent`](./router/lazyRouteComponentFunction.md)
+  - [`linkOptions`](./router/linkOptions.md)
   - [`notFound`](./router/notFoundFunction.md)
   - [`redirect`](./router/redirectFunction.md)
+  - [`retainSearchParams`](./router/retainSearchParamsFunction.md)
+  - [`stripSearchParams`](./router/stripSearchParamsFunction.md)
 - Components
   - [`<Await>`](./router/awaitComponent.md)
   - [`<CatchBoundary>`](./router/catchBoundaryComponent.md)
@@ -50,7 +53,6 @@ title: Router API
 - Types
   - [`ActiveLinkOptions Type`](./router/ActiveLinkOptionsType.md)
   - [`AsyncRouteComponent Type`](./router/AsyncRouteComponentType.md)
-  - [`DeferredPromise Type`](./router/DeferredPromiseType.md)
   - [`HistoryState Interface`](./router/historyStateInterface.md)
   - [`LinkOptions Type`](./router/LinkOptionsType.md)
   - [`LinkProps Type`](./router/LinkPropsType.md)
@@ -72,6 +74,7 @@ title: Router API
   - [`ToMaskOptions Type`](./router/ToMaskOptionsType.md)
   - [`ToOptions Type`](./router/ToOptionsType.md)
   - [`UseMatchRouteOptions Type`](./router/UseMatchRouteOptionsType.md)
+  - [`ViewTransitionOptions Type`](./router/ViewTransitionOptionsType.md)
 - ⚠️ Deprecated
   - [`FileRoute Class`](./router/FileRouteClass.md)
   - [`Route Class`](./router/RouteClass.md)

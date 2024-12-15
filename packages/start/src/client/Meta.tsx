@@ -1,6 +1,5 @@
 import { ScriptOnce, useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
-import { createPortal } from 'react-dom'
 import jsesc from 'jsesc'
 import { Context } from '@tanstack/react-cross-context'
 import { Asset } from './Asset'
@@ -17,10 +16,12 @@ export const useMeta = () => {
 
   const meta: Array<RouterManagedTag> = React.useMemo(() => {
     const resultMeta: Array<RouterManagedTag> = []
-    const metaByName: Record<string, true> = {}
+    const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
     ;[...routeMeta].reverse().forEach((metas) => {
       ;[...metas].reverse().forEach((m) => {
+        if (!m) return
+
         if (m.title) {
           if (!title) {
             title = {
@@ -29,11 +30,12 @@ export const useMeta = () => {
             }
           }
         } else {
-          if (m.name) {
-            if (metaByName[m.name]) {
+          const attribute = m.name ?? m.property
+          if (attribute) {
+            if (metaByAttribute[attribute]) {
               return
             } else {
-              metaByName[m.name] = true
+              metaByAttribute[attribute] = true
             }
           }
 
@@ -68,6 +70,7 @@ export const useMeta = () => {
             ...link,
           },
         })) as Array<RouterManagedTag>,
+    structuralSharing: true as any,
   })
 
   const preloadMeta = useRouterState({
@@ -92,6 +95,7 @@ export const useMeta = () => {
 
       return preloadMeta
     },
+    structuralSharing: true as any,
   })
 
   return uniqBy(
@@ -112,38 +116,86 @@ export const useMetaElements = () => {
 
   return (
     <>
-      <meta name="tsr-meta" />
       {meta.map((asset, i) => (
         <Asset {...asset} key={`tsr-meta-${JSON.stringify(asset)}`} />
       ))}
       <>
         <ScriptOnce
           log={false}
-          children={`
-__TSR__ = {
-  matches: [],
-  streamedValues: {},
-  initMatch: (index) => {
-    Object.entries(__TSR__.matches[index].extracted).forEach(([id, ex]) => {
-      if (ex.type === 'stream') {
-        let controller;
-        ex.value = new ReadableStream({
-          start(c) { controller = c; }
-        })
-        ex.value.controller = controller
-      } else if (ex.type === 'promise') {
-        let r, j
-        ex.value = new Promise((r_, j_) => { r = r_, j = j_ })
-        ex.resolve = r; ex.reject = j
-      }
-    })
-  },
-  cleanScripts: () => {
-    document.querySelectorAll('.tsr-once').forEach((el) => {
-      el.remove()
-    })
-  },
-}`}
+          // This is the raw version of the minified script below
+          // children={`
+          // __TSR__ = {
+          //   matches: [],
+          //   streamedValues: {},
+          //   queue: [],
+          //   runQueue: () => {
+          //     let changed = false
+          //     __TSR__.queue = __TSR__.queue.filter((fn) => {
+          //       if (fn()) {
+          //         changed = true
+          //         return false
+          //       }
+          //       return true
+          //     })
+          //     if (changed) {
+          //       __TSR__.runQueue()
+          //     }
+          //   },
+          //   initMatch: (match) => {
+          //     __TSR__.queue.push(() => {
+          //       if (!__TSR__.matches[match.index]) {
+          //         __TSR__.matches[match.index] = match
+          //         Object.entries(match.extracted).forEach(([id, ex]) => {
+          //           if (ex.type === 'stream') {
+          //             let controller
+          //             ex.value = new ReadableStream({
+          //               start(c) {
+          //                 controller = c
+          //               },
+          //             })
+          //             ex.value.controller = controller
+          //           } else if (ex.type === 'promise') {
+          //             let r, j
+          //             ex.value = new Promise((r_, j_) => {
+          //               ;(r = r_), (j = j_)
+          //             })
+          //             ex.resolve = r
+          //             ex.reject = j
+          //           }
+          //         })
+          //       }
+
+          //       return true
+          //     })
+
+          //     __TSR__.runQueue()
+          //   },
+          //   resolvePromise: (entry) => {
+          //     __TSR__.queue.push(() => {
+          //       const match = __TSR__.matches[entry.matchIndex]
+          //       if (match) {
+          //         const ex = match.extracted[entry.id]
+          //         if (ex) {
+          //           ex.resolve(entry.value.data)
+          //           return true
+          //         }
+          //       }
+          //       return false
+          //     })
+
+          //     __TSR__.runQueue()
+          //   },
+          //   cleanScripts: () => {
+          //     document.querySelectorAll('.tsr-once').forEach((el) => {
+          //       el.remove()
+          //     })
+          //   },
+          // }
+          //   `}
+          // This is the minified version of the script above, using https://try.terser.org/
+          // Is this archaic? Probably. But we're not going to edit this much, so it's fine.
+          // In a future world, like bun, we could use a more modern approach, like a compile-time macro minifier.
+          children={`__TSR__={matches:[],streamedValues:{},queue:[],runQueue:()=>{let e=!1;__TSR__.queue=__TSR__.queue.filter((_=>!_()||(e=!0,!1))),e&&__TSR__.runQueue()},initMatch:e=>{__TSR__.queue.push((()=>(__TSR__.matches[e.index]||(__TSR__.matches[e.index]=e,Object.entries(e.extracted).forEach((([e,_])=>{if("stream"===_.type){let e;_.value=new ReadableStream({start(_){e=_}}),_.value.controller=e}else if("promise"===_.type){let e,t;_.value=new Promise(((_,u)=>{e=_,t=u})),_.resolve=e,_.reject=t}}))),!0))),__TSR__.runQueue()},resolvePromise:e=>{__TSR__.queue.push((()=>{const _=__TSR__.matches[e.matchIndex];if(_){const t=_.extracted[e.id];if(t)return t.resolve(e.value.data),!0}return!1})),__TSR__.runQueue()},cleanScripts:()=>{document.querySelectorAll(".tsr-once").forEach((e=>{e.remove()}))}};`}
         />
         <ScriptOnce
           children={`__TSR__.dehydrated = ${jsesc(
@@ -156,7 +208,6 @@ __TSR__ = {
           )}`}
         />
       </>
-      <meta name="/tsr-meta" />
     </>
   )
 }
@@ -165,102 +216,8 @@ __TSR__ = {
  * @description The `Meta` component is used to render meta tags and links for the current route.
  * It should be rendered in the `<head>` of your document.
  */
-export const Meta = ({ children }: { children?: React.ReactNode }) => {
-  const router = useRouter()
-  const metaElements = useMetaElements()
-  const [mounted, setMounted] = React.useState(false)
-
-  React[
-    typeof document !== 'undefined' ? 'useLayoutEffect' : 'useEffect'
-  ](() => {
-    if (typeof document === 'undefined') {
-      return
-    }
-
-    // Remove all meta between the tsr meta tags
-    const start = document.head.querySelector('meta[name="tsr-meta"]')
-    const end = document.head.querySelector('meta[name="/tsr-meta"]')
-
-    // Iterate over all head children and remove them until we reach the end
-    let current = start?.nextElementSibling
-    while (current && current !== end) {
-      const next = current.nextElementSibling
-      current.remove()
-      current = next
-    }
-
-    // Remove the markers
-    start?.remove()
-    end?.remove()
-
-    setMounted(true)
-  }, [])
-
-  const all = (
-    <>
-      {metaElements}
-      {children}
-    </>
-  )
-
-  if (router.isServer) {
-    return all
-  }
-
-  if (!mounted) {
-    return null
-  }
-
-  return createPortal(all, document.head)
-}
-
-export function Html({ children, ...props }: React.HTMLProps<HTMLHtmlElement>) {
-  const router = useRouter()
-
-  // warning(
-  //   !Object.keys(props).length,
-  //   'Passing props other than children to the Html component will be supported very soon in React 19.',
-  // )
-
-  if (!router.isServer) {
-    return <>{children}</>
-  }
-
-  return <html>{children}</html>
-}
-
-export function Head({ children, ...props }: React.HTMLProps<HTMLHeadElement>) {
-  const router = useRouter()
-
-  // warning(
-  //   !Object.keys(props).length,
-  //   'Passing props other than children to the Head component will be supported very soon in React 19.',
-  // )
-
-  if (!router.isServer) {
-    return children
-  }
-
-  return <head>{children}</head>
-}
-
-export function Body({ children, ...props }: React.HTMLProps<HTMLBodyElement>) {
-  const router = useRouter()
-
-  // warning(
-  //   !Object.keys(props).length,
-  //   'Passing props other than children to the Body component will be supported very soon in React 19.',
-  // )
-
-  if (!router.isServer) {
-    return children
-  }
-
-  return (
-    <body>
-      <div id="root">{children}</div>
-    </body>
-  )
+export const Meta = () => {
+  return <>{useMetaElements()}</>
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

@@ -21,10 +21,10 @@ const ruleTester = new RuleTester()
 
 // reduce the number of test cases by only testing a subset of the checked properties
 const testedCheckedProperties = [
-  checkedProperties[0],
-  checkedProperties[1],
-  checkedProperties[2],
-  checkedProperties[3],
+  checkedProperties[0]!,
+  checkedProperties[1]!,
+  checkedProperties[2]!,
+  checkedProperties[3]!,
 ]
 type TestedCheckedProperties = (typeof testedCheckedProperties)[number]
 const orderIndependentProps = ['gcTime', '...foo'] as const
@@ -164,6 +164,19 @@ const validTestCases = validTestMatrix.map(
     code: getCode({ createRouteFunction, properties }),
   }),
 )
+
+invalidTestMatrix.push({
+  createRouteFunction: 'createFileRoute',
+  properties: {
+    invalid: ['loader', 'loaderDeps'],
+    valid: ['loaderDeps', 'loader'],
+  },
+})
+
+invalidTestMatrix.push({
+  createRouteFunction: 'createFileRoute',
+  properties: { invalid: ['meta', 'loader'], valid: ['loader', 'meta'] },
+})
 
 const invalidTestCases = invalidTestMatrix.map(
   ({ createRouteFunction, properties }) => ({

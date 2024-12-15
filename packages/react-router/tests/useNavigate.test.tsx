@@ -1238,9 +1238,12 @@ test('when setting search params with 2 parallel navigate calls', async () => {
 
   const IndexComponent = () => {
     const navigate = useNavigate()
+    const search = indexRoute.useSearch()
     return (
       <React.Fragment>
         <h1>Index</h1>
+        <div data-testid="param1">{search.param1}</div>
+        <div data-testid="param2">{search.param2}</div>
         <button
           onClick={() => {
             navigate({
@@ -1284,5 +1287,10 @@ test('when setting search params with 2 parallel navigate calls', async () => {
 
   fireEvent.click(postsButton)
 
+  expect(await screen.findByTestId('param1')).toHaveTextContent('foo')
+  expect(await screen.findByTestId('param2')).toHaveTextContent('bar')
   expect(router.state.location.search).toEqual({ param1: 'foo', param2: 'bar' })
+  const search = new URLSearchParams(window.location.search)
+  expect(search.get('param1')).toEqual('foo')
+  expect(search.get('param2')).toEqual('bar')
 })

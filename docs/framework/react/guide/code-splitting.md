@@ -84,14 +84,6 @@ Here are the options currently supported by the `createLazyFileRoute` function:
 
 - The `__root.tsx` route file does not support code splitting, since it's always rendered regardless of the current route.
 
-> ❓ Why can't I keep all of my route code in a single file? Can't you just code split that file?
->
-> It's true, most popular frameworks support automatic code-extraction, but for now, TanStack Router is going to keep things simple by not getting into the business of parsing and extracting code from files. This also allows you to use any bundler you want, via the CLI, without having to worry about whether or not it supports our code extraction approach.
->
-> In practice, we've found that **_splitting_ a file into 2 parts (critical and lazy) is the easy part**. The **harder part by far is wiring it all back together properly using lower-level lazy-loading APIs (not to mention doing that in a type-safe way)**.
->
-> By keeping the splitting process manual and adhering to a simple set of conventions, there's less room for error and less cognitive overhead when working with code splitting.
-
 ### Example code splitting with `.lazy.tsx`
 
 When you are using `.lazy.tsx` you can split your route into two files to enable code splitting:
@@ -193,7 +185,7 @@ Tada! 🎉
 When using the `autoCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
 
 > [!IMPORTANT]
-> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](./file-based-routing.md#prerequisites).
+> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](./file-based-routing.md#installation).
 > This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
 
 If this is your first time using TanStack Router, then you can skip the following steps and head over to [Enabling automatic code-splitting](#enabling-automatic-code-splitting). If you've already been using TanStack Router, then you might need to make some changes to your route files to enable automatic code-splitting.

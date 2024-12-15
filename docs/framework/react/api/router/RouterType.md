@@ -93,6 +93,7 @@ Commits a new location object to the browser history.
     location: ParsedLocation & {
       replace?: boolean
       resetScroll?: boolean
+      hashScrollIntoView?: boolean | ScrollIntoViewOptions
       ignoreBlocker?: boolean
     },
   ) => Promise<void>
@@ -112,6 +113,13 @@ Commits a new location object to the browser history.
     - Optional
     - Defaults to `true` so that the scroll position will be reset to 0,0 after the location is committed to the browser history.
     - If `false`, the scroll position will not be reset to 0,0 after the location is committed to history.
+  - `hashScrollIntoView`
+    - Type: `boolean | ScrollIntoViewOptions`
+    - Optional
+    - Defaults to `true` so the element with an id matching the hash will be scrolled into view after the location is committed to history.
+    - If `false`, the element with an id matching the hash will not be scrolled into view after the location is committed to history.
+    - If an object is provided, it will be passed to the `scrollIntoView` method as options.
+    - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
   - `ignoreBlocker`
     - Type: `boolean`
     - Optional
@@ -129,11 +137,21 @@ Navigates to a new location.
 
 ### `.invalidate` method
 
-Invalidates all route matches by forcing their `beforeLoad` and `load` functions to be called again.
+Invalidates route matches by forcing their `beforeLoad` and `load` functions to be called again.
 
-- Type: `() => Promise<void>`
+- Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean}) => Promise<void>`
 - This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
+- if `filter` is not supplied, all matches will be invalidated
+- if `filter` is supplied, only matches for which `filter` returns `true` will be invalidated.
 - You might also want to invalidate the Router if you imperatively `reset` the router's `CatchBoundary` to trigger loaders again.
+
+### `.clearCache` method
+
+Remove cached route matches.
+
+- Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean}) => void`
+- if `filter` is not supplied, all cached matches will be removed
+- if `filter` is supplied, only matches for which `filter` returns `true` will be removed.
 
 ### `.load` method
 

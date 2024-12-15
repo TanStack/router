@@ -20,6 +20,11 @@ import { rootPathId } from './filesystem/physical/rootPathId'
 import type { GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
+export const CONSTANTS = {
+  // When changing this, you'll want to update the import in `start/api/index.ts#defaultAPIFileRouteHandler`
+  APIRouteExportVariable: 'APIRoute',
+}
+
 let latestTask = 0
 const routeGroupPatternRegex = /\(.+\)/g
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
@@ -35,7 +40,7 @@ type RouteSubNode = {
   lazy?: RouteNode
 }
 
-export async function generator(config: Config) {
+export async function generator(config: Config, root: string) {
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
@@ -73,9 +78,9 @@ export async function generator(config: Config) {
   let getRouteNodesResult: GetRouteNodesResult
 
   if (config.virtualRouteConfig) {
-    getRouteNodesResult = await virtualGetRouteNodes(config)
+    getRouteNodesResult = await virtualGetRouteNodes(config, root)
   } else {
-    getRouteNodesResult = await physicalGetRouteNodes(config)
+    getRouteNodesResult = await physicalGetRouteNodes(config, root)
   }
 
   const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult
@@ -125,19 +130,22 @@ export async function generator(config: Config) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const replaced = `import * as React from 'react';
-import { Outlet, createRootRoute } from '@tanstack/react-router';
-
-export const Route = createRootRoute({
-  component: () => (
-    <React.Fragment>
-      <div>Hello "${rootPathId}"!</div>
-      <Outlet />
-    </React.Fragment>
-  ),
-})
-
-`
+      const replaced = fillTemplate(
+        [
+          'import * as React from "react"\n',
+          '%%tsrImports%%',
+          '\n\n',
+          '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
+          'function RootComponent() { return (<React.Fragment><div>Hello "%%tsrPath%%"!</div><Outlet /></React.Fragment>) };\n',
+        ].join(''),
+        {
+          tsrImports:
+            "import { Outlet, createRootRoute } from '@tanstack/react-router';",
+          tsrPath: rootPathId,
+          tsrExportStart: `export const Route = createRootRoute(`,
+          tsrExportEnd: ');',
+        },
+      )
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
@@ -186,20 +194,19 @@ export const Route = createRootRoute({
     if (!node.isVirtualParentRoute && !node.isVirtual) {
       const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
-      const escapedRoutePath = removeTrailingUnderscores(
-        node.routePath?.replaceAll('$', '$$') ?? '',
-      )
+      const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
       let replaced = routeCode
 
       if (!routeCode) {
         if (node.isLazy) {
-          replaced = [
-            `import { createLazyFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createLazyFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-          ].join('\n\n')
+          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
+            tsrImports:
+              "import { createLazyFileRoute } from '@tanstack/react-router';",
+            tsrPath: escapedRoutePath,
+            tsrExportStart: `export const Route = createLazyFileRoute('${escapedRoutePath}')(`,
+            tsrExportEnd: ');',
+          })
         } else if (
           node.isRoute ||
           (!node.isComponent &&
@@ -207,27 +214,28 @@ export const Route = createRootRoute({
             !node.isPendingComponent &&
             !node.isLoader)
         ) {
-          replaced = [
-            `import { createFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-          ].join('\n\n')
+          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
+            tsrImports:
+              "import { createFileRoute } from '@tanstack/react-router';",
+            tsrPath: escapedRoutePath,
+            tsrExportStart: `export const Route = createFileRoute('${escapedRoutePath}')(`,
+            tsrExportEnd: ');',
+          })
         }
       } else {
         replaced = routeCode
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+            (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
           )
           .replace(
             /(import\s*\{.*)(create(Lazy)?FileRoute)(.*\}\s*from\s*['"]@tanstack\/react-router['"])/gs,
-            (match, p1, p2, p3, p4) =>
+            (_, p1, __, ___, p4) =>
               `${p1}${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
             /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3, p4) =>
+            (_, __, p2, ___, p4) =>
               `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
       }
@@ -344,29 +352,30 @@ export const Route = createRootRoute({
   for (const node of preRouteNodes.filter((d) => !d.isAPIRoute)) {
     await handleNode(node)
   }
+  checkRouteFullPathUniqueness(
+    preRouteNodes.filter(
+      (d) => !d.isAPIRoute && d.children === undefined && d.isLazy !== true,
+    ),
+    config,
+  )
 
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
     preRouteNodes.filter((d) => d.isAPIRoute),
+    config,
   )
 
   const handleAPINode = async (node: RouteNode) => {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
-    const escapedRoutePath = removeTrailingUnderscores(
-      node.routePath?.replaceAll('$', '$$') ?? '',
-    )
+    const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
-      const replaced = `import { json } from '@tanstack/start'
-import { createAPIFileRoute } from '@tanstack/start/api'
-
-export const Route = createAPIFileRoute('${escapedRoutePath}')({
-  GET: ({ request, params }) => {
-    return json({ message: 'Hello ${escapedRoutePath}' })
-  },
-})
-
-`
+      const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
+        tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
+        tsrPath: escapedRoutePath,
+        tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
+        tsrExportEnd: ');',
+      })
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
@@ -475,7 +484,9 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   }
   const routeImports = [
     ...config.routeTreeFileHeader,
-    '// This file is auto-generated by TanStack Router',
+    `// This file was automatically generated by TanStack Router.
+// You should NOT make any changes in this file as it will be overwritten.
+// Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
     imports.length
       ? `import { ${imports.join(', ')} } from '@tanstack/react-router'\n`
       : '',
@@ -495,9 +506,7 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
       .map((node) => {
         return `const ${
           node.variableName
-        }Import = createFileRoute('${removeTrailingUnderscores(
-          node.routePath,
-        )}')()`
+        }Import = createFileRoute('${node.routePath}')()`
       })
       .join('\n'),
     '// Create/Update Routes',
@@ -514,9 +523,8 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
         return [
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
-            node.isNonPath
-              ? `id: '${node.path}'`
-              : `path: '${node.cleanedPath}'`,
+            `id: '${node.path}'`,
+            !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)
@@ -584,12 +592,10 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
-        const [filePathId, routeId] = getFilePathIdAndRouteIdFromPath(
-          routeNode.routePath,
-        )
+        const filePathId = routeNode.routePath
 
         return `'${filePathId}': {
-          id: '${routeId}'
+          id: '${filePathId}'
           path: '${inferPath(routeNode)}'
           fullPath: '${inferFullPath(routeNode)}'
           preLoaderRoute: typeof ${routeNode.variableName}Import
@@ -654,25 +660,18 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
     const routesManifest = {
       __root__: {
         filePath: rootRouteNode.filePath,
-        children: routeTree.map(
-          (d) => getFilePathIdAndRouteIdFromPath(d.routePath)[1],
-        ),
+        children: routeTree.map((d) => d.routePath),
       },
       ...Object.fromEntries(
         routeNodes.map((d) => {
-          const [_, routeId] = getFilePathIdAndRouteIdFromPath(d.routePath)
+          const filePathId = d.routePath
 
           return [
-            routeId,
+            filePathId,
             {
               filePath: d.filePath,
-              parent: d.parent?.routePath
-                ? getFilePathIdAndRouteIdFromPath(d.parent.routePath)[1]
-                : undefined,
-              children: d.children?.map(
-                (childRoute) =>
-                  getFilePathIdAndRouteIdFromPath(childRoute.routePath)[1],
-              ),
+              parent: d.parent?.routePath ? d.parent.routePath : undefined,
+              children: d.children?.map((childRoute) => childRoute.routePath),
             },
           ]
         }),
@@ -742,15 +741,9 @@ export const Route = createAPIFileRoute('${escapedRoutePath}')({
   )
 }
 
-function spaces(d: number): string {
-  return Array.from({ length: d })
-    .map(() => ' ')
-    .join('')
-}
-
-function removeTrailingUnderscores(s?: string) {
-  return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
-}
+// function removeTrailingUnderscores(s?: string) {
+//   return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
+// }
 
 function removeGroups(s: string) {
   return s.replace(possiblyNestedRouteGroupPatternRegex, '')
@@ -872,7 +865,7 @@ export const createRouteNodesById = (
 ): Map<string, RouteNode> => {
   return new Map(
     routeNodes.map((routeNode) => {
-      const [_, id] = getFilePathIdAndRouteIdFromPath(routeNode.routePath)
+      const id = routeNode.routePath ?? ''
       return [id, routeNode]
     }),
   )
@@ -921,14 +914,43 @@ export const dedupeBranchesAndIndexRoutes = (
   })
 }
 
-function getFilePathIdAndRouteIdFromPath(pathname?: string) {
-  const filePathId = removeTrailingUnderscores(pathname)
-  const id = removeGroups(filePathId ?? '')
-
-  return [filePathId, id] as const
+function checkUnique<TElement>(routes: Array<TElement>, key: keyof TElement) {
+  // Check no two routes have the same `key`
+  // if they do, throw an error with the conflicting filePaths
+  const keys = routes.map((d) => d[key])
+  const uniqueKeys = new Set(keys)
+  if (keys.length !== uniqueKeys.size) {
+    const duplicateKeys = keys.filter((d, i) => keys.indexOf(d) !== i)
+    const conflictingFiles = routes.filter((d) =>
+      duplicateKeys.includes(d[key]),
+    )
+    return conflictingFiles
+  }
+  return undefined
 }
 
-function checkStartAPIRoutes(_routes: Array<RouteNode>) {
+function checkRouteFullPathUniqueness(
+  _routes: Array<RouteNode>,
+  config: Config,
+) {
+  const routes = _routes.map((d) => {
+    const inferredFullPath = inferFullPath(d)
+    return { ...d, inferredFullPath }
+  })
+
+  const conflictingFiles = checkUnique(routes, 'inferredFullPath')
+
+  if (conflictingFiles !== undefined) {
+    const errorMessage = `Conflicting configuration paths were found for the following route${conflictingFiles.length > 1 ? 's' : ''}: ${conflictingFiles
+      .map((p) => `"${p.inferredFullPath}"`)
+      .join(', ')}.
+Please ensure each route has a unique full path.
+Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+}
+
+function checkStartAPIRoutes(_routes: Array<RouteNode>, config: Config) {
   if (_routes.length === 0) {
     return []
   }
@@ -942,22 +964,14 @@ function checkStartAPIRoutes(_routes: Array<RouteNode>) {
     return { ...d, routePath }
   })
 
-  // Check no two API routes have the same routePath
-  // if they do, throw an error with the conflicting filePaths
-  const routePaths = routes.map((d) => d.routePath)
-  const uniqueRoutePaths = new Set(routePaths)
-  if (routePaths.length !== uniqueRoutePaths.size) {
-    const duplicateRoutePaths = routePaths.filter(
-      (d, i) => routePaths.indexOf(d) !== i,
-    )
-    const conflictingFiles = routes
-      .filter((d) => duplicateRoutePaths.includes(d.routePath))
-      .map((d) => `${d.fullPath}`)
-    const errorMessage = `Conflicting configuration paths was for found for the following API route${duplicateRoutePaths.length > 1 ? 's' : ''}: ${duplicateRoutePaths
+  const conflictingFiles = checkUnique(routes, 'routePath')
+
+  if (conflictingFiles !== undefined) {
+    const errorMessage = `Conflicting configuration paths were found for the following API route${conflictingFiles.length > 1 ? 's' : ''}: ${conflictingFiles
       .map((p) => `"${p}"`)
       .join(', ')}.
-Please ensure each API route has a unique route path.
-Conflicting files: \n ${conflictingFiles.join('\n ')}\n`
+  Please ensure each API route has a unique route path.
+Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
     throw new Error(errorMessage)
   }
 
@@ -1001,4 +1015,13 @@ export function startAPIRouteSegmentsFromTSRFilePath(
   })
 
   return segments
+}
+
+type TemplateTag = 'tsrImports' | 'tsrPath' | 'tsrExportStart' | 'tsrExportEnd'
+
+function fillTemplate(template: string, values: Record<TemplateTag, string>) {
+  return template.replace(
+    /%%(\w+)%%/g,
+    (_, key) => values[key as TemplateTag] || '',
+  )
 }

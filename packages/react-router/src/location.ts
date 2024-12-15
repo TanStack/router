@@ -1,7 +1,7 @@
 import type { HistoryState } from '@tanstack/history'
-import type { AnySearchSchema } from './route'
+import type { AnySchema } from './validators'
 
-export interface ParsedLocation<TSearchObj extends AnySearchSchema = {}> {
+export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
   href: string
   pathname: string
   search: TSearchObj

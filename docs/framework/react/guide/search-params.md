@@ -199,13 +199,13 @@ It might be surprising that when you try to navigate to this route, `search` is 
 
 For validation libraries we recommend using adapters which infer the correct `input` and `output` types.
 
-### Zod Adapter
+### Zod
 
 An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -215,7 +215,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: zodSearchValidator(productSearchSchema),
+  validateSearch: zodValidator(productSearchSchema),
 })
 ```
 
@@ -229,7 +229,7 @@ However the use of `catch` here overrides the types and makes `page`, `filter` a
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { fallback, zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { fallback, zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -241,7 +241,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: zodSearchValidator(productSearchSchema),
+  validateSearch: zodValidator(productSearchSchema),
 })
 ```
 
@@ -259,7 +259,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: zodSearchValidator({
+  validateSearch: zodValidator({
     schema: productSearchSchema,
     input: 'output',
     output: 'input',
@@ -269,12 +269,14 @@ export const Route = createFileRoute('/shop/products/')({
 
 This provides flexibility in which type you want to infer for navigation and which types you want to infer for reading search params.
 
-### Valibot Adapter
+### Valibot
 
-When using [Valibot](https://valibot.dev/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
+> [!WARNING]
+> Router expects the valibot 1.0 package to be installed.
+
+When using [Valibot](https://valibot.dev/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because `valibot` implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
 ```tsx
-import { valibotSearchValidator } from '@tanstack/router-valibot-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import * as v from 'valibot'
 
@@ -288,21 +290,19 @@ const productSearchSchema = v.object({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: valibotSearchValidator(productSearchSchema),
+  validateSearch: productSearchSchema,
 })
 ```
 
-### Arktype Adapter
+### Arktype
 
 > [!WARNING]
-> This adapter expects the arktype 2.0-beta package to be installed.
+> Router expects the arktype 2.0-rc package to be installed.
 
-When using [ArkType](https://arktype.io/) we recommend using the adapter. This ensures the correct `input` and `output` types are used for navigation and reading search params
+When using [ArkType](https://arktype.io/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [ArkType](https://arktype.io/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
 ```tsx
-import { arkTypeSearchValidator } from '@tanstack/router-arktype-adapter'
 import { createFileRoute } from '@tanstack/react-router'
-import * as v from 'valibot'
 import { type } from 'arktype'
 
 const productSearchSchema = type({
@@ -312,7 +312,7 @@ const productSearchSchema = type({
 })
 
 export const Route = createFileRoute('/shop/products/')({
-  validateSearch: arkTypeSearchValidator(productSearchSchema),
+  validateSearch: productSearchSchema,
 })
 ```
 
@@ -452,7 +452,7 @@ const ProductList = () => {
 }
 ```
 
-If you want to update the search params in a generic component that is rendered on multiple routes, specifiying `from` can be challenging.
+If you want to update the search params in a generic component that is rendered on multiple routes, specifying `from` can be challenging.
 
 In this scenario you can set `to="."` which will give you access to loosely typed search params.  
 Here is an example that illustrates this:
@@ -524,3 +524,114 @@ The `router.navigate` function works exactly the same way as the `useNavigate`/`
 ### `<Navigate search />`
 
 The `<Navigate search />` component works exactly the same way as the `useNavigate`/`navigate` hook/function above, but accepts its options as props instead of a function argument.
+
+## Transforming search with search middlewares
+
+When link hrefs are built, by default the only thing that matters for the query string part is the `search` property of a `<Link>`.
+
+TanStack Router provides a way to manipulate search params before the href is generated via **search middlewares**.
+Search middlewares are functions that transform the search parameters when generating new links for a route or its descendants.
+They are also executed upon navigation after search validation to allow manipulation of the query string.
+
+The following example shows how to make sure that for **every** link that is being built, the `rootValue` search param is added _if_ it is part of the current search params. If a link specifies `rootValue` inside `search`, then that value is used for building the link.
+
+```tsx
+import { z } from 'zod'
+import { createFileRoute } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+
+const searchSchema = z.object({
+  rootValue: z.string().optional(),
+})
+
+export const Route = createRootRoute({
+  validateSearch: zodValidator(searchSchema),
+  search: {
+    middlewares: [
+      ({search, next}) => {
+        const result = next(search)
+        return {
+          rootValue: search.rootValue
+          ...result
+        }
+      }
+    ]
+  }
+})
+```
+
+Since this specific use case is quite common, TanStack Router provides a generic implementation to retain search params via `retainSearchParams`:
+
+```tsx
+import { z } from 'zod'
+import { createFileRoute, retainSearchParams } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+
+const searchSchema = z.object({
+  rootValue: z.string().optional(),
+})
+
+export const Route = createRootRoute({
+  validateSearch: zodValidator(searchSchema),
+  search: {
+    middlewares: [retainSearchParams(['rootValue'])],
+  },
+})
+```
+
+Another common use case is to strip out search params from links if their default value is set. TanStack Router provides a generic implementation for this use case via `stripSearchParams`:
+
+```tsx
+import { z } from 'zod'
+import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+
+const defaultValues = {
+  one: 'abc',
+  two: 'xyz',
+}
+
+const searchSchema = z.object({
+  one: z.string().default(defaultValues.one),
+  two: z.string().default(defaultValues.two),
+})
+
+export const Route = createFileRoute('/hello')({
+  validateSearch: zodValidator(searchSchema),
+  search: {
+    // strip default values
+    middlewares: [stripSearchParams(defaultValues)],
+  },
+})
+```
+
+Multiple middlewares can be chained. The following example shows how to combine both `retainSearchParams` and `stripSearchParams`.
+
+```tsx
+import {
+  Link,
+  createFileRoute,
+  retainSearchParams,
+  stripSearchParams,
+} from '@tanstack/react-router'
+import { z } from 'zod'
+import { zodValidator } from '@tanstack/zod-adapter'
+
+const defaultValues = ['foo', 'bar']
+
+export const Route = createFileRoute('/search')({
+  validateSearch: zodValidator(
+    z.object({
+      retainMe: z.string().optional(),
+      arrayWithDefaults: z.string().array().default(defaultValues),
+      required: z.string(),
+    }),
+  ),
+  search: {
+    middlewares: [
+      retainSearchParams(['retainMe']),
+      stripSearchParams({ arrayWithDefaults: defaultValues }),
+    ],
+  },
+})
+```

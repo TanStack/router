@@ -1,3 +1,5 @@
+import { getCheckedProperties } from './create-route-property-order.utils'
+
 export const createRouteFunctionsIndirect = [
   'createFileRoute',
   'createRootRouteWithContext',
@@ -14,18 +16,17 @@ export const createRouteFunctions = [
 
 export type CreateRouteFunction = (typeof createRouteFunctions)[number]
 
-export const checkedProperties = [
-  'params',
-  'validateSearch',
-  'context',
-  'beforeLoad',
-  'loaderDeps',
-  'loader',
+export const sortRules = [
+  [['params', 'validateSearch'], ['search']],
+  [['search'], ['loaderDeps']],
+  [['loaderDeps'], ['context']],
+  [['context'], ['beforeLoad']],
+  [['beforeLoad'], ['loader']],
+  [
+    ['loader'],
+    ['onEnter', 'onStay', 'onLeave', 'meta', 'links', 'scripts', 'headers'],
+  ],
 ] as const
 
-export const sortRules = [
-  [['params', 'validateSearch'], ['context']],
-  [['context'], ['beforeLoad']],
-  [['beforeLoad'], ['loaderDeps']],
-  [['loaderDeps'], ['loader']],
-] as const
+export type CheckedProperties = (typeof sortRules)[number][number][number]
+export const checkedProperties = getCheckedProperties(sortRules)

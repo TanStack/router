@@ -4,6 +4,7 @@
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "target": "ESNext",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"]
   }
 }

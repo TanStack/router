@@ -87,6 +87,7 @@ interface ResolvePathOptions {
   base: string
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
+  caseSensitive?: boolean
 }
 
 export function resolvePath({
@@ -94,9 +95,10 @@ export function resolvePath({
   base,
   to,
   trailingSlash = 'never',
+  caseSensitive,
 }: ResolvePathOptions) {
-  base = removeBasepath(basepath, base)
-  to = removeBasepath(basepath, to)
+  base = removeBasepath(basepath, base, caseSensitive)
+  to = removeBasepath(basepath, to, caseSensitive)
 
   let baseSegments = parsePathname(base)
   const toSegments = parsePathname(to)
@@ -202,6 +204,8 @@ interface InterpolatePathOptions {
   params: Record<string, unknown>
   leaveWildcards?: boolean
   leaveParams?: boolean
+  // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
+  decodeCharMap?: Map<string, string>
 }
 
 export function interpolatePath({
@@ -209,6 +213,7 @@ export function interpolatePath({
   params,
   leaveWildcards,
   leaveParams,
+  decodeCharMap,
 }: InterpolatePathOptions) {
   const interpolatedPathSegments = parsePathname(path)
   const encodedParams: any = {}
@@ -220,7 +225,9 @@ export function interpolatePath({
       // the splat/catch-all routes shouldn't have the '/' encoded out
       encodedParams[key] = isValueString ? encodeURI(value) : value
     } else {
-      encodedParams[key] = isValueString ? encodeURIComponent(value) : value
+      encodedParams[key] = isValueString
+        ? encodePathParam(value, decodeCharMap)
+        : value
     }
   }
 
@@ -245,6 +252,16 @@ export function interpolatePath({
   )
 }
 
+function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
+  let encoded = encodeURIComponent(value)
+  if (decodeCharMap) {
+    for (const [encodedChar, char] of decodeCharMap) {
+      encoded = encoded.replaceAll(encodedChar, char)
+    }
+  }
+  return encoded
+}
+
 export function matchPathname(
   basepath: string,
   currentPathname: string,
@@ -260,15 +277,23 @@ export function matchPathname(
   return pathParams ?? {}
 }
 
-export function removeBasepath(basepath: string, pathname: string) {
+export function removeBasepath(
+  basepath: string,
+  pathname: string,
+  caseSensitive: boolean = false,
+) {
+  // normalize basepath and pathname for case-insensitive comparison if needed
+  const normalizedBasepath = caseSensitive ? basepath : basepath.toLowerCase()
+  const normalizedPathname = caseSensitive ? pathname : pathname.toLowerCase()
+
   switch (true) {
     // default behaviour is to serve app from the root - pathname
     // left untouched
-    case basepath === '/':
+    case normalizedBasepath === '/':
       return pathname
 
-    // shortcut for removing the basepath from the equal pathname
-    case pathname === basepath:
+    // shortcut for removing the basepath if it matches the pathname
+    case normalizedPathname === normalizedBasepath:
       return ''
 
     // in case pathname is shorter than basepath - there is
@@ -280,11 +305,11 @@ export function removeBasepath(basepath: string, pathname: string) {
     // earlier, otherwise, basepath separated from pathname with
     // separator, therefore lack of separator means partial
     // segment match (`/app` should not match `/application`)
-    case pathname[basepath.length] !== '/':
+    case normalizedPathname[normalizedBasepath.length] !== '/':
       return pathname
 
-    // remove the basepath from the pathname in case there is any
-    case pathname.startsWith(basepath):
+    // remove the basepath from the pathname if it starts with it
+    case normalizedPathname.startsWith(normalizedBasepath):
       return pathname.slice(basepath.length)
 
     // otherwise, return the pathname as is
@@ -298,10 +323,18 @@ export function matchByPath(
   from: string,
   matchLocation: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
 ): Record<string, string> | undefined {
+  // check basepath first
+  if (basepath !== '/' && !from.startsWith(basepath)) {
+    return undefined
+  }
   // Remove the base path from the pathname
-  from = removeBasepath(basepath, from)
+  from = removeBasepath(basepath, from, matchLocation.caseSensitive)
   // Default to to $ (wildcard)
-  const to = removeBasepath(basepath, `${matchLocation.to ?? '$'}`)
+  const to = removeBasepath(
+    basepath,
+    `${matchLocation.to ?? '$'}`,
+    matchLocation.caseSensitive,
+  )
 
   // Parse the from and to
   const baseSegments = parsePathname(from)

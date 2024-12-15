@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   exactPathTest,
   interpolatePath,
+  matchPathname,
   removeBasepath,
   removeTrailingSlash,
   resolvePath,
@@ -47,6 +48,45 @@ describe('removeBasepath', () => {
     },
   ])('$name', ({ basepath, pathname, expected }) => {
     expect(removeBasepath(basepath, pathname)).toBe(expected)
+  })
+  describe('case sensitivity', () => {
+    describe('caseSensitive = true', () => {
+      it.each([
+        {
+          name: 'should not remove basepath from the beginning of the pathname',
+          basepath: '/app',
+          pathname: '/App/path/App',
+          expected: '/App/path/App',
+        },
+        {
+          name: 'should not remove basepath from the beginning of the pathname with multiple segments',
+          basepath: '/app/New',
+          pathname: '/App/New/path/App',
+          expected: '/App/New/path/App',
+        },
+      ])('$name', ({ basepath, pathname, expected }) => {
+        expect(removeBasepath(basepath, pathname, true)).toBe(expected)
+      })
+    })
+
+    describe('caseSensitive = false', () => {
+      it.each([
+        {
+          name: 'should remove basepath from the beginning of the pathname',
+          basepath: '/App',
+          pathname: '/app/path/app',
+          expected: '/path/app',
+        },
+        {
+          name: 'should remove multisegment basepath from the beginning of the pathname',
+          basepath: '/App/New',
+          pathname: '/app/new/path/app',
+          expected: '/path/app',
+        },
+      ])('$name', ({ basepath, pathname, expected }) => {
+        expect(removeBasepath(basepath, pathname, false)).toBe(expected)
+      })
+    })
   })
 })
 
@@ -269,10 +309,83 @@ describe('interpolatePath', () => {
       params: { id: 0 },
       result: '/users/0',
     },
+    {
+      name: 'should interpolate the path with URI component encoding',
+      path: '/users/$id',
+      params: { id: '?#@john+smith' },
+      result: '/users/%3F%23%40john%2Bsmith',
+    },
+    {
+      name: 'should interpolate the path without URI encoding characters in decodeCharMap',
+      path: '/users/$id',
+      params: { id: '?#@john+smith' },
+      result: '/users/%3F%23@john+smith',
+      decodeCharMap: new Map(
+        ['@', '+'].map((char) => [encodeURIComponent(char), char]),
+      ),
+    },
   ].forEach((exp) => {
     it(exp.name, () => {
-      const result = interpolatePath({ path: exp.path, params: exp.params })
+      const result = interpolatePath({
+        path: exp.path,
+        params: exp.params,
+        decodeCharMap: exp.decodeCharMap,
+      })
       expect(result).toBe(exp.result)
     })
+  })
+})
+
+describe('matchPathname', () => {
+  it.each([
+    {
+      name: 'should match the root path that start with the basepath',
+      basepath: '/basepath',
+      pathname: '/basepath',
+      matchLocation: {
+        to: '/',
+      },
+      expected: {},
+    },
+    {
+      name: 'should match the path that start with the basepath',
+      basepath: '/basepath',
+      pathname: '/basepath/abc',
+      matchLocation: {
+        to: '/abc',
+      },
+      expected: {},
+    },
+    {
+      name: 'should not match the root path that does not start with the basepath',
+      basepath: '/basepath',
+      pathname: '/',
+      matchLocation: {
+        to: '/',
+      },
+      expected: undefined,
+    },
+    {
+      name: 'should not match the path that does not start with the basepath',
+      basepath: '/basepath',
+      pathname: '/abc',
+      matchLocation: {
+        to: '/abc',
+      },
+      expected: undefined,
+    },
+    {
+      name: 'should not match the path that match partial of the basepath',
+      basepath: '/base',
+      pathname: '/basepath/abc',
+      matchLocation: {
+        to: '/abc',
+      },
+      expected: undefined,
+    },
+  ])('$name', ({ basepath, pathname, matchLocation, expected }) => {
+    expect(matchPathname(basepath, pathname, matchLocation)).toStrictEqual(
+      expected,
+    )
   })
 })

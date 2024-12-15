@@ -2,7 +2,7 @@ import * as React from 'react'
 import { clsx as cx } from 'clsx'
 import * as goober from 'goober'
 import { tokens } from './tokens'
-import { displayValue, styled } from './utils'
+import { displayValue } from './utils'
 import { ShadowDomTargetContext } from './context'
 
 type ExpanderProps = {
@@ -355,12 +355,8 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
   }
 }
 
-let _styles: ReturnType<typeof stylesFactory> | null = null
-
 function useStyles() {
   const shadowDomTarget = React.useContext(ShadowDomTargetContext)
-  if (_styles) return _styles
-  _styles = stylesFactory(shadowDomTarget)
-
+  const [_styles] = React.useState(() => stylesFactory(shadowDomTarget))
   return _styles
 }

@@ -89,9 +89,9 @@ TanStack works closely with our partners to provide the best possible developer 
 - **Convex**
   <a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
   <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-white.svg" style="height: 80px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" style="height: 80px;">
-  <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" style="height: 80px;">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-white.svg" style="height: 40px;">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" style="height: 40px;">
+  <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" style="height: 40px;">
   </picture>
   </a>
   A serverless database platform that integrates seamlessly with TanStack Start. Convex is designed to simplify the process of managing your application's data and provides a real-time, scalable, and transactional data backend that works well with TanStack Start applications. Convex also collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in database best practices.

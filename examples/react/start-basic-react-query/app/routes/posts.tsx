@@ -6,7 +6,9 @@ export const Route = createFileRoute('/posts')({
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(postsQueryOptions())
   },
-  meta: () => [{ title: 'Posts' }],
+  head: () => ({
+    meta: [{ title: 'Posts' }],
+  }),
   component: PostsComponent,
 })
 
