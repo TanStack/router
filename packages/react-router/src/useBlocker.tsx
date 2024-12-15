@@ -232,9 +232,7 @@ export function useBlocker(
       : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
   }, [shouldBlockFn, enableBeforeUnload, disabled, withResolver, history])
 
-  if (withResolver) {
-    return resolver
-  }
+  return resolver
 }
 
 const _resolvePromptBlockerArgs = (
