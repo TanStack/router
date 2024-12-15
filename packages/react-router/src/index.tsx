@@ -301,6 +301,7 @@ export type {
   DefaultTransformerStringify,
 } from './transformer'
 
+export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
 
 export { useNavigate, Navigate } from './useNavigate'

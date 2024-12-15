@@ -1058,6 +1058,7 @@ export class Router<
 
   parseLocation = (
     previousLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>,
+    locationToParse?: HistoryLocation,
   ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
     const parse = ({
       pathname,
@@ -1078,7 +1079,7 @@ export class Router<
       }
     }
 
-    const location = parse(this.history.location)
+    const location = parse(locationToParse ?? this.history.location)
 
     const { __tempLocation, __tempKey } = location.state
 

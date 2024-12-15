@@ -33,6 +33,80 @@ test('Navigating to a not-found route', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
 })
 
+test("useBlocker doesn't block navigation if condition is not met", async ({
+  page,
+}) => {
+  await page.goto('/editing-a')
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await page.getByRole('button', { name: 'Go to next step' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+})
+
+test('useBlocker does block navigation if condition is met', async ({
+  page,
+}) => {
+  await page.goto('/editing-a')
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await page.getByLabel('Enter your name:').fill('foo')
+
+  await page.getByRole('button', { name: 'Go to next step' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await expect(page.getByRole('button', { name: 'Proceed' })).toBeVisible()
+})
+
+test('Proceeding through blocked navigation works', async ({ page }) => {
+  await page.goto('/editing-a')
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await page.getByLabel('Enter your name:').fill('foo')
+
+  await page.getByRole('button', { name: 'Go to next step' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await page.getByRole('button', { name: 'Proceed' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+})
+
+test("legacy useBlocker doesn't block navigation if condition is not met", async ({
+  page,
+}) => {
+  await page.goto('/editing-b')
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await page.getByRole('button', { name: 'Go back' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+})
+
+test('legacy useBlocker does block navigation if condition is met', async ({
+  page,
+}) => {
+  await page.goto('/editing-b')
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await page.getByLabel('Enter your name:').fill('foo')
+
+  await page.getByRole('button', { name: 'Go back' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await expect(page.getByRole('button', { name: 'Proceed' })).toBeVisible()
+})
+
+test('legacy Proceeding through blocked navigation works', async ({ page }) => {
+  await page.goto('/editing-b')
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await page.getByLabel('Enter your name:').fill('foo')
+
+  await page.getByRole('button', { name: 'Go back' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await page.getByRole('button', { name: 'Proceed' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+})
+
 const testCases = [
   {
     description: 'Navigating to a route inside a route group',
