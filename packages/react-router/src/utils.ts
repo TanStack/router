@@ -115,8 +115,9 @@ export type Constrain<T, TConstraint, TDefault = TConstraint> =
   | (T extends TConstraint ? T : never)
   | TDefault
 
-export type ConstrainLiteral<T, TConstraint, TDefault = TConstraint> = T &
-  TConstraint
+export type ConstrainLiteral<T, TConstraint, TDefault = TConstraint> =
+  | (T & TConstraint)
+  | TDefault
 
 /**
  * To be added to router types
@@ -362,9 +363,7 @@ export type StrictOrFrom<
       strict: TStrict
     }
   : {
-      from: StringLiteral<
-        ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
-      >
+      from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
       strict?: TStrict
     }
 
