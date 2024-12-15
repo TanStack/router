@@ -130,7 +130,7 @@ import { useBlocker } from '@tanstack/react-router'
 function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
-  const { proceed, reset, status } = useBlocker({
+  useBlocker({
     shouldBlockFn: () => {
       if (!formIsDirty) return false
 
