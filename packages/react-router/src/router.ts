@@ -1893,11 +1893,9 @@ export class Router<
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
     if (href) {
-      // This is a fallback for when updating the router and there are history entries without index
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      const currentIndex = this.history.location.state.index ?? 0
+      const currentIndex = this.history.location.state.__TSR_index
       const parsed = parseHref(href, {
-        index: replace ? currentIndex : currentIndex + 1,
+        __TSR_index: replace ? currentIndex : currentIndex + 1,
       })
       rest.to = parsed.pathname
       rest.search = this.options.parseSearch(parsed.search)
