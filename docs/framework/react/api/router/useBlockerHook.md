@@ -5,7 +5,7 @@ title: useBlocker hook
 
 The `useBlocker` method is a hook that [blocks navigation](../../guide/navigation-blocking.md) when a condition is met.
 
-> ⚠️ The following new `useBlocker` API is currently *experimental*.
+> ⚠️ The following new `useBlocker` API is currently _experimental_.
 
 ## useBlocker options
 
