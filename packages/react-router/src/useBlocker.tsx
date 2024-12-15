@@ -35,23 +35,23 @@ type MakeShouldBlockFnLocationUnion<
     >
   : never
 
-type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> = {
-  proceed: () => void
-  reset: () => void
-} & (
+type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
   | {
       status: 'blocked'
       current: MakeShouldBlockFnLocationUnion<TRouter>
       next: MakeShouldBlockFnLocationUnion<TRouter>
       action: HistoryAction
+      proceed: () => void
+      reset: () => void
     }
   | {
       status: 'idle'
       current: undefined
       next: undefined
       action: undefined
+      proceed: undefined
+      reset: undefined
     }
-)
 
 type ShouldBlockFnArgs<TRouter extends AnyRouter = RegisteredRouter> = {
   current: MakeShouldBlockFnLocationUnion<TRouter>
@@ -164,8 +164,8 @@ export function useBlocker(
     current: undefined,
     next: undefined,
     action: undefined,
-    proceed: () => {},
-    reset: () => {},
+    proceed: undefined,
+    reset: undefined,
   })
 
   React.useEffect(() => {
@@ -220,8 +220,8 @@ export function useBlocker(
         current: undefined,
         next: undefined,
         action: undefined,
-        proceed: () => {},
-        reset: () => {},
+        proceed: undefined,
+        reset: undefined,
       })
 
       return canNavigateAsync

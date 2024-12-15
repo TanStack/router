@@ -5,6 +5,8 @@ title: useBlocker hook
 
 The `useBlocker` method is a hook that [blocks navigation](../../guide/navigation-blocking.md) when a condition is met.
 
+> ⚠️ The following new `useBlocker` API is currently *experimental*.
+
 ## useBlocker options
 
 The `useBlocker` hook accepts a single _required_ argument, an option object:
@@ -71,8 +73,8 @@ An object with the controls to allow manual blocking and unblocking of navigatio
 - `next` - When status is `blocked`, a type narrrowable object that contains information about the next location
 - `current` - When status is `blocked`, a type narrrowable object that contains information about the current location
 - `action` - When status is `blocked`, a `HistoryAction` string that shows the action that triggered the navigation
-- `proceed` - A function that allows navigation to continue
-- `reset` - A function that cancels navigation (`status` will be be reset to `'idle'`)
+- `proceed` - When status is `blocked`, a function that allows navigation to continue
+- `reset` - When status is `blocked`, a function that cancels navigation (`status` will be be reset to `'idle'`)
 
 or
 
@@ -134,14 +136,9 @@ function MyComponent() {
 import { useBlocker } from '@tanstack/react-router'
 
 function MyComponent() {
-  const [formIsDirty, setFormIsDirty] = useState(false)
-
   const { proceed, reset, status } = useBlocker({
     shouldBlockFn: ({ nextLocation }) => {
-      if (nextLocation.pathname.includes('step/'))
-        return false
-
-      return true
+      return !nextLocation.pathname.includes('step/')
     },
     withResolver: true,
   })
@@ -159,10 +156,11 @@ function MyComponent() {
         </div>
       )}
     </>
+  )
 }
 ```
 
-### Skip resolver
+### Without resolver
 
 ```tsx
 import { useBlocker } from '@tanstack/react-router'
@@ -170,9 +168,11 @@ import { useBlocker } from '@tanstack/react-router'
 function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
-  const { proceed, reset, status } = useBlocker({
+  useBlocker({
     shouldBlockFn: ({ nextLocation }) => {
-      if (nextLocation.pathname.includes('step/')) return false
+      if (nextLocation.pathname.includes('step/')) {
+        return false
+      }
 
       const shouldLeave = confirm('Are you sure you want to leave?')
       return !shouldLeave
