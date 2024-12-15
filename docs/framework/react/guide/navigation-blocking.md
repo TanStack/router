@@ -52,6 +52,29 @@ function MyComponent() {
 }
 ```
 
+`shouldBlockFn` gives you type safe access to the `current` and `next` location:
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  // always block going from /foo to /bar/123?hello=world
+  const { proceed, reset, status } = useBlocker({
+    shouldBlockFn: ({ current, next }) => {
+      return (
+        current.routeId === '/foo' &&
+        next.fullPath === '/bar/$id' &&
+        next.params.id === 123 &&
+        next.search.hello === 'world'
+      )
+    },
+    withResolver: true,
+  })
+
+  // ...
+}
+```
+
 You can find more information about the `useBlocker` hook in the [API reference](../api/router/useBlockerHook.md).
 
 ## Component-based blocking
@@ -132,7 +155,9 @@ function MyComponent() {
 
   useBlocker({
     shouldBlockFn: () => {
-      if (!formIsDirty) return false
+      if (!formIsDirty) {
+        return false
+      }
 
       const shouldLeave = new Promise<boolean>((resolve) => {
         // Using a modal manager of your choice

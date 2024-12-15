@@ -137,8 +137,8 @@ import { useBlocker } from '@tanstack/react-router'
 
 function MyComponent() {
   const { proceed, reset, status } = useBlocker({
-    shouldBlockFn: ({ nextLocation }) => {
-      return !nextLocation.pathname.includes('step/')
+    shouldBlockFn: ({ next }) => {
+      return !next.pathname.includes('step/')
     },
     withResolver: true,
   })
@@ -169,8 +169,8 @@ function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
   useBlocker({
-    shouldBlockFn: ({ nextLocation }) => {
-      if (nextLocation.pathname.includes('step/')) {
+    shouldBlockFn: ({ next }) => {
+      if (next.pathname.includes('step/')) {
         return false
       }
 
