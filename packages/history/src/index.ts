@@ -568,7 +568,6 @@ export function createMemoryHistory(
       entries[index] = path
     },
     back: () => {
-      console.log('back', index)
       index = Math.max(index - 1, 0)
     },
     forward: () => {
