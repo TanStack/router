@@ -130,9 +130,9 @@ function Component() {
     try {
       const postsRoute = router.routesByPath['/posts'];
       await Promise.all([
-        router.preloadRouteView(router.routesByPath['/']),
-        router.preloadRouteView(postsRoute),
-        router.preloadRouteView(postsRoute.parentRoute),
+        router.preloadRouteChunk(router.routesByPath['/']),
+        router.preloadRouteChunk(postsRoute),
+        router.preloadRouteChunk(postsRoute.parentRoute),
       ])
     } catch (err) {
       // Failed to preload route chunk
