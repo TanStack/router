@@ -159,7 +159,7 @@ function MyComponent() {
         return false
       }
 
-      const shouldLeave = new Promise<boolean>((resolve) => {
+      const shouldBlock = new Promise<boolean>((resolve) => {
         // Using a modal manager of your choice
         modals.open({
           title: 'Are you sure you want to leave?',
@@ -167,7 +167,7 @@ function MyComponent() {
             <SaveBlocker
               confirm={() => {
                 modals.closeAll()
-                resolve(true)
+                resolve(false)
               }}
               reject={() => {
                 modals.closeAll()
@@ -175,10 +175,10 @@ function MyComponent() {
               }}
             />
           ),
-          onClose: () => resolve(false),
+          onClose: () => resolve(true),
         })
       })
-      return !shouldLeave
+      return shouldBlock
     },
   })
 
