@@ -52,7 +52,7 @@ export interface ParsedPath {
 
 export interface HistoryState {
   key?: string
-  index: number
+  __TSR_index: number
 }
 
 type ShouldAllowNavigation = any
@@ -89,6 +89,7 @@ type TryNavigateArgs = {
     }
 )
 
+const stateIndexKey = '__TSR_index'
 const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
 
@@ -101,12 +102,13 @@ export function createHistory(opts: {
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
-  canGoBack?: () => boolean
   flush?: () => void
   destroy?: () => void
   onBlocked?: () => void
   getBlockers?: () => Array<NavigationBlocker>
   setBlockers?: (blockers: Array<NavigationBlocker>) => void
+  // Avoid notifying on forward/back/go, used for browser history as we already get notified by the popstate event
+  notifyOnIndexChange?: boolean
 }): RouterHistory {
   let location = opts.getLocation()
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
@@ -116,8 +118,9 @@ export function createHistory(opts: {
     subscribers.forEach((subscriber) => subscriber({ location, action }))
   }
 
-  const _setLocation = () => {
-    location = opts.getLocation()
+  const handleIndexChange = (action: SubscriberHistoryAction) => {
+    if (opts.notifyOnIndexChange ?? true) notify(action)
+    else location = opts.getLocation()
   }
 
   const tryNavigation = async ({
@@ -168,10 +171,8 @@ export function createHistory(opts: {
       }
     },
     push: (path, state, navigateOpts) => {
-      // This is a fallback for when updating the router and there are history entries without index
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      const currentIndex = location.state.index ?? 0
-      state = assignKey({ ...state, index: currentIndex + 1 })
+      const currentIndex = location.state[stateIndexKey]
+      state = assignKeyAndIndex(currentIndex + 1, state)
       tryNavigation({
         task: () => {
           opts.pushState(path, state)
@@ -184,10 +185,8 @@ export function createHistory(opts: {
       })
     },
     replace: (path, state, navigateOpts) => {
-      // This is a fallback for when updating the router and there are history entries without index
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      const currentIndex = location.state.index ?? 0
-      state = assignKey({ ...state, index: currentIndex })
+      const currentIndex = location.state[stateIndexKey]
+      state = assignKeyAndIndex(currentIndex, state)
       tryNavigation({
         task: () => {
           opts.replaceState(path, state)
@@ -203,7 +202,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.go(index)
-          _setLocation()
+          handleIndexChange({ type: 'GO', index })
         },
         navigateOpts,
         type: 'GO',
@@ -213,7 +212,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.back(navigateOpts?.ignoreBlocker ?? false)
-          _setLocation()
+          handleIndexChange({ type: 'BACK' })
         },
         navigateOpts,
         type: 'BACK',
@@ -223,13 +222,13 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.forward(navigateOpts?.ignoreBlocker ?? false)
-          _setLocation()
+          handleIndexChange({ type: 'FORWARD' })
         },
         navigateOpts,
         type: 'FORWARD',
       })
     },
-    canGoBack: () => opts.canGoBack?.() ?? location.state.index !== 0,
+    canGoBack: () => location.state[stateIndexKey] !== 0,
     createHref: (str) => opts.createHref(str),
     block: (blocker) => {
       if (!opts.setBlockers) return () => {}
@@ -247,13 +246,14 @@ export function createHistory(opts: {
   }
 }
 
-function assignKey(state: HistoryState | undefined) {
+function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
   if (!state) {
     state = {} as HistoryState
   }
   return {
     ...state,
     key: createRandomKey(),
+    [stateIndexKey]: index,
   }
 }
 
@@ -390,7 +390,8 @@ export function createBrowserHistory(opts?: {
     }
 
     const nextLocation = parseLocation()
-    const delta = nextLocation.state.index - currentLocation.state.index
+    const delta =
+      nextLocation.state[stateIndexKey] - currentLocation.state[stateIndexKey]
     const isForward = delta === 1
     const isBack = delta === -1
     const isGo = (!isForward && !isBack) || nextPopIsGo
@@ -504,6 +505,7 @@ export function createBrowserHistory(opts?: {
     },
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
+    notifyOnIndexChange: false,
   })
 
   win.addEventListener(beforeUnloadEvent, onBeforeUnload, { capture: true })
@@ -548,8 +550,12 @@ export function createMemoryHistory(
   },
 ): RouterHistory {
   const entries = opts.initialEntries
-  let index = opts.initialIndex ?? entries.length - 1
-  const states = entries.map(() => ({}) as HistoryState)
+  let index = opts.initialIndex
+    ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
+    : entries.length - 1
+  const states = entries.map<HistoryState>((_entry, index) =>
+    assignKeyAndIndex(index, undefined),
+  )
 
   const getLocation = () => parseHref(entries[index]!, states[index])
 
@@ -579,7 +585,6 @@ export function createMemoryHistory(
     go: (n) => {
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
-    canGoBack: () => index !== 0,
     createHref: (path) => path,
   })
 }
@@ -608,7 +613,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || { index: 0 },
+    state: state || { [stateIndexKey]: 0 },
   }
 }
 

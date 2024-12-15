@@ -1,10 +1,5 @@
-import { useSyncExternalStore } from 'react'
-import { useRouter } from './useRouter'
-import type { RouterHistory } from '@tanstack/history'
+import { useRouterState } from './useRouterState'
 
 export function useCanGoBack() {
-  const router = useRouter()
-  const history: RouterHistory = router.history
-
-  return useSyncExternalStore(history.subscribe, history.canGoBack)
+  return useRouterState({ select: (s) => s.location.state.__TSR_index !== 0 })
 }
