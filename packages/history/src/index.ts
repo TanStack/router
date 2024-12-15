@@ -8,7 +8,7 @@ export interface NavigateOptions {
 
 type SubscriberHistoryAction =
   | {
-      type: HistoryAction | 'ROLLBACK'
+      type: HistoryAction
     }
   | {
       type: 'GO'
@@ -51,17 +51,12 @@ export interface ParsedPath {
 
 export interface HistoryState {
   key?: string
+  index: number
 }
 
 type ShouldAllowNavigation = any
 
-export type HistoryAction =
-  | 'PUSH'
-  | 'POP'
-  | 'REPLACE'
-  | 'FORWARD'
-  | 'BACK'
-  | 'GO'
+export type HistoryAction = 'PUSH' | 'REPLACE' | 'FORWARD' | 'BACK' | 'GO'
 
 export type BlockerFnArgs = {
   currentLocation: HistoryLocation
@@ -107,7 +102,7 @@ export function createHistory(opts: {
   createHref: (path: string) => string
   flush?: () => void
   destroy?: () => void
-  onBlocked?: (onUpdate: () => void) => void
+  onBlocked?: () => void
   getBlockers?: () => Array<NavigationBlocker>
   setBlockers?: (blockers: Array<NavigationBlocker>) => void
 }): RouterHistory {
@@ -119,11 +114,8 @@ export function createHistory(opts: {
     subscribers.forEach((subscriber) => subscriber({ location, action }))
   }
 
-  const _notifyRollback = () => {
+  const _setLocation = () => {
     location = opts.getLocation()
-    subscribers.forEach((subscriber) =>
-      subscriber({ location, action: { type: 'ROLLBACK' } }),
-    )
   }
 
   const tryNavigation = async ({
@@ -149,7 +141,7 @@ export function createHistory(opts: {
           action: actionInfo.type,
         })
         if (isBlocked) {
-          opts.onBlocked?.(_notifyRollback)
+          opts.onBlocked?.()
           return
         }
       }
@@ -174,7 +166,10 @@ export function createHistory(opts: {
       }
     },
     push: (path, state, navigateOpts) => {
-      state = assignKey(state)
+      // This is a fallback for when updating the router and there are history entries without index
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      const currentIndex = location.state.index ?? 0
+      state = assignKey({ ...state, index: currentIndex + 1 })
       tryNavigation({
         task: () => {
           opts.pushState(path, state)
@@ -187,7 +182,10 @@ export function createHistory(opts: {
       })
     },
     replace: (path, state, navigateOpts) => {
-      state = assignKey(state)
+      // This is a fallback for when updating the router and there are history entries without index
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      const currentIndex = location.state.index ?? 0
+      state = assignKey({ ...state, index: currentIndex })
       tryNavigation({
         task: () => {
           opts.replaceState(path, state)
@@ -203,7 +201,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.go(index)
-          notify({ type: 'GO', index })
+          _setLocation()
         },
         navigateOpts,
         type: 'GO',
@@ -213,7 +211,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.back(navigateOpts?.ignoreBlocker ?? false)
-          notify({ type: 'BACK' })
+          _setLocation()
         },
         navigateOpts,
         type: 'BACK',
@@ -223,7 +221,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.forward(navigateOpts?.ignoreBlocker ?? false)
-          notify({ type: 'FORWARD' })
+          _setLocation()
         },
         navigateOpts,
         type: 'FORWARD',
@@ -301,6 +299,7 @@ export function createBrowserHistory(opts?: {
   let currentLocation = parseLocation()
   let rollbackLocation: HistoryLocation | undefined
 
+  let nextPopIsGo = false
   let ignoreNextPop = false
   let skipBlockerNextPop = false
   let ignoreNextBeforeUnload = false
@@ -375,9 +374,10 @@ export function createBrowserHistory(opts?: {
     }
   }
 
-  const onPushPop = () => {
+  // NOTE: this function can probably be removed
+  const onPushPop = (type: 'PUSH' | 'REPLACE') => {
     currentLocation = parseLocation()
-    history.notify({ type: 'POP' })
+    history.notify({ type })
   }
 
   const onPushPopEvent = async () => {
@@ -386,22 +386,38 @@ export function createBrowserHistory(opts?: {
       return
     }
 
+    const nextLocation = parseLocation()
+    const delta = nextLocation.state.index - currentLocation.state.index
+    const isForward = delta === 1
+    const isBack = delta === -1
+    const isGo = (!isForward && !isBack) || nextPopIsGo
+    nextPopIsGo = false
+
+    const action = isGo ? 'GO' : isBack ? 'BACK' : 'FORWARD'
+    const notify: SubscriberHistoryAction = isGo
+      ? {
+          type: 'GO',
+          index: delta,
+        }
+      : {
+          type: isBack ? 'BACK' : 'FORWARD',
+        }
+
     if (skipBlockerNextPop) {
       skipBlockerNextPop = false
     } else {
       const blockers = _getBlockers()
       if (typeof document !== 'undefined' && blockers.length) {
         for (const blocker of blockers) {
-          const nextLocation = parseLocation()
           const isBlocked = await blocker.blockerFn({
             currentLocation,
             nextLocation,
-            action: 'POP',
+            action,
           })
           if (isBlocked) {
             ignoreNextPop = true
             win.history.go(1)
-            history.notify({ type: 'POP' })
+            history.notify(notify)
             return
           }
         }
@@ -409,7 +425,7 @@ export function createBrowserHistory(opts?: {
     }
 
     currentLocation = parseLocation()
-    history.notify({ type: 'POP' })
+    history.notify(notify)
   }
 
   const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -462,7 +478,10 @@ export function createBrowserHistory(opts?: {
       ignoreNextBeforeUnload = true
       win.history.forward()
     },
-    go: (n) => win.history.go(n),
+    go: (n) => {
+      nextPopIsGo = true
+      win.history.go(n)
+    },
     createHref: (href) => createHref(href),
     flush,
     destroy: () => {
@@ -473,13 +492,11 @@ export function createBrowserHistory(opts?: {
       })
       win.removeEventListener(popStateEvent, onPushPopEvent)
     },
-    onBlocked: (onUpdate) => {
+    onBlocked: () => {
       // If a navigation is blocked, we need to rollback the location
       // that we optimistically updated in memory.
       if (rollbackLocation && currentLocation !== rollbackLocation) {
         currentLocation = rollbackLocation
-        // Notify subscribers
-        onUpdate()
       }
     },
     getBlockers: _getBlockers,
@@ -491,13 +508,13 @@ export function createBrowserHistory(opts?: {
 
   win.history.pushState = function (...args: Array<any>) {
     const res = originalPushState.apply(win.history, args as any)
-    if (!history._ignoreSubscribers) onPushPop()
+    if (!history._ignoreSubscribers) onPushPop('PUSH')
     return res
   }
 
   win.history.replaceState = function (...args: Array<any>) {
     const res = originalReplaceState.apply(win.history, args as any)
-    if (!history._ignoreSubscribers) onPushPop()
+    if (!history._ignoreSubscribers) onPushPop('REPLACE')
     return res
   }
 
@@ -551,6 +568,7 @@ export function createMemoryHistory(
       entries[index] = path
     },
     back: () => {
+      console.log('back', index)
       index = Math.max(index - 1, 0)
     },
     forward: () => {
@@ -587,7 +605,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || {},
+    state: state || { index: 0 },
   }
 }
 
