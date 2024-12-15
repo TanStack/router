@@ -30,6 +30,7 @@ export interface RouterHistory {
   go: (index: number, navigateOpts?: NavigateOptions) => void
   back: (navigateOpts?: NavigateOptions) => void
   forward: (navigateOpts?: NavigateOptions) => void
+  canGoBack: () => boolean
   createHref: (href: string) => string
   block: (blocker: NavigationBlocker) => () => void
   flush: () => void
@@ -100,6 +101,7 @@ export function createHistory(opts: {
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
+  canGoBack?: () => boolean
   flush?: () => void
   destroy?: () => void
   onBlocked?: () => void
@@ -227,6 +229,7 @@ export function createHistory(opts: {
         type: 'FORWARD',
       })
     },
+    canGoBack: () => opts.canGoBack?.() ?? location.state.index !== 0,
     createHref: (str) => opts.createHref(str),
     block: (blocker) => {
       if (!opts.setBlockers) return () => {}
@@ -576,6 +579,7 @@ export function createMemoryHistory(
     go: (n) => {
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
+    canGoBack: () => index !== 0,
     createHref: (path) => path,
   })
 }
