@@ -67,10 +67,9 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
           },
         },
       )
-    } catch(e) {
+    } catch (e) {
       console.log('Error in renderToPipeableStream:', e)
     }
-    
 
     const transforms = [transformStreamWithRouter(router)]
 
