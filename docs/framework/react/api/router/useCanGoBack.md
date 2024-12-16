@@ -5,6 +5,8 @@ title: useCanGoBack hook
 
 The `useCanGoBack` hook returns a boolean representing if the router history can safely go back without exiting the application.
 
+> ⚠️ The following new `useCanGoBack` API is currently _experimental_.
+
 ## useCanGoBack returns
 
 - If the router history is not at index `0`, `true`.
