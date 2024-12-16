@@ -5,12 +5,12 @@ title: Server Functions
 
 ## What are Server Functions?
 
-Server functions allow you to specify logic that can be invoked anywhere (even the client), but run **only** on the server. In fact, they are not so different from an API route, but with a few key differences:
+Server functions allow you to specify logic that can be invoked almost anywhere (even the client), but run **only** on the server. In fact, they are not so different from an API Route, but with a few key differences:
 
 - They are not publicly accessible via HTTP
-- They can be called from anywhere in your application, including loaders, hooks, components, etc.
+- They can be called from many places in your application, including loaders, hooks, components, etc.
 
-However, they are similar to regular API routes in that:
+However, they are similar to regular API Routes in that:
 
 - They have access to the request context, allowing you to read headers, set cookies, and more
 - They can access sensitive information, such as environment variables, without exposing them to the client
@@ -25,7 +25,7 @@ However, they are similar to regular API routes in that:
 
 ## How do they work?
 
-Server functions can be defined anywhere in your application, but must be defined at the top level of a file. They can be called from anywhere in your application, including loaders, hooks, etc. Traditionally, this pattern is known as a Remote Procedure Call (RPC), but due to the isomorphic nature of these functions, we refer to them as server functions.
+Server functions can be defined anywhere in your application, but must be defined at the top level of a file. They can be called throughout your application, including loaders, hooks, etc. Traditionally, this pattern is known as a Remote Procedure Call (RPC), but due to the isomorphic nature of these functions, we refer to them as server functions.
 
 - On the server bundle, server functions logic is left alone. Nothing needs to be done since they are already in the correct place.
 - On the client, server functions will be removed; they exist only on the server. Any calls to the server function on the client will be replaced with a `fetch` request to the server to execute the server function, and send the response back to the client.
@@ -36,7 +36,7 @@ Server functions can use middleware to share logic, context, common operations, 
 
 ## Defining Server Functions
 
-> We'd like to thank the [tRPC](https://trpc.io/) team for both the inspiration of TanStack Start's server function design and guidance while implementing it. We love (and recommend) using tRPC for API routes so much that we insisted on server functions getting the same 1st class treatment and developer experience. Thank you!
+> We'd like to thank the [tRPC](https://trpc.io/) team for both the inspiration of TanStack Start's server function design and guidance while implementing it. We love (and recommend) using tRPC for API Routes so much that we insisted on server functions getting the same 1st class treatment and developer experience. Thank you!
 
 Server functions are defined with the `createServerFn` function, from the `@tanstack/start` package. This function takes an optional `options` argument for specifying the http verb, and allows you to chain off the result to define things like the body of the server function, input validation, middleware, etc. Here's a simple example:
 
@@ -57,7 +57,9 @@ export const getServerTime = createServerFn().handler(async () => {
 - From server-side code
 - From client-side code
 - From other server functions
-- Anywhere, really!
+
+> [!WARNING]
+> Server functions cannot be called from API Routes. If you need to share business logic between server functions and API Routes, extract the shared logic into utility functions that can be imported by both.
 
 ## Accepting Parameters
 
@@ -534,7 +536,12 @@ export function Time() {
 
 ## Calling server functions anywhere else
 
-Server functions are just async functions, so they can ultimately be called from anywhere in your application. However, be aware that any redirects or notFounds thrown by server functions will not be handled automatically unless called from a route lifecycle or a component that uses the `useServerFn` hook.
+When using server functions, be aware that redirects and notFounds they throw will only be handled automatically when called from:
+
+- Route lifecycles
+- Components using the useServerFn hook
+
+For other usage locations, you'll need to handle these cases manually.
 
 ## Redirects
 
