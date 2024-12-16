@@ -2553,7 +2553,7 @@ export class Router<
 
                         // Actually run the loader and handle the result
                         try {
-                          this.preloadRouteChunk(route)
+                          this.loadRouteChunk(route)
 
                           updateMatch(matchId, (prev) => ({
                             ...prev,
@@ -2791,7 +2791,7 @@ export class Router<
     this.clearCache({ filter })
   }
 
-  preloadRouteChunk = (route: AnyRoute) => {
+  loadRouteChunk = (route: AnyRoute) => {
     if (route._lazyPromise === undefined) {
       if (route.lazyFn) {
         route._lazyPromise = route.lazyFn().then((lazyRoute) => {
