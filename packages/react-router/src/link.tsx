@@ -55,9 +55,9 @@ export type ParsePathParams<T extends string, TAcc = never> = T &
       : TPossiblyParam & `${string}/${string}` extends never
         ? TPossiblyParam | TAcc
         : TPossiblyParam extends `${infer TParam}/${infer TRest}`
-        ? ParsePathParams<TRest, TParam extends '' ? TAcc : TParam | TAcc>
-        : never
-  : TAcc
+          ? ParsePathParams<TRest, TParam extends '' ? TAcc : TParam | TAcc>
+          : never
+    : TAcc
 
 export type AddTrailingSlash<T> = T & `${string}/` extends never
   ? `${T & string}/`
@@ -71,7 +71,7 @@ export type RemoveTrailingSlashes<T> = T & `${string}/` extends never
 
 export type AddLeadingSlash<T> = T & `/${string}` extends never
   ? `/${T & string}`
-    : T
+  : T
 
 export type RemoveLeadingSlashes<T> = T & `/${string}` extends never
   ? T
@@ -148,7 +148,7 @@ export type RelativeToPathAutoComplete<
   TFrom extends string,
   TTo extends string,
 > = string extends TTo
-    ? string
+  ? string
   : string extends TFrom
     ? AbsolutePathAutoComplete<TRouter, TFrom>
     : TTo & `..${string}` extends never
@@ -495,20 +495,20 @@ export type ResolveCurrentPath<TFrom, TTo> = TTo extends '.'
     ? AddTrailingSlash<TFrom>
     : TTo & `./${string}` extends never
       ? never
-    : TTo extends `./${infer TRest}`
-      ? ResolveRelativePath<TFrom, TRest>
-      : never
+      : TTo extends `./${infer TRest}`
+        ? ResolveRelativePath<TFrom, TRest>
+        : never
 
 export type ResolveParentPath<TFrom extends string, TTo> = TTo extends '../'
-    ? RemoveLastSegment<TFrom>
+  ? RemoveLastSegment<TFrom>
   : TTo & `..${string}` extends never
     ? never
     : TTo extends `..${infer ToRest}`
       ? ResolveRelativePath<
-        RemoveLastSegment<TFrom>,
-        RemoveLeadingSlashes<ToRest>
-      >
-  : never
+          RemoveLastSegment<TFrom>,
+          RemoveLeadingSlashes<ToRest>
+        >
+      : never
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
   ? TTo
