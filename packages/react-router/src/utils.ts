@@ -111,6 +111,14 @@ export type PartialMergeAll<TUnion> =
   | ExtractPrimitives<TUnion>
   | PartialMergeAllObject<TUnion>
 
+export type Constrain<T, TConstraint, TDefault = TConstraint> =
+  | (T extends TConstraint ? T : never)
+  | TDefault
+
+export type ConstrainLiteral<T, TConstraint, TDefault = TConstraint> =
+  | (T & TConstraint)
+  | TDefault
+
 /**
  * To be added to router types
  */
@@ -138,10 +146,6 @@ export type MergeAllObjects<
 export type MergeAll<TUnion> =
   | MergeAllObjects<TUnion>
   | ExtractPrimitives<TUnion>
-
-export type Constrain<T, TConstraint, TDefault = TConstraint> =
-  | (T extends TConstraint ? T : never)
-  | TDefault
 
 export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
   ? unknown extends T
@@ -359,7 +363,7 @@ export type StrictOrFrom<
       strict: TStrict
     }
   : {
-      from: StringLiteral<Constrain<TFrom, RouteIds<TRouter['routeTree']>>>
+      from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
       strict?: TStrict
     }
 

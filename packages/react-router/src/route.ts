@@ -26,7 +26,13 @@ import type { NavigateOptions, ParsePathParams, ToMaskOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, Router } from './router'
-import type { Assign, Constrain, Expand, NoInfer } from './utils'
+import type {
+  Assign,
+  Constrain,
+  ConstrainLiteral,
+  Expand,
+  NoInfer,
+} from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
@@ -112,11 +118,12 @@ export type RouteOptions<
     NoInfer<TBeforeLoadFn>
   >
 
-export type ParseSplatParams<TPath extends string> = TPath extends `${string}$`
-  ? '_splat'
-  : TPath extends `${string}$/${string}`
-    ? '_splat'
-    : never
+export type ParseSplatParams<TPath extends string> = TPath &
+  `${string}$` extends never
+  ? TPath & `${string}$/${string}` extends never
+    ? never
+    : '_splat'
+  : '_splat'
 
 export interface SplatParams {
   _splat?: string
@@ -794,7 +801,7 @@ export type RouteTypesById<TRouter extends AnyRouter, TId> = RouteById<
 >['types']
 
 export function getRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter>(
-  id: Constrain<TId, RouteIds<TRouter['routeTree']>>,
+  id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>,
 ) {
   return new RouteApi<TId, TRouter>({ id })
 }

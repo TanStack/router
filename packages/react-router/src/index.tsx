@@ -44,11 +44,7 @@ export { lazyRouteComponent } from './lazyRouteComponent'
 
 export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {
-  CleanPath,
-  Split,
   ParsePathParams,
-  Join,
-  Last,
   RemoveTrailingSlashes,
   RemoveLeadingSlashes,
   SearchPaths,
@@ -67,7 +63,6 @@ export type {
   ToPathOption,
   ActiveOptions,
   LinkOptions,
-  CheckPath,
   ResolveRelativePath,
   UseLinkPropsOptions,
   ActiveLinkOptions,
@@ -76,7 +71,6 @@ export type {
   LinkComponentProps,
   CreateLinkProps,
   MakeOptionalPathParams,
-  CheckFromPath,
 } from './link'
 
 export type { ParsedLocation } from './location'
@@ -375,3 +369,5 @@ export type {
 } from './validators'
 
 export { retainSearchParams, stripSearchParams } from './searchMiddleware'
+
+export * from './typePrimitives'
