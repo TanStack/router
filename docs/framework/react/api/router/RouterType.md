@@ -177,6 +177,12 @@ Preloads all of the matches that match the provided `NavigateOptions`.
 - Returns
   - A promise that resolves with an array of all of the route matches that were preloaded.
 
+### `.loadRouteChunk` method
+
+Loads the JS chunk of the route.
+
+- Type: `(route: AnyRoute) => Promise<void>`
+
 ### `.matchRoute` method
 
 Matches a pathname and search params against the router's route tree and returns a route match's params or false if no match was found.
