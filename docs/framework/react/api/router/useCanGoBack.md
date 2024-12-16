@@ -30,14 +30,11 @@ function Component() {
   return (
     <div>
       {canGoBack ? (
-        <button onClick={() => router.history.back()}>
-          Go back
-        </button>
+        <button onClick={() => router.history.back()}>Go back</button>
       ) : null}
 
       {/* ... */}
     </div>
   )
 }
-
 ```
