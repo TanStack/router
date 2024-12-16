@@ -1,43 +1,45 @@
 import { redirect, useParams, useSearch } from '@tanstack/react-router'
 import type {
-  ValidateFrom,
+  ValidateFromPath,
   ValidateId,
   ValidateNavigateOptions,
   ValidateNavigateOptionsArray,
   ValidateParams,
   ValidateSearch,
-  ValidateTo,
+  ValidateToPath,
   ValidateUseParamsOptions,
   ValidateUseParamsResult,
   ValidateUseSearchOptions,
   ValidateUseSearchResult,
 } from '@tanstack/react-router'
 
-export const customTo = <TTo extends string>(to: ValidateTo<TTo>) => {
+export const customTo = <TTo extends string>(to: ValidateToPath<TTo>) => {
   throw redirect({ to })
 }
 
-export const customFrom = <TFrom extends string>(from: ValidateFrom<TFrom>) => {
+export const customFrom = <TFrom extends string>(
+  from: ValidateFromPath<TFrom>,
+) => {
   throw redirect({ from })
 }
 
 export const customFromAndTo = <TTo extends string, TFrom extends string>(
-  from: ValidateFrom<TFrom>,
-  to: ValidateTo<TTo, TFrom>,
+  from: ValidateFromPath<TFrom>,
+  to: ValidateToPath<TTo, TFrom>,
 ) => {
   throw redirect({ from, to })
 }
 
 export const customSearch = <TTo extends string>(
   options: {
-    to: ValidateTo<TTo>
+    to: ValidateToPath<TTo>
   } & ValidateSearch<TTo>,
 ) => {
   throw redirect(options as never)
 }
 
 export const customParams = <TTo extends string>(
-  options: { to: ValidateTo<TTo> } & ValidateParams<TTo>,
+  options: { to: ValidateToPath<TTo> } & ValidateParams<TTo>,
 ) => {
   throw redirect(options as never)
 }

@@ -11,12 +11,12 @@ import type { UseParamsOptions, UseParamsResult } from './useParams'
 import type { UseSearchOptions, UseSearchResult } from './useSearch'
 import type { Constrain, ConstrainLiteral } from './utils'
 
-export type ValidateFrom<
+export type ValidateFromPath<
   TFrom,
   TRouter extends AnyRouter = RegisteredRouter,
 > = FromPathOption<TRouter, TFrom>
 
-export type ValidateTo<
+export type ValidateToPath<
   TTo extends string | undefined,
   TFrom extends string = string,
   TRouter extends AnyRouter = RegisteredRouter,
