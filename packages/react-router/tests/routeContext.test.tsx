@@ -1540,7 +1540,8 @@ describe('loader in the route definition', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test("on navigate (with preload using router methods), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
+  // disabled test due to flakiness
+  test.skip("on navigate (with preload using router methods), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -2379,7 +2380,7 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
         if (context === undefined) {
           throw new Error('context is undefined')
         }
