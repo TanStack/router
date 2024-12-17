@@ -603,6 +603,7 @@ export function useLinkProps<
     hash: _hash,
     state: _state,
     mask: _mask,
+    reloadDocument: _reloadDocument,
     ...propsSafeToSpread
   } = rest
 
