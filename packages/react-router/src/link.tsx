@@ -641,10 +641,12 @@ export function useLinkProps<
     () => router.buildLocation(options as any),
     [router, options, currentSearch],
   )
-  const preload = React.useMemo(
-    () => userPreload ?? router.options.defaultPreload,
-    [router.options.defaultPreload, userPreload],
-  )
+  const preload = React.useMemo(() => {
+    if (options.reloadDocument) {
+      return false
+    }
+    return userPreload ?? router.options.defaultPreload
+  }, [router.options.defaultPreload, userPreload, options.reloadDocument])
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -768,7 +770,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.buildAndCommitLocation({
+      return router.navigate({
         ...options,
         replace,
         resetScroll,
