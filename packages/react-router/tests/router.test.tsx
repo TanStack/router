@@ -1,4 +1,3 @@
-import React from 'react'
 import { act, useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -1101,14 +1100,14 @@ const createHistoryRouter = () => {
     const navigate = useNavigate()
 
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button onClick={() => navigate({ to: '/posts', replace: true })}>
           Replace
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1125,10 +1124,10 @@ const createHistoryRouter = () => {
       const navigate = useNavigate()
 
       return (
-        <React.Fragment>
+        <>
           <h1>Posts</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
-        </React.Fragment>
+        </>
       )
     },
   })
