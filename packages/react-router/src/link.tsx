@@ -614,9 +614,6 @@ export function useLinkProps<
   // null for LinkUtils
 
   const type: 'internal' | 'external' = React.useMemo(() => {
-    if (rest.reloadDocument) {
-      return 'external'
-    }
     try {
       new URL(`${to}`)
       return 'external'
