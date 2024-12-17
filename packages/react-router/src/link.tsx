@@ -778,7 +778,7 @@ export function useLinkProps<
         startTransition,
         viewTransition,
         ignoreBlocker,
-      })
+      } as any)
     }
   }
 
