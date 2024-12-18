@@ -163,11 +163,11 @@ export const CustomLink: LinkComponent<typeof MUILinkComponent> = (props) => {
 ### Mantine example
 
 ```tsx
-import * as React from "react";
-import { createLink, LinkComponent } from "@tanstack/react-router";
-import { Anchor, AnchorProps } from "@mantine/core";
+import * as React from 'react'
+import { createLink, LinkComponent } from '@tanstack/react-router'
+import { Anchor, AnchorProps } from '@mantine/core'
 
-interface MantineAnchorProps extends Omit<AnchorProps, "href"> {
+interface MantineAnchorProps extends Omit<AnchorProps, 'href'> {
   // Add any additional props you want to pass to the anchor
 }
 
@@ -175,14 +175,14 @@ const MantineLinkComponent = React.forwardRef<
   HTMLAnchorElement,
   MantineAnchorProps
 >((props, ref) => {
-  return <Anchor ref={ref} {...props} />;
-});
+  return <Anchor ref={ref} {...props} />
+})
 
-const CreatedLinkComponent = createLink(MantineLinkComponent);
+const CreatedLinkComponent = createLink(MantineLinkComponent)
 
 export const CustomLink: LinkComponent<typeof MantineLinkComponent> = (
-  props
+  props,
 ) => {
-  return <CreatedLinkComponent preload="intent" {...props} />;
-};
+  return <CreatedLinkComponent preload="intent" {...props} />
+}
 ```
