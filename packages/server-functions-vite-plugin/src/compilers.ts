@@ -3,6 +3,8 @@ import * as babel from '@babel/core'
 import _generate from '@babel/generator'
 
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
+import { codeFrameColumns } from '@babel/code-frame'
+import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { parseAst } from './ast'
 import type { ParseAstOptions } from './ast'
 
@@ -12,24 +14,96 @@ if ('default' in generate) {
   generate = generate.default as typeof generate
 }
 
-interface ServerFunctionInfo {
-  nodePath: babel.NodePath
+export interface ServerFunctionInfo {
+  nodePath: SupportedFunctionPath
   functionName: string
   functionId: string
+  referenceName: string
+  splitFileId: string
 }
 
-// export function compileEliminateDeadCode(opts: ParseAstOptions) {
-//   const ast = parseAst(opts)
-//   deadCodeElimination(ast)
+export type SupportedFunctionPath =
+  | babel.NodePath<babel.types.FunctionDeclaration>
+  | babel.NodePath<babel.types.FunctionExpression>
+  | babel.NodePath<babel.types.ArrowFunctionExpression>
 
-//   return generate(ast, {
-//     sourceMaps: true,
-//     sourceFileName: opts.filename,
-//     minified: process.env.NODE_ENV === 'production',
-//   })
-// }
+export type ReplacerFn = (opts: {
+  fn: string
+  splitImportFn: string
+  filename: string
+  functionId: string
+}) => string
 
 // const debug = process.env.TSR_VITE_DEBUG === 'true'
+
+export type CompileDirectivesOpts = ParseAstOptions & {
+  directive: string
+  getRuntimeCode?: (opts: {
+    serverFnPathsByFunctionId: Record<string, ServerFunctionInfo>
+  }) => string
+  replacer: ReplacerFn
+}
+
+const tsrServerFnSplitParam = 'tsr-serverfn-split'
+
+export function compileDirectives(opts: CompileDirectivesOpts) {
+  const [_, searchParamsStr] = opts.filename.split('?')
+  const searchParams = new URLSearchParams(searchParamsStr)
+  const functionId = searchParams.get(tsrServerFnSplitParam)
+
+  const ast = parseAst(opts)
+  const serverFnPathsByFunctionId = findServerFunctions(ast, {
+    ...opts,
+    splitFunctionId: functionId,
+  })
+
+  // Add runtime code if there are server functions
+  // Add runtime code if there are server functions
+  if (
+    Object.keys(serverFnPathsByFunctionId).length > 0 &&
+    opts.getRuntimeCode
+  ) {
+    const runtimeImport = babel.template.statement(
+      opts.getRuntimeCode({ serverFnPathsByFunctionId }),
+    )()
+    ast.program.body.unshift(runtimeImport)
+  }
+
+  // If there is a functionId, we need to remove all exports
+  // then make sure that our function is exported under the
+  // "serverFn" name
+  if (functionId) {
+    const serverFn = serverFnPathsByFunctionId[functionId]
+
+    if (!serverFn) {
+      throw new Error(`Server function ${functionId} not found`)
+    }
+
+    console.log('functionId', functionId)
+    safeRemoveExports(ast)
+
+    ast.program.body.push(
+      babel.types.exportDefaultDeclaration(
+        babel.types.identifier(serverFn.referenceName),
+      ),
+    )
+
+    // If we have a functionId, we're also going to DCE the file
+    // so that the functionId is not exported
+    deadCodeElimination(ast)
+  }
+
+  const compiledResult = generate(ast, {
+    sourceMaps: true,
+    sourceFileName: opts.filename,
+    minified: process.env.NODE_ENV === 'production',
+  })
+
+  return {
+    compiledResult,
+    serverFns: serverFnPathsByFunctionId,
+  }
+}
 
 function findNearestVariableName(path: babel.NodePath): string {
   let currentPath: babel.NodePath | null = path
@@ -99,15 +173,12 @@ function findNearestVariableName(path: babel.NodePath): string {
         babel.types.isClassMethod(currentPath.node) ||
         babel.types.isObjectMethod(currentPath.node)
       ) {
-        if (babel.types.isIdentifier(currentPath.node.key)) {
-          return currentPath.node.key.name
-        }
-        if (babel.types.isStringLiteral(currentPath.node.key)) {
-          return currentPath.node.key.value
-        }
+        throw new Error(
+          'use server in ClassMethod or ObjectMethod not supported',
+        )
       }
 
-      return null
+      return ''
     })()
 
     if (name) {
@@ -120,23 +191,6 @@ function findNearestVariableName(path: babel.NodePath): string {
   return nameParts.length > 0 ? nameParts.join('_') : 'anonymous'
 }
 
-function isFunctionDeclaration(
-  node: babel.types.Node,
-): node is
-  | babel.types.FunctionDeclaration
-  | babel.types.FunctionExpression
-  | babel.types.ArrowFunctionExpression
-  | babel.types.ClassMethod
-  | babel.types.ObjectMethod {
-  return (
-    babel.types.isFunctionDeclaration(node) ||
-    babel.types.isFunctionExpression(node) ||
-    babel.types.isArrowFunctionExpression(node) ||
-    babel.types.isClassMethod(node) ||
-    babel.types.isObjectMethod(node)
-  )
-}
-
 function makeFileLocationUrlSafe(location: string): string {
   return location
     .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
@@ -144,292 +198,317 @@ function makeFileLocationUrlSafe(location: string): string {
     .replace(/^_|_$/g, '') // Trim leading/trailing underscores
 }
 
-export function compileServerFnClient(
+function makeIdentifierSafe(identifier: string): string {
+  return identifier
+    .replace(/[^a-zA-Z0-9_$]/g, '_') // Replace unsafe chars with underscore
+    .replace(/^[0-9]/, '_$&') // Prefix leading number with underscore
+    .replace(/^\$/, '_$') // Prefix leading $ with underscore
+    .replace(/_{2,}/g, '_') // Collapse multiple underscores
+    .replace(/^_|_$/g, '') // Trim leading/trailing underscores
+}
+
+export function findServerFunctions(
+  ast: babel.types.File,
   opts: ParseAstOptions & {
-    getRuntimeCode: (opts: {
-      serverFnPathsByFunctionId: Record<string, ServerFunctionInfo>
-    }) => string
-    replacer: (opts: { filename: string; functionId: string }) => string
+    replacer?: ReplacerFn
+    splitFunctionId?: string | null
   },
 ) {
-  const ast = parseAst(opts)
-  const serverFnPathsByFunctionId = findServerFunctions(ast, opts)
-
-  // Add runtime code if there are server functions
-  if (Object.keys(serverFnPathsByFunctionId).length > 0) {
-    const runtimeImport = babel.template.statement(
-      opts.getRuntimeCode({ serverFnPathsByFunctionId }),
-    )()
-    ast.program.body.unshift(runtimeImport)
-  }
-
-  // Replace server functions with client-side stubs
-  for (const [functionId, { nodePath }] of Object.entries(
-    serverFnPathsByFunctionId,
-  )) {
-    const replacementCode = opts.replacer({
-      filename: opts.filename,
-      functionId: functionId,
-    })
-
-    // Check to see if the function is a valid function declaration
-    if (!isFunctionDeclaration(nodePath.node)) {
-      throw new Error(
-        `Server function is not a function declaration: ${nodePath.node}`,
-      )
-    }
-
-    nodePath.node.params = [
-      babel.types.restElement(babel.types.identifier('args')),
-    ]
-
-    // Remove 'use server' directive
-    // Check if the node body is a block statement
-    if (!babel.types.isBlockStatement(nodePath.node.body)) {
-      throw new Error(
-        `Server function body is not a block statement: ${nodePath.node.body}`,
-      )
-    }
-
-    const nodeBody = nodePath.node.body
-    nodeBody.directives = nodeBody.directives.filter(
-      (directive) => directive.value.value !== 'use server',
-    )
-
-    const replacement = babel.template.expression(
-      `(${replacementCode})(...args)`,
-    )()
-
-    if (babel.types.isArrowFunctionExpression(nodePath.node)) {
-      if (babel.types.isBlockStatement(nodePath.node.body)) {
-        nodePath.node.body.body = [babel.types.returnStatement(replacement)]
-      } else {
-        nodePath.node.body = babel.types.blockStatement([
-          babel.types.returnStatement(replacement),
-        ])
-      }
-    } else if (
-      babel.types.isFunctionExpression(nodePath.node) ||
-      babel.types.isFunctionDeclaration(nodePath.node) ||
-      babel.types.isObjectMethod(nodePath.node) ||
-      babel.types.isClassMethod(nodePath.node)
-    ) {
-      nodePath.node.body.body = [babel.types.returnStatement(replacement)]
-    }
-  }
-
-  const compiledCode = generate(ast, {
-    sourceMaps: true,
-    sourceFileName: opts.filename,
-    minified: process.env.NODE_ENV === 'production',
-  })
-
-  return {
-    compiledCode,
-    serverFns: serverFnPathsByFunctionId,
-  }
-}
-
-export function compileServerFnServer(opts: ParseAstOptions) {
-  const ast = parseAst(opts)
-  const serverFnPathsByFunctionId = findServerFunctions(ast, opts)
-
-  // Replace server function bodies with dynamic imports
-  Object.entries(serverFnPathsByFunctionId).forEach(
-    ([functionId, { nodePath }]) => {
-      // Check if the node is a function declaration
-      if (!isFunctionDeclaration(nodePath.node)) {
-        throw new Error(
-          `Server function is not a function declaration: ${nodePath.node}`,
-        )
-      }
-
-      nodePath.node.params = [
-        babel.types.restElement(babel.types.identifier('args')),
-      ]
-
-      // Check if the node body is a block statement
-      if (!babel.types.isBlockStatement(nodePath.node.body)) {
-        throw new Error(
-          `Server function body is not a block statement: ${nodePath.node.body}`,
-        )
-      }
-
-      const nodeBody = nodePath.node.body
-      nodeBody.directives = nodeBody.directives.filter(
-        (directive) => directive.value.value !== 'use server',
-      )
-
-      // Create the dynamic import expression
-      const importExpression = babel.template.expression(`
-      import(${JSON.stringify(`${opts.filename}?tsr-serverfn-split=${functionId}`)})
-        .then(mod => mod.serverFn(...args))
-    `)()
-
-      if (babel.types.isArrowFunctionExpression(nodePath.node)) {
-        if (babel.types.isBlockStatement(nodePath.node.body)) {
-          nodePath.node.body.body = [
-            babel.types.returnStatement(importExpression),
-          ]
-        } else {
-          nodePath.node.body = babel.types.blockStatement([
-            babel.types.returnStatement(importExpression),
-          ])
-        }
-      } else if (
-        babel.types.isFunctionExpression(nodePath.node) ||
-        babel.types.isFunctionDeclaration(nodePath.node) ||
-        babel.types.isObjectMethod(nodePath.node) ||
-        babel.types.isClassMethod(nodePath.node)
-      ) {
-        nodePath.node.body.body = [
-          babel.types.returnStatement(importExpression),
-        ]
-      }
-    },
-  )
-
-  const compiledCode = generate(ast, {
-    sourceMaps: true,
-    sourceFileName: opts.filename,
-    minified: process.env.NODE_ENV === 'production',
-  })
-
-  return {
-    compiledCode,
-    serverFns: serverFnPathsByFunctionId,
-  }
-}
-
-function findServerFunctions(ast: babel.types.File, opts: ParseAstOptions) {
   const serverFnPathsByFunctionId: Record<string, ServerFunctionInfo> = {}
-  const counts: Record<string, number> = {}
+  const functionIdCounts: Record<string, number> = {}
+  const referenceCounts: Map<string, number> = new Map()
 
-  const recordServerFunction = (nodePath: babel.NodePath) => {
-    const fnName = findNearestVariableName(nodePath)
-
-    const baseLabel = makeFileLocationUrlSafe(
-      `${opts.filename.replace(
-        path.extname(opts.filename),
-        '',
-      )}--${fnName}`.replace(opts.root, ''),
-    )
-
-    counts[baseLabel] = (counts[baseLabel] || 0) + 1
-
-    const functionId =
-      counts[baseLabel] > 1
-        ? `${baseLabel}_${counts[baseLabel] - 1}`
-        : baseLabel
-
-    serverFnPathsByFunctionId[functionId] = {
-      nodePath,
-      functionName: fnName || '',
-      functionId: functionId,
-    }
-  }
+  let programPath: babel.NodePath<babel.types.Program>
 
   babel.traverse(ast, {
-    Program: {
-      enter(programPath) {
-        programPath.traverse({
-          enter(path) {
-            // Function declarations
-            if (path.isFunctionDeclaration()) {
-              const directives = path.node.body.directives
-              for (const directive of directives) {
-                if (directive.value.value === 'use server') {
-                  recordServerFunction(path)
-                }
-              }
-            }
+    Program(path) {
+      programPath = path
+    },
+  })
 
-            // Function expressions
-            if (path.isFunctionExpression()) {
-              const directives = path.node.body.directives
-              for (const directive of directives) {
-                if (directive.value.value === 'use server') {
-                  recordServerFunction(path)
-                }
-              }
-            }
+  // Find all server functions
+  babel.traverse(ast, {
+    DirectiveLiteral(nodePath) {
+      if (nodePath.node.value === 'use server') {
+        let directiveFn = nodePath.findParent((p) => p.isFunction()) as
+          | SupportedFunctionPath
+          | undefined
 
-            // Arrow functions
-            if (path.isArrowFunctionExpression()) {
-              if (babel.types.isBlockStatement(path.node.body)) {
-                const directives = path.node.body.directives
-                for (const directive of directives) {
-                  if (directive.value.value === 'use server') {
-                    recordServerFunction(path)
-                  }
-                }
-              }
-            }
+        if (!directiveFn) return
 
-            // Class methods
-            if (path.isClassMethod()) {
-              const directives = path.node.body.directives
-              for (const directive of directives) {
-                if (directive.value.value === 'use server') {
-                  recordServerFunction(path)
-                }
-              }
-            }
+        // Handle class and object methods which are not supported
+        const isGenerator =
+          directiveFn.isFunction() && directiveFn.node.generator
 
-            // Object methods
-            if (path.isObjectMethod()) {
-              const directives = path.node.body.directives
-              for (const directive of directives) {
-                if (directive.value.value === 'use server') {
-                  recordServerFunction(path)
-                }
-              }
-            }
+        const isClassMethod = directiveFn.isClassMethod()
+        const isObjectMethod = directiveFn.isObjectMethod()
 
-            // Variable declarations with function expressions
+        if (isClassMethod || isObjectMethod || isGenerator) {
+          throw codeFrameError(
+            opts.code,
+            directiveFn.node.loc,
+            `use server in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : 'generator function'} not supported`,
+          )
+        }
+
+        // If the function is inside another block that isn't the program,
+        // Error out. This is not supported.
+        const nearestBlock = directiveFn.findParent(
+          (p) => (p.isBlockStatement() || p.isScopable()) && !p.isProgram(),
+        )
+
+        if (nearestBlock) {
+          throw codeFrameError(
+            opts.code,
+            nearestBlock.node.loc,
+            'Server functions cannot be nested in other blocks or functions',
+          )
+        }
+
+        // Handle supported function types
+        if (
+          directiveFn.isFunctionDeclaration() ||
+          directiveFn.isFunctionExpression() ||
+          (directiveFn.isArrowFunctionExpression() &&
+            babel.types.isBlockStatement(directiveFn.node.body))
+        ) {
+          // Remove the 'use server' directive from the function body
+          if (
+            babel.types.isFunction(directiveFn.node) &&
+            babel.types.isBlockStatement(directiveFn.node.body)
+          ) {
+            directiveFn.node.body.directives =
+              directiveFn.node.body.directives.filter(
+                (directive) => directive.value.value !== 'use server',
+              )
+          }
+
+          // Find the nearest variable name
+          const fnName = findNearestVariableName(directiveFn)
+
+          // Make the functionId safe for use in a URL
+          const baseLabel = makeFileLocationUrlSafe(
+            `${opts.filename.replace(
+              path.extname(opts.filename),
+              '',
+            )}--${fnName}`.replace(opts.root, ''),
+          )
+
+          // Count the number of functions with the same baseLabel
+          functionIdCounts[baseLabel] = (functionIdCounts[baseLabel] || 0) + 1
+
+          // If there are multiple functions with the same baseLabel,
+          // append a unique identifier to the functionId
+          const functionId =
+            functionIdCounts[baseLabel] > 1
+              ? `${baseLabel}_${functionIdCounts[baseLabel] - 1}`
+              : baseLabel
+
+          // Move the function to program level while preserving its position
+          // in the program body
+          const programBody = programPath.node.body
+
+          const topParent =
+            directiveFn.findParent((p) => !!p.parentPath?.isProgram()) ||
+            directiveFn
+
+          const topParentIndex = programBody.indexOf(topParent.node as any)
+
+          // Determine the reference name for the function
+          let referenceName = makeIdentifierSafe(fnName)
+
+          // If we find this referece in the scope, we need to make it unique
+          while (programPath.scope.hasBinding(referenceName)) {
+            referenceCounts.set(
+              referenceName,
+              (referenceCounts.get(referenceName) || 0) + 1,
+            )
+            referenceName += `_${referenceCounts.get(referenceName) || 0}`
+          }
+
+          // if (referenceCounts.get(referenceName) === 0) {
+
+          // referenceName += `_${(referenceCounts.get(referenceName) || 0) + 1}`
+
+          // If the reference name came from the function declaration,
+          // // We need to update the function name to match the reference name
+          // if (babel.types.isFunctionDeclaration(directiveFn.node)) {
+          //   console.log('updating function name', directiveFn.node.id!.name)
+          //   directiveFn.node.id!.name = referenceName
+          // }
+
+          // If the function has a parent that isn't the program,
+          // we need to replace it with an identifier and
+          // hoist the function to the top level as a const declaration
+          if (!directiveFn.parentPath.isProgram()) {
+            // Then place the function at the top level
+            programBody.splice(
+              topParentIndex,
+              0,
+              babel.types.variableDeclaration('const', [
+                babel.types.variableDeclarator(
+                  babel.types.identifier(referenceName),
+                  babel.types.toExpression(directiveFn.node as any),
+                ),
+              ]),
+            )
+
+            // If it's an exported named function, we need to swap it with an
+            // export const originalFunctionName = referenceName
             if (
-              path.isVariableDeclarator() &&
-              (babel.types.isFunctionExpression(path.node.init) ||
-                babel.types.isArrowFunctionExpression(path.node.init))
+              babel.types.isExportNamedDeclaration(
+                directiveFn.parentPath.node,
+              ) &&
+              (babel.types.isFunctionDeclaration(directiveFn.node) ||
+                babel.types.isFunctionExpression(directiveFn.node)) &&
+              babel.types.isIdentifier(directiveFn.node.id)
             ) {
-              const init = path.node.init
-              if (babel.types.isBlockStatement(init.body)) {
-                const directives = init.body.directives
-                for (const directive of directives) {
-                  if (directive.value.value === 'use server') {
-                    recordServerFunction(path.get('init') as babel.NodePath)
-                  }
-                }
-              }
+              const originalFunctionName = directiveFn.node.id.name
+              programBody.splice(
+                topParentIndex + 1,
+                0,
+                babel.types.exportNamedDeclaration(
+                  babel.types.variableDeclaration('const', [
+                    babel.types.variableDeclarator(
+                      babel.types.identifier(originalFunctionName),
+                      babel.types.identifier(referenceName),
+                    ),
+                  ]),
+                ),
+              )
+
+              directiveFn.remove()
+            } else {
+              directiveFn.replaceWith(babel.types.identifier(referenceName))
             }
-          },
-        })
-      },
+
+            directiveFn = programPath.get(
+              `body.${topParentIndex}.declarations.0.init`,
+            ) as SupportedFunctionPath
+          }
+
+          const [filename, searchParamsStr] = opts.filename.split('?')
+
+          const searchParams = new URLSearchParams(searchParamsStr)
+          searchParams.set('tsr-serverfn-split', functionId)
+          const splitFileId = `${filename}?${searchParams.toString()}`
+
+          // If a replacer is provided, replace the function with the replacer
+          if (functionId !== opts.splitFunctionId && opts.replacer) {
+            const replacer = opts.replacer({
+              fn: '$$fn$$',
+              splitImportFn: '$$splitImportFn$$',
+              // splitFileId,
+              filename: filename!,
+              functionId: functionId,
+            })
+
+            const replacement = babel.template.expression(replacer, {
+              placeholderPattern: false,
+              placeholderWhitelist: new Set(['$$fn$$', '$$splitImportFn$$']),
+            })({
+              ...(replacer.includes('$$fn$$')
+                ? { $$fn$$: babel.types.toExpression(directiveFn.node) }
+                : {}),
+              ...(replacer.includes('$$splitImportFn$$')
+                ? {
+                    $$splitImportFn$$: `(...args) => import(${JSON.stringify(splitFileId)}).then(module => module.default(...args))`,
+                  }
+                : {}),
+            })
+
+            directiveFn.replaceWith(replacement)
+          }
+
+          // Finally register the server function to
+          // our map of server functions
+          serverFnPathsByFunctionId[functionId] = {
+            nodePath: directiveFn,
+            referenceName,
+            functionName: fnName || '',
+            functionId: functionId,
+            splitFileId,
+          }
+        }
+      }
     },
   })
 
   return serverFnPathsByFunctionId
 }
 
-// function codeFrameError(
-//   code: string,
-//   loc: {
-//     start: { line: number; column: number }
-//     end: { line: number; column: number }
-//   },
-//   message: string,
-// ) {
-//   const frame = codeFrameColumns(
-//     code,
-//     {
-//       start: loc.start,
-//       end: loc.end,
-//     },
-//     {
-//       highlightCode: true,
-//       message,
-//     },
-//   )
+function codeFrameError(
+  code: string,
+  loc:
+    | {
+        start: { line: number; column: number }
+        end: { line: number; column: number }
+      }
+    | undefined
+    | null,
+  message: string,
+) {
+  if (!loc) {
+    return new Error(`${message} at unknown location`)
+  }
 
-//   return new Error(frame)
-// }
+  const frame = codeFrameColumns(
+    code,
+    {
+      start: loc.start,
+      end: loc.end,
+    },
+    {
+      highlightCode: true,
+      message,
+    },
+  )
+
+  return new Error(frame)
+}
+
+const safeRemoveExports = (ast: babel.types.File) => {
+  const programBody = ast.program.body
+
+  const removeExport = (
+    path:
+      | babel.NodePath<babel.types.ExportDefaultDeclaration>
+      | babel.NodePath<babel.types.ExportNamedDeclaration>,
+  ) => {
+    // If the value is a function declaration, class declaration, or variable declaration,
+    // That means it has a name and can remain in the file, just unexported.
+    if (
+      babel.types.isFunctionDeclaration(path.node.declaration) ||
+      babel.types.isClassDeclaration(path.node.declaration) ||
+      babel.types.isVariableDeclaration(path.node.declaration)
+    ) {
+      // If the value is a function declaration, class declaration, or variable declaration,
+      // That means it has a name and can remain in the file, just unexported.
+      if (
+        babel.types.isFunctionDeclaration(path.node.declaration) ||
+        babel.types.isClassDeclaration(path.node.declaration) ||
+        babel.types.isVariableDeclaration(path.node.declaration)
+      ) {
+        // Move the declaration to the top level at the same index
+        const insertIndex = programBody.findIndex(
+          (node) => node === path.node.declaration,
+        )
+        programBody.splice(insertIndex, 0, path.node.declaration as any)
+      }
+    }
+
+    // Otherwise, remove the export declaration
+    path.remove()
+  }
+
+  // Before we add our export, remove any other exports.
+  // Don't remove the thing they export, just the export declaration
+  babel.traverse(ast, {
+    ExportDefaultDeclaration(path) {
+      removeExport(path)
+    },
+    ExportNamedDeclaration(path) {
+      removeExport(path)
+    },
+  })
+}
