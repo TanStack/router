@@ -2,6 +2,7 @@
   "extends": "../../../tsconfig.json",
   "include": ["../src/router-manifest/index.ts"],
   "compilerOptions": {
+    "rootDir": "../src/router-manifest",
     "outDir": "../dist/esm/router-manifest",
     "target": "esnext",
     "noEmit": false
