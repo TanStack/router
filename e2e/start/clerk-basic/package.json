@@ -11,7 +11,7 @@
     "test:e2e": "exit 0; playwright test --project=chromium"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.6.5",
+    "@clerk/tanstack-start": "0.8.4",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/start": "workspace:^",
@@ -22,14 +22,14 @@
     "vinxi": "0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
+    "@playwright/test": "^1.49.1",
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.16",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
   }

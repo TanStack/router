@@ -17,8 +17,8 @@
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
-    "@rsbuild/core": "1.1.9",
+    "@playwright/test": "^1.49.1",
+    "@rsbuild/core": "1.1.10",
     "@rsbuild/plugin-react": "1.1.0",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/virtual-file-routes": "workspace:^",

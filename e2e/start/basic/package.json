@@ -19,10 +19,10 @@
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.5",
     "vinxi": "0.5.1",
-    "zod": "^3.23.8"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
+    "@playwright/test": "^1.49.1",
     "@types/node": "^22.5.4",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
@@ -30,7 +30,7 @@
     "autoprefixer": "^10.4.20",
     "combinate": "^1.1.11",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.16",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
   }
