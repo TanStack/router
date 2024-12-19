@@ -5,7 +5,7 @@ title: Middleware
 
 ## What is Middleware?
 
-Middleware allows you to customized the behavior of server functions created with `createServerFn` with things like shared validation, context, and much more. Middleware can even depend on other middleware to create a chain of operations that are executed hierarchically and in order.
+Middleware allows you to customize the behavior of server functions created with `createServerFn` with things like shared validation, context, and much more. Middleware can even depend on other middleware to create a chain of operations that are executed hierarchically and in order.
 
 ## What kinds of things can I do with Middleware?
 
