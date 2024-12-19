@@ -13,9 +13,6 @@ import {
 
 import { z } from 'zod'
 import {
-  Link,
-  Outlet,
-  RouterProvider,
   createLink,
   createMemoryHistory,
   createRootRoute,
@@ -23,8 +20,12 @@ import {
   createRoute,
   createRouteMask,
   createRouter,
+  Link,
+  notFound,
+  Outlet,
   redirect,
   retainSearchParams,
+  RouterProvider,
   stripSearchParams,
   useLoaderData,
   useMatchRoute,
@@ -1192,6 +1193,68 @@ describe('Link', () => {
     )
     expect(errorText).toBeInTheDocument()
     expect(notFoundComponent).not.toBeCalled()
+  })
+
+  test('router resolves roots async loader if error thrown in child route', async () => {
+    let resolveRootLoader: () => void = () => {}
+
+    const rootLoaderPromise = new Promise<void>((resolve) => {
+      resolveRootLoader = () => resolve()
+    })
+
+    const rootRoute = createRootRoute({
+      pendingComponent: () => <div>Root Loading...</div>,
+      loader: async () => {
+        await rootLoaderPromise
+      },
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to={`/nonExistingPost`}>NonExistingPost</Link>
+          </>
+        )
+      },
+      wrapInSuspense: true,
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '$postId',
+      params: {
+        parse: (p) => {
+          if (p.postId === 'nonExistingPost') {
+            throw new Error('Post not exists')
+          }
+          return {
+            postId: p.postId,
+          }
+        },
+        stringify: (p) => ({ postId: p.postId }),
+      },
+      onError: () => {
+        throw notFound()
+      },
+      component: function () {
+        return <div>Post</div>
+      },
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postRoute]),
+    })
+
+    window.history.replaceState(null, 'root', '/nonExistingPost')
+    render(<RouterProvider router={router} />)
+
+    await waitFor(async () => {
+      const rootLoading = screen.findByText('Root Loading...')
+      expect(await rootLoading).toBeInTheDocument()
+    })
+
+    resolveRootLoader()
+
+    const rootLoading = await screen.findByText('Root notFoundComponent')
+    expect(rootLoading).toBeInTheDocument()
   })
 
   test('when navigating to /posts with params', async () => {
@@ -4217,6 +4280,7 @@ describe('search middleware', () => {
       const searchValue = await screen.findByTestId('search')
       expect(searchValue).toHaveTextContent(value)
     }
+
     async function checkPostsLink(root: string) {
       const postsLink = await screen.findByRole('link', { name: 'Posts' })
       expect(postsLink).toHaveAttribute('href')
