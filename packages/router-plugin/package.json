@@ -114,7 +114,7 @@
     "babel-dead-code-elimination": "^1.0.8",
     "chokidar": "^3.6.0",
     "unplugin": "^1.16.0",
-    "zod": "^3.23.8",
+    "zod": "^3.24.1",
     "@babel/generator": "^7.26.3",
     "@babel/core": "^7.26.0",
     "@babel/parser": "^7.26.3",

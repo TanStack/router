@@ -9,7 +9,7 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.6.5",
+    "@clerk/tanstack-start": "0.8.4",
     "@tanstack/react-router": "^1.91.3",
     "@tanstack/router-devtools": "^1.91.3",
     "@tanstack/start": "^1.91.3",
@@ -25,7 +25,7 @@
     "@types/react-dom": "^18.2.21",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.16",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
   }
