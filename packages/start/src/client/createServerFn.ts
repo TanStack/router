@@ -443,7 +443,6 @@ async function executeMiddleware(
     ) as MiddlewareFn | undefined
 
     if (middlewareFn) {
-      console.log('middlewareFn', ctx)
       // Execute the middleware
       return applyMiddleware(middlewareFn, ctx, async (newCtx) => {
         // If there is a clientAfter function and we are on the client
@@ -454,8 +453,6 @@ async function executeMiddleware(
         if (env === 'client' && clientAfter) {
           // We need to await the next middleware and get the result
           const result = await next(newCtx)
-
-          console.log('newCtx', newCtx)
           console.log('result', result)
           console.log('applyClientAfter', {
             ...newCtx,
