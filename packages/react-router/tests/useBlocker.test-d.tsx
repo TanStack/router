@@ -102,7 +102,7 @@ test('shouldBlockFn has corrent action', () => {
     .toHaveProperty('shouldBlockFn')
     .parameter(0)
     .toHaveProperty('action')
-    .toEqualTypeOf<'PUSH' | 'POP' | 'REPLACE' | 'FORWARD' | 'BACK' | 'GO'>()
+    .toEqualTypeOf<'PUSH' | 'REPLACE' | 'FORWARD' | 'BACK' | 'GO'>()
 
   expectTypeOf(useBlocker<DefaultRouter>)
     .parameter(0)

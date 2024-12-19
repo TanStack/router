@@ -107,6 +107,76 @@ test('legacy Proceeding through blocked navigation works', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Editing A')
 })
 
+test('useCanGoBack correctly disables back button', async ({ page }) => {
+  const getBackButtonDisabled = async () => {
+    const backButton = await page.getByRole('button', { name: 'Back' })
+    const isDisabled = (await backButton.getAttribute('disabled')) !== null
+    return isDisabled
+  }
+
+  await expect(await getBackButtonDisabled()).toBe(true)
+
+  await page.getByRole('link', { name: 'Posts' }).click()
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.reload()
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.goBack()
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.goForward()
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.goBack()
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.goBack()
+  await expect(await getBackButtonDisabled()).toBe(true)
+
+  await page.reload()
+  await expect(await getBackButtonDisabled()).toBe(true)
+})
+
+test('useCanGoBack correctly disables back button, using router.history and window.history', async ({
+  page,
+}) => {
+  const getBackButtonDisabled = async () => {
+    const backButton = await page.getByRole('button', { name: 'Back' })
+    const isDisabled = (await backButton.getAttribute('disabled')) !== null
+    return isDisabled
+  }
+
+  await page.getByRole('link', { name: 'Posts' }).click()
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.reload()
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(await getBackButtonDisabled()).toBe(true)
+
+  await page.evaluate('window.history.forward()')
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.evaluate('window.history.forward()')
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.evaluate('window.history.back()')
+  await expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.evaluate('window.history.back()')
+  await expect(await getBackButtonDisabled()).toBe(true)
+
+  await page.reload()
+  await expect(await getBackButtonDisabled()).toBe(true)
+})
+
 const testCases = [
   {
     description: 'Navigating to a route inside a route group',
