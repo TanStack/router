@@ -14,10 +14,6 @@ import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
-import {
-  TanStackServerFnPluginClient,
-  TanStackServerFnPluginServer,
-} from '@tanstack/server-functions-plugin'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
@@ -170,7 +166,7 @@ export function defineConfig(
             }),
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
-            TanStackServerFnPluginClient({
+            Directive({
               getRuntimeCode: (opts) =>
                 `import { createClientRpc } from '@tanstack/start/client-runtime'`,
               replacer: (opts) =>

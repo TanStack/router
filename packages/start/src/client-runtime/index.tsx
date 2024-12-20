@@ -1,6 +1,6 @@
 import { fetcher } from './fetcher'
 import { getBaseUrl } from './getBaseUrl'
-import type { CreateRpcFn } from '@tanstack/server-functions-plugin'
+import type { CreateRpcFn } from '@tanstack/directive-functions-plugin'
 
 export const createClientRpc: CreateRpcFn = (opts) => {
   const base = getBaseUrl(

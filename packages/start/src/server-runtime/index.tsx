@@ -1,5 +1,5 @@
 // import { getBaseUrl } from '../client-runtime/getBaseUrl'
-import type { CreateRpcFn } from '@tanstack/server-functions-plugin'
+import type { CreateRpcFn } from '@tanstack/directive-functions-plugin'
 
 export const createServerRpc: CreateRpcFn = (opts) => {
   // const functionUrl = getBaseUrl('http://localhost:3000', id, name)

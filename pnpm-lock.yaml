@@ -3548,7 +3548,7 @@ importers:
         version: 6.0.0
       babel-dead-code-elimination:
         specifier: ^1.0.6
-        version: 1.0.6
+        version: 1.0.8
       chalk:
         specifier: ^5.3.0
         version: 5.3.0
@@ -3564,6 +3564,9 @@ importers:
 
   packages/start:
     dependencies:
+      '@tanstack/directive-functions-plugin':
+        specifier: workspace:^
+        version: link:../server-functions-vite-plugin
       '@tanstack/react-cross-context':
         specifier: workspace:*
         version: link:../react-cross-context
@@ -3576,9 +3579,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../router-plugin
-      '@tanstack/server-functions-plugin':
-        specifier: workspace:^
-        version: link:../server-functions-vite-plugin
       '@tanstack/start-vite-plugin':
         specifier: workspace:*
         version: link:../start-vite-plugin

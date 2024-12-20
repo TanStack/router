@@ -14,7 +14,7 @@ if ('default' in generate) {
   generate = generate.default as typeof generate
 }
 
-export interface ServerFunctionInfo {
+export interface DirectiveFn {
   nodePath: SupportedFunctionPath
   functionName: string
   functionId: string
@@ -38,60 +38,55 @@ export type ReplacerFn = (opts: {
 
 export type CompileDirectivesOpts = ParseAstOptions & {
   directive: string
+  directiveLabel: string
   getRuntimeCode?: (opts: {
-    serverFnPathsByFunctionId: Record<string, ServerFunctionInfo>
+    directiveFnsById: Record<string, DirectiveFn>
   }) => string
   replacer: ReplacerFn
 }
 
-const tsrServerFnSplitParam = 'tsr-serverfn-split'
-
 export function compileDirectives(opts: CompileDirectivesOpts) {
   const [_, searchParamsStr] = opts.filename.split('?')
   const searchParams = new URLSearchParams(searchParamsStr)
-  const functionId = searchParams.get(tsrServerFnSplitParam)
+  const directiveSplitParam = `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}-split`
+  const functionId = searchParams.get(directiveSplitParam)
 
   const ast = parseAst(opts)
-  const serverFnPathsByFunctionId = findServerFunctions(ast, {
+  const directiveFnsById = findDirectives(ast, {
     ...opts,
     splitFunctionId: functionId,
+    directiveSplitParam,
   })
 
-  // Add runtime code if there are server functions
-  // Add runtime code if there are server functions
-  if (
-    Object.keys(serverFnPathsByFunctionId).length > 0 &&
-    opts.getRuntimeCode
-  ) {
+  // Add runtime code if there are directives
+  // Add runtime code if there are directives
+  if (Object.keys(directiveFnsById).length > 0 && opts.getRuntimeCode) {
     const runtimeImport = babel.template.statement(
-      opts.getRuntimeCode({ serverFnPathsByFunctionId }),
+      opts.getRuntimeCode({ directiveFnsById }),
     )()
     ast.program.body.unshift(runtimeImport)
   }
 
   // If there is a functionId, we need to remove all exports
   // then make sure that our function is exported under the
-  // "serverFn" name
+  // directive name
   if (functionId) {
-    const serverFn = serverFnPathsByFunctionId[functionId]
+    const directiveFn = directiveFnsById[functionId]
 
-    if (!serverFn) {
-      throw new Error(`Server function ${functionId} not found`)
+    if (!directiveFn) {
+      throw new Error(`${opts.directiveLabel} ${functionId} not found`)
     }
 
-    console.log('functionId', functionId)
     safeRemoveExports(ast)
 
     ast.program.body.push(
       babel.types.exportDefaultDeclaration(
-        babel.types.identifier(serverFn.referenceName),
+        babel.types.identifier(directiveFn.referenceName),
       ),
     )
-
-    // If we have a functionId, we're also going to DCE the file
-    // so that the functionId is not exported
-    deadCodeElimination(ast)
   }
+
+  deadCodeElimination(ast)
 
   const compiledResult = generate(ast, {
     sourceMaps: true,
@@ -101,11 +96,14 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
 
   return {
     compiledResult,
-    serverFns: serverFnPathsByFunctionId,
+    directiveFnsById,
   }
 }
 
-function findNearestVariableName(path: babel.NodePath): string {
+function findNearestVariableName(
+  path: babel.NodePath,
+  directiveLabel: string,
+): string {
   let currentPath: babel.NodePath | null = path
   const nameParts: Array<string> = []
 
@@ -174,7 +172,7 @@ function findNearestVariableName(path: babel.NodePath): string {
         babel.types.isObjectMethod(currentPath.node)
       ) {
         throw new Error(
-          'use server in ClassMethod or ObjectMethod not supported',
+          `${directiveLabel} in ClassMethod or ObjectMethod not supported`,
         )
       }
 
@@ -207,16 +205,18 @@ function makeIdentifierSafe(identifier: string): string {
     .replace(/^_|_$/g, '') // Trim leading/trailing underscores
 }
 
-export function findServerFunctions(
+export function findDirectives(
   ast: babel.types.File,
   opts: ParseAstOptions & {
+    directive: string
+    directiveLabel: string
     replacer?: ReplacerFn
     splitFunctionId?: string | null
+    directiveSplitParam: string
   },
 ) {
-  const serverFnPathsByFunctionId: Record<string, ServerFunctionInfo> = {}
+  const directiveFnsById: Record<string, DirectiveFn> = {}
   const functionIdCounts: Record<string, number> = {}
-  const referenceCounts: Map<string, number> = new Map()
 
   let programPath: babel.NodePath<babel.types.Program>
 
@@ -226,215 +226,247 @@ export function findServerFunctions(
     },
   })
 
-  // Find all server functions
-  babel.traverse(ast, {
-    DirectiveLiteral(nodePath) {
-      if (nodePath.node.value === 'use server') {
-        let directiveFn = nodePath.findParent((p) => p.isFunction()) as
-          | SupportedFunctionPath
-          | undefined
+  // Does the file have the directive in the program body?
+  const hasFileDirective = ast.program.directives.some(
+    (directive) => directive.value.value === opts.directive,
+  )
 
-        if (!directiveFn) return
-
-        // Handle class and object methods which are not supported
-        const isGenerator =
-          directiveFn.isFunction() && directiveFn.node.generator
-
-        const isClassMethod = directiveFn.isClassMethod()
-        const isObjectMethod = directiveFn.isObjectMethod()
-
-        if (isClassMethod || isObjectMethod || isGenerator) {
-          throw codeFrameError(
-            opts.code,
-            directiveFn.node.loc,
-            `use server in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : 'generator function'} not supported`,
-          )
+  // If the entire file has a directive, we need to compile all of the functions that are
+  // exported by the file.
+  if (hasFileDirective) {
+    // Find all of the exported functions
+    // They must be either function declarations or const function/anonymous function declarations
+    babel.traverse(ast, {
+      ExportDefaultDeclaration(path) {
+        if (babel.types.isFunctionDeclaration(path.node.declaration)) {
+          compileDirective(path.get('declaration') as SupportedFunctionPath)
         }
+      },
+      ExportNamedDeclaration(path) {
+        if (babel.types.isFunctionDeclaration(path.node.declaration)) {
+          compileDirective(path.get('declaration') as SupportedFunctionPath)
+        }
+      },
+    })
+  } else {
+    // Find all directives
+    babel.traverse(ast, {
+      DirectiveLiteral(nodePath) {
+        if (nodePath.node.value === opts.directive) {
+          const directiveFn = nodePath.findParent((p) => p.isFunction()) as
+            | SupportedFunctionPath
+            | undefined
 
-        // If the function is inside another block that isn't the program,
-        // Error out. This is not supported.
-        const nearestBlock = directiveFn.findParent(
-          (p) => (p.isBlockStatement() || p.isScopable()) && !p.isProgram(),
+          if (!directiveFn) return
+
+          // Handle class and object methods which are not supported
+          const isGenerator =
+            directiveFn.isFunction() && directiveFn.node.generator
+
+          const isClassMethod = directiveFn.isClassMethod()
+          const isObjectMethod = directiveFn.isObjectMethod()
+
+          if (isClassMethod || isObjectMethod || isGenerator) {
+            throw codeFrameError(
+              opts.code,
+              directiveFn.node.loc,
+              `"${opts.directive}" in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : 'generator function'} not supported`,
+            )
+          }
+
+          // If the function is inside another block that isn't the program,
+          // Error out. This is not supported.
+          const nearestBlock = directiveFn.findParent(
+            (p) => (p.isBlockStatement() || p.isScopable()) && !p.isProgram(),
+          )
+
+          if (nearestBlock) {
+            throw codeFrameError(
+              opts.code,
+              nearestBlock.node.loc,
+              `${opts.directiveLabel}s cannot be nested in other blocks or functions`,
+            )
+          }
+
+          if (
+            !directiveFn.isFunctionDeclaration() &&
+            !directiveFn.isFunctionExpression() &&
+            !(
+              directiveFn.isArrowFunctionExpression() &&
+              babel.types.isBlockStatement(directiveFn.node.body)
+            )
+          ) {
+            throw codeFrameError(
+              opts.code,
+              directiveFn.node.loc,
+              `${opts.directiveLabel}s must be function declarations or function expressions`,
+            )
+          }
+
+          compileDirective(directiveFn)
+        }
+      },
+    })
+  }
+
+  return directiveFnsById
+
+  function compileDirective(directiveFn: SupportedFunctionPath) {
+    // Remove the directive directive from the function body
+    if (
+      babel.types.isFunction(directiveFn.node) &&
+      babel.types.isBlockStatement(directiveFn.node.body)
+    ) {
+      directiveFn.node.body.directives =
+        directiveFn.node.body.directives.filter(
+          (directive) => directive.value.value !== opts.directive,
+        )
+    }
+
+    // Find the nearest variable name
+    const fnName = findNearestVariableName(directiveFn, opts.directiveLabel)
+
+    // Make the functionId safe for use in a URL
+    const baseLabel = makeFileLocationUrlSafe(
+      `${opts.filename.replace(
+        path.extname(opts.filename),
+        '',
+      )}--${fnName}`.replace(opts.root, ''),
+    )
+
+    // Count the number of functions with the same baseLabel
+    functionIdCounts[baseLabel] = (functionIdCounts[baseLabel] || 0) + 1
+
+    // If there are multiple functions with the same baseLabel,
+    // append a unique identifier to the functionId
+    const functionId =
+      functionIdCounts[baseLabel] > 1
+        ? `${baseLabel}_${functionIdCounts[baseLabel] - 1}`
+        : baseLabel
+
+    // Move the function to program level while preserving its position
+    // in the program body
+    const programBody = programPath.node.body
+
+    const topParent =
+      directiveFn.findParent((p) => !!p.parentPath?.isProgram()) || directiveFn
+
+    const topParentIndex = programBody.indexOf(topParent.node as any)
+
+    // Determine the reference name for the function
+    let referenceName = makeIdentifierSafe(fnName)
+
+    // Crawl the scope to refresh all the bindings
+    programPath.scope.crawl()
+
+    // If we find this referece in the scope, we need to make it unique
+    while (programPath.scope.hasBinding(referenceName)) {
+      const [realReferenceName, count] = referenceName.split(/_(\d+)$/)
+      referenceName = realReferenceName + `_${Number(count || '0') + 1}`
+    }
+
+    // if (referenceCounts.get(referenceName) === 0) {
+
+    // referenceName += `_${(referenceCounts.get(referenceName) || 0) + 1}`
+
+    // If the reference name came from the function declaration,
+    // // We need to update the function name to match the reference name
+    // if (babel.types.isFunctionDeclaration(directiveFn.node)) {
+    //   console.log('updating function name', directiveFn.node.id!.name)
+    //   directiveFn.node.id!.name = referenceName
+    // }
+
+    // If the function has a parent that isn't the program,
+    // we need to replace it with an identifier and
+    // hoist the function to the top level as a const declaration
+    if (!directiveFn.parentPath.isProgram()) {
+      // Then place the function at the top level
+      programBody.splice(
+        topParentIndex,
+        0,
+        babel.types.variableDeclaration('const', [
+          babel.types.variableDeclarator(
+            babel.types.identifier(referenceName),
+            babel.types.toExpression(directiveFn.node as any),
+          ),
+        ]),
+      )
+
+      // If it's an exported named function, we need to swap it with an
+      // export const originalFunctionName = referenceName
+      if (
+        babel.types.isExportNamedDeclaration(directiveFn.parentPath.node) &&
+        (babel.types.isFunctionDeclaration(directiveFn.node) ||
+          babel.types.isFunctionExpression(directiveFn.node)) &&
+        babel.types.isIdentifier(directiveFn.node.id)
+      ) {
+        const originalFunctionName = directiveFn.node.id.name
+        programBody.splice(
+          topParentIndex + 1,
+          0,
+          babel.types.exportNamedDeclaration(
+            babel.types.variableDeclaration('const', [
+              babel.types.variableDeclarator(
+                babel.types.identifier(originalFunctionName),
+                babel.types.identifier(referenceName),
+              ),
+            ]),
+          ),
         )
 
-        if (nearestBlock) {
-          throw codeFrameError(
-            opts.code,
-            nearestBlock.node.loc,
-            'Server functions cannot be nested in other blocks or functions',
-          )
-        }
-
-        // Handle supported function types
-        if (
-          directiveFn.isFunctionDeclaration() ||
-          directiveFn.isFunctionExpression() ||
-          (directiveFn.isArrowFunctionExpression() &&
-            babel.types.isBlockStatement(directiveFn.node.body))
-        ) {
-          // Remove the 'use server' directive from the function body
-          if (
-            babel.types.isFunction(directiveFn.node) &&
-            babel.types.isBlockStatement(directiveFn.node.body)
-          ) {
-            directiveFn.node.body.directives =
-              directiveFn.node.body.directives.filter(
-                (directive) => directive.value.value !== 'use server',
-              )
-          }
-
-          // Find the nearest variable name
-          const fnName = findNearestVariableName(directiveFn)
-
-          // Make the functionId safe for use in a URL
-          const baseLabel = makeFileLocationUrlSafe(
-            `${opts.filename.replace(
-              path.extname(opts.filename),
-              '',
-            )}--${fnName}`.replace(opts.root, ''),
-          )
-
-          // Count the number of functions with the same baseLabel
-          functionIdCounts[baseLabel] = (functionIdCounts[baseLabel] || 0) + 1
-
-          // If there are multiple functions with the same baseLabel,
-          // append a unique identifier to the functionId
-          const functionId =
-            functionIdCounts[baseLabel] > 1
-              ? `${baseLabel}_${functionIdCounts[baseLabel] - 1}`
-              : baseLabel
-
-          // Move the function to program level while preserving its position
-          // in the program body
-          const programBody = programPath.node.body
-
-          const topParent =
-            directiveFn.findParent((p) => !!p.parentPath?.isProgram()) ||
-            directiveFn
-
-          const topParentIndex = programBody.indexOf(topParent.node as any)
-
-          // Determine the reference name for the function
-          let referenceName = makeIdentifierSafe(fnName)
-
-          // If we find this referece in the scope, we need to make it unique
-          while (programPath.scope.hasBinding(referenceName)) {
-            referenceCounts.set(
-              referenceName,
-              (referenceCounts.get(referenceName) || 0) + 1,
-            )
-            referenceName += `_${referenceCounts.get(referenceName) || 0}`
-          }
-
-          // if (referenceCounts.get(referenceName) === 0) {
-
-          // referenceName += `_${(referenceCounts.get(referenceName) || 0) + 1}`
-
-          // If the reference name came from the function declaration,
-          // // We need to update the function name to match the reference name
-          // if (babel.types.isFunctionDeclaration(directiveFn.node)) {
-          //   console.log('updating function name', directiveFn.node.id!.name)
-          //   directiveFn.node.id!.name = referenceName
-          // }
-
-          // If the function has a parent that isn't the program,
-          // we need to replace it with an identifier and
-          // hoist the function to the top level as a const declaration
-          if (!directiveFn.parentPath.isProgram()) {
-            // Then place the function at the top level
-            programBody.splice(
-              topParentIndex,
-              0,
-              babel.types.variableDeclaration('const', [
-                babel.types.variableDeclarator(
-                  babel.types.identifier(referenceName),
-                  babel.types.toExpression(directiveFn.node as any),
-                ),
-              ]),
-            )
-
-            // If it's an exported named function, we need to swap it with an
-            // export const originalFunctionName = referenceName
-            if (
-              babel.types.isExportNamedDeclaration(
-                directiveFn.parentPath.node,
-              ) &&
-              (babel.types.isFunctionDeclaration(directiveFn.node) ||
-                babel.types.isFunctionExpression(directiveFn.node)) &&
-              babel.types.isIdentifier(directiveFn.node.id)
-            ) {
-              const originalFunctionName = directiveFn.node.id.name
-              programBody.splice(
-                topParentIndex + 1,
-                0,
-                babel.types.exportNamedDeclaration(
-                  babel.types.variableDeclaration('const', [
-                    babel.types.variableDeclarator(
-                      babel.types.identifier(originalFunctionName),
-                      babel.types.identifier(referenceName),
-                    ),
-                  ]),
-                ),
-              )
-
-              directiveFn.remove()
-            } else {
-              directiveFn.replaceWith(babel.types.identifier(referenceName))
-            }
-
-            directiveFn = programPath.get(
-              `body.${topParentIndex}.declarations.0.init`,
-            ) as SupportedFunctionPath
-          }
-
-          const [filename, searchParamsStr] = opts.filename.split('?')
-
-          const searchParams = new URLSearchParams(searchParamsStr)
-          searchParams.set('tsr-serverfn-split', functionId)
-          const splitFileId = `${filename}?${searchParams.toString()}`
-
-          // If a replacer is provided, replace the function with the replacer
-          if (functionId !== opts.splitFunctionId && opts.replacer) {
-            const replacer = opts.replacer({
-              fn: '$$fn$$',
-              splitImportFn: '$$splitImportFn$$',
-              // splitFileId,
-              filename: filename!,
-              functionId: functionId,
-            })
-
-            const replacement = babel.template.expression(replacer, {
-              placeholderPattern: false,
-              placeholderWhitelist: new Set(['$$fn$$', '$$splitImportFn$$']),
-            })({
-              ...(replacer.includes('$$fn$$')
-                ? { $$fn$$: babel.types.toExpression(directiveFn.node) }
-                : {}),
-              ...(replacer.includes('$$splitImportFn$$')
-                ? {
-                    $$splitImportFn$$: `(...args) => import(${JSON.stringify(splitFileId)}).then(module => module.default(...args))`,
-                  }
-                : {}),
-            })
-
-            directiveFn.replaceWith(replacement)
-          }
-
-          // Finally register the server function to
-          // our map of server functions
-          serverFnPathsByFunctionId[functionId] = {
-            nodePath: directiveFn,
-            referenceName,
-            functionName: fnName || '',
-            functionId: functionId,
-            splitFileId,
-          }
-        }
+        directiveFn.remove()
+      } else {
+        directiveFn.replaceWith(babel.types.identifier(referenceName))
       }
-    },
-  })
 
-  return serverFnPathsByFunctionId
+      directiveFn = programPath.get(
+        `body.${topParentIndex}.declarations.0.init`,
+      ) as SupportedFunctionPath
+    }
+
+    const [filename, searchParamsStr] = opts.filename.split('?')
+
+    const searchParams = new URLSearchParams(searchParamsStr)
+    searchParams.set(opts.directiveSplitParam, functionId)
+    const splitFileId = `${filename}?${searchParams.toString()}`
+
+    // If a replacer is provided, replace the function with the replacer
+    if (functionId !== opts.splitFunctionId && opts.replacer) {
+      const replacer = opts.replacer({
+        fn: '$$fn$$',
+        splitImportFn: '$$splitImportFn$$',
+        // splitFileId,
+        filename: filename!,
+        functionId: functionId,
+      })
+
+      const replacement = babel.template.expression(replacer, {
+        placeholderPattern: false,
+        placeholderWhitelist: new Set(['$$fn$$', '$$splitImportFn$$']),
+      })({
+        ...(replacer.includes('$$fn$$')
+          ? { $$fn$$: babel.types.toExpression(directiveFn.node) }
+          : {}),
+        ...(replacer.includes('$$splitImportFn$$')
+          ? {
+              $$splitImportFn$$: `(...args) => import(${JSON.stringify(splitFileId)}).then(module => module.default(...args))`,
+            }
+          : {}),
+      })
+
+      directiveFn.replaceWith(replacement)
+    }
+
+    // Finally register the directive to
+    // our map of directives
+    directiveFnsById[functionId] = {
+      nodePath: directiveFn,
+      referenceName,
+      functionName: fnName || '',
+      functionId: functionId,
+      splitFileId,
+    }
+  }
 }
 
 function codeFrameError(

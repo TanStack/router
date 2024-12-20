@@ -5,6 +5,7 @@ import type { CompileDirectivesOpts } from '../src/compilers'
 
 const clientConfig: Omit<CompileDirectivesOpts, 'code'> = {
   directive: 'use server',
+  directiveLabel: 'Server function',
   root: './test-files',
   filename: 'test.ts',
   getRuntimeCode: () => 'import { createClientRpc } from "my-rpc-lib-client"',
@@ -17,6 +18,7 @@ const clientConfig: Omit<CompileDirectivesOpts, 'code'> = {
 
 const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
   directive: 'use server',
+  directiveLabel: 'Server function',
   root: './test-files',
   filename: 'test.ts',
   getRuntimeCode: () => 'import { createServerRpc } from "my-rpc-lib-server"',
@@ -30,28 +32,28 @@ const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
 
 describe('server function compilation', () => {
   const code = `
-      const namedFunction = wrapper(function namedFunction() {
+      export const namedFunction = wrapper(function namedFunction() {
         'use server'
         return 'hello'
       })
 
-      const arrowFunction = wrapper(() => {
+      export const arrowFunction = wrapper(() => {
         'use server'
         return 'hello'
       })
 
-      const anonymousFunction = wrapper(function () {
+      export const anonymousFunction = wrapper(function () {
         'use server'
         return 'hello'
       })
 
-      const multipleDirectives = function multipleDirectives() {
+      export const multipleDirectives = function multipleDirectives() {
         'use server'
         'use strict'
         return 'hello'
       }
 
-      const iife = (function () {
+      export const iife = (function () {
         'use server'
         return 'hello'
       })()
@@ -73,13 +75,21 @@ describe('server function compilation', () => {
 
       export const namedExportConst = () => {
         'use server'
+        return usedFn()
+      }
+
+      function usedFn() {
+        return 'hello'
+      }
+
+      function unusedFn() {
         return 'hello'
       }
 
       const namedDefaultExport = 'namedDefaultExport'
       export default namedDefaultExport
 
-      export const usedButNotExported = 'usedButNotExported'
+      const usedButNotExported = 'usedButNotExported'
       
       const namedExport = 'namedExport'
 
@@ -95,13 +105,13 @@ describe('server function compilation', () => {
       code,
     })
     const ssr = compileDirectives({ ...serverConfig, code })
-    const splitFiles = Object.entries(ssr.serverFns)
-      .map(([_fnId, serverFn]) => {
-        return `// ${serverFn.functionName}\n\n${
+    const splitFiles = Object.entries(ssr.directives)
+      .map(([_fnId, directiveFn]) => {
+        return `// ${directiveFn.functionName}\n\n${
           compileDirectives({
             ...serverConfig,
             code,
-            filename: serverFn.splitFileId,
+            filename: directiveFn.splitFileId,
           }).compiledResult.code
         }`
       })
@@ -113,27 +123,27 @@ describe('server function compilation', () => {
         filename: "test.ts",
         functionId: "test--namedFunction_wrapper_namedFunction"
       });
-      const namedFunction = wrapper(namedFunction_wrapper_namedFunction);
+      export const namedFunction = wrapper(namedFunction_wrapper_namedFunction);
       const arrowFunction_wrapper = createClientRpc({
         filename: "test.ts",
         functionId: "test--arrowFunction_wrapper"
       });
-      const arrowFunction = wrapper(arrowFunction_wrapper);
+      export const arrowFunction = wrapper(arrowFunction_wrapper);
       const anonymousFunction_wrapper = createClientRpc({
         filename: "test.ts",
         functionId: "test--anonymousFunction_wrapper"
       });
-      const anonymousFunction = wrapper(anonymousFunction_wrapper);
+      export const anonymousFunction = wrapper(anonymousFunction_wrapper);
       const multipleDirectives_multipleDirectives = createClientRpc({
         filename: "test.ts",
         functionId: "test--multipleDirectives_multipleDirectives"
       });
-      const multipleDirectives = multipleDirectives_multipleDirectives;
+      export const multipleDirectives = multipleDirectives_multipleDirectives;
       const iife_1 = createClientRpc({
         filename: "test.ts",
         functionId: "test--iife"
       });
-      const iife = iife_1();
+      export const iife = iife_1();
       const defaultExportFn_1 = createClientRpc({
         filename: "test.ts",
         functionId: "test--defaultExportFn"
@@ -156,7 +166,6 @@ describe('server function compilation', () => {
       export const namedExportConst = namedExportConst_1;
       const namedDefaultExport = 'namedDefaultExport';
       export default namedDefaultExport;
-      export const usedButNotExported = 'usedButNotExported';
       const namedExport = 'namedExport';
       export { namedExport };"
     `)
@@ -164,62 +173,61 @@ describe('server function compilation', () => {
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from "my-rpc-lib-server";
       const namedFunction_wrapper_namedFunction = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--namedFunction_wrapper_namedFunction").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--namedFunction_wrapper_namedFunction").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--namedFunction_wrapper_namedFunction"
       });
-      const namedFunction = wrapper(namedFunction_wrapper_namedFunction);
+      export const namedFunction = wrapper(namedFunction_wrapper_namedFunction);
       const arrowFunction_wrapper = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--arrowFunction_wrapper").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--arrowFunction_wrapper").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--arrowFunction_wrapper"
       });
-      const arrowFunction = wrapper(arrowFunction_wrapper);
+      export const arrowFunction = wrapper(arrowFunction_wrapper);
       const anonymousFunction_wrapper = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--anonymousFunction_wrapper").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--anonymousFunction_wrapper").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--anonymousFunction_wrapper"
       });
-      const anonymousFunction = wrapper(anonymousFunction_wrapper);
+      export const anonymousFunction = wrapper(anonymousFunction_wrapper);
       const multipleDirectives_multipleDirectives = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--multipleDirectives_multipleDirectives").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--multipleDirectives_multipleDirectives").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--multipleDirectives_multipleDirectives"
       });
-      const multipleDirectives = multipleDirectives_multipleDirectives;
+      export const multipleDirectives = multipleDirectives_multipleDirectives;
       const iife_1 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--iife").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--iife").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--iife"
       });
-      const iife = iife_1();
+      export const iife = iife_1();
       const defaultExportFn_1 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--defaultExportFn").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--defaultExportFn").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--defaultExportFn"
       });
       export default defaultExportFn_1;
       const namedExportFn_1 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--namedExportFn").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--namedExportFn").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--namedExportFn"
       });
       export const namedExportFn = namedExportFn_1;
       const exportedArrowFunction_wrapper = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--exportedArrowFunction_wrapper").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--exportedArrowFunction_wrapper").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--exportedArrowFunction_wrapper"
       });
       export const exportedArrowFunction = wrapper(exportedArrowFunction_wrapper);
       const namedExportConst_1 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--namedExportConst").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--namedExportConst").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--namedExportConst"
       });
       export const namedExportConst = namedExportConst_1;
       const namedDefaultExport = 'namedDefaultExport';
       export default namedDefaultExport;
-      export const usedButNotExported = 'usedButNotExported';
       const namedExport = 'namedExport';
       export { namedExport };"
     `)
@@ -295,8 +303,11 @@ describe('server function compilation', () => {
       // namedExportConst
 
       const namedExportConst_1 = () => {
-        return 'hello';
+        return usedFn();
       };
+      function usedFn() {
+        return 'hello';
+      }
       export default namedExportConst_1;"
     `,
     )
@@ -395,36 +406,36 @@ describe('server function compilation', () => {
 
     expect(() => compileDirectives({ ...clientConfig, code }))
       .toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-        2 |       class TestClass {
-      > 3 |         method() {
-          |        ^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         }
-          | ^^^^^^^^^ use server in class not supported
-        7 |
-        8 |         static staticMethod() {
-        9 |           'use server']
-    `)
+        [Error:   1 |
+          2 |       class TestClass {
+        > 3 |         method() {
+            |        ^^^^^^^^^^^
+        > 4 |           'use server'
+            | ^^^^^^^^^^^^^^^^^^^^^^
+        > 5 |           return 'hello'
+            | ^^^^^^^^^^^^^^^^^^^^^^
+        > 6 |         }
+            | ^^^^^^^^^ "use server" in class not supported
+          7 |
+          8 |         static staticMethod() {
+          9 |           'use server']
+      `)
     expect(() => compileDirectives({ ...serverConfig, code }))
       .toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-        2 |       class TestClass {
-      > 3 |         method() {
-          |        ^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         }
-          | ^^^^^^^^^ use server in class not supported
-        7 |
-        8 |         static staticMethod() {
-        9 |           'use server']
-    `)
+        [Error:   1 |
+          2 |       class TestClass {
+        > 3 |         method() {
+            |        ^^^^^^^^^^^
+        > 4 |           'use server'
+            | ^^^^^^^^^^^^^^^^^^^^^^
+        > 5 |           return 'hello'
+            | ^^^^^^^^^^^^^^^^^^^^^^
+        > 6 |         }
+            | ^^^^^^^^^ "use server" in class not supported
+          7 |
+          8 |         static staticMethod() {
+          9 |           'use server']
+      `)
     expect(() =>
       compileDirectives({
         ...serverConfig,
@@ -441,7 +452,7 @@ describe('server function compilation', () => {
       > 5 |           return 'hello'
           | ^^^^^^^^^^^^^^^^^^^^^^
       > 6 |         }
-          | ^^^^^^^^^ use server in class not supported
+          | ^^^^^^^^^ "use server" in class not supported
         7 |
         8 |         static staticMethod() {
         9 |           'use server']
@@ -460,34 +471,34 @@ describe('server function compilation', () => {
 
     expect(() => compileDirectives({ ...clientConfig, code }))
       .toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-        2 |       const obj = {
-      > 3 |         method() {
-          |        ^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         },
-          | ^^^^^^^^^ use server in object method not supported
-        7 |       }
-        8 |     ]
-    `)
+        [Error:   1 |
+          2 |       const obj = {
+        > 3 |         method() {
+            |        ^^^^^^^^^^^
+        > 4 |           'use server'
+            | ^^^^^^^^^^^^^^^^^^^^^^
+        > 5 |           return 'hello'
+            | ^^^^^^^^^^^^^^^^^^^^^^
+        > 6 |         },
+            | ^^^^^^^^^ "use server" in object method not supported
+          7 |       }
+          8 |     ]
+      `)
     expect(() => compileDirectives({ ...serverConfig, code }))
       .toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-        2 |       const obj = {
-      > 3 |         method() {
-          |        ^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         },
-          | ^^^^^^^^^ use server in object method not supported
-        7 |       }
-        8 |     ]
-    `)
+        [Error:   1 |
+          2 |       const obj = {
+        > 3 |         method() {
+            |        ^^^^^^^^^^^
+        > 4 |           'use server'
+            | ^^^^^^^^^^^^^^^^^^^^^^
+        > 5 |           return 'hello'
+            | ^^^^^^^^^^^^^^^^^^^^^^
+        > 6 |         },
+            | ^^^^^^^^^ "use server" in object method not supported
+          7 |       }
+          8 |     ]
+      `)
     expect(() =>
       compileDirectives({
         ...serverConfig,
@@ -504,7 +515,7 @@ describe('server function compilation', () => {
       > 5 |           return 'hello'
           | ^^^^^^^^^^^^^^^^^^^^^^
       > 6 |         },
-          | ^^^^^^^^^ use server in object method not supported
+          | ^^^^^^^^^ "use server" in object method not supported
         7 |       }
         8 |     ]
     `)
@@ -525,34 +536,34 @@ describe('server function compilation', () => {
 
     expect(() => compileDirectives({ ...clientConfig, code }))
       .toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-      > 2 |       function* generatorServer() {
-          |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 3 |         'use server'
-          | ^^^^^^^^^^^^^^^^^^^^
-      > 4 |         yield 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^
-      > 5 |       }
-          | ^^^^^^^ use server in generator function not supported
-        6 |
-        7 |       async function* asyncGeneratorServer() {
-        8 |         'use server']
-    `)
+        [Error:   1 |
+        > 2 |       function* generatorServer() {
+            |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        > 3 |         'use server'
+            | ^^^^^^^^^^^^^^^^^^^^
+        > 4 |         yield 'hello'
+            | ^^^^^^^^^^^^^^^^^^^^
+        > 5 |       }
+            | ^^^^^^^ "use server" in generator function not supported
+          6 |
+          7 |       async function* asyncGeneratorServer() {
+          8 |         'use server']
+      `)
     expect(() => compileDirectives({ ...serverConfig, code }))
       .toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-      > 2 |       function* generatorServer() {
-          |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 3 |         'use server'
-          | ^^^^^^^^^^^^^^^^^^^^
-      > 4 |         yield 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^
-      > 5 |       }
-          | ^^^^^^^ use server in generator function not supported
-        6 |
-        7 |       async function* asyncGeneratorServer() {
-        8 |         'use server']
-    `)
+        [Error:   1 |
+        > 2 |       function* generatorServer() {
+            |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        > 3 |         'use server'
+            | ^^^^^^^^^^^^^^^^^^^^
+        > 4 |         yield 'hello'
+            | ^^^^^^^^^^^^^^^^^^^^
+        > 5 |       }
+            | ^^^^^^^ "use server" in generator function not supported
+          6 |
+          7 |       async function* asyncGeneratorServer() {
+          8 |         'use server']
+      `)
     expect(() =>
       compileDirectives({
         ...serverConfig,
@@ -568,7 +579,7 @@ describe('server function compilation', () => {
       > 4 |         yield 'hello'
           | ^^^^^^^^^^^^^^^^^^^^
       > 5 |       }
-          | ^^^^^^^ use server in generator function not supported
+          | ^^^^^^^ "use server" in generator function not supported
         6 |
         7 |       async function* asyncGeneratorServer() {
         8 |         'use server']
@@ -586,13 +597,13 @@ describe('server function compilation', () => {
 
     const client = compileDirectives({ ...clientConfig, code })
     const ssr = compileDirectives({ ...serverConfig, code })
-    const splitFiles = Object.entries(ssr.serverFns)
-      .map(([_fnId, serverFn]) => {
-        return `// ${serverFn.functionName}\n\n${
+    const splitFiles = Object.entries(ssr.directives)
+      .map(([_fnId, directiveFn]) => {
+        return `// ${directiveFn.functionName}\n\n${
           compileDirectives({
             ...serverConfig,
             code,
-            filename: serverFn.splitFileId,
+            filename: directiveFn.splitFileId,
           }).compiledResult.code
         }`
       })
@@ -608,7 +619,7 @@ describe('server function compilation', () => {
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from "my-rpc-lib-server";
       createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--multiDirective").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--multiDirective").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--multiDirective"
       });"
@@ -622,7 +633,7 @@ describe('server function compilation', () => {
 
   test('IIFE', () => {
     const code = `
-      const iife = (function () {
+      export const iife = (function () {
         'use server'
         return 'hello'
       })()
@@ -630,13 +641,13 @@ describe('server function compilation', () => {
 
     const client = compileDirectives({ ...clientConfig, code })
     const ssr = compileDirectives({ ...serverConfig, code })
-    const splitFiles = Object.entries(ssr.serverFns)
-      .map(([_fnId, serverFn]) => {
-        return `// ${serverFn.functionName}\n\n${
+    const splitFiles = Object.entries(ssr.directives)
+      .map(([_fnId, directiveFn]) => {
+        return `// ${directiveFn.functionName}\n\n${
           compileDirectives({
             ...serverConfig,
             code,
-            filename: serverFn.splitFileId,
+            filename: directiveFn.splitFileId,
           }).compiledResult.code
         }`
       })
@@ -648,17 +659,17 @@ describe('server function compilation', () => {
         filename: "test.ts",
         functionId: "test--iife"
       });
-      const iife = iife_1();"
+      export const iife = iife_1();"
     `)
 
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from "my-rpc-lib-server";
       const iife_1 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--iife").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--iife").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--iife"
       });
-      const iife = iife_1();"
+      export const iife = iife_1();"
     `)
 
     expect(splitFiles).toMatchInlineSnapshot(`
@@ -686,14 +697,14 @@ describe('server function compilation', () => {
 
     const client = compileDirectives({ ...clientConfig, code })
     const ssr = compileDirectives({ ...serverConfig, code })
-    console.log('serverFns', ssr.serverFns)
-    const splitFiles = Object.entries(ssr.serverFns)
-      .map(([_fnId, serverFn]) => {
-        return `// ${serverFn.functionName}\n\n${
+
+    const splitFiles = Object.entries(ssr.directives)
+      .map(([_fnId, directiveFn]) => {
+        return `// ${directiveFn.functionName}\n\n${
           compileDirectives({
             ...serverConfig,
             code,
-            filename: serverFn.splitFileId,
+            filename: directiveFn.splitFileId,
           }).compiledResult.code
         }`
       })
@@ -701,65 +712,157 @@ describe('server function compilation', () => {
 
     expect(client.compiledResult.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib-client";
-      const outer_useServer_2 = createClientRpc({
+      const outer_useServer = createClientRpc({
         filename: "test.ts",
         functionId: "test--outer_useServer"
       });
-      outer(outer_useServer_2);
-      const outer_useServer_3 = createClientRpc({
+      outer(outer_useServer);
+      const outer_useServer_1 = createClientRpc({
         filename: "test.ts",
         functionId: "test--outer_useServer_1"
       });
-      outer(outer_useServer_3);"
+      outer(outer_useServer_1);"
     `)
 
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from "my-rpc-lib-server";
-      const outer_useServer_2 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--outer_useServer").then(module => module.default(...args)),
+      const outer_useServer = createServerRpc({
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--outer_useServer").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--outer_useServer"
       });
-      outer(outer_useServer_2);
-      const outer_useServer_3 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--outer_useServer_1").then(module => module.default(...args)),
+      outer(outer_useServer);
+      const outer_useServer_1 = createServerRpc({
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--outer_useServer_1").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--outer_useServer_1"
       });
-      outer(outer_useServer_3);"
+      outer(outer_useServer_1);"
     `)
 
     expect(splitFiles).toMatchInlineSnapshot(`
       "// outer_useServer
 
       import { createServerRpc } from "my-rpc-lib-server";
-      const outer_useServer_2 = function useServer() {
+      const outer_useServer = function useServer() {
         return 'hello';
       };
-      outer(outer_useServer_2);
-      const outer_useServer_3 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--outer_useServer_1").then(module => module.default(...args)),
+      outer(outer_useServer);
+      const outer_useServer_1 = createServerRpc({
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--outer_useServer_1").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--outer_useServer_1"
       });
-      outer(outer_useServer_3);
-      export default outer_useServer_2;
+      outer(outer_useServer_1);
+      export default outer_useServer;
 
 
       // outer_useServer
 
       import { createServerRpc } from "my-rpc-lib-server";
-      const outer_useServer_2 = createServerRpc({
-        fn: (...args) => import("test.ts?tsr-serverfn-split=test--outer_useServer").then(module => module.default(...args)),
+      const outer_useServer = createServerRpc({
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--outer_useServer").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--outer_useServer"
       });
-      outer(outer_useServer_2);
-      const outer_useServer_3 = function useServer() {
+      outer(outer_useServer);
+      const outer_useServer_1 = function useServer() {
         return 'hello';
       };
-      outer(outer_useServer_3);
-      export default outer_useServer_3;"
+      outer(outer_useServer_1);
+      export default outer_useServer_1;"
+    `)
+  })
+
+  test('use server directive in program body', () => {
+    const code = `
+      'use server'
+
+      export function useServer() {
+        return usedInUseServer()
+      }
+
+      function notExported() {
+        return 'hello'
+      }
+
+      function usedInUseServer() {
+        return 'hello'
+      }
+
+      export default function defaultExport() {
+        return 'hello'
+      }
+    `
+
+    const client = compileDirectives({ ...clientConfig, code })
+    const ssr = compileDirectives({ ...serverConfig, code })
+    const splitFiles = Object.entries(ssr.directives)
+      .map(([_fnId, directive]) => {
+        return `// ${directive.functionName}\n\n${
+          compileDirectives({
+            ...serverConfig,
+            code,
+            filename: directive.splitFileId,
+          }).compiledResult.code
+        }`
+      })
+      .join('\n\n\n')
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "'use server';
+
+      import { createClientRpc } from "my-rpc-lib-client";
+      const useServer_1 = createClientRpc({
+        filename: "test.ts",
+        functionId: "test--useServer"
+      });
+      export const useServer = useServer_1;
+      const defaultExport_1 = createClientRpc({
+        filename: "test.ts",
+        functionId: "test--defaultExport"
+      });
+      export default defaultExport_1;"
+    `)
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "'use server';
+
+      import { createServerRpc } from "my-rpc-lib-server";
+      const useServer_1 = createServerRpc({
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--useServer").then(module => module.default(...args)),
+        filename: "test.ts",
+        functionId: "test--useServer"
+      });
+      export const useServer = useServer_1;
+      const defaultExport_1 = createServerRpc({
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=test--defaultExport").then(module => module.default(...args)),
+        filename: "test.ts",
+        functionId: "test--defaultExport"
+      });
+      export default defaultExport_1;"
+    `)
+    expect(splitFiles).toMatchInlineSnapshot(`
+      "// useServer
+
+      'use server';
+
+      const useServer_1 = function useServer() {
+        return usedInUseServer();
+      };
+      function usedInUseServer() {
+        return 'hello';
+      }
+      export default useServer_1;
+
+
+      // defaultExport
+
+      'use server';
+
+      const defaultExport_1 = function defaultExport() {
+        return 'hello';
+      };
+      export default defaultExport_1;"
     `)
   })
 })
