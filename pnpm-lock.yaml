@@ -2525,8 +2525,8 @@ importers:
         specifier: ^3.11.8
         version: 3.11.8(@types/react@18.3.12)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@apollo/client-react-streaming':
-        specifier: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz
-        version: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz(@apollo/client@3.11.8(@types/react@18.3.12)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        specifier: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@93e20db.tgz
+        version: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@93e20db.tgz(@apollo/client@3.11.8(@types/react@18.3.12)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3822,12 +3822,12 @@ packages:
   '@andrewbranch/untar.js@1.0.3':
     resolution: {integrity: sha512-Jh15/qVmrLGhkKJBdXlK1+9tY4lZruYjsgkDFj08ZmDiWVBLJcqkok7Z0/R0In+i1rScBpJlSvrTS2Lm41Pbnw==}
 
-  '@apollo/client-react-streaming@https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz':
-    resolution: {tarball: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz}
-    version: 0.11.5
+  '@apollo/client-react-streaming@https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@93e20db.tgz':
+    resolution: {tarball: https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@93e20db.tgz}
+    version: 0.11.8-alpha.1
     peerDependencies:
       '@apollo/client': ^3.10.4
-      react: ^18 || >=19.0.0-rc <19.0.0
+      react: ^18 || >=19.0.0-rc
 
   '@apollo/client@3.11.8':
     resolution: {integrity: sha512-CgG1wbtMjsV2pRGe/eYITmV5B8lXUCYljB2gB/6jWTFQcrvirUVvKg7qtFdjYkQSFbIffU1IDyxgeaN81eTjbA==}
@@ -11198,7 +11198,7 @@ snapshots:
 
   '@andrewbranch/untar.js@1.0.3': {}
 
-  '@apollo/client-react-streaming@https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz(@apollo/client@3.11.8(@types/react@18.3.12)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
+  '@apollo/client-react-streaming@https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@93e20db.tgz(@apollo/client@3.11.8(@types/react@18.3.12)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@apollo/client': 3.11.8(@types/react@18.3.12)(graphql@16.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1

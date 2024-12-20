@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@apollo/client": "^3.11.8",
-    "@apollo/client-react-streaming": "https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@f3a27e6.tgz",
+    "@apollo/client-react-streaming": "https://pkg.pr.new/apollographql/apollo-client-nextjs/@apollo/client-react-streaming@93e20db.tgz",
     "@tanstack/react-router": "^1.77.8",
     "@tanstack/router-devtools": "^1.77.8",
     "@tanstack/start": "^1.77.8",
