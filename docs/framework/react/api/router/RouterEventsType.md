@@ -7,29 +7,40 @@ The `RouterEvents` type contains all of the events that the router can emit. Eac
 
 ```tsx
 type RouterEvents = {
+  onBeforeNavigate: {
+    type: 'onBeforeNavigate'
+    fromLocation: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+    hrefChanged: boolean
+  }
   onBeforeLoad: {
     type: 'onBeforeLoad'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onLoad: {
     type: 'onLoad'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onResolved: {
     type: 'onResolved'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
     fromLocation: ParsedLocation
     toLocation: ParsedLocation
     pathChanged: boolean
+    hrefChanged: boolean
   }
 }
 ```
@@ -40,7 +51,7 @@ Once an event is emitted, the following properties will be present on the event 
 
 ### `type` property
 
-- Type: `onBeforeLoad | onLoad | onBeforeRouteMount | onResolved`
+- Type: `onBeforeNavigate | onBeforeLoad | onLoad | onBeforeRouteMount | onResolved`
 - The type of the event
 - This is useful for discriminating between events in a listener function.
 
@@ -58,6 +69,11 @@ Once an event is emitted, the following properties will be present on the event 
 
 - Type: `boolean`
 - `true` if the path has changed between the `fromLocation` and `toLocation`.
+
+### `hrefChanged` property
+
+- Type: `boolean`
+- `true` if the href has changed between the `fromLocation` and `toLocation`.
 
 ## Example
 

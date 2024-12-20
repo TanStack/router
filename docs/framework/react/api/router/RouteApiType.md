@@ -23,6 +23,11 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `(match: RouteMatch) => TSelected`
     - If supplied, this function will be called with the route match and the return value will be returned from `useMatch`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
+  - `opts.structuralSharing`
+    - Optional
+    - `boolean`
+    - Configures whether structural sharing is enabled for the value returned by `select`.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `RouteMatch` object or a loosened version of the `RouteMatch` object if `opts.strict` is `false`.
@@ -59,6 +64,11 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `(match: TFullSearchSchema) => TSelected`
     - If supplied, this function will be called with the route match and the return value will be returned from `useSearch`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
+  - `opts.structuralSharing`
+    - Optional
+    - `boolean`
+    - Configures whether structural sharing is enabled for the value returned by `select`.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TFullSearchSchema` object or a loosened version of the `TFullSearchSchema` object if `opts.strict` is `false`.
@@ -77,6 +87,11 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `(match: TAllParams) => TSelected`
     - If supplied, this function will be called with the route match and the return value will be returned from `useParams`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
+  - `opts.structuralSharing`
+    - Optional
+    - `boolean`
+    - Configures whether structural sharing is enabled for the value returned by `select`.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TAllParams` object or a loosened version of the `TAllParams` object if `opts.strict` is `false`.
@@ -95,6 +110,11 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `(match: TLoaderData) => TSelected`
     - If supplied, this function will be called with the route match and the return value will be returned from `useLoaderData`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
+  - `opts.structuralSharing`
+    - Optional
+    - `boolean`
+    - Configures whether structural sharing is enabled for the value returned by `select`.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderData` object or a loosened version of the `TLoaderData` object if `opts.strict` is `false`.
@@ -113,6 +133,11 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `(match: TLoaderDeps) => TSelected`
     - If supplied, this function will be called with the route match and the return value will be returned from `useLoaderDeps`.
+  - `opts.structuralSharing`
+    - Optional
+    - `boolean`
+    - Configures whether structural sharing is enabled for the value returned by `select`.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderDeps` object.

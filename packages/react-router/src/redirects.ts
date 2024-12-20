@@ -12,10 +12,10 @@ export type Redirect<
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
 > = {
+  href?: string
   /**
    * @deprecated Use `statusCode` instead
    **/
-  href?: string
   code?: number
   statusCode?: number
   throw?: any
@@ -47,6 +47,14 @@ export function redirect<
   ;(opts as any).isRedirect = true
   opts.statusCode = opts.statusCode || opts.code || 307
   opts.headers = opts.headers || {}
+  if (!opts.reloadDocument) {
+    opts.reloadDocument = false
+    try {
+      new URL(`${opts.href}`)
+      opts.reloadDocument = true
+    } catch {}
+  }
+
   if (opts.throw) {
     throw opts
   }

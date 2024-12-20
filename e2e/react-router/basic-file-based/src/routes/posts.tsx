@@ -22,6 +22,7 @@ function PostsComponent() {
                   params={{
                     postId: post.id,
                   }}
+                  reloadDocument={true}
                   className="block py-1 text-blue-600 hover:opacity-75"
                   activeProps={{ className: 'font-bold underline' }}
                 >

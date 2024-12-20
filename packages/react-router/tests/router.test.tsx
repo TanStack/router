@@ -1,5 +1,5 @@
 import { act, useEffect } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -17,7 +17,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { AnyRoute, RouterOptions } from '../src'
+import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -26,6 +26,17 @@ afterEach(() => {
 })
 
 const mockFn1 = vi.fn()
+
+export function validateSearchParams<
+  TExpected extends Partial<Record<string, string>>,
+>(expected: TExpected, router: AnyRouter) {
+  const parsedSearch = new URLSearchParams(window.location.search)
+  expect(parsedSearch.size).toBe(Object.keys(expected).length)
+  for (const [key, value] of Object.entries(expected)) {
+    expect(parsedSearch.get(key)).toBe(value)
+  }
+  expect(router.state.location.search).toEqual(expected)
+}
 
 function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
   const rootRoute = createRootRoute({
@@ -140,6 +151,69 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       )
     },
   })
+  const searchWithDefaultRoute = createRoute({
+    getParentRoute: () => rootRoute,
+
+    path: 'searchWithDefault',
+  })
+  const searchWithDefaultIndexRoute = createRoute({
+    getParentRoute: () => searchWithDefaultRoute,
+    path: '/',
+    component: () => {
+      return (
+        <>
+          <Link
+            data-testid="link-without-params"
+            to="/searchWithDefault/check"
+            search={{ default: 'd1' }}
+          >
+            without params
+          </Link>
+          <Link
+            data-testid="link-with-optional-param"
+            to="/searchWithDefault/check"
+            search={{ optional: 'o1' }}
+          >
+            with optional param
+          </Link>
+          <Link
+            data-testid="link-with-default-param"
+            to="/searchWithDefault/check"
+            search={{ default: 'd2' }}
+          >
+            with default param
+          </Link>
+          <Link
+            data-testid="link-with-both-params"
+            to="/searchWithDefault/check"
+            search={{ optional: 'o1', default: 'd2' }}
+          >
+            with both params
+          </Link>
+        </>
+      )
+    },
+  })
+
+  const searchWithDefaultCheckRoute = createRoute({
+    validateSearch: z.object({
+      default: z.string().default('d1'),
+      optional: z.string().optional(),
+    }),
+    getParentRoute: () => searchWithDefaultRoute,
+    path: 'check',
+    component: () => {
+      const search = searchWithDefaultCheckRoute.useSearch()
+      return (
+        <>
+          <div data-testid="search-default">{search.default}</div>
+          <div data-testid="search-optional">
+            {search.optional ?? '$undefined'}
+          </div>
+        </>
+      )
+    },
+  })
 
   const routeTree = rootRoute.addChildren([
     indexRoute,
@@ -165,6 +239,10 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       ]),
     ]),
     searchRoute,
+    searchWithDefaultRoute.addChildren([
+      searchWithDefaultIndexRoute,
+      searchWithDefaultCheckRoute,
+    ]),
   ])
 
   const router = createRouter({ routeTree, ...options })
@@ -305,6 +383,37 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     expect((match.params as unknown as any).slug).toBe(
       'framework/react/guide/file-based-routing tanstack',
     )
+  })
+
+  it('params.slug should be encoded in the final URL', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
+    )
+
+    expect(router.state.location.pathname).toBe('/posts/%40jane')
+  })
+
+  it('params.slug should be encoded in the final URL except characters in pathParamsAllowedCharacters', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      pathParamsAllowedCharacters: ['@'],
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
+    )
+
+    expect(router.state.location.pathname).toBe('/posts/@jane')
   })
 })
 
@@ -755,12 +864,7 @@ describe('search params in URL', () => {
               await screen.findByTestId('search-search'),
             ).toHaveTextContent(search.search ?? '$undefined')
           }
-          expect(router.state.location.search).toEqual(search)
-          const parsedSearch = new URLSearchParams(window.location.search)
-          expect(parsedSearch.size).toBe(Object.keys(search).length)
-          for (const [key, value] of Object.entries(search)) {
-            expect(parsedSearch.get(key)).toBe(value)
-          }
+          validateSearchParams(search, router)
         },
       )
     },
@@ -786,14 +890,130 @@ describe('search params in URL', () => {
       }
 
       expect(window.location.pathname).toEqual(route)
-      const expectedSearch = { ...search }
-      delete expectedSearch.unknown
-      expect(router.state.location.search).toEqual(expectedSearch)
-      const parsedSearch = new URLSearchParams(window.location.search)
-      expect(parsedSearch.size).toBe(Object.keys(expectedSearch).length)
-      for (const [key, value] of Object.entries(expectedSearch)) {
-        expect(parsedSearch.get(key)).toBe(value)
-      }
+      const { unknown: _, ...expectedSearch } = { ...search }
+      validateSearchParams(expectedSearch, router)
+    })
+  })
+
+  describe.each([false, true, undefined])('default search params', (strict) => {
+    let router: AnyRouter
+    beforeEach(() => {
+      const result = createTestRouter({ search: { strict } })
+      router = result.router
+    })
+
+    async function checkSearch(expectedSearch: {
+      default: string
+      optional?: string
+    }) {
+      expect(await screen.findByTestId('search-default')).toHaveTextContent(
+        expectedSearch.default,
+      )
+      expect(await screen.findByTestId('search-optional')).toHaveTextContent(
+        expectedSearch.optional ?? '$undefined',
+      )
+
+      validateSearchParams(expectedSearch, router)
+    }
+
+    it('should add the default search param upon initial load when no search params are present', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault/check`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
+      await checkSearch({ default: 'd1' })
+    })
+
+    it('should have the correct `default` search param upon initial load when the `default` param is present', async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `/searchWithDefault/check?default=d2`,
+      )
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
+      await checkSearch({ default: 'd2' })
+    })
+
+    it('should add the default search param upon initial load when only the optional search param is present', async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `/searchWithDefault/check?optional=o1`,
+      )
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
+      await checkSearch({ default: 'd1', optional: 'o1' })
+    })
+
+    it('should keep the search param upon initial load when both search params are present', async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `/searchWithDefault/check?default=d2&optional=o1`,
+      )
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
+      await checkSearch({ default: 'd2', optional: 'o1' })
+    })
+
+    it('should have the default search param when navigating without search params', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const link = await screen.findByTestId('link-without-params')
+
+      expect(link).toBeInTheDocument()
+      fireEvent.click(link)
+
+      await checkSearch({ default: 'd1' })
+    })
+
+    it('should have the default search param when navigating with the optional search param', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const link = await screen.findByTestId('link-with-optional-param')
+
+      expect(link).toBeInTheDocument()
+      fireEvent.click(link)
+
+      await checkSearch({ default: 'd1', optional: 'o1' })
+    })
+
+    it('should have the correct `default` search param when navigating with the `default` search param', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const link = await screen.findByTestId('link-with-default-param')
+
+      expect(link).toBeInTheDocument()
+      fireEvent.click(link)
+
+      await checkSearch({ default: 'd2' })
+    })
+
+    it('should have the correct search params when navigating with both search params', async () => {
+      window.history.replaceState(null, '', `/searchWithDefault`)
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      const link = await screen.findByTestId('link-with-both-params')
+
+      expect(link).toBeInTheDocument()
+      fireEvent.click(link)
+
+      await checkSearch({ default: 'd2', optional: 'o1' })
     })
   })
 })

@@ -310,7 +310,7 @@ const routeTree = rootRoute.addChildren([
 ])
 ```
 
-Now both `/layout-a` and `/layout-b` will render the their contents inside of the `LayoutComponent`:
+Now both `/layout-a` and `/layout-b` will render their contents inside of the `LayoutComponent`:
 
 ```tsx
 // URL: /layout-a

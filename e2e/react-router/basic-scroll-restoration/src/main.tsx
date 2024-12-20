@@ -214,7 +214,7 @@ const router = createRouter({ routeTree, defaultPreload: 'intent' })
 
 declare global {
   interface Window {
-    invokeOrders: string[]
+    invokeOrders: Array<string>
   }
 }
 window.invokeOrders = []

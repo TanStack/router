@@ -2,7 +2,7 @@ import type { InferFileRouteTypes } from './fileRoute'
 import type { AddTrailingSlash, RemoveTrailingSlashes } from './link'
 import type { AnyRoute } from './route'
 import type { AnyRouter, TrailingSlashOption } from './router'
-import type { MergeUnion } from './utils'
+import type { PartialMergeAll } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
@@ -114,9 +114,7 @@ export type RouteToPathNeverTrailingSlash<TRoute extends AnyRoute> =
   TRoute['path'] extends '/'
     ? TRoute['fullPath'] extends '/'
       ? TRoute['fullPath']
-      : TRoute['fullPath'] extends `${infer TRest}/`
-        ? TRest
-        : TRoute['fullPath']
+      : RemoveTrailingSlashes<TRoute['fullPath']>
     : TRoute['fullPath']
 
 export type RouteToPathPreserveTrailingSlash<TRoute extends AnyRoute> =
@@ -139,11 +137,9 @@ export type RouteToByRouter<
   TRoute extends AnyRoute,
 > = RouteToPathByTrailingSlashOption<TRoute>[TrailingSlashOptionByRouter<TRouter>]
 
-export type CodeRouteToPath<
-  TRouter extends AnyRouter,
-  TRouteTree extends AnyRoute,
-> =
-  ParseRouteWithoutBranches<TRouteTree> extends infer TRoute extends AnyRoute
+export type CodeRouteToPath<TRouter extends AnyRouter> =
+  ParseRouteWithoutBranches<TRouter['routeTree']> extends infer TRoute extends
+    AnyRoute
     ? TRoute extends any
       ? RouteToByRouter<TRouter, TRoute>
       : never
@@ -159,13 +155,10 @@ export type FileRouteToPath<
     ? AddTrailingSlash<TTo>
     : TTo | AddTrailingSlash<TTo>
 
-export type RouteToPath<
-  TRouter extends AnyRouter,
-  TRouteTree extends AnyRoute,
-> = unknown extends TRouter
+export type RouteToPath<TRouter extends AnyRouter> = unknown extends TRouter
   ? string
   : InferFileRouteTypes<TRouter['routeTree']> extends never
-    ? CodeRouteToPath<TRouter, TRouteTree>
+    ? CodeRouteToPath<TRouter>
     : FileRouteToPath<TRouter>
 
 export type CodeRoutesByToPath<TRouter extends AnyRouter> =
@@ -207,25 +200,25 @@ export type RouteByToPath<TRouter extends AnyRouter, TTo> =
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
-    ? MergeUnion<TRoutes['types']['fullSearchSchema']>
+    ? PartialMergeAll<TRoutes['types']['fullSearchSchema']>
     : never
 
 export type FullSearchSchemaInput<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
-    ? MergeUnion<TRoutes['types']['fullSearchSchemaInput']>
+    ? PartialMergeAll<TRoutes['types']['fullSearchSchemaInput']>
     : never
 
 export type AllParams<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
-    ? MergeUnion<TRoutes['types']['allParams']>
+    ? PartialMergeAll<TRoutes['types']['allParams']>
     : never
 
 export type AllContext<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
-    ? MergeUnion<TRoutes['types']['allContext']>
+    ? PartialMergeAll<TRoutes['types']['allContext']>
     : never
 
 export type AllLoaderData<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
-    ? MergeUnion<TRoutes['types']['loaderData']>
+    ? PartialMergeAll<TRoutes['types']['loaderData']>
     : never

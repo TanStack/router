@@ -2,9 +2,9 @@ import { useCallback, useMemo, useRef } from 'react'
 import invariant from 'tiny-invariant'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { boardQueries, useUpdateBoardMutation } from '../queries.js'
-import { type Column } from '../db/schema.js'
 import { NewColumn } from './NewColumn.js'
 import { Column as ColumnComponent } from './Column.js'
+import type { Column } from '../db/schema.js'
 import { EditableText } from '~/components/EditableText.js'
 
 export function Board({ boardId }: { boardId: string }) {

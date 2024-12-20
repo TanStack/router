@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { pick, useLayoutEffect, usePrevious } from './utils'
+import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { trimPathRight } from './path'
@@ -7,28 +7,33 @@ import { trimPathRight } from './path'
 export function Transitioner() {
   const router = useRouter()
   const mountLoadForRouter = React.useRef({ router, mounted: false })
-  const routerState = useRouterState({
-    select: (s) =>
-      pick(s, ['isLoading', 'location', 'resolvedLocation', 'isTransitioning']),
+  const isLoading = useRouterState({
+    select: ({ isLoading }) => isLoading,
   })
 
-  const [isTransitioning, startReactTransition_] = React.useTransition()
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
+    structuralSharing: true,
   })
 
-  const previousIsLoading = usePrevious(routerState.isLoading)
+  const previousIsLoading = usePrevious(isLoading)
 
-  const isAnyPending =
-    routerState.isLoading || isTransitioning || hasPendingMatches
+  const isAnyPending = isLoading || isTransitioning || hasPendingMatches
   const previousIsAnyPending = usePrevious(isAnyPending)
 
-  const isPagePending = routerState.isLoading || hasPendingMatches
+  const isPagePending = isLoading || hasPendingMatches
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startReactTransition = startReactTransition_
+    router.startReactTransition = (fn: () => void) => {
+      setIsTransitioning(true)
+      React.startTransition(() => {
+        fn()
+        setIsTransitioning(false)
+      })
+    }
   }
 
   // Subscribe to location changes
@@ -81,19 +86,21 @@ export function Transitioner() {
 
   useLayoutEffect(() => {
     // The router was loading and now it's not
-    if (previousIsLoading && !routerState.isLoading) {
+    if (previousIsLoading && !isLoading) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
     }
-  }, [previousIsLoading, router, routerState.isLoading])
+  }, [previousIsLoading, router, isLoading])
 
   useLayoutEffect(() => {
     // emit onBeforeRouteMount
@@ -101,12 +108,14 @@ export function Transitioner() {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onBeforeRouteMount',
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
     }
   }, [isPagePending, previousIsPagePending, router])
@@ -117,12 +126,14 @@ export function Transitioner() {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
+      const hrefChanged = fromLocation.href !== toLocation.href
 
       router.emit({
         type: 'onResolved',
         fromLocation,
         toLocation,
         pathChanged,
+        hrefChanged,
       })
 
       router.__store.setState((s) => ({
@@ -132,10 +143,13 @@ export function Transitioner() {
       }))
 
       if (typeof document !== 'undefined' && (document as any).querySelector) {
-        if (router.state.location.hash !== '') {
+        const hashScrollIntoViewOptions =
+          router.state.location.state.__hashScrollIntoViewOptions ?? true
+
+        if (hashScrollIntoViewOptions && router.state.location.hash !== '') {
           const el = document.getElementById(router.state.location.hash)
           if (el) {
-            el.scrollIntoView()
+            el.scrollIntoView(hashScrollIntoViewOptions)
           }
         }
       }

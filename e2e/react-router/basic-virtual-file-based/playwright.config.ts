@@ -1,21 +1,26 @@
 import { defineConfig, devices } from '@playwright/test'
+import { derivePort } from '../../utils.js'
+import packageJson from './package.json' with { type: 'json' }
 
+const PORT = derivePort(packageJson.name)
+const baseURL = `http://localhost:${PORT}`
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: './tests',
+  workers: 1,
 
   reporter: [['line']],
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3001/',
+    baseURL,
   },
 
   webServer: {
-    command: 'pnpm run dev',
-    url: 'http://localhost:3001',
+    command: `VITE_SERVER_PORT=${PORT} pnpm build && VITE_SERVER_PORT=${PORT} pnpm start --port ${PORT}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
   },

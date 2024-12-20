@@ -26,6 +26,7 @@ function EmptyComponent() {
 Object.entries(routerMap).forEach(([path, component]) => {
   const foundRoute = router.routesById[path as RouterIds]
   foundRoute.update({
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     component: component ?? EmptyComponent,
   })
 })

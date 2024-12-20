@@ -22,6 +22,7 @@ coverage
 
 # tests
 packages/router-generator/tests/**/*.gen.ts
+packages/router-generator/tests/**/*.gen.js
 
 # misc
 .DS_Store

@@ -1,10 +1,6 @@
 import { createMemoryHistory } from '@tanstack/react-router'
 import { serializeLoaderData } from '../client/serialization'
-import {
-  mergeHeaders,
-  serverFnPayloadTypeHeader,
-  serverFnReturnTypeHeader,
-} from '../client'
+import { mergeHeaders } from '../client'
 import type { AnyRouter, Manifest } from '@tanstack/react-router'
 import type { HandlerCallback } from './defaultStreamHandler'
 
@@ -77,11 +73,6 @@ function getRequestHeaders(opts: { router: AnyRouter }): Headers {
       Location: redirect.href,
     })
   }
-
-  // Remove server function headers
-  ;[serverFnReturnTypeHeader, serverFnPayloadTypeHeader].forEach((header) => {
-    headers.delete(header)
-  })
 
   return headers
 }

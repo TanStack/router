@@ -10,7 +10,7 @@ export const Route = createFileRoute('/error')({
   errorComponent: ({ error }) => {
     return (
       <div className="p-2">
-        <h3>Caught: {(error as Error).message}</h3>
+        <h3>Caught: {error.message}</h3>
         <p>(This page has a 50% chance of throwing an error)</p>
       </div>
     )

@@ -1,8 +1,13 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-async function signup(page: Page, email: string, password: string) {
-  await page.goto('/signup')
+async function signup(
+  page: Page,
+  baseUrl: string,
+  email: string,
+  password: string,
+) {
+  await page.goto(baseUrl + '/signup')
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', password)
   await page.click('button[type="submit"]')

@@ -1,9 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
 export const Route = createFileRoute('/(group)/lazyinside')({
-  validateSearch: zodSearchValidator(
-    z.object({ hello: z.string().optional() }),
-  ),
+  validateSearch: zodValidator(z.object({ hello: z.string().optional() })),
 })

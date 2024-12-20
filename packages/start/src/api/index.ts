@@ -221,7 +221,7 @@ interface CustomizedVinxiFileRoute {
   $APIRoute?: {
     src: string // this is the path to the source file
     import: () => Promise<{
-      Route: APIRouteReturnType
+      APIRoute: APIRouteReturnType
     }>
   }
 }
@@ -340,7 +340,7 @@ export const defaultAPIFileRouteHandler: StartAPIHandlerCallback = async ({
 
   try {
     // We can guarantee that action is defined since we filtered for it earlier
-    action = await match.payload.$APIRoute!.import().then((m) => m.Route)
+    action = await match.payload.$APIRoute!.import().then((m) => m.APIRoute)
   } catch (err) {
     // If we can't import the route file, return a 500
     console.error('Error importing route file:', err)

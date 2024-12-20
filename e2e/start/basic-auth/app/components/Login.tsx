@@ -31,8 +31,10 @@ export function Login() {
         const formData = new FormData(e.target as HTMLFormElement)
 
         loginMutation.mutate({
-          email: formData.get('email') as string,
-          password: formData.get('password') as string,
+          data: {
+            email: formData.get('email') as string,
+            password: formData.get('password') as string,
+          },
         })
       }}
       afterSubmit={
@@ -49,8 +51,10 @@ export function Login() {
                     )
 
                     signupMutation.mutate({
-                      email: formData.get('email') as string,
-                      password: formData.get('password') as string,
+                      data: {
+                        email: formData.get('email') as string,
+                        password: formData.get('password') as string,
+                      },
                     })
                   }}
                   type="button"

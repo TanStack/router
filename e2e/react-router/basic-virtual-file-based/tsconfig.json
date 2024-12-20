@@ -3,8 +3,12 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
-    "module": "Preserve",
+    "target": "ESNext",
     "moduleResolution": "Bundler",
-    "target": "ESNext"
-  }
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": true
+  },
+  "exclude": ["node_modules", "dist"]
 }

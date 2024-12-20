@@ -4,6 +4,9 @@ title: File-Based Routing
 
 Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](./code-based-routing.md) if you prefer.
 
+> [!NOTE]
+> 🧠 If you are already familiar with how file-based routing works and are looking for setup instructions, you can skip ahead to the [Installation](#installation) section. Or if you looking for the configuration options, skip ahead to the [Options](#options) section.
+
 ## What is File-Based Routing?
 
 File-based routing is a way to configure your routes using the filesystem. Instead of defining your route structure via code, you can define your routes using a series of files and directories that represent the route hierarchy of your application. This brings a number of benefits:
@@ -94,10 +97,10 @@ Both flat and directory routes can be mixed together to create a route tree that
 
 Dynamic path params can be used in both flat and directory routes to create routes that can match a dynamic segment of the URL path. Dynamic path params are denoted by the `$` character in the filename:
 
-| Filename              | Route Path       | Component Output            |
-| --------------------- | ---------------- | --------------------------- |
-| ...                   | ...              | ...                         |
-| ʦ `posts.$postId.tsx` | `/posts/$postId` | `<Root><Posts><Post><Post>` |
+| Filename              | Route Path       | Component Output      |
+| --------------------- | ---------------- | --------------------- |
+| ...                   | ...              | ...                   |
+| ʦ `posts.$postId.tsx` | `/posts/$postId` | `<Root><Posts><Post>` |
 
 We'll learn more about dynamic path params in the [Path Params](./path-params.md) guide.
 
@@ -143,23 +146,21 @@ File-based routing requires that you follow a few simple file naming conventions
 - **`.lazy.tsx` File Type**
   - The `lazy` suffix can be used to code-split components for a route. For example, `blog.post.lazy.tsx` will be used as the component for the `blog.post` route.
 
-## Prerequisites
-
-To enable file-based routing, you'll need to be using React with a supported bundler. TanStack Router currently has support for the following bundlers:
-
-- Vite
-- Rspack/Rsbuild
-- Webpack
-- Esbuild
-- Others??? (let us know if you'd like to see support for a specific bundler)
-
-If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
-
 ## Installation
 
 To get started with file-based routing, you'll need to configure your project's bundler to use the TanStack Router Plugin or the TanStack Router CLI.
 
-If you are using TanStack Router's file-based routing through a bundler, the plugin will **automatically generate your route configuration through your bundler's dev and build processes**. It is the easiest way to use TanStack Router's route generation features.
+To enable file-based routing, you'll need to be using React with a supported bundler. TanStack Router currently has support for the following bundlers:
+
+- [Vite](#configuration-with-vite)
+- [Rspack/Rsbuild](#configuration-with-rspackrsbuild)
+- [Webpack](#configuration-with-webpack)
+- [Esbuild](#configuration-with-esbuild)
+- Others??? (let us know if you'd like to see support for a specific bundler)
+
+When using TanStack Router's file-based routing through one of the supported bundlers, our plugin will **automatically generate your route configuration through your bundler's dev and build processes**. It is the easiest way to use TanStack Router's route generation features.
+
+If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
 
 ### Configuration with Vite
 
@@ -192,6 +193,10 @@ Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/rout
 > [!WARNING]
 > If you are using the older `@tanstack/router-vite-plugin` package, you can still continue to use it, as it will be aliased to the `@tanstack/router-plugin/vite` package. However, we would recommend using the `@tanstack/router-plugin` package directly.
 
+Now that you've added the plugin to your Vite configuration, you're all set to start using file-based routing with TanStack Router.
+
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
 ### Configuration with Rspack/Rsbuild
 
 To use file-based routing with **Rspack** or **Rsbuild**, you'll need to install the `@tanstack/router-plugin` package.
@@ -220,6 +225,10 @@ export default defineConfig({
 
 Or, you can clone our [Quickstart Rspack/Rsbuild example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-rspack-file-based) and get started.
 
+Now that you've added the plugin to your Rspack/Rsbuild configuration, you're all set to start using file-based routing with TanStack Router.
+
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
 ### Configuration with Webpack
 
 To use file-based routing with **Webpack**, you'll need to install the `@tanstack/router-plugin` package.
@@ -240,6 +249,10 @@ export default {
 ```
 
 Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-webpack-file-based) and get started.
+
+Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
+
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
 ### Configuration with Esbuild
 
@@ -263,6 +276,10 @@ export default {
 
 Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-esbuild-file-based) and get started.
 
+Now that you've added the plugin to your Esbuild configuration, you're all set to start using file-based routing with TanStack Router.
+
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
 ### Configuration with the TanStack Router CLI
 
 To use file-based routing with the TanStack Router CLI, you'll need to install the `@tanstack/router-cli` package.
@@ -283,6 +300,8 @@ Once installed, you'll need to amend your your scripts in your `package.json` fo
   }
 }
 ```
+
+You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
 With the CLI installed, the following commands are made available via the `tsr` command
 
@@ -327,6 +346,26 @@ export default defineConfig({
     // ...
   ],
 })
+```
+
+### Ignoring the generated route tree file
+
+If your project is configured to use a linter and/or formatter, you may want to ignore the generated route tree file. This file is managed by TanStack Router and therefore shouldn't be changed by your linter or formatter.
+
+Here are some resources to help you ignore the generated route tree file:
+
+- Prettier - [https://prettier.io/docs/en/ignore.html#ignoring-files-prettierignore](https://prettier.io/docs/en/ignore.html#ignoring-files-prettierignore)
+- ESLint - [https://eslint.org/docs/latest/use/configure/ignore#ignoring-files](https://eslint.org/docs/latest/use/configure/ignore#ignoring-files)
+- Biome - [https://biomejs.dev/reference/configuration/#filesignore](https://biomejs.dev/reference/configuration/#filesignore)
+
+If you are using VSCode, you can also add the following to your `.vscode/settings.json` file to exclude the generated route tree file from the editor's file watcher:
+
+```json
+{
+  "files.watcherExclude": {
+    "**/routeTree.gen.ts": true
+  }
+}
 ```
 
 ## Configuration
@@ -394,7 +433,6 @@ The following options are available for configuration via the `tsr.config.json` 
   - Default:
   - ```
     [
-      '/* prettier-ignore-start */',
       '/* eslint-disable */',
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols'
@@ -403,13 +441,8 @@ The following options are available for configuration via the `tsr.config.json` 
 
 - **`routeTreeFileFooter`**
   - (Optional) An array of strings to append to the generated route tree file content.
-  - Default:
-  - ```
-    [
-      '/* prettier-ignore-end */'
-    ]
-    ```
-- **`disableManifestGeneration**
+  - Default: `[]`
+- **`disableManifestGeneration`**
   - (Optional, **Defaults to `false`**) disables generating the route tree manifest
 
 ## Route Inclusion / Exclusion

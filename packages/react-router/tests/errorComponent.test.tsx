@@ -81,12 +81,13 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
 
           expect(linkToAbout).toBeInTheDocument()
           fireEvent.mouseOver(linkToAbout)
+          fireEvent.focus(linkToAbout)
           fireEvent.click(linkToAbout)
 
           const errorComponent = await screen.findByText(
             `Error: error thrown`,
             undefined,
-            { timeout: 750 },
+            { timeout: 1500 },
           )
           expect(screen.findByText('About route content')).rejects.toThrow()
           expect(errorComponent).toBeInTheDocument()

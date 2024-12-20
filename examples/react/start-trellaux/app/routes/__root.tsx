@@ -7,7 +7,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
+import { Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import { Toaster } from 'react-hot-toast'
 import type { QueryClient } from '@tanstack/react-query'
@@ -21,42 +21,44 @@ import { Loader } from '~/components/Loader'
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
 }>()({
-  meta: () => [
-    {
-      charSet: 'utf-8',
-    },
-    {
-      name: 'viewport',
-      content: 'width=device-width, initial-scale=1',
-    },
-    ...seo({
-      title:
-        'TanStack Start | Type-Safe, Client-First, Full-Stack React Framework',
-      description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
-    }),
-  ],
-  links: () => [
-    { rel: 'stylesheet', href: appCss },
-    {
-      rel: 'apple-touch-icon',
-      sizes: '180x180',
-      href: '/apple-touch-icon.png',
-    },
-    {
-      rel: 'icon',
-      type: 'image/png',
-      sizes: '32x32',
-      href: '/favicon-32x32.png',
-    },
-    {
-      rel: 'icon',
-      type: 'image/png',
-      sizes: '16x16',
-      href: '/favicon-16x16.png',
-    },
-    { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
-    { rel: 'icon', href: '/favicon.ico' },
-  ],
+  head: () => ({
+    meta: [
+      {
+        charSet: 'utf-8',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+      ...seo({
+        title:
+          'TanStack Start | Type-Safe, Client-First, Full-Stack React Framework',
+        description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
+      }),
+    ],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      {
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/apple-touch-icon.png',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '32x32',
+        href: '/favicon-32x32.png',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '16x16',
+        href: '/favicon-16x16.png',
+      },
+      { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
+      { rel: 'icon', href: '/favicon.ico' },
+    ],
+  }),
   errorComponent: (props) => {
     return (
       <RootDocument>
@@ -78,11 +80,11 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <Html>
-      <Head>
+    <html>
+      <head>
         <Meta />
-      </Head>
-      <Body>
+      </head>
+      <body>
         <div className="h-screen flex flex-col min-h-0">
           <div className="bg-slate-900 border-b border-slate-800 flex items-center justify-between py-4 px-8 box-border">
             <div className="flex items-center gap-4">
@@ -135,8 +137,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ReactQueryDevtools />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </Body>
-    </Html>
+      </body>
+    </html>
   )
 }
 

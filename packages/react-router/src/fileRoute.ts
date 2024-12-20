@@ -1,17 +1,20 @@
 import warning from 'tiny-warning'
 import { createRoute } from './route'
+
 import { useMatch } from './useMatch'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
+import type { UseParamsRoute } from './useParams'
+import type { UseMatchRoute } from './useMatch'
+import type { UseSearchRoute } from './useSearch'
 import type { Constrain } from './utils'
 import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
-  AnySearchValidator,
   FileBaseRouteOptions,
   ResolveParams,
   RootRoute,
@@ -20,9 +23,12 @@ import type {
   RouteLoaderFn,
   UpdatableRouteOptions,
 } from './route'
-import type { MakeRouteMatch } from './Matches'
 import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
+import type { AnyValidator } from './validators'
+import type { UseLoaderDepsRoute } from './useLoaderDeps'
+import type { UseLoaderDataRoute } from './useLoaderData'
+import type { UseRouteContextRoute } from './useRouteContext'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -184,7 +190,7 @@ export type LazyRouteOptions = Pick<
     string,
     string,
     AnyPathParams,
-    AnySearchValidator,
+    AnyValidator,
     {},
     AnyContext,
     AnyContext,
@@ -208,48 +214,42 @@ export class LazyRoute<TRoute extends AnyRoute> {
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
-  useMatch = <
-    TRouteMatch = MakeRouteMatch<
-      RegisteredRouter['routeTree'],
-      TRoute['types']['id']
-    >,
-    TSelected = TRouteMatch,
-  >(opts?: {
-    select?: (match: TRouteMatch) => TSelected
-  }): TSelected => {
-    return useMatch({ select: opts?.select, from: this.options.id })
+  useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
+    return useMatch({
+      select: opts?.select,
+      from: this.options.id,
+      structuralSharing: opts?.structuralSharing,
+    } as any) as any
   }
 
-  useRouteContext = <TSelected = TRoute['types']['allContext']>(opts?: {
-    select?: (s: TRoute['types']['allContext']) => TSelected
-  }): TSelected => {
+  useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
     return useMatch({
       from: this.options.id,
       select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    })
+    }) as any
   }
 
-  useSearch = <TSelected = TRoute['types']['fullSearchSchema']>(opts?: {
-    select?: (s: TRoute['types']['fullSearchSchema']) => TSelected
-  }): TSelected => {
-    return useSearch({ ...opts, from: this.options.id })
+  useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
+    return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.options.id,
+    } as any)
   }
 
-  useParams = <TSelected = TRoute['types']['allParams']>(opts?: {
-    select?: (s: TRoute['types']['allParams']) => TSelected
-  }): TSelected => {
-    return useParams({ ...opts, from: this.options.id })
+  useParams: UseParamsRoute<TRoute['id']> = (opts) => {
+    return useParams({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.options.id,
+    } as any)
   }
 
-  useLoaderDeps = <TSelected = TRoute['types']['loaderDeps']>(opts?: {
-    select?: (s: TRoute['types']['loaderDeps']) => TSelected
-  }): TSelected => {
+  useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.options.id } as any)
   }
 
-  useLoaderData = <TSelected = TRoute['types']['loaderData']>(opts?: {
-    select?: (s: TRoute['types']['loaderData']) => TSelected
-  }): TSelected => {
+  useLoaderData: UseLoaderDataRoute<TRoute['id']> = (opts) => {
     return useLoaderData({ ...opts, from: this.options.id } as any)
   }
 

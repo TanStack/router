@@ -17,14 +17,18 @@ describe('ssr scripts', () => {
   test('it works', async () => {
     const rootRoute = createRootRoute({
       // loader: () => new Promise((r) => setTimeout(r, 1)),
-      scripts: () => [
-        {
-          src: 'script.js',
-        },
-        {
-          src: 'script2.js',
-        },
-      ],
+      head: () => {
+        return {
+          scripts: [
+            {
+              src: 'script.js',
+            },
+            {
+              src: 'script2.js',
+            },
+          ],
+        }
+      },
       component: () => {
         return <Scripts />
       },
@@ -34,11 +38,15 @@ describe('ssr scripts', () => {
       path: '/',
       getParentRoute: () => rootRoute,
       // loader: () => new Promise((r) => setTimeout(r, 2)),
-      scripts: () => [
-        {
-          src: 'script3.js',
-        },
-      ],
+      head: () => {
+        return {
+          scripts: [
+            {
+              src: 'script3.js',
+            },
+          ],
+        }
+      },
     })
 
     const router = createRouter({
@@ -61,11 +69,7 @@ describe('ssr scripts', () => {
     const { container } = render(<RouterProvider router={router} />)
 
     expect(container.innerHTML).toEqual(
-      `<script id="__TSR_DEHYDRATED__">
-          __TSR_DEHYDRATED__ = {
-            data: '{}'
-          }
-        </script><script src="script.js"></script><script src="script2.js"></script><script src="script3.js"></script>`,
+      `<script src="script.js"></script><script src="script2.js"></script><script src="script3.js"></script>`,
     )
   })
 })
@@ -77,19 +81,35 @@ describe('ssr meta', () => {
         new Promise((r) => setTimeout(r, 1)).then(() => ({
           description: 'Root',
         })),
-      meta: ({ loaderData }) => [
-        {
-          title: 'Root',
-        },
-        {
-          name: 'description',
-          content: loaderData.description,
-        },
-        {
-          name: 'image',
-          content: 'image.jpg',
-        },
-      ],
+      head: ({ loaderData }) => {
+        if (!loaderData) {
+          return {}
+        }
+
+        return {
+          meta: [
+            {
+              title: 'Root',
+            },
+            {
+              name: 'description',
+              content: loaderData.description,
+            },
+            {
+              name: 'image',
+              content: 'image.jpg',
+            },
+            {
+              property: 'og:image',
+              content: 'root-image.jpg',
+            },
+            {
+              property: 'og:description',
+              content: 'Root description',
+            },
+          ],
+        }
+      },
       component: () => {
         return <Meta />
       },
@@ -102,19 +122,31 @@ describe('ssr meta', () => {
         new Promise((r) => setTimeout(r, 2)).then(() => ({
           description: 'Index',
         })),
-      meta: ({ loaderData }) => [
-        {
-          title: 'Index',
-        },
-        {
-          name: 'description',
-          content: loaderData.description,
-        },
-        {
-          name: 'last-modified',
-          content: '2021-10-10',
-        },
-      ],
+      head: ({ loaderData }) => {
+        if (!loaderData) {
+          return {}
+        }
+
+        return {
+          meta: [
+            {
+              title: 'Index',
+            },
+            {
+              name: 'description',
+              content: loaderData.description,
+            },
+            {
+              name: 'last-modified',
+              content: '2021-10-10',
+            },
+            {
+              property: 'og:image',
+              content: 'index-image.jpg',
+            },
+          ],
+        }
+      },
     })
 
     const router = createRouter({
@@ -132,15 +164,18 @@ describe('ssr meta', () => {
       { title: 'Root' },
       { name: 'description', content: 'Root' },
       { name: 'image', content: 'image.jpg' },
+      { property: 'og:image', content: 'root-image.jpg' },
+      { property: 'og:description', content: 'Root description' },
       { title: 'Index' },
       { name: 'description', content: 'Index' },
       { name: 'last-modified', content: '2021-10-10' },
+      { property: 'og:image', content: 'index-image.jpg' },
     ])
 
     const { container } = render(<RouterProvider router={router} />)
 
     expect(container.innerHTML).toEqual(
-      `<title>Index</title><meta name="image" content="image.jpg"><meta name="description" content="Index"><meta name="last-modified" content="2021-10-10">`,
+      `<title>Index</title><meta name="image" content="image.jpg"><meta property="og:description" content="Root description"><meta name="description" content="Index"><meta name="last-modified" content="2021-10-10"><meta property="og:image" content="index-image.jpg">`,
     )
   })
 })

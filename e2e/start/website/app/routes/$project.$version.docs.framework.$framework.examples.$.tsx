@@ -5,10 +5,11 @@ import { capitalize, seo } from '~/utils/seo'
 export const Route = createFileRoute(
   '/$project/$version/docs/framework/$framework/examples/$',
 )({
-  meta: ({ params }) =>
-    seo({
+  head: ({ params }) => ({
+    meta: seo({
       title: `${capitalize(params._splat || '')} Example | TanStack ${capitalize(params.project)} ${capitalize(params.framework)}`,
     }),
+  }),
   component: Page,
   notFoundComponent: () => {
     return <NotFound>Example not found</NotFound>

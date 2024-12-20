@@ -1,6 +1,5 @@
-import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
+import { test } from '@playwright/test'
 
 test('loads', async ({ page }) => {
-  await page.goto('http://localhost:3000')
+  await page.goto('/')
 })

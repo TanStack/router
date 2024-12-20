@@ -175,6 +175,10 @@
             {
               "label": "SSR",
               "to": "framework/react/guide/ssr"
+            },
+            {
+              "label": "Render Optimizations",
+              "to": "framework/react/guide/render-optimizations"
             }
           ]
         }
@@ -198,6 +202,10 @@
             {
               "label": "Server Functions",
               "to": "framework/react/start/server-functions"
+            },
+            {
+              "label": "Middleware",
+              "to": "framework/react/start/middleware"
             },
             {
               "label": "API Routes",

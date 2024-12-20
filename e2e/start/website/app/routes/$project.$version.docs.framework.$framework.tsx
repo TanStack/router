@@ -11,7 +11,7 @@ export const Route = createFileRoute(
   '/$project/$version/docs/framework/$framework',
 )({
   loader: async ({ params: { project } }) => {
-    const library = await getProject(project)
+    const library = await getProject({ data: project })
     const documents = await getDocumentHeads()
     return {
       library,

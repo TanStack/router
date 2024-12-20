@@ -123,7 +123,7 @@ function transformHtmlCallbacks(getHtml: () => string) {
           }
         }
       } catch (err) {
-        console.error(err)
+        console.error('Error transforming HTML:', err)
         throw err
       }
     },

@@ -12,6 +12,7 @@ import {
   useLayoutEffect,
 } from './utils'
 import { exactPathTest, removeTrailingSlash } from './path'
+import { useMatch } from './useMatch'
 import type { ParsedLocation } from './location'
 import type { HistoryState } from '@tanstack/history'
 import type {
@@ -27,9 +28,14 @@ import type {
   RouteToPath,
   TrailingSlashOptionByRouter,
 } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  ViewTransitionOptions,
+} from './router'
 import type {
   Constrain,
+  ConstrainLiteral,
   Expand,
   MakeDifferenceOptional,
   NoInfer,
@@ -40,96 +46,55 @@ import type {
 } from './utils'
 import type { ReactNode } from 'react'
 
-export type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
-  ? CleanPath<`${CleanPath<L>}/${CleanPath<R>}`>
-  : T extends `${infer L}//`
-    ? `${CleanPath<L>}/`
-    : T extends `//${infer L}`
-      ? `/${CleanPath<L>}`
-      : T
-
-export type Split<TValue, TIncludeTrailingSlash = true> = TValue extends unknown
-  ? string extends TValue
-    ? Array<string>
-    : TValue extends string
-      ? CleanPath<TValue> extends ''
-        ? []
-        : TIncludeTrailingSlash extends true
-          ? CleanPath<TValue> extends `${infer T}/`
-            ? [...Split<T>, '/']
-            : CleanPath<TValue> extends `/${infer U}`
-              ? Split<U>
-              : CleanPath<TValue> extends `${infer T}/${infer U}`
-                ? [...Split<T>, ...Split<U>]
-                : [TValue]
-          : CleanPath<TValue> extends `${infer T}/${infer U}`
-            ? [...Split<T>, ...Split<U>]
-            : TValue extends string
-              ? [TValue]
-              : never
-      : never
-  : never
-
-export type ParsePathParams<
-  T extends string,
-  TAcc = never,
-> = T extends `${string}$${string}`
-  ? T extends `${string}$${infer TPossiblyParam}`
-    ? TPossiblyParam extends `${string}/${string}`
-      ? TPossiblyParam extends `${infer TParam}/${infer TRest}`
-        ? ParsePathParams<TRest, TParam extends '' ? TAcc : TParam | TAcc>
-        : never
-      : TPossiblyParam extends ''
-        ? TAcc
-        : TPossiblyParam | TAcc
+export type ParsePathParams<T extends string, TAcc = never> = T &
+  `${string}$${string}` extends never
+  ? TAcc
+  : T extends `${string}$${infer TPossiblyParam}`
+    ? TPossiblyParam extends ''
+      ? TAcc
+      : TPossiblyParam & `${string}/${string}` extends never
+        ? TPossiblyParam | TAcc
+        : TPossiblyParam extends `${infer TParam}/${infer TRest}`
+          ? ParsePathParams<TRest, TParam extends '' ? TAcc : TParam | TAcc>
+          : never
     : TAcc
-  : TAcc
 
-export type Join<T, TDelimiter extends string = '/'> = T extends []
-  ? ''
-  : T extends [infer L extends string]
-    ? L
-    : T extends [
-          infer L extends string,
-          ...infer Tail extends [...Array<string>],
-        ]
-      ? CleanPath<`${L}${TDelimiter}${Join<Tail>}`>
-      : never
+export type AddTrailingSlash<T> = T & `${string}/` extends never
+  ? `${T & string}/`
+  : T
 
-export type Last<T extends Array<any>> = T extends [...infer _, infer L]
-  ? L
-  : never
+export type RemoveTrailingSlashes<T> = T & `${string}/` extends never
+  ? T
+  : T extends `${infer R}/`
+    ? R
+    : T
 
-export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
+export type AddLeadingSlash<T> = T & `/${string}` extends never
+  ? `/${T & string}`
+  : T
 
-export type RemoveTrailingSlashes<T> = T extends `${infer R}/` ? R : T
+export type RemoveLeadingSlashes<T> = T & `/${string}` extends never
+  ? T
+  : T extends `/${infer R}`
+    ? R
+    : T
 
-export type RemoveLeadingSlashes<T> = T extends `/${infer R}` ? R : T
-
-export type ResolvePaths<TRouter extends AnyRouter, TSearchPath> =
-  RouteByPath<
-    TRouter['routeTree'],
-    RemoveTrailingSlashes<TSearchPath>
-  > extends never
-    ? RouteToPath<TRouter, TRouter['routeTree']>
-    : RouteToPath<
-        TRouter,
-        RouteByPath<TRouter['routeTree'], RemoveTrailingSlashes<TSearchPath>>
-      >
+export type FindDescendantPaths<
+  TRouter extends AnyRouter,
+  TPrefix extends string,
+> = `${TPrefix}${string}` & RouteToPath<TRouter>
 
 export type SearchPaths<
   TRouter extends AnyRouter,
-  TSearchPath extends string,
-  TPaths = ResolvePaths<TRouter, TSearchPath>,
-  TPrefix extends string = `${RemoveTrailingSlashes<TSearchPath>}/`,
-  TFilteredPaths = TPaths & `${TPrefix}${string}`,
-> = TFilteredPaths extends `${TPrefix}${infer TRest}` ? TRest : never
+  TPrefix extends string,
+  TPaths = FindDescendantPaths<TRouter, TPrefix>,
+> = TPaths extends `${TPrefix}${infer TRest}` ? TRest : never
 
 export type SearchRelativePathAutoComplete<
   TRouter extends AnyRouter,
   TTo extends string,
   TSearchPath extends string,
-> = `${TTo}/${SearchPaths<TRouter, TSearchPath>}`
+> = `${TTo}${SearchPaths<TRouter, TSearchPath>}`
 
 export type RelativeToParentPathAutoComplete<
   TRouter extends AnyRouter,
@@ -148,7 +113,9 @@ export type RelativeToCurrentPathAutoComplete<
   TRouter extends AnyRouter,
   TFrom extends string,
   TTo extends string,
-  TResolvedPath extends string = ResolveRelativePath<TFrom, TTo>,
+  TResolvedPath extends string = RemoveTrailingSlashes<
+    ResolveRelativePath<TFrom, TTo>
+  >,
 > =
   | SearchRelativePathAutoComplete<TRouter, TTo, TResolvedPath>
   | CurrentPath<TrailingSlashOptionByRouter<TRouter>>
@@ -161,7 +128,7 @@ export type AbsolutePathAutoComplete<
       ? CurrentPath<TrailingSlashOptionByRouter<TRouter>>
       : TFrom extends `/`
         ? never
-        : SearchPaths<TRouter, TFrom> extends ''
+        : FindDescendantPaths<TRouter, TFrom> extends never
           ? never
           : CurrentPath<TrailingSlashOptionByRouter<TRouter>>)
   | (string extends TFrom
@@ -169,7 +136,7 @@ export type AbsolutePathAutoComplete<
       : TFrom extends `/`
         ? never
         : ParentPath<TrailingSlashOptionByRouter<TRouter>>)
-  | RouteToPath<TRouter, TRouter['routeTree']>
+  | RouteToPath<TRouter>
   | (TFrom extends '/'
       ? never
       : string extends TFrom
@@ -180,21 +147,23 @@ export type RelativeToPathAutoComplete<
   TRouter extends AnyRouter,
   TFrom extends string,
   TTo extends string,
-> = string extends TFrom
-  ? AbsolutePathAutoComplete<TRouter, TFrom>
-  : TTo extends `..${string}`
-    ? RelativeToParentPathAutoComplete<
-        TRouter,
-        TFrom,
-        RemoveTrailingSlashes<TTo>
-      >
-    : TTo extends `.${string}`
-      ? RelativeToCurrentPathAutoComplete<
+> = string extends TTo
+  ? string
+  : string extends TFrom
+    ? AbsolutePathAutoComplete<TRouter, TFrom>
+    : TTo & `..${string}` extends never
+      ? TTo & `.${string}` extends never
+        ? AbsolutePathAutoComplete<TRouter, TFrom>
+        : RelativeToCurrentPathAutoComplete<
+            TRouter,
+            TFrom,
+            RemoveTrailingSlashes<TTo>
+          >
+      : RelativeToParentPathAutoComplete<
           TRouter,
           TFrom,
           RemoveTrailingSlashes<TTo>
         >
-      : AbsolutePathAutoComplete<TRouter, TFrom>
 
 export type NavigateOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -205,14 +174,21 @@ export type NavigateOptions<
 > = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & NavigateOptionProps
 
 export interface NavigateOptionProps {
+  // if set to `true`, the router will scroll the element with an id matching the hash into view with default ScrollIntoViewOptions.
+  // if set to `false`, the router will not scroll the element with an id matching the hash into view.
+  // if set to `ScrollIntoViewOptions`, the router will scroll the element with an id matching the hash into view with the provided options.
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
   resetScroll?: boolean
   /** @deprecated All navigations now use startTransition under the hood */
   startTransition?: boolean
   // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
-  viewTransition?: boolean
+  // if set to `ViewTransitionOptions`, the router will pass the `types` field to document.startViewTransition({update: fn, types: viewTransition.types}) call
+  viewTransition?: boolean | ViewTransitionOptions
   ignoreBlocker?: boolean
+  reloadDocument?: boolean
+  href?: string
 }
 
 export type ToOptions<
@@ -233,10 +209,10 @@ export interface MaskOptions<
 }
 
 export type ToMaskOptions<
-  TRouteTree extends AnyRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TMaskFrom extends string = string,
   TMaskTo extends string = '.',
-> = ToSubOptions<TRouteTree, TMaskFrom, TMaskTo> & {
+> = ToSubOptions<TRouter, TMaskFrom, TMaskTo> & {
   unmaskOnReload?: boolean
 }
 
@@ -439,33 +415,19 @@ export type ToPathOption<
   TRouter extends AnyRouter = AnyRouter,
   TFrom extends string = string,
   TTo extends string | undefined = string,
-> =
-  | CheckPath<TRouter, TTo, never, TFrom, TTo>
-  | RelativeToPathAutoComplete<
-      TRouter,
-      NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
-      NoInfer<TTo> & string
-    >
+> = ConstrainLiteral<
+  TTo,
+  RelativeToPathAutoComplete<
+    TRouter,
+    NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
+    NoInfer<TTo> & string
+  >
+>
 
-export type CheckFromPath<
-  TRouter extends AnyRouter,
-  TPass,
-  TFail,
+export type FromPathOption<TRouter extends AnyRouter, TFrom> = ConstrainLiteral<
   TFrom,
-> = string extends TFrom
-  ? TPass
-  : RouteByPath<TRouter['routeTree'], TFrom> extends never
-    ? TFail
-    : TPass
-
-export type FromPathOption<TRouter extends AnyRouter, TFrom> =
-  | CheckFromPath<
-      TRouter,
-      string extends TFrom ? TFrom & {} : TFrom,
-      never,
-      TFrom
-    >
-  | RoutePaths<TRouter['routeTree']>
+  RoutePaths<TRouter['routeTree']>
+>
 
 export interface ActiveOptions {
   exact?: boolean
@@ -512,16 +474,41 @@ export interface LinkOptionsProps {
   disabled?: boolean
 }
 
-export type CheckPath<TRouter extends AnyRouter, TPass, TFail, TFrom, TTo> =
-  string extends ResolveRelativePath<TFrom, TTo>
-    ? TPass
-    : ResolveRelativePath<TFrom, TTo> extends CatchAllPaths<
-          TrailingSlashOptionByRouter<TRouter>
+type JoinPath<TLeft extends string, TRight extends string> = TRight extends ''
+  ? TLeft
+  : TLeft extends ''
+    ? TRight
+    : `${RemoveTrailingSlashes<TLeft>}/${RemoveLeadingSlashes<TRight>}`
+
+type RemoveLastSegment<
+  T extends string,
+  TAcc extends string = '',
+> = T extends `${infer TSegment}/${infer TRest}`
+  ? TRest & `${string}/${string}` extends never
+    ? `${TAcc}${TSegment}`
+    : RemoveLastSegment<TRest, `${TAcc}${TSegment}/`>
+  : TAcc
+
+export type ResolveCurrentPath<TFrom, TTo> = TTo extends '.'
+  ? TFrom
+  : TTo extends './'
+    ? AddTrailingSlash<TFrom>
+    : TTo & `./${string}` extends never
+      ? never
+      : TTo extends `./${infer TRest}`
+        ? ResolveRelativePath<TFrom, TRest>
+        : never
+
+export type ResolveParentPath<TFrom extends string, TTo> = TTo extends '../'
+  ? RemoveLastSegment<TFrom>
+  : TTo & `..${string}` extends never
+    ? never
+    : TTo extends `..${infer ToRest}`
+      ? ResolveRelativePath<
+          RemoveLastSegment<TFrom>,
+          RemoveLeadingSlashes<ToRest>
         >
-      ? TPass
-      : ResolveRoute<TRouter, TFrom, TTo> extends never
-        ? TFail
-        : TPass
+      : never
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
   ? TTo
@@ -531,25 +518,13 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
       ? TFrom
       : TFrom extends string
         ? TTo extends string
-          ? TTo extends '.'
-            ? TFrom
-            : TTo extends `./`
-              ? Join<[TFrom, '/']>
-              : TTo extends `./${infer TRest}`
-                ? ResolveRelativePath<TFrom, TRest>
-                : TTo extends `/${infer TRest}`
-                  ? TTo
-                  : Split<TTo> extends ['..', ...infer ToRest]
-                    ? Split<TFrom> extends [...infer FromRest, infer FromTail]
-                      ? ToRest extends ['/']
-                        ? Join<['/', ...FromRest, '/']>
-                        : ResolveRelativePath<Join<FromRest>, Join<ToRest>>
-                      : never
-                    : Split<TTo> extends ['.', ...infer ToRest]
-                      ? ToRest extends ['/']
-                        ? Join<[TFrom, '/']>
-                        : ResolveRelativePath<TFrom, Join<ToRest>>
-                      : CleanPath<Join<['/', ...Split<TFrom>, ...Split<TTo>]>>
+          ? TTo & `..${string}` extends never
+            ? TTo & `.${string}` extends never
+              ? TTo & `/${string}` extends never
+                ? AddLeadingSlash<JoinPath<TFrom, TTo>>
+                : TTo
+              : ResolveCurrentPath<TFrom, TTo>
+            : ResolveParentPath<TFrom, TTo>
           : never
         : never
 
@@ -601,6 +576,7 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
+    hashScrollIntoView,
     replace,
     startTransition,
     resetScroll,
@@ -627,6 +603,7 @@ export function useLinkProps<
     hash: _hash,
     state: _state,
     mask: _mask,
+    reloadDocument: _reloadDocument,
     ...propsSafeToSpread
   } = rest
 
@@ -645,16 +622,31 @@ export function useLinkProps<
   }, [to])
 
   // subscribe to search params to re-build location if it changes
-  const currentSearch = useRouterState({ select: (s) => s.location.search })
+  const currentSearch = useRouterState({
+    select: (s) => s.location.search,
+    structuralSharing: true as any,
+  })
+
+  // In the rare event that the user bypasses type-safety and doesn't supply a `from`
+  // we'll use the current route as the `from` location so relative routing works as expected
+  const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
+
+  // Use it as the default `from` location
+  options = {
+    from: parentRouteId,
+    ...options,
+  }
 
   const next = React.useMemo(
     () => router.buildLocation(options as any),
     [router, options, currentSearch],
   )
-  const preload = React.useMemo(
-    () => userPreload ?? router.options.defaultPreload,
-    [router.options.defaultPreload, userPreload],
-  )
+  const preload = React.useMemo(() => {
+    if (options.reloadDocument) {
+      return false
+    }
+    return userPreload ?? router.options.defaultPreload
+  }, [router.options.defaultPreload, userPreload, options.reloadDocument])
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -778,14 +770,15 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.buildAndCommitLocation({
+      return router.navigate({
         ...options,
         replace,
         resetScroll,
+        hashScrollIntoView,
         startTransition,
         viewTransition,
         ignoreBlocker,
-      })
+      } as any)
     }
   }
 
@@ -982,7 +975,7 @@ export type CreateLinkProps = LinkProps<
 >
 
 export type LinkComponent<TComp> = <
-  TRouter extends RegisteredRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,

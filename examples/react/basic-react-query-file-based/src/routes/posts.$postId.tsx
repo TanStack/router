@@ -20,7 +20,7 @@ export const Route = createFileRoute('/posts/$postId')({
   component: PostComponent,
 })
 
-export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
+export function PostErrorComponent({ error }: ErrorComponentProps) {
   const router = useRouter()
   if (error instanceof PostNotFoundError) {
     return <div>{error.message}</div>

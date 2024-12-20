@@ -6,6 +6,7 @@
     "target": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"]
   }
 }

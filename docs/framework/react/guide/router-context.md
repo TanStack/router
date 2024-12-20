@@ -70,6 +70,7 @@ If you need to invalidate the context state you are passing into the router, you
 
 ```tsx
 function useAuth() {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {

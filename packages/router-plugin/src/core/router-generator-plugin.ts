@@ -1,8 +1,7 @@
 import { isAbsolute, join, normalize, resolve } from 'node:path'
-import { generator } from '@tanstack/router-generator'
+import { generator, resolveConfigPath } from '@tanstack/router-generator'
 
 import { getConfig } from './config'
-import { CONFIG_FILE_NAME } from './constants'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 
@@ -34,7 +33,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     setLock(true)
 
     try {
-      await generator(userConfig)
+      await generator(userConfig, process.cwd())
     } catch (err) {
       console.error(err)
       console.info()
@@ -49,7 +48,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
   ) => {
     const filePath = normalize(file)
 
-    if (filePath === join(ROOT, CONFIG_FILE_NAME)) {
+    if (filePath === resolveConfigPath({ configDirectory: ROOT })) {
       userConfig = getConfig(options, ROOT)
       return
     }
@@ -93,7 +92,9 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       userConfig = getConfig(options, ROOT)
 
       if (compiler.options.mode === 'production') {
-        await run(generate)
+        compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
+          await run(generate)
+        })
       } else {
         // rspack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
@@ -117,7 +118,9 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       userConfig = getConfig(options, ROOT)
 
       if (compiler.options.mode === 'production') {
-        await run(generate)
+        compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
+          await run(generate)
+        })
       } else {
         // webpack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()

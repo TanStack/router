@@ -19,6 +19,7 @@ Topics covered in this guide:
 - [Wildcard/Splat Param](#wildcardsplat-param)
 - [Handling requests with a body](#handling-requests-with-a-body)
 - [Responding with JSON](#responding-with-json)
+- [Using the `json` helper function](#using-the-json-helper-function)
 - [Responding with a status code](#responding-with-a-status-code)
 - [Setting headers in the response](#setting-headers-in-the-response)
 
@@ -77,7 +78,7 @@ API Routes export an APIRoute instance by calling the `createAPIFileRoute` funct
 // routes/api/hello.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const Route = createAPIFileRoute('/hello')({
+export const APIRoute = createAPIFileRoute('/hello')({
   GET: async ({ request }) => {
     return new Response('Hello, World! from ' + request.url)
   },
@@ -99,7 +100,7 @@ API Routes support dynamic path parameters, which are denoted by a `$` followed 
 // routes/api/users/$id.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const Route = createAPIFileRoute('/users/$id')({
+export const APIRoute = createAPIFileRoute('/users/$id')({
   GET: async ({ params }) => {
     const { id } = params
     return new Response(`User ID: ${id}`)
@@ -116,7 +117,7 @@ You can also have multiple dynamic path parameters in a single route. For exampl
 // routes/api/users/$id/posts/$postId.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const Route = createAPIFileRoute('/users/$id/posts/$postId')({
+export const APIRoute = createAPIFileRoute('/users/$id/posts/$postId')({
   GET: async ({ params }) => {
     const { id, postId } = params
     return new Response(`User ID: ${id}, Post ID: ${postId}`)
@@ -135,7 +136,7 @@ API Routes also support wildcard parameters at the end of the path, which are de
 // routes/api/file/$.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const Route = createAPIFileRoute('/file/$')({
+export const APIRoute = createAPIFileRoute('/file/$')({
   GET: async ({ params }) => {
     const { _splat } = params
     return new Response(`File: ${_splat}`)
@@ -154,7 +155,7 @@ To handle POST requests,you can add a `POST` handler to the route object. The ha
 // routes/api/hello.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const Route = createAPIFileRoute('/hello')({
+export const APIRoute = createAPIFileRoute('/hello')({
   POST: async ({ request }) => {
     const body = await request.json()
     return new Response(`Hello, ${body.name}!`)
@@ -179,7 +180,7 @@ When returning JSON using a Response object, this is a common pattern:
 // routes/api/hello.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const Route = createAPIFileRoute('/hello')({
+export const APIRoute = createAPIFileRoute('/hello')({
   GET: async ({ request }) => {
     return new Response(JSON.stringify({ message: 'Hello, World!' }), {
       headers: {
@@ -202,7 +203,7 @@ Or you can use the `json` helper function to automatically set the `Content-Type
 import { json } from '@tanstack/start'
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const Route = createAPIFileRoute('/hello')({
+export const APIRoute = createAPIFileRoute('/hello')({
   GET: async ({ request }) => {
     return json({ message: 'Hello, World!' })
   },
@@ -223,7 +224,7 @@ You can set the status code of the response by either:
   import { json } from '@tanstack/start'
   import { createAPIFileRoute } from '@tanstack/start/api'
 
-  export const Route = createAPIFileRoute('/users/$id')({
+  export const APIRoute = createAPIFileRoute('/users/$id')({
     GET: async ({ request, params }) => {
       const user = await findUser(params.id)
       if (!user) {
@@ -244,7 +245,7 @@ You can set the status code of the response by either:
   import { createAPIFileRoute } from '@tanstack/start/api'
   import { setResponseStatus } from 'vinxi/http'
 
-  export const Route = createAPIFileRoute('/users/$id')({
+  export const APIRoute = createAPIFileRoute('/users/$id')({
     GET: async ({ request, params }) => {
       const user = await findUser(params.id)
       if (!user) {
@@ -268,7 +269,7 @@ Sometimes you may need to set headers in the response. You can do this by either
   // routes/api/hello.ts
   import { createAPIFileRoute } from '@tanstack/start/api'
 
-  export const Route = createAPIFileRoute('/hello')({
+  export const APIRoute = createAPIFileRoute('/hello')({
     GET: async ({ request }) => {
       return new Response('Hello, World!', {
         headers: {
@@ -289,7 +290,7 @@ Sometimes you may need to set headers in the response. You can do this by either
   import { createAPIFileRoute } from '@tanstack/start/api'
   import { setHeaders } from 'vinxi/http'
 
-  export const Route = createAPIFileRoute('/hello')({
+  export const APIRoute = createAPIFileRoute('/hello')({
     GET: async ({ request }) => {
       setHeaders({
         'Content-Type': 'text/plain',

@@ -9,12 +9,14 @@ import type {
   RegisteredRouter,
   Router,
   RouterOptions,
+  ViewTransitionOptions,
 } from './router'
 
 export interface CommitLocationOptions {
   replace?: boolean
   resetScroll?: boolean
-  viewTransition?: boolean
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
+  viewTransition?: boolean | ViewTransitionOptions
   /**
    * @deprecated All navigations use React transitions under the hood now
    **/
@@ -37,7 +39,7 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => Promise<void>
+) => Promise<void> | void
 
 export type BuildLocationFn = <
   TRouter extends RegisteredRouter,
@@ -105,18 +107,24 @@ export type RouterProps<
   RouterOptions<
     TRouter['routeTree'],
     NonNullable<TRouter['options']['trailingSlash']>,
+    NonNullable<TRouter['options']['defaultStructuralSharing']>,
+    TRouter['history'],
     TDehydrated
   >,
   'context'
 > & {
   router: Router<
     TRouter['routeTree'],
-    NonNullable<TRouter['options']['trailingSlash']>
+    NonNullable<TRouter['options']['trailingSlash']>,
+    NonNullable<TRouter['options']['defaultStructuralSharing']>,
+    TRouter['history']
   >
   context?: Partial<
     RouterOptions<
       TRouter['routeTree'],
       NonNullable<TRouter['options']['trailingSlash']>,
+      NonNullable<TRouter['options']['defaultStructuralSharing']>,
+      TRouter['history'],
       TDehydrated
     >['context']
   >

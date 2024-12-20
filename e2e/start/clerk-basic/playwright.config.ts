@@ -1,26 +1,26 @@
 import { defineConfig, devices } from '@playwright/test'
+import { derivePort } from '../../utils.js'
+import packageJson from './package.json' with { type: 'json' }
 
-import dotenv from 'dotenv'
-
-dotenv.config()
-
+const PORT = derivePort(packageJson.name)
+const baseURL = `http://localhost:${PORT}`
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: './tests',
+  workers: 1,
 
   reporter: [['line']],
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3002/',
+    baseURL,
   },
 
   webServer: {
-    // TODO: build && start seems broken, use that if it's working
-    command: 'pnpm dev',
-    url: 'http://localhost:3002',
+    command: `VITE_SERVER_PORT=${PORT} pnpm build && VITE_SERVER_PORT=${PORT} pnpm start --port ${PORT}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
   },

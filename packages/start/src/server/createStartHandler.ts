@@ -2,10 +2,6 @@ import { eventHandler, getResponseHeaders, toWebRequest } from 'vinxi/http'
 import { createMemoryHistory } from '@tanstack/react-router'
 import { serializeLoaderData } from '../client/serialization'
 import { mergeHeaders } from '../client/headers'
-import {
-  serverFnPayloadTypeHeader,
-  serverFnReturnTypeHeader,
-} from '../constants'
 import type { EventHandler, EventHandlerRequest, H3Event } from 'vinxi/http'
 import type { AnyRouter, Manifest } from '@tanstack/react-router'
 import type { HandlerCallback } from './defaultStreamHandler'
@@ -89,11 +85,6 @@ function getRequestHeaders(opts: {
       Location: redirect.href,
     })
   }
-
-  // Remove server function headers
-  ;[serverFnReturnTypeHeader, serverFnPayloadTypeHeader].forEach((header) => {
-    headers.delete(header)
-  })
 
   return headers
 }

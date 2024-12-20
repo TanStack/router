@@ -21,6 +21,13 @@ The `useLoaderDepsHook` hook accepts an `options` object.
 - Optional
 - If supplied, this function will be called with the loader dependencies object and the return value will be returned from `useLoaderDeps`.
 
+### `opts.structuralSharing` option
+
+- Type: `boolean`
+- Optional
+- Configures whether structural sharing is enabled for the value returned by `select`.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+
 ## useLoaderDeps returns
 
 - An object of the loader dependencies or `TSelected` if a `select` function is provided.

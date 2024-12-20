@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useLocation } from '../src'
-import type { ParsedLocation, RouterState } from '../src'
+import type { ParsedLocation } from '../src'
 
 const rootRoute = createRootRoute()
 
@@ -30,11 +30,7 @@ test('should have the types for a ParsedLocation in useLocation', () => {
 })
 
 test('should have the type of string for selecting the pathname in useLocation', () => {
-  const pathname = useLocation<
-    DefaultRouter,
-    RouterState<DefaultRouter['routeTree']>['location'],
-    RouterState<DefaultRouter['routeTree']>['location']['pathname']
-  >({
+  const pathname = useLocation<DefaultRouter, string>({
     select: (state) => state.pathname,
   })
 

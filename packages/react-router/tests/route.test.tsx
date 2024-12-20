@@ -1,5 +1,5 @@
 import React from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 
 import {
@@ -191,5 +191,198 @@ describe('onEnter event', () => {
     expect(indexElem).toBeInTheDocument()
 
     expect(fn).toHaveBeenCalledWith({ foo: 'bar' })
+  })
+})
+
+describe('route.head', () => {
+  test('meta', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        meta: [
+          { title: 'Root' },
+          {
+            charSet: 'utf-8',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        meta: [{ title: 'Index' }],
+      }),
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(<RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const metaState = router.state.matches.map((m) => m.meta)
+    expect(metaState).toEqual([
+      [
+        { title: 'Root' },
+        {
+          charSet: 'utf-8',
+        },
+      ],
+      [{ title: 'Index' }],
+    ])
+  })
+
+  test('meta w/ loader', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        meta: [
+          { title: 'Root' },
+          {
+            charSet: 'utf-8',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        meta: [{ title: 'Index' }],
+      }),
+      loader: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      },
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(<RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const metaState = router.state.matches.map((m) => m.meta)
+    expect(metaState).toEqual([
+      [
+        { title: 'Root' },
+        {
+          charSet: 'utf-8',
+        },
+      ],
+      [{ title: 'Index' }],
+    ])
+  })
+
+  test('scripts', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        scripts: [{ src: 'root.js' }, { src: 'root2.js' }],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        scripts: [{ src: 'index.js' }],
+      }),
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(<RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const scriptsState = router.state.matches.map((m) => m.scripts)
+    expect(scriptsState).toEqual([
+      [{ src: 'root.js' }, { src: 'root2.js' }],
+      [{ src: 'index.js' }],
+    ])
+  })
+
+  test('scripts w/ loader', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        scripts: [{ src: 'root.js' }, { src: 'root2.js' }],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        scripts: [{ src: 'index.js' }],
+      }),
+      loader: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      },
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(<RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const scriptsState = router.state.matches.map((m) => m.scripts)
+    expect(scriptsState).toEqual([
+      [{ src: 'root.js' }, { src: 'root2.js' }],
+      [{ src: 'index.js' }],
+    ])
+  })
+
+  test('links', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        links: [{ href: 'root.css' }, { href: 'root2.css' }],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        links: [{ href: 'index.css' }],
+      }),
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(<RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const linksState = router.state.matches.map((m) => m.links)
+    expect(linksState).toEqual([
+      [{ href: 'root.css' }, { href: 'root2.css' }],
+      [{ href: 'index.css' }],
+    ])
+  })
+
+  test('links w/loader', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        links: [{ href: 'root.css' }, { href: 'root2.css' }],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        links: [{ href: 'index.css' }],
+      }),
+      loader: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      },
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(<RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const linksState = router.state.matches.map((m) => m.links)
+    expect(linksState).toEqual([
+      [{ href: 'root.css' }, { href: 'root2.css' }],
+      [{ href: 'index.css' }],
+    ])
   })
 })

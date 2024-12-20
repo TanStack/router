@@ -1,6 +1,6 @@
 import { copyFile, mkdir, readdir, stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import fastGlob from 'fast-glob'
+import { glob } from 'tinyglobby'
 import { TEMPLATES_FOLDER } from '../constants'
 
 /**
@@ -18,7 +18,7 @@ export async function copyTemplateFiles({
   sourceFolder,
   targetFolder,
 }: CopyTemplateFilesParams) {
-  const files = await fastGlob.glob(file, {
+  const files = await glob(file, {
     cwd: resolve(TEMPLATES_FOLDER, sourceFolder),
     onlyFiles: false,
   })
@@ -45,7 +45,7 @@ async function copy(src: string, dest: string) {
   const statResult = await stat(src)
   const replacedDest = dest.replace(DOT_PREFIX, '.')
   if (statResult.isDirectory()) {
-    copyDir(src, replacedDest)
+    await copyDir(src, replacedDest)
   } else {
     await copyFile(src, replacedDest)
   }

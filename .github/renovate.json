@@ -27,12 +27,11 @@
     "temp-react",
     "temp-react-dom",
     "typescript",
-    "typescript50",
-    "typescript51",
     "typescript52",
     "typescript53",
     "typescript54",
     "typescript55",
+    "typescript56",
     "unplugin",
     "use-sync-external-store",
     "waku"

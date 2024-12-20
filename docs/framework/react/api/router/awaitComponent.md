@@ -4,6 +4,8 @@ title: Await component
 ---
 
 The `Await` component is a component that suspends until the provided promise is resolved or rejected.
+This is only necessary for React 18.
+If you are using React 19, you can use the `use()` hook instead.
 
 ## Await props
 
@@ -11,9 +13,9 @@ The `Await` component accepts the following props:
 
 ### `props.promise` prop
 
-- Type: [`DeferredPromise<T>`](./DeferredPromiseType.md)
+- Type: `Promise<T>`
 - Required
-- The deferred promise to await.
+- The promise to await.
 
 ### `props.children` prop
 

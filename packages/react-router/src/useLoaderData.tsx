@@ -1,45 +1,93 @@
 import { useMatch } from './useMatch'
-import type { RegisteredRouter } from './router'
-import type { AnyRoute } from './route'
-import type { MakeRouteMatch } from './Matches'
-import type { RouteIds } from './routeInfo'
-import type { Constrain, StrictOrFrom } from './utils'
+import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type { AllLoaderData, RouteById } from './routeInfo'
+import type { Expand, StrictOrFrom } from './utils'
 
-export type UseLoaderDataOptions<
-  TRouteTree extends AnyRoute,
+export interface UseLoaderDataBaseOptions<
+  TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
-  TRouteMatch extends MakeRouteMatch<TRouteTree, TFrom, TStrict>,
   TSelected,
-> = StrictOrFrom<Constrain<TFrom, RouteIds<TRouteTree>>, TStrict> & {
-  select?: (match: Required<TRouteMatch>['loaderData']) => TSelected
+  TStructuralSharing,
+> {
+  select?: (
+    match: ResolveLoaderData<TRouter, TFrom, TStrict>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
-export function useLoaderData<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends string | undefined = undefined,
-  TStrict extends boolean = true,
-  TRouteMatch extends MakeRouteMatch<
-    TRouteTree,
-    TFrom,
-    TStrict
-  > = MakeRouteMatch<TRouteTree, TFrom, TStrict>,
-  TSelected = Required<TRouteMatch>['loaderData'],
->(
-  opts: UseLoaderDataOptions<
-    TRouteTree,
+export type UseLoaderDataOptions<
+  TRouter extends AnyRouter,
+  TFrom extends string | undefined,
+  TStrict extends boolean,
+  TSelected,
+  TStructuralSharing,
+> = StrictOrFrom<TRouter, TFrom, TStrict> &
+  UseLoaderDataBaseOptions<
+    TRouter,
     TFrom,
     TStrict,
-    TRouteMatch,
-    TSelected
+    TSelected,
+    TStructuralSharing
+  > &
+  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+
+export type ResolveLoaderData<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean,
+> = TStrict extends false
+  ? AllLoaderData<TRouter['routeTree']>
+  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['loaderData']>
+
+export type UseLoaderDataResult<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean,
+  TSelected,
+> = unknown extends TSelected
+  ? ResolveLoaderData<TRouter, TFrom, TStrict>
+  : TSelected
+
+export type UseLoaderDataRoute<out TId> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseLoaderDataBaseOptions<
+    TRouter,
+    TId,
+    true,
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => UseLoaderDataResult<TRouter, TId, true, TSelected>
+
+export function useLoaderData<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string | undefined = undefined,
+  TStrict extends boolean = true,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts: UseLoaderDataOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    TSelected,
+    TStructuralSharing
   >,
-): TSelected {
-  return useMatch<TRouteTree, TFrom, TStrict, TRouteMatch, TSelected>({
-    ...opts,
-    select: (s) => {
-      return typeof opts.select === 'function'
-        ? opts.select(s.loaderData)
-        : (s.loaderData as TSelected)
+): UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected> {
+  return useMatch({
+    from: opts.from!,
+    strict: opts.strict,
+    structuralSharing: opts.structuralSharing,
+    select: (s: any) => {
+      return opts.select ? opts.select(s.loaderData) : s.loaderData
     },
-  })
+  } as any) as UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
 }

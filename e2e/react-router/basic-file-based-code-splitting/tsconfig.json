@@ -5,7 +5,10 @@
     "jsx": "react-jsx",
     "target": "ESNext",
     "moduleResolution": "Bundler",
-    "noEmit": true,
-    "skipLibCheck": true
-  }
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": true
+  },
+  "exclude": ["node_modules", "dist"]
 }

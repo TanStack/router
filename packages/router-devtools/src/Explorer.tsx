@@ -355,12 +355,8 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
   }
 }
 
-let _styles: ReturnType<typeof stylesFactory> | null = null
-
 function useStyles() {
   const shadowDomTarget = React.useContext(ShadowDomTargetContext)
-  if (_styles) return _styles
-  _styles = stylesFactory(shadowDomTarget)
-
+  const [_styles] = React.useState(() => stylesFactory(shadowDomTarget))
   return _styles
 }

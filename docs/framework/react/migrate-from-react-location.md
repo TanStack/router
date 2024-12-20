@@ -57,7 +57,7 @@ export default defineConfig({
 })
 ```
 
-However, if your application does not use Vite, you use one of our other [supported bundlers](./guide/file-based-routing.md#prerequisites), or you can use the `@tanstack/router-cli` package to watch for changes in your routes files and automatically update the routes configuration.
+However, if your application does not use Vite, you use one of our other [supported bundlers](./guide/file-based-routing.md#installation), or you can use the `@tanstack/router-cli` package to watch for changes in your routes files and automatically update the routes configuration.
 
 ### Step 3: Add the file-based configuration file to your project
 

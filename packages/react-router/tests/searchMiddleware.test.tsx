@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   Link,
@@ -27,9 +27,10 @@ function setupTest(opts: {
 }) {
   const rootRoute = createRootRoute({
     validateSearch: (input) => {
-      return {
-        value: input.value as string | undefined,
+      if (input.value !== undefined) {
+        return { value: input.value as string }
       }
+      return {}
     },
     search: {
       middlewares: opts.middlewares,
@@ -43,7 +44,7 @@ function setupTest(opts: {
         <>
           <h1>Index</h1>
           {/* N.B. this link does not have search params set, but the middleware will add `root` if it is currently present */}
-          <Link to="/posts" search={opts.linkSearch}>
+          <Link data-testid="posts-link" to="/posts" search={opts.linkSearch}>
             Posts
           </Link>
         </>
@@ -55,7 +56,7 @@ function setupTest(opts: {
     const { value } = postsRoute.useSearch()
     return (
       <>
-        <h1>Posts</h1>
+        <h1 data-testid="posts-heading">Posts</h1>
         <div data-testid="search">{value ?? '$undefined'}</div>
       </>
     )
@@ -84,15 +85,20 @@ async function runTest(
 ) {
   render(<RouterProvider router={router} />)
 
-  const postsLink = await screen.findByRole('link', { name: 'Posts' })
+  const postsLink = await screen.findByTestId('posts-link')
   expect(postsLink).toHaveAttribute('href')
   const href = postsLink.getAttribute('href')
   const linkSearchOnRoot = getSearchParamsFromURI(href!)
   checkLocationSearch(expectedSearch.root)
   expect(router.state.location.search).toEqual(expectedSearch.root)
 
-  postsLink.click()
-  await expect(await screen.findByTestId('search')).toHaveTextContent(
+  fireEvent.click(postsLink)
+
+  const postHeading = await screen.findByTestId('posts-heading')
+  expect(postHeading).toBeInTheDocument()
+  expect(window.location.pathname).toBe('/posts')
+
+  expect(await screen.findByTestId('search')).toHaveTextContent(
     expectedSearch.posts.value ?? '$undefined',
   )
   checkLocationSearch(expectedSearch.posts)

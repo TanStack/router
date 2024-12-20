@@ -1,25 +1,24 @@
 import { defaultSerializeError } from './router'
 
+export const TSR_DEFERRED_PROMISE = Symbol.for('TSR_DEFERRED_PROMISE')
+
 export type DeferredPromiseState<T> = {
-  uid: string
-  resolve?: () => void
-  reject?: () => void
-} & (
-  | {
-      status: 'pending'
-      data?: T
-      error?: unknown
-    }
-  | {
-      status: 'success'
-      data: T
-    }
-  | {
-      status: 'error'
-      data?: T
-      error: unknown
-    }
-)
+  [TSR_DEFERRED_PROMISE]:
+    | {
+        status: 'pending'
+        data?: T
+        error?: unknown
+      }
+    | {
+        status: 'success'
+        data: T
+      }
+    | {
+        status: 'error'
+        data?: T
+        error: unknown
+      }
+}
 
 export type DeferredPromise<T> = Promise<T> & DeferredPromiseState<T>
 
@@ -30,25 +29,24 @@ export function defer<T>(
   },
 ) {
   const promise = _promise as DeferredPromise<T>
-
-  if (!(promise as any).status) {
-    Object.assign(promise, {
-      status: 'pending',
-    })
-
-    promise
-      .then((data) => {
-        promise.status = 'success' as any
-        promise.data = data
-      })
-      .catch((error) => {
-        promise.status = 'error' as any
-        ;(promise as any).error = {
-          data: (options?.serializeError ?? defaultSerializeError)(error),
-          __isServerError: true,
-        }
-      })
+  // this is already deferred promise
+  if ((promise as any)[TSR_DEFERRED_PROMISE]) {
+    return promise
   }
+  promise[TSR_DEFERRED_PROMISE] = { status: 'pending' }
+
+  promise
+    .then((data) => {
+      promise[TSR_DEFERRED_PROMISE].status = 'success'
+      promise[TSR_DEFERRED_PROMISE].data = data
+    })
+    .catch((error) => {
+      promise[TSR_DEFERRED_PROMISE].status = 'error'
+      ;(promise[TSR_DEFERRED_PROMISE] as any).error = {
+        data: (options?.serializeError ?? defaultSerializeError)(error),
+        __isServerError: true,
+      }
+    })
 
   return promise
 }

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "esbuild src/main.tsx --serve=3001 --bundle --outfile=dist/main.js --watch --servedir=.",
+    "dev": "esbuild src/main.tsx --serve=5601 --bundle --outfile=dist/main.js --watch --servedir=.",
     "build": "esbuild src/main.tsx --bundle --outfile=dist/main.js",
     "serve": "esbuild src/main.tsx --bundle --outfile=dist/main.js --servedir=.",
     "start": "dev",
@@ -13,14 +13,14 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/router-zod-adapter": "workspace:^",
+    "@tanstack/zod-adapter": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.2",
+    "@playwright/test": "^1.49.0",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "esbuild": "^0.24.0"

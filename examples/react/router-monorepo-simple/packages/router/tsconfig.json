@@ -5,6 +5,7 @@
     "jsx": "react-jsx",
     "target": "ESNext",
     "moduleResolution": "Bundler",
-    "module": "ESNext"
+    "module": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"]
   }
 }

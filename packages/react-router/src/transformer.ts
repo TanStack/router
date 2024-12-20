@@ -47,3 +47,22 @@ const transformers = [
     parse: () => undefined,
   },
 ] as const
+
+export type TransformerStringify<T, TSerializable> = T extends TSerializable
+  ? T
+  : T extends (...args: Array<any>) => any
+    ? 'Function is not serializable'
+    : { [K in keyof T]: TransformerStringify<T[K], TSerializable> }
+
+export type TransformerParse<T, TSerializable> = T extends TSerializable
+  ? T
+  : T extends React.JSX.Element
+    ? ReadableStream
+    : { [K in keyof T]: TransformerParse<T[K], TSerializable> }
+
+export type DefaultTransformerStringify<T> = TransformerStringify<
+  T,
+  Date | undefined
+>
+
+export type DefaultTransformerParse<T> = TransformerParse<T, Date | undefined>

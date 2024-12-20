@@ -29,23 +29,27 @@ const documents: Array<{ id: string; title: string; content: string }> = [
   },
 ]
 
-export const getDocumentHeads = createServerFn('GET', async () => {
-  await new Promise((resolve) => setTimeout(resolve, 200))
+export const getDocumentHeads = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await new Promise((resolve) => setTimeout(resolve, 200))
 
-  return documents.map(({ id, title }) => ({
-    id,
-    title,
-  }))
-})
+    return documents.map(({ id, title }) => ({
+      id,
+      title,
+    }))
+  },
+)
 
-export const getDocument = createServerFn('GET', async (id: string) => {
-  await new Promise((resolve) => setTimeout(resolve, 200))
+export const getDocument = createServerFn({ method: 'GET' })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    await new Promise((resolve) => setTimeout(resolve, 200))
 
-  const document = documents.find((doc) => doc.id === id)
+    const document = documents.find((doc) => doc.id === id)
 
-  if (!document) {
-    throw notFound()
-  }
+    if (!document) {
+      throw notFound()
+    }
 
-  return document
-})
+    return document
+  })

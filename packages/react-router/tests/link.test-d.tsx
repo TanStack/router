@@ -7,7 +7,11 @@ import {
   createRouter,
   linkOptions,
 } from '../src'
-import type { CreateLinkProps, SearchSchemaInput } from '../src'
+import type {
+  CreateLinkProps,
+  ResolveRelativePath,
+  SearchSchemaInput,
+} from '../src'
 
 const rootRoute = createRootRoute({
   validateSearch: (): { rootPage?: number } => ({ rootPage: 0 }),
@@ -392,6 +396,7 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
+      | ''
       | '..'
       | '.'
       | '/'
@@ -411,6 +416,7 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
+      | ''
       | '..'
       | '.'
       | '/'
@@ -450,6 +456,7 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
+      | ''
       | '..'
       | '.'
       | '/'
@@ -3839,6 +3846,46 @@ test('when passing a component with props to createLink and navigating to the ro
     }>()
 
   createLink((props) => expectTypeOf(props).toEqualTypeOf<CreateLinkProps>())
+})
+
+test('ResolveRelativePath', () => {
+  expectTypeOf<ResolveRelativePath<'/', '/posts'>>().toEqualTypeOf<'/posts'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '..'>
+  >().toEqualTypeOf<'/posts/1'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '../..'>
+  >().toEqualTypeOf<'/posts'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '../../..'>
+  >().toEqualTypeOf<'/'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', './1'>
+  >().toEqualTypeOf<'/posts/1/comments/1'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', './1/2'>
+  >().toEqualTypeOf<'/posts/1/comments/1/2'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '../edit'>
+  >().toEqualTypeOf<'/posts/1/edit'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '1'>
+  >().toEqualTypeOf<'/posts/1/comments/1'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', './1'>
+  >().toEqualTypeOf<'/posts/1/comments/1'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', './1/2'>
+  >().toEqualTypeOf<'/posts/1/comments/1/2'>()
 })
 
 test('linkOptions', () => {

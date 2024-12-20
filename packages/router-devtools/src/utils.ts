@@ -97,14 +97,10 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
 }
 
 export function useIsMounted() {
-  const mountedRef = React.useRef(false)
-  const isMounted = React.useCallback(() => mountedRef.current, [])
+  const [isMounted, setIsMounted] = React.useState(false)
 
   React[isServer ? 'useEffect' : 'useLayoutEffect'](() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
+    setIsMounted(true)
   }, [])
 
   return isMounted
@@ -136,7 +132,7 @@ export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
   const safeSetState = React.useCallback(
     (value: T) => {
       scheduleMicrotask(() => {
-        if (isMounted()) {
+        if (isMounted) {
           setState(value)
         }
       })

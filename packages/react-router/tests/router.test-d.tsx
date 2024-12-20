@@ -1,27 +1,30 @@
 import { expectTypeOf, test } from 'vitest'
 import {
+  createMemoryHistory,
   createRootRoute,
   createRootRouteWithContext,
   createRoute,
   createRouter,
 } from '../src'
+import type { RouterHistory } from '../src'
 
 test('when creating a router without context', () => {
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const rootRoute = createRootRoute()
 
   type RouteTree = typeof rootRoute
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{} | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .not.toMatchTypeOf<{
       context: {}
@@ -97,21 +100,22 @@ test('when building location using router', () => {
 })
 
 test('when creating a router with context', () => {
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   type RouteTree = typeof rootRoute
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{ userId: string }>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toMatchTypeOf<{
       context: { userId: string }
@@ -126,21 +130,22 @@ test('when creating a router with context and children', () => {
     path: '/',
   })
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const routeTree = rootRoute.addChildren([indexRoute])
 
   type RouteTree = typeof routeTree
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{ userId: string }>()
 
-  expectTypeOf(createRouter<RouteTree, 'never'>)
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
     .parameter(0)
     .toMatchTypeOf<{
       context: { userId: string }
@@ -226,4 +231,25 @@ test('invalidate and clearCache narrowing in filter', () => {
       return true
     },
   })
+})
+
+test('when creating a router with default router history', () => {
+  const router = createRouter({ routeTree: createRootRoute() })
+
+  expectTypeOf(router.history).toEqualTypeOf<RouterHistory>()
+})
+
+test('when creating a router with custom router history', () => {
+  const customRouterHistory = {
+    ...createMemoryHistory(),
+    _isCustomRouterHistory: true,
+  }
+
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: customRouterHistory,
+  })
+
+  expectTypeOf(router.history).toMatchTypeOf<RouterHistory>()
+  expectTypeOf(router.history).toEqualTypeOf<typeof customRouterHistory>()
 })

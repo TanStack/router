@@ -138,11 +138,24 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultViewTransition` property
 
-- Type: `boolean`
+- Type: `boolean | ViewTransitionOptions`
 - Optional
-- If `true`, route navigations will called using `document.startViewTransition()`.
+- If `true`, route navigations will be called using `document.startViewTransition()`.
+- If [`ViewTransitionOptions`](./ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
+  where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types,
+  the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
 - If the browser does not support this api, this option will be ignored.
 - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
+- See [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types) for more informations on viewTransition types
+
+### `defaultHashScrollIntoView` property
+
+- Type: `boolean | ScrollIntoViewOptions`
+- Optional
+- Defaults to `true` so the element with an id matching the hash will be scrolled into view after the location is committed to history.
+- If `false`, the element with an id matching the hash will not be scrolled into view after the location is committed to history.
+- If an object is provided, it will be passed to the `scrollIntoView` method as options.
+- See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
 
 ### `caseSensitive` property
 
@@ -286,3 +299,17 @@ const router = createRouter({
 - Optional
 - Defaults to `never`
 - Configures how trailing slashes are treated. `'always'` will add a trailing slash if not present, `'never'` will remove the trailing slash if present and `'preserve'` will not modify the trailing slash.
+
+### `pathParamsAllowedCharacters` property
+
+- Type: `Array<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
+- Optional
+- Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+
+### `defaultStructuralSharing` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- Configures whether structural sharing is enabled by default for fine-grained selectors.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.

@@ -309,9 +309,28 @@ describe('interpolatePath', () => {
       params: { id: 0 },
       result: '/users/0',
     },
+    {
+      name: 'should interpolate the path with URI component encoding',
+      path: '/users/$id',
+      params: { id: '?#@john+smith' },
+      result: '/users/%3F%23%40john%2Bsmith',
+    },
+    {
+      name: 'should interpolate the path without URI encoding characters in decodeCharMap',
+      path: '/users/$id',
+      params: { id: '?#@john+smith' },
+      result: '/users/%3F%23@john+smith',
+      decodeCharMap: new Map(
+        ['@', '+'].map((char) => [encodeURIComponent(char), char]),
+      ),
+    },
   ].forEach((exp) => {
     it(exp.name, () => {
-      const result = interpolatePath({ path: exp.path, params: exp.params })
+      const result = interpolatePath({
+        path: exp.path,
+        params: exp.params,
+        decodeCharMap: exp.decodeCharMap,
+      })
       expect(result).toBe(exp.result)
     })
   })

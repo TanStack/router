@@ -105,7 +105,7 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
     }
 
     const unsubOnBeforeLoad = router.subscribe('onBeforeLoad', (event) => {
-      if (event.pathChanged) {
+      if (event.hrefChanged) {
         const restoreKey = getKey(event.fromLocation)
         for (const elementSelector in cache.state.next) {
           const entry = cache.state.next[elementSelector]!
@@ -138,7 +138,7 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
     const unsubOnBeforeRouteMount = router.subscribe(
       'onBeforeRouteMount',
       (event) => {
-        if (event.pathChanged) {
+        if (event.hrefChanged) {
           if (!router.resetNextScroll) {
             return
           }
