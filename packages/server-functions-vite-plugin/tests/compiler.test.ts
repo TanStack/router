@@ -105,7 +105,7 @@ describe('server function compilation', () => {
       code,
     })
     const ssr = compileDirectives({ ...serverConfig, code })
-    const splitFiles = Object.entries(ssr.directives)
+    const splitFiles = Object.entries(ssr.directiveFnsById)
       .map(([_fnId, directiveFn]) => {
         return `// ${directiveFn.functionName}\n\n${
           compileDirectives({
@@ -586,7 +586,7 @@ describe('server function compilation', () => {
     `)
   })
 
-  test('multiple directives', () => {
+  test('multiple directiveFnsById', () => {
     const code = `
       function multiDirective() {
         'use strict'
@@ -597,7 +597,7 @@ describe('server function compilation', () => {
 
     const client = compileDirectives({ ...clientConfig, code })
     const ssr = compileDirectives({ ...serverConfig, code })
-    const splitFiles = Object.entries(ssr.directives)
+    const splitFiles = Object.entries(ssr.directiveFnsById)
       .map(([_fnId, directiveFn]) => {
         return `// ${directiveFn.functionName}\n\n${
           compileDirectives({
@@ -641,7 +641,7 @@ describe('server function compilation', () => {
 
     const client = compileDirectives({ ...clientConfig, code })
     const ssr = compileDirectives({ ...serverConfig, code })
-    const splitFiles = Object.entries(ssr.directives)
+    const splitFiles = Object.entries(ssr.directiveFnsById)
       .map(([_fnId, directiveFn]) => {
         return `// ${directiveFn.functionName}\n\n${
           compileDirectives({
@@ -698,7 +698,7 @@ describe('server function compilation', () => {
     const client = compileDirectives({ ...clientConfig, code })
     const ssr = compileDirectives({ ...serverConfig, code })
 
-    const splitFiles = Object.entries(ssr.directives)
+    const splitFiles = Object.entries(ssr.directiveFnsById)
       .map(([_fnId, directiveFn]) => {
         return `// ${directiveFn.functionName}\n\n${
           compileDirectives({
@@ -797,7 +797,7 @@ describe('server function compilation', () => {
 
     const client = compileDirectives({ ...clientConfig, code })
     const ssr = compileDirectives({ ...serverConfig, code })
-    const splitFiles = Object.entries(ssr.directives)
+    const splitFiles = Object.entries(ssr.directiveFnsById)
       .map(([_fnId, directive]) => {
         return `// ${directive.functionName}\n\n${
           compileDirectives({
