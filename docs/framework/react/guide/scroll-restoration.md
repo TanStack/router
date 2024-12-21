@@ -137,3 +137,20 @@ function Component() {
   )
 }
 ```
+
+## Scroll Behavior
+
+To control the scroll behavior when navigating between pages, you can use the `scrollBehavior` option. This allows you to make the transition between pages instant instead of a smooth scroll.
+
+```tsx
+import { ScrollRestoration } from '@tanstack/react-router'
+
+function Root() {
+  return (
+    <>
+      <ScrollRestoration scrollBehavior="instant" />
+      <Outlet />
+    </>
+  )
+}
+```
