@@ -365,7 +365,10 @@ const applyMiddleware = (
         context,
         sendContext,
         headers,
-        result: userResult?.result ?? (mCtx as any).result,
+        result:
+          userResult?.result !== undefined
+            ? userResult.result
+            : (mCtx as any).result,
       } as MiddlewareResult & {
         method: Method
       })
