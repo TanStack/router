@@ -4,5 +4,5 @@
     "jsx": "react-jsx",
     "module": "esnext"
   },
-  "include": ["src", "vite.config.ts", "src/client/DehydrateRouter.tsx"]
+  "include": ["src", "vite.config.ts"]
 }

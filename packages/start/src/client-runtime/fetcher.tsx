@@ -43,7 +43,13 @@ export async function fetcher(
         }),
       })
 
-      if (encodedPayload) base += `&${encodedPayload}`
+      if (encodedPayload) {
+        if (base.includes('?')) {
+          base += `&${encodedPayload}`
+        } else {
+          base += `?${encodedPayload}`
+        }
+      }
     }
 
     // Create the request

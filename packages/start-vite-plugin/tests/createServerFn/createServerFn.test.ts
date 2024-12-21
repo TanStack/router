@@ -59,4 +59,48 @@ describe('createServerFn compiles correctly', async () => {
       })
     }).toThrowError()
   })
+
+  test('should work with identifiers of functions', () => {
+    const code = `
+        import { createServerFn } from '@tanstack/start'
+        const myFunc = () => {
+          return 'hello from the server'
+        }
+        const myServerFn = createServerFn().handler(myFunc)`
+
+    const compiledResultClient = compileStartOutput({
+      root: '/test',
+      filename: 'test.ts',
+      code,
+      env: 'client',
+    })
+
+    const compiledResultServer = compileStartOutput({
+      root: '/test',
+      filename: 'test.ts',
+      code,
+      env: 'server',
+    })
+
+    expect(compiledResultClient.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/start';
+      const myServerFn = createServerFn().handler(opts => {
+        "use server";
+
+        return myServerFn.__executeServer(opts);
+      });"
+    `)
+
+    expect(compiledResultServer.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/start';
+      const myFunc = () => {
+        return 'hello from the server';
+      };
+      const myServerFn = createServerFn().handler(opts => {
+        "use server";
+
+        return myServerFn.__executeServer(opts);
+      }, myFunc);"
+    `)
+  })
 })
