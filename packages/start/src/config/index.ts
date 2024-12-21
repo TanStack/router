@@ -7,13 +7,14 @@ import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import {
   TanStackStartViteDeadCodeElimination,
-  TanStackStartViteServerFn,
+  TanStackStartVitePlugin,
 } from '@tanstack/start-vite-plugin'
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
+import { createTanStackServerFnPlugin } from '@tanstack/directive-functions-plugin'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
@@ -119,6 +120,8 @@ export function defineConfig(
 
   const apiEntryExists = existsSync(apiEntry)
 
+  const TanStackServerFnsPlugin = createTanStackServerFnPlugin()
+
   let vinxiApp = createApp({
     server: {
       ...serverOptions,
@@ -166,12 +169,7 @@ export function defineConfig(
             }),
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
-            Directive({
-              getRuntimeCode: (opts) =>
-                `import { createClientRpc } from '@tanstack/start/client-runtime'`,
-              replacer: (opts) =>
-                `createClientRpc('${opts.filename}', '${opts.functionId}')`,
-            }),
+            TanStackServerFnsPlugin.client,
             viteReact(opts.react),
             // TODO: RSCS - enable this
             // serverComponents.client(),
@@ -210,12 +208,7 @@ export function defineConfig(
             }),
             ...(getUserViteConfig(opts.vite).plugins || []),
             ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
-            TanStackServerFnPluginServer({
-              getRuntimeCode: (opts) =>
-                `import { createServerRpc } from '@tanstack/start/ssr-runtime'`,
-              replacer: (opts) =>
-                `createSsrRpc('${opts.filename}', '${opts.functionId}')`,
-            }),
+            TanStackServerFnsPlugin.ssr,
             config('start-ssr', {
               ssr: {
                 external: ['@vinxi/react-server-dom/client'],
@@ -256,16 +249,11 @@ export function defineConfig(
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
               },
             }),
-            TanStackServerFnPluginServer({
-              getRuntimeCode: (opts) =>
-                `import { createServerRpc } from '@tanstack/start/server-runtime'`,
-              replacer: (opts) =>
-                `createServerRpc('${opts.filename}', '${opts.functionId}')`,
-              // TODO: RSCS - remove this
-              // resolve: {
-              //   conditions: [],
-              // },
-            }),
+            TanStackServerFnsPlugin.server,
+            // TODO: RSCS - remove this
+            // resolve: {
+            //   conditions: [],
+            // },
             // TODO: RSCs - add this
             // serverComponents.serverActions({
             //   resolve: {
@@ -401,8 +389,8 @@ function withStartPlugins(opts: TanStackStartOutputConfig, router: RouterType) {
           ...tsrConfig.experimental,
         },
       }),
-      TanStackStartViteServerFn({
-        env: router === 'client' ? 'client' : 'server',
+      TanStackStartVitePlugin({
+        env: router === 'server' ? 'server' : 'client',
       }),
     ],
     [

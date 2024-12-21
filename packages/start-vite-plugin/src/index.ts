@@ -7,7 +7,7 @@ import type { Plugin } from 'vite'
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
 export type TanStackStartViteOptions = {
-  env: 'server' | 'client'
+  env: 'server' | 'ssr' | 'client'
 }
 
 const transformFuncs = [
@@ -22,7 +22,7 @@ const eitherFuncRegex = new RegExp(
   `(function ${transformFuncs.join('|function ')})`,
 )
 
-export function TanStackStartViteServerFn(
+export function TanStackStartVitePlugin(
   opts: TanStackStartViteOptions,
 ): Plugin {
   let ROOT: string = process.cwd()

@@ -1,8 +1,8 @@
 import chalk from 'chalk'
-import { diffChars } from 'diff'
+import { diffWords } from 'diff'
 
 export function logDiff(oldStr: string, newStr: string) {
-  const differences = diffChars(oldStr, newStr)
+  const differences = diffWords(oldStr, newStr)
 
   let output = ''
   let unchangedLines = ''

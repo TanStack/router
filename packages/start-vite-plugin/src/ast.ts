@@ -4,7 +4,7 @@ export type ParseAstOptions = {
   code: string
   filename: string
   root: string
-  env: 'server' | 'client'
+  env: 'server' | 'client' | 'ssr'
 }
 
 export function parseAst(opts: ParseAstOptions) {

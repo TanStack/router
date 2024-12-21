@@ -221,7 +221,7 @@ export function createServerFn<
 
       invariant(
         extractedFn.url,
-        `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/start-vite-plugin ?`,
+        `createServerFn must be called with a function that has a 'url' property. Are you using the @tanstack/start-vite-plugin properly?`,
       )
 
       const resolvedMiddleware = [

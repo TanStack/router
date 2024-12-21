@@ -1,13 +1,16 @@
-// import { getBaseUrl } from '../client-runtime/getBaseUrl'
-import type { CreateRpcFn } from '@tanstack/directive-functions-plugin'
+import { getBaseUrl } from '../client-runtime/getBaseUrl'
+import type { CreateServerRpcFn } from '@tanstack/directive-functions-plugin'
 
-export const createServerRpc: CreateRpcFn = (opts) => {
-  // const functionUrl = getBaseUrl('http://localhost:3000', id, name)
-  const functionUrl = 'https://localhost:3000'
+const fakeHost = 'http://localhost:3000'
 
-  return Object.assign(opts.fn, {
-    url: functionUrl,
-    filename: opts.filename,
-    functionId: opts.functionId,
+export const createServerRpc: CreateServerRpcFn = (
+  functionId,
+  splitImportFn,
+) => {
+  const functionUrl = getBaseUrl(fakeHost, functionId)
+
+  return Object.assign(splitImportFn, {
+    url: functionUrl.replace(fakeHost, ''),
+    functionId,
   })
 }

@@ -4,7 +4,7 @@ import invariant from 'tiny-invariant'
 import { fetcher } from '../client-runtime/fetcher'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
 import { handleServerRequest } from '../server-handler/index'
-import type { CreateRpcFn } from '@tanstack/directive-functions-plugin'
+import type { CreateSsrRpcFn } from '@tanstack/directive-functions-plugin'
 
 export function createIncomingMessage(
   url: string,
@@ -78,10 +78,10 @@ export function createIncomingMessage(
 
 const fakeHost = 'http://localhost:3000'
 
-export const createSsrRpc: CreateRpcFn = (opts) => {
-  const functionUrl = getBaseUrl(fakeHost, opts.filename, opts.functionId)
+export const createSsrRpc: CreateSsrRpcFn = (functionId) => {
+  const functionUrl = getBaseUrl(fakeHost, functionId)
 
-  const proxyFn = (...args: Array<any>) => {
+  const ssrFn = (...args: Array<any>) => {
     invariant(
       args.length === 1,
       'Server functions can only accept a single argument',
@@ -149,9 +149,8 @@ export const createSsrRpc: CreateRpcFn = (opts) => {
     })
   }
 
-  return Object.assign(proxyFn, {
+  return Object.assign(ssrFn, {
     url: functionUrl.replace(fakeHost, ''),
-    filename: opts.filename,
-    functionId: opts.functionId,
+    functionId,
   })
 }

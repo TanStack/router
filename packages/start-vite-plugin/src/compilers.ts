@@ -318,7 +318,22 @@ function handleCreateServerFnCallExpression(
   //   })(optsOut)
   // })
 
-  removeUseServerDirective(handlerFnPath)
+  // If the handler function is an identifier and we're on the client, we need to
+  // remove the bound function from the file.
+  // If we're on the server, you can leave it, since it will get referenced
+  // as a second argument.
+
+  if (t.isIdentifier(handlerFn)) {
+    if (opts.env === 'client' || opts.env === 'ssr') {
+      // Find the binding for the handler function
+      const binding = handlerFnPath.scope.getBinding(handlerFn.name)
+      // Remove it
+      if (binding) {
+        binding.path.remove()
+      }
+    }
+    // If the env is server, just leave it alone
+  }
 
   handlerFnPath.replaceWith(
     t.arrowFunctionExpression(
@@ -344,46 +359,10 @@ function handleCreateServerFnCallExpression(
   }
 }
 
-function removeUseServerDirective(path: babel.NodePath<any>) {
-  path.traverse({
-    Directive(path) {
-      if (path.node.value.value === 'use server') {
-        path.remove()
-      }
-    },
-  })
-}
-
 function handleCreateMiddlewareCallExpression(
   path: babel.NodePath<t.CallExpression>,
   opts: ParseAstOptions,
 ) {
-  // const firstArg = path.node.arguments[0]
-
-  // if (!t.isObjectExpression(firstArg)) {
-  //   throw new Error(
-  //     'createMiddleware must be called with an object of options!',
-  //   )
-  // }
-
-  // const idProperty = firstArg.properties.find((prop) => {
-  //   return (
-  //     t.isObjectProperty(prop) &&
-  //     t.isIdentifier(prop.key) &&
-  //     prop.key.name === 'id'
-  //   )
-  // })
-
-  // if (
-  //   !idProperty ||
-  //   !t.isObjectProperty(idProperty) ||
-  //   !t.isStringLiteral(idProperty.value)
-  // ) {
-  //   throw new Error(
-  //     'createMiddleware must be called with an "id" property!',
-  //   )
-  // }
-
   const rootCallExpression = getRootCallExpression(path)
 
   if (debug)
@@ -391,106 +370,6 @@ function handleCreateMiddlewareCallExpression(
       'Handling createMiddleware call expression:',
       rootCallExpression.toString(),
     )
-
-  // Check if the call is assigned to a variable
-  // if (!rootCallExpression.parentPath.isVariableDeclarator()) {
-  // TODO: move this logic out to eslint or something like
-  // the router generator code that can do autofixes on save.
-
-  // // If not assigned to a variable, wrap the call in a variable declaration
-  // const variableDeclaration = t.variableDeclaration('const', [
-  //   t.variableDeclarator(t.identifier(middlewareName), path.node),
-  // ])
-
-  // // The parent could be an expression statement, if it is, we need to replace
-  // // it with the variable declaration
-  // if (path.parentPath.isExpressionStatement()) {
-  //   path.parentPath.replaceWith(variableDeclaration)
-  // } else {
-  //   // If the parent is not an expression statement, then it is a statement
-  //   // that is not an expression, like a variable declaration or a return statement.
-  //   // In this case, we need to insert the variable declaration before the statement
-  //   path.parentPath.insertBefore(variableDeclaration)
-  // }
-
-  // // Now we need to export it. Just add an export statement
-  // // to the program body
-  // path.findParent((parentPath) => {
-  //   if (parentPath.isProgram()) {
-  //     parentPath.node.body.push(
-  //       t.exportNamedDeclaration(null, [
-  //         t.exportSpecifier(
-  //           t.identifier(middlewareName),
-  //           t.identifier(middlewareName),
-  //         ),
-  //       ]),
-  //     )
-  //   }
-  //   return false
-  // })
-
-  //   throw new Error(
-  //     'createMiddleware must be assigned to a variable and exported!',
-  //   )
-  // }
-
-  // const variableDeclarator = rootCallExpression.parentPath.node
-  // const existingVariableName = (variableDeclarator.id as t.Identifier).name
-
-  // const program = rootCallExpression.findParent((parentPath) => {
-  //   return parentPath.isProgram()
-  // }) as babel.NodePath<t.Program>
-
-  // let isExported = false as boolean
-
-  // program.traverse({
-  //   ExportNamedDeclaration: (path) => {
-  //     if (
-  //       path.isExportNamedDeclaration() &&
-  //       path.node.declaration &&
-  //       t.isVariableDeclaration(path.node.declaration) &&
-  //       path.node.declaration.declarations.some((decl) => {
-  //         return (
-  //           t.isVariableDeclarator(decl) &&
-  //           t.isIdentifier(decl.id) &&
-  //           decl.id.name === existingVariableName
-  //         )
-  //       })
-  //     ) {
-  //       isExported = true
-  //     }
-  //   },
-  // })
-
-  // If not exported, export it
-  // if (!isExported) {
-  // TODO: move this logic out to eslint or something like
-  // the router generator code that can do autofixes on save.
-
-  // path.parentPath.parentPath.insertAfter(
-  //   t.exportNamedDeclaration(null, [
-  //     t.exportSpecifier(
-  //       t.identifier(existingVariableName),
-  //       t.identifier(existingVariableName),
-  //     ),
-  //   ]),
-  // )
-
-  //   throw new Error(
-  //     'createMiddleware must be exported as a named export!',
-  //   )
-  // }
-
-  // The function is the 'fn' property of the object passed to createMiddleware
-
-  // const firstArg = path.node.arguments[0]
-  // if (t.isObjectExpression(firstArg)) {
-  //   // Was called with some options
-  // }
-
-  // Traverse the member expression and find the call expressions for
-  // the validator, handler, and middleware methods. Check to make sure they
-  // are children of the createMiddleware call expression.
 
   const callExpressionPaths = {
     middleware: null as babel.NodePath<t.CallExpression> | null,
@@ -526,8 +405,8 @@ function handleCreateMiddlewareCallExpression(
       )
     }
 
-    // If we're on the client, remove the validator call expression
-    if (opts.env === 'client') {
+    // If we're on the client or ssr, remove the validator call expression
+    if (opts.env === 'client' || opts.env === 'ssr') {
       if (t.isMemberExpression(callExpressionPaths.validator.node.callee)) {
         callExpressionPaths.validator.replaceWith(
           callExpressionPaths.validator.node.callee.object,
@@ -544,9 +423,9 @@ function handleCreateMiddlewareCallExpression(
     throw new Error('createMiddleware must be called with a "use" property!')
   }
 
-  // If we're on the client, remove the use call expression
+  // If we're on the client, remove the server call expression
 
-  if (opts.env === 'client') {
+  if (opts.env === 'client' || opts.env === 'ssr') {
     if (t.isMemberExpression(callExpressionPaths.server.node.callee)) {
       callExpressionPaths.server.replaceWith(
         callExpressionPaths.server.node.callee.object,
@@ -563,7 +442,12 @@ function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
     if (debug)
       console.info(`Handling ${env}Only call expression:`, path.toString())
 
-    if (opts.env === env) {
+    const isEnvMatch =
+      env === 'client'
+        ? opts.env === 'client'
+        : opts.env === 'server' || opts.env === 'ssr'
+
+    if (isEnvMatch) {
       // extract the inner function from the call expression
       const innerInputExpression = path.node.arguments[0]
 
@@ -648,7 +532,9 @@ function handleCreateIsomorphicFnCallExpression(
     )
   }
 
-  const envCallExpression = callExpressionPaths[opts.env]
+  const resolvedEnv = opts.env === 'ssr' ? 'client' : opts.env
+
+  const envCallExpression = callExpressionPaths[resolvedEnv]
 
   if (!envCallExpression) {
     // if we don't have an implementation for this environment, default to a no-op
@@ -662,7 +548,7 @@ function handleCreateIsomorphicFnCallExpression(
 
   if (!t.isExpression(innerInputExpression)) {
     throw new Error(
-      `createIsomorphicFn().${opts.env}(func) must be called with a function!`,
+      `createIsomorphicFn().${resolvedEnv}(func) must be called with a function!`,
     )
   }
 
