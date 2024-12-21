@@ -30,9 +30,9 @@
     "typescript": "^5.7.2",
     "compression": "^1.7.5",
     "express": "^4.21.2",
-    "isbot": "^5.1.17",
+    "isbot": "^5.1.18",
     "node-fetch": "^3.3.2",
     "serve-static": "^1.16.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.5"
   }
 }
