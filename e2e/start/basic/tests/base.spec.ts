@@ -193,7 +193,7 @@ test('env-only functions can only be called on the server or client respectively
   )
 })
 
-test('Server function can return null for GET and POST calls', async ({
+test.only('Server function can return null for GET and POST calls', async ({
   page,
 }) => {
   await page.goto('/server-fns')

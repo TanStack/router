@@ -37,14 +37,18 @@ export function AllowServerFnReturnNull() {
         {`GET: $allow_return_null_getFn returns`}
         <br />
         <span data-testid="allow_return_null_getFn-response">
-          {JSON.stringify(getServerResult ?? '-')}
+          {JSON.stringify(
+            getServerResult !== undefined ? getServerResult : '-',
+          )}
         </span>
       </p>
       <p>
         {`POST: $allow_return_null_postFn returns`}
         <br />
         <span data-testid="allow_return_null_postFn-response">
-          {JSON.stringify(postServerResult ?? '-')}
+          {JSON.stringify(
+            postServerResult !== undefined ? postServerResult : '-',
+          )}
         </span>
       </p>
       <button
