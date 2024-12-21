@@ -68,7 +68,7 @@
     "react": ">=18",
     "react-dom": ">=18",
     "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-query": ">=5.62.3"
+    "@tanstack/react-query": ">=5.62.8"
   },
   "peerDependencies": {
     "react": ">=18",

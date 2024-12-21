@@ -43,7 +43,7 @@
     "picocolors": "^1.1.1",
     "unbuild": "^2.0.0",
     "validate-npm-package-name": "^5.0.1",
-    "yocto-spinner": "^0.1.1"
+    "yocto-spinner": "^0.1.2"
   },
   "peerDependencies": {
     "@rsbuild/core": "^1.0.2",
