@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url'
 import {
   defaultTransformer,
   isNotFound,
+  isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
 import invariant from 'tiny-invariant'
@@ -101,6 +102,12 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
 
       if (result instanceof Response) {
         return result
+      } else if (
+        isPlainObject(result) &&
+        'result' in result &&
+        result.result instanceof Response
+      ) {
+        return result.result
       }
 
       // TODO: RSCs
@@ -138,6 +145,12 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
     } catch (error: any) {
       if (error instanceof Response) {
         return error
+      } else if (
+        isPlainObject(error) &&
+        'result' in error &&
+        error.result instanceof Response
+      ) {
+        return error.result
       }
 
       // Currently this server-side context has no idea how to
