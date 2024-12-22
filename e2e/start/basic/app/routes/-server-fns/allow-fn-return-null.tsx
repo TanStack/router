@@ -17,8 +17,8 @@ const $allow_return_null_postFn = createServerFn({ method: 'POST' }).handler(
 )
 
 export function AllowServerFnReturnNull() {
-  const [getServerResult, setGetServerResult] = React.useState<any>({})
-  const [postServerResult, setPostServerResult] = React.useState<any>({})
+  const [getServerResult, setGetServerResult] = React.useState<any>('-')
+  const [postServerResult, setPostServerResult] = React.useState<any>('-')
 
   return (
     <div className="p-2 border m-2 grid gap-2">
@@ -37,18 +37,14 @@ export function AllowServerFnReturnNull() {
         {`GET: $allow_return_null_getFn returns`}
         <br />
         <span data-testid="allow_return_null_getFn-response">
-          {JSON.stringify(
-            getServerResult !== undefined ? getServerResult : '-',
-          )}
+          {JSON.stringify(getServerResult)}
         </span>
       </p>
       <p>
         {`POST: $allow_return_null_postFn returns`}
         <br />
         <span data-testid="allow_return_null_postFn-response">
-          {JSON.stringify(
-            postServerResult !== undefined ? postServerResult : '-',
-          )}
+          {JSON.stringify(postServerResult)}
         </span>
       </p>
       <button
