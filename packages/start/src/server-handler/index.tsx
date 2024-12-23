@@ -1,4 +1,6 @@
 /// <reference types="vinxi/types/server" />
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import {
   defaultTransformer,
   isNotFound,
@@ -12,7 +14,8 @@ import {
   getResponseStatus,
   toWebRequest,
 } from 'vinxi/http'
-import { getManifest } from 'vinxi/manifest'
+// @ts-expect-error
+import serverFnManifest from 'tsr:server-fn-manifest'
 import type { H3Event } from 'vinxi/server'
 
 export default eventHandler(handleServerAction)
@@ -24,28 +27,44 @@ async function handleServerAction(event: H3Event) {
 export async function handleServerRequest(request: Request, _event?: H3Event) {
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
+  // extract the serverFnId from the url as host/_server/:serverFnId
+  // Define a regex to match the path and extract the :thing part
+  const regex = /\/_server\/([^/?#]+)/
+
+  // Execute the regex
+  const match = url.pathname.match(regex)
+  const serverFnId = match ? match[1] : null
   const search = Object.fromEntries(url.searchParams.entries()) as {
-    _serverFnId?: string
-    _serverFnName?: string
     payload?: any
-  }
-
-  const serverFnId = search._serverFnId
-  const serverFnName = search._serverFnName
-
-  if (!serverFnId || !serverFnName) {
-    throw new Error('Invalid request')
   }
 
   invariant(typeof serverFnId === 'string', 'Invalid server action')
 
-  if (process.env.NODE_ENV === 'development')
-    console.info(`ServerFn Request: ${serverFnId} - ${serverFnName}`)
-  if (process.env.NODE_ENV === 'development') console.info()
+  const serverFnInfo = serverFnManifest[serverFnId]
 
-  const action = (await getManifest('server').chunks[serverFnId]?.import())?.[
-    serverFnName
-  ] as Function
+  invariant(serverFnInfo, 'Server function not found')
+
+  if (process.env.NODE_ENV === 'development')
+    console.info(`\nServerFn Request: ${serverFnId}`)
+
+  let action: Function
+  if (process.env.NODE_ENV === 'development') {
+    action = (await (globalThis as any).app
+      .getRouter('server')
+      .internals.devServer.ssrLoadModule(serverFnInfo.splitFilename)
+      .then((d: any) => d.default)) as Function
+  } else {
+    const router = (globalThis as any).app.getRouter('server')
+    const filePath = join(
+      router.outDir,
+      router.base,
+      serverFnInfo.chunkName + '.mjs',
+    )
+    const url = pathToFileURL(filePath).toString()
+    action = (await import(url).then((d) => d.default)) as Function
+  }
+
+  invariant(action, 'Server function not found')
 
   const response = await (async () => {
     try {

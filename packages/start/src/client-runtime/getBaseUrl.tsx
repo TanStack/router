@@ -9,6 +9,6 @@ function sanitizeBase(base: string | undefined) {
   return base.replace(/^\/|\/$/g, '')
 }
 
-export function getBaseUrl(base: string | undefined, id: string, name: string) {
-  return `${base}/${sanitizeBase(process.env.TSS_SERVER_BASE)}/?_serverFnId=${encodeURI(id)}&_serverFnName=${encodeURI(name)}`
+export function getBaseUrl(base: string | undefined, functionId: string) {
+  return `${base}/${sanitizeBase(process.env.TSS_SERVER_BASE)}/${encodeURI(functionId)}`
 }

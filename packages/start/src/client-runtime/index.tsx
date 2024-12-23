@@ -1,22 +1,16 @@
-import { fetcher } from './fetcher'
+import { serverFnFetcher } from '../client'
 import { getBaseUrl } from './getBaseUrl'
-import type { ServerFn } from '../client/createServerFn'
+import type { CreateClientRpcFn } from '@tanstack/directive-functions-plugin'
 
-export function createServerReference(
-  _fn: ServerFn<any, any, any, any>,
-  id: string,
-  name: string,
-) {
-  // let base = getBaseUrl(import.meta.env.SERVER_BASE_URL, id, name)
-  const base = getBaseUrl(window.location.origin, id, name)
+export const createClientRpc: CreateClientRpcFn = (functionId) => {
+  const base = getBaseUrl(window.location.origin, functionId)
 
-  const proxyFn = (...args: Array<any>) => fetcher(base, args, fetch)
+  const fn = (...args: Array<any>) => serverFnFetcher(base, args, fetch)
 
-  return Object.assign(proxyFn, {
+  return Object.assign(fn, {
     url: base,
-    filename: id,
-    functionId: name,
+    functionId,
   })
 }
 
-export { fetcher }
+export { serverFnFetcher }

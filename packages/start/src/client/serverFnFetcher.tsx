@@ -5,10 +5,10 @@ import {
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
-import type { MiddlewareOptions } from '../client/createServerFn'
+import type { MiddlewareOptions } from './createServerFn'
 
-export async function fetcher(
-  base: string,
+export async function serverFnFetcher(
+  url: string,
   args: Array<any>,
   handler: (request: Request) => Promise<Response>,
 ) {
@@ -43,11 +43,17 @@ export async function fetcher(
         }),
       })
 
-      if (encodedPayload) base += `&${encodedPayload}`
+      if (encodedPayload) {
+        if (url.includes('?')) {
+          url += `&${encodedPayload}`
+        } else {
+          url += `?${encodedPayload}`
+        }
+      }
     }
 
     // Create the request
-    const request = new Request(base, {
+    const request = new Request(url, {
       method: first.method,
       headers,
       ...getFetcherRequestOptions(first),
@@ -77,7 +83,7 @@ export async function fetcher(
 
   // If not a custom fetcher, just proxy the arguments
   // through as a POST request
-  const request = new Request(base, {
+  const request = new Request(url, {
     method: 'POST',
     headers: {
       Accept: 'application/json',

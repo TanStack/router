@@ -36,7 +36,8 @@
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build && pnpm build:config && pnpm build:router-manifest",
+    "build": "pnpm build:vite && pnpm build:config && pnpm build:router-manifest",
+    "build:vite": "vite build",
     "build:config": "tsc --project tsconfigs/config.tsconfig.json",
     "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json"
   },
@@ -110,10 +111,10 @@
         "default": "./dist/esm/server-runtime/index.js"
       }
     },
-    "./react-server-runtime": {
+    "./ssr-runtime": {
       "import": {
-        "types": "./dist/esm/react-server-runtime/index.d.ts",
-        "default": "./dist/esm/react-server-runtime/index.js"
+        "types": "./dist/esm/ssr-runtime/index.d.ts",
+        "default": "./dist/esm/ssr-runtime/index.js"
       }
     },
     "./server-handler": {
@@ -138,6 +139,7 @@
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/start-vite-plugin": "workspace:^",
+    "@tanstack/directive-functions-plugin": "workspace:^",
     "@vinxi/react": "0.2.5",
     "@vinxi/react-server-dom": "^0.0.3",
     "@vinxi/server-components": "0.5.0",

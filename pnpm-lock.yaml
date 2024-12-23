@@ -23,8 +23,6 @@ overrides:
   '@tanstack/start': workspace:*
   '@tanstack/start-vite-plugin': workspace:*
   '@tanstack/eslint-plugin-router': workspace:*
-  temp-react: 0.0.0-experimental-035a41c4e-20230704
-  temp-react-dom: 0.0.0-experimental-035a41c4e-20230704
 
 importers:
 
@@ -3577,8 +3575,74 @@ importers:
         specifier: workspace:*
         version: link:../router-plugin
 
+  packages/server-functions-vite-plugin:
+    dependencies:
+      '@babel/code-frame':
+        specifier: 7.26.2
+        version: 7.26.2
+      '@babel/core':
+        specifier: ^7.26.0
+        version: 7.26.0
+      '@babel/generator':
+        specifier: ^7.26.3
+        version: 7.26.3
+      '@babel/parser':
+        specifier: ^7.26.3
+        version: 7.26.3
+      '@babel/plugin-syntax-jsx':
+        specifier: ^7.25.9
+        version: 7.25.9(@babel/core@7.26.0)
+      '@babel/plugin-syntax-typescript':
+        specifier: ^7.25.9
+        version: 7.25.9(@babel/core@7.26.0)
+      '@babel/template':
+        specifier: ^7.25.9
+        version: 7.25.9
+      '@babel/traverse':
+        specifier: ^7.26.4
+        version: 7.26.4
+      '@babel/types':
+        specifier: ^7.26.3
+        version: 7.26.3
+      '@types/babel__code-frame':
+        specifier: ^7.0.6
+        version: 7.0.6
+      '@types/babel__core':
+        specifier: ^7.20.5
+        version: 7.20.5
+      '@types/babel__generator':
+        specifier: ^7.6.8
+        version: 7.6.8
+      '@types/babel__template':
+        specifier: ^7.4.4
+        version: 7.4.4
+      '@types/babel__traverse':
+        specifier: ^7.20.6
+        version: 7.20.6
+      '@types/diff':
+        specifier: ^6.0.0
+        version: 6.0.0
+      babel-dead-code-elimination:
+        specifier: ^1.0.6
+        version: 1.0.8
+      chalk:
+        specifier: ^5.3.0
+        version: 5.3.0
+      dedent:
+        specifier: ^1.5.3
+        version: 1.5.3
+      diff:
+        specifier: ^7.0.0
+        version: 7.0.0
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+
   packages/start:
     dependencies:
+      '@tanstack/directive-functions-plugin':
+        specifier: workspace:^
+        version: link:../server-functions-vite-plugin
       '@tanstack/react-cross-context':
         specifier: workspace:*
         version: link:../react-cross-context
@@ -6047,6 +6111,9 @@ packages:
   '@types/cross-spawn@6.0.6':
     resolution: {integrity: sha512-fXRhhUkG4H3TQk5dBhQ7m/JDdSNHKwR2BBia62lhwEIq9xGiQKLxd6LymNhn47SjXhsUEPmxi+PKw2OkW4LLjA==}
 
+  '@types/diff@6.0.0':
+    resolution: {integrity: sha512-dhVCYGv3ZSbzmQaBSagrv1WJ6rXCdkyTcDyoNu1MD8JohI7pR7k8wdZEm+mvdxRKXyHVwckFzWU1vJc+Z29MlA==}
+
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
 
@@ -7254,6 +7321,14 @@ packages:
   decimal.js@10.4.3:
     resolution: {integrity: sha512-VBBaLc1MgL5XpzgIP7ny5Z6Nx3UrRkIViUkPUdtl9aya5amy3De1gsUUSB1g3+3sExYNjCAsAznmukyxCb1GRA==}
 
+  dedent@1.5.3:
+    resolution: {integrity: sha512-NHQtfOOW68WD8lgypbLA5oT+Bt0xXJhiYvoR6SmmNXZfpzOGXwdKWmcwG8N7PwVVWV3eF/68nmD9BaJSsTBhyQ==}
+    peerDependencies:
+      babel-plugin-macros: ^3.1.0
+    peerDependenciesMeta:
+      babel-plugin-macros:
+        optional: true
+
   deep-eql@5.0.2:
     resolution: {integrity: sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==}
     engines: {node: '>=6'}
@@ -7346,6 +7421,10 @@ packages:
   diff-sequences@29.6.3:
     resolution: {integrity: sha512-EjePK1srD3P08o2j4f0ExnylqRs5B9tJjcp9t1krH2qRi8CCdsYfwe9JgSLurFBWwq4uOlipzfk5fHNvwFKr8Q==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+
+  diff@7.0.0:
+    resolution: {integrity: sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw==}
+    engines: {node: '>=0.3.1'}
 
   dir-glob@3.0.1:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
@@ -13123,6 +13202,8 @@ snapshots:
     dependencies:
       '@types/node': 22.10.1
 
+  '@types/diff@6.0.0': {}
+
   '@types/eslint-scope@3.7.7':
     dependencies:
       '@types/eslint': 9.6.1
@@ -14496,6 +14577,8 @@ snapshots:
 
   decimal.js@10.4.3: {}
 
+  dedent@1.5.3: {}
+
   deep-eql@5.0.2: {}
 
   deep-is@0.1.4: {}
@@ -14554,6 +14637,8 @@ snapshots:
   didyoumean@1.2.2: {}
 
   diff-sequences@29.6.3: {}
+
+  diff@7.0.0: {}
 
   dir-glob@3.0.1:
     dependencies:
