@@ -377,9 +377,7 @@ const applyMiddleware = async (
         },
         headers: mergeHeaders(ctx.headers, userCtx.headers),
         result:
-          userResult?.result !== undefined
-            ? userResult.result
-            : (mCtx as any).result,
+          userCtx.result !== undefined ? userCtx.result : (ctx as any).result,
         error: userCtx.error ?? (ctx as any).error,
       })
     }) as any,
@@ -456,9 +454,6 @@ async function executeMiddleware(
         if (env === 'client' && clientAfter) {
           // We need to await the next middleware and get the result
           const result = await next(newCtx)
-            ...newCtx,
-            ...result,
-          })
 
           // Then we can execute the clientAfter function
           return applyMiddleware(
