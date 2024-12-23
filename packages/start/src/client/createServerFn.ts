@@ -453,8 +453,6 @@ async function executeMiddleware(
         if (env === 'client' && clientAfter) {
           // We need to await the next middleware and get the result
           const result = await next(newCtx)
-          console.log('result', result)
-          console.log('applyClientAfter', {
             ...newCtx,
             ...result,
           })
