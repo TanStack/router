@@ -239,8 +239,11 @@ export function createServerFn<
             method: resolvedOptions.method,
             data: opts?.data as any,
             headers: opts?.headers,
-            context: Object.assign({}, extractedFn),
-          }).then((d) => d.result)
+            context: {},
+          }).then((d) => {
+            if (d.error) throw d.error
+            return d.result
+          })
         },
         {
           // This copies over the URL, function ID and filename
