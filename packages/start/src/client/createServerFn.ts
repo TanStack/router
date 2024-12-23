@@ -376,7 +376,10 @@ const applyMiddleware = async (
           ...(userCtx.sendContext ?? {}),
         },
         headers: mergeHeaders(ctx.headers, userCtx.headers),
-        result: userCtx.result ?? (ctx as any).result,
+        result:
+          userResult?.result !== undefined
+            ? userResult.result
+            : (mCtx as any).result,
         error: userCtx.error ?? (ctx as any).error,
       })
     }) as any,

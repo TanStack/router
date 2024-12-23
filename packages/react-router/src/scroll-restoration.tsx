@@ -45,6 +45,7 @@ const cache: Cache = sessionsStorage
 
 export type ScrollRestorationOptions = {
   getKey?: (location: ParsedLocation) => string
+  scrollBehavior?: ScrollToOptions['behavior']
 }
 
 /**
@@ -154,7 +155,11 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
             if (key === restoreKey) {
               if (elementSelector === windowKey) {
                 windowRestored = true
-                window.scrollTo(entry.scrollX, entry.scrollY)
+                window.scrollTo({
+                  top: entry.scrollY,
+                  left: entry.scrollX,
+                  behavior: options?.scrollBehavior,
+                })
               } else if (elementSelector) {
                 const element = document.querySelector(elementSelector)
                 if (element) {
