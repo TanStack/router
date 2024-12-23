@@ -65,12 +65,13 @@ export async function serverFnFetcher(
 
     // Check if the response is JSON
     if (response.headers.get('content-type')?.includes('application/json')) {
-      const text = await response.text()
-      const json = text ? defaultTransformer.parse(text) : undefined
+      // Even though the response is JSON, we need to decode it
+      // because the server may have transformed it
+      const json = defaultTransformer.decode(await response.json())
 
       // If the response is a redirect or not found, throw it
       // for the router to handle
-      if (isRedirect(json) || isNotFound(json)) {
+      if (isRedirect(json) || isNotFound(json) || json instanceof Error) {
         throw json
       }
 
@@ -96,14 +97,13 @@ export async function serverFnFetcher(
 
   // If the response is JSON, return it parsed
   const contentType = response.headers.get('content-type')
-  const text = await response.text()
   if (contentType && contentType.includes('application/json')) {
-    return text ? JSON.parse(text) : undefined
+    return defaultTransformer.decode(await response.json())
   } else {
     // Otherwise, return the text as a fallback
     // If the user wants more than this, they can pass a
     // request instead
-    return text
+    return response.text()
   }
 }
 
@@ -132,27 +132,11 @@ async function handleResponseErrors(response: Response) {
     const contentType = response.headers.get('content-type')
     const isJson = contentType && contentType.includes('application/json')
 
-    const body = await (async () => {
-      if (isJson) {
-        return await response.json()
-      }
-      return await response.text()
-    })()
-
-    const message = `Request failed with status ${response.status}`
-
     if (isJson) {
-      throw new Error(
-        JSON.stringify({
-          message,
-          body,
-        }),
-      )
-    } else {
-      throw new Error(
-        [message, `${JSON.stringify(body, null, 2)}`].join('\n\n'),
-      )
+      throw defaultTransformer.decode(await response.json())
     }
+
+    throw new Error(await response.text())
   }
 
   return response

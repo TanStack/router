@@ -166,7 +166,7 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
       console.error(error)
       console.info()
 
-      return new Response(JSON.stringify(error), {
+      return new Response(defaultTransformer.stringify(error), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',

@@ -124,6 +124,9 @@ export interface MiddlewareServerFnOptions<
   data: Expand<MergeAllValidatorOutputs<TMiddlewares, TValidator>>
   context: Expand<MergeAllServerContext<TMiddlewares, TServerContext>>
   next: MiddlewareServerNextFn
+  method: Method
+  filename: string
+  functionId: string
 }
 
 export type MiddlewareServerFn<
@@ -134,9 +137,11 @@ export type MiddlewareServerFn<
   TNewClientAfterContext,
 > = (
   options: MiddlewareServerFnOptions<TMiddlewares, TValidator, TServerContext>,
-) =>
-  | Promise<ServerResultWithContext<TNewServerContext, TNewClientAfterContext>>
-  | ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
+) => MiddlewareServerFnResult<TNewServerContext, TNewClientAfterContext>
+
+export type MiddlewareServerFnResult<TServerContext, TClientAfterContext> =
+  | Promise<ServerResultWithContext<TServerContext, TClientAfterContext>>
+  | ServerResultWithContext<TServerContext, TClientAfterContext>
 
 export type MiddlewareClientNextFn = <
   TNewServerContext = undefined,
@@ -156,6 +161,8 @@ export interface MiddlewareClientFnOptions<
   sendContext?: unknown // cc Chris Horobin
   method: Method
   next: MiddlewareClientNextFn
+  filename: string
+  functionId: string
 }
 
 export type MiddlewareClientFn<
@@ -165,7 +172,9 @@ export type MiddlewareClientFn<
   TClientContext,
 > = (
   options: MiddlewareClientFnOptions<TMiddlewares, TValidator>,
-) =>
+) => MiddlewareClientFnResult<TServerContext, TClientContext>
+
+export type MiddlewareClientFnResult<TServerContext, TClientContext> =
   | Promise<ClientResultWithContext<TServerContext, TClientContext>>
   | ClientResultWithContext<TServerContext, TClientContext>
 
@@ -208,7 +217,9 @@ export type MiddlewareClientAfterFn<
     TClientContext,
     TClientAfterContext
   >,
-) =>
+) => MiddlewareClientAfterFnResult<TNewClientAfterContext>
+
+export type MiddlewareClientAfterFnResult<TNewClientAfterContext> =
   | Promise<ClientAfterResultWithContext<TNewClientAfterContext>>
   | ClientAfterResultWithContext<TNewClientAfterContext>
 
