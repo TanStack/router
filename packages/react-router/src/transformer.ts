@@ -9,27 +9,28 @@ export interface RouterTransformer {
 
 export const defaultTransformer: RouterTransformer = {
   stringify: (value: any) =>
-    JSON.stringify(value, function replacer(key, value) {
-      const keyVal = this[key]
-      const transformer = transformers.find((t) => t.stringifyCondition(keyVal))
+    JSON.stringify(value, function replacer(key, val) {
+      const ogVal = this[key]
+      const transformer = transformers.find((t) => t.stringifyCondition(ogVal))
 
       if (transformer) {
-        return transformer.stringify(keyVal)
+        return transformer.stringify(ogVal)
       }
 
-      return value
+      return val
     }),
   parse: (value: string) =>
-    JSON.parse(value, function parser(key, value) {
-      const keyVal = this[key]
-      if (isPlainObject(keyVal)) {
-        const transformer = transformers.find((t) => t.parseCondition(keyVal))
+    JSON.parse(value, function parser(key, val) {
+      const ogVal = this[key]
+      if (isPlainObject(ogVal)) {
+        const transformer = transformers.find((t) => t.parseCondition(ogVal))
+
         if (transformer) {
-          return transformer.parse(keyVal)
+          return transformer.parse(ogVal)
         }
       }
 
-      return value
+      return val
     }),
   encode: (value: any) => {
     // When encodign, dive first
@@ -88,7 +89,7 @@ const createTransformer = <T extends string>(
   key,
   stringifyCondition: check,
   stringify: (value: any) => ({ [`$${key}`]: toValue(value) }),
-  parseCondition: (value: any) => value[`$${key}`],
+  parseCondition: (value: any) => Object.hasOwn(value, `$${key}`),
   parse: (value: any) => fromValue(value[`$${key}`]),
 })
 

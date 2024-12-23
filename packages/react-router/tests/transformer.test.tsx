@@ -11,9 +11,7 @@ describe('transformer.stringify', () => {
   })
 
   test('should stringify undefined', () => {
-    expect(defaultTransformer.stringify(undefined)).toMatchInlineSnapshot(`
-      "{"$undefined":""}"
-    `)
+    expect(defaultTransformer.stringify(undefined)).toMatchInlineSnapshot(`"{"$undefined":0}"`)
   })
 
   test('should stringify object foo="bar"', () => {
@@ -24,9 +22,7 @@ describe('transformer.stringify', () => {
 
   test('should stringify object foo=undefined', () => {
     expect(defaultTransformer.stringify({ foo: undefined }))
-      .toMatchInlineSnapshot(`
-      "{"foo":{"$undefined":""}}"
-    `)
+      .toMatchInlineSnapshot(`"{"foo":{"$undefined":0}}"`)
   })
 
   test('should stringify object foo=Date', () => {
