@@ -1224,6 +1224,16 @@ export class Router<
 
     const matches: Array<AnyRouteMatch> = []
 
+    const getParentContext = (parentMatch?: AnyRouteMatch) => {
+      const parentMatchId = parentMatch?.id
+
+      const parentContext = !parentMatchId
+        ? ((this.options.context as any) ?? {})
+        : (parentMatch.context ?? this.options.context ?? {})
+
+      return parentContext
+    }
+
     matchedRoutes.forEach((route, index) => {
       // Take each matched route and resolve + validate its search params
       // This has to happen serially because each route's search params
@@ -1361,17 +1371,6 @@ export class Router<
         }
       }
 
-      const headFnContent = route.options.head?.({
-        matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData ?? undefined,
-      })
-
-      match.links = headFnContent?.links
-      match.scripts = headFnContent?.scripts
-      match.meta = headFnContent?.meta
-
       // If it's already a success, update the headers
       // These may get updated again if the match is refreshed
       // due to being stale
@@ -1389,11 +1388,7 @@ export class Router<
       // update the searchError if there is one
       match.searchError = searchError
 
-      const parentMatchId = parentMatch?.id
-
-      const parentContext = !parentMatchId
-        ? ((this.options.context as any) ?? {})
-        : (parentMatch.context ?? this.options.context ?? {})
+      const parentContext = getParentContext(parentMatch)
 
       match.context = {
         ...parentContext,
@@ -1401,13 +1396,23 @@ export class Router<
         ...match.__beforeLoadContext,
       }
 
+      matches.push(match)
+    })
+
+    matches.forEach((match, index) => {
+      const route = this.looseRoutesById[match.routeId]!
+      const existingMatch = this.getMatch(match.id)
+
       // only execute `context` if we are not just building a location
       if (!existingMatch && opts?._buildLocation !== true) {
+        const parentMatch = matches[index - 1]
+        const parentContext = getParentContext(parentMatch)
+
         // Update the match's context
         const contextFnContext: RouteContextOptions<any, any, any, any> = {
-          deps: loaderDeps,
+          deps: match.loaderDeps,
           params: match.params,
-          context: match.context,
+          context: parentContext,
           location: next,
           navigate: (opts: any) =>
             this.navigate({ ...opts, _fromLocation: next }),
@@ -1428,10 +1433,19 @@ export class Router<
         }
       }
 
-      matches.push(match)
+      const headFnContent = route.options.head?.({
+        matches,
+        match,
+        params: match.params,
+        loaderData: match.loaderData ?? undefined,
+      })
+
+      match.links = headFnContent?.links
+      match.scripts = headFnContent?.scripts
+      match.meta = headFnContent?.meta
     })
 
-    return matches as any
+    return matches
   }
 
   getMatchedRoutes = (next: ParsedLocation, dest?: BuildNextOptions) => {
