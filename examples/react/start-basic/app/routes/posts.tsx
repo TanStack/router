@@ -1,8 +1,22 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
-import { fetchPosts } from '../utils/posts'
+import { createServerFnClient } from '@tanstack/start'
+
+const serverFnClient = createServerFnClient({
+  baseUrl:
+    process.env.NODE_ENV === 'production'
+      ? 'https://my-site.com/_server'
+      : 'http://localhost:3000/_server',
+})
 
 export const Route = createFileRoute('/posts')({
-  loader: async () => fetchPosts(),
+  // loader: async () => fetchPosts(),
+  loader: () =>
+    serverFnClient
+      .fetch({
+        functionId: 'fetchPosts',
+        method: 'GET',
+      })
+      .then((d) => d.result),
   component: PostsComponent,
 })
 

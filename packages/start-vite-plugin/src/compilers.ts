@@ -223,6 +223,18 @@ function handleCreateServerFnCallExpression(
     )
   })
 
+  let serverFnId: string | undefined
+
+  calledOptions?.node.properties.find((prop) => {
+    return (
+      t.isObjectProperty(prop) &&
+      t.isIdentifier(prop.key) &&
+      prop.key.name === 'id' &&
+      t.isStringLiteral(prop.value) &&
+      (serverFnId = prop.value.value)
+    )
+  })
+
   const callExpressionPaths = {
     middleware: null as babel.NodePath<t.CallExpression> | null,
     validator: null as babel.NodePath<t.CallExpression> | null,
@@ -349,7 +361,12 @@ function handleCreateServerFnCallExpression(
             ),
           ),
         ],
-        [t.directive(t.directiveLiteral('use server'))],
+        [
+          t.directive(t.directiveLiteral('use server')),
+          serverFnId
+            ? t.directive(t.directiveLiteral(`id: ${serverFnId}`))
+            : (undefined as any),
+        ].filter(Boolean),
       ),
     ),
   )

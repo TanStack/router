@@ -15,6 +15,7 @@ if ('default' in generate) {
 }
 
 export interface DirectiveFn {
+  hasStableId: boolean
   nodePath: SupportedFunctionPath
   functionName: string
   functionId: string
@@ -332,6 +333,8 @@ export function findDirectives(
 
   function compileDirective(directiveFn: SupportedFunctionPath) {
     // Remove the directive directive from the function body
+    let directiveId: string | undefined
+
     if (
       babel.types.isFunction(directiveFn.node) &&
       babel.types.isBlockStatement(directiveFn.node.body)
@@ -340,6 +343,15 @@ export function findDirectives(
         directiveFn.node.body.directives.filter(
           (directive) => directive.value.value !== opts.directive,
         )
+
+      // Look for an optional id: \d+ directive
+      const idDirective = directiveFn.node.body.directives.find((directive) =>
+        directive.value.value.startsWith('id:'),
+      )
+
+      if (idDirective) {
+        directiveId = idDirective.value.value.split(':')[1]?.trim()
+      }
     }
 
     // Find the nearest variable name
@@ -436,12 +448,14 @@ export function findDirectives(
       ) as SupportedFunctionPath
     }
 
-    const functionId = makeFileLocationUrlSafe(
-      `${opts.filename.replace(
-        path.extname(opts.filename),
-        '',
-      )}--${functionName}`.replace(opts.root, ''),
-    )
+    const functionId =
+      directiveId ||
+      makeFileLocationUrlSafe(
+        `${opts.filename.replace(
+          path.extname(opts.filename),
+          '',
+        )}--${functionName}`.replace(opts.root, ''),
+      )
 
     const [filename, searchParamsStr] = opts.filename.split('?')
     const searchParams = new URLSearchParams(searchParamsStr)
@@ -482,6 +496,7 @@ export function findDirectives(
     // Finally register the directive to
     // our map of directives
     directiveFnsById[functionId] = {
+      hasStableId: !!directiveId,
       nodePath: directiveFn,
       referenceName,
       functionName: functionName || '',

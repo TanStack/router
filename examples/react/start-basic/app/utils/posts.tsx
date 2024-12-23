@@ -9,7 +9,7 @@ export type PostType = {
   body: string
 }
 
-export const fetchPost = createServerFn({ method: 'GET' })
+export const fetchPost = createServerFn({ id: 'fetchPost', method: 'GET' })
   .middleware([logMiddleware])
   .validator((d: string) => d)
   .handler(async ({ data }) => {
@@ -28,8 +28,8 @@ export const fetchPost = createServerFn({ method: 'GET' })
     return post
   })
 
-export const fetchPosts = createServerFn({ method: 'GET' })
-  .middleware([logMiddleware])
+export const fetchPosts = createServerFn({ id: 'fetchPosts', method: 'GET' })
+  // .middleware([logMiddleware])
   .handler(async () => {
     console.info('Fetching posts...')
     return axios

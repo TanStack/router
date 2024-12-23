@@ -96,6 +96,7 @@ type ServerFnBaseOptions<
   TMiddlewares = unknown,
   TInput = unknown,
 > = {
+  id?: string
   method: TMethod
   validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
@@ -173,7 +174,8 @@ export function createServerFn<
   TValidator = undefined,
 >(
   options?: {
-    method: TMethod
+    id?: string
+    method?: TMethod
   },
   __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
 ): ServerFnBuilder<TMethod, TResponse, TMiddlewares, TValidator> {
