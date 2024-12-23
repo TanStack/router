@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream'
 import { getEvent, getRequestHeaders } from 'vinxi/http'
 import invariant from 'tiny-invariant'
-import { fetcher } from '../client-runtime/fetcher'
+import { serverFnFetcher } from '../client'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
 import { handleServerRequest } from '../server-handler/index'
 import type { CreateSsrRpcFn } from '@tanstack/directive-functions-plugin'
@@ -87,7 +87,7 @@ export const createSsrRpc: CreateSsrRpcFn = (functionId) => {
       'Server functions can only accept a single argument',
     )
 
-    return fetcher(functionUrl, args, async (request) => {
+    return serverFnFetcher(functionUrl, args, async (request) => {
       const event = getEvent()
 
       const ogRequestHeaders = getRequestHeaders(event)

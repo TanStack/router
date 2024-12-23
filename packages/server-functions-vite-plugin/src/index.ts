@@ -91,7 +91,6 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
       }),
       // Now that we have the directiveFnsById, we need to create a new
       // virtual module that can be used to import that manifest
-      readManifestPlugin(),
       {
         name: 'tanstack-start-server-fn-vite-plugin-build-client',
         generateBundle() {
@@ -108,6 +107,7 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
       },
     ],
     ssr: [
+      readManifestPlugin(),
       // The SSR plugin is used to compile the server directives
       TanStackDirectiveFunctionsPlugin({
         directive: 'use server',
@@ -125,7 +125,6 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
           Object.assign(directiveFnsById, d)
         },
       }),
-      readManifestPlugin(),
     ],
     server: [
       readManifestPlugin(),
