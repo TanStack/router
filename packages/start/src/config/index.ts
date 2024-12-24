@@ -14,7 +14,7 @@ import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
-import { createTanStackServerFnPlugin } from '@tanstack/directive-functions-plugin'
+import { createTanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,

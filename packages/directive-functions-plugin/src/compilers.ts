@@ -1,12 +1,11 @@
 import path from 'node:path'
 import * as babel from '@babel/core'
 import _generate from '@babel/generator'
-
+import { parse } from '@babel/parser'
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-import { parseAst } from './ast'
-import type { ParseAstOptions } from './ast'
+import type { ParseResult } from '@babel/parser'
 
 let generate = _generate
 
@@ -49,6 +48,24 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   devSplitImporter: string
 }
 
+export type ParseAstOptions = {
+  code: string
+  filename: string
+  root: string
+}
+
+export function parseAst(opts: ParseAstOptions): ParseResult<babel.types.File> {
+  return parse(opts.code, {
+    plugins: ['jsx', 'typescript'],
+    sourceType: 'module',
+    ...{
+      root: opts.root,
+      filename: opts.filename,
+      sourceMaps: true,
+    },
+  })
+}
+
 export function compileDirectives(opts: CompileDirectivesOpts) {
   const [_, searchParamsStr] = opts.filename.split('?')
   const searchParams = new URLSearchParams(searchParamsStr)
@@ -63,7 +80,7 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
   })
 
   const directiveFnsByFunctionName = Object.fromEntries(
-    Object.entries(directiveFnsById).map(([id, fn]) => [fn.functionName, fn]),
+    Object.entries(directiveFnsById).map(([, fn]) => [fn.functionName, fn]),
   )
 
   // Add runtime code if there are directives

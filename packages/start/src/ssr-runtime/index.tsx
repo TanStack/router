@@ -4,7 +4,7 @@ import invariant from 'tiny-invariant'
 import { serverFnFetcher } from '../client'
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
 import { handleServerRequest } from '../server-handler/index'
-import type { CreateSsrRpcFn } from '@tanstack/directive-functions-plugin'
+import type { CreateSsrRpcFn } from '@tanstack/server-functions-plugin'
 
 export function createIncomingMessage(
   url: string,

@@ -1,5 +1,5 @@
 import { getBaseUrl } from '../client-runtime/getBaseUrl'
-import type { CreateServerRpcFn } from '@tanstack/directive-functions-plugin'
+import type { CreateServerRpcFn } from '@tanstack/server-functions-plugin'
 
 const fakeHost = 'http://localhost:3000'
 
