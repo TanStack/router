@@ -4,7 +4,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 export default createApp({
   server: {
-    preset: 'vercel', // change to 'node' or 'bun' or anyof the supported presets for nitro (nitro.unjs.io)
+    preset: 'netlify', // change to 'node' or 'bun' or anyof the supported presets for nitro (nitro.unjs.io)
     experimental: {
       asyncContext: true,
     },
