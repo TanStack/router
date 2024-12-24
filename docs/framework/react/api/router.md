@@ -35,6 +35,7 @@ title: Router API
 - Hooks
   - [`useAwaited`](./router/useAwaitedHook.md)
   - [`useBlocker`](./router/useBlockerHook.md)
+  - [`useCanGoBack`](./router//useCanGoBack.md)
   - [`useChildMatches`](./router/useChildMatchesHook.md)
   - [`useLinkProps`](./router/useLinkPropsHook.md)
   - [`useLoaderData`](./router/useLoaderDataHook.md)
