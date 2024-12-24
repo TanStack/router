@@ -279,7 +279,7 @@ Server functions can accept `FormData` objects as parameters
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const greetUser = createServerFn()
+export const greetUser = createServerFn({ method: 'POST' })
   .validator((data) => {
     if (!(data instanceof FormData)) {
       throw new Error('Invalid form data')
@@ -700,7 +700,7 @@ to send the form data to the server function.
 To do this, we can utilize the `url` property of the server function:
 
 ```ts
-const yourFn = createServerFn()
+const yourFn = createServerFn({ method: 'POST' })
   .validator((formData) => {
     const name = formData.get('name')
 
@@ -739,7 +739,7 @@ to attach the argument to the [`FormData`](https://developer.mozilla.org/en-US/d
 server function:
 
 ```tsx
-const yourFn = createServerFn()
+const yourFn = createServerFn({ method: 'POST' })
   .validator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
