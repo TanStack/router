@@ -71,9 +71,9 @@ TanStack works closely with our partners to provide the best possible developer 
 - **Netlify**
   <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
   <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-dark.svg" style="height: 40px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" style="height: 40px;">
-    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" style="height: 40px;">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-dark.svg" style="height: 90px;">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" style="height: 90px;">
+    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" style="height: 90px;">
   </picture>
   </a>
   The leading hosting platform for web applications that provides a fast, secure, and reliable environment for deploying your web applications. We work closely with Netlify to ensure that TanStack Start applications not only deploy seamlessly to their platform, but also implement best practices for performance, security, and reliability regardless of where you end up deploying.
