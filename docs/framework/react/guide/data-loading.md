@@ -486,7 +486,7 @@ export const Route = createFileRoute('/posts')({
         <button
           onClick={() => {
             // Reset the router error boundary
-            reset()
+            router.reset()
           }}
         >
           retry
