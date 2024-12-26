@@ -126,7 +126,17 @@ export const useMetaElements = () => {
           // children={`
           // __TSR__ = {
           //   matches: [],
-          //   streamedValues: {},
+          //   streamedValues: new Proxy(
+          //     {},
+          //     {
+          //       set(t, key, v) {
+          //         const res = Reflect.set(t, key, v)
+          //         window.__TSR__ROUTER__ &&
+          //           __TSR__ROUTER__.emit({ type: 'onStreamedValue', key })
+          //         return res
+          //       },
+          //     },
+          //   ),
           //   queue: [],
           //   runQueue: () => {
           //     let changed = false
@@ -195,7 +205,7 @@ export const useMetaElements = () => {
           // This is the minified version of the script above, using https://try.terser.org/
           // Is this archaic? Probably. But we're not going to edit this much, so it's fine.
           // In a future world, like bun, we could use a more modern approach, like a compile-time macro minifier.
-          children={`__TSR__={matches:[],streamedValues:{},queue:[],runQueue:()=>{let e=!1;__TSR__.queue=__TSR__.queue.filter((_=>!_()||(e=!0,!1))),e&&__TSR__.runQueue()},initMatch:e=>{__TSR__.queue.push((()=>(__TSR__.matches[e.index]||(__TSR__.matches[e.index]=e,Object.entries(e.extracted).forEach((([e,_])=>{if("stream"===_.type){let e;_.value=new ReadableStream({start(_){e=_}}),_.value.controller=e}else if("promise"===_.type){let e,t;_.value=new Promise(((_,u)=>{e=_,t=u})),_.resolve=e,_.reject=t}}))),!0))),__TSR__.runQueue()},resolvePromise:e=>{__TSR__.queue.push((()=>{const _=__TSR__.matches[e.matchIndex];if(_){const t=_.extracted[e.id];if(t)return t.resolve(e.value.data),!0}return!1})),__TSR__.runQueue()},cleanScripts:()=>{document.querySelectorAll(".tsr-once").forEach((e=>{e.remove()}))}};`}
+          children={`__TSR__={matches:[],streamedValues:new Proxy({},{set(e,_,t){const r=Reflect.set(e,_,t);return window.__TSR__ROUTER__&&__TSR__ROUTER__.emit({type:"onStreamedValue",key:_}),r}}),queue:[],runQueue:()=>{let e=!1;__TSR__.queue=__TSR__.queue.filter((_=>!_()||(e=!0,!1))),e&&__TSR__.runQueue()},initMatch:e=>{__TSR__.queue.push((()=>(__TSR__.matches[e.index]||(__TSR__.matches[e.index]=e,Object.entries(e.extracted).forEach((([e,_])=>{if("stream"===_.type){let e;_.value=new ReadableStream({start(_){e=_}}),_.value.controller=e}else if("promise"===_.type){let e,t;_.value=new Promise(((_,r)=>{e=_,t=r})),_.resolve=e,_.reject=t}}))),!0))),__TSR__.runQueue()},resolvePromise:e=>{__TSR__.queue.push((()=>{const _=__TSR__.matches[e.matchIndex];if(_){const t=_.extracted[e.id];if(t)return t.resolve(e.value.data),!0}return!1})),__TSR__.runQueue()},cleanScripts:()=>{document.querySelectorAll(".tsr-once").forEach((e=>{e.remove()}))}};`}
         />
         <ScriptOnce
           children={`__TSR__.dehydrated = ${jsesc(
