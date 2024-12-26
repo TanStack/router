@@ -26,7 +26,7 @@ Follow the prompts to setup the project.
 
 ### Manual Setup
 
-#### Install TanStack Router and the Vite Plugin and the Router Devtools
+#### Install TanStack Router, Vite Plugin, and the Router Devtools
 
 ```sh
 npm install @tanstack/react-router
