@@ -624,7 +624,7 @@ export const doStuff = createServerFn({ method: 'GET' }).handler(async () => {
 
 While calling a server function from a `loader` or `beforeLoad` route lifecycle, a special `notFound` error can be thrown to indicate to the router that the requested resource was not found. This is more useful than a simple 404 status code, as it allows you to render a custom 404 page, or handle the error in a custom way. If notFound is thrown from a server function used outside of a route lifecycle, it will not be handled automatically.
 
-To throw a notFound, you can use the `notFound` function exported from the `@tanstack/start` package:
+To throw a notFound, you can use the `notFound` function exported from the `@tanstack/react-router` package:
 
 ```tsx
 import { createServerFn, notFound } from '@tanstack/start'
