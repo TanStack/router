@@ -23,8 +23,6 @@ overrides:
   '@tanstack/start': workspace:*
   '@tanstack/start-vite-plugin': workspace:*
   '@tanstack/eslint-plugin-router': workspace:*
-  temp-react: 0.0.0-experimental-035a41c4e-20230704
-  temp-react-dom: 0.0.0-experimental-035a41c4e-20230704
 
 importers:
 
