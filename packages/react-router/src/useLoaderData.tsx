@@ -69,7 +69,7 @@ export type UseLoaderDataRoute<out TId> = <
 
 export function useLoaderData<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string | undefined = undefined,
+  const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
