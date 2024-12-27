@@ -25,7 +25,7 @@ In this guide we'll go over the process of migrating the [React Location Basic e
 First, we need to install the dependencies for TanStack Router.
 
 ```sh
-npm install @tanstack/react-router @tanstack/react-router-devtools
+npm install @tanstack/react-router @tanstack/router-devtools
 ```
 
 And remove the React Location dependencies.
@@ -85,7 +85,7 @@ mkdir src/routes
 ```tsx
 // src/routes/__root.tsx
 import { createRootRoute, Outlet, Link } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 export const Route = createRootRoute({
   component: () => {
