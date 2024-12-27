@@ -12,14 +12,14 @@
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-virtual": "^3.11.1",
+    "@tanstack/react-virtual": "^3.11.2",
     "@tanstack/router-devtools": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
+    "@playwright/test": "^1.49.1",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.3.4",

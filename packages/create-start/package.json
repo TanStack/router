@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/create-start",
-  "version": "1.92.4",
+  "version": "1.92.8",
   "description": "Modern and scalable routing for React applications",
   "author": "Tim O'Connell",
   "license": "MIT",
@@ -42,24 +42,24 @@
     }
   },
   "dependencies": {
-    "gradient-string": "^3.0.0"
-  },
-  "devDependencies": {
+    "gradient-string": "^3.0.0",
     "@commander-js/extra-typings": "^12.1.0",
     "@inquirer/prompts": "^5.5.0",
-    "@inquirer/type": "^3.0.1",
-    "@types/cross-spawn": "^6.0.6",
-    "@types/validate-npm-package-name": "^4.0.2",
     "cross-spawn": "^7.0.5",
     "fast-glob": "^3.3.2",
     "picocolors": "^1.1.1",
     "rollup-plugin-copy": "^3.5.0",
     "tempy": "^3.1.0",
     "tiny-invariant": "^1.3.3",
-    "unbuild": "^2.0.0",
-    "validate-npm-package-name": "^5.0.1",
+    "validate-npm-package-name": "^6.0.0",
     "yocto-spinner": "^0.1.1",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@inquirer/type": "^3.0.1",
+    "@types/cross-spawn": "^6.0.6",
+    "@types/validate-npm-package-name": "^4.0.2",
+    "unbuild": "^3.0.1"
   },
   "peerDependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -69,7 +69,39 @@
     "@types/react-dom": "^18.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vinxi": "0.4.3"
+    "vinxi": "0.5.1",
+    "vite": "^6.0.3"
   },
-  "peerDependenciesMeta": {}
+  "peerDependenciesMeta": {
+    "@tanstack/react-router": {
+      "optional": true
+    },
+    "@tanstack/router-devtools": {
+      "optional": true
+    },
+    "@tanstack/start": {
+      "optional": true
+    },
+    "@types/react": {
+      "optional": true
+    },
+    "@types/react-dom": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "vinxi": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  }
 }
