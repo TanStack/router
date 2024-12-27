@@ -12,7 +12,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.62.3",
     "@tanstack/react-router": "^1.92.6",
-    "@tanstack/arktype-adapter": "^1.92.6",
+    "@tanstack/arktype-adapter": "^1.92.7",
     "@tanstack/router-devtools": "^1.92.6",
     "@tanstack/router-plugin": "^1.91.1",
     "@tanstack/valibot-adapter": "^1.92.6",
