@@ -20,13 +20,13 @@
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@types/node": "^22.7.4",
+    "@types/node": "^22.10.2",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "typescript": "^5.7.2",
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^6.0.3",
-    "vite-plugin-dts": "^4.3.0"
+    "vite-plugin-dts": "^4.4.0"
   },
   "keywords": [],
   "author": "",
