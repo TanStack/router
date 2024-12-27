@@ -15,31 +15,31 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 The devtools are a separate package that you need to install:
 
 ```sh
-npm install -D @tanstack/react-router-devtools
+npm install -D @tanstack/router-devtools
 ```
 
 or
 
 ```sh
-pnpm add -D @tanstack/react-router-devtools
+pnpm add -D @tanstack/router-devtools
 ```
 
 or
 
 ```sh
-yarn add -D @tanstack/react-router-devtools
+yarn add -D @tanstack/router-devtools
 ```
 
 or
 
 ```sh
-bun add -D @tanstack/react-router-devtools
+bun add -D @tanstack/router-devtools
 ```
 
 ## Import the Devtools
 
 ```js
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 ```
 
 ## Only importing and using Devtools in Development
@@ -52,7 +52,7 @@ const TanStackRouterDevtools =
     ? () => null // Render nothing in production
     : React.lazy(() =>
         // Lazy load in development
-        import('@tanstack/react-router-devtools').then((res) => ({
+        import('@tanstack/router-devtools').then((res) => ({
           default: res.TanStackRouterDevtools,
           // For Embedded Mode
           // default: res.TanStackRouterDevtoolsPanel
@@ -117,7 +117,7 @@ Floating Mode will mount the devtools as a fixed, floating element in your app a
 Place the following code as high in your React app as you can. The closer it is to the root of the page, the better it will work!
 
 ```js
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 function App() {
   return (
@@ -153,7 +153,7 @@ function App() {
 Embedded Mode will embed the devtools as a regular component in your application. You can style it however you'd like after that!
 
 ```js
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtoolsPanel } from '@tanstack/router-devtools'
 
 function App() {
   return (
