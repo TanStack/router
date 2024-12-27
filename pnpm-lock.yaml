@@ -8,7 +8,6 @@ overrides:
   use-sync-external-store: 1.2.2
   eslint: ^9.17.0
   vite: 6.0.3
-  '@tanstack/react-query': 5.62.3
   '@tanstack/history': workspace:*
   '@tanstack/react-cross-context': workspace:*
   '@tanstack/react-router': workspace:*
@@ -42,9 +41,6 @@ importers:
       '@tanstack/config':
         specifier: ^0.15.0
         version: 0.15.0(@types/node@22.10.2)(esbuild@0.24.2)(eslint@9.17.0(jiti@2.4.1))(rollup@4.29.1)(typescript@5.7.2)(vite@6.0.3(@types/node@22.10.2)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))
-      '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
       '@types/node':
         specifier: ^22.10.2
         version: 22.10.2
@@ -275,11 +271,11 @@ importers:
   e2e/react-router/basic-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -315,11 +311,11 @@ importers:
   e2e/react-router/basic-react-query-file-based:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -738,11 +734,11 @@ importers:
   e2e/start/basic-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1081,8 +1077,8 @@ importers:
   examples/react/basic-default-search-params:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1201,11 +1197,11 @@ importers:
   examples/react/basic-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1241,11 +1237,11 @@ importers:
   examples/react/basic-react-query-file-based:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1624,11 +1620,11 @@ importers:
   examples/react/kitchen-sink-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1670,11 +1666,11 @@ importers:
   examples/react/kitchen-sink-react-query-file-based:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1719,8 +1715,8 @@ importers:
   examples/react/large-file-based:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1765,8 +1761,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@18.3.1)(@types/react@18.3.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1802,8 +1798,8 @@ importers:
   examples/react/navigation-blocking:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2024,11 +2020,11 @@ importers:
   examples/react/router-monorepo-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2079,8 +2075,8 @@ importers:
         specifier: workspace:*
         version: link:../router
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -2119,8 +2115,8 @@ importers:
         specifier: workspace:*
         version: link:../router
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -2150,8 +2146,8 @@ importers:
   examples/react/router-monorepo-react-query/packages/post-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2178,8 +2174,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../packages/history
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../../../packages/react-router
@@ -2304,8 +2300,8 @@ importers:
         specifier: workspace:*
         version: link:../router
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -2415,8 +2411,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/arktype-adapter
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2583,11 +2579,11 @@ importers:
   examples/react/start-basic-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2746,13 +2742,13 @@ importers:
     dependencies:
       '@convex-dev/react-query':
         specifier: 0.0.0-alpha.8
-        version: 0.0.0-alpha.8(@tanstack/react-query@5.62.3(react@18.3.1))(convex@1.17.3(@clerk/clerk-react@5.21.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+        version: 0.0.0-alpha.8(@tanstack/react-query@5.62.10(react@18.3.1))(convex@1.17.3(@clerk/clerk-react@5.21.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2858,8 +2854,8 @@ importers:
   examples/react/start-large:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2968,11 +2964,11 @@ importers:
   examples/react/start-trellaux:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3124,11 +3120,11 @@ importers:
   examples/react/with-trpc-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
-        version: 5.62.3(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(react@18.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.62.3
-        version: 5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)
+        specifier: ^5.62.10
+        version: 5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3143,7 +3139,7 @@ importers:
         version: 11.0.0-rc.660(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(typescript@5.7.2)
       '@trpc/react-query':
         specifier: 11.0.0-rc.660
-        version: 11.0.0-rc.660(@tanstack/react-query@5.62.3(react@18.3.1))(@trpc/client@11.0.0-rc.660(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(typescript@5.7.2))(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.2)
+        version: 11.0.0-rc.660(@tanstack/react-query@5.62.10(react@18.3.1))(@trpc/client@11.0.0-rc.660(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(typescript@5.7.2))(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.2)
       '@trpc/server':
         specifier: 11.0.0-rc.660
         version: 11.0.0-rc.660(typescript@5.7.2)
@@ -3443,7 +3439,7 @@ importers:
   packages/react-router-with-query:
     devDependencies:
       '@tanstack/react-query':
-        specifier: 5.62.3
+        specifier: '>=5.62.3'
         version: 5.62.3(react@18.3.1)
       '@tanstack/react-router':
         specifier: workspace:*
@@ -3989,7 +3985,7 @@ packages:
   '@convex-dev/react-query@0.0.0-alpha.8':
     resolution: {integrity: sha512-Rv/q7/CplU75f7ckBd2vh+HoeeQ0tOrjwMl14Hk7D/03e55oUIU0TV5JYYzC79ZQyyAtoj7CmCo5ZxcmtKNv1Q==}
     peerDependencies:
-      '@tanstack/react-query': 5.62.3
+      '@tanstack/react-query': ^5.0.0
       convex: ^1.17.0
 
   '@deno/shim-deno-test@0.5.0':
@@ -5994,13 +5990,21 @@ packages:
   '@tanstack/query-core@5.62.3':
     resolution: {integrity: sha512-Jp/nYoz8cnO7kqhOlSv8ke/0MJRJVGuZ0P/JO9KQ+f45mpN90hrerzavyTKeSoT/pOzeoOUkv1Xd0wPsxAWXfg==}
 
-  '@tanstack/query-devtools@5.61.4':
-    resolution: {integrity: sha512-21Tw+u8E3IJJj4A/Bct4H0uBaDTEu7zBrR79FeSyY+mS2gx5/m316oDtJiKkILc819VSTYt+sFzODoJNcpPqZQ==}
+  '@tanstack/query-core@5.62.9':
+    resolution: {integrity: sha512-lwePd8hNYhyQ4nM/iRQ+Wz2cDtspGeZZHFZmCzHJ7mfKXt+9S301fULiY2IR2byJYY6Z03T427E5PoVfMexHjw==}
 
-  '@tanstack/react-query-devtools@5.62.3':
-    resolution: {integrity: sha512-4iaQap/iP5ErS094u1WehFntHtjRo6g5HJMvyHovBVbsxnvgPc6AtKAw7qxPPoKy6Wj5Bew0045eYP5phiiBmw==}
+  '@tanstack/query-devtools@5.62.9':
+    resolution: {integrity: sha512-b1NZzDLVf6laJsB1Cfm3ieuYzM+WqoO8qpm9v+3Etwd+Ph4zkhUMiT+wcWj5AhEPsXiRodKYiiW048VDNdBxNg==}
+
+  '@tanstack/react-query-devtools@5.62.10':
+    resolution: {integrity: sha512-TnFcvfEnOvH9j8iYKRl8Qn/U2P0NijdQ6nilhHobpdAcF4DLUwlKKufJZAlc759+1HBZ/jEvCqWo2g3mO9Ttvg==}
     peerDependencies:
-      '@tanstack/react-query': 5.62.3
+      '@tanstack/react-query': ^5.62.10
+      react: ^18 || ^19
+
+  '@tanstack/react-query@5.62.10':
+    resolution: {integrity: sha512-1e1WpHM5oGf27nWM/NWLY62/X9pbMBWa6ErWYmeuK0OqB9/g9UzA59ogiWbxCmS2wtAFQRhOdHhfSofrkhPl2g==}
+    peerDependencies:
       react: ^18 || ^19
 
   '@tanstack/react-query@5.62.3':
@@ -6067,7 +6071,7 @@ packages:
   '@trpc/react-query@11.0.0-rc.660':
     resolution: {integrity: sha512-U2BHtYVt+8jt0a8Nrrk5cep8O1UZRxtTCBHtXie9kmJyQWWml43KfHxL5ssnFywaFrDZQz6Ec7kIoOxR/CQNfg==}
     peerDependencies:
-      '@tanstack/react-query': 5.62.3
+      '@tanstack/react-query': ^5.59.15
       '@trpc/client': 11.0.0-rc.660+74625d5e4
       '@trpc/server': 11.0.0-rc.660+74625d5e4
       react: '>=18.2.0'
@@ -11439,9 +11443,9 @@ snapshots:
       '@types/conventional-commits-parser': 5.0.1
       chalk: 5.3.0
 
-  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.62.3(react@18.3.1))(convex@1.17.3(@clerk/clerk-react@5.21.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
+  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.62.10(react@18.3.1))(convex@1.17.3(@clerk/clerk-react@5.21.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
     dependencies:
-      '@tanstack/react-query': 5.62.3(react@18.3.1)
+      '@tanstack/react-query': 5.62.10(react@18.3.1)
       convex: 1.17.3(@clerk/clerk-react@5.21.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   '@deno/shim-deno-test@0.5.0': {}
@@ -13276,12 +13280,19 @@ snapshots:
 
   '@tanstack/query-core@5.62.3': {}
 
-  '@tanstack/query-devtools@5.61.4': {}
+  '@tanstack/query-core@5.62.9': {}
 
-  '@tanstack/react-query-devtools@5.62.3(@tanstack/react-query@5.62.3(react@18.3.1))(react@18.3.1)':
+  '@tanstack/query-devtools@5.62.9': {}
+
+  '@tanstack/react-query-devtools@5.62.10(@tanstack/react-query@5.62.10(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@tanstack/query-devtools': 5.61.4
-      '@tanstack/react-query': 5.62.3(react@18.3.1)
+      '@tanstack/query-devtools': 5.62.9
+      '@tanstack/react-query': 5.62.10(react@18.3.1)
+      react: 18.3.1
+
+  '@tanstack/react-query@5.62.10(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.62.9
       react: 18.3.1
 
   '@tanstack/react-query@5.62.3(react@18.3.1)':
@@ -13350,9 +13361,9 @@ snapshots:
       '@trpc/server': 11.0.0-rc.660(typescript@5.7.2)
       typescript: 5.7.2
 
-  '@trpc/react-query@11.0.0-rc.660(@tanstack/react-query@5.62.3(react@18.3.1))(@trpc/client@11.0.0-rc.660(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(typescript@5.7.2))(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.2)':
+  '@trpc/react-query@11.0.0-rc.660(@tanstack/react-query@5.62.10(react@18.3.1))(@trpc/client@11.0.0-rc.660(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(typescript@5.7.2))(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.2)':
     dependencies:
-      '@tanstack/react-query': 5.62.3(react@18.3.1)
+      '@tanstack/react-query': 5.62.10(react@18.3.1)
       '@trpc/client': 11.0.0-rc.660(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(typescript@5.7.2)
       '@trpc/server': 11.0.0-rc.660(typescript@5.7.2)
       react: 18.3.1
