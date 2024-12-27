@@ -93,9 +93,7 @@ describe('ssr scripts', () => {
       getParentRoute: () => rootRoute,
       head: () => {
         return {
-          scripts: [
-            { src: 'script3.js' },
-          ],
+          scripts: [{ src: 'script3.js' }],
         }
       },
     })
