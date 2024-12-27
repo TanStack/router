@@ -200,6 +200,18 @@
               "to": "framework/react/start/getting-started"
             },
             {
+              "label": "Quick Start",
+              "to": "framework/react/start/quick-start"
+            },
+            {
+              "label": "Build from Scratch",
+              "to": "framework/react/start/build-from-scratch"
+            },
+            {
+              "label": "Learn the Basics",
+              "to": "framework/react/start/learn-the-basics"
+            },
+            {
               "label": "Server Functions",
               "to": "framework/react/start/server-functions"
             },
