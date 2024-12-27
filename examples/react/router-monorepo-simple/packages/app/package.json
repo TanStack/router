@@ -21,7 +21,7 @@
     "typescript": "^5.7.2",
     "@tanstack/router-devtools": "^1.92.6",
     "vite": "^6.0.3",
-    "vite-plugin-dts": "^4.3.0"
+    "vite-plugin-dts": "^4.4.0"
   },
   "nx": {
     "targets": {
