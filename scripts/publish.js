@@ -17,6 +17,10 @@ await publish({
       packageDir: 'packages/react-router',
     },
     {
+      name: '@tanstack/react-router-devtools',
+      packageDir: 'packages/router-devtools',
+    },
+    {
       name: '@tanstack/react-router-with-query',
       packageDir: 'packages/react-router-with-query',
     },
@@ -31,10 +35,6 @@ await publish({
     {
       name: '@tanstack/arktype-adapter',
       packageDir: 'packages/arktype-adapter',
-    },
-    {
-      name: '@tanstack/router-devtools',
-      packageDir: 'packages/router-devtools',
     },
     {
       name: '@tanstack/router-generator',

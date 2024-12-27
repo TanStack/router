@@ -15,7 +15,7 @@
     "@tanstack/react-query-devtools": "^5.62.3",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-with-query": "workspace:^",
-    "@tanstack/router-devtools": "workspace:^",
+    "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/start": "workspace:^",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
