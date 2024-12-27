@@ -69,7 +69,39 @@
     "@types/react-dom": "^18.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vinxi": "0.4.3"
+    "vinxi": "0.5.1",
+    "vite": "^6.0.3"
   },
-  "peerDependenciesMeta": {}
+  "peerDependenciesMeta": {
+    "@tanstack/react-router": {
+      "optional": true
+    },
+    "@tanstack/router-devtools": {
+      "optional": true
+    },
+    "@tanstack/start": {
+      "optional": true
+    },
+    "@types/react": {
+      "optional": true
+    },
+    "@types/react-dom": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "vinxi": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  }
 }
