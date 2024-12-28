@@ -8,7 +8,6 @@
   "devDependencies": {
     "@playwright/test": "^1.49.1",
     "@tanstack/create-start": "workspace:^",
-    "@tanstack/router-devtools": "workspace:^",
     "get-port-please": "^3.1.2",
     "tempy": "^3.1.0",
     "terminate": "^2.8.0",
