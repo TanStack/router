@@ -37,10 +37,8 @@ test('Navigating to route with scripts', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Scripts' }).click()
 
-  expect(page.getByTestId('script')).toBeAttached()
-  expect(expect(page.getByTestId('script2')).toBeAttached()).rejects.toThrow(
-    '<element(s) not found>',
-  )
+  await expect(page.getByTestId('script')).toHaveCount(1)
+  await expect(page.getByTestId('script2')).toHaveCount(0)
 })
 
 test('Navigating to a not-found route', async ({ page }) => {
