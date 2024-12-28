@@ -37,6 +37,10 @@ await publish({
       packageDir: 'packages/router-devtools',
     },
     {
+      name: '@tanstack/react-router-devtools',
+      packageDir: 'packages/router-devtools',
+    },
+    {
       name: '@tanstack/router-generator',
       packageDir: 'packages/router-generator',
     },
