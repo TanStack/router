@@ -22,6 +22,7 @@ import type {
   FullSearchSchema,
   FullSearchSchemaInput,
   ParentPath,
+  RootPath,
   RouteByPath,
   RouteByToPath,
   RoutePaths,
@@ -78,15 +79,18 @@ export type RemoveLeadingSlashes<T> = T extends `/${string}`
 export type FindDescendantPaths<
   TRouter extends AnyRouter,
   TPrefix extends string,
-> = (TPrefix | `${TPrefix}/${string}`) & RouteToPath<TRouter>
+  TCleanedPrefix extends string = RemoveTrailingSlashes<TPrefix>,
+> = (TPrefix | `${TCleanedPrefix}/${string}`) & RouteToPath<TRouter>
 
 export type SearchPaths<
   TRouter extends AnyRouter,
   TPrefix extends string,
   TPaths = FindDescendantPaths<TRouter, TPrefix>,
+  TCleanedPrefix extends string = RemoveTrailingSlashes<TPrefix>,
+  TRootPath = RootPath<TrailingSlashOptionByRouter<TRouter>>,
 > = TPaths extends TPrefix
-  ? ''
-  : TPaths extends `${TPrefix}/${infer TRest}`
+  ? TRootPath
+  : TPaths extends `${TCleanedPrefix}/${infer TRest}`
     ? `/${TRest}`
     : never
 
@@ -100,25 +104,22 @@ export type RelativeToParentPathAutoComplete<
   TRouter extends AnyRouter,
   TFrom extends string,
   TTo extends string,
-  TResolvedPath extends string = RemoveTrailingSlashes<
-    ResolveRelativePath<TFrom, TTo>
-  >,
+  TResolvedPath extends string = ResolveRelativePath<TFrom, TTo>,
 > =
   | SearchRelativePathAutoComplete<TRouter, TTo, TResolvedPath>
   | (TTo extends `${string}..` | `${string}../`
-      ? FindDescendantPaths<TRouter, TResolvedPath> &
-          TResolvedPath extends TResolvedPath
+      ? TResolvedPath extends '/' | ''
         ? never
-        : `${TTo}/${ParentPath<TrailingSlashOptionByRouter<TRouter>>}`
+        : FindDescendantPaths<TRouter, TResolvedPath> extends never
+          ? never
+          : `${TTo}/${ParentPath<TrailingSlashOptionByRouter<TRouter>>}`
       : never)
 
 export type RelativeToCurrentPathAutoComplete<
   TRouter extends AnyRouter,
   TFrom extends string,
   TTo extends string,
-  TResolvedPath extends string = RemoveTrailingSlashes<
-    ResolveRelativePath<TFrom, TTo>
-  >,
+  TResolvedPath extends string = ResolveRelativePath<TFrom, TTo>,
 > =
   | SearchRelativePathAutoComplete<TRouter, TTo, TResolvedPath>
   | CurrentPath<TrailingSlashOptionByRouter<TRouter>>
@@ -513,12 +514,12 @@ export type ResolveParentPath<
   TFrom extends string,
   TTo extends string,
 > = TTo extends '../' | '..'
-  ? TFrom extends ''
+  ? TFrom extends '' | '/'
     ? never
     : AddLeadingSlash<RemoveLastSegment<TFrom>>
   : TTo & `../${string}` extends never
     ? AddLeadingSlash<JoinPath<TFrom, TTo>>
-    : TFrom extends ''
+    : TFrom extends '' | '/'
       ? never
       : TTo extends `../${infer ToRest}`
         ? ResolveParentPath<RemoveLastSegment<TFrom>, ToRest>
