@@ -3,7 +3,7 @@ import {
   createMemoryHistory,
   parseHref,
 } from '@tanstack/history'
-import { Store } from '@tanstack/react-store'
+import { Store, batch } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import { rootRouteId } from './root'
@@ -1959,7 +1959,7 @@ export class Router<
 
           let pendingMatches!: Array<AnyRouteMatch>
 
-          this.__store.batch(() => {
+          batch(() => {
             // this call breaks a route context of destination route after a redirect
             // we should be fine not eagerly calling this since we call it later
             // this.clearExpiredCache()
@@ -2014,7 +2014,7 @@ export class Router<
                 let enteringMatches!: Array<AnyRouteMatch>
                 let stayingMatches!: Array<AnyRouteMatch>
 
-                this.__store.batch(() => {
+                batch(() => {
                   this.__store.setState((s) => {
                     const previousMatches = s.matches
                     const newMatches = s.pendingMatches || s.matches
@@ -2877,7 +2877,7 @@ export class Router<
     ])
 
     // If the matches are already loaded, we need to add them to the cachedMatches
-    this.__store.batch(() => {
+    batch(() => {
       matches.forEach((match) => {
         if (!loadedMatchIds.has(match.id)) {
           this.__store.setState((s) => ({

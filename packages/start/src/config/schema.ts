@@ -60,7 +60,7 @@ const vinxiDeploymentPresets = [
   'node-server', // ✅ working
   'platform-sh', // untested
   'service-worker', // untested
-  'static', // partially working
+  'static', // 🟧 partially working
   'stormkit', // untested
   'vercel', // ✅ working
   'vercel-edge', // untested
