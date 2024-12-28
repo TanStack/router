@@ -38,14 +38,15 @@
     "test:perf": "vitest bench",
     "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build"
+    "build": "vite build && tsc -p tsconfig.build.json"
   },
   "type": "module",
-  "types": "dist/esm/index.d.ts",
-  "main": "dist/cjs/index.cjs",
-  "module": "dist/esm/index.js",
   "exports": {
     ".": {
+      "solid": {
+        "types": "./dist/source/index.d.ts",
+        "default": "./dist/source/index.jsx"
+      },
       "import": {
         "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"
@@ -66,7 +67,10 @@
     "node": ">=12"
   },
   "dependencies": {
+    "@solid-devtools/logger": "^0.9.4",
+    "@solid-primitives/refs": "^1.0.8",
     "@tanstack/history": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
     "@tanstack/solid-store": "^0.6.0",
     "@tanstack/store": "^0.6.0",
     "jsesc": "^3.0.2",
@@ -77,9 +81,12 @@
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/jsesc": "^3.0.3",
+    "@vitest/browser": "^2.1.8",
+    "@vitest/ui": "2.1.8",
     "combinate": "^1.1.11",
     "solid-js": "^1",
-    "vite-plugin-solid": "^2.11.0",
+    "vite-plugin-solid": "2.10.2",
+    "vitest": "^2.1.8",
     "zod": "^3.23.8"
   },
   "peerDependencies": {

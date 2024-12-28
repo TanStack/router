@@ -1,4 +1,3 @@
-import { act, useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -6,7 +5,7 @@ import {
   render,
   screen,
   waitFor,
-} from '@testing-library/react'
+} from '@solidjs/testing-library'
 import { z } from 'zod'
 import {
   Link,
@@ -18,6 +17,7 @@ import {
   createRouter,
 } from '../src'
 import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
+import { onMount } from 'solid-js'
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -45,7 +45,7 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       const search = rootRoute.useSearch()
       return (
         <>
-          <div data-testid="search-root">{search.root ?? '$undefined'}</div>
+          <div data-testid="search-root">{search().root ?? '$undefined'}</div>
           <Outlet />
         </>
       )
@@ -146,7 +146,9 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       const search = searchRoute.useSearch()
       return (
         <>
-          <div data-testid="search-search">{search.search ?? '$undefined'}</div>
+          <div data-testid="search-search">
+            {search().search ?? '$undefined'}
+          </div>
         </>
       )
     },
@@ -206,9 +208,9 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       const search = searchWithDefaultCheckRoute.useSearch()
       return (
         <>
-          <div data-testid="search-default">{search.default}</div>
+          <div data-testid="search-default">{search().default}</div>
           <div data-testid="search-optional">
-            {search.optional ?? '$undefined'}
+            {search().optional ?? '$undefined'}
           </div>
         </>
       )
@@ -266,7 +268,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/posts/tanner')
   })
@@ -276,7 +278,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/posts/🚀')
   })
@@ -286,7 +288,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
   })
@@ -300,7 +302,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe(
       '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
@@ -312,7 +314,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -330,7 +332,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -348,7 +350,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -370,7 +372,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -391,11 +393,9 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     })
 
     await router.load()
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
-    await act(() =>
-      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
-    )
+    await router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } })
 
     expect(router.state.location.pathname).toBe('/posts/%40jane')
   })
@@ -407,11 +407,9 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     })
 
     await router.load()
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
-    await act(() =>
-      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
-    )
+    await router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } })
 
     expect(router.state.location.pathname).toBe('/posts/@jane')
   })
@@ -594,8 +592,8 @@ describe('encoding: URL path segment', () => {
         history: createMemoryHistory({ initialEntries: [input] }),
       })
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
 
       expect(router.state.location.pathname).toBe(output)
     },
@@ -610,7 +608,7 @@ describe('router emits events during rendering', () => {
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     await waitFor(() => expect(mockFn1).toBeCalled())
     unsub()
@@ -623,9 +621,9 @@ describe('router emits events during rendering', () => {
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
-    render(<RouterProvider router={router} />)
+    await waitFor(() => render(() => <RouterProvider router={router} />))
 
-    await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
+    await router.navigate({ to: '/$', params: { _splat: 'tanner' } })
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
     unsub()
@@ -646,8 +644,8 @@ describe('router emits events during rendering', () => {
     )
     const unsubResolved = router.subscribe('onResolved', mockOnResolved)
 
-    await act(() => router.load())
-    render(<RouterProvider router={router} />)
+    await router.load()
+    render(() => <RouterProvider router={router} />)
 
     // Ensure the "onBeforeRouteMount" event was called once
     await waitFor(() => expect(mockOnBeforeRouteMount).toBeCalledTimes(1))
@@ -708,17 +706,17 @@ describe('router rendering stability', () => {
     function FooIdRouteComponent() {
       const id = fooIdRoute.useParams({ select: (s) => s.id })
 
-      useEffect(() => {
+      onMount(() => {
         callerMock()
-      }, [])
+      })
 
-      return <div>Foo page {id}</div>
+      return <div>Foo page {id()}</div>
     }
 
     const routeTree = rootRoute.addChildren([fooIdRoute, indexRoute])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const foo1Link = await screen.findByRole('link', { name: 'Foo1' })
     const foo2Link = await screen.findByRole('link', { name: 'Foo2' })
@@ -759,7 +757,7 @@ describe('router matches URLs to route definitions', () => {
       history: createMemoryHistory({ initialEntries: ['/solo-splat'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
@@ -772,7 +770,7 @@ describe('router matches URLs to route definitions', () => {
       history: createMemoryHistory({ initialEntries: ['/solo-splat/test'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
@@ -785,7 +783,7 @@ describe('router matches URLs to route definitions', () => {
       history: createMemoryHistory({ initialEntries: ['/layout-splat/test'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
@@ -799,7 +797,7 @@ describe('router matches URLs to route definitions', () => {
       history: createMemoryHistory({ initialEntries: ['/layout-splat'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
@@ -815,13 +813,13 @@ describe('invalidate', () => {
       history: createMemoryHistory({ initialEntries: ['/'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     router.state.matches.forEach((match) => {
       expect(match.invalid).toBe(false)
     })
 
-    await act(() => router.invalidate())
+    await router.invalidate()
 
     router.state.matches.forEach((match) => {
       expect(match.invalid).toBe(false)
@@ -853,8 +851,8 @@ describe('search params in URL', () => {
             `${route}?${new URLSearchParams(search as Record<string, string>).toString()}`,
           )
 
-          render(<RouterProvider router={router} />)
-          await act(() => router.load())
+          render(() => <RouterProvider router={router} />)
+          await router.load()
 
           expect(await screen.findByTestId('search-root')).toHaveTextContent(
             search.root ?? '$undefined',
@@ -878,8 +876,8 @@ describe('search params in URL', () => {
         '',
         `${route}?${new URLSearchParams(search as Record<string, string>).toString()}`,
       )
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
       await expect(await screen.findByTestId('search-root')).toHaveTextContent(
         search.root ?? 'undefined',
       )
@@ -919,8 +917,8 @@ describe('search params in URL', () => {
     it('should add the default search param upon initial load when no search params are present', async () => {
       window.history.replaceState(null, '', `/searchWithDefault/check`)
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
 
       await checkSearch({ default: 'd1' })
     })
@@ -932,8 +930,8 @@ describe('search params in URL', () => {
         `/searchWithDefault/check?default=d2`,
       )
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
 
       await checkSearch({ default: 'd2' })
     })
@@ -945,8 +943,8 @@ describe('search params in URL', () => {
         `/searchWithDefault/check?optional=o1`,
       )
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
 
       await checkSearch({ default: 'd1', optional: 'o1' })
     })
@@ -958,8 +956,8 @@ describe('search params in URL', () => {
         `/searchWithDefault/check?default=d2&optional=o1`,
       )
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
 
       await checkSearch({ default: 'd2', optional: 'o1' })
     })
@@ -967,8 +965,8 @@ describe('search params in URL', () => {
     it('should have the default search param when navigating without search params', async () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
       const link = await screen.findByTestId('link-without-params')
 
       expect(link).toBeInTheDocument()
@@ -980,8 +978,8 @@ describe('search params in URL', () => {
     it('should have the default search param when navigating with the optional search param', async () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
       const link = await screen.findByTestId('link-with-optional-param')
 
       expect(link).toBeInTheDocument()
@@ -993,8 +991,8 @@ describe('search params in URL', () => {
     it('should have the correct `default` search param when navigating with the `default` search param', async () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
       const link = await screen.findByTestId('link-with-default-param')
 
       expect(link).toBeInTheDocument()
@@ -1006,8 +1004,8 @@ describe('search params in URL', () => {
     it('should have the correct search params when navigating with both search params', async () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      render(() => <RouterProvider router={router} />)
+      await router.load()
       const link = await screen.findByTestId('link-with-both-params')
 
       expect(link).toBeInTheDocument()
@@ -1026,17 +1024,8 @@ describe('route ids should be consistent after rebuilding the route tree', () =>
 
     const originalRouteIds = Object.keys(router.routesById)
 
-    await act(() =>
-      router.navigate({
-        to: '/parent/child',
-      }),
-    )
-
-    await act(() =>
-      router.navigate({
-        to: '/filBasedParent/child',
-      }),
-    )
+    await router.navigate({ to: '/parent/child' })
+    await router.navigate({ to: '/filBasedParent/child' })
 
     router.buildRouteTree()
 

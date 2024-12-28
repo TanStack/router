@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  configure,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -29,8 +23,6 @@ afterEach(() => {
 const WAIT_TIME = 100
 
 describe('loaders are being called', () => {
-  configure({ reactStrictMode: true })
-
   test('called on /', async () => {
     const indexLoaderMock = vi.fn()
 
@@ -47,7 +39,7 @@ describe('loaders are being called', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const indexElement = await screen.findByText('Index page')
     expect(indexElement).toBeInTheDocument()
@@ -98,7 +90,7 @@ describe('loaders are being called', () => {
     ])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const linkToAbout = await screen.findByText('link to foo')
     fireEvent.click(linkToAbout)
@@ -154,7 +146,7 @@ describe('loaders parentMatchPromise', () => {
     ])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const linkToFoo = await screen.findByRole('link', { name: 'link to foo' })
 
@@ -192,7 +184,7 @@ test('reproducer for #2031', async () => {
   const routeTree = rootRoute.addChildren([indexRoute])
   const router = createRouter({ routeTree })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const indexElement = await screen.findByText('Index page')
   expect(indexElement).toBeInTheDocument()
@@ -209,8 +201,8 @@ test('reproducer for #2053', async () => {
     getParentRoute: () => rootRoute,
     path: '/foo/$fooId',
     component: () => {
-      const { fooId } = fooRoute.useParams()
-      return <div>fooId: {fooId}</div>
+      const params = fooRoute.useParams()
+      return <div>fooId: {params().fooId}</div>
     },
   })
 
@@ -222,7 +214,7 @@ test('reproducer for #2053', async () => {
     routeTree,
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const fooElement = await screen.findByText('fooId: 3ΚΑΠΠΑ')
   expect(fooElement).toBeInTheDocument()
@@ -249,7 +241,7 @@ test('reproducer for #2198 - throw error from beforeLoad upon initial load', asy
     },
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const errorElement = await screen.findByText('indexErrorComponent')
   expect(errorElement).toBeInTheDocument()
@@ -276,7 +268,7 @@ test('throw error from loader upon initial load', async () => {
     },
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const errorElement = await screen.findByText('indexErrorComponent')
   expect(errorElement).toBeInTheDocument()
@@ -314,7 +306,7 @@ test('throw error from beforeLoad when navigating to route', async () => {
     },
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const linkToFoo = await screen.findByRole('link', { name: 'link to foo' })
 

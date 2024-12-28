@@ -1,18 +1,18 @@
 import * as Solid from 'solid-js'
 import { Dynamic } from 'solid-js/web'
-import { Matches } from '../Matches'
+import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
-import type { NavigateOptions, ToOptions } from '.ParsePathParams, ./link'
-import type { ParsedLocation } from '../common/location'
-import type { RoutePaths } from '../routeInfo'
+import type { NavigateOptions, ToOptions } from './link'
+import type { ParsedLocation } from '@tanstack/router-core'
+import type { RoutePaths } from './routeInfo'
 import type {
   AnyRouter,
   RegisteredRouter,
   Router,
   RouterOptions,
-} from '../router'
+} from './router'
 
-export * from '../common/RouterProvider'
+export * from '@tanstack/router-core'
 
 export type NavigateFn = <
   TRouter extends RegisteredRouter,
@@ -44,12 +44,6 @@ export function RouterContextProvider<
   TDehydrated extends Record<string, any> = Record<string, any>,
 >(props: RouterProps<TRouter, TDehydrated> & Solid.ParentProps) {
   const [local, rest] = Solid.splitProps(props, ['router', 'children'])
-  // 	{
-  //   router,
-  //   children,
-  //   ...rest
-  // }
-  // Allow the router to update options on the router instance
 
   Solid.createMemo(() => {
     local.router.update({

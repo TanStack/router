@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
-import type { FromPathOption, NavigateOptions } from '../link'
-import type { AnyRouter, RegisteredRouter } from '../router'
+import type { FromPathOption, NavigateOptions } from './link'
+import type { AnyRouter, RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
   TRouter extends RegisteredRouter,

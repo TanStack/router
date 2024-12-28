@@ -1,15 +1,14 @@
-'use client'
-
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import { Dynamic } from 'solid-js/web'
-import { createControlledPromise, pick } from '../common/utils'
 import {
+  createControlledPromise,
   defaultDeserializeError,
   isServerSideError,
-} from '../common/isServerSideError'
-import { rootRouteId } from '../common/root'
+  pick,
+  rootRouteId,
+} from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -21,10 +20,13 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import type { AnyRoute } from './route'
 
 export const Match = (props: { matchId: string }) => {
+  const e = new Error()
   const router = useRouter()
   const routeId = useRouterState({
-    select: (s) =>
-      s.matches.find((d) => d.id === props.matchId)?.routeId as string,
+    select: (s) => {
+      console.warn('Match matchId: ', e.stack)
+      return s.matches.find((d) => d.id === props.matchId)?.routeId as string
+    },
   })
 
   invariant(
@@ -70,10 +72,10 @@ export const Match = (props: { matchId: string }) => {
   })
 
   return (
-    <matchContext.Provider value={props.matchId}>
+    <matchContext.Provider value={() => props.matchId}>
       <Dynamic
         component={ResolvedSuspenseBoundary()}
-        fallback={<Dynamic component={PendingComponent} />}
+        fallback={<Dynamic component={PendingComponent()} />}
       >
         <Dynamic
           component={ResolvedCatchBoundary()}
@@ -98,7 +100,12 @@ export const Match = (props: { matchId: string }) => {
               )
                 throw error
 
-              return <Dynamic component={routeNotFoundComponent} {...error} />
+              return (
+                <Dynamic
+                  component={routeNotFoundComponent()}
+                  {...(error as any)}
+                />
+              )
             }}
           >
             <MatchInner matchId={props.matchId} />
@@ -183,7 +190,11 @@ export const MatchInner = (props: { matchId: string }): any => {
           //   false,
           //   'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
           // )
-          throw router.getMatch(match().id)?.loadPromise
+          const [load] = Solid.createResource(
+            () => router.getMatch(match().id)?.loadPromise,
+          )
+
+          return <>{(load(), (<></>))}</>
         }}
       </Solid.Match>
       <Solid.Match when={match().status === 'error'}>
@@ -249,13 +260,20 @@ export const MatchInner = (props: { matchId: string }): any => {
               }, pendingMinMs)
             }
           }
-          throw router.getMatch(match().id)?.loadPromise
+
+          const [load] = Solid.createResource(
+            () => router.getMatch(match().id)?.loadPromise,
+          )
+
+          return <>{(load(), (<></>))}</>
         }}
       </Solid.Match>
       <Solid.Match when={true}>
         <Dynamic
           component={
-            route().options.component ?? router.options.defaultComponent
+            route().options.component ??
+            router.options.defaultComponent ??
+            Outlet
           }
         />
         {router.AfterEachMatch ? (
@@ -273,7 +291,7 @@ export const Outlet = () => {
   const router = useRouter()
   const matchId = Solid.useContext(matchContext)
   const routeId = useRouterState({
-    select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
+    select: (s) => s.matches.find((d) => d.id === matchId())?.routeId as string,
   })
 
   const route = () => router.routesById[routeId()]!
@@ -281,10 +299,10 @@ export const Outlet = () => {
   const parentGlobalNotFound = useRouterState({
     select: (s) => {
       const matches = s.matches
-      const parentMatch = matches.find((d) => d.id === matchId)
+      const parentMatch = matches.find((d) => d.id === matchId())
       invariant(
         parentMatch,
-        `Could not find parent match for matchId "${matchId}"`,
+        `Could not find parent match for matchId "${matchId()}"`,
       )
       return parentMatch.globalNotFound
     },
@@ -293,8 +311,10 @@ export const Outlet = () => {
   const childMatchId = useRouterState({
     select: (s) => {
       const matches = s.matches
-      const index = matches.findIndex((d) => d.id === matchId)
-      return matches[index + 1]?.id
+      const index = matches.findIndex((d) => d.id === matchId())
+      const v = matches[index + 1]?.id
+      console.warn('childMatchId: ', v)
+      return v
     },
   })
 
@@ -305,17 +325,20 @@ export const Outlet = () => {
       </Solid.Match>
       <Solid.Match when={childMatchId()}>
         {(matchId) => {
-          const nextMatch = <Match matchId={matchId()} />
+          // const nextMatch = <Match matchId={matchId()} />
 
           return (
-            <Solid.Show when={matchId() === rootRouteId} fallback={nextMatch}>
-              <Solid.Suspense
+            <Solid.Show
+              when={matchId() === rootRouteId}
+              fallback={<Match matchId={matchId()} />}
+            >
+              {/* <Solid.Suspense
                 fallback={
                   <Dynamic component={router.options.defaultPendingComponent} />
                 }
               >
-                {nextMatch}
-              </Solid.Suspense>
+                <Match matchId={matchId()} />
+              </Solid.Suspense> */}
             </Solid.Show>
           )
         }}

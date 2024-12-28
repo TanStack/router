@@ -1,15 +1,17 @@
-'use client'
-
 import * as Solid from 'solid-js'
-// import { flushSync } from 'react-dom'
 import { Dynamic } from 'solid-js/web'
-import { useRouterState } from './finished/useRouterState'
-import { useRouter } from './finished/useRouter'
-import { deepEqual, functionalUpdate } from './common/utils'
-import { exactPathTest, removeTrailingSlash } from './common/path'
-import { useForwardedRef, useIntersectionObserver } from './utils'
-import { useMatch } from './finished/useMatch'
-import { preloadWarning } from './common/link'
+import { mergeRefs } from '@solid-primitives/refs'
+import {
+  deepEqual,
+  functionalUpdate,
+  exactPathTest,
+  removeTrailingSlash,
+  preloadWarning,
+} from '@tanstack/router-core'
+import { composeEventHandlers, useIntersectionObserver } from './utils'
+import { useMatch } from './useMatch'
+import { useRouter } from './useRouter'
+import { useRouterState } from './useRouterState'
 import type {
   IsRequiredParams,
   LinkCurrentTargetElement,
@@ -17,7 +19,7 @@ import type {
   RemoveLeadingSlashes,
   RemoveTrailingSlashes,
   ResolveRelativePath,
-} from './common/link'
+} from '@tanstack/router-core'
 import type {
   AllParams,
   CatchAllPaths,
@@ -28,7 +30,7 @@ import type {
   RoutePaths,
   RouteToPath,
   TrailingSlashOptionByRouter,
-} from './finished/routeInfo'
+} from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type {
   Constrain,
@@ -40,11 +42,11 @@ import type {
   PickRequired,
   Updater,
   WithoutEmpty,
-} from './common/utils'
+} from '@tanstack/router-core'
 import type { HistoryState } from '@tanstack/history'
-import type { ParsedLocation } from './common/location'
-import type { ViewTransitionOptions } from './common/router'
-import type { CurrentPath, ParentPath } from './common/routeInfo'
+import type { ParsedLocation } from '@tanstack/router-core'
+import type { ViewTransitionOptions } from '@tanstack/router-core'
+import type { CurrentPath, ParentPath } from '@tanstack/router-core'
 
 export type FindDescendantPaths<
   TRouter extends AnyRouter,
@@ -428,12 +430,10 @@ export function useLinkProps<
   TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  forwardedRef?: Solid.Setter<Element>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   let hasRenderFetched = false
-  const innerRef = useForwardedRef(forwardedRef)
 
   const [local, rest] = Solid.splitProps(
     Solid.mergeProps(
@@ -471,7 +471,7 @@ export function useLinkProps<
 
   // const {
   //   // custom props
-  //   activeProps = () => ({ className: 'active' }),
+  //   activeProps = () => ({ class: 'active' }),
   //   inactiveProps = () => ({}),
   //   activeOptions,
   //   to,
@@ -487,7 +487,7 @@ export function useLinkProps<
   //   target,
   //   disabled,
   //   style,
-  //   className,
+  //   class,
   //   onClick,
   //   onFocus,
   //   onMouseEnter,
@@ -531,13 +531,15 @@ export function useLinkProps<
 
   // Use it as the default `from` location
   options = {
-    from: parentRouteId,
+    get from() {
+      return parentRouteId()
+    },
     ...options,
   }
 
   const next = Solid.createMemo(() => {
     currentSearch()
-    return router.buildLocation(options as any)
+    return Solid.untrack(() => router.buildLocation(options as any))
   })
 
   const preload = Solid.createMemo(() => {
@@ -596,7 +598,7 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute(options as any).catch((err) => {
+    router.preloadRoute(options as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
@@ -609,8 +611,10 @@ export function useLinkProps<
     }
   }
 
+  const [ref, setRef] = Solid.createSignal<Element | null>(null)
+
   useIntersectionObserver(
-    innerRef,
+    ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
     { disabled: !!local.disabled || !(local.preload === 'viewport') },
@@ -630,7 +634,7 @@ export function useLinkProps<
     return Solid.mergeProps(
       propsSafeToSpread,
       {
-        ref: innerRef,
+        ref,
         get type() {
           return type()
         },
@@ -721,16 +725,6 @@ export function useLinkProps<
     }
   }
 
-  const composeHandlers =
-    (handlers: Array<undefined | ((e: any) => void)>) =>
-    (e: { persist?: () => void; defaultPrevented: boolean }) => {
-      e.persist?.()
-      handlers.filter(Boolean).forEach((handler) => {
-        if (e.defaultPrevented) return
-        handler!(e)
-      })
-    }
-
   // Get the active props
   const resolvedActiveProps: () => Omit<Solid.ComponentProps<'a'>, 'style'> & {
     style?: Solid.JSX.CSSProperties
@@ -767,12 +761,15 @@ export function useLinkProps<
           : maskedLocation
             ? router.history.createHref(maskedLocation.href)
             : router.history.createHref(next().href),
-        ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-        // onClick: composeHandlers([local.onClick, handleClick]),
-        // onFocus: composeHandlers([local.onFocus, handleFocus]),
-        // onMouseEnter: composeHandlers([local.onMouseEnter, handleEnter]),
-        // onMouseLeave: composeHandlers([local.onMouseLeave, handleLeave]),
-        // onTouchStart: composeHandlers([local.onTouchStart, handleTouchStart]),
+        ref: mergeRefs(setRef, options.ref),
+        onClick: composeEventHandlers([local.onClick, handleClick]),
+        onFocus: composeEventHandlers([local.onFocus, handleFocus]),
+        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
+        onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
+        onTouchStart: composeEventHandlers([
+          local.onTouchStart,
+          handleTouchStart,
+        ]),
         disabled: !!local.disabled,
         target: local.target,
         ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
@@ -816,12 +813,12 @@ type ActiveLinkProps<TComp> = Partial<
 export interface ActiveLinkOptionProps<TComp = 'a'> {
   /**
    * A function that returns additional props for the `active` state of this link.
-   * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+   * These props override other props passed to the link (`style`'s are merged, `class`'s are concatenated)
    */
   activeProps?: ActiveLinkProps<TComp> | (() => ActiveLinkProps<TComp>)
   /**
    * A function that returns additional props for the `inactive` state of this link.
-   * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+   * These props override other props passed to the link (`style`'s are merged, `class`'s are concatenated)
    */
   inactiveProps?: ActiveLinkProps<TComp> | (() => ActiveLinkProps<TComp>)
 }
@@ -839,11 +836,11 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | React.ReactNode
+    | Solid.JSXElement
     | ((state: {
         isActive: boolean
         isTransitioning: boolean
-      }) => React.ReactNode)
+      }) => Solid.JSXElement)
 }
 
 type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
@@ -888,7 +885,10 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = (props: any) => {
   const [local, rest] = Solid.splitProps(props, ['_asChild'])
 
-  const [_, linkProps] = Solid.splitProps(useLinkProps(rest), ['type'])
+  const [_, linkProps] = Solid.splitProps(useLinkProps(rest), [
+    'type',
+    'children',
+  ])
 
   const children = () =>
     typeof rest.children === 'function'

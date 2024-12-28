@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render } from '@solidjs/testing-library'
 import { bench, describe } from 'vitest'
 import {
   Link,
@@ -83,7 +83,7 @@ describe.each([
           </a>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -102,7 +102,7 @@ describe.each([
           </InterpolatePathLink>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -121,7 +121,7 @@ describe.each([
           </BuildLocationLink>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -140,7 +140,7 @@ describe.each([
           </Link>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -160,7 +160,7 @@ describe.each([
           </Link>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -175,7 +175,7 @@ describe.each([
           </Link>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )

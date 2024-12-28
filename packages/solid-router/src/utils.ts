@@ -1,7 +1,7 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
-import type { ConstrainLiteral } from './common/utils'
+import type { ConstrainLiteral } from '@tanstack/router-core'
 
 export type StrictOrFrom<
   TRouter extends AnyRouter,
@@ -16,9 +16,6 @@ export type StrictOrFrom<
       from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
       strict?: TStrict
     }
-
-export const useLayoutEffect =
-  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
 /**
  * React hook to wrap `IntersectionObserver`.
@@ -46,64 +43,58 @@ export const useLayoutEffect =
  * ```
  */
 export function useIntersectionObserver<T extends Element>(
-  ref: React.RefObject<T>,
+  ref: Solid.Accessor<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},
-): IntersectionObserver | null {
-  const isIntersectionObserverAvailable = React.useRef(
-    typeof IntersectionObserver === 'function',
-  )
+): Solid.Accessor<IntersectionObserver | null> {
+  const isIntersectionObserverAvailable =
+    typeof IntersectionObserver === 'function'
+  let observerRef: IntersectionObserver | null = null
 
-  const observerRef = React.useRef<IntersectionObserver | null>(null)
-
-  React.useEffect(() => {
-    if (
-      !ref.current ||
-      !isIntersectionObserverAvailable.current ||
-      options.disabled
-    ) {
+  Solid.createEffect(() => {
+    const r = ref()
+    if (!r || !isIntersectionObserverAvailable || options.disabled) {
       return
     }
 
-    observerRef.current = new IntersectionObserver(([entry]) => {
+    observerRef = new IntersectionObserver(([entry]) => {
       callback(entry)
     }, intersectionObserverOptions)
 
-    observerRef.current.observe(ref.current)
+    observerRef.observe(r)
 
-    return () => {
-      observerRef.current?.disconnect()
-    }
-  }, [callback, intersectionObserverOptions, options.disabled, ref])
-
-  return observerRef.current
-}
-
-/**
- * React hook to take a `React.ForwardedRef` and returns a `ref` that can be used on a DOM element.
- *
- * @param ref - The forwarded ref
- * @returns The inner ref returned by `useRef`
- * @example
- * ```tsx
- * const MyComponent = React.forwardRef((props, ref) => {
- *  const innerRef = useForwardedRef(ref)
- *  return <div ref={innerRef} />
- * })
- * ```
- */
-export function useForwardedRef<T>(ref?: React.ForwardedRef<T>) {
-  const innerRef = React.useRef<T>(null)
-
-  React.useEffect(() => {
-    if (!ref) return
-    if (typeof ref === 'function') {
-      ref(innerRef.current)
-    } else {
-      ref.current = innerRef.current
-    }
+    Solid.onCleanup(() => {
+      observerRef?.disconnect()
+    })
   })
 
-  return innerRef
+  return () => observerRef
+}
+
+/** Call a JSX.EventHandlerUnion with the event. */
+export function callHandler<T, TEvent extends Event>(
+  event: TEvent & { currentTarget: T; target: Element },
+  handler: Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
+) {
+  if (handler) {
+    if (typeof handler === 'function') {
+      handler(event)
+    } else {
+      handler[0](handler[1], event)
+    }
+  }
+
+  return event.defaultPrevented
+}
+
+/** Create a new event handler which calls all given handlers in the order they were chained with the same event. */
+export function composeEventHandlers<T>(
+  handlers: Array<Solid.JSX.EventHandlerUnion<T, any> | undefined>,
+) {
+  return (event: any) => {
+    for (const handler of handlers) {
+      callHandler(event, handler)
+    }
+  }
 }

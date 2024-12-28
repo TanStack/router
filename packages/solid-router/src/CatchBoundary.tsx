@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { Dynamic } from 'solid-js/web'
-import type { ErrorRouteComponent } from './route'
+import type { ErrorRouteComponent } from '@tanstack/router-core'
 
 export function CatchBoundary(
   props: {
@@ -9,55 +9,29 @@ export function CatchBoundary(
     onCatch?: (error: Error) => void
   } & Solid.ParentProps,
 ) {
-  const errorComponent = props.errorComponent ?? ErrorComponent
-
-  return (
-    <CatchBoundaryImpl resetKey={props.resetKey} onCatch={props.onCatch}>
-      {({ error, reset }) => {
-        if (error) {
-          return (
-            <Dynamic component={errorComponent} error={error} reset={reset} />
-          )
-        }
-
-        return <>{props.children}</>
-      }}
-    </CatchBoundaryImpl>
-  )
-}
-
-function CatchBoundaryImpl(props: {
-  resetKey: number | string
-  children: (props: {
-    error: Error | null
-    reset: () => void
-  }) => Solid.JSX.Element
-  onCatch?: (error: Error) => void
-}) {
-  const [error, setError] = Solid.createSignal<null | Error>(null)
-
-  Solid.createEffect(
-    Solid.on(
-      () => props.resetKey,
-      (resetKey, prevResetKey) => {
-        if (resetKey !== prevResetKey) setError(null)
-      },
-    ),
-  )
-
   return (
     <Solid.ErrorBoundary
-      fallback={(e, reset) => {
-        reset()
-        return null
+      fallback={(error, reset) => {
+        props.onCatch?.(error)
+
+        Solid.createEffect(
+          Solid.on(
+            () => props.resetKey,
+            () => reset(),
+            { defer: true },
+          ),
+        )
+
+        return (
+          <Dynamic
+            component={props.errorComponent ?? ErrorComponent}
+            error={error}
+            reset={reset}
+          />
+        )
       }}
     >
-      {props.children({
-        get error() {
-          return error()
-        },
-        reset: () => setError(null),
-      })}
+      {props.children}
     </Solid.ErrorBoundary>
   )
 }

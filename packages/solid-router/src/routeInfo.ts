@@ -1,10 +1,15 @@
-import type { InferFileRouteTypes } from '../fileRoute'
-import type { AddTrailingSlash, RemoveTrailingSlashes } from '../common/link'
-import type { CurrentPath, ParentPath, ParseRoute } from '../common/routeInfo'
+import type { InferFileRouteTypes } from './fileRoute'
+import type {
+  AddTrailingSlash,
+  CurrentPath,
+  ParentPath,
+  ParseRoute,
+  PartialMergeAll,
+  RemoveTrailingSlashes,
+  TrailingSlashOption,
+} from '@tanstack/router-core'
 import type { AnyRoute } from './route'
-import type { AnyRouter } from '../router'
-import type { TrailingSlashOption } from '../common/router'
-import type { PartialMergeAll } from '../common/utils'
+import type { AnyRouter } from './router'
 
 export type ParseRouteWithoutBranches<TRouteTree> =
   ParseRoute<TRouteTree> extends infer TRoute extends AnyRoute

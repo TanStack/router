@@ -1,7 +1,7 @@
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import type * as Solid from 'solid-js'
-import type { RegisteredRouter } from '../router'
+import type { RegisteredRouter } from './router'
 import type { RouteIds } from './routeInfo'
 
 export type NotFoundError = {

@@ -1,7 +1,7 @@
 import { useStore } from '@tanstack/solid-store'
 import { useRouter } from './useRouter'
 import type { Accessor } from 'solid-js'
-import type { AnyRouter, RegisteredRouter, RouterState } from '../router'
+import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
 export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
   router?: TRouter

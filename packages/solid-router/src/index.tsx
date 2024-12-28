@@ -14,13 +14,13 @@ export type {
 export { default as invariant } from 'tiny-invariant'
 export { default as warning } from 'tiny-warning'
 
-export { useAwaited, Await } from './awaited'
-export type { AwaitOptions } from './awaited'
-
 export { ScriptOnce } from './ScriptOnce'
 
-export { defer, TSR_DEFERRED_PROMISE } from './defer'
-export type { DeferredPromiseState, DeferredPromise } from './defer'
+export { defer, TSR_DEFERRED_PROMISE } from '@tanstack/router-core'
+export type {
+  DeferredPromiseState,
+  DeferredPromise,
+} from '@tanstack/router-core'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
 
@@ -38,15 +38,12 @@ export type {
   LazyRouteOptions,
 } from './fileRoute'
 
-export * from './history'
+export * from '@tanstack/router-core'
 
 export { lazyRouteComponent } from './lazyRouteComponent'
 
 export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {
-  ParsePathParams,
-  RemoveTrailingSlashes,
-  RemoveLeadingSlashes,
   SearchPaths,
   SearchRelativePathAutoComplete,
   RelativeToParentPathAutoComplete,
@@ -61,9 +58,7 @@ export type {
   SearchParamOptions,
   PathParamOptions,
   ToPathOption,
-  ActiveOptions,
   LinkOptions,
-  ResolveRelativePath,
   UseLinkPropsOptions,
   ActiveLinkOptions,
   LinkProps,
@@ -72,8 +67,14 @@ export type {
   CreateLinkProps,
   MakeOptionalPathParams,
 } from './link'
+export type {
+  ParsePathParams,
+  RemoveTrailingSlashes,
+  RemoveLeadingSlashes,
+} from '@tanstack/router-core'
+export type { ActiveOptions, ResolveRelativePath } from '@tanstack/router-core'
 
-export type { ParsedLocation } from './location'
+export type { ParsedLocation } from '@tanstack/router-core'
 
 export {
   Matches,
@@ -82,8 +83,8 @@ export {
   useMatches,
   useParentMatches,
   useChildMatches,
-  isMatch,
 } from './Matches'
+export { isMatch } from '@tanstack/router-core'
 export type {
   RouteMatch,
   AnyRouteMatch,
@@ -98,7 +99,10 @@ export { matchContext } from './matchContext'
 
 export { Match, Outlet } from './Match'
 
-export { isServerSideError, defaultDeserializeError } from './isServerSideError'
+export {
+  isServerSideError,
+  defaultDeserializeError,
+} from '@tanstack/router-core'
 
 export { useMatch } from './useMatch'
 
@@ -118,16 +122,16 @@ export {
   matchPathname,
   removeBasepath,
   matchByPath,
-} from './path'
-export type { Segment } from './path'
+} from '@tanstack/router-core'
+export type { Segment } from '@tanstack/router-core'
 
-export { encode, decode } from './qss'
+export { encode, decode } from '@tanstack/router-core'
 
 export { redirect, isRedirect } from './redirects'
 export type { AnyRedirect, Redirect, ResolvedRedirect } from './redirects'
 
-export { rootRouteId } from './root'
-export type { RootRouteId } from './root'
+export { rootRouteId } from '@tanstack/router-core'
+export type { RootRouteId } from '@tanstack/router-core'
 
 export {
   RouteApi,
@@ -175,7 +179,6 @@ export type {
   ErrorRouteProps,
   ErrorComponentProps,
   NotFoundRouteProps,
-  ReactNode,
   SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,
@@ -211,7 +214,6 @@ export type {
 } from './route'
 
 export type {
-  ParseRoute,
   RoutesById,
   RouteById,
   RouteIds,
@@ -224,6 +226,7 @@ export type {
   FullSearchSchemaInput,
   AllContext,
 } from './routeInfo'
+export type { ParseRoute } from '@tanstack/router-core'
 
 export {
   componentTypes,
@@ -233,15 +236,14 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-  defaultSerializeError,
 } from './router'
+export { defaultSerializeError } from '@tanstack/router-core'
 export type {
   Register,
   AnyRouter,
   RegisteredRouter,
   HydrationCtx,
   RouterContextOptions,
-  TrailingSlashOption,
   RouterOptions,
   RouterErrorSerializer,
   RouterState,
@@ -255,11 +257,14 @@ export type {
   RouterEvent,
   RouterListener,
   AnyRouterWithContext,
+} from './router'
+export type {
   ExtractedEntry,
   ExtractedStream,
   ExtractedPromise,
   StreamState,
-} from './router'
+  TrailingSlashOption,
+} from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type {
@@ -283,17 +288,17 @@ export {
   defaultStringifySearch,
   parseSearchWith,
   stringifySearchWith,
-} from './searchParams'
-export type { SearchSerializer, SearchParser } from './searchParams'
+} from '@tanstack/router-core'
+export type { SearchSerializer, SearchParser } from '@tanstack/router-core'
 
-export { defaultTransformer } from './transformer'
+export { defaultTransformer } from '@tanstack/router-core'
 export type {
   RouterTransformer,
   TransformerParse,
   TransformerStringify,
   DefaultTransformerParse,
   DefaultTransformerStringify,
-} from './transformer'
+} from '@tanstack/router-core'
 
 export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
@@ -319,16 +324,15 @@ export { useLocation } from './useLocation'
 
 export {
   escapeJSON, // SSR
-  useLayoutEffect, // SSR
+  // useLayoutEffect, // SSR
   pick,
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
   deepEqual,
-  useStableCallback,
   shallow,
-} from './utils'
+} from '@tanstack/router-core'
 
 export {
   notFound,
@@ -338,16 +342,16 @@ export {
 } from './not-found'
 export type { NotFoundError } from './not-found'
 
-export type { Manifest, RouterManagedTag } from './manifest'
+export type { Manifest, RouterManagedTag } from '@tanstack/router-core'
 
-export { createControlledPromise } from './utils'
+export { createControlledPromise } from '@tanstack/router-core'
 export type {
   ControlledPromise,
   Constrain,
   Expand,
   MergeAll,
   Assign,
-} from './utils'
+} from '@tanstack/router-core'
 
 export type {
   ResolveValidatorInput,
@@ -366,8 +370,8 @@ export type {
   Validator,
   ValidatorAdapter,
   ValidatorObj,
-} from './validators'
+} from '@tanstack/router-core'
 
-export { retainSearchParams, stripSearchParams } from './searchMiddleware'
+export { retainSearchParams, stripSearchParams } from '@tanstack/router-core'
 
 export * from './typePrimitives'

@@ -10,7 +10,6 @@ import { useNavigate } from './useNavigate'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
-import type { Constrain } from '../common/utils'
 import type {
   AnyContext,
   AnyPathParams,
@@ -23,9 +22,9 @@ import type {
   RouteLoaderFn,
   UpdatableRouteOptions,
 } from './route'
-import type { RegisteredRouter } from '../router'
+import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
-import type { AnyValidator } from '../common/validators'
+import type { AnyValidator, Constrain } from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'

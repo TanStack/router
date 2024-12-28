@@ -1,8 +1,9 @@
+import * as Solid from 'solid-js'
 import { useMatch } from './useMatch'
-import type { FullSearchSchema, RouteById } from '../routeInfo'
-import type { AnyRouter, RegisteredRouter } from '../router'
-import type { StrictOrFrom } from '../utils'
-import type { Expand } from '../common/utils'
+import type { FullSearchSchema, RouteById } from './routeInfo'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseSearchBaseOptions<
   TRouter extends AnyRouter,
@@ -43,7 +44,7 @@ export type UseSearchRoute<out TFrom> = <
   TSelected = unknown,
 >(
   opts?: UseSearchBaseOptions<TRouter, TFrom, true, TSelected>,
-) => UseSearchResult<TRouter, TFrom, true, TSelected>
+) => Solid.Accessor<UseSearchResult<TRouter, TFrom, true, TSelected>>
 
 export function useSearch<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -53,12 +54,12 @@ export function useSearch<
 >(
   // TODO: may need to be an accessor
   opts: UseSearchOptions<TRouter, TFrom, TStrict, TSelected>,
-): UseSearchResult<TRouter, TFrom, TStrict, TSelected> {
+): Solid.Accessor<UseSearchResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     select: (match: any) => {
       return opts.select ? opts.select(match.search) : match.search
     },
-  }) as UseSearchResult<TRouter, TFrom, TStrict, TSelected>
+  }) as Solid.Accessor<UseSearchResult<TRouter, TFrom, TStrict, TSelected>>
 }

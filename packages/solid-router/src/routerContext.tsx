@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import type { Router } from '../router'
+import type { Router } from './router'
 
 const routerContext = Solid.createContext<Router<any, any, any>>(
   null as unknown as Router<any, any, any>,

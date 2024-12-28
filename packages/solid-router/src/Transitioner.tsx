@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { trimPathRight } from '../common/path'
+import { trimPathRight } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 
@@ -10,6 +10,7 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
+  // const [isTransitioning] = Solid.useTransition()
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   // Track pending state changes
   const hasPendingMatches = useRouterState({
@@ -22,17 +23,21 @@ export function Transitioner() {
 
   if (!router.isServer) {
     router.startSolidTransition = (fn: () => void) => {
-      setIsTransitioning(true)
+      // console.log('setting isTransitioning')
+      // Solid.batch(() => {
+      // setIsTransitioning(true)
       Solid.startTransition(() => {
         fn()
-        setIsTransitioning(false)
+        // })
       })
+      // console.log('fn done')
+      // setIsTransitioning(false)
     }
   }
 
   // Subscribe to location changes
   // and try to load the new location
-  Solid.createEffect(() => {
+  Solid.onMount(() => {
     const unsub = router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
@@ -54,33 +59,28 @@ export function Transitioner() {
     Solid.onCleanup(() => {
       unsub()
     })
-  }, [router, router.history])
+  })
 
   // Try to load the initial location
-  Solid.createRenderEffect(
-    Solid.on(
-      () => {},
-      () => {
-        if (
-          (typeof window !== 'undefined' && window.__TSR__?.dehydrated) ||
-          (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
-        ) {
-          return
+  Solid.createEffect(() => {
+    Solid.untrack(() => {
+      if (
+        (typeof window !== 'undefined' && window.__TSR__?.dehydrated) ||
+        (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
+      ) {
+        return
+      }
+      mountLoadForRouter = { router, mounted: true }
+      const tryLoad = async () => {
+        try {
+          await router.load()
+        } catch (err) {
+          console.error(err)
         }
-        mountLoadForRouter = { router, mounted: true }
-
-        const tryLoad = async () => {
-          try {
-            await router.load()
-          } catch (err) {
-            console.error(err)
-          }
-        }
-
-        tryLoad()
-      },
-    ),
-  )
+      }
+      tryLoad()
+    })
+  })
 
   Solid.createRenderEffect(
     Solid.on(

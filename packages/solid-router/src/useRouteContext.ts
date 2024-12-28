@@ -1,8 +1,9 @@
+import * as Solid from 'solid-js'
 import { useMatch } from './useMatch'
-import type { AllContext, RouteById } from '../routeInfo'
-import type { AnyRouter, RegisteredRouter } from '../router'
-import type { StrictOrFrom } from '../utils'
-import type { Expand } from '../common/utils'
+import type { AllContext, RouteById } from './routeInfo'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseRouteContextBaseOptions<
   TRouter extends AnyRouter,
@@ -52,10 +53,12 @@ export function useRouteContext<
   TSelected = unknown,
 >(
   opts: UseRouteContextOptions<TRouter, TFrom, TStrict, TSelected>,
-): UseRouteContextResult<TRouter, TFrom, TStrict, TSelected> {
+): Solid.Accessor<UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
     ...(opts as any),
     select: (match) =>
       opts.select ? opts.select(match.context) : match.context,
-  }) as UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>
+  }) as Solid.Accessor<
+    UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>
+  >
 }

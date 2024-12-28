@@ -1,8 +1,9 @@
+import * as Solid from 'solid-js'
 import { useMatch } from './useMatch'
-import type { AnyRouter, RegisteredRouter } from '../router'
-import type { AllLoaderData, RouteById } from '../routeInfo'
-import type { StrictOrFrom } from '../utils'
-import type { Expand } from '../common/utils'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type { AllLoaderData, RouteById } from './routeInfo'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseLoaderDataBaseOptions<
   TRouter extends AnyRouter,
@@ -43,7 +44,7 @@ export type UseLoaderDataRoute<out TId> = <
   TSelected = unknown,
 >(
   opts?: UseLoaderDataBaseOptions<TRouter, TId, true, TSelected>,
-) => UseLoaderDataResult<TRouter, TId, true, TSelected>
+) => Solid.Accessor<UseLoaderDataResult<TRouter, TId, true, TSelected>>
 
 export function useLoaderData<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -52,12 +53,14 @@ export function useLoaderData<
   TSelected = unknown,
 >(
   opts: UseLoaderDataOptions<TRouter, TFrom, TStrict, TSelected>,
-): UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected> {
+): Solid.Accessor<UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     select: (s: any) => {
       return opts.select ? opts.select(s.loaderData) : s.loaderData
     },
-  } as any) as UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
+  } as any) as Solid.Accessor<
+    UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
+  >
 }

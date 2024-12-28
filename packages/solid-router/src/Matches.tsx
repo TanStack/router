@@ -1,16 +1,21 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
-import { CatchBoundary, ErrorComponent } from './finished/CatchBoundary'
-import { useRouterState } from './finished/useRouterState'
-import { useRouter } from './finished/useRouter'
-import { Transitioner } from './finished/Transitioner'
-import { matchContext } from './finished/matchContext'
+import { Transitioner } from './Transitioner'
+import { useRouter } from './useRouter'
+import { useRouterState } from './useRouterState'
+import { matchContext } from './matchContext'
+import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { Match } from './Match'
-import { SafeFragment } from './finished/SafeFragment'
-import type { AnyRoute, StaticDataRouteOption } from './finished/route'
+import type { AnyRoute, StaticDataRouteOption } from './route'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 import type { ToOptions } from './link'
-import type { ResolveRelativePath } from './common/link'
+import type {
+  ControlledPromise,
+  DeepPartial,
+  NoInfer,
+  ParseRoute,
+  ResolveRelativePath,
+} from '@tanstack/router-core'
 import type {
   AllContext,
   AllLoaderData,
@@ -20,106 +25,7 @@ import type {
   RouteByPath,
   RouteIds,
   RoutePaths,
-} from './finished/routeInfo'
-import type {
-  Constrain,
-  ControlledPromise,
-  DeepPartial,
-  NoInfer,
-} from './common/utils'
-
-export type AnyMatchAndValue = { match: any; value: any }
-
-export type FindValueByIndex<
-  TKey,
-  TValue extends ReadonlyArray<any>,
-> = TKey extends `${infer TIndex extends number}` ? TValue[TIndex] : never
-
-export type FindValueByKey<TKey, TValue> =
-  TValue extends ReadonlyArray<any>
-    ? FindValueByIndex<TKey, TValue>
-    : TValue[TKey & keyof TValue]
-
-export type CreateMatchAndValue<TMatch, TValue> = TValue extends any
-  ? {
-      match: TMatch
-      value: TValue
-    }
-  : never
-
-export type NextMatchAndValue<
-  TKey,
-  TMatchAndValue extends AnyMatchAndValue,
-> = TMatchAndValue extends any
-  ? CreateMatchAndValue<
-      TMatchAndValue['match'],
-      FindValueByKey<TKey, TMatchAndValue['value']>
-    >
-  : never
-
-export type IsMatchKeyOf<TValue> =
-  TValue extends ReadonlyArray<any>
-    ? number extends TValue['length']
-      ? `${number}`
-      : keyof TValue & `${number}`
-    : TValue extends object
-      ? keyof TValue & string
-      : never
-
-export type IsMatchPath<
-  TParentPath extends string,
-  TMatchAndValue extends AnyMatchAndValue,
-> = `${TParentPath}${IsMatchKeyOf<TMatchAndValue['value']>}`
-
-export type IsMatchResult<
-  TKey,
-  TMatchAndValue extends AnyMatchAndValue,
-> = TMatchAndValue extends any
-  ? TKey extends keyof TMatchAndValue['value']
-    ? TMatchAndValue['match']
-    : never
-  : never
-
-export type IsMatchParse<
-  TPath,
-  TMatchAndValue extends AnyMatchAndValue,
-  TParentPath extends string = '',
-> = TPath extends `${string}.${string}`
-  ? TPath extends `${infer TFirst}.${infer TRest}`
-    ? IsMatchParse<
-        TRest,
-        NextMatchAndValue<TFirst, TMatchAndValue>,
-        `${TParentPath}${TFirst}.`
-      >
-    : never
-  : {
-      path: IsMatchPath<TParentPath, TMatchAndValue>
-      result: IsMatchResult<TPath, TMatchAndValue>
-    }
-
-export type IsMatch<TMatch, TPath> = IsMatchParse<
-  TPath,
-  TMatch extends any ? { match: TMatch; value: TMatch } : never
->
-
-/**
- * Narrows matches based on a path
- * @experimental
- */
-export const isMatch = <TMatch, TPath extends string>(
-  match: TMatch,
-  path: Constrain<TPath, IsMatch<TMatch, TPath>['path']>,
-): match is IsMatch<TMatch, TPath>['result'] => {
-  const parts = (path as string).split('.')
-  let part
-  let value: any = match
-
-  while ((part = parts.shift()) != null && value != null) {
-    value = value[part]
-  }
-
-  return value != null
-}
+} from './routeInfo'
 
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['id'],
@@ -203,14 +109,15 @@ export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 export function Matches() {
   const router = useRouter()
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
+  const pendingElement = () =>
+    router.options.defaultPendingComponent ? (
+      <router.options.defaultPendingComponent />
+    ) : null
 
   // Do not render a root Suspense during SSR or hydrating from SSR
 
   const inner = (
-    <Solid.Suspense fallback={pendingElement}>
+    <Solid.Suspense fallback={pendingElement()}>
       <Transitioner />
       <MatchesInner />
     </Solid.Suspense>
@@ -226,7 +133,9 @@ export function Matches() {
 function MatchesInner() {
   const matchId = useRouterState({
     select: (s) => {
-      return s.matches[0]?.id
+      const v = s.matches[0]?.id
+      console.warn('MatchesInner matchId: ', v)
+      return v
     },
   })
 
@@ -235,7 +144,7 @@ function MatchesInner() {
   })
 
   return (
-    <matchContext.Provider value={matchId()}>
+    <matchContext.Provider value={matchId}>
       <CatchBoundary
         resetKey={resetKey()}
         errorComponent={ErrorComponent}
@@ -247,7 +156,9 @@ function MatchesInner() {
           warning(false, error.message || error.toString())
         }}
       >
-        {matchId() ? <Match matchId={matchId()} /> : null}
+        <Solid.Show when={matchId()}>
+          {(matchId) => <Match matchId={matchId()} />}
+        </Solid.Show>
       </CatchBoundary>
     </matchContext.Provider>
   )
@@ -284,32 +195,28 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
   useRouterState({
     select: (s) => [s.location.href, s.resolvedLocation.href, s.status],
-    structuralSharing: true as any,
   })
 
-  return React.useCallback(
-    <
-      TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-      TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-      TMaskTo extends string = '',
-      TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
-    >(
-      opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ):
-      | false
-      | RouteByPath<TRouter['routeTree'], TResolved>['types']['allParams'] => {
-      const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
+  return <
+    TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+    TTo extends string = '',
+    TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+    TMaskTo extends string = '',
+    TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+  >(
+    opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  ):
+    | false
+    | RouteByPath<TRouter['routeTree'], TResolved>['types']['allParams'] => {
+    const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      return router.matchRoute(rest as any, {
-        pending,
-        caseSensitive,
-        fuzzy,
-        includeSearch,
-      })
-    },
-    [router],
-  )
+    return router.matchRoute(rest as any, {
+      pending,
+      caseSensitive,
+      fuzzy,
+      includeSearch,
+    })
+  }
 }
 
 export type MakeMatchRouteOptions<
@@ -328,8 +235,8 @@ export type MakeMatchRouteOptions<
           TRouter['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
-      ) => ReactNode)
-    | React.ReactNode
+      ) => Solid.JSXElement)
+    | Solid.JSXElement
 }
 
 export function MatchRoute<
@@ -366,14 +273,8 @@ export type MakeRouteMatchUnion<
     >
   : never
 
-export interface UseMatchesBaseOptions<
-  TRouter extends AnyRouter,
-  TSelected,
-  TStructuralSharing,
-> {
-  select?: (
-    matches: Array<MakeRouteMatchUnion<TRouter>>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
+  select?: (matches: Array<MakeRouteMatchUnion<TRouter>>) => TSelected
 }
 
 export type UseMatchesResult<
@@ -384,10 +285,8 @@ export type UseMatchesResult<
 export function useMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): UseMatchesResult<TRouter, TSelected> {
   return useRouterState({
     select: (state: RouterState<TRouter['routeTree']>) => {
@@ -396,49 +295,42 @@ export function useMatches<
         ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
         : matches
     },
-    structuralSharing: opts?.structuralSharing,
   } as any) as UseMatchesResult<TRouter, TSelected>
 }
 
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextMatchId = React.useContext(matchContext)
+  const contextMatchId = Solid.useContext(matchContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
-        matches.findIndex((d) => d.id === contextMatchId),
+        matches.findIndex((d) => d.id === contextMatchId()),
       )
       return opts?.select ? opts.select(matches) : matches
     },
-    structuralSharing: opts?.structuralSharing,
   } as any)
 }
 
 export function useChildMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextMatchId = React.useContext(matchContext)
+  const contextMatchId = Solid.useContext(matchContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
-        matches.findIndex((d) => d.id === contextMatchId) + 1,
+        matches.findIndex((d) => d.id === contextMatchId()) + 1,
       )
       return opts?.select ? opts.select(matches) : matches
     },
-    structuralSharing: opts?.structuralSharing,
   } as any)
 }

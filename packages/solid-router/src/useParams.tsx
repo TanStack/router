@@ -1,8 +1,9 @@
-import { useMatch } from '../useMatch'
-import type { AllParams, RouteById } from '../routeInfo'
-import type { AnyRouter, RegisteredRouter } from '../router'
-import type { StrictOrFrom } from '../utils'
-import type { Expand } from '../common/utils'
+import type * as Solid from 'solid-js'
+import { useMatch } from './useMatch'
+import type { AllParams, RouteById } from './routeInfo'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
   TRouter extends AnyRouter,
@@ -43,7 +44,7 @@ export type UseParamsRoute<out TFrom> = <
   TSelected = unknown,
 >(
   opts?: UseParamsBaseOptions<TRouter, TFrom, true, TSelected>,
-) => UseParamsResult<TRouter, TFrom, true, TSelected>
+) => Solid.Accessor<UseParamsResult<TRouter, TFrom, true, TSelected>>
 
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -52,12 +53,14 @@ export function useParams<
   TSelected = unknown,
 >(
   opts: UseParamsOptions<TRouter, TFrom, TStrict, TSelected>,
-): UseParamsResult<TRouter, TFrom, TStrict, TSelected> {
+): Solid.Accessor<UseParamsResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     select: (match: any) => {
       return opts.select ? opts.select(match.params) : match.params
     },
-  } as any) as UseParamsResult<TRouter, TFrom, TStrict, TSelected>
+  } as any) as Solid.Accessor<
+    UseParamsResult<TRouter, TFrom, TStrict, TSelected>
+  >
 }

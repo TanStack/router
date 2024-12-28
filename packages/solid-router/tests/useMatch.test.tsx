@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
 import {
   Link,
   Outlet,
@@ -50,7 +50,7 @@ describe('useMatch', () => {
       history,
     })
 
-    return render(<RouterProvider router={router} />)
+    return render(() => <RouterProvider router={router} />)
   }
 
   describe('when match is found', () => {

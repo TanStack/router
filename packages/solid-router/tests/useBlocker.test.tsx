@@ -1,7 +1,6 @@
-import React from 'react'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { z } from 'zod'
 import {
@@ -28,11 +27,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => false })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -47,9 +46,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -58,7 +57,7 @@ describe('useBlocker', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -80,11 +79,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => true, disabled: true })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -99,9 +98,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -110,7 +109,7 @@ describe('useBlocker', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -132,11 +131,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => true })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -151,9 +150,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -162,7 +161,7 @@ describe('useBlocker', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -186,13 +185,13 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts', replace: true })}>
             Posts
           </button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -207,9 +206,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -218,7 +217,7 @@ describe('useBlocker', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -260,7 +259,7 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button
@@ -274,7 +273,7 @@ describe('useBlocker', () => {
           >
             Posts
           </button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -293,9 +292,9 @@ describe('useBlocker', () => {
       path: '/posts/$postId',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -304,7 +303,7 @@ describe('useBlocker', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -351,14 +350,14 @@ describe('useBlocker', () => {
       })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
           <button onClick={() => navigate({ to: '/invoices' })}>
             Invoices
           </button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -373,9 +372,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -385,9 +384,9 @@ describe('useBlocker', () => {
       path: '/invoices',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Invoices</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -398,7 +397,7 @@ describe('useBlocker', () => {
 
     type Router = typeof router
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsButton = await screen.findByRole('button', { name: 'Posts' })
 

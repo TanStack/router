@@ -6,38 +6,35 @@ import {
 import { Store } from '@tanstack/store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
-import { rootRouteId } from './common/root'
-import {
-  defaultParseSearch,
-  defaultStringifySearch,
-} from './common/searchParams'
-import {
-  createControlledPromise,
-  deepEqual,
-  functionalUpdate,
-  last,
-  pick,
-  replaceEqualDeep,
-} from './common/utils'
 import {
   cleanPath,
+  createControlledPromise,
+  deepEqual,
+  defaultParseSearch,
+  defaultSerializeError,
+  defaultStringifySearch,
+  defaultTransformer,
+  functionalUpdate,
   interpolatePath,
+  isMatch,
   joinPaths,
+  last,
   matchPathname,
   parsePathname,
+  pick,
+  replaceEqualDeep,
   resolvePath,
+  rootRouteId,
   trimPath,
   trimPathLeft,
   trimPathRight,
-} from './common/path'
+} from '@tanstack/router-core'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import { defaultTransformer } from './common/transformer'
-import { defaultSerializeError } from './common/router'
 import type {
   TrailingSlashOption,
   ViewTransitionOptions,
-} from './common/router'
+} from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 import type {
   HistoryLocation,
@@ -45,7 +42,7 @@ import type {
   RouterHistory,
 } from '@tanstack/history'
 import type { NoInfer } from '@tanstack/solid-store'
-import type { Manifest } from './common/manifest'
+import type { Manifest } from '@tanstack/router-core'
 import type {
   AnyContext,
   AnyRoute,
@@ -66,32 +63,32 @@ import type {
   RoutePaths,
   RoutesById,
   RoutesByPath,
-} from './finished/routeInfo'
+} from './routeInfo'
 import type {
   ControlledPromise,
   NonNullableUpdater,
   PickAsRequired,
   Updater,
-} from './common/utils'
+} from '@tanstack/router-core'
 import type {
   AnyRouteMatch,
   MakeRouteMatch,
   MakeRouteMatchUnion,
   MatchRouteOptions,
 } from './Matches'
-import type { ParsedLocation } from './common/location'
-import type { SearchParser, SearchSerializer } from './common/searchParams'
+import type { ParsedLocation } from '@tanstack/router-core'
+import type { SearchParser, SearchSerializer } from '@tanstack/router-core'
 import type {
   BuildLocationFn,
   CommitLocationOptions,
   NavigateFn,
-} from './finished/RouterProvider'
-import type { AnyRedirect, ResolvedRedirect } from './finished/redirects'
-import type { NotFoundError } from './finished/not-found'
+} from './RouterProvider'
+import type { AnyRedirect, ResolvedRedirect } from './redirects'
+import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ToOptions } from './link'
-import type { RouterTransformer } from './common/transformer'
-import type { AnySchema, AnyValidator } from './common/validators'
-import { ResolveRelativePath } from './common/link'
+import type { RouterTransformer } from '@tanstack/router-core'
+import type { AnySchema, AnyValidator } from '@tanstack/router-core'
+import type { ResolveRelativePath } from '@tanstack/router-core'
 
 declare global {
   interface Window {
@@ -103,7 +100,7 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<any, any, any, any, any, any>
+export type AnyRouter = Router<any, any, any, any, any>
 
 export type AnyRouterWithContext<TContext> = Router<
   AnyRouteWithContext<TContext>,
@@ -527,7 +524,6 @@ export interface DehydratedRouter {
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
-  TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
   TSerializedError extends Record<string, any>,
@@ -535,7 +531,6 @@ export type RouterConstructorOptions<
   RouterOptions<
     TRouteTree,
     TTrailingSlashOption,
-    TDefaultStructuralSharingOption,
     TRouterHistory,
     TDehydrated,
     TSerializedError
@@ -634,7 +629,6 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
 export function createRouter<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
-  TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
   TSerializedError extends Record<string, any> = Record<string, any>,
@@ -644,7 +638,6 @@ export function createRouter<
     : RouterConstructorOptions<
         TRouteTree,
         TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
         TRouterHistory,
         TDehydrated,
         TSerializedError
@@ -653,7 +646,6 @@ export function createRouter<
   return new Router<
     TRouteTree,
     TTrailingSlashOption,
-    TDefaultStructuralSharingOption,
     TRouterHistory,
     TDehydrated,
     TSerializedError
@@ -670,7 +662,6 @@ type MatchRoutesOpts = {
 export class Router<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
-  in out TDefaultStructuralSharingOption extends boolean,
   in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
   in out TSerializedError extends Record<string, any> = Record<string, any>,
@@ -737,7 +728,6 @@ export class Router<
     options: RouterConstructorOptions<
       TRouteTree,
       TTrailingSlashOption,
-      TDefaultStructuralSharingOption,
       TRouterHistory,
       TDehydrated,
       TSerializedError
@@ -770,7 +760,6 @@ export class Router<
     newOptions: RouterConstructorOptions<
       TRouteTree,
       TTrailingSlashOption,
-      TDefaultStructuralSharingOption,
       TRouterHistory,
       TDehydrated,
       TSerializedError
@@ -1870,7 +1859,7 @@ export class Router<
   navigate: NavigateFn = ({ to, reloadDocument, href, ...rest }) => {
     if (reloadDocument) {
       if (!href) {
-        const location = this.buildLocation({ to, ...rest } as any)
+        const location = this.buildLocation({ to, ...rest })
         href = location.href
       }
       if (rest.replace) {
@@ -2116,12 +2105,14 @@ export class Router<
           : ''
 
     if (matchesKey) {
-      this.__store.setState((s) => ({
-        ...s,
-        [matchesKey]: s[matchesKey]?.map((d) =>
-          d.id === id ? (updated = updater(d)) : d,
-        ),
-      }))
+      this.__store.setState((s) => {
+        return {
+          ...s,
+          [matchesKey]: s[matchesKey]?.map((d) =>
+            d.id === id ? (updated = updater(d)) : d,
+          ),
+        }
+      })
     }
 
     return updated
@@ -2404,7 +2395,7 @@ export class Router<
                   }
 
                   updateMatch(matchId, (prev) => {
-                    return {
+                    const v = {
                       ...prev,
                       __beforeLoadContext: beforeLoadContext,
                       context: {
@@ -2414,6 +2405,8 @@ export class Router<
                       },
                       abortController,
                     }
+
+                    return v
                   })
                 } catch (err) {
                   handleSerialError(index, err, 'BEFORE_LOAD')
@@ -2666,6 +2659,7 @@ export class Router<
 
             resolveAll()
           } catch (err) {
+            console.warn(err.stack)
             rejectAll(err)
           }
         })()
@@ -2805,7 +2799,6 @@ export class Router<
       Router<
         TRouteTree,
         TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
         TRouterHistory,
         TDehydrated,
         TSerializedError
@@ -2888,7 +2881,6 @@ export class Router<
       Router<
         TRouteTree,
         TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
         TRouterHistory,
         TDehydrated,
         TSerializedError

@@ -1,6 +1,6 @@
 import warning from 'tiny-warning'
 import { DefaultGlobalNotFound } from './not-found'
-import type { AnyRouter } from '../router'
+import type { AnyRouter } from './router'
 import type { AnyRoute } from './route'
 
 export function renderRouteNotFound(

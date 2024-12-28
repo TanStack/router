@@ -1,5 +1,5 @@
 import { useRouterState } from './useRouterState'
-import type { AnyRouter, RegisteredRouter, RouterState } from '../router'
+import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
 export interface UseLocationBaseOptions<TRouter extends AnyRouter, TSelected> {
   select?: (state: RouterState<TRouter['routeTree']>['location']) => TSelected // TODO: might need to ValidateJSON here

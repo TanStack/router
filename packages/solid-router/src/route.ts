@@ -1,7 +1,6 @@
 import invariant from 'tiny-invariant'
-import { joinPaths, trimPathLeft } from '../common/path'
-import { notFound } from '../not-found'
-import { rootRouteId } from '../common/root'
+import { joinPaths, trimPathLeft, rootRouteId } from '@tanstack/router-core'
+import { notFound } from './not-found'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
@@ -13,35 +12,35 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
-import type { RootRouteId } from '../common/root'
+import type { RootRouteId } from '@tanstack/router-core'
 import type { UseNavigateResult } from './useNavigate'
 import type {
   AnyRouteMatch,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
   RouteMatch,
-} from '../Matches'
-import type { NavigateOptions, ToMaskOptions } from '../link'
-import type { ParsedLocation } from '../common/location'
+} from './Matches'
+import type { NavigateOptions, ToMaskOptions } from './link'
+import type { ParsedLocation } from '@tanstack/router-core'
 import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
-import type { AnyRouter, RegisteredRouter, Router } from '../router'
+import type { AnyRouter, RegisteredRouter, Router } from './router'
 import type {
   Assign,
   Constrain,
   ConstrainLiteral,
   Expand,
   NoInfer,
-} from '../common/utils'
+} from '@tanstack/router-core'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
-import type { NotFoundError } from '../not-found'
-import type { LazyRoute } from '../fileRoute'
+import type { NotFoundError } from './not-found'
+import type { LazyRoute } from './fileRoute'
 import type {
   AnySchema,
   AnyValidator,
   DefaultValidator,
   ResolveSearchValidatorInput,
   ResolveValidatorOutput,
-} from '../common/validators'
+} from '@tanstack/router-core'
 import type { UseRouteContextRoute } from './useRouteContext'
 
 import type {
@@ -69,9 +68,9 @@ import type {
   SearchMiddleware,
   TrimPathRight,
   UpdatableStaticRouteOption,
-} from '../common/route'
+} from '@tanstack/router-core'
 
-export * from '../common/route'
+export * from '@tanstack/router-core'
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
@@ -1320,7 +1319,7 @@ export function createRouteMask<
 >(
   opts: {
     routeTree: TRouteTree
-  } & ToMaskOptions<Router<TRouteTree, 'never', boolean>, TFrom, TTo>,
+  } & ToMaskOptions<Router<TRouteTree, 'never'>, TFrom, TTo>,
 ): RouteMask<TRouteTree> {
   return opts as any
 }
