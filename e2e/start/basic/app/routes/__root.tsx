@@ -113,6 +113,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Layout
           </Link>{' '}
           <Link
+            to="/scripts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Scripts
+          </Link>{' '}
+          <Link
             to="/deferred"
             activeProps={{
               className: 'font-bold',
