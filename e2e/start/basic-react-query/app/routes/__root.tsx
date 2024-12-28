@@ -5,7 +5,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import type { QueryClient } from '@tanstack/react-query'
