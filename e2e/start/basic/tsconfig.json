@@ -1,5 +1,5 @@
 {
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "public/script*.js"],
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,

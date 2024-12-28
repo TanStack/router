@@ -32,6 +32,17 @@ test('Navigating nested layouts', async ({ page }) => {
   await expect(page.locator('body')).toContainText("I'm layout B!")
 })
 
+test('Navigating to route with scripts', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('link', { name: 'Scripts' }).click()
+
+  expect(page.getByTestId('script')).toBeAttached()
+  expect(expect(page.getByTestId('script2')).toBeAttached()).rejects.toThrow(
+    '<element(s) not found>',
+  )
+})
+
 test('Navigating to a not-found route', async ({ page }) => {
   await page.goto('/')
 
@@ -193,7 +204,7 @@ test('env-only functions can only be called on the server or client respectively
   )
 })
 
-test.only('Server function can return null for GET and POST calls', async ({
+test('Server function can return null for GET and POST calls', async ({
   page,
 }) => {
   await page.goto('/server-fns')
