@@ -3405,9 +3405,6 @@ importers:
       '@tanstack/react-store':
         specifier: ^0.7.0
         version: 0.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@tanstack/router-generator':
-        specifier: workspace:*
-        version: link:../router-generator
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2
@@ -3501,6 +3498,9 @@ importers:
 
   packages/router-generator:
     dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../virtual-file-routes
@@ -3513,10 +3513,6 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.23.8
-    devDependencies:
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../react-router
 
   packages/router-plugin:
     dependencies:

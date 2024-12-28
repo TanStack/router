@@ -69,7 +69,12 @@
     "prettier": "^3.4.2",
     "zod": "^3.23.8"
   },
-  "devDependencies": {
+  "peerDependencies": {
     "@tanstack/react-router": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/router-router": {
+      "optional": true
+    }
   }
 }
