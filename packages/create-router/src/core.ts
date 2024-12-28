@@ -3,7 +3,7 @@ import type { ApplyParams, PeerDependency } from './types'
 
 export const dependencies = [
   '@tanstack/react-router',
-  '@tanstack/react-router-devtools',
+  '@tanstack/router-devtools',
   'react',
   'react-dom',
 ] as const satisfies Array<PeerDependency>
