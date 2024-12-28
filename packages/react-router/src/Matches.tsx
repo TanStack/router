@@ -343,7 +343,7 @@ export function MatchRoute<
   const TMaskTo extends string = '',
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const matchRoute = useMatchRoute()
-  const params = matchRoute(props as any)
+  const params = matchRoute(props as any) as boolean
 
   if (typeof props.children === 'function') {
     return (props.children as any)(params)
