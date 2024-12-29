@@ -73,7 +73,7 @@
     "@tanstack/react-router": "workspace:^"
   },
   "peerDependenciesMeta": {
-    "@tanstack/router-router": {
+    "@tanstack/react-router": {
       "optional": true
     }
   }
