@@ -22,11 +22,11 @@ import type {
   FullSearchSchema,
   FullSearchSchemaInput,
   ParentPath,
-  RootPath,
   RouteByPath,
   RouteByToPath,
   RoutePaths,
   RouteToPath,
+  ToPath,
   TrailingSlashOptionByRouter,
 } from './routeInfo'
 import type {
@@ -79,26 +79,27 @@ export type RemoveLeadingSlashes<T> = T extends `/${string}`
 export type FindDescendantPaths<
   TRouter extends AnyRouter,
   TPrefix extends string,
-  TCleanedPrefix extends string = RemoveTrailingSlashes<TPrefix>,
-> = (TPrefix | `${TCleanedPrefix}/${string}`) & RouteToPath<TRouter>
+> = `${TPrefix}/${string}` & RouteToPath<TRouter>
 
 export type SearchPaths<
   TRouter extends AnyRouter,
   TPrefix extends string,
   TPaths = FindDescendantPaths<TRouter, TPrefix>,
-  TCleanedPrefix extends string = RemoveTrailingSlashes<TPrefix>,
-  TRootPath = RootPath<TrailingSlashOptionByRouter<TRouter>>,
-> = TPaths extends TPrefix
-  ? TRootPath
-  : TPaths extends `${TCleanedPrefix}/${infer TRest}`
-    ? `/${TRest}`
+> = TPaths extends `${TPrefix}/`
+  ? never
+  : TPaths extends `${TPrefix}/${infer TRest}`
+    ? TRest
     : never
 
 export type SearchRelativePathAutoComplete<
   TRouter extends AnyRouter,
   TTo extends string,
   TSearchPath extends string,
-> = `${TTo}${SearchPaths<TRouter, TSearchPath>}`
+> =
+  | (TSearchPath & RouteToPath<TRouter> extends never
+      ? never
+      : ToPath<TrailingSlashOptionByRouter<TRouter>, TTo>)
+  | `${TTo}/${SearchPaths<TRouter, RemoveTrailingSlashes<TSearchPath>>}`
 
 export type RelativeToParentPathAutoComplete<
   TRouter extends AnyRouter,
@@ -110,7 +111,10 @@ export type RelativeToParentPathAutoComplete<
   | (TTo extends `${string}..` | `${string}../`
       ? TResolvedPath extends '/' | ''
         ? never
-        : FindDescendantPaths<TRouter, TResolvedPath> extends never
+        : FindDescendantPaths<
+              TRouter,
+              RemoveTrailingSlashes<TResolvedPath>
+            > extends never
           ? never
           : `${TTo}/${ParentPath<TrailingSlashOptionByRouter<TRouter>>}`
       : never)
@@ -132,9 +136,7 @@ export type AbsolutePathAutoComplete<
       ? CurrentPath<TrailingSlashOptionByRouter<TRouter>>
       : TFrom extends `/`
         ? never
-        : FindDescendantPaths<TRouter, TFrom> extends never
-          ? never
-          : CurrentPath<TrailingSlashOptionByRouter<TRouter>>)
+        : CurrentPath<TrailingSlashOptionByRouter<TRouter>>)
   | (string extends TFrom
       ? ParentPath<TrailingSlashOptionByRouter<TRouter>>
       : TFrom extends `/`
@@ -145,9 +147,7 @@ export type AbsolutePathAutoComplete<
       ? never
       : string extends TFrom
         ? never
-        : RemoveLeadingSlashes<
-            SearchPaths<TRouter, RemoveTrailingSlashes<TFrom>>
-          >)
+        : SearchPaths<TRouter, RemoveTrailingSlashes<TFrom>>)
 
 export type RelativeToPathAutoComplete<
   TRouter extends AnyRouter,

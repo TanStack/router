@@ -396,7 +396,6 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
       | '..'
       | '.'
       | '/'
@@ -416,7 +415,6 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
       | '..'
       | '.'
       | '/'
@@ -439,7 +437,6 @@ test('when navigating from a route with no params and no search to the root', ()
       | '../'
       | './'
       | '/'
-      | ''
       | '/invoices/'
       | '/invoices/$invoiceId/'
       | '/invoices/$invoiceId/edit/'
@@ -456,7 +453,6 @@ test('when navigating from a route with no params and no search to the root', ()
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
-      | ''
       | '..'
       | '.'
       | '/'
@@ -479,10 +475,8 @@ test('when navigating from a route with no params and no search to the root', ()
       | '.'
       | '..'
       | '../'
-      | '../'
       | './'
       | '/'
-      | ''
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
