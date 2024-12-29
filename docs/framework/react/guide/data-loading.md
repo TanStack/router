@@ -478,7 +478,6 @@ The `reset` function can be used to allow the user to retry rendering the error 
 export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   errorComponent: ({ error, reset }) => {
-
     return (
       <div>
         {error.message}
