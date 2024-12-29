@@ -71,6 +71,12 @@ export type CurrentPath<TOption> = 'always' extends TOption
     ? '.'
     : './' | '.'
 
+export type ToPath<TOption, TTo extends string> = 'always' extends TOption
+  ? `${TTo}/`
+  : 'never' extends TOption
+    ? TTo
+    : TTo | `${TTo}/`
+
 export type CatchAllPaths<TOption> = CurrentPath<TOption> | ParentPath<TOption>
 
 export type CodeRoutesByPath<TRouteTree extends AnyRoute> =

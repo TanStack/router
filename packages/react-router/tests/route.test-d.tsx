@@ -1245,7 +1245,6 @@ test('when creating a child route with context, search, params and beforeLoad', 
         .toHaveProperty('to')
         .toEqualTypeOf<
           | '.'
-          | './'
           | './invoices'
           | './invoices/$invoiceId'
           | './invoices/$invoiceId/details'

@@ -383,36 +383,38 @@ test('when using redirect', () => {
 })
 
 test('when using useSearch from a route with no search', () => {
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/blog'>)
+  expectTypeOf(useSearch<DefaultRouter, '/blog'>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
+      | '__root__'
       | '/'
       | '/blog'
+      | '/blog/'
       | '/posts'
       | '/blog/$slug'
-      | '/blog/stats'
+      | '/blog_/stats'
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
     >()
 
-  expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/blog'>,
-  ).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useSearch<DefaultRouter, '/blog'>).returns.toEqualTypeOf<{}>()
 })
 
 test('when using useSearch from a route with search', () => {
-  expectTypeOf(useSearch<DefaultRouter['routeTree'], '/blog'>)
+  expectTypeOf(useSearch<DefaultRouter, '/blog'>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
+      | '__root__'
       | '/'
       | '/blog'
+      | '/blog/'
       | '/posts'
       | '/blog/$slug'
-      | '/blog/stats'
+      | '/blog_/stats'
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
@@ -420,20 +422,22 @@ test('when using useSearch from a route with search', () => {
     >()
 
   expectTypeOf(
-    useSearch<DefaultRouter['routeTree'], '/posts/$postId/'>,
+    useSearch<DefaultRouter, '/posts/$postId/'>,
   ).returns.toEqualTypeOf<{ indexSearch: string }>()
 })
 
 test('when using useLoaderData from a route with loaderData', () => {
-  expectTypeOf(useLoaderData<DefaultRouter['routeTree'], '/posts/$postId/deep'>)
+  expectTypeOf(useLoaderData<DefaultRouter, '/posts/$postId/deep'>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
+      | '__root__'
       | '/'
       | '/blog'
+      | '/blog/'
       | '/posts'
       | '/blog/$slug'
-      | '/blog/stats'
+      | '/blog_/stats'
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
@@ -441,20 +445,22 @@ test('when using useLoaderData from a route with loaderData', () => {
     >()
 
   expectTypeOf(
-    useLoaderData<DefaultRouter['routeTree'], '/posts/$postId/deep'>,
+    useLoaderData<DefaultRouter, '/posts/$postId/deep'>,
   ).returns.toEqualTypeOf<{ data: string }>()
 })
 
 test('when using useLoaderDeps from a route with loaderDeps', () => {
-  expectTypeOf(useLoaderDeps<DefaultRouter['routeTree'], '/posts/$postId/deep'>)
+  expectTypeOf(useLoaderDeps<DefaultRouter, '/posts/$postId/deep'>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
+      | '__root__'
       | '/'
       | '/blog'
+      | '/blog/'
       | '/posts'
       | '/blog/$slug'
-      | '/blog/stats'
+      | '/blog_/stats'
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
@@ -462,20 +468,22 @@ test('when using useLoaderDeps from a route with loaderDeps', () => {
     >()
 
   expectTypeOf(
-    useLoaderDeps<DefaultRouter['routeTree'], '/posts/$postId/deep'>,
+    useLoaderDeps<DefaultRouter, '/posts/$postId/deep'>,
   ).returns.toEqualTypeOf<{ dep: number }>()
 })
 
 test('when using useMatch from a route', () => {
-  expectTypeOf(useMatch<DefaultRouter['routeTree'], '/posts/$postId/deep'>)
+  expectTypeOf(useMatch<DefaultRouter, '/posts/$postId/deep'>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
+      | '__root__'
       | '/'
       | '/blog'
+      | '/blog/'
       | '/posts'
       | '/blog/$slug'
-      | '/blog/stats'
+      | '/blog_/stats'
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
@@ -483,22 +491,24 @@ test('when using useMatch from a route', () => {
     >()
 
   expectTypeOf(
-    useMatch<DefaultRouter['routeTree'], '/posts/$postId/deep'>,
+    useMatch<DefaultRouter, '/posts/$postId/deep'>,
   ).returns.toEqualTypeOf<
     MakeRouteMatch<DefaultRouter['routeTree'], '/posts/$postId/deep', true>
   >()
 })
 
 test('when using useParams from a route', () => {
-  expectTypeOf(useParams<DefaultRouter['routeTree'], '/posts/$postId/deep'>)
+  expectTypeOf(useParams<DefaultRouter, '/posts/$postId/deep'>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
+      | '__root__'
       | '/'
       | '/blog'
+      | '/blog/'
       | '/posts'
       | '/blog/$slug'
-      | '/blog/stats'
+      | '/blog_/stats'
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
@@ -506,22 +516,22 @@ test('when using useParams from a route', () => {
     >()
 
   expectTypeOf(
-    useParams<DefaultRouter['routeTree'], '/posts/$postId/deep'>,
+    useParams<DefaultRouter, '/posts/$postId/deep'>,
   ).returns.toEqualTypeOf<{ postId: string }>()
 })
 
 test('when using useRouteContext from a route', () => {
-  expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/posts/$postId/deep'>,
-  )
+  expectTypeOf(useRouteContext<DefaultRouter, '/posts/$postId/deep'>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
+      | '__root__'
       | '/'
       | '/blog'
+      | '/blog/'
       | '/posts'
       | '/blog/$slug'
-      | '/blog/stats'
+      | '/blog_/stats'
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
@@ -529,6 +539,6 @@ test('when using useRouteContext from a route', () => {
     >()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter['routeTree'], '/posts/$postId/deep'>,
+    useRouteContext<DefaultRouter, '/posts/$postId/deep'>,
   ).returns.toEqualTypeOf<{ someContext: string }>()
 })
