@@ -33,8 +33,8 @@ export const Scripts = () => {
       scripts: (
         state.matches
           .map((match) => match.scripts!)
-          .filter(Boolean)
-          .flat(1) as Array<RouterManagedTag>
+          .flat(1)
+          .filter(Boolean) as Array<RouterManagedTag>
       ).map(({ children, ...script }) => ({
         tag: 'script',
         attrs: {

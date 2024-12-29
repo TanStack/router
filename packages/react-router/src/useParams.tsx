@@ -63,7 +63,7 @@ export type UseParamsRoute<out TFrom> = <
 
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string | undefined = undefined,
+  const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,

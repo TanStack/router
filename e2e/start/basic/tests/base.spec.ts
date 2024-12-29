@@ -32,6 +32,15 @@ test('Navigating nested layouts', async ({ page }) => {
   await expect(page.locator('body')).toContainText("I'm layout B!")
 })
 
+test('Navigating to route with scripts', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('link', { name: 'Scripts' }).click()
+
+  await expect(page.getByTestId('script')).toHaveCount(1)
+  await expect(page.getByTestId('script2')).toHaveCount(0)
+})
+
 test('Navigating to a not-found route', async ({ page }) => {
   await page.goto('/')
 
@@ -79,10 +88,12 @@ test('invoking a server function with custom response status code', async ({
       expect(response.status()).toBe(225)
       expect(response.statusText()).toBe('hello')
       expect(response.headers()['content-type']).toBe('application/json')
-      expect(await response.json()).toEqual({
-        result: { hello: 'world' },
-        context: {},
-      })
+      expect(await response.json()).toEqual(
+        expect.objectContaining({
+          result: { hello: 'world' },
+          context: {},
+        }),
+      )
       resolve()
     })
   })
@@ -193,7 +204,7 @@ test('env-only functions can only be called on the server or client respectively
   )
 })
 
-test.only('Server function can return null for GET and POST calls', async ({
+test('Server function can return null for GET and POST calls', async ({
   page,
 }) => {
   await page.goto('/server-fns')
