@@ -1,5 +1,5 @@
 ---
-title: Comparison | TanStack Router & TanStack Start vs React Router
+title: Comparison | TanStack Router & TanStack Start vs Next.js vs React Router / Remix
 toc: false
 ---
 
