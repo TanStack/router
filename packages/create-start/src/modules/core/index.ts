@@ -1,10 +1,10 @@
-import { dirname } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs';
 import { z } from 'zod'
 import { packageJsonModule } from '../packageJson'
 import { createModule, runWithSpinner } from '../../module'
 import { ideModule } from '../ide'
-import packageJson from '../../../package.json' assert { type: 'json' }
 import { packageManagerModule } from '../packageManager'
 import { initHelpers } from '../../utils/helpers'
 import { gitModule } from '../git'
@@ -12,6 +12,13 @@ import { createDebugger } from '../../utils/debug'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+const createStartPackageJson = JSON.parse(
+  readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), '../../../package.json'),
+    'utf8'
+  )
+);
 
 const debug = createDebugger('core-module')
 
@@ -243,7 +250,7 @@ export const coreModule = createModule(
 
 type DepNames<
   T extends
-    (typeof packageJson)['peerDependencies'] = (typeof packageJson)['peerDependencies'],
+    (typeof createStartPackageJson)['peerDependencies'] = (typeof createStartPackageJson)['peerDependencies'],
 > = keyof T
 
 const deps = async (
@@ -258,9 +265,9 @@ const deps = async (
   const result = await Promise.all(
     depsArray.map((d) => {
       const version =
-        packageJson['peerDependencies'][d] === 'workspace:^'
+        createStartPackageJson['peerDependencies'][d] === 'workspace:^'
           ? 'latest' // Use latest in development
-          : packageJson['peerDependencies'][d]
+          : createStartPackageJson['peerDependencies'][d]
       return {
         name: d,
         version: version,
