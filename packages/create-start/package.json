@@ -44,6 +44,7 @@
   "dependencies": {
     "gradient-string": "^3.0.0",
     "@commander-js/extra-typings": "^12.1.0",
+    "commander": "^12.1.0",
     "@inquirer/prompts": "^5.5.0",
     "cross-spawn": "^7.0.5",
     "fast-glob": "^3.3.2",
