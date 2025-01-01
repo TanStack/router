@@ -1,6 +1,6 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { packageJsonModule } from '../packageJson'
 import { createModule, runWithSpinner } from '../../module'
@@ -16,9 +16,9 @@ const __dirname = dirname(__filename)
 const createStartPackageJson = JSON.parse(
   readFileSync(
     resolve(dirname(fileURLToPath(import.meta.url)), '../../../package.json'),
-    'utf8'
-  )
-);
+    'utf8',
+  ),
+)
 
 const debug = createDebugger('core-module')
 
