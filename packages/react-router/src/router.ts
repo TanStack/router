@@ -2397,7 +2397,6 @@ export class Router<
                     context: {
                       ...getParentMatchContext(),
                       ...prev.__routeContext,
-                      ...prev.__beforeLoadContext,
                     },
                   }))
 
