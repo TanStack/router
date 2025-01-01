@@ -1937,7 +1937,7 @@ export class Router<
 
   latestLoadPromise: undefined | Promise<void>
 
-  load = async (opts?: { forceSyncLoaders?: boolean }): Promise<void> => {
+  load = async (opts?: { sync?: boolean }): Promise<void> => {
     this.latestLocation = this.parseLocation(this.latestLocation)
 
     let redirect: ResolvedRedirect | undefined
@@ -2000,7 +2000,7 @@ export class Router<
           })
 
           await this.loadMatches({
-            forceSyncLoaders: opts?.forceSyncLoaders,
+            sync: opts?.sync,
             matches: pendingMatches,
             location: next,
             // eslint-disable-next-line @typescript-eslint/require-await
@@ -2189,7 +2189,7 @@ export class Router<
     preload: allPreload,
     onReady,
     updateMatch = this.updateMatch,
-    forceSyncLoaders,
+    sync,
   }: {
     location: ParsedLocation
     matches: Array<AnyRouteMatch>
@@ -2200,7 +2200,7 @@ export class Router<
       updater: (match: AnyRouteMatch) => AnyRouteMatch,
     ) => void
     getMatch?: (matchId: string) => AnyRouteMatch | undefined
-    forceSyncLoaders?: boolean
+    sync?: boolean
   }): Promise<Array<MakeRouteMatch>> => {
     let firstBadMatchIndex: number | undefined
     let rendered = false
@@ -2675,7 +2675,7 @@ export class Router<
                       (invalid || (shouldReload ?? age > staleAge))
                     if (preload && route.options.preload === false) {
                       // Do nothing
-                    } else if (loaderShouldRunAsync && !forceSyncLoaders) {
+                    } else if (loaderShouldRunAsync && !sync) {
                       loaderIsRunningAsync = true
                       ;(async () => {
                         try {
@@ -2696,7 +2696,7 @@ export class Router<
                       })()
                     } else if (
                       status !== 'success' ||
-                      (loaderShouldRunAsync && forceSyncLoaders)
+                      (loaderShouldRunAsync && sync)
                     ) {
                       await runLoader()
                     }
@@ -2744,7 +2744,7 @@ export class Router<
 
   invalidate = <TRouter extends AnyRouter = typeof this>(opts?: {
     filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
-    forceSyncLoaders?: boolean
+    sync?: boolean
   }) => {
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
       if (opts?.filter?.(d as MakeRouteMatchUnion<TRouter>) ?? true) {
@@ -2766,7 +2766,7 @@ export class Router<
       pendingMatches: s.pendingMatches?.map(invalidate),
     }))
 
-    return this.load({ forceSyncLoaders: opts?.forceSyncLoaders })
+    return this.load({ sync: opts?.sync })
   }
 
   resolveRedirect = (err: AnyRedirect): ResolvedRedirect => {

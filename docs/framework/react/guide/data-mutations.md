@@ -52,7 +52,7 @@ const addTodo = async (todo: Todo) => {
 
 Invalidating all of the current route matches happens in the background, so existing data will continue to be served until the new data is ready, just as if you were navigating to a new route.
 
-If you want to await the invalidation until all loaders have finished, pass `{forceSyncLoaders: true}` into `router.invalidate`:
+If you want to await the invalidation until all loaders have finished, pass `{sync: true}` into `router.invalidate`:
 
 ```tsx
 const router = useRouter()
@@ -60,7 +60,7 @@ const router = useRouter()
 const addTodo = async (todo: Todo) => {
   try {
     await api.addTodo()
-    await router.invalidate({ forceSyncLoaders: true })
+    await router.invalidate({ sync: true })
   } catch {
     //
   }
