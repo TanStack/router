@@ -52,6 +52,21 @@ const addTodo = async (todo: Todo) => {
 
 Invalidating all of the current route matches happens in the background, so existing data will continue to be served until the new data is ready, just as if you were navigating to a new route.
 
+If you want to await the invalidation until all loaders have finished, pass `{sync: true}` into `router.invalidate`:
+
+```tsx
+const router = useRouter()
+
+const addTodo = async (todo: Todo) => {
+  try {
+    await api.addTodo()
+    await router.invalidate({ sync: true })
+  } catch {
+    //
+  }
+}
+```
+
 ## Long-term mutation State
 
 Regardless of the mutation library used, mutations often create state related to their submission. While most mutations are set-and-forget, some mutation states are more long-lived, either to support optimistic UI or to provide feedback to the user about the status of their submissions. Most state managers will correctly keep this submission state around and expose it to make it possible to show UI elements like loading spinners, success messages, error messages, etc.

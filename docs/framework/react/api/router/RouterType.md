@@ -139,10 +139,11 @@ Navigates to a new location.
 
 Invalidates route matches by forcing their `beforeLoad` and `load` functions to be called again.
 
-- Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean}) => Promise<void>`
+- Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean, sync?: boolean}) => Promise<void>`
 - This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
 - if `filter` is not supplied, all matches will be invalidated
 - if `filter` is supplied, only matches for which `filter` returns `true` will be invalidated.
+- if `sync` is true, the promise returned by this function will only resolve once all loaders have finished.
 - You might also want to invalidate the Router if you imperatively `reset` the router's `CatchBoundary` to trigger loaders again.
 
 ### `.clearCache` method
@@ -159,7 +160,8 @@ Loads all of the currently matched route matches and resolves when they are all 
 
 > ⚠️⚠️⚠️ **`router.load()` respects `route.staleTime` and will not forcefully reload a route match if it is still fresh. If you need to forcefully reload a route match, use `router.invalidate()` instead.**
 
-- Type: `() => Promise<void>`
+- Type: `(opts?: {sync?: boolean}) => Promise<void>`
+- if `sync` is true, the promise returned by this function will only resolve once all loaders have finished.
 - The most common use case for this method is to call it when doing SSR to ensure that all of the critical data for the current route is loaded before attempting to stream or render the application to the client.
 
 ### `.preloadRoute` method
