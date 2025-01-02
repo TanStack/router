@@ -1,8 +1,6 @@
 import type {
   FromPathOption,
   LinkComponentProps,
-  LinkOptions,
-  LinkProps,
   NavigateOptions,
   PathParamOptions,
   SearchParamOptions,
