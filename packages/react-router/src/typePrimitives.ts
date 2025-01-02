@@ -1,5 +1,8 @@
 import type {
   FromPathOption,
+  LinkComponentProps,
+  LinkOptions,
+  LinkProps,
   NavigateOptions,
   PathParamOptions,
   SearchParamOptions,
@@ -59,7 +62,7 @@ export type InferMaskTo<TOptions> = TOptions extends {
   mask: { to: infer TTo extends string }
 }
   ? TTo
-  : string
+  : ''
 
 export type InferMaskFrom<TOptions> = TOptions extends {
   mask: { from: infer TFrom extends string }
@@ -81,8 +84,34 @@ export type ValidateNavigateOptions<
   >
 >
 
-export type ValidateNavigateOptionsArray<TOptions extends ReadonlyArray<any>> =
-  { [K in keyof TOptions]: ValidateNavigateOptions<TOptions[K]> }
+export type ValidateNavigateOptionsArray<
+  TOptions extends ReadonlyArray<any>,
+  TRouter extends AnyRouter = RegisteredRouter,
+> = { [K in keyof TOptions]: ValidateNavigateOptions<TOptions[K], TRouter> }
+
+export type ValidateLinkOptions<
+  TOptions,
+  TComp = 'a',
+  TRouter extends AnyRouter = RegisteredRouter,
+> = Constrain<
+  TOptions,
+  LinkComponentProps<
+    TComp,
+    TRouter,
+    InferFrom<TOptions>,
+    InferTo<TOptions>,
+    InferMaskFrom<TOptions>,
+    InferMaskTo<TOptions>
+  >
+>
+
+export type ValidateLinkOptionsArray<
+  TOptions extends ReadonlyArray<any>,
+  TComp = 'a',
+  TRouter extends AnyRouter = RegisteredRouter,
+> = {
+  [K in keyof TOptions]: ValidateLinkOptions<TOptions[K], TComp, TRouter>
+}
 
 export type ValidateId<
   TId extends string,
