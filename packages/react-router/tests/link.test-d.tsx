@@ -4060,36 +4060,26 @@ test('navigation edge cases', () => {
 
 test('linkOptions', () => {
   const defaultRouterLinkOptions = linkOptions<
-    { label: string },
-    DefaultRouter,
-    string,
-    '/'
+    { label: string; to: '/' },
+    DefaultRouter
   >
   const defaultRouterObjectsLinkOptions = linkOptions<
-    { label: string },
-    DefaultRouter,
-    string,
-    '/'
+    { label: string; to: '/' },
+    DefaultRouter
   >
 
   const routerAlwaysTrailingSlashLinkOptions = linkOptions<
-    { label: string },
-    RouterAlwaysTrailingSlashes,
-    string,
-    '/'
+    { label: string; to: '/' },
+    RouterAlwaysTrailingSlashes
   >
 
   const routerNeverTrailingSlashLinkOptions = linkOptions<
-    { label: string },
-    RouterNeverTrailingSlashes,
-    string,
-    '/'
+    { label: string; to: '/' },
+    RouterNeverTrailingSlashes
   >
   const routerPreserveTrailingSlashLinkOptions = linkOptions<
-    { label: string },
-    RouterPreserveTrailingSlashes,
-    string,
-    '/'
+    { label: string; to: '/' },
+    RouterPreserveTrailingSlashes
   >
 
   expectTypeOf(defaultRouterLinkOptions)
@@ -4324,21 +4314,26 @@ test('linkOptions', () => {
 
   expectTypeOf(defaultRouterLinkOptions).returns.toEqualTypeOf<{
     label: string
+    to: '/'
   }>()
 
   expectTypeOf(defaultRouterObjectsLinkOptions).returns.toEqualTypeOf<{
     label: string
+    to: '/'
   }>()
 
   expectTypeOf(routerAlwaysTrailingSlashLinkOptions).returns.toEqualTypeOf<{
     label: string
+    to: '/'
   }>()
 
   expectTypeOf(routerNeverTrailingSlashLinkOptions).returns.toEqualTypeOf<{
     label: string
+    to: '/'
   }>()
 
   expectTypeOf(routerPreserveTrailingSlashLinkOptions).returns.toEqualTypeOf<{
     label: string
+    to: '/'
   }>()
 })

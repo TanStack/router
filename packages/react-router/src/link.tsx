@@ -46,6 +46,10 @@ import type {
   WithoutEmpty,
 } from './utils'
 import type { ReactNode } from 'react'
+import type {
+  ValidateLinkOptions,
+  ValidateLinkOptionsArray,
+} from './typePrimitives'
 
 export type ParsePathParams<T extends string, TAcc = never> = T &
   `${string}$${string}` extends never
@@ -1040,19 +1044,21 @@ function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
 }
 
-export type LinkOptionsFn<TComp> = <
-  const TProps,
+export type LinkOptionsFnOptions<
+  TOptions,
+  TComp,
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string = string,
-  TTo extends string | undefined = undefined,
-  TMaskFrom extends string = TFrom,
-  TMaskTo extends string = '',
+> =
+  TOptions extends ReadonlyArray<any>
+    ? ValidateLinkOptionsArray<TOptions, TComp, TRouter>
+    : ValidateLinkOptions<TOptions, TComp, TRouter>
+
+export type LinkOptionsFn<TComp> = <
+  const TOptions,
+  TRouter extends AnyRouter = RegisteredRouter,
 >(
-  options: Constrain<
-    TProps,
-    LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
-  >,
-) => TProps
+  options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
+) => TOptions
 
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {
   return options as any
