@@ -234,16 +234,27 @@ export type ToSubOptions<
   SearchParamOptions<TRouter, TFrom, TTo> &
   PathParamOptions<TRouter, TFrom, TTo>
 
-export interface ToSubOptionsProps<
-  in out TRouter extends AnyRouter = RegisteredRouter,
-  in out TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  in out TTo extends string | undefined = '.',
-> {
-  to?: ToPathOption<TRouter, TFrom, TTo> & {}
+export type MakeToRequired<
+  TRouter extends AnyRouter,
+  TFrom extends string,
+  TTo extends string | undefined,
+> = string extends TFrom
+  ? {
+      to: ToPathOption<TRouter, TFrom, TTo> & {}
+      from?: FromPathOption<TRouter, TFrom> & {}
+    }
+  : {
+      to?: ToPathOption<TRouter, TFrom, TTo> & {}
+      from?: FromPathOption<TRouter, TFrom> & {}
+    }
+
+export type ToSubOptionsProps<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TTo extends string | undefined = '.',
+> = MakeToRequired<TRouter, TFrom, TTo> & {
   hash?: true | Updater<string>
   state?: true | NonNullableUpdater<HistoryState>
-  // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
-  from?: FromPathOption<TRouter, TFrom> & {}
 }
 
 export type ParamsReducerFn<
@@ -1014,7 +1025,11 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    const { type: _type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
+    const {
+      type: _type,
+      ref: innerRef,
+      ...linkProps
+    } = useLinkProps(rest as any, ref)
 
     const children =
       typeof rest.children === 'function'
