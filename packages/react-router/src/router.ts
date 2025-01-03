@@ -2492,6 +2492,10 @@ export class Router<
 
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
+                    const match = this.getMatch(matchId)!
+                    if (match.error) {
+                      handleRedirectAndNotFound(match, match.error)
+                    }
                   } else {
                     const parentMatchPromise = matchPromises[index - 1] as any
                     const route = this.looseRoutesById[routeId]!

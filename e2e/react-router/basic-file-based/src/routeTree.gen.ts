@@ -30,6 +30,9 @@ import { Route as groupInsideImport } from './routes/(group)/inside'
 import { Route as groupLayoutImport } from './routes/(group)/_layout'
 import { Route as anotherGroupOnlyrouteinsideImport } from './routes/(another-group)/onlyrouteinside'
 import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
+import { Route as RedirectPreloadThirdImport } from './routes/redirect/preload/third'
+import { Route as RedirectPreloadSecondImport } from './routes/redirect/preload/second'
+import { Route as RedirectPreloadFirstImport } from './routes/redirect/preload/first'
 import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdEditImport } from './routes/posts_.$postId.edit'
@@ -149,6 +152,24 @@ const RedirectTargetIndexRoute = RedirectTargetIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
+} as any)
+
+const RedirectPreloadThirdRoute = RedirectPreloadThirdImport.update({
+  id: '/redirect/preload/third',
+  path: '/redirect/preload/third',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RedirectPreloadSecondRoute = RedirectPreloadSecondImport.update({
+  id: '/redirect/preload/second',
+  path: '/redirect/preload/second',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RedirectPreloadFirstRoute = RedirectPreloadFirstImport.update({
+  id: '/redirect/preload/first',
+  path: '/redirect/preload/first',
+  getParentRoute: () => rootRoute,
 } as any)
 
 const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderImport.update({
@@ -366,6 +387,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTargetViaLoaderImport
       parentRoute: typeof RedirectTargetImport
     }
+    '/redirect/preload/first': {
+      id: '/redirect/preload/first'
+      path: '/redirect/preload/first'
+      fullPath: '/redirect/preload/first'
+      preLoaderRoute: typeof RedirectPreloadFirstImport
+      parentRoute: typeof rootRoute
+    }
+    '/redirect/preload/second': {
+      id: '/redirect/preload/second'
+      path: '/redirect/preload/second'
+      fullPath: '/redirect/preload/second'
+      preLoaderRoute: typeof RedirectPreloadSecondImport
+      parentRoute: typeof rootRoute
+    }
+    '/redirect/preload/third': {
+      id: '/redirect/preload/third'
+      path: '/redirect/preload/third'
+      fullPath: '/redirect/preload/third'
+      preLoaderRoute: typeof RedirectPreloadThirdImport
+      parentRoute: typeof rootRoute
+    }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
@@ -481,6 +523,9 @@ export interface FileRoutesByFullPath {
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
 
@@ -504,6 +549,9 @@ export interface FileRoutesByTo {
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
 }
 
@@ -533,6 +581,9 @@ export interface FileRoutesById {
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
 
@@ -560,6 +611,9 @@ export interface FileRouteTypes {
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
     | '/redirect/$target/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -582,6 +636,9 @@ export interface FileRouteTypes {
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
     | '/redirect/$target'
   id:
     | '__root__'
@@ -609,6 +666,9 @@ export interface FileRouteTypes {
     | '/posts_/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
     | '/redirect/$target/'
   fileRoutesById: FileRoutesById
 }
@@ -626,6 +686,9 @@ export interface RootRouteChildren {
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
+  RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
+  RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
+  RedirectPreloadThirdRoute: typeof RedirectPreloadThirdRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -641,6 +704,9 @@ const rootRouteChildren: RootRouteChildren = {
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
+  RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
+  RedirectPreloadSecondRoute: RedirectPreloadSecondRoute,
+  RedirectPreloadThirdRoute: RedirectPreloadThirdRoute,
 }
 
 export const routeTree = rootRoute
@@ -664,7 +730,10 @@ export const routeTree = rootRoute
         "/redirect/$target",
         "/structural-sharing/$enabled",
         "/redirect/",
-        "/posts_/$postId/edit"
+        "/posts_/$postId/edit",
+        "/redirect/preload/first",
+        "/redirect/preload/second",
+        "/redirect/preload/third"
       ]
     },
     "/": {
@@ -775,6 +844,15 @@ export const routeTree = rootRoute
     "/redirect/$target/via-loader": {
       "filePath": "redirect/$target/via-loader.tsx",
       "parent": "/redirect/$target"
+    },
+    "/redirect/preload/first": {
+      "filePath": "redirect/preload/first.tsx"
+    },
+    "/redirect/preload/second": {
+      "filePath": "redirect/preload/second.tsx"
+    },
+    "/redirect/preload/third": {
+      "filePath": "redirect/preload/third.tsx"
     },
     "/redirect/$target/": {
       "filePath": "redirect/$target/index.tsx",
