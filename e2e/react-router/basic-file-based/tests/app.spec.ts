@@ -109,72 +109,76 @@ test('legacy Proceeding through blocked navigation works', async ({ page }) => {
 
 test('useCanGoBack correctly disables back button', async ({ page }) => {
   const getBackButtonDisabled = async () => {
-    const backButton = await page.getByRole('button', { name: 'Back' })
+    const backButton = page.getByTestId('back-button')
     const isDisabled = (await backButton.getAttribute('disabled')) !== null
     return isDisabled
   }
 
-  await expect(await getBackButtonDisabled()).toBe(true)
+  expect(await getBackButtonDisabled()).toBe(true)
 
   await page.getByRole('link', { name: 'Posts' }).click()
-  await expect(await getBackButtonDisabled()).toBe(false)
+  await expect(page.getByTestId('posts-links')).toBeInViewport()
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
-  await expect(await getBackButtonDisabled()).toBe(false)
+  await expect(page.getByTestId('post-title')).toBeInViewport()
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.reload()
-  await expect(await getBackButtonDisabled()).toBe(false)
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.goBack()
-  await expect(await getBackButtonDisabled()).toBe(false)
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.goForward()
-  await expect(await getBackButtonDisabled()).toBe(false)
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.goBack()
-  await expect(await getBackButtonDisabled()).toBe(false)
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.goBack()
-  await expect(await getBackButtonDisabled()).toBe(true)
+  expect(await getBackButtonDisabled()).toBe(true)
 
   await page.reload()
-  await expect(await getBackButtonDisabled()).toBe(true)
+  expect(await getBackButtonDisabled()).toBe(true)
 })
 
 test('useCanGoBack correctly disables back button, using router.history and window.history', async ({
   page,
 }) => {
   const getBackButtonDisabled = async () => {
-    const backButton = await page.getByRole('button', { name: 'Back' })
+    const backButton = page.getByTestId('back-button')
     const isDisabled = (await backButton.getAttribute('disabled')) !== null
     return isDisabled
   }
 
   await page.getByRole('link', { name: 'Posts' }).click()
+  await expect(page.getByTestId('posts-links')).toBeInViewport()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
-  await page.getByRole('button', { name: 'Back' }).click()
-  await expect(await getBackButtonDisabled()).toBe(false)
+  await expect(page.getByTestId('post-title')).toBeInViewport()
+  await page.getByTestId('back-button').click()
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.reload()
-  await expect(await getBackButtonDisabled()).toBe(false)
+  expect(await getBackButtonDisabled()).toBe(false)
 
-  await page.getByRole('button', { name: 'Back' }).click()
-  await expect(await getBackButtonDisabled()).toBe(true)
-
-  await page.evaluate('window.history.forward()')
-  await expect(await getBackButtonDisabled()).toBe(false)
+  await page.getByTestId('back-button').click()
+  expect(await getBackButtonDisabled()).toBe(true)
 
   await page.evaluate('window.history.forward()')
-  await expect(await getBackButtonDisabled()).toBe(false)
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.evaluate('window.history.forward()')
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.evaluate('window.history.back()')
-  await expect(await getBackButtonDisabled()).toBe(false)
+  expect(await getBackButtonDisabled()).toBe(false)
 
   await page.evaluate('window.history.back()')
-  await expect(await getBackButtonDisabled()).toBe(true)
+  expect(await getBackButtonDisabled()).toBe(true)
 
   await page.reload()
-  await expect(await getBackButtonDisabled()).toBe(true)
+  expect(await getBackButtonDisabled()).toBe(true)
 })
 
 const testCases = [

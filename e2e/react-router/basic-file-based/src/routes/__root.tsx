@@ -1,4 +1,3 @@
-import * as React from 'react'
 import {
   Link,
   Outlet,
@@ -28,6 +27,7 @@ function RootComponent() {
     <>
       <div className="flex gap-2 p-2 text-lg border-b">
         <button
+          data-testid="back-button"
           disabled={!canGoBack}
           onClick={() => router.history.back()}
           className={!canGoBack ? 'line-through' : undefined}
