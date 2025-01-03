@@ -25,7 +25,9 @@ export function CatchBoundary(props: {
               ...error,
               _fromLocation: router.state.location,
             })
-            return <Navigate {...redirect} replace={true} ignoreBlocker={true} />
+            return (
+              <Navigate {...redirect} replace={true} ignoreBlocker={true} />
+            )
           }
           return React.createElement(errorComponent, {
             error,
