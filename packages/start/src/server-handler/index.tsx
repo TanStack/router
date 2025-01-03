@@ -39,9 +39,12 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
 
   invariant(typeof serverFnId === 'string', 'Invalid server action')
 
-  if (process.env.NODE_ENV === 'development')
-    console.info(`ServerFn Request: ${serverFnId} - ${serverFnName}`)
-  if (process.env.NODE_ENV === 'development') console.info()
+  const shouldLogServerFn =
+    process.env.NODE_ENV === 'development' &&
+    process.env.TANSTACK_START_LOG_SERVER_FN_ENABLED !== 'false'
+
+  if (shouldLogServerFn)
+    console.info(`ServerFn Request: ${serverFnId} - ${serverFnName}\n`)
 
   const action = (await getManifest('server').chunks[serverFnId]?.import())?.[
     serverFnName
@@ -156,20 +159,18 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
     }
   })()
 
-  if (process.env.NODE_ENV === 'development')
-    console.info(`ServerFn Response: ${response.status}`)
+  if (shouldLogServerFn) console.info(`ServerFn Response: ${response.status}`)
 
   if (response.headers.get('Content-Type') === 'application/json') {
     const cloned = response.clone()
     const text = await cloned.text()
     const payload = text ? JSON.stringify(JSON.parse(text)) : 'undefined'
 
-    if (process.env.NODE_ENV === 'development')
+    if (shouldLogServerFn)
       console.info(
-        ` - Payload: ${payload.length > 100 ? payload.substring(0, 100) + '...' : payload}`,
+        ` - Payload: ${payload.length > 100 ? payload.substring(0, 100) + '...' : payload}\n`,
       )
   }
-  if (process.env.NODE_ENV === 'development') console.info()
 
   return response
 }
