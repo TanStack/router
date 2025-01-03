@@ -1893,7 +1893,10 @@ export class Router<
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
     if (href) {
-      const parsed = parseHref(href, {})
+      const currentIndex = this.history.location.state.__TSR_index
+      const parsed = parseHref(href, {
+        __TSR_index: replace ? currentIndex : currentIndex + 1,
+      })
       rest.to = parsed.pathname
       rest.search = this.options.parseSearch(parsed.search)
       // remove the leading `#` from the hash

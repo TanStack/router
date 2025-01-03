@@ -8,7 +8,7 @@ export interface NavigateOptions {
 
 type SubscriberHistoryAction =
   | {
-      type: HistoryAction | 'ROLLBACK'
+      type: HistoryAction
     }
   | {
       type: 'GO'
@@ -30,6 +30,7 @@ export interface RouterHistory {
   go: (index: number, navigateOpts?: NavigateOptions) => void
   back: (navigateOpts?: NavigateOptions) => void
   forward: (navigateOpts?: NavigateOptions) => void
+  canGoBack: () => boolean
   createHref: (href: string) => string
   block: (blocker: NavigationBlocker) => () => void
   flush: () => void
@@ -51,17 +52,12 @@ export interface ParsedPath {
 
 export interface HistoryState {
   key?: string
+  __TSR_index: number
 }
 
 type ShouldAllowNavigation = any
 
-export type HistoryAction =
-  | 'PUSH'
-  | 'POP'
-  | 'REPLACE'
-  | 'FORWARD'
-  | 'BACK'
-  | 'GO'
+export type HistoryAction = 'PUSH' | 'REPLACE' | 'FORWARD' | 'BACK' | 'GO'
 
 export type BlockerFnArgs = {
   currentLocation: HistoryLocation
@@ -93,6 +89,7 @@ type TryNavigateArgs = {
     }
 )
 
+const stateIndexKey = '__TSR_index'
 const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
 
@@ -107,9 +104,11 @@ export function createHistory(opts: {
   createHref: (path: string) => string
   flush?: () => void
   destroy?: () => void
-  onBlocked?: (onUpdate: () => void) => void
+  onBlocked?: () => void
   getBlockers?: () => Array<NavigationBlocker>
   setBlockers?: (blockers: Array<NavigationBlocker>) => void
+  // Avoid notifying on forward/back/go, used for browser history as we already get notified by the popstate event
+  notifyOnIndexChange?: boolean
 }): RouterHistory {
   let location = opts.getLocation()
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
@@ -119,11 +118,9 @@ export function createHistory(opts: {
     subscribers.forEach((subscriber) => subscriber({ location, action }))
   }
 
-  const _notifyRollback = () => {
-    location = opts.getLocation()
-    subscribers.forEach((subscriber) =>
-      subscriber({ location, action: { type: 'ROLLBACK' } }),
-    )
+  const handleIndexChange = (action: SubscriberHistoryAction) => {
+    if (opts.notifyOnIndexChange ?? true) notify(action)
+    else location = opts.getLocation()
   }
 
   const tryNavigation = async ({
@@ -149,7 +146,7 @@ export function createHistory(opts: {
           action: actionInfo.type,
         })
         if (isBlocked) {
-          opts.onBlocked?.(_notifyRollback)
+          opts.onBlocked?.()
           return
         }
       }
@@ -174,7 +171,8 @@ export function createHistory(opts: {
       }
     },
     push: (path, state, navigateOpts) => {
-      state = assignKey(state)
+      const currentIndex = location.state[stateIndexKey]
+      state = assignKeyAndIndex(currentIndex + 1, state)
       tryNavigation({
         task: () => {
           opts.pushState(path, state)
@@ -187,7 +185,8 @@ export function createHistory(opts: {
       })
     },
     replace: (path, state, navigateOpts) => {
-      state = assignKey(state)
+      const currentIndex = location.state[stateIndexKey]
+      state = assignKeyAndIndex(currentIndex, state)
       tryNavigation({
         task: () => {
           opts.replaceState(path, state)
@@ -203,7 +202,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.go(index)
-          notify({ type: 'GO', index })
+          handleIndexChange({ type: 'GO', index })
         },
         navigateOpts,
         type: 'GO',
@@ -213,7 +212,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.back(navigateOpts?.ignoreBlocker ?? false)
-          notify({ type: 'BACK' })
+          handleIndexChange({ type: 'BACK' })
         },
         navigateOpts,
         type: 'BACK',
@@ -223,12 +222,13 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.forward(navigateOpts?.ignoreBlocker ?? false)
-          notify({ type: 'FORWARD' })
+          handleIndexChange({ type: 'FORWARD' })
         },
         navigateOpts,
         type: 'FORWARD',
       })
     },
+    canGoBack: () => location.state[stateIndexKey] !== 0,
     createHref: (str) => opts.createHref(str),
     block: (blocker) => {
       if (!opts.setBlockers) return () => {}
@@ -246,13 +246,14 @@ export function createHistory(opts: {
   }
 }
 
-function assignKey(state: HistoryState | undefined) {
+function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
   if (!state) {
     state = {} as HistoryState
   }
   return {
     ...state,
     key: createRandomKey(),
+    [stateIndexKey]: index,
   }
 }
 
@@ -301,6 +302,7 @@ export function createBrowserHistory(opts?: {
   let currentLocation = parseLocation()
   let rollbackLocation: HistoryLocation | undefined
 
+  let nextPopIsGo = false
   let ignoreNextPop = false
   let skipBlockerNextPop = false
   let ignoreNextBeforeUnload = false
@@ -375,9 +377,10 @@ export function createBrowserHistory(opts?: {
     }
   }
 
-  const onPushPop = () => {
+  // NOTE: this function can probably be removed
+  const onPushPop = (type: 'PUSH' | 'REPLACE') => {
     currentLocation = parseLocation()
-    history.notify({ type: 'POP' })
+    history.notify({ type })
   }
 
   const onPushPopEvent = async () => {
@@ -386,22 +389,39 @@ export function createBrowserHistory(opts?: {
       return
     }
 
+    const nextLocation = parseLocation()
+    const delta =
+      nextLocation.state[stateIndexKey] - currentLocation.state[stateIndexKey]
+    const isForward = delta === 1
+    const isBack = delta === -1
+    const isGo = (!isForward && !isBack) || nextPopIsGo
+    nextPopIsGo = false
+
+    const action = isGo ? 'GO' : isBack ? 'BACK' : 'FORWARD'
+    const notify: SubscriberHistoryAction = isGo
+      ? {
+          type: 'GO',
+          index: delta,
+        }
+      : {
+          type: isBack ? 'BACK' : 'FORWARD',
+        }
+
     if (skipBlockerNextPop) {
       skipBlockerNextPop = false
     } else {
       const blockers = _getBlockers()
       if (typeof document !== 'undefined' && blockers.length) {
         for (const blocker of blockers) {
-          const nextLocation = parseLocation()
           const isBlocked = await blocker.blockerFn({
             currentLocation,
             nextLocation,
-            action: 'POP',
+            action,
           })
           if (isBlocked) {
             ignoreNextPop = true
             win.history.go(1)
-            history.notify({ type: 'POP' })
+            history.notify(notify)
             return
           }
         }
@@ -409,7 +429,7 @@ export function createBrowserHistory(opts?: {
     }
 
     currentLocation = parseLocation()
-    history.notify({ type: 'POP' })
+    history.notify(notify)
   }
 
   const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -462,7 +482,10 @@ export function createBrowserHistory(opts?: {
       ignoreNextBeforeUnload = true
       win.history.forward()
     },
-    go: (n) => win.history.go(n),
+    go: (n) => {
+      nextPopIsGo = true
+      win.history.go(n)
+    },
     createHref: (href) => createHref(href),
     flush,
     destroy: () => {
@@ -473,17 +496,16 @@ export function createBrowserHistory(opts?: {
       })
       win.removeEventListener(popStateEvent, onPushPopEvent)
     },
-    onBlocked: (onUpdate) => {
+    onBlocked: () => {
       // If a navigation is blocked, we need to rollback the location
       // that we optimistically updated in memory.
       if (rollbackLocation && currentLocation !== rollbackLocation) {
         currentLocation = rollbackLocation
-        // Notify subscribers
-        onUpdate()
       }
     },
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
+    notifyOnIndexChange: false,
   })
 
   win.addEventListener(beforeUnloadEvent, onBeforeUnload, { capture: true })
@@ -491,13 +513,13 @@ export function createBrowserHistory(opts?: {
 
   win.history.pushState = function (...args: Array<any>) {
     const res = originalPushState.apply(win.history, args as any)
-    if (!history._ignoreSubscribers) onPushPop()
+    if (!history._ignoreSubscribers) onPushPop('PUSH')
     return res
   }
 
   win.history.replaceState = function (...args: Array<any>) {
     const res = originalReplaceState.apply(win.history, args as any)
-    if (!history._ignoreSubscribers) onPushPop()
+    if (!history._ignoreSubscribers) onPushPop('REPLACE')
     return res
   }
 
@@ -528,8 +550,12 @@ export function createMemoryHistory(
   },
 ): RouterHistory {
   const entries = opts.initialEntries
-  let index = opts.initialIndex ?? entries.length - 1
-  const states = entries.map(() => ({}) as HistoryState)
+  let index = opts.initialIndex
+    ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
+    : entries.length - 1
+  const states = entries.map<HistoryState>((_entry, index) =>
+    assignKeyAndIndex(index, undefined),
+  )
 
   const getLocation = () => parseHref(entries[index]!, states[index])
 
@@ -587,7 +613,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || {},
+    state: state || { [stateIndexKey]: 0 },
   }
 }
 

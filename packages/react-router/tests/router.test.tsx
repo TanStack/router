@@ -16,6 +16,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useNavigate,
 } from '../src'
 import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
 
@@ -1089,5 +1090,163 @@ describe('route id uniqueness', () => {
       expect(routeIdSet.has(route.id)).toBe(false)
       routeIdSet.add(route.id)
     })
+  })
+})
+
+const createHistoryRouter = () => {
+  const rootRoute = createRootRoute()
+
+  const IndexComponent = () => {
+    const navigate = useNavigate()
+
+    return (
+      <>
+        <h1>Index</h1>
+        <button onClick={() => navigate({ to: '/' })}>Index</button>
+        <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+        <button onClick={() => navigate({ to: '/posts', replace: true })}>
+          Replace
+        </button>
+      </>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: IndexComponent,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts',
+    component: () => {
+      const navigate = useNavigate()
+
+      return (
+        <>
+          <h1>Posts</h1>
+          <button onClick={() => navigate({ to: '/' })}>Index</button>
+        </>
+      )
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+  })
+
+  return { router }
+}
+
+describe('history: History gives correct notifcations and state', () => {
+  it('should work with push and back', async () => {
+    const { router: router } = createHistoryRouter()
+
+    type Router = typeof router
+
+    const results: Array<
+      Parameters<Parameters<Router['history']['subscribe']>[0]>[0]['action']
+    > = []
+
+    render(<RouterProvider router={router} />)
+
+    const unsub = router.history.subscribe(({ action }) => {
+      results.push(action)
+    })
+
+    const postsButton = await screen.findByRole('button', { name: 'Posts' })
+
+    fireEvent.click(postsButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
+
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/')
+
+    expect(results).toEqual([{ type: 'PUSH' }, { type: 'BACK' }])
+
+    unsub()
+  })
+
+  it('should work more complex scenario', async () => {
+    const { router: router } = createHistoryRouter()
+
+    type Router = typeof router
+
+    const results: Array<
+      Parameters<Parameters<Router['history']['subscribe']>[0]>[0]['action']
+    > = []
+
+    render(<RouterProvider router={router} />)
+
+    const unsub = router.history.subscribe(({ action }) => {
+      results.push(action)
+    })
+
+    const replaceButton = await screen.findByRole('button', { name: 'Replace' })
+
+    fireEvent.click(replaceButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
+
+    const indexButton = await screen.findByRole('button', { name: 'Index' })
+
+    fireEvent.click(indexButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/')
+
+    const postsButton = await screen.findByRole('button', { name: 'Posts' })
+
+    fireEvent.click(postsButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
+
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/')
+
+    act(() => router.history.go(1))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
+
+    expect(results).toEqual([
+      { type: 'REPLACE' },
+      { type: 'PUSH' },
+      { type: 'PUSH' },
+      { type: 'BACK' },
+      { type: 'GO', index: 1 },
+    ])
+
+    unsub()
   })
 })
