@@ -252,6 +252,84 @@ describe('redirect', () => {
       expect(await screen.findByText('Final')).toBeInTheDocument()
       expect(window.location.pathname).toBe('/final')
     })
+
+    test('when `redirect` is thrown in route component', async () => {
+      const nestedLoaderMock = vi.fn()
+      const nestedFooLoaderMock = vi.fn()
+
+      const rootRoute = createRootRoute({})
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <div>
+              <h1>Index page</h1>
+              <Link to="/about">link to about</Link>
+            </div>
+          )
+        },
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+        component: () => {
+          throw redirect({
+            to: '/nested/foo',
+            hash: 'some-hash',
+            search: { someSearch: 'hello123' },
+          })
+        },
+      })
+      const nestedRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/nested',
+        loader: async () => {
+          await sleep(WAIT_TIME)
+          nestedLoaderMock('nested')
+        },
+      })
+      const fooRoute = createRoute({
+        validateSearch: (search) => {
+          return {
+            someSearch: search.someSearch as string,
+          }
+        },
+        getParentRoute: () => nestedRoute,
+        path: '/foo',
+        loader: async () => {
+          await sleep(WAIT_TIME)
+          nestedFooLoaderMock('foo')
+        },
+        component: () => <div>Nested Foo page</div>,
+      })
+      const routeTree = rootRoute.addChildren([
+        nestedRoute.addChildren([fooRoute]),
+        aboutRoute,
+        indexRoute,
+      ])
+      const router = createRouter({ routeTree })
+
+      render(<RouterProvider router={router} />)
+
+      const linkToAbout = await screen.findByText('link to about')
+
+      expect(linkToAbout).toBeInTheDocument()
+
+      fireEvent.click(linkToAbout)
+
+      const fooElement = await screen.findByText('Nested Foo page')
+
+      expect(fooElement).toBeInTheDocument()
+
+      expect(router.state.location.href).toBe(
+        '/nested/foo?someSearch=hello123#some-hash',
+      )
+      expect(window.location.pathname).toBe('/nested/foo')
+
+      expect(nestedLoaderMock).toHaveBeenCalled()
+      expect(nestedFooLoaderMock).toHaveBeenCalled()
+    })
   })
 
   describe('SSR', () => {
