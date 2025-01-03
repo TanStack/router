@@ -27,7 +27,11 @@ function RootComponent() {
   return (
     <>
       <div className="flex gap-2 p-2 text-lg border-b">
-        <button disabled={!canGoBack} onClick={() => router.history.back()}>
+        <button
+          disabled={!canGoBack}
+          onClick={() => router.history.back()}
+          className={!canGoBack ? 'line-through' : undefined}
+        >
           Back
         </button>{' '}
         <Link
