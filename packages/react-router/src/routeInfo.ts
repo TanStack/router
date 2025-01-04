@@ -59,25 +59,30 @@ export type RouteIds<TRouteTree extends AnyRoute> =
     ? CodeRouteIds<TRouteTree>
     : InferFileRouteTypes<TRouteTree>['id']
 
-export type ParentPath<TOption> = 'always' extends TOption
-  ? '../'
-  : 'never' extends TOption
-    ? '..'
-    : '../' | '..'
+export type ParentPath<TRouter extends AnyRouter> =
+  TrailingSlashOptionByRouter<TRouter> extends 'always'
+    ? '../'
+    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+      ? '..'
+      : '../' | '..'
 
-export type CurrentPath<TOption> = 'always' extends TOption
-  ? './'
-  : 'never' extends TOption
-    ? '.'
-    : './' | '.'
+export type CurrentPath<TRouter extends AnyRouter> =
+  TrailingSlashOptionByRouter<TRouter> extends 'always'
+    ? './'
+    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+      ? '.'
+      : './' | '.'
 
-export type ToPath<TOption, TTo extends string> = 'always' extends TOption
-  ? `${TTo}/`
-  : 'never' extends TOption
-    ? TTo
-    : TTo | `${TTo}/`
+export type ToPath<TRouter extends AnyRouter, TTo extends string> =
+  TrailingSlashOptionByRouter<TRouter> extends 'always'
+    ? AddTrailingSlash<TTo>
+    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+      ? RemoveTrailingSlashes<TTo>
+      : AddTrailingSlash<TTo> | RemoveTrailingSlashes<TTo>
 
-export type CatchAllPaths<TOption> = CurrentPath<TOption> | ParentPath<TOption>
+export type CatchAllPaths<TRouter extends AnyRouter> =
+  | CurrentPath<TRouter>
+  | ParentPath<TRouter>
 
 export type CodeRoutesByPath<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute

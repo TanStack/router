@@ -153,7 +153,6 @@ test('when navigating a index route with search and params', () => {
       | '/blog/stats'
       | '/posts/$postId/deep'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(
@@ -171,7 +170,6 @@ test('when navigating a index route with search and params', () => {
       | '/blog/stats/'
       | '/posts/$postId/deep/'
       | '/posts/$postId/'
-      | undefined
     >()
 
   expectTypeOf(Link<typeof neverTrailingSlashRouter, string, '/posts/$postId'>)
@@ -188,7 +186,6 @@ test('when navigating a index route with search and params', () => {
       | '/posts/$postId'
       | '.'
       | '..'
-      | undefined
     >()
 
   expectTypeOf(
@@ -214,7 +211,6 @@ test('when navigating a index route with search and params', () => {
       | '/blog/stats/'
       | '/posts/$postId/deep/'
       | '/posts/$postId/'
-      | undefined
     >()
 
   expectTypeOf(Link<typeof defaultRouter, '/', '/posts/$postId'>)
@@ -362,7 +358,6 @@ test('when using useNavigate', () => {
       | '/blog/stats'
       | '/posts/$postId/deep'
       | '/posts/$postId'
-      | undefined
     >()
 })
 
