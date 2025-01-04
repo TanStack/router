@@ -24,7 +24,7 @@
     "vinxi": "0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
+    "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.2",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
