@@ -175,7 +175,6 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(DefaultRouterObjectsLink)
@@ -193,7 +192,6 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(RouterAlwaysTrailingSlashLink)
@@ -211,7 +209,6 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
       | '/posts/$postId/'
-      | undefined
     >()
 
   expectTypeOf(RouterNeverTrailingSlashLink)
@@ -229,7 +226,6 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(RouterPreserveTrailingSlashLink)
@@ -257,7 +253,6 @@ test('when navigating to the root', () => {
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
-      | undefined
     >()
 
   expectTypeOf(DefaultRouterLink)
@@ -828,7 +823,6 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '.'
       | '..'
-      | undefined
     >()
 
   expectTypeOf(Link<DefaultRouterObjects, string, '/invoices/$invoiceId'>)
@@ -846,7 +840,6 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '.'
       | '..'
-      | undefined
     >()
 
   expectTypeOf(
@@ -866,7 +859,6 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details/$detailId/lines/'
       | './'
       | '../'
-      | undefined
     >()
 
   expectTypeOf(Link<RouterNeverTrailingSlashes, string, '/invoices/$invoiceId'>)
@@ -884,7 +876,6 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '.'
       | '..'
-      | undefined
     >()
 
   expectTypeOf(
@@ -914,7 +905,6 @@ test('cannot navigate to a branch with an index', () => {
       | '..'
       | './'
       | '../'
-      | undefined
     >()
 })
 
@@ -3553,7 +3543,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
 test('when passing a component with props to createLink and navigating to the root', () => {
   const MyLink = createLink((props: { additionalProps: number }) => (
-    <Link {...(props as {})} />
+    <Link {...(props as any)} />
   ))
 
   const DefaultRouterLink = MyLink<DefaultRouter, string, '/'>
@@ -3589,7 +3579,6 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(DefaultRouterObjectsLink)
@@ -3607,7 +3596,6 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(RouterAlwaysTrailingSlashLink)
@@ -3625,7 +3613,6 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
       | '/posts/$postId/'
-      | undefined
     >()
 
   expectTypeOf(RouterNeverTrailingSlashLink)
@@ -3643,7 +3630,6 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(RouterPreserveTrailingSlashLink)
@@ -3671,7 +3657,6 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
-      | undefined
     >()
 
   expectTypeOf(DefaultRouterLink)
@@ -4097,7 +4082,6 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(defaultRouterObjectsLinkOptions)
@@ -4115,7 +4099,6 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
@@ -4133,7 +4116,6 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
       | '/posts/$postId/'
-      | undefined
     >()
 
   expectTypeOf(routerNeverTrailingSlashLinkOptions)
@@ -4151,7 +4133,6 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
-      | undefined
     >()
 
   expectTypeOf(routerPreserveTrailingSlashLinkOptions)
@@ -4179,7 +4160,6 @@ test('linkOptions', () => {
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
-      | undefined
     >()
 
   expectTypeOf(defaultRouterLinkOptions)

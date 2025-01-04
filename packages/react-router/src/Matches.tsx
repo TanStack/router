@@ -13,7 +13,14 @@ import type {
 } from './structuralSharing'
 import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
-import type { ResolveRelativePath, ResolveRoute, ToOptions } from './link'
+import type {
+  MakeOptionalPathParams,
+  MakeOptionalSearchParams,
+  MaskOptions,
+  ResolveRelativePath,
+  ResolveRoute,
+  ToSubOptionsProps,
+} from './link'
 import type {
   AllContext,
   AllLoaderData,
@@ -23,7 +30,6 @@ import type {
   RouteById,
   RouteByPath,
   RouteIds,
-  RoutePaths,
 } from './routeInfo'
 import type {
   Constrain,
@@ -270,22 +276,15 @@ export interface MatchRouteOptions {
 
 export type UseMatchRouteOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = RoutePaths<
-    TRouter['routeTree']
-  >,
-  TTo extends string | undefined = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-  TOptions extends ToOptions<
-    TRouter,
-    TFrom,
-    TTo,
-    TMaskFrom,
-    TMaskTo
-  > = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  TRelaxedOptions = Omit<TOptions, 'search' | 'params'> &
-    DeepPartial<Pick<TOptions, 'search' | 'params'>>,
-> = TRelaxedOptions & MatchRouteOptions
+> = ToSubOptionsProps<TRouter, TFrom, TTo> &
+  DeepPartial<MakeOptionalSearchParams<TRouter, TFrom, TTo>> &
+  DeepPartial<MakeOptionalPathParams<TRouter, TFrom, TTo>> &
+  MaskOptions<TRouter, TMaskFrom, TMaskTo> &
+  MatchRouteOptions
 
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()

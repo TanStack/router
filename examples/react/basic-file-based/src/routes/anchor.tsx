@@ -79,6 +79,7 @@ function AnchorComponent() {
           {anchors.map((anchor) => (
             <li key={anchor.id}>
               <Link
+                from={Route.fullPath}
                 hash={anchor.id}
                 activeOptions={{ includeHash: true }}
                 activeProps={{
