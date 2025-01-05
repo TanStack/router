@@ -276,4 +276,5 @@ export {
   CatchNotFound,
   DefaultGlobalNotFound,
   type NotFoundError,
+  type NotFoundErrorData,
 } from './not-found'

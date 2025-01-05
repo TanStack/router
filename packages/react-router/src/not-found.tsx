@@ -5,6 +5,9 @@ import { useRouterState } from './useRouterState'
 import type { RegisteredRouter } from './router'
 import type { RouteIds } from './routeInfo'
 
+
+export interface NotFoundErrorData {}
+
 export type NotFoundError = {
   /**
     @deprecated
@@ -16,7 +19,17 @@ export type NotFoundError = {
     Do not use this. It's used internally to indicate a path matching error
   */
   _global?: boolean
-  data?: any
+  /**
+    This property can be typed globally using the `NotFoundErrorData` interface
+    ```ts
+    declare module '@tanstack/react-router' {
+      interface NotFoundErrorData {
+        // your properties here
+      }
+    }
+    ```
+   */
+  data?: object extends NotFoundErrorData ? any : NotFoundErrorData
   throw?: boolean
   routeId?: RouteIds<RegisteredRouter['routeTree']>
   headers?: HeadersInit
