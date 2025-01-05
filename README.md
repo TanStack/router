@@ -2,14 +2,14 @@
 
 ![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header.png)
 
-🤖 Type-safe router w/ built-in caching & URL state management for React, Preact, and friends
+🤖 Type-safe router w/ built-in caching & URL state management for React!
 
 <a href="https://twitter.com/intent/tweet?button_hashtag=TanStack" target="\_parent">
   <img alt="#TanStack" src="https://img.shields.io/twitter/url?color=%2308a0e9&label=%23TanStack&style=social&url=https%3A%2F%2Ftwitter.com%2Fintent%2Ftweet%3Fbutton_hashtag%3DTanStack">
 </a><a href="https://discord.com/invite/WrRKjPJ" target="\_parent">
   <img alt="" src="https://img.shields.io/badge/Discord-TanStack-%235865F2" />
 </a><a href="https://npmjs.com/package/@tanstack/react-router" target="\_parent">
-  <img alt="" src="https://img.shields.io/npm/dm/@tanstack/router.svg" />
+  <img alt="" src="https://img.shields.io/npm/dm/@tanstack/react-router.svg" />
 </a><a href="https://bundlephobia.com/result?p=@tanstack/react-router" target="\_parent">
   <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" />
 </a><a href="#badge">
@@ -28,6 +28,24 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
 
+## Partners
+
+<div><a href="https://convex.dev?utm_source=tanstack">
+  <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
+</a></div><br />
+<div><a href="https://go.clerk.com/wOwHtuJ">
+  <img alt="Clerk" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40"
+</a></div><br />
+<div><a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable">
+  <img alt="AG Grid" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40"
+</a></div><br />
+<div><a href="https://sentry.io?utm_source=tanstack">
+  <img alt="Sentry" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40"
+</a></div><br />
+<div><a href="https://nozzle.io/?utm_source=tanstack&utm_campaign=tanstack">
+  <img alt="Nozzle.io" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/nozzle.svg" height="40"
+</a></div><br />
+
 ## Quick Features
 
 - 100% TypeSafe
@@ -37,7 +55,6 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
   - Search Params
   - Path Params
   - Loaders
-  - Actions
 - 1st Class Search Params
   - Schemas + Validation
   - Parsing + Serialization
@@ -61,4 +78,4 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 To run example React projects with Tanstack Router, see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
-<!-- Use the force, Luke!! -->
+<!-- Use the force, Luke!!! -->

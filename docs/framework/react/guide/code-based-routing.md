@@ -4,38 +4,116 @@ title: Code-Based Routing
 
 ## ⚠️ Before You Start
 
-- If you're using [File-Based Routing](../file-based-routing), **skip this guide**.
-- If you are new to TanStack Router, please be aware that **file-based routing is the recommended way to configure TanStack Router**. If you're not sure which to use, please read the [File-Based Routing](../file-based-routing) guide first.
-- If you still insist on using code-based routing, you must read the [File-Based Routing](../file-based-routing) guide first as it also covers core concepts of the router that are not repeated here.
+- If you're using [File-Based Routing](./file-based-routing.md), **skip this guide**.
+- If you are new to TanStack Router, please be aware that **file-based routing is the recommended way to configure TanStack Router**. If you're not sure which to use, please read the [File-Based Routing](./file-based-routing.md) guide first.
+- If you still insist on using code-based routing, you must read the [File-Based Routing](./file-based-routing.md) guide first as it also covers core concepts of the router that are not repeated here.
 
 ## Route Trees
 
 Code-based routing is no different from file-based routing in that it uses the same route tree concept to organize, match and compose matching routes into a component tree. The only difference is that instead of using the filesystem to organize your routes, you use code.
 
-Let's consider the same route tree from the [Route Trees & Nesting](../route-trees#route-trees) guide, but from a code-based perspective:
+Let's consider the same route tree from the [Route Trees & Nesting](./route-trees.md#route-trees) guide, and convert it to code-based routing:
 
-- _Root_
-  - `/`
-  - `about`
-  - `posts`
-    - `/`
-    - `$postId`
-  - `posts/$postId/edit`
-  - `settings`
-    - `profile`
-    - `notifications`
-  - `layout`
-    - `layout-a`
-    - `layout-b`
-  - `files`
-    - `$`
-- _Not-Found Route_
+Here is the file-based version:
+
+```
+routes/
+├── __root.tsx
+├── index.tsx
+├── about.tsx
+├── posts/
+│   ├── index.tsx
+│   ├── $postId.tsx
+├── posts.$postId.edit.tsx
+├── settings/
+│   ├── profile.tsx
+│   ├── notifications.tsx
+├── _layout.tsx
+├── _layout/
+│   ├── layout-a.tsx
+├── ├── layout-b.tsx
+├── files/
+│   ├── $.tsx
+```
+
+And here is a summarized code-based version:
+
+```tsx
+import { createRootRoute, createRoute } from '@tanstack/react-router'
+
+const rootRoute = createRootRoute()
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+})
+
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'about',
+})
+
+const postsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'posts',
+})
+
+const postsIndexRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '/',
+})
+
+const postRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '$postId',
+})
+
+const postEditorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'posts/$postId/edit',
+})
+
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'settings',
+})
+
+const profileRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: 'profile',
+})
+
+const notificationsRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: 'notifications',
+})
+
+const layoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'layout',
+})
+
+const layoutARoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: 'layout-a',
+})
+
+const layoutBRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: 'layout-b',
+})
+
+const filesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'files/$',
+})
+```
 
 ## File-Based vs Code-Based Routing
 
-Notice how the route tree is exactly the same as the file-based route tree? Believe it or not, file-based routing is really a superset of code-based routing and at the end of the day, file-based routing is just code-based routing with a filesystem and code-generation abstraction on top of it.
+Believe it or not, file-based routing is really a superset of code-based routing and uses the filesystem and a bit of code-generation abstraction on top of it to generate this structure you see above automatically.
 
-We're going to assume you've read the [File-Based Routing](../file-based-routing) guide and are familiar with each of these main concepts:
+We're going to assume you've read the [File-Based Routing](./file-based-routing.md) guide and are familiar with each of these main concepts:
 
 - The Root Route
 - Static Routes
@@ -60,7 +138,7 @@ import { createRootRoute } from '@tanstack/react-router'
 const rootRoute = createRootRoute()
 ```
 
-> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](../router-context) -->
+> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./router-context.md) -->
 
 ## Anatomy of a Route
 
@@ -177,7 +255,8 @@ function PostComponent() {
 }
 ```
 
-> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](../code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
+> [!TIP]
+> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
 
 ## Splat / Catch-All Routes
 
@@ -223,9 +302,15 @@ const layoutBRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: 'layout-b',
 })
+
+const routeTree = rootRoute.addChildren([
+  // The layout route has no path, only an id
+  // So its children will be nested under the layout route
+  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
+])
 ```
 
-Now both `/layout-a` and `/layout-b` will render the their contents inside of the `LayoutComponent`:
+Now both `/layout-a` and `/layout-b` will render their contents inside of the `LayoutComponent`:
 
 ```tsx
 // URL: /layout-a
@@ -276,4 +361,4 @@ const routeTree = rootRoute.addChildren([
 
 ## 404 / `NotFoundRoute`s
 
-We'll cover how to configure a `NotFoundRoute` in the [Not Found Errors](../not-found-errors) guide.
+We'll cover how to configure a `NotFoundRoute` in the [Not Found Errors](./not-found-errors.md) guide.

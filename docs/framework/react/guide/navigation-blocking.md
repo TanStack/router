@@ -20,11 +20,7 @@ Navigation blocking adds one or more layers of "blockers" to the entire underlyi
 - Custom UI
   - If the navigation is triggered by something we control at the router level, we can allow you to perform any task or show any UI you'd like to the user to confirm the action. Each blocker's `blocker` function will be asynchronously and sequentially executed. If any blocker function resolves or returns `true`, the navigation will be allowed and all other blockers will continue to do the same until all blockers have been allowed to proceed. If any single blocker resolves or returns `false`, the navigation will be canceled and the rest of the `blocker` functions will be ignored.
 - The `onbeforeunload` event
-  - For page events that we cannot control directly, we rely on the browser's `onbeforeunload` event. If the user attempts to close the tab or window, refresh, or "unload" the page assets in any way, the browser's generic "Are you sure you want to leave?" dialog will be shown. If the user confirms, all blockers will be bypassed and the page will unload. If the user cancels, the unload will be cancelled, and the page will remain as is. It's important to note that **custom blocker functions will not be executed** when the `onbeforeunload` flow is triggered.
-
-## What about the back button?
-
-The back button is a special case. When the user clicks the back button, we cannot intercept or control the browser's behavior in a reliable way, and there is no official way to block it that works across all browsers equally. If you encounter a situation where you need to block the back button, it's recommended to rethink your UI/UX to avoid the back button being destructive to any unsaved user data. Saving data to session storage and restoring it if the user returns to the page is a safe and reliable pattern.
+  - For page events that we cannot control directly, we rely on the browser's `onbeforeunload` event. If the user attempts to close the tab or window, refresh, or "unload" the page assets in any way, the browser's generic "Are you sure you want to leave?" dialog will be shown. If the user confirms, all blockers will be bypassed and the page will unload. If the user cancels, the unload will be cancelled, and the page will remain as is.
 
 ## How do I use navigation blocking?
 
@@ -43,19 +39,43 @@ import { useBlocker } from '@tanstack/react-router'
 function MyComponent() {
   const [formIsDirty, setFormIsDirty] = useState(false)
 
-  useBlocker(
-    () => window.confirm('Are you sure you want to leave?'),
-    formIsDirty,
-  )
+  useBlocker({
+    shouldBlockFn: () => {
+      if (!formIsDirty) return false
+
+      const shouldLeave = confirm('Are you sure you want to leave?')
+      return !shouldLeave
+    },
+  })
 
   // ...
 }
 ```
 
-The `useBlocker` hook takes 2 arguments:
+`shouldBlockFn` gives you type safe access to the `current` and `next` location:
 
-- `message: () => string` **Required** - A function that returns a string to show to the user when they attempt to navigate away
-- `condition?: boolean` Optional, defaults to `true` - Any expression or variable to be tested for truthiness to determine if navigation should be blocked
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  // always block going from /foo to /bar/123?hello=world
+  const { proceed, reset, status } = useBlocker({
+    shouldBlockFn: ({ current, next }) => {
+      return (
+        current.routeId === '/foo' &&
+        next.fullPath === '/bar/$id' &&
+        next.params.id === 123 &&
+        next.search.hello === 'world'
+      )
+    },
+    withResolver: true,
+  })
+
+  // ...
+}
+```
+
+You can find more information about the `useBlocker` hook in the [API reference](../api/router/useBlockerHook.md).
 
 ## Component-based blocking
 
@@ -69,19 +89,127 @@ function MyComponent() {
 
   return (
     <Block
-      blocker={() => window.confirm('Are you sure you want to leave?')}
-      condition={formIsDirty}
+      shouldBlockFn={() => {
+        if (!formIsDirty) return false
+
+        const shouldLeave = confirm('Are you sure you want to leave?')
+        return !shouldLeave
+      }}
     />
   )
 
   // OR
 
   return (
-    <Block
-      blocker={() => window.confirm('Are you sure you want to leave?')}
-      condition={formIsDirty}
-    >
+    <Block shouldBlockFn={() => !formIsDirty} withResolver>
+      {({ status, proceed, reset }) => <>{/* ... */}</>}
+    </Block>
+  )
+}
+```
+
+## How can I show a custom UI?
+
+In most cases, using `window.confirm` in the `shouldBlockFn` function with `withResolver: false` in the hook is enough since it will clearly show the user that the navigation is being blocked and resolve the blocking based on their response.
+
+However, in some situations, you might want to show a custom UI that is intentionally less disruptive and more integrated with your app's design.
+
+**Note:** The return value of `shouldBlockFn` does not resolve the blocking if `withResolver` is `true`.
+
+### Hook/logical-based custom UI with resolver
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  const { proceed, reset, status } = useBlocker({
+    shouldBlockFn: () => formIsDirty,
+    withResolver: true,
+  })
+
+  // ...
+
+  return (
+    <>
       {/* ... */}
+      {status === 'blocked' && (
+        <div>
+          <p>Are you sure you want to leave?</p>
+          <button onClick={proceed}>Yes</button>
+          <button onClick={reset}>No</button>
+        </div>
+      )}
+    </>
+}
+```
+
+### Hook/logical-based custom UI without resolver
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  useBlocker({
+    shouldBlockFn: () => {
+      if (!formIsDirty) {
+        return false
+      }
+
+      const shouldBlock = new Promise<boolean>((resolve) => {
+        // Using a modal manager of your choice
+        modals.open({
+          title: 'Are you sure you want to leave?',
+          children: (
+            <SaveBlocker
+              confirm={() => {
+                modals.closeAll()
+                resolve(false)
+              }}
+              reject={() => {
+                modals.closeAll()
+                resolve(true)
+              }}
+            />
+          ),
+          onClose: () => resolve(true),
+        })
+      })
+      return shouldBlock
+    },
+  })
+
+  // ...
+}
+```
+
+### Component-based custom UI
+
+Similarly to the hook, the `Block` component returns the same state and functions as render props:
+
+```tsx
+import { Block } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  return (
+    <Block shouldBlockFn={() => formIsDirty} withResolver>
+      {({ status, proceed, reset }) => (
+        <>
+          {/* ... */}
+          {status === 'blocked' && (
+            <div>
+              <p>Are you sure you want to leave?</p>
+              <button onClick={proceed}>Yes</button>
+              <button onClick={reset}>No</button>
+            </div>
+          )}
+        </>
+      )}
     </Block>
   )
 }

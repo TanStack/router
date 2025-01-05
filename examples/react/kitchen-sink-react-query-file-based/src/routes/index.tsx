@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
   component: IndexComponent,
@@ -11,7 +11,7 @@ function IndexComponent() {
       <div className={`text-lg`}>Welcome Home!</div>
       <hr className={`my-2`} />
       <Link
-        to="/dashboard/invoices/"
+        to="/dashboard/invoices/$invoiceId"
         params={{
           invoiceId: 3,
         }}

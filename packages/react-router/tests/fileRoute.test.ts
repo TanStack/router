@@ -17,7 +17,7 @@ describe('createFileRoute has the same hooks as getRouteApi', () => {
   it.each(hookNames.map((name) => [name]))(
     'should have the "%s" hook defined',
     (hookName) => {
-      expect(hookName as keyof LazyRoute<any>).toBeDefined()
+      expect(route[hookName as keyof LazyRoute<any>]).toBeDefined()
     },
   )
 })

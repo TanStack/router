@@ -1,34 +1,34 @@
 import warning from 'tiny-warning'
 import { createRoute } from './route'
-import { useLoaderData, useLoaderDeps, useMatch } from './Matches'
+
+import { useMatch } from './useMatch'
+import { useLoaderDeps } from './useLoaderDeps'
+import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
-import type { ParsePathParams } from './link'
+import type { UseParamsRoute } from './useParams'
+import type { UseMatchRoute } from './useMatch'
+import type { UseSearchRoute } from './useSearch'
+import type { Constrain } from './utils'
 import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
-  AnySearchSchema,
   FileBaseRouteOptions,
-  MergeFromFromParent,
-  ResolveFullPath,
-  ResolveFullSearchSchema,
-  ResolveFullSearchSchemaInput,
-  RootRouteId,
+  ResolveParams,
+  RootRoute,
   Route,
   RouteConstraints,
-  RouteContext,
   RouteLoaderFn,
-  SearchSchemaInput,
-  TrimPathLeft,
   UpdatableRouteOptions,
 } from './route'
-import type { Assign, Expand, IsAny } from './utils'
-import type { RouteMatch } from './Matches'
-import type { NoInfer } from '@tanstack/react-store'
 import type { RegisteredRouter } from './router'
 import type { RouteById, RouteIds } from './routeInfo'
+import type { AnyValidator } from './validators'
+import type { UseLoaderDepsRoute } from './useLoaderDeps'
+import type { UseLoaderDataRoute } from './useLoaderData'
+import type { UseRouteContextRoute } from './useRouteContext'
 
 export interface FileRoutesByPath {
   // '/': {
@@ -36,90 +36,39 @@ export interface FileRoutesByPath {
   // }
 }
 
-type Replace<
-  TValue extends string,
-  TFrom extends string,
-  TTo extends string,
-  TAcc extends string = '',
-> = TValue extends `${infer Start}${TFrom}${infer Rest}`
-  ? Replace<Rest, TFrom, TTo, `${TAcc}${Start}${TTo}`>
-  : `${TAcc}${TValue}`
+export interface FileRouteTypes {
+  fileRoutesByFullPath: any
+  fullPaths: any
+  to: any
+  fileRoutesByTo: any
+  id: any
+  fileRoutesById: any
+}
 
-export type TrimLeft<
-  TValue extends string,
-  TStartsWith extends string,
-> = TValue extends `${TStartsWith}${infer U}` ? U : TValue
-
-export type TrimRight<
-  TValue extends string,
-  TEndsWith extends string,
-> = TValue extends `${infer U}${TEndsWith}` ? U : TValue
-
-export type Trim<TValue extends string, TFind extends string> = TrimLeft<
-  TrimRight<TValue, TFind>,
-  TFind
->
-
-export type RemoveUnderScores<T extends string> = Replace<
-  Replace<TrimRight<TrimLeft<T, '/_'>, '_'>, '_/', '/'>,
-  '/_',
-  '/'
->
-
-type RemoveRouteGroups<T extends string> =
-  T extends `${infer Before}(${infer RouteGroup})${infer After}`
-    ? RemoveRouteGroups<`${Before}${After}`>
-    : T
-
-type NormalizeSlashes<T extends string> =
-  T extends `${infer Before}//${infer After}`
-    ? NormalizeSlashes<`${Before}/${After}`>
-    : T
-
-type ReplaceFirstOccurrence<
-  TValue extends string,
-  TSearch extends string,
-  TReplacement extends string,
-> = TValue extends `${infer Prefix}${TSearch}${infer Suffix}`
-  ? `${Prefix}${TReplacement}${Suffix}`
-  : TValue
-
-export type ResolveFilePath<
-  TParentRoute extends AnyRoute,
-  TFilePath extends string,
-> = TParentRoute['id'] extends RootRouteId
-  ? TrimPathLeft<TFilePath>
-  : ReplaceFirstOccurrence<
-      TrimPathLeft<TFilePath>,
-      TrimPathLeft<TParentRoute['types']['customId']>,
-      ''
-    >
-
-export type FileRoutePath<
-  TParentRoute extends AnyRoute,
-  TFilePath extends string,
-  TResolvedFilePath = ResolveFilePath<TParentRoute, TFilePath>,
-> = TResolvedFilePath extends `_${infer _}`
-  ? ''
-  : TResolvedFilePath extends `/_${infer _}`
-    ? ''
-    : TResolvedFilePath
+export type InferFileRouteTypes<TRouteTree extends AnyRoute> =
+  TRouteTree extends RootRoute<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    infer TFileRouteTypes extends FileRouteTypes
+  >
+    ? TFileRouteTypes
+    : never
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends RouteConstraints['TId'] = NormalizeSlashes<
-    RemoveRouteGroups<TFilePath>
-  >,
-  TPath extends RouteConstraints['TPath'] = FileRoutePath<
-    TParentRoute,
-    TFilePath
-  >,
-  TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-    TParentRoute,
-    NormalizeSlashes<RemoveRouteGroups<RemoveUnderScores<TPath>>>
-  >,
->(path: TFilePath) {
+  TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
+  TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
+  TFullPath extends
+    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
+>(
+  path: TFilePath,
+): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
   }).createRoute
@@ -132,15 +81,10 @@ export function createFileRoute<
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends RouteConstraints['TId'] = TFilePath,
-  TPath extends RouteConstraints['TPath'] = FileRoutePath<
-    TParentRoute,
-    TFilePath
-  >,
-  TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-    TParentRoute,
-    RemoveUnderScores<TPath>
-  >,
+  TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
+  TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
+  TFullPath extends
+    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
 > {
   silent?: boolean
 
@@ -152,84 +96,52 @@ export class FileRoute<
   }
 
   createRoute = <
-    TSearchSchemaInput extends RouteConstraints['TSearchSchema'] = {},
-    TSearchSchema extends RouteConstraints['TSearchSchema'] = {},
-    TSearchSchemaUsed extends Record<
-      string,
-      any
-    > = TSearchSchemaInput extends SearchSchemaInput
-      ? Omit<TSearchSchemaInput, keyof SearchSchemaInput>
-      : TSearchSchema,
-    TFullSearchSchemaInput extends
-      RouteConstraints['TFullSearchSchema'] = ResolveFullSearchSchemaInput<
-      TParentRoute,
-      TSearchSchemaUsed
-    >,
-    TFullSearchSchema = ResolveFullSearchSchema<TParentRoute, TSearchSchema>,
-    TParams extends RouteConstraints['TParams'] = Expand<
-      Record<ParsePathParams<TPath>, string>
-    >,
-    TAllParams extends RouteConstraints['TAllParams'] = MergeFromFromParent<
-      TParentRoute['types']['allParams'],
-      TParams
-    >,
-    TRouteContextReturn extends
-      RouteConstraints['TRouteContext'] = RouteContext,
-    TRouteContext extends RouteConstraints['TRouteContext'] = [
-      TRouteContextReturn,
-    ] extends [never]
-      ? RouteContext
-      : TRouteContextReturn,
-    TAllContext = Expand<
-      Assign<IsAny<TParentRoute['types']['allContext'], {}>, TRouteContext>
-    >,
-    TRouterContext extends RouteConstraints['TRouterContext'] = AnyContext,
+    TSearchValidator = undefined,
+    TParams = ResolveParams<TPath>,
+    TRouteContextFn = AnyContext,
+    TBeforeLoadFn = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
-    TLoaderDataReturn = unknown,
-    TLoaderData = [TLoaderDataReturn] extends [never]
-      ? undefined
-      : TLoaderDataReturn,
-    TChildren extends RouteConstraints['TChildren'] = unknown,
-    TRouteTree extends RouteConstraints['TRouteTree'] = AnyRoute,
+    TLoaderFn = undefined,
+    TChildren = unknown,
   >(
     options?: FileBaseRouteOptions<
       TParentRoute,
+      TId,
       TPath,
-      TSearchSchemaInput,
-      TSearchSchema,
-      TFullSearchSchema,
+      TSearchValidator,
       TParams,
-      TAllParams,
-      TRouteContextReturn,
-      TRouteContext,
-      TRouterContext,
-      TAllContext,
       TLoaderDeps,
-      TLoaderDataReturn
+      TLoaderFn,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn
     > &
-      UpdatableRouteOptions<TAllParams, TFullSearchSchema, TLoaderData>,
+      UpdatableRouteOptions<
+        TParentRoute,
+        TId,
+        TFullPath,
+        TParams,
+        TSearchValidator,
+        TLoaderFn,
+        TLoaderDeps,
+        AnyContext,
+        TRouteContextFn,
+        TBeforeLoadFn
+      >,
   ): Route<
     TParentRoute,
     TPath,
     TFullPath,
     TFilePath,
     TId,
-    TSearchSchemaInput,
-    TSearchSchema,
-    TSearchSchemaUsed,
-    TFullSearchSchemaInput,
-    TFullSearchSchema,
+    TSearchValidator,
     TParams,
-    TAllParams,
-    TRouteContextReturn,
-    TRouteContext,
-    TAllContext,
-    TRouterContext,
+    AnyContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderDataReturn,
-    TLoaderData,
-    TChildren,
-    TRouteTree
+    TLoaderFn,
+    TChildren
   > => {
     warning(
       this.silent,
@@ -251,30 +163,40 @@ export function FileRouteLoader<
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
 >(
   _path: TFilePath,
-): <TLoaderData>(
-  loaderFn: RouteLoaderFn<
-    TRoute['types']['allParams'],
-    TRoute['types']['loaderDeps'],
-    TRoute['types']['allContext'],
-    TRoute['types']['routeContext'],
-    TLoaderData
+): <TLoaderFn>(
+  loaderFn: Constrain<
+    TLoaderFn,
+    RouteLoaderFn<
+      TRoute['parentRoute'],
+      TRoute['types']['id'],
+      TRoute['types']['params'],
+      TRoute['types']['loaderDeps'],
+      TRoute['types']['routerContext'],
+      TRoute['types']['routeContextFn'],
+      TRoute['types']['beforeLoadFn']
+    >
   >,
-) => RouteLoaderFn<
-  TRoute['types']['allParams'],
-  TRoute['types']['loaderDeps'],
-  TRoute['types']['allContext'],
-  TRoute['types']['routeContext'],
-  NoInfer<TLoaderData>
-> {
+) => TLoaderFn {
   warning(
     false,
     `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
   )
-  return (loaderFn) => loaderFn
+  return (loaderFn) => loaderFn as any
 }
 
 export type LazyRouteOptions = Pick<
-  UpdatableRouteOptions<AnyPathParams, AnySearchSchema, any>,
+  UpdatableRouteOptions<
+    AnyRoute,
+    string,
+    string,
+    AnyPathParams,
+    AnyValidator,
+    {},
+    AnyContext,
+    AnyContext,
+    AnyContext,
+    AnyContext
+  >,
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
 
@@ -292,48 +214,42 @@ export class LazyRoute<TRoute extends AnyRoute> {
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
-  useMatch = <
-    TRouteMatchState = RouteMatch<
-      TRoute['types']['routeTree'],
-      TRoute['types']['id']
-    >,
-    TSelected = TRouteMatchState,
-  >(opts?: {
-    select?: (match: TRouteMatchState) => TSelected
-  }): TSelected => {
-    return useMatch({ select: opts?.select, from: this.options.id })
+  useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
+    return useMatch({
+      select: opts?.select,
+      from: this.options.id,
+      structuralSharing: opts?.structuralSharing,
+    } as any) as any
   }
 
-  useRouteContext = <TSelected = TRoute['types']['allContext']>(opts?: {
-    select?: (s: TRoute['types']['allContext']) => TSelected
-  }): TSelected => {
+  useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
     return useMatch({
       from: this.options.id,
       select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    })
+    }) as any
   }
 
-  useSearch = <TSelected = TRoute['types']['fullSearchSchema']>(opts?: {
-    select?: (s: TRoute['types']['fullSearchSchema']) => TSelected
-  }): TSelected => {
-    return useSearch({ ...opts, from: this.options.id })
+  useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
+    return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.options.id,
+    } as any)
   }
 
-  useParams = <TSelected = TRoute['types']['allParams']>(opts?: {
-    select?: (s: TRoute['types']['allParams']) => TSelected
-  }): TSelected => {
-    return useParams({ ...opts, from: this.options.id })
+  useParams: UseParamsRoute<TRoute['id']> = (opts) => {
+    return useParams({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.options.id,
+    } as any)
   }
 
-  useLoaderDeps = <TSelected = TRoute['types']['loaderDeps']>(opts?: {
-    select?: (s: TRoute['types']['loaderDeps']) => TSelected
-  }): TSelected => {
+  useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.options.id } as any)
   }
 
-  useLoaderData = <TSelected = TRoute['types']['loaderData']>(opts?: {
-    select?: (s: TRoute['types']['loaderData']) => TSelected
-  }): TSelected => {
+  useLoaderData: UseLoaderDataRoute<TRoute['id']> = (opts) => {
     return useLoaderData({ ...opts, from: this.options.id } as any)
   }
 
@@ -354,13 +270,6 @@ export function createLazyRoute<
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
->(path: TFilePath) {
-  const id = removeGroups(path)
+>(id: TFilePath) {
   return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
-}
-
-const routeGroupPatternRegex = /\(.+\)/g
-
-function removeGroups(s: string) {
-  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
 }

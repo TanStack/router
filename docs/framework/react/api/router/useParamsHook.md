@@ -13,13 +13,20 @@ The `useParams` hook accepts an optional `options` object.
 
 - Type: `boolean`
 - Optional - `default: true`
-- If `false`, the `opts.from` option will be ignored and types will be loosened to [`Partial<AllParams>`](../AllParamsType) to reflect the shared types of all params.
+- If `false`, the `opts.from` option will be ignored and types will be loosened to `Partial<AllParams>` to reflect the shared types of all params.
 
 ### `opts.select` option
 
 - Optional
 - `(params: AllParams) => TSelected`
 - If supplied, this function will be called with the params object and the return value will be returned from `useParams`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
+
+### `opts.structuralSharing` option
+
+- Type: `boolean`
+- Optional
+- Configures whether structural sharing is enabled for the value returned by `select`.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 
 ## useParams returns
 

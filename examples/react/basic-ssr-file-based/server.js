@@ -1,3 +1,4 @@
+import path from 'node:path'
 import express from 'express'
 import getPort, { portNumbers } from 'get-port'
 
@@ -44,14 +45,14 @@ export async function createServer(
     try {
       const url = req.originalUrl
 
-      if (url.includes('.')) {
+      if (path.extname(url) !== '') {
         console.warn(`${url} is not valid router path`)
         res.status(404)
         res.end(`${url} is not valid router path`)
         return
       }
 
-      // Extract the head from vite's index transformation hook
+      // Best effort extraction of the head from vite's index transformation hook
       let viteHead = !isProd
         ? await vite.transformIndexHtml(
             url,
@@ -68,15 +69,15 @@ export async function createServer(
         if (!isProd) {
           return vite.ssrLoadModule('/src/entry-server.tsx')
         } else {
-          return import('./dist/server/entry-server.tsx')
+          return import('./dist/server/entry-server.js')
         }
       })()
 
-      console.log('Rendering: ', url, '...')
-      entry.render({ req, res, url, head: viteHead })
+      console.info('Rendering: ', url, '...')
+      entry.render({ req, res, head: viteHead })
     } catch (e) {
       !isProd && vite.ssrFixStacktrace(e)
-      console.log(e.stack)
+      console.info(e.stack)
       res.status(500).end(e.stack)
     }
   })
@@ -87,7 +88,7 @@ export async function createServer(
 if (!isTest) {
   createServer().then(async ({ app }) =>
     app.listen(await getPort({ port: portNumbers(3000, 3100) }), () => {
-      console.log('Client Server: http://localhost:3000')
+      console.info('Client Server: http://localhost:3000')
     }),
   )
 }

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Link, createLazyFileRoute } from '@tanstack/react-router'
 import { PostErrorComponent } from './posts.$postId/lazy'
 
-export const Route = createLazyFileRoute('/posts/$postId/deep')({
+export const Route = createLazyFileRoute('/posts_/$postId/deep')({
   component: PostDeepComponent,
   errorComponent: PostErrorComponent,
 })

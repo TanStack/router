@@ -2,18 +2,19 @@
 title: Route Masking
 ---
 
-Route masking is a way to mask the actual URL of a route that gets persisted to the browser's history and URL bar. This is useful for scenarios where you want to show a different URL than the one that is actually being navigated to and then falling back to the displayed URL when it is shared and (optionally) when the the page is reloaded. Here's a few examples:
+Route masking is a way to mask the actual URL of a route that gets persisted to the browser's history and URL bar. This is useful for scenarios where you want to show a different URL than the one that is actually being navigated to and then falling back to the displayed URL when it is shared and (optionally) when the page is reloaded. Here's a few examples:
 
 - Navigating to a modal route like `/photo/5/modal`, but masking the actual URL as `/photos/5`
 - Navigating to a modal route like `/post/5/comments`, but masking the actual URL as `/posts/5`
-- Navigating to a route with the search param `?showLogin=true`, but masking the the URL to _not_ contain the search param
-- Navigating to a route with the search param `?modal=settings`, but masking the the URL as `/settings'
+- Navigating to a route with the search param `?showLogin=true`, but masking the URL to _not_ contain the search param
+- Navigating to a route with the search param `?modal=settings`, but masking the URL as `/settings'
 
-Each of these scenarios can be achieved with route masking and even extended to support more advanced patterns like [parallel routes](../parallel-routes)
+Each of these scenarios can be achieved with route masking and even extended to support more advanced patterns like [parallel routes](./parallel-routes.md).
 
 ## How does route masking work?
 
-> 🧠 You **do not** need to understand how route masking works in order to use it. This section is for those who are curious about how it works under the hood. Skip to [How do I use route masking?](#how-do-i-use-route-masking) to learn how to use it!.
+> [!IMPORTANT]
+> You **do not** need to understand how route masking works in order to use it. This section is for those who are curious about how it works under the hood. Skip to [How do I use route masking?](#how-do-i-use-route-masking) to learn how to use it!.
 
 Route masking utilizes the `location.state` API to store the desired runtime location inside of the location that will get written to the URL. It stores this runtime location under the `__tempLocation` state property:
 
@@ -55,7 +56,16 @@ When using either route masking APIs, the `mask` option accepts the same navigat
 The `<Link>` and `navigate()` APIs both accept a `mask` option that can be used to mask the URL of the route being navigated to. Here's an example of using it with the `<Link>` component:
 
 ```tsx
-<Link to="/photos/5/modal" mask={{ to: '/photo/5' }}>
+<Link
+  to="/photos/$photoId/modal"
+  params={{ photoId: 5 }}
+  mask={{
+    to: '/photos/$photoId',
+    params: {
+      photoId: 5,
+    },
+  }}
+>
   Open Photo
 </Link>
 ```
@@ -66,7 +76,16 @@ And here's an example of using it with the `navigate()` API:
 const navigate = useNavigate()
 
 function onOpenPhoto() {
-  navigate('/photos/5/modal', { mask: { to: '/photo/5' } })
+  navigate({
+    to: '/photos/$photoId/modal',
+    params: { photoId: 5 },
+    mask: {
+      to: '/photos/$photoId',
+      params: {
+        photoId: 5,
+      },
+    },
+  })
 }
 ```
 

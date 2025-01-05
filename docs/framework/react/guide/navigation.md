@@ -51,6 +51,8 @@ type ToOptions<
 > 🧠 Every route object has a `to` property, which can be used as the `to` for any navigation or route matching API. Where possible, this will allow you to avoid plain strings and use type-safe route references instead:
 
 ```tsx
+import { Route as aboutRoute } from './routes/about.tsx'
+
 function Comp() {
   return <Link to={aboutRoute.to}>About</Link>
 }
@@ -88,6 +90,7 @@ export type LinkOptions<
     exact?: boolean
     includeHash?: boolean
     includeSearch?: boolean
+    explicitUndefined?: boolean
   }
   // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
   preload?: false | 'intent'
@@ -132,8 +135,6 @@ export type LinkProps<
   inactiveProps?:
     | React.AnchorHTMLAttributes<HTMLAnchorElement>
     | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
-  // If set to `true`, the link's underlying navigate() call will be wrapped in a `React.startTransition` call. Defaults to `true`.
-  startTransition?: boolean
 }
 ```
 
@@ -208,6 +209,7 @@ It's also common to want to update a single search param without supplying any o
 ```tsx
 const link = (
   <Link
+    to="."
     search={(prev) => ({
       ...prev,
       page: prev.page + 1,
@@ -217,8 +219,6 @@ const link = (
   </Link>
 )
 ```
-
-> 🧠 Did you notice that how we didn't even need to supply a `to` prop? By default, all navigations are relative to the current route, so if you don't supply a `to` prop, it will just update the current route's search params.
 
 ### Search Param Type Safety
 
@@ -285,6 +285,10 @@ export interface ActiveOptions {
   // If true, the link will only be active if the current URL search params inclusively match the `search` prop
   // Defaults to `true`
   includeSearch?: boolean
+  // This modifies the `includeSearch` behavior.
+  // If true,  properties in `search` that are explicitly `undefined` must NOT be present in the current URL search params for the link to be active.
+  // defaults to `false`
+  explicitUndefined?: boolean
 }
 ```
 
@@ -471,7 +475,7 @@ function Component() {
 
   useEffect(() => {
     if (matchRoute({ to: '/users', pending: true })) {
-      console.log('The /users route is matched and pending')
+      console.info('The /users route is matched and pending')
     }
   })
 

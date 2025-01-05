@@ -68,15 +68,15 @@ export async function createServer(
         if (!isProd) {
           return vite.ssrLoadModule('/src/entry-server.tsx')
         } else {
-          return import('./dist/server/entry-server.tsx')
+          return import('./dist/server/entry-server.js')
         }
       })()
 
-      console.log('Rendering: ', url, '...')
+      console.info('Rendering: ', url, '...')
       entry.render({ req, res, url, head: viteHead })
     } catch (e) {
       !isProd && vite.ssrFixStacktrace(e)
-      console.log(e.stack)
+      console.info(e.stack)
       res.status(500).end(e.stack)
     }
   })
@@ -87,7 +87,7 @@ export async function createServer(
 if (!isTest) {
   createServer().then(async ({ app }) =>
     app.listen(await getPort({ port: portNumbers(3000, 3100) }), () => {
-      console.log('Client Server: http://localhost:3000')
+      console.info('Client Server: http://localhost:3000')
     }),
   )
 }

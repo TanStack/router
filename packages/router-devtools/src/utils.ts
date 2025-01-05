@@ -31,15 +31,19 @@ type StyledComponent<T> = T extends 'button'
         : never
 
 export function getStatusColor(match: AnyRouteMatch) {
-  return match.status === 'success' && match.isFetching
-    ? 'blue'
-    : match.status === 'pending'
-      ? 'yellow'
-      : match.status === 'error'
-        ? 'red'
-        : match.status === 'success'
-          ? 'green'
-          : 'gray'
+  const colorMap = {
+    pending: 'yellow',
+    success: 'green',
+    error: 'red',
+    notFound: 'purple',
+    redirected: 'gray',
+  } as const
+
+  return match.isFetching && match.status === 'success'
+    ? match.isFetching === 'beforeLoad'
+      ? 'purple'
+      : 'blue'
+    : colorMap[match.status]
 }
 
 export function getRouteStatusColor(
@@ -93,14 +97,10 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
 }
 
 export function useIsMounted() {
-  const mountedRef = React.useRef(false)
-  const isMounted = React.useCallback(() => mountedRef.current, [])
+  const [isMounted, setIsMounted] = React.useState(false)
 
   React[isServer ? 'useEffect' : 'useLayoutEffect'](() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
+    setIsMounted(true)
   }, [])
 
   return isMounted
@@ -132,7 +132,7 @@ export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
   const safeSetState = React.useCallback(
     (value: T) => {
       scheduleMicrotask(() => {
-        if (isMounted()) {
+        if (isMounted) {
           setState(value)
         }
       })

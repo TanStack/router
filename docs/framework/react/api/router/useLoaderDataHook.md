@@ -3,11 +3,11 @@ id: useLoaderDataHook
 title: useLoaderData hook
 ---
 
-The `useLoaderData` hook returns the loader data from the closest [`RouteMatch`](../RouteMatchType) in the component tree.
+The `useLoaderData` hook returns the loader data from the closest [`RouteMatch`](./RouteMatchType.md) in the component tree.
 
 ## useLoaderData options
 
-The `useLoaderData` hook accepts a single _optional_ argument, an `options` object.
+The `useLoaderData` hook accepts an `options` object.
 
 ### `opts.from` option
 
@@ -28,6 +28,13 @@ The `useLoaderData` hook accepts a single _optional_ argument, an `options` obje
 - Optional
 - `(loaderData: TLoaderData) => TSelected`
 - If supplied, this function will be called with the loader data and the return value will be returned from `useLoaderData`. This value will also be used to determine if the hook should re-render its parent component using shallow equality checks.
+
+### `opts.structuralSharing` option
+
+- Type: `boolean`
+- Optional
+- Configures whether structural sharing is enabled for the value returned by `select`.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 
 ## useLoaderData returns
 

@@ -1,157 +1,33 @@
-import path from 'path'
-import * as fs from 'fs'
-import * as fsp from 'fs/promises'
+import path from 'node:path'
+import * as fs from 'node:fs'
+import * as fsp from 'node:fs/promises'
 import * as prettier from 'prettier'
-import { cleanPath, logging, trimPathLeft } from './utils'
+import {
+  determineInitialRoutePath,
+  logging,
+  multiSortBy,
+  removeExt,
+  removeTrailingSlash,
+  removeUnderscores,
+  replaceBackslash,
+  routePathToVariable,
+  trimPathLeft,
+  writeIfDifferent,
+} from './utils'
+import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
+import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
+import { rootPathId } from './filesystem/physical/rootPathId'
+import type { GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
+export const CONSTANTS = {
+  // When changing this, you'll want to update the import in `start/api/index.ts#defaultAPIFileRouteHandler`
+  APIRouteExportVariable: 'APIRoute',
+}
+
 let latestTask = 0
-export const rootPathId = '__root'
 const routeGroupPatternRegex = /\(.+\)/g
-
-export type RouteNode = {
-  filePath: string
-  fullPath: string
-  variableName: string
-  routePath?: string
-  cleanedPath?: string
-  path?: string
-  isNonPath?: boolean
-  isNonLayout?: boolean
-  isLayout?: boolean
-  isVirtualParentRequired?: boolean
-  isVirtualParentRoute?: boolean
-  isRoute?: boolean
-  isLoader?: boolean
-  isComponent?: boolean
-  isErrorComponent?: boolean
-  isPendingComponent?: boolean
-  isVirtual?: boolean
-  isLazy?: boolean
-  isRoot?: boolean
-  children?: Array<RouteNode>
-  parent?: RouteNode
-}
-
-async function getRouteNodes(config: Config) {
-  const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
-    config
-  const logger = logging({ disabled: config.disableLogging })
-  const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
-
-  const routeNodes: Array<RouteNode> = []
-
-  async function recurse(dir: string) {
-    const fullDir = path.resolve(config.routesDirectory, dir)
-    let dirList = await fsp.readdir(fullDir, { withFileTypes: true })
-
-    dirList = dirList.filter((d) => {
-      if (
-        d.name.startsWith('.') ||
-        (routeFileIgnorePrefix && d.name.startsWith(routeFileIgnorePrefix))
-      ) {
-        return false
-      }
-
-      if (routeFilePrefix) {
-        return d.name.startsWith(routeFilePrefix)
-      }
-
-      if (routeFileIgnorePattern) {
-        return !d.name.match(routeFileIgnoreRegExp)
-      }
-
-      return true
-    })
-
-    await Promise.all(
-      dirList.map(async (dirent) => {
-        const fullPath = path.join(fullDir, dirent.name)
-        const relativePath = path.join(dir, dirent.name)
-
-        if (dirent.isDirectory()) {
-          await recurse(relativePath)
-        } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
-          const filePath = replaceBackslash(path.join(dir, dirent.name))
-          const filePathNoExt = removeExt(filePath)
-          let routePath =
-            cleanPath(`/${filePathNoExt.split('.').join('/')}`) || ''
-
-          if (routeFilePrefix) {
-            routePath = routePath.replaceAll(routeFilePrefix, '')
-          }
-
-          const variableName = routePathToVariable(routePath)
-
-          // Remove the index from the route path and
-          // if the route path is empty, use `/'
-
-          const isLazy = routePath.endsWith('/lazy')
-
-          if (isLazy) {
-            routePath = routePath.replace(/\/lazy$/, '')
-          }
-
-          const isRoute = routePath.endsWith('/route')
-          const isComponent = routePath.endsWith('/component')
-          const isErrorComponent = routePath.endsWith('/errorComponent')
-          const isPendingComponent = routePath.endsWith('/pendingComponent')
-          const isLoader = routePath.endsWith('/loader')
-
-          const segments = routePath.split('/')
-          const isLayout =
-            segments[segments.length - 1]?.startsWith('_') || false
-
-          ;(
-            [
-              [isComponent, 'component'],
-              [isErrorComponent, 'errorComponent'],
-              [isPendingComponent, 'pendingComponent'],
-              [isLoader, 'loader'],
-            ] as const
-          ).forEach(([isType, type]) => {
-            if (isType) {
-              logger.warn(
-                `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
-              )
-            }
-          })
-
-          routePath = routePath.replace(
-            /\/(component|errorComponent|pendingComponent|loader|route|lazy)$/,
-            '',
-          )
-
-          if (routePath === 'index') {
-            routePath = '/'
-          }
-
-          routePath = routePath.replace(/\/index$/, '/') || '/'
-
-          routeNodes.push({
-            filePath,
-            fullPath,
-            routePath,
-            variableName,
-            isRoute,
-            isComponent,
-            isErrorComponent,
-            isPendingComponent,
-            isLoader,
-            isLazy,
-            isLayout,
-          })
-        }
-      }),
-    )
-
-    return routeNodes
-  }
-
-  await recurse('./')
-
-  return routeNodes
-}
+const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
 
 let isFirst = false
 let skipMessage = false
@@ -164,7 +40,7 @@ type RouteSubNode = {
   lazy?: RouteNode
 }
 
-export async function generator(config: Config) {
+export async function generator(config: Config, root: string) {
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
@@ -190,23 +66,45 @@ export async function generator(config: Config) {
   }
 
   const start = Date.now()
-  const routePathIdPrefix = config.routeFilePrefix ?? ''
-  const beforeRouteNodes = await getRouteNodes(config)
-  const rootRouteNode = beforeRouteNodes.find(
-    (d) => d.routePath === `/${rootPathId}`,
-  )
+
+  const TYPES_DISABLED = config.disableTypes
+
+  const prettierOptions: prettier.Options = {
+    semi: config.semicolons,
+    singleQuote: config.quoteStyle === 'single',
+    parser: 'typescript',
+  }
+
+  let getRouteNodesResult: GetRouteNodesResult
+
+  if (config.virtualRouteConfig) {
+    getRouteNodesResult = await virtualGetRouteNodes(config, root)
+  } else {
+    getRouteNodesResult = await physicalGetRouteNodes(config, root)
+  }
+
+  const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult
+  if (rootRouteNode === undefined) {
+    let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
+    if (!config.virtualRouteConfig) {
+      errorMessage += `\nMake sure that you add a "${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${config.routesDirectory}/${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}"`
+    }
+    throw new Error(errorMessage)
+  }
 
   const preRouteNodes = multiSortBy(beforeRouteNodes, [
     (d) => (d.routePath === '/' ? -1 : 1),
     (d) => d.routePath?.split('/').length,
-    (d) => (d.filePath.match(/[./]index[.]/) ? 1 : -1),
+    (d) =>
+      d.filePath.match(new RegExp(`[./]${config.indexToken}[.]`)) ? 1 : -1,
     (d) =>
       d.filePath.match(
         /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
       )
         ? 1
         : -1,
-    (d) => (d.filePath.match(/[./]route[.]/) ? -1 : 1),
+    (d) =>
+      d.filePath.match(new RegExp(`[./]${config.routeToken}[.]`)) ? -1 : 1,
     (d) => (d.routePath?.endsWith('/') ? -1 : 1),
     (d) => d.routePath,
   ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
@@ -217,6 +115,47 @@ export async function generator(config: Config) {
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
   const routeNodes: Array<RouteNode> = []
+
+  // the handleRootNode function is not being collapsed into the handleNode function
+  // because it requires only a subset of the logic that the handleNode function requires
+  // and it's easier to read and maintain this way
+  const handleRootNode = async (node?: RouteNode) => {
+    if (!node) {
+      // currently this is not being handled, but it could be in the future
+      // for example to handle a virtual root route
+      return
+    }
+
+    // from here on, we are only handling the root node that's present in the file system
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
+    if (!routeCode) {
+      const replaced = fillTemplate(
+        [
+          'import * as React from "react"\n',
+          '%%tsrImports%%',
+          '\n\n',
+          '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
+          'function RootComponent() { return (<React.Fragment><div>Hello "%%tsrPath%%"!</div><Outlet /></React.Fragment>) };\n',
+        ].join(''),
+        {
+          tsrImports:
+            "import { Outlet, createRootRoute } from '@tanstack/react-router';",
+          tsrPath: rootPathId,
+          tsrExportStart: `export const Route = createRootRoute(`,
+          tsrExportEnd: ');',
+        },
+      )
+
+      logger.log(`🟡 Creating ${node.fullPath}`)
+      fs.writeFileSync(
+        node.fullPath,
+        await prettier.format(replaced, prettierOptions),
+      )
+    }
+  }
+
+  await handleRootNode(rootRouteNode)
 
   const handleNode = async (node: RouteNode) => {
     let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
@@ -241,34 +180,33 @@ export async function generator(config: Config) {
     const trimmedPath = trimPathLeft(node.path ?? '')
 
     const split = trimmedPath.split('/')
-    const first = split[0] ?? trimmedPath
     const lastRouteSegment = split[split.length - 1] ?? trimmedPath
 
-    node.isNonPath = lastRouteSegment.startsWith('_')
-    node.isNonLayout = first.endsWith('_')
+    node.isNonPath =
+      lastRouteSegment.startsWith('_') ||
+      routeGroupPatternRegex.test(lastRouteSegment)
 
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
 
-    // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes
-    if (!node.isVirtualParentRoute) {
+    // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes and virtual routes
+    if (!node.isVirtualParentRoute && !node.isVirtual) {
       const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
-      const escapedRoutePath = removeTrailingUnderscores(
-        node.routePath?.replaceAll('$', '$$') ?? '',
-      )
+      const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
       let replaced = routeCode
 
       if (!routeCode) {
         if (node.isLazy) {
-          replaced = [
-            `import { createLazyFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createLazyFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-          ].join('\n\n')
+          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
+            tsrImports:
+              "import { createLazyFileRoute } from '@tanstack/react-router';",
+            tsrPath: escapedRoutePath,
+            tsrExportStart: `export const Route = createLazyFileRoute('${escapedRoutePath}')(`,
+            tsrExportEnd: ');',
+          })
         } else if (
           node.isRoute ||
           (!node.isComponent &&
@@ -276,33 +214,43 @@ export async function generator(config: Config) {
             !node.isPendingComponent &&
             !node.isLoader)
         ) {
-          replaced = [
-            `import { createFileRoute } from '@tanstack/react-router'`,
-            `export const Route = createFileRoute('${escapedRoutePath}')({
-  component: () => <div>Hello ${escapedRoutePath}!</div>
-})`,
-          ].join('\n\n')
+          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
+            tsrImports:
+              "import { createFileRoute } from '@tanstack/react-router';",
+            tsrPath: escapedRoutePath,
+            tsrExportStart: `export const Route = createFileRoute('${escapedRoutePath}')(`,
+            tsrExportEnd: ');',
+          })
         }
       } else {
         replaced = routeCode
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+            (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
           )
           .replace(
-            /(createFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+            /(import\s*\{.*)(create(Lazy)?FileRoute)(.*\}\s*from\s*['"]@tanstack\/react-router['"])/gs,
+            (_, p1, __, ___, p4) =>
+              `${p1}${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
-            /(createLazyFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (match, p1, p2, p3) => `${p1}${escapedRoutePath}${p3}`,
+            /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            (_, __, p2, ___, p4) =>
+              `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
       }
 
-      if (replaced !== routeCode) {
-        logger.log(`🟡 Updating ${node.fullPath}`)
-        await fsp.writeFile(node.fullPath, replaced)
-      }
+      await writeIfDifferent(
+        node.fullPath,
+        prettierOptions,
+        routeCode,
+        replaced,
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Updating ${node.fullPath}`)
+          },
+        },
+      )
     }
 
     if (
@@ -345,7 +293,9 @@ export async function generator(config: Config) {
     }
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
-    node.isVirtualParentRequired = node.isLayout ? !cleanedPathIsEmpty : false
+    const nonPathRoute = node.isRoute && node.isNonPath
+    node.isVirtualParentRequired =
+      node.isLayout || nonPathRoute ? !cleanedPathIsEmpty : false
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
@@ -399,11 +349,62 @@ export async function generator(config: Config) {
     routeNodes.push(node)
   }
 
-  for (const node of preRouteNodes) {
+  for (const node of preRouteNodes.filter((d) => !d.isAPIRoute)) {
     await handleNode(node)
   }
+  checkRouteFullPathUniqueness(
+    preRouteNodes.filter(
+      (d) => !d.isAPIRoute && d.children === undefined && d.isLazy !== true,
+    ),
+    config,
+  )
 
-  function buildRouteConfig(nodes: Array<RouteNode>, depth = 1): string {
+  const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
+    preRouteNodes.filter((d) => d.isAPIRoute),
+    config,
+  )
+
+  const handleAPINode = async (node: RouteNode) => {
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
+    const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
+
+    if (!routeCode) {
+      const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
+        tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
+        tsrPath: escapedRoutePath,
+        tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
+        tsrExportEnd: ');',
+      })
+
+      logger.log(`🟡 Creating ${node.fullPath}`)
+      fs.writeFileSync(
+        node.fullPath,
+        await prettier.format(replaced, prettierOptions),
+      )
+    } else {
+      await writeIfDifferent(
+        node.fullPath,
+        prettierOptions,
+        routeCode,
+        routeCode.replace(
+          /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+          (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
+        ),
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Updating ${node.fullPath}`)
+          },
+        },
+      )
+    }
+  }
+
+  for (const node of startAPIRouteNodes) {
+    await handleAPINode(node)
+  }
+
+  function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
       if (node.isRoot) {
         return
@@ -416,22 +417,40 @@ export async function generator(config: Config) {
       const route = `${node.variableName}Route`
 
       if (node.children?.length) {
-        const childConfigs = buildRouteConfig(node.children, depth + 1)
-        return `${route}.addChildren([${spaces(depth * 4)}${childConfigs}])`
+        const childConfigs = buildRouteTreeConfig(node.children, depth + 1)
+
+        const childrenDeclaration = TYPES_DISABLED
+          ? ''
+          : `interface ${route}Children {
+  ${node.children.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`
+
+        const children = `const ${route}Children${TYPES_DISABLED ? '' : `: ${route}Children`} = {
+  ${node.children.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`
+
+        const routeWithChildren = `const ${route}WithChildren = ${route}._addFileChildren(${route}Children)`
+
+        return [
+          childConfigs,
+          childrenDeclaration,
+          children,
+          routeWithChildren,
+        ].join('\n\n')
       }
 
-      return route
+      return undefined
     })
 
-    return children.filter(Boolean).join(`,`)
+    return children.filter(Boolean).join('\n\n')
   }
 
-  const routeConfigChildrenText = buildRouteConfig(routeTree)
+  const routeConfigChildrenText = buildRouteTreeConfig(routeTree)
 
   const sortedRouteNodes = multiSortBy(routeNodes, [
     (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
     (d) => d.routePath?.split('/').length,
-    (d) => (d.routePath?.endsWith("index'") ? -1 : 1),
+    (d) => (d.routePath?.endsWith(config.indexToken) ? -1 : 1),
     (d) => d,
   ])
 
@@ -451,45 +470,35 @@ export async function generator(config: Config) {
     .map((d) => d[0])
 
   const virtualRouteNodes = sortedRouteNodes.filter((d) => d.isVirtual)
-  const rootPathIdExtension =
-    config.addExtensions && rootRouteNode
-      ? path.extname(rootRouteNode.filePath)
-      : ''
 
+  function getImportPath(node: RouteNode) {
+    return replaceBackslash(
+      removeExt(
+        path.relative(
+          path.dirname(config.generatedRouteTree),
+          path.resolve(config.routesDirectory, node.filePath),
+        ),
+        config.addExtensions,
+      ),
+    )
+  }
   const routeImports = [
-    '/* prettier-ignore-start */',
-    '/* eslint-disable */',
-    '// @ts-nocheck',
-    '// noinspection JSUnusedGlobalSymbols',
-    '// This file is auto-generated by TanStack Router',
+    ...config.routeTreeFileHeader,
+    `// This file was automatically generated by TanStack Router.
+// You should NOT make any changes in this file as it will be overwritten.
+// Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
     imports.length
       ? `import { ${imports.join(', ')} } from '@tanstack/react-router'\n`
       : '',
     '// Import Routes',
     [
-      `import { Route as rootRoute } from './${replaceBackslash(
-        path.relative(
-          path.dirname(config.generatedRouteTree),
-          path.resolve(
-            config.routesDirectory,
-            `${routePathIdPrefix}${rootPathId}${rootPathIdExtension}`,
-          ),
-        ),
-      )}'`,
+      `import { Route as rootRoute } from './${getImportPath(rootRouteNode)}'`,
       ...sortedRouteNodes
         .filter((d) => !d.isVirtual)
         .map((node) => {
           return `import { Route as ${
             node.variableName
-          }Import } from './${replaceBackslash(
-            removeExt(
-              path.relative(
-                path.dirname(config.generatedRouteTree),
-                path.resolve(config.routesDirectory, node.filePath),
-              ),
-              config.addExtensions,
-            ),
-          )}'`
+          }Import } from './${getImportPath(node)}'`
         }),
     ].join('\n'),
     virtualRouteNodes.length ? '// Create Virtual Routes' : '',
@@ -497,9 +506,7 @@ export async function generator(config: Config) {
       .map((node) => {
         return `const ${
           node.variableName
-        }Import = createFileRoute('${removeTrailingUnderscores(
-          node.routePath,
-        )}')()`
+        }Import = createFileRoute('${node.routePath}')()`
       })
       .join('\n'),
     '// Create/Update Routes',
@@ -516,14 +523,13 @@ export async function generator(config: Config) {
         return [
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
-            node.isNonPath
-              ? `id: '${node.path}'`
-              : `path: '${node.cleanedPath}'`,
+            `id: '${node.path}'`,
+            !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)
             .join(',')}
-        }${config.disableTypes ? '' : 'as any'})`,
+        }${TYPES_DISABLED ? '' : 'as any'})`,
           loaderNode
             ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
                 removeExt(
@@ -578,7 +584,7 @@ export async function generator(config: Config) {
         ].join('')
       })
       .join('\n\n'),
-    ...(config.disableTypes
+    ...(TYPES_DISABLED
       ? []
       : [
           '// Populate the FileRoutesByPath interface',
@@ -586,7 +592,12 @@ export async function generator(config: Config) {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
-        return `'${removeTrailingUnderscores(routeNode.routePath)}': {
+        const filePathId = routeNode.routePath
+
+        return `'${filePathId}': {
+          id: '${filePathId}'
+          path: '${inferPath(routeNode)}'
+          fullPath: '${inferFullPath(routeNode)}'
           preLoaderRoute: typeof ${routeNode.variableName}Import
           parentRoute: typeof ${
             routeNode.isVirtualParentRequired
@@ -602,38 +613,125 @@ export async function generator(config: Config) {
 }`,
         ]),
     '// Create and export the route tree',
-    `export const routeTree = rootRoute.addChildren([${routeConfigChildrenText}])`,
-    '/* prettier-ignore-end */',
+    routeConfigChildrenText,
+    ...(TYPES_DISABLED
+      ? []
+      : [
+          `export interface FileRoutesByFullPath {
+  ${[...createRouteNodesByFullPath(routeNodes).entries()].map(
+    ([fullPath, routeNode]) => {
+      return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+    },
+  )}
+}`,
+          `export interface FileRoutesByTo {
+  ${[...createRouteNodesByTo(routeNodes).entries()].map(([to, routeNode]) => {
+    return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+  })}
+}`,
+          `export interface FileRoutesById {
+  '__root__': typeof rootRoute,
+  ${[...createRouteNodesById(routeNodes).entries()].map(([id, routeNode]) => {
+    return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
+  })}
+}`,
+          `export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: ${routeNodes.length > 0 ? [...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|') : 'never'}
+  fileRoutesByTo: FileRoutesByTo
+  to: ${routeNodes.length > 0 ? [...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|') : 'never'}
+  id: ${[`'__root__'`, ...[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
+  fileRoutesById: FileRoutesById
+}`,
+          `export interface RootRouteChildren {
+  ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`,
+        ]),
+    `const rootRouteChildren${TYPES_DISABLED ? '' : ': RootRouteChildren'} = {
+  ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
+}`,
+    `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)${TYPES_DISABLED ? '' : '._addFileTypes<FileRouteTypes>()'}`,
+    ...config.routeTreeFileFooter,
   ]
     .filter(Boolean)
     .join('\n\n')
 
-  const routeConfigFileContent = await prettier.format(routeImports, {
-    semi: config.semicolons,
-    singleQuote: config.quoteStyle === 'single',
-    parser: 'typescript',
-  })
+  const createRouteManifest = () => {
+    const routesManifest = {
+      __root__: {
+        filePath: rootRouteNode.filePath,
+        children: routeTree.map((d) => d.routePath),
+      },
+      ...Object.fromEntries(
+        routeNodes.map((d) => {
+          const filePathId = d.routePath
 
-  const routeTreeContent = await fsp
+          return [
+            filePathId,
+            {
+              filePath: d.filePath,
+              parent: d.parent?.routePath ? d.parent.routePath : undefined,
+              children: d.children?.map((childRoute) => childRoute.routePath),
+            },
+          ]
+        }),
+      ),
+    }
+
+    return JSON.stringify(
+      {
+        routes: routesManifest,
+      },
+      null,
+      2,
+    )
+  }
+
+  const routeConfigFileContent = config.disableManifestGeneration
+    ? routeImports
+    : [
+        routeImports,
+        '\n',
+        '/* ROUTE_MANIFEST_START',
+        createRouteManifest(),
+        'ROUTE_MANIFEST_END */',
+      ].join('\n')
+
+  if (!checkLatest()) return
+
+  const existingRouteTreeContent = await fsp
     .readFile(path.resolve(config.generatedRouteTree), 'utf-8')
-    .catch((err: any) => {
+    .catch((err) => {
       if (err.code === 'ENOENT') {
-        return undefined
+        return ''
       }
+
       throw err
     })
 
   if (!checkLatest()) return
 
-  if (routeTreeContent !== routeConfigFileContent) {
-    await fsp.mkdir(path.dirname(path.resolve(config.generatedRouteTree)), {
-      recursive: true,
-    })
-    if (!checkLatest()) return
-    await fsp.writeFile(
-      path.resolve(config.generatedRouteTree),
-      routeConfigFileContent,
-    )
+  // Ensure the directory exists
+  await fsp.mkdir(path.dirname(path.resolve(config.generatedRouteTree)), {
+    recursive: true,
+  })
+
+  if (!checkLatest()) return
+
+  // Write the route tree file, if it has changed
+  const routeTreeWriteResult = await writeIfDifferent(
+    path.resolve(config.generatedRouteTree),
+    prettierOptions,
+    existingRouteTreeContent,
+    routeConfigFileContent,
+    {
+      beforeWrite: () => {
+        logger.log(`🟡 Updating ${config.generatedRouteTree}`)
+      },
+    },
+  )
+  if (routeTreeWriteResult && !checkLatest()) {
+    return
   }
 
   logger.log(
@@ -643,79 +741,12 @@ export async function generator(config: Config) {
   )
 }
 
-function routePathToVariable(routePath: string): string {
-  return (
-    removeUnderscores(routePath)
-      ?.replace(/\/\$\//g, '/splat/')
-      .replace(/\$$/g, 'splat')
-      .replace(/\$/g, '')
-      .split(/[/-]/g)
-      .map((d, i) => (i > 0 ? capitalize(d) : d))
-      .join('')
-      .replace(/([^a-zA-Z0-9]|[.])/gm, '')
-      .replace(/^(\d)/g, 'R$1') ?? ''
-  )
-}
-
-export function removeExt(d: string, keepExtension: boolean = false) {
-  return keepExtension ? d : d.substring(0, d.lastIndexOf('.')) || d
-}
-
-function spaces(d: number): string {
-  return Array.from({ length: d })
-    .map(() => ' ')
-    .join('')
-}
-
-export function multiSortBy<T>(
-  arr: Array<T>,
-  accessors: Array<(item: T) => any> = [(d) => d],
-): Array<T> {
-  return arr
-    .map((d, i) => [d, i] as const)
-    .sort(([a, ai], [b, bi]) => {
-      for (const accessor of accessors) {
-        const ao = accessor(a)
-        const bo = accessor(b)
-
-        if (typeof ao === 'undefined') {
-          if (typeof bo === 'undefined') {
-            continue
-          }
-          return 1
-        }
-
-        if (ao === bo) {
-          continue
-        }
-
-        return ao > bo ? 1 : -1
-      }
-
-      return ai - bi
-    })
-    .map(([d]) => d)
-}
-
-function capitalize(s: string) {
-  if (typeof s !== 'string') return ''
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-function removeUnderscores(s?: string) {
-  return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
-}
-
-function removeTrailingUnderscores(s?: string) {
-  return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
-}
-
-function replaceBackslash(s: string) {
-  return s.replaceAll(/\\/gi, '/')
-}
+// function removeTrailingUnderscores(s?: string) {
+//   return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
+// }
 
 function removeGroups(s: string) {
-  return s.replaceAll(routeGroupPatternRegex, '').replaceAll('//', '/')
+  return s.replace(possiblyNestedRouteGroupPatternRegex, '')
 }
 
 /**
@@ -726,7 +757,7 @@ function removeGroups(s: string) {
  */
 function determineNodePath(node: RouteNode) {
   return (node.path = node.parent
-    ? node.routePath?.replace(node.parent.routePath!, '') || '/'
+    ? node.routePath?.replace(node.parent.routePath ?? '', '') || '/'
     : node.routePath)
 }
 
@@ -788,4 +819,209 @@ export function hasParentRoute(
   const parentRoutePath = segments.join('/')
 
   return hasParentRoute(routes, node, parentRoutePath)
+}
+
+/**
+ * Gets the final variable name for a route
+ */
+export const getResolvedRouteNodeVariableName = (
+  routeNode: RouteNode,
+): string => {
+  return routeNode.children?.length
+    ? `${routeNode.variableName}RouteWithChildren`
+    : `${routeNode.variableName}Route`
+}
+
+/**
+ * Creates a map from fullPath to routeNode
+ */
+export const createRouteNodesByFullPath = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    routeNodes.map((routeNode) => [inferFullPath(routeNode), routeNode]),
+  )
+}
+
+/**
+ * Create a map from 'to' to a routeNode
+ */
+export const createRouteNodesByTo = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => [
+      inferTo(routeNode),
+      routeNode,
+    ]),
+  )
+}
+
+/**
+ * Create a map from 'id' to a routeNode
+ */
+export const createRouteNodesById = (
+  routeNodes: Array<RouteNode>,
+): Map<string, RouteNode> => {
+  return new Map(
+    routeNodes.map((routeNode) => {
+      const id = routeNode.routePath ?? ''
+      return [id, routeNode]
+    }),
+  )
+}
+
+/**
+ * Infers the full path for use by TS
+ */
+export const inferFullPath = (routeNode: RouteNode): string => {
+  const fullPath = removeGroups(
+    removeUnderscores(removeLayoutSegments(routeNode.routePath)) ?? '',
+  )
+
+  return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
+}
+
+/**
+ * Infers the path for use by TS
+ */
+export const inferPath = (routeNode: RouteNode): string => {
+  return routeNode.cleanedPath === '/'
+    ? routeNode.cleanedPath
+    : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
+}
+
+/**
+ * Infers to path
+ */
+export const inferTo = (routeNode: RouteNode): string => {
+  const fullPath = inferFullPath(routeNode)
+
+  if (fullPath === '/') return fullPath
+
+  return fullPath.replace(/\/$/, '')
+}
+
+/**
+ * Dedupes branches and index routes
+ */
+export const dedupeBranchesAndIndexRoutes = (
+  routes: Array<RouteNode>,
+): Array<RouteNode> => {
+  return routes.filter((route) => {
+    if (route.children?.find((child) => child.cleanedPath === '/')) return false
+    return true
+  })
+}
+
+function checkUnique<TElement>(routes: Array<TElement>, key: keyof TElement) {
+  // Check no two routes have the same `key`
+  // if they do, throw an error with the conflicting filePaths
+  const keys = routes.map((d) => d[key])
+  const uniqueKeys = new Set(keys)
+  if (keys.length !== uniqueKeys.size) {
+    const duplicateKeys = keys.filter((d, i) => keys.indexOf(d) !== i)
+    const conflictingFiles = routes.filter((d) =>
+      duplicateKeys.includes(d[key]),
+    )
+    return conflictingFiles
+  }
+  return undefined
+}
+
+function checkRouteFullPathUniqueness(
+  _routes: Array<RouteNode>,
+  config: Config,
+) {
+  const routes = _routes.map((d) => {
+    const inferredFullPath = inferFullPath(d)
+    return { ...d, inferredFullPath }
+  })
+
+  const conflictingFiles = checkUnique(routes, 'inferredFullPath')
+
+  if (conflictingFiles !== undefined) {
+    const errorMessage = `Conflicting configuration paths were found for the following route${conflictingFiles.length > 1 ? 's' : ''}: ${conflictingFiles
+      .map((p) => `"${p.inferredFullPath}"`)
+      .join(', ')}.
+Please ensure each route has a unique full path.
+Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+}
+
+function checkStartAPIRoutes(_routes: Array<RouteNode>, config: Config) {
+  if (_routes.length === 0) {
+    return []
+  }
+
+  // Make sure these are valid URLs
+  // Route Groups and Layout Routes aren't being removed since
+  // you may want to have an API route that starts with an underscore
+  // or be wrapped in parentheses
+  const routes = _routes.map((d) => {
+    const routePath = removeTrailingSlash(d.routePath ?? '')
+    return { ...d, routePath }
+  })
+
+  const conflictingFiles = checkUnique(routes, 'routePath')
+
+  if (conflictingFiles !== undefined) {
+    const errorMessage = `Conflicting configuration paths were found for the following API route${conflictingFiles.length > 1 ? 's' : ''}: ${conflictingFiles
+      .map((p) => `"${p}"`)
+      .join(', ')}.
+  Please ensure each API route has a unique route path.
+Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+
+  return routes
+}
+
+export type StartAPIRoutePathSegment = {
+  value: string
+  type: 'path' | 'param' | 'splat'
+}
+
+/**
+ * This function takes in a path in the format accepted by TanStack Router
+ * and returns an array of path segments that can be used to generate
+ * the pathname of the TanStack Start API route.
+ *
+ * @param src
+ * @returns
+ */
+export function startAPIRouteSegmentsFromTSRFilePath(
+  src: string,
+  config: Config,
+): Array<StartAPIRoutePathSegment> {
+  const routePath = determineInitialRoutePath(src)
+
+  const parts = routePath
+    .replaceAll('.', '/')
+    .split('/')
+    .filter((p) => !!p && p !== config.indexToken)
+  const segments: Array<StartAPIRoutePathSegment> = parts.map((part) => {
+    if (part.startsWith('$')) {
+      if (part === '$') {
+        return { value: part, type: 'splat' }
+      }
+
+      part.replaceAll('$', '')
+      return { value: part, type: 'param' }
+    }
+
+    return { value: part, type: 'path' }
+  })
+
+  return segments
+}
+
+type TemplateTag = 'tsrImports' | 'tsrPath' | 'tsrExportStart' | 'tsrExportEnd'
+
+function fillTemplate(template: string, values: Record<TemplateTag, string>) {
+  return template.replace(
+    /%%(\w+)%%/g,
+    (_, key) => values[key as TemplateTag] || '',
+  )
 }

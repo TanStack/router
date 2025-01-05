@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/router-devtools",
-  "version": "1.26.16",
-  "description": "",
+  "version": "1.95.1",
+  "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -9,15 +9,37 @@
     "url": "https://github.com/TanStack/router.git",
     "directory": "packages/router-devtools"
   },
-  "homepage": "https://tanstack.com/router/",
+  "homepage": "https://tanstack.com/router",
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
   },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint ./src",
+    "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
+    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js",
+    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
+    "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
+    "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
+    "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
+    "test:types:ts57": "tsc",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
+    "build": "vite build"
+  },
   "type": "module",
-  "types": "dist/esm/index.d.ts",
-  "main": "dist/cjs/index.cjs",
-  "module": "dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
   "exports": {
     ".": {
       "import": {
@@ -32,43 +54,25 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
-    "test:types": "tsc --noEmit",
-    "test:build": "publint --strict",
-    "build": "vite build"
-  },
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
-  ],
-  "engines": {
-    "node": ">=12"
-  },
   "files": [
     "dist",
     "src"
   ],
+  "engines": {
+    "node": ">=12"
+  },
   "dependencies": {
-    "@tanstack/react-router": "workspace:*",
-    "clsx": "^2.1.0",
-    "date-fns": "^2.29.1",
-    "goober": "^2.1.14"
+    "clsx": "^2.1.1",
+    "goober": "^2.1.16"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^4.3.4",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "vite": "^5.0.13"
+    "react-dom": "^18.2.0"
   },
   "peerDependencies": {
-    "react": ">=16.8",
-    "react-dom": ">=16.8"
+    "@tanstack/react-router": "workspace:^",
+    "react": ">=18",
+    "react-dom": ">=18"
   }
 }

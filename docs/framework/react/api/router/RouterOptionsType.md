@@ -35,13 +35,24 @@ The `RouterOptions` type accepts an object with the following properties and met
 - A function that will be used to parse search params when parsing the current location.
 - Defaults to `defaultParseSearch`.
 
+### `search.strict` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- Configures how unknown search params (= not returned by any `validateSearch`) are treated.
+- If `false`, unknown search params will be kept.
+- If `true`, unknown search params will be removed.
+
 ### `defaultPreload` property
 
-- Type: `undefined | false | 'intent'`
+- Type: `undefined | false | 'intent' | 'viewport' | 'render'`
 - Optional
 - Defaults to `false`
 - If `false`, routes will not be preloaded by default in any way.
 - If `'intent'`, routes will be preloaded by default when the user hovers over a link or a `touchstart` event is detected on a `<Link>`.
+- If `'viewport'`, routes will be preloaded by default when they are within the viewport of the browser.
+- If `'render'`, routes will be preloaded by default as soon as they are rendered in the DOM.
 
 ### `defaultPreloadDelay` property
 
@@ -64,6 +75,13 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Defaults to `ErrorComponent`
 - The default `errorComponent` a route should use if no error component is provided.
 
+### `defaultNotFoundComponent` property
+
+- Type: `NotFoundRouteComponent`
+- Optional
+- Defaults to `NotFound`
+- The default `notFoundComponent` a route should use if no notFound component is provided.
+
 ### `defaultPendingComponent` property
 
 - Type: `RouteComponent`
@@ -84,6 +102,61 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Defaults to `500`
 - The default `pendingMinMs` a route should use if no pendingMinMs is provided.
 
+### `defaultStaleTime` property
+
+- Type: `number`
+- Optional
+- Defaults to `0`
+- The default `staleTime` a route should use if no staleTime is provided.
+
+### `defaultPreloadStaleTime` property
+
+- Type: `number`
+- Optional
+- Defaults to `30_000` ms (30 seconds)
+- The default `preloadStaleTime` a route should use if no preloadStaleTime is provided.
+
+### `defaultPreloadGcTime` property
+
+- Type: `number`
+- Optional
+- Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
+- The default `preloadGcTime` a route should use if no preloadGcTime is provided.
+
+### `defaultGcTime` property
+
+- Type: `number`
+- Optional
+- Defaults to 30 minutes.
+- The default `gcTime` a route should use if no gcTime is provided.
+
+### `defaultOnCatch` property
+
+- Type: `(error: Error, errorInfo: ErrorInfo) => void`
+- Optional
+- The default `onCatch` handler for errors caught by the Router ErrorBoundary
+
+### `defaultViewTransition` property
+
+- Type: `boolean | ViewTransitionOptions`
+- Optional
+- If `true`, route navigations will be called using `document.startViewTransition()`.
+- If [`ViewTransitionOptions`](./ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
+  where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types,
+  the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
+- If the browser does not support this api, this option will be ignored.
+- See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
+- See [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types) for more informations on viewTransition types
+
+### `defaultHashScrollIntoView` property
+
+- Type: `boolean | ScrollIntoViewOptions`
+- Optional
+- Defaults to `true` so the element with an id matching the hash will be scrolled into view after the location is committed to history.
+- If `false`, the element with an id matching the hash will not be scrolled into view after the location is committed to history.
+- If an object is provided, it will be passed to the `scrollIntoView` method as options.
+- See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
+
 ### `caseSensitive` property
 
 - Type: `boolean`
@@ -101,7 +174,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 ### `context` property
 
 - Type: `any`
-- Optional or required if the root route was created with [`createRootRouteWithContext()`](../createRootRouteWithContextFunction).
+- Optional or required if the root route was created with [`createRootRouteWithContext()`](./createRootRouteWithContextFunction.md).
 - The root context that will be provided to all routes in the route tree. This can be used to provide a context to all routes in the tree without having to provide it to each route individually.
 
 ### `dehydrate` method
@@ -133,7 +206,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 - Type: `React.Component`
 - Optional
-- A component that will be used to wrap the entire router. This is useful for providing a context to the entire router.
+- A component that will be used to wrap the entire router. This is useful for providing a context to the entire router. Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
 
 **Example**
 
@@ -152,7 +225,7 @@ const router = createRouter({
 
 - Type: `React.Component`
 - Optional
-- A component that will be used to wrap the inner contents of the router. This is useful for providing a context to the inner contents of the router where you also need access to the router context and hooks.
+- A component that will be used to wrap the inner contents of the router. This is useful for providing a context to the inner contents of the router where you also need access to the router context and hooks. Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
 
 **Example**
 
@@ -173,20 +246,70 @@ const router = createRouter({
 })
 ```
 
+### `notFoundMode` property
+
+- Type: `'root' | 'fuzzy'`
+- Optional
+- Defaults to `'fuzzy'`
+- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../guide/not-found-errors.md) for more information.
+
 ### `notFoundRoute` property
 
+- **Deprecated**
 - Type: `NotFoundRoute`
 - Optional
 - A route that will be used as the default not found route for every branch of the route tree. This can be overridden on a per-branch basis by providing a not found route to the `NotFoundRoute` option on the root route of the branch.
 
 ### `errorSerializer` property
 
-- Type: [`RouterErrorSerializer`](../RouterErrorSerializerType)
+- Type: [`RouterErrorSerializer`]
 - Optional
 - The serializer object that will be used to determine how errors are serialized and deserialized between the server and the client.
 
+#### `errorSerializer.serialize` method
+
+- Type: `(err: unknown) => TSerializedError`
+- This method is called to define how errors are serialized when they are stored in the router's dehydrated state.
+
+#### `errorSerializer.deserialize` method
+
+- Type: `(err: TSerializedError) => unknown`
+- This method is called to define how errors are deserialized from the router's dehydrated state.
+
 ### `transformer` property
 
-- Type: [`RouterTransformer`](../RouterTransformerType)
+- Type: `RouterTransformer`
 - Optional
 - The transformer that will be used when sending data between the server and the client during SSR.
+- Defaults to a very lightweight transformer that supports a few basic types. See the [SSR guide](../../guide/ssr.md) for more information.
+
+#### `transformer.stringify` method
+
+- Type: `(obj: unknown) => string`
+- This method is called when stringifying data to be sent to the client.
+
+#### `transformer.parse` method
+
+- Type: `(str: string) => unknown`
+- This method is called when parsing the string encoded by the server.
+
+### `trailingSlash` property
+
+- Type: `'always' | 'never' | 'preserve'`
+- Optional
+- Defaults to `never`
+- Configures how trailing slashes are treated. `'always'` will add a trailing slash if not present, `'never'` will remove the trailing slash if present and `'preserve'` will not modify the trailing slash.
+
+### `pathParamsAllowedCharacters` property
+
+- Type: `Array<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
+- Optional
+- Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+
+### `defaultStructuralSharing` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- Configures whether structural sharing is enabled by default for fine-grained selectors.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.

@@ -1,4 +1,4 @@
-import { Await, createFileRoute, defer } from '@tanstack/react-router'
+import { Await, createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 
 async function loadData() {
@@ -9,10 +9,10 @@ async function loadData() {
 
 export const Route = createFileRoute('/error')({
   component: ErrorComponent,
-  loader: async () => {
+  loader: () => {
     if (Math.random() > 0.5) throw new Error('Random error!')
     return {
-      deferredData: defer(loadData()),
+      deferredData: loadData(),
     }
   },
   pendingComponent: () => <p>Loading..</p>,
@@ -20,7 +20,7 @@ export const Route = createFileRoute('/error')({
   errorComponent: ({ error }) => {
     return (
       <div className="p-2">
-        <h3>Caught: {(error as Error).message}</h3>
+        <h3>Caught: {error.message}</h3>
         <p>(This page has a 75% chance of throwing an error)</p>
       </div>
     )

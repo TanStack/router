@@ -68,7 +68,7 @@ function PostComponent() {
 }
 ```
 
-> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](../code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useParams()` hook.
+> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useParams()` hook.
 
 ## Path Params outside of Routes
 
@@ -110,3 +110,19 @@ function Component() {
 ```
 
 Notice that the function style is useful when you need to persist params that are already in the URL for other routes. This is because the function style will receive the current params as an argument, allowing you to modify them as needed and return the final params object.
+
+## Allowed Characters
+
+By default, path params are escaped with `encodeURIComponent`. If you want to allow other valid URI characters (e.g. `@` or `+`), you can specify that in your [RouterOptions](../api/router/RouterOptionsType.md#pathparamsallowedcharacters-property)
+
+Example usage:
+
+```tsx
+const router = createRouter({
+  ...
+  pathParamsAllowedCharacters: ['@']
+})
+```
+
+The following is the list of accepted allowed characters:
+`;` `:` `@` `&` `=` `+` `$` `,`

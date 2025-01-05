@@ -1,10 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import {
-  exactPathTest,
-  isPlainArray,
-  removeTrailingSlash,
-  replaceEqualDeep,
-} from '../src/utils'
+import { describe, expect, it } from 'vitest'
+import { deepEqual, isPlainArray, replaceEqualDeep } from '../src/utils'
 
 describe('replaceEqualDeep', () => {
   it('should return the same object if the input objects are equal', () => {
@@ -279,6 +274,20 @@ describe('replaceEqualDeep', () => {
 
     expect(current).toBe(next)
   })
+
+  it('should return the previous value when both values are an array of undefined', () => {
+    const current = [undefined]
+    const next = replaceEqualDeep(current, [undefined])
+
+    expect(next).toBe(current)
+  })
+
+  it('should return the previous value when both values are an array that contains undefined', () => {
+    const current = [{ foo: 1 }, undefined]
+    const next = replaceEqualDeep(current, [{ foo: 1 }, undefined])
+
+    expect(next).toBe(current)
+  })
 })
 
 describe('isPlainArray', () => {
@@ -291,72 +300,100 @@ describe('isPlainArray', () => {
   })
 })
 
-describe('removeTrailingSlash', () => {
-  it('should remove trailing slash if present', () => {
-    const input = 'https://example.com/'
-    const expectedOutput = 'https://example.com'
-    const result = removeTrailingSlash(input)
-    expect(result).toBe(expectedOutput)
+describe('deepEqual', () => {
+  describe.each([false, true])('partial = %s', (partial) => {
+    it('should return `true` for equal objects', () => {
+      const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
+      const b = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
+      expect(deepEqual(a, b, { partial })).toEqual(true)
+      expect(deepEqual(b, a, { partial })).toEqual(true)
+    })
+
+    it('should return `false` for non equal objects', () => {
+      const a = { a: { b: 'b' }, c: 'c' }
+      const b = { a: { b: 'c' }, c: 'c' }
+      expect(deepEqual(a, b, { partial })).toEqual(false)
+      expect(deepEqual(b, a, { partial })).toEqual(false)
+    })
+
+    it('should return `true` for equal objects and ignore `undefined` properties', () => {
+      const a = { a: 'a', b: undefined, c: 'c' }
+      const b = { a: 'a', c: 'c' }
+      expect(deepEqual(a, b, { partial })).toEqual(true)
+      expect(deepEqual(b, a, { partial })).toEqual(true)
+    })
+
+    it('should return `true` for equal objects and ignore `undefined` nested properties', () => {
+      const a = { a: { b: 'b', x: undefined }, c: 'c' }
+      const b = { a: { b: 'b' }, c: 'c', d: undefined }
+      expect(deepEqual(a, b, { partial })).toEqual(true)
+      expect(deepEqual(b, a, { partial })).toEqual(true)
+    })
+
+    it('should return `true` for equal arrays and ignore `undefined` object properties', () => {
+      const a = { a: { b: 'b' }, c: undefined }
+      const b = { a: { b: 'b' } }
+      expect(deepEqual([a], [b], { partial })).toEqual(true)
+      expect(deepEqual([b], [a], { partial })).toEqual(true)
+    })
+
+    it('should return `true` for equal arrays and ignore nested `undefined` object properties', () => {
+      const a = { a: { b: 'b', x: undefined }, c: 'c' }
+      const b = { a: { b: 'b' }, c: 'c' }
+      expect(deepEqual([a], [b], { partial })).toEqual(true)
+      expect(deepEqual([b], [a], { partial })).toEqual(true)
+    })
   })
 
-  it('should not modify the string if no trailing slash present', () => {
-    const input = 'https://example.com'
-    const result = removeTrailingSlash(input)
-    expect(result).toBe(input)
+  describe('ignoreUndefined = false', () => {
+    const ignoreUndefined = false
+    describe('partial = false', () => {
+      const partial = false
+      it('should return `false` for objects', () => {
+        const a = { a: { b: 'b', x: undefined }, c: 'c' }
+        const b = { a: { b: 'b' }, c: 'c', d: undefined }
+        expect(deepEqual(a, b, { partial, ignoreUndefined })).toEqual(false)
+        expect(deepEqual(b, a, { partial, ignoreUndefined })).toEqual(false)
+      })
+
+      it('should return `false` for arrays', () => {
+        const a = { a: { b: 'b', x: undefined }, c: 'c' }
+        const b = { a: { b: 'b' }, c: 'c' }
+        expect(deepEqual([a], [b], { partial, ignoreUndefined })).toEqual(false)
+        expect(deepEqual([b], [a], { partial, ignoreUndefined })).toEqual(false)
+      })
+    })
+    describe('partial = true', () => {
+      const partial = true
+      it('should return `true` for objects', () => {
+        const a = { a: { b: 'b' }, c: 'c' }
+        const b = { a: { b: 'b' }, c: 'c', d: undefined }
+        expect(deepEqual(a, b, { partial, ignoreUndefined })).toEqual(true)
+        expect(deepEqual(b, a, { partial, ignoreUndefined })).toEqual(true)
+      })
+
+      it('should return `true` for arrays', () => {
+        const a = { a: { b: 'b', x: undefined }, c: 'c' }
+        const b = { a: { b: 'b' }, c: 'c' }
+        expect(deepEqual([a], [b], { partial, ignoreUndefined })).toEqual(true)
+        expect(deepEqual([b], [a], { partial, ignoreUndefined })).toEqual(true)
+      })
+    })
   })
 
-  it('should handle empty string', () => {
-    const input = ''
-    const result = removeTrailingSlash(input)
-    expect(result).toBe(input)
-  })
+  describe('partial comparison', () => {
+    it('correctly compares partially equal objects', () => {
+      const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
+      const b = { a: { b: 'b' }, c: 'c' }
+      expect(deepEqual(a, b, { partial: true })).toEqual(true)
+      expect(deepEqual(b, a, { partial: true })).toEqual(false)
+    })
 
-  it('should handle strings with only a slash', () => {
-    const input = '/'
-    const result = removeTrailingSlash(input)
-    expect(result).toBe(input)
-  })
-
-  it('should handle strings with multiple slashes', () => {
-    const input = 'https://example.com/path/to/resource/'
-    const expectedOutput = 'https://example.com/path/to/resource'
-    const result = removeTrailingSlash(input)
-    expect(result).toBe(expectedOutput)
-  })
-})
-
-describe('exactPathTest', () => {
-  it('should return true when two paths are exactly the same', () => {
-    const path1 = 'some-path/additional-path'
-    const path2 = 'some-path/additional-path'
-    const result = exactPathTest(path1, path2)
-    expect(result).toBe(true)
-  })
-
-  it('should return true when two paths are the same with or without trailing slash', () => {
-    const path1 = 'some-path/additional-path'
-    const path2 = 'some-path/additional-path/'
-    const result = exactPathTest(path1, path2)
-    expect(result).toBe(true)
-  })
-  it('should return true when two paths are the same with or without trailing slash 2', () => {
-    const path1 = 'some-path/additional-path'
-    const path2 = 'some-path/additional-path/'
-    const result = exactPathTest(path1, path2)
-    expect(result).toBe(true)
-  })
-
-  it('should return false when two paths are different', () => {
-    const path1 = 'some-path/additional-path/'
-    const path2 = 'some-path2/additional-path/'
-    const result = exactPathTest(path1, path2)
-    expect(result).toBe(false)
-  })
-
-  it('should return true when both paths are just a slash', () => {
-    const path1 = '/'
-    const path2 = '/'
-    const result = exactPathTest(path1, path2)
-    expect(result).toBe(true)
+    it('correctly compares partially equal objects and ignores `undefined` object properties', () => {
+      const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }], e: undefined }
+      const b = { a: { b: 'b' }, c: 'c', d: undefined }
+      expect(deepEqual(a, b, { partial: true })).toEqual(true)
+      expect(deepEqual(b, a, { partial: true })).toEqual(false)
+    })
   })
 })

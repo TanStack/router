@@ -3,9 +3,9 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
-    "target": "esnext",
     "module": "esnext",
     "types": ["vite/client"],
-    "moduleResolution": "node",
-  },
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"]
+  }
 }

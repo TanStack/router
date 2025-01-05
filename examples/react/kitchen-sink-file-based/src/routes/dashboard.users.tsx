@@ -1,14 +1,15 @@
 import * as React from 'react'
 import {
-  createFileRoute,
   Link,
   MatchRoute,
   Outlet,
+  createFileRoute,
+  retainSearchParams,
   useNavigate,
 } from '@tanstack/react-router'
-import { fetchUsers } from '../utils/mockTodos'
-import { Spinner } from '../components/Spinner'
 import { z } from 'zod'
+import { Spinner } from '../components/Spinner'
+import { fetchUsers } from '../utils/mockTodos'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
@@ -21,28 +22,26 @@ export const Route = createFileRoute('/dashboard/users')({
       })
       .optional(),
   }).parse,
-  preSearchFilters: [
-    // Persist (or set as default) the usersView search param
-    // while navigating within or to this route (or it's children!)
-    (search) => ({
-      ...search,
-      usersView: {
-        ...search.usersView,
-      },
-    }),
-  ],
+  search: {
+    // Retain the usersView search param while navigating
+    // within or to this route (or it's children!)
+    middlewares: [retainSearchParams(['usersView'])],
+  },
   loaderDeps: ({ search }) => ({
     filterBy: search.usersView?.filterBy,
     sortBy: search.usersView?.sortBy,
   }),
-  loader: ({ deps }) => fetchUsers(deps),
+  loader: async ({ deps }) => {
+    const users = await fetchUsers(deps)
+    return { users, crumb: 'Users' }
+  },
   component: UsersComponent,
 })
 
 function UsersComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
   const { usersView } = Route.useSearch()
-  const users = Route.useLoaderData()
+  const { users } = Route.useLoaderData()
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
 
@@ -58,7 +57,7 @@ function UsersComponent() {
         return {
           ...old,
           usersView: {
-            ...(old?.usersView ?? {}),
+            ...(old.usersView ?? {}),
             sortBy,
           },
         }
@@ -72,7 +71,7 @@ function UsersComponent() {
         return {
           ...old,
           usersView: {
-            ...old?.usersView,
+            ...old.usersView,
             filterBy: filterDraft || undefined,
           },
         }
@@ -84,7 +83,7 @@ function UsersComponent() {
   return (
     <div className="flex-1 flex">
       <div className="divide-y">
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Sort By:</div>
           <select
             value={sortBy}
@@ -96,7 +95,7 @@ function UsersComponent() {
             })}
           </select>
         </div>
-        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100">
+        <div className="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Filter By:</div>
           <input
             value={filterDraft}
@@ -105,15 +104,14 @@ function UsersComponent() {
             className="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {users?.map((user) => {
+        {users.map((user) => {
           return (
             <div key={user.id}>
               <Link
                 to="/dashboard/users/user"
-                search={(d) => ({
-                  ...d,
+                search={{
                   userId: user.id,
-                })}
+                }}
                 className="block py-2 px-3 text-blue-700"
                 activeProps={{ className: `font-bold` }}
               >
@@ -121,10 +119,9 @@ function UsersComponent() {
                   {user.name}{' '}
                   <MatchRoute
                     to="/dashboard/users/user"
-                    search={(d) => ({
-                      ...d,
+                    search={{
                       userId: user.id,
-                    })}
+                    }}
                     pending
                   >
                     {(match) => <Spinner show={!!match} wait="delay-50" />}
@@ -135,7 +132,7 @@ function UsersComponent() {
           )
         })}
       </div>
-      <div className="flex-initial border-l border-gray-200">
+      <div className="flex-initial border-l">
         <Outlet />
       </div>
     </div>

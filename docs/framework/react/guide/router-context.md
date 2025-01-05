@@ -46,7 +46,8 @@ const router = createRouter({
 
 The router context is passed to the router at instantiation time. You can pass the initial router context to the router via the `context` option:
 
-> 🧠 If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
+> [!TIP]
+> If your context has any required properties, you will see a TypeScript error if you don't pass them in the initial router context. If all of your context properties are optional, you will not see a TypeScript error and passing the context will be optional. If you don't pass a router context, it defaults to `{}`.
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'
@@ -61,6 +62,28 @@ const router = createRouter({
     },
   },
 })
+```
+
+### Invalidating the Router Context
+
+If you need to invalidate the context state you are passing into the router, you can call the `invalidate` method to tell the router to recompute the context. This is useful when you need to update the context state and have the router recompute the context for all routes.
+
+```tsx
+function useAuth() {
+  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user)
+      router.invalidate()
+    })
+
+    return unsubscribe
+  }, [])
+
+  return user
+}
 ```
 
 ## Using the Router Context
@@ -146,6 +169,81 @@ export const Route = createFileRoute('/todos')({
 })
 ```
 
+## How about using React Context/Hooks?
+
+When trying to use React Context or Hooks in your route's `beforeLoad` or `loader` functions, it's important to remember React's [Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks). You can't use hooks in a non-React function, so you can't use hooks in your `beforeLoad` or `loader` functions.
+
+So, how do we use React Context or Hooks in our route's `beforeLoad` or `loader` functions? We can use the router context to pass down the React Context or Hooks to our route's `beforeLoad` or `loader` functions.
+
+Let's look at the setup for an example, where we pass down a `useNetworkStrength` hook to our route's `loader` function:
+
+- `src/routes/__root.tsx`
+
+```tsx
+// First, make sure the context for the root route is typed
+import { createRootRouteWithContext } from '@tanstack/react-router'
+import { useNetworkStrength } from '@/hooks/useNetworkStrength'
+
+interface MyRouterContext {
+  networkStrength: ReturnType<typeof useNetworkStrength>
+}
+
+export const Route = createRootRouteWithContext<MyRouterContext>()({
+  component: App,
+})
+```
+
+In this example, we'd instantiate the hook before rendering the router using the `<RouterProvider />`. This way, the hook would be called in React-land, therefore adhering to the Rules of Hooks.
+
+- `src/router.tsx`
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+
+import { routeTree } from './routeTree.gen'
+
+export const router = createRouter({
+  routeTree,
+  context: {
+    networkStrength: undefined!, // We'll set this in React-land
+  },
+})
+```
+
+- `src/main.tsx`
+
+```tsx
+import { RouterProvider } from '@tanstack/react-router'
+import { router } from './router'
+
+import { useNetworkStrength } from '@/hooks/useNetworkStrength'
+
+function App() {
+  const networkStrength = useNetworkStrength()
+  // Inject the returned value from the hook into the router context
+  return <RouterProvider router={router} context={{ networkStrength }} />
+}
+
+// ...
+```
+
+So, now in our route's `loader` function, we can access the `networkStrength` hook from the router context:
+
+- `src/routes/posts.tsx`
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({
+  component: Posts,
+  loader: ({ context }) => {
+    if (context.networkStrength === 'STRONG') {
+      // Do something
+    }
+  },
+})
+```
+
 ## Modifying the Router Context
 
 The router context is passed down the route tree and is merged at each route. This means that you can modify the context at each route and the modifications will be available to all child routes. Here's an example:
@@ -190,7 +288,7 @@ export const Route = createFileRoute('/todos')({
     return {
       bar: true,
     }
-  }
+  },
   loader: ({ context }) => {
     context.foo // true
     context.bar // true
@@ -200,21 +298,22 @@ export const Route = createFileRoute('/todos')({
 
 ## Processing Accumulated Route Context
 
-Context, especially the isolated `routeContext` objects, make it trivial to accumulate and process the route context objects for all matched routes. Here's an example where we use all of the matched route contexts to generate a breadcrumb trail:
+Context, especially the isolated route `context` objects, make it trivial to accumulate and process the route context objects for all matched routes. Here's an example where we use all of the matched route contexts to generate a breadcrumb trail:
 
 ```tsx
 // src/routes/__root.tsx
 export const Route = createRootRoute({
   component: () => {
-    const router = useRouter()
+    const matches = useRouterState({ select: (s) => s.matches })
 
-    const breadcrumbs = router.state.matches.map((match) => {
-      const { routeContext } = match
-      return {
-        title: routeContext.getTitle(),
-        path: match.path,
-      }
-    })
+    const breadcrumbs = matches
+      .filter((match) => match.context.getTitle)
+      .map(({ pathname, context }) => {
+        return {
+          title: context.getTitle(),
+          path: pathname,
+        }
+      })
 
     // ...
   },
@@ -227,13 +326,13 @@ Using that same route context, we could also generate a title tag for our page's
 // src/routes/__root.tsx
 export const Route = createRootRoute({
   component: () => {
-    const router = useRouter()
+    const matches = useRouterState({ select: (s) => s.matches })
 
-    const matchWithTitle = [...router.state.matches]
+    const matchWithTitle = [...matches]
       .reverse()
-      .find((d) => d.routeContext.getTitle)
+      .find((d) => d.context.getTitle)
 
-    const title = matchWithTitle?.routeContext.getTitle() || 'My App'
+    const title = matchWithTitle?.context.getTitle() || 'My App'
 
     return (
       <html>

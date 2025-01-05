@@ -3,9 +3,11 @@ id: createRootRouteFunction
 title: createRootRoute function
 ---
 
-The `createRootRoute` function returns a new [`RootRoute`](../RootRouteClass) instance. A root route instance can then be used to create a route tree.
+The `createRootRoute` function returns a new root route instance. A root route instance can then be used to create a route-tree.
 
 ## createRootRoute options
+
+The options that will be used to configure the root route instance.
 
 - Type:
 
@@ -21,13 +23,12 @@ Omit<
 >
 ```
 
-- [`RouteOptions`](../RouteOptionsType)
-- Required
-- The options that will be used to configure the root route instance
+- [`RouteOptions`](./RouteOptionsType.md)
+- Optional
 
 ## createRootRoute returns
 
-- A new [`RootRoute`](../RootRouteClass) instance.
+A new [`Route`](./RouteType.md) instance.
 
 ## Examples
 

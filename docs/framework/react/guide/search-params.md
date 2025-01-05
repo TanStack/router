@@ -172,13 +172,157 @@ In the above example, we used Zod's `.catch()` modifier instead of `.default()` 
 
 The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onError` option will be triggered (and `error.routerCode` will be set to `VALIDATE_SEARCH` and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
 
+#### Adapters
+
+When using a library like [Zod](https://zod.dev/) to validate search params you might want to `transform` search params before committing the search params to the URL. A common `zod` `transform` is `default` for example.
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: z.number().default(1),
+  filter: z.string().default(''),
+  sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: productSearchSchema,
+})
+```
+
+It might be surprising that when you try to navigate to this route, `search` is required. The following `Link` will type error as `search` is missing.
+
+```tsx
+<Link to="/shop/products" />
+```
+
+For validation libraries we recommend using adapters which infer the correct `input` and `output` types.
+
+### Zod
+
+An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: z.number().default(1),
+  filter: z.string().default(''),
+  sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: zodValidator(productSearchSchema),
+})
+```
+
+The important part here is the following use of `Link` no longer requires `search` params
+
+```tsx
+<Link to="/shop/products" />
+```
+
+However the use of `catch` here overrides the types and makes `page`, `filter` and `sort` `unknown` causing type loss. We have handled this case by providing a `fallback` generic function which retains the types but provides a `fallback` value when validation fails
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { fallback, zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: fallback(z.number(), 1).default(1),
+  filter: fallback(z.string(), '').default(''),
+  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
+    'newest',
+  ),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: zodValidator(productSearchSchema),
+})
+```
+
+Therefore when navigating to this route, `search` is optional and retains the correct types.
+
+While not recommended, it is also possible to configure `input` and `output` type in case the `output` type is more accurate than the `input` type
+
+```tsx
+const productSearchSchema = z.object({
+  page: fallback(z.number(), 1).default(1),
+  filter: fallback(z.string(), '').default(''),
+  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
+    'newest',
+  ),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: zodValidator({
+    schema: productSearchSchema,
+    input: 'output',
+    output: 'input',
+  }),
+})
+```
+
+This provides flexibility in which type you want to infer for navigation and which types you want to infer for reading search params.
+
+### Valibot
+
+> [!WARNING]
+> Router expects the valibot 1.0 package to be installed.
+
+When using [Valibot](https://valibot.dev/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because `valibot` implements [Standard Schema](https://github.com/standard-schema/standard-schema)
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import * as v from 'valibot'
+
+const productSearchSchema = v.object({
+  page: v.optional(v.fallback(v.number(), 1), 1),
+  filter: v.optional(v.fallback(v.string(), ''), ''),
+  sort: v.optional(
+    v.fallback(v.picklist(['newest', 'oldest', 'price']), 'newest'),
+    'newest',
+  ),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: productSearchSchema,
+})
+```
+
+### Arktype
+
+> [!WARNING]
+> Router expects the arktype 2.0-rc package to be installed.
+
+When using [ArkType](https://arktype.io/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [ArkType](https://arktype.io/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { type } from 'arktype'
+
+const productSearchSchema = type({
+  page: 'number = 1',
+  filter: 'string = ""',
+  sort: '"newest" | "oldest" | "price" = "newest"',
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: productSearchSchema,
+})
+```
+
 ## Reading Search Params
 
 Once your search params have been validated and typed, you're finally ready to start reading and writing to them. There are a few ways to do this in TanStack Router, so let's check them out.
 
 ### Using Search Params in Loaders
 
-Please read the [Search Params in Loaders](../data-loading#using-loaderdeps-to-access-search-params) section for more information about how to read search params in loaders with the `loaderDeps` option.
+Please read the [Search Params in Loaders](./data-loading.md#using-loaderdeps-to-access-search-params) section for more information about how to read search params in loaders with the `loaderDeps` option.
 
 ### Search Params are inherited from Parent Routes
 
@@ -229,7 +373,8 @@ const ProductList = () => {
 }
 ```
 
-> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](../code-splitting#manually-accessing-route-apis-in-other-files-with-the-routeapi-class) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
+> [!TIP]
+> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
 
 ### Search Params outside of Route Components
 
@@ -282,7 +427,10 @@ Now that you've learned how to read your route's search params, you'll be happy 
 
 ### `<Link search />`
 
-The best way to update search params is to use the `search` prop on the `<Link />` component. Remember, if a `to` prop is omitted, will update the search for the current page. Here's an example:
+The best way to update search params is to use the `search` prop on the `<Link />` component.
+
+If the search for the current page shall be updated and the `from` prop is specified, the `to` prop can be omitted.  
+Here's an example:
 
 ```tsx
 // /routes/shop.products.tsx
@@ -302,6 +450,42 @@ const ProductList = () => {
     </div>
   )
 }
+```
+
+If you want to update the search params in a generic component that is rendered on multiple routes, specifying `from` can be challenging.
+
+In this scenario you can set `to="."` which will give you access to loosely typed search params.  
+Here is an example that illustrates this:
+
+```tsx
+// `page` is a search param that is defined in the __root route and hence available on all routes.
+const PageSelector = () => {
+  return (
+    <div>
+      <Link to="." search={(prev) => ({ ...prev, page: prev.page + 1 })}>
+        Next Page
+      </Link>
+    </div>
+  )
+}
+```
+
+If the generic component is only rendered in a specific subtree of the route tree, you can specify that subtree using `from`. Here you can omit `to='.'` if you want.
+
+```tsx
+// `page` is a search param that is defined in the /posts route and hence available on all of its child routes.
+const PageSelector = () => {
+  return (
+    <div>
+      <Link
+        from="/posts"
+        to="."
+        search={(prev) => ({ ...prev, page: prev.page + 1 })}
+      >
+        Next Page
+      </Link>
+    </div>
+  )
 ```
 
 ### `useNavigate(), navigate({ search })`
@@ -340,3 +524,114 @@ The `router.navigate` function works exactly the same way as the `useNavigate`/`
 ### `<Navigate search />`
 
 The `<Navigate search />` component works exactly the same way as the `useNavigate`/`navigate` hook/function above, but accepts its options as props instead of a function argument.
+
+## Transforming search with search middlewares
+
+When link hrefs are built, by default the only thing that matters for the query string part is the `search` property of a `<Link>`.
+
+TanStack Router provides a way to manipulate search params before the href is generated via **search middlewares**.
+Search middlewares are functions that transform the search parameters when generating new links for a route or its descendants.
+They are also executed upon navigation after search validation to allow manipulation of the query string.
+
+The following example shows how to make sure that for **every** link that is being built, the `rootValue` search param is added _if_ it is part of the current search params. If a link specifies `rootValue` inside `search`, then that value is used for building the link.
+
+```tsx
+import { z } from 'zod'
+import { createFileRoute } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+
+const searchSchema = z.object({
+  rootValue: z.string().optional(),
+})
+
+export const Route = createRootRoute({
+  validateSearch: zodValidator(searchSchema),
+  search: {
+    middlewares: [
+      ({search, next}) => {
+        const result = next(search)
+        return {
+          rootValue: search.rootValue
+          ...result
+        }
+      }
+    ]
+  }
+})
+```
+
+Since this specific use case is quite common, TanStack Router provides a generic implementation to retain search params via `retainSearchParams`:
+
+```tsx
+import { z } from 'zod'
+import { createFileRoute, retainSearchParams } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+
+const searchSchema = z.object({
+  rootValue: z.string().optional(),
+})
+
+export const Route = createRootRoute({
+  validateSearch: zodValidator(searchSchema),
+  search: {
+    middlewares: [retainSearchParams(['rootValue'])],
+  },
+})
+```
+
+Another common use case is to strip out search params from links if their default value is set. TanStack Router provides a generic implementation for this use case via `stripSearchParams`:
+
+```tsx
+import { z } from 'zod'
+import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+
+const defaultValues = {
+  one: 'abc',
+  two: 'xyz',
+}
+
+const searchSchema = z.object({
+  one: z.string().default(defaultValues.one),
+  two: z.string().default(defaultValues.two),
+})
+
+export const Route = createFileRoute('/hello')({
+  validateSearch: zodValidator(searchSchema),
+  search: {
+    // strip default values
+    middlewares: [stripSearchParams(defaultValues)],
+  },
+})
+```
+
+Multiple middlewares can be chained. The following example shows how to combine both `retainSearchParams` and `stripSearchParams`.
+
+```tsx
+import {
+  Link,
+  createFileRoute,
+  retainSearchParams,
+  stripSearchParams,
+} from '@tanstack/react-router'
+import { z } from 'zod'
+import { zodValidator } from '@tanstack/zod-adapter'
+
+const defaultValues = ['foo', 'bar']
+
+export const Route = createFileRoute('/search')({
+  validateSearch: zodValidator(
+    z.object({
+      retainMe: z.string().optional(),
+      arrayWithDefaults: z.string().array().default(defaultValues),
+      required: z.string(),
+    }),
+  ),
+  search: {
+    middlewares: [
+      retainSearchParams(['retainMe']),
+      stripSearchParams({ arrayWithDefaults: defaultValues }),
+    ],
+  },
+})
+```

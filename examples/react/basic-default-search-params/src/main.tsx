@@ -1,20 +1,21 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
+  ErrorComponent,
+  Link,
   Outlet,
   RouterProvider,
-  Link,
-  ErrorComponent,
-  createRouter,
-  NotFoundRoute,
-  SearchSchemaInput,
-  ErrorComponentProps,
-  createRoute,
   createRootRoute,
+  createRoute,
+  createRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import axios from 'axios'
+import axios from 'redaxios'
 import { z } from 'zod'
+import type {
+  ErrorComponentProps,
+  SearchSchemaInput,
+} from '@tanstack/react-router'
 
 type PostType = {
   id: number
@@ -23,20 +24,20 @@ type PostType = {
 }
 
 const fetchPosts = async () => {
-  console.log('Fetching posts...')
+  console.info('Fetching posts...')
   await new Promise((r) => setTimeout(r, 300))
   return axios
-    .get<PostType[]>('https://jsonplaceholder.typicode.com/posts')
+    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
 }
 
 const fetchPost = async (postId: number) => {
-  console.log(`Fetching post with id ${postId}...`)
+  console.info(`Fetching post with id ${postId}...`)
   await new Promise((r) => setTimeout(r, 300))
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .catch((err) => {
-      if (err.response.status === 404) {
+      if (err.status === 404) {
         throw new NotFoundError(`Post with id "${postId}" not found!`)
       }
       throw err
@@ -48,6 +49,9 @@ const fetchPost = async (postId: number) => {
 
 const rootRoute = createRootRoute({
   component: RootComponent,
+  notFoundComponent: () => {
+    return <p>This is the notFoundComponent configured on root route</p>
+  },
 })
 
 function RootComponent() {
@@ -64,12 +68,21 @@ function RootComponent() {
           Home
         </Link>{' '}
         <Link
-          to={'/posts'}
+          to="/posts"
           activeProps={{
             className: 'font-bold',
           }}
         >
           Posts
+        </Link>{' '}
+        <Link
+          // @ts-expect-error
+          to="/this-route-does-not-exist"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          This Route Does Not Exist
         </Link>
       </div>
       <Outlet />
@@ -182,19 +195,6 @@ function PostComponent() {
   )
 }
 
-const notFoundRoute = new NotFoundRoute({
-  getParentRoute: () => rootRoute,
-  component: NotFound,
-})
-
-function NotFound() {
-  return (
-    <div className="p-2">
-      <h3>404 - Not Found</h3>
-    </div>
-  )
-}
-
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   indexRoute,
@@ -203,7 +203,6 @@ const routeTree = rootRoute.addChildren([
 // Set up a Router instance
 const router = createRouter({
   routeTree,
-  notFoundRoute,
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
 })

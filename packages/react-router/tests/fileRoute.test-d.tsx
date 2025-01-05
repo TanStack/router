@@ -22,30 +22,51 @@ declare module '../src/fileRoute' {
     '/': {
       preLoaderRoute: typeof indexRoute
       parentRoute: typeof rootRoute
+      id: string
+      fullPath: string
+      path: string
     }
     '/(auth)/protected': {
       preLoaderRoute: typeof protectedRoute
       parentRoute: typeof rootRoute
+      id: '/protected'
+      fullPath: '/protected'
+      path: '(auth)/protected'
     }
     '/invoices': {
       preLoaderRoute: typeof invoicesRoute
       parentRoute: typeof indexRoute
+      id: '/invoices'
+      fullPath: '/invoices'
+      path: 'invoices'
     }
     '/invoices/$invoiceId': {
       preLoaderRoute: typeof invoiceRoute
       parentRoute: typeof invoicesRoute
+      id: '/invoices/$invoiceId'
+      fullPath: '/invoices/$invoiceId'
+      path: '/$invoiceId'
     }
     '/_postLayout': {
       preLoaderRoute: typeof postLayoutRoute
       parentRoute: typeof rootRoute
+      id: string
+      fullPath: string
+      path: string
     }
     '/_postLayout/posts': {
       preLoaderRoute: typeof postsRoute
       parentRoute: typeof postLayoutRoute
+      id: '/_postLayout/posts'
+      fullPath: '/posts'
+      path: '/posts'
     }
     '/_postLayout/posts/$postId_': {
       preLoaderRoute: typeof postRoute
       parentRoute: typeof postsRoute
+      id: '/_postLayout/posts/$postId_'
+      fullPath: '/posts/$postId'
+      path: '/$postId_'
     }
   }
 }

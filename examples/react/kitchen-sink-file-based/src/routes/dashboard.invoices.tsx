@@ -1,12 +1,12 @@
 import * as React from 'react'
 import {
-  createFileRoute,
   Link,
   MatchRoute,
   Outlet,
+  createFileRoute,
 } from '@tanstack/react-router'
-import { fetchInvoices } from '../utils/mockTodos'
 import { Spinner } from '../components/Spinner'
+import { fetchInvoices } from '../utils/mockTodos'
 
 export const Route = createFileRoute('/dashboard/invoices')({
   loader: () => fetchInvoices(),
@@ -19,7 +19,7 @@ function InvoicesComponent() {
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
-        {invoices?.map((invoice) => {
+        {invoices.map((invoice) => {
           return (
             <div key={invoice.id}>
               <Link
@@ -48,7 +48,7 @@ function InvoicesComponent() {
           )
         })}
       </div>
-      <div className="flex-1 border-l border-gray-200">
+      <div className="flex-1 border-l">
         <Outlet />
       </div>
     </div>

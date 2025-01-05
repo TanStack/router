@@ -18,7 +18,7 @@ const router = createRouter({
 
 You'll probably notice quickly that the `Router` constructor requires a `routeTree` option. This is the route tree that the router will use to match routes and render components.
 
-Whether you used [file-based routing](../route-trees) or [code-based routing](../code-based-routing), you'll need to pass your route tree to the `createRouter` function:
+Whether you used [file-based routing](./route-trees.md) or [code-based routing](./code-based-routing.md), you'll need to pass your route tree to the `createRouter` function:
 
 ### Filesystem Route Tree
 
@@ -40,7 +40,8 @@ const routeTree = rootRoute.addChildren([
 
 ## Router Type Safety
 
-> ⚠️ DO NOT SKIP THIS SECTION! ⚠️
+> [!IMPORTANT]
+> DO NOT SKIP THIS SECTION! ⚠️
 
 TanStack Router provides amazing support for TypeScript, even for things you wouldn't expect like bare imports straight from the library! To make this possible, you must register your router's types using TypeScripts' [Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) feature. This is done by extending the `Register` interface on `@tanstack/react-router` with a `router` property that has the type of your `router` instance:
 
@@ -102,4 +103,4 @@ const router = createRouter({
 
 ## Other Options
 
-There are many other options that can be passed to the `Router` constructor. You can find a full list of them in the [API Reference](../../api/router/RouterOptionsType).
+There are many other options that can be passed to the `Router` constructor. You can find a full list of them in the [API Reference](../api/router/RouterOptionsType.md).

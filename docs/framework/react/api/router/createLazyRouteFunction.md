@@ -3,7 +3,7 @@ id: createLazyRouteFunction
 title: createLazyRoute function
 ---
 
-The `createLazyRoute` function is used for creating a partial code-based route route instance that is lazily loaded when matched. This route instance can only be used to configure the [non-critical properties](../../guide/code-splitting#how-does-tanstack-router-split-code) of the route, such as `component`, `pendingComponent`, `errorComponent`, and the `notFoundComponent`.
+The `createLazyRoute` function is used for creating a partial code-based route route instance that is lazily loaded when matched. This route instance can only be used to configure the [non-critical properties](../../guide/code-splitting.md#how-does-tanstack-router-split-code) of the route, such as `component`, `pendingComponent`, `errorComponent`, and the `notFoundComponent`.
 
 ## createLazyRoute options
 
@@ -17,27 +17,18 @@ The `createLazyRoute` function accepts a single argument of type `string` that r
 
 ### createLazyRoute returns
 
-The `createLazyRoute` function a partial set of the configuration options of [`createRoute`](../createRouteFunction) function, only letting you configure the non-critical parts of the route.
+A new function that accepts a single argument of partial of the type [`RouteOptions`](./RouteOptionsType.md) that will be used to configure the file [`Route`](./RouteType.md) instance.
 
-#### `component`
+- Type:
 
-- Type: `RouteComponent`
-- The component to render when the route is matched.
+```tsx
+Pick<
+  RouteOptions,
+  'component' | 'pendingComponent' | 'errorComponent' | 'notFoundComponent'
+>
+```
 
-#### `pendingComponent`
-
-- Type: `RouteComponent`
-- The component to render while the route is loading.
-
-#### `errorComponent`
-
-- Type: `ErrorRouteComponent`
-- The component to render when an error has been thrown by the router for the route.
-
-#### `notFoundComponent`
-
-- Type: `NotFoundRouteComponent`
-- The component to render when the route is not found.
+- [`RouteOptions`](./RouteOptionsType.md)
 
 > ⚠️ Note: This route instance must be manually lazily loaded against its critical route instance using the `lazy` method returned by the `createRoute` function.
 

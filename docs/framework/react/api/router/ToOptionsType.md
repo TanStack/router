@@ -13,7 +13,12 @@ type ToOptions = {
   state?: true | HistoryState | ((prev: HistoryState) => HistoryState)
 } & SearchParamOptions &
   PathParamOptions
-```
 
-- [`SearchParamOptions`](../SearchParamOptionsType)
-- [`PathParamOptions`](../PathParamOptionsType)
+type SearchParamOptions = {
+  search?: true | TToSearch | ((prev: TFromSearch) => TToSearch)
+}
+
+type PathParamOptions = {
+  path?: true | Record<string, TPathParam> | ((prev: TFromParams) => TToParams)
+}
+```

@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 
-// @ts-ignore
 export const Route = createFileRoute('/dashboard/users/')({
   component: UsersIndexComponent,
 })

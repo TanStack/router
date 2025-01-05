@@ -1,5 +1,4 @@
-import * as React from 'react'
-import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_layout')({
   component: LayoutComponent,
@@ -7,26 +6,8 @@ export const Route = createFileRoute('/_layout')({
 
 function LayoutComponent() {
   return (
-    <div>
-      <div>I'm a layout</div>
-      <div className="flex gap-2">
-        <Link
-          to="/layout-a"
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          Layout A
-        </Link>
-        <Link
-          to="/layout-b"
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          Layout B
-        </Link>
-      </div>
+    <div className="p-2">
+      <div className="border-b">I'm a layout</div>
       <div>
         <Outlet />
       </div>

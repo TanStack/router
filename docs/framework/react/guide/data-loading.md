@@ -14,7 +14,7 @@ Beyond these normal expectations of a router, TanStack Router goes above and bey
 Every time a URL/history update is detected, the router executes the following sequence:
 
 - Route Matching (Top-Down)
-  - `route.parseParams`
+  - `route.params.parse`
   - `route.validateSearch`
 - Route Pre-Loading (Serial)
   - `route.beforeLoad`
@@ -48,7 +48,8 @@ TanStack Router Cache Cons:
 - No built-in mutation APIs (a basic `useMutation` hook is provided in many examples that may be sufficient for many use cases)
 - No built-in cache-level optimistic update APIs (you can still use ephemeral state from something like a `useMutation` hook to achieve this at the component level)
 
-> 🧠 If you know right away that you'd like to or need to use something more robust like TanStack Query, [skip to the External Data Loading page](../external-data-loading)
+> [!TIP]
+> If you know right away that you'd like to or need to use something more robust like TanStack Query, skip to the [External Data Loading](./external-data-loading.md) guide.
 
 ## Using the Router Cache
 
@@ -69,17 +70,38 @@ export const Route = createFileRoute('/posts')({
 
 The `loader` function receives a single object with the following properties:
 
-- `params` - The route's path params
-- `search` - The route's search params
+- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
+- `cause` - The cause of the current route match, either `enter` or `stay`.
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
   - This route's context as provided by the `beforeLoad` option
-- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
-- `navigate` - A function that can be used to navigate to a new location
+- `deps` - The object value returned from the `Route.loaderDeps` function. If `Route.loaderDeps` is not defined, an empty object will be provided instead.
 - `location` - The current location
-- `cause` - The cause of the current route match, either `enter` or `stay`.
+- `params` - The route's path params
+- `parentMatchPromise` - `Promise<RouteMatch>` (`undefined` for the root route)
+- `preload` - Boolean which is `true` when the route is being preloaded instead of loaded
+- `route` - The route itself
 
-Using these parameters, we can do a lot of cool things, but first, let's take a look at how we can control if and when the `loader` function is called.
+Using these parameters, we can do a lot of cool things, but first, let's take a look at how we can control it and when the `loader` function is called.
+
+## Consuming data from `loader`s
+
+To consume data from a `loader`, use the `useLoaderData` hook defined on your Route object.
+
+```tsx
+const posts = Route.useLoaderData()
+```
+
+If you don't have ready access to your route object (i.e. you're deep in the component tree for the current route), you can use `getRouteApi` to access the same hook (as well as the other hooks on the Route object). This should be preferred over importing the Route object, which is likely to create circular dependencies.
+
+```tsx
+import { getRouteApi } from '@tanstack/react-router'
+
+// in your component
+
+const routeApi = getRouteApi('/posts')
+const data = routeApi.useLoaderData()
+```
 
 ## Dependency-based Stale-While-Revalidate Caching
 
@@ -113,8 +135,7 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 ### ⚠️ Some Important Defaults
 
 - By default, the `staleTime` is set to `0`, meaning that the route's data will always be considered stale and will always be reloaded in the background when the route is rematched.
-- By default, a previously preloaded route is considered fresh for **30 seconds**. This means
-- if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
+- By default, a previously preloaded route is considered fresh for **30 seconds**. This means if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
 - By default, the `gcTime` is set to **30 minutes**, meaning that any route data that has not been accessed in 30 minutes will be garbage collected and removed from the cache.
 - `router.invalidate()` will force all active routes to reload their loaders immediately and mark every cached route's data as stale.
 
@@ -198,7 +219,7 @@ To opt out of preloading, don't turn it on via the `routerOptions.defaultPreload
 
 ## Passing all loader events to an external cache
 
-We break down this use case in the [External Data Loading](../external-data-loading) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
+We break down this use case in the [External Data Loading](./external-data-loading.md) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
 
 ```tsx
 const router = createRouter({
@@ -294,10 +315,10 @@ import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/posts')({
   // Pass the fetchPosts function to the route context
   beforeLoad: () => ({
-    fetchPosts: () => console.log('foo'),
+    fetchPosts: () => console.info('foo'),
   }),
   loader: ({ context: { fetchPosts } }) => {
-    console.log(fetchPosts()) // 'foo'
+    console.info(fetchPosts()) // 'foo'
 
     // ...
   },
@@ -380,7 +401,7 @@ export const Route = createFileRoute('/posts')({
 
 Ideally most route loaders can resolve their data within a short moment, removing the need to render a placeholder spinner and simply rely on suspense to render the next route when it's completely ready. When critical data that is required to render a route's component is slow though, you have 2 options:
 
-- Split up your fast and slow data into separate promises and `defer` the slow data until after the fast data is loaded (see [deferred-data-loading](../deferred-data-loading))
+- Split up your fast and slow data into separate promises and `defer` the slow data until after the fast data is loaded (see the [Deferred Data Loading](./deferred-data-loading.md) guide).
 - Show a pending component after an optimistic suspense threshold until all of the data is ready (See below).
 
 ## Showing a pending component
@@ -405,13 +426,27 @@ TanStack Router provides a few ways to handle errors that occur during the route
 
 ### Handling Errors with `routeOptions.onError`
 
-The `routeOptions.onError` option is a function that is called when an error occurs during the route loading or rendering lifecycle.
+The `routeOptions.onError` option is a function that is called when an error occurs during the route loading.
 
 ```tsx
 // routes/posts.tsx
 export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   onError: ({ error }) => {
+    // Log the error
+    console.error(error)
+  },
+})
+```
+
+### Handling Errors with `routeOptions.onCatch`
+
+The `routeOptions.onCatch` option is a function that is called whenever an error was caught by the router's CatchBoundary.
+
+```tsx
+// routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  onCatch: ({ error, errorInfo }) => {
     // Log the error
     console.error(error)
   },
@@ -436,7 +471,31 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
-The `reset` function can be used to show a `retry` button. If you want to retry the route loading, you need to additionally call `router.invalidate()`:
+The `reset` function can be used to allow the user to retry rendering the error boundaries normal children:
+
+```tsx
+// routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  loader: () => fetchPosts(),
+  errorComponent: ({ error, reset }) => {
+    return (
+      <div>
+        {error.message}
+        <button
+          onClick={() => {
+            // Reset the router error boundary
+            reset()
+          }}
+        >
+          retry
+        </button>
+      </div>
+    )
+  },
+})
+```
+
+If the error was the result of a route load, you should instead call `router.invalidate()`, which will coordinate both a router reload and an error boundary reset:
 
 ```tsx
 // routes/posts.tsx
@@ -450,9 +509,7 @@ export const Route = createFileRoute('/posts')({
         {error.message}
         <button
           onClick={() => {
-            // Reset the router error boundary
-            reset()
-            // Invalidate the route to reload the loader
+            // Invalidate the route to reload the loader, which will also reset the error boundary
             router.invalidate()
           }}
         >
@@ -463,8 +520,6 @@ export const Route = createFileRoute('/posts')({
   },
 })
 ```
-
-> ⚠️ Note: If you are _not_ using a `pendingComponent`, you will need to wrap the above function calls into `startTransition` from `React`.
 
 ### Using the default `ErrorComponent`
 

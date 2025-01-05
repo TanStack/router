@@ -1,7 +1,7 @@
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import * as React from 'react'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
+import type { ErrorInfo } from 'react'
 import type { RegisteredRouter } from './router'
 import type { RouteIds } from './routeInfo'
 
@@ -47,7 +47,7 @@ export function isNotFound(obj: any): obj is NotFoundError {
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => React.ReactElement
-  onCatch?: (error: any) => void
+  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
   children: React.ReactNode
 }) {
   // TODO: Some way for the user to programmatically reset the not-found boundary?
@@ -58,16 +58,20 @@ export function CatchNotFound(props: {
   return (
     <CatchBoundary
       getResetKey={() => resetKey}
-      onCatch={(error) => {
+      onCatch={(error, errorInfo) => {
         if (isNotFound(error)) {
-          props.onCatch?.(error)
+          props.onCatch?.(error, errorInfo)
         } else {
           throw error
         }
       }}
-      errorComponent={({ error }: { error: NotFoundError }) =>
-        props.fallback?.(error)
-      }
+      errorComponent={({ error }: { error: Error }) => {
+        if (isNotFound(error)) {
+          return props.fallback?.(error)
+        } else {
+          throw error
+        }
+      }}
     >
       {props.children}
     </CatchBoundary>

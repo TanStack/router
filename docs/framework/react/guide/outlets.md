@@ -8,6 +8,9 @@ Nested routing means that routes can be nested within other routes, including th
 
 The `Outlet` component is used to render the next potentially matching child route. `<Outlet />` doesn't take any props and can be rendered anywhere within a route's component tree. If there is no matching child route, `<Outlet />` will render `null`.
 
+> [!TIP]
+> If a route's `component` is left undefined, it will render an `<Outlet />` automatically.
+
 A great example is configuring the root route of your application. Let's give our root route a component that renders a title, then an `<Outlet />` for our top-level routes to render.
 
 ```tsx
@@ -26,5 +29,3 @@ function RootComponent() {
   )
 }
 ```
-
-> 🧠 If a route's `component` is left undefined, it will render an `<Outlet />` automatically.

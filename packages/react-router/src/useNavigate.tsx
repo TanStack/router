@@ -1,39 +1,35 @@
 import * as React from 'react'
-import { useMatch } from './Matches'
 import { useRouter } from './useRouter'
-
-import type { NavigateOptions } from './link'
-import type { AnyRoute } from './route'
-import type { RoutePaths, RoutePathsAutoComplete } from './routeInfo'
-import type { RegisteredRouter } from './router'
+import type { FromPathOption, NavigateOptions } from './link'
+import type { AnyRouter, RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <
-  TTo extends string,
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = TDefaultFrom,
-  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TRouter extends RegisteredRouter,
+  TTo extends string | undefined,
+  TFrom extends string = TDefaultFrom,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 >({
   from,
   ...rest
-}: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>) => Promise<void>
+}: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>) => Promise<void>
 
 export function useNavigate<
+  TRouter extends AnyRouter = RegisteredRouter,
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
-  from?: RoutePathsAutoComplete<RegisteredRouter['routeTree'], TDefaultFrom>
+  from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const router = useRouter()
+  const { navigate } = useRouter()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return router.navigate({
+      return navigate({
         ...options,
-        from: options.to ? router.state.resolvedLocation.pathname : undefined,
       })
     },
-    [router],
-  )
+    [navigate],
+  ) as UseNavigateResult<TDefaultFrom>
 }
 
 // NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it
@@ -52,21 +48,18 @@ export function useNavigate<
 // } //
 
 export function Navigate<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> | string = string,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-  TMaskTo extends string = '',
->(props: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>): null {
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
-  const match = useMatch({ strict: false })
 
   React.useEffect(() => {
     navigate({
-      from: props.to ? match.pathname : undefined,
       ...props,
     } as any)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return null

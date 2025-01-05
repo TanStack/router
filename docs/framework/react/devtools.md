@@ -12,8 +12,28 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 
 ## Installation
 
+The devtools are a separate package that you need to install:
+
 ```sh
-npm install @tanstack/router-devtools --save
+npm install -D @tanstack/router-devtools
+```
+
+or
+
+```sh
+pnpm add -D @tanstack/router-devtools
+```
+
+or
+
+```sh
+yarn add -D @tanstack/router-devtools
+```
+
+or
+
+```sh
+bun add -D @tanstack/router-devtools
 ```
 
 ## Import the Devtools
@@ -124,6 +144,9 @@ function App() {
 - `position?: "top-left" | "top-right" | "bottom-left" | "bottom-right"`
   - Defaults to `bottom-left`
   - The position of the TanStack Router logo to open and close the devtools panel
+- `shadowDOMTarget?: ShadowRoot`
+  - Specifies a Shadow DOM target for the devtools.
+  - By default, devtool styles are applied to the `<head>` tag of the main document (light DOM). When a `shadowDOMTarget` is provided, styles will be applied within this Shadow DOM instead.
 
 ## Embedded Mode
 

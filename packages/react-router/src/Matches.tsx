@@ -1,90 +1,251 @@
 import * as React from 'react'
-import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { isServer, pick } from './utils'
-import { CatchNotFound, DefaultGlobalNotFound, isNotFound } from './not-found'
-import { isRedirect } from './redirects'
-import type { ResolveRelativePath, ToOptions } from './link'
+import { Transitioner } from './Transitioner'
+import { matchContext } from './matchContext'
+import { Match } from './Match'
+import { SafeFragment } from './SafeFragment'
 import type {
-  AnyRoute,
-  ReactNode,
-  RootSearchSchema,
-  StaticDataRouteOption,
-} from './route'
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
+import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
+import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 import type {
+  MakeOptionalPathParams,
+  MakeOptionalSearchParams,
+  MaskOptions,
+  ResolveRelativePath,
+  ResolveRoute,
+  ToSubOptionsProps,
+} from './link'
+import type {
+  AllContext,
+  AllLoaderData,
   AllParams,
   FullSearchSchema,
   ParseRoute,
   RouteById,
   RouteByPath,
   RouteIds,
-  RoutePaths,
 } from './routeInfo'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
-import type { DeepPartial, Expand, NoInfer, StrictOrFrom } from './utils'
+import type {
+  Constrain,
+  ControlledPromise,
+  DeepPartial,
+  NoInfer,
+} from './utils'
 
-export const matchContext = React.createContext<string | undefined>(undefined)
+export type AnyMatchAndValue = { match: any; value: any }
+
+export type FindValueByIndex<
+  TKey,
+  TValue extends ReadonlyArray<any>,
+> = TKey extends `${infer TIndex extends number}` ? TValue[TIndex] : never
+
+export type FindValueByKey<TKey, TValue> =
+  TValue extends ReadonlyArray<any>
+    ? FindValueByIndex<TKey, TValue>
+    : TValue[TKey & keyof TValue]
+
+export type CreateMatchAndValue<TMatch, TValue> = TValue extends any
+  ? {
+      match: TMatch
+      value: TValue
+    }
+  : never
+
+export type NextMatchAndValue<
+  TKey,
+  TMatchAndValue extends AnyMatchAndValue,
+> = TMatchAndValue extends any
+  ? CreateMatchAndValue<
+      TMatchAndValue['match'],
+      FindValueByKey<TKey, TMatchAndValue['value']>
+    >
+  : never
+
+export type IsMatchKeyOf<TValue> =
+  TValue extends ReadonlyArray<any>
+    ? number extends TValue['length']
+      ? `${number}`
+      : keyof TValue & `${number}`
+    : TValue extends object
+      ? keyof TValue & string
+      : never
+
+export type IsMatchPath<
+  TParentPath extends string,
+  TMatchAndValue extends AnyMatchAndValue,
+> = `${TParentPath}${IsMatchKeyOf<TMatchAndValue['value']>}`
+
+export type IsMatchResult<
+  TKey,
+  TMatchAndValue extends AnyMatchAndValue,
+> = TMatchAndValue extends any
+  ? TKey extends keyof TMatchAndValue['value']
+    ? TMatchAndValue['match']
+    : never
+  : never
+
+export type IsMatchParse<
+  TPath,
+  TMatchAndValue extends AnyMatchAndValue,
+  TParentPath extends string = '',
+> = TPath extends `${string}.${string}`
+  ? TPath extends `${infer TFirst}.${infer TRest}`
+    ? IsMatchParse<
+        TRest,
+        NextMatchAndValue<TFirst, TMatchAndValue>,
+        `${TParentPath}${TFirst}.`
+      >
+    : never
+  : {
+      path: IsMatchPath<TParentPath, TMatchAndValue>
+      result: IsMatchResult<TPath, TMatchAndValue>
+    }
+
+export type IsMatch<TMatch, TPath> = IsMatchParse<
+  TPath,
+  TMatch extends any ? { match: TMatch; value: TMatch } : never
+>
+
+/**
+ * Narrows matches based on a path
+ * @experimental
+ */
+export const isMatch = <TMatch, TPath extends string>(
+  match: TMatch,
+  path: Constrain<TPath, IsMatch<TMatch, TPath>['path']>,
+): match is IsMatch<TMatch, TPath>['result'] => {
+  const parts = (path as string).split('.')
+  let part
+  let value: any = match
+
+  while ((part = parts.shift()) != null && value != null) {
+    value = value[part]
+  }
+
+  return value != null
+}
+
+export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
+  TRoute['types']['id'],
+  TRoute['types']['fullPath'],
+  TRoute['types']['allParams'],
+  TRoute['types']['fullSearchSchema'],
+  TRoute['types']['loaderData'],
+  TRoute['types']['allContext'],
+  TRoute['types']['loaderDeps']
+>
 
 export interface RouteMatch<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
+  out TRouteId,
+  out TFullPath,
+  out TAllParams,
+  out TFullSearchSchema,
+  out TLoaderData,
+  out TAllContext,
+  out TLoaderDeps,
 > {
   id: string
   routeId: TRouteId
+  fullPath: TFullPath
+  index: number
   pathname: string
-  params: TReturnIntersection extends false
-    ? RouteById<TRouteTree, TRouteId>['types']['allParams']
-    : Expand<Partial<AllParams<TRouteTree>>>
+  params: TAllParams
   status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
-  isFetching: boolean
-  showPending: boolean
+  isFetching: false | 'beforeLoad' | 'loader'
   error: unknown
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  loadPromise?: Promise<void>
-  loaderData?: RouteById<TRouteTree, TRouteId>['types']['loaderData']
-  routeContext: RouteById<TRouteTree, TRouteId>['types']['routeContext']
-  context: RouteById<TRouteTree, TRouteId>['types']['allContext']
-  search: TReturnIntersection extends false
-    ? Exclude<
-        RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
-        RootSearchSchema
-      >
-    : Expand<
-        Partial<Omit<FullSearchSchema<TRouteTree>, keyof RootSearchSchema>>
-      >
+  loadPromise?: ControlledPromise<void>
+  beforeLoadPromise?: ControlledPromise<void>
+  loaderPromise?: ControlledPromise<void>
+  loaderData?: TLoaderData
+  __routeContext: Record<string, unknown>
+  __beforeLoadContext: Record<string, unknown>
+  context: TAllContext
+  search: TFullSearchSchema
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
-  loaderDeps: RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
+  loaderDeps: TLoaderDeps
   preload: boolean
   invalid: boolean
-  pendingPromise?: Promise<void>
-  meta?: Array<JSX.IntrinsicElements['meta']>
-  links?: Array<JSX.IntrinsicElements['link']>
-  scripts?: Array<JSX.IntrinsicElements['script']>
+  meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
+  links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
+  scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
+  minPendingPromise?: ControlledPromise<void>
+  pendingTimeout?: ReturnType<typeof setTimeout>
 }
 
-export type AnyRouteMatch = RouteMatch<any, any>
+export type MakeRouteMatch<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouteId = RouteIds<TRouteTree>,
+  TStrict extends boolean = true,
+> = RouteMatch<
+  TRouteId,
+  RouteById<TRouteTree, TRouteId>['types']['fullPath'],
+  TStrict extends false
+    ? AllParams<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['allParams'],
+  TStrict extends false
+    ? FullSearchSchema<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
+  TStrict extends false
+    ? AllLoaderData<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['loaderData'],
+  TStrict extends false
+    ? AllContext<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['allContext'],
+  RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
+>
+
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 
 export function Matches() {
   const router = useRouter()
+
+  const pendingElement = router.options.defaultPendingComponent ? (
+    <router.options.defaultPendingComponent />
+  ) : null
+
+  // Do not render a root Suspense during SSR or hydrating from SSR
+  const ResolvedSuspense =
+    router.isServer || (typeof document !== 'undefined' && window.__TSR__)
+      ? SafeFragment
+      : React.Suspense
+
+  const inner = (
+    <ResolvedSuspense fallback={pendingElement}>
+      <Transitioner />
+      <MatchesInner />
+    </ResolvedSuspense>
+  )
+
+  return router.options.InnerWrap ? (
+    <router.options.InnerWrap>{inner}</router.options.InnerWrap>
+  ) : (
+    inner
+  )
+}
+
+function MatchesInner() {
   const matchId = useRouterState({
     select: (s) => {
-      return getRenderedMatches(s)[0]?.id
+      return s.matches[0]?.id
     },
   })
 
   const resetKey = useRouterState({
-    select: (s) => s.resolvedLocation.state.key!,
+    select: (s) => s.loadedAt,
   })
 
   return (
@@ -95,273 +256,15 @@ export function Matches() {
         onCatch={(error) => {
           warning(
             false,
-            `The following error wasn't caught by any route! 👇 At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+            `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
           )
-          console.error(error)
+          warning(false, error.message || error.toString())
         }}
       >
         {matchId ? <Match matchId={matchId} /> : null}
       </CatchBoundary>
     </matchContext.Provider>
   )
-}
-
-function SafeFragment(props: any) {
-  return <>{props.children}</>
-}
-
-export function Match({ matchId }: { matchId: string }) {
-  const router = useRouter()
-  const routeId = useRouterState({
-    select: (s) =>
-      getRenderedMatches(s).find((d) => d.id === matchId)?.routeId as string,
-  })
-
-  invariant(
-    routeId,
-    `Could not find routeId for matchId "${matchId}". Please file an issue!`,
-  )
-
-  const route: AnyRoute = router.routesById[routeId]
-
-  const PendingComponent =
-    route.options.pendingComponent ?? router.options.defaultPendingComponent
-
-  const pendingElement = PendingComponent ? <PendingComponent /> : null
-
-  const routeErrorComponent =
-    route.options.errorComponent ?? router.options.defaultErrorComponent
-
-  const routeNotFoundComponent = route.isRoot
-    ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
-      route.options.notFoundComponent ??
-      router.options.notFoundRoute?.options.component
-    : route.options.notFoundComponent
-
-  const ResolvedSuspenseBoundary =
-    route.options.wrapInSuspense ??
-    PendingComponent ??
-    route.options.component?.preload ??
-    route.options.pendingComponent?.preload ??
-    (route.options.errorComponent as any)?.preload
-      ? React.Suspense
-      : SafeFragment
-
-  const ResolvedCatchBoundary = routeErrorComponent
-    ? CatchBoundary
-    : SafeFragment
-
-  const ResolvedNotFoundBoundary = routeNotFoundComponent
-    ? CatchNotFound
-    : SafeFragment
-
-  const resetKey = useRouterState({
-    select: (s) => s.resolvedLocation.state.key!,
-  })
-
-  return (
-    <matchContext.Provider value={matchId}>
-      <ResolvedSuspenseBoundary fallback={pendingElement}>
-        <ResolvedCatchBoundary
-          getResetKey={() => resetKey}
-          errorComponent={routeErrorComponent ?? ErrorComponent}
-          onCatch={(error) => {
-            // Forward not found errors (we don't want to show the error component for these)
-            if (isNotFound(error)) throw error
-            warning(false, `Error in route match: ${matchId}`)
-            console.error(error)
-          }}
-        >
-          <ResolvedNotFoundBoundary
-            fallback={(error) => {
-              // If the current not found handler doesn't exist or it has a
-              // route ID which doesn't match the current route, rethrow the error
-              if (
-                !routeNotFoundComponent ||
-                (error.routeId && error.routeId !== routeId) ||
-                (!error.routeId && !route.isRoot)
-              )
-                throw error
-
-              return React.createElement(routeNotFoundComponent, error as any)
-            }}
-          >
-            <MatchInner matchId={matchId} pendingElement={pendingElement} />
-          </ResolvedNotFoundBoundary>
-        </ResolvedCatchBoundary>
-      </ResolvedSuspenseBoundary>
-    </matchContext.Provider>
-  )
-}
-
-function MatchInner({
-  matchId,
-  pendingElement,
-}: {
-  matchId: string
-  pendingElement: any
-}): any {
-  const router = useRouter()
-  const routeId = useRouterState({
-    select: (s) =>
-      getRenderedMatches(s).find((d) => d.id === matchId)?.routeId as string,
-  })
-
-  const route = router.routesById[routeId]!
-
-  const match = useRouterState({
-    select: (s) =>
-      pick(getRenderedMatches(s).find((d) => d.id === matchId)!, [
-        'status',
-        'error',
-        'showPending',
-        'loadPromise',
-      ]),
-  })
-
-  const RouteErrorComponent =
-    (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
-    ErrorComponent
-
-  if (match.status === 'notFound') {
-    let error: unknown
-    if (isServerSideError(match.error)) {
-      const deserializeError =
-        router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-
-      error = deserializeError(match.error.data)
-    } else {
-      error = match.error
-    }
-
-    invariant(isNotFound(error), 'Expected a notFound error')
-
-    return renderRouteNotFound(router, route, error)
-  }
-
-  if (match.status === 'redirected') {
-    // Redirects should be handled by the router transition. If we happen to
-    // encounter a redirect here, it's a bug. Let's warn, but render nothing.
-    invariant(isRedirect(match.error), 'Expected a redirect error')
-
-    warning(
-      false,
-      'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
-    )
-
-    return null
-  }
-
-  if (match.status === 'error') {
-    // If we're on the server, we need to use React's new and super
-    // wonky api for throwing errors from a server side render inside
-    // of a suspense boundary. This is the only way to get
-    // renderToPipeableStream to not hang indefinitely.
-    // We'll serialize the error and rethrow it on the client.
-    if (isServer) {
-      return (
-        <RouteErrorComponent
-          error={match.error}
-          info={{
-            componentStack: '',
-          }}
-        />
-      )
-    }
-
-    if (isServerSideError(match.error)) {
-      const deserializeError =
-        router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-      throw deserializeError(match.error.data)
-    } else {
-      throw match.error
-    }
-  }
-
-  if (match.status === 'pending') {
-    if (match.showPending) {
-      return pendingElement
-    }
-    throw match.loadPromise
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (match.status === 'success') {
-    const Comp = route.options.component ?? router.options.defaultComponent
-
-    if (Comp) {
-      return <Comp />
-    }
-
-    return <Outlet />
-  }
-
-  invariant(
-    false,
-    'Idle routeMatch status encountered during rendering! You should never see this. File an issue!',
-  )
-}
-
-export const Outlet = React.memo(function Outlet() {
-  const router = useRouter()
-  const matchId = React.useContext(matchContext)
-  const routeId = useRouterState({
-    select: (s) =>
-      getRenderedMatches(s).find((d) => d.id === matchId)?.routeId as string,
-  })
-
-  const route = router.routesById[routeId]!
-
-  const { parentGlobalNotFound } = useRouterState({
-    select: (s) => {
-      const matches = getRenderedMatches(s)
-      const parentMatch = matches.find((d) => d.id === matchId)
-      invariant(
-        parentMatch,
-        `Could not find parent match for matchId "${matchId}"`,
-      )
-      return {
-        parentGlobalNotFound: parentMatch.globalNotFound,
-      }
-    },
-  })
-
-  const childMatchId = useRouterState({
-    select: (s) => {
-      const matches = getRenderedMatches(s)
-      const index = matches.findIndex((d) => d.id === matchId)
-      return matches[index + 1]?.id
-    },
-  })
-
-  if (parentGlobalNotFound) {
-    return renderRouteNotFound(router, route, undefined)
-  }
-
-  if (!childMatchId) {
-    return null
-  }
-
-  return <Match matchId={childMatchId} />
-})
-
-function renderRouteNotFound(router: AnyRouter, route: AnyRoute, data: any) {
-  if (!route.options.notFoundComponent) {
-    if (router.options.defaultNotFoundComponent) {
-      return <router.options.defaultNotFoundComponent data={data} />
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      warning(
-        route.options.notFoundComponent,
-        `A notFoundError was encountered on the route with ID "${route.id}", but a notFoundComponent option was not configured, nor was a router level defaultNotFoundComponent configured. Consider configuring at least one of these to avoid TanStack Router's overly generic defaultNotFoundComponent (<div>Not Found<div>)`,
-      )
-    }
-
-    return <DefaultGlobalNotFound />
-  }
-
-  return <route.options.notFoundComponent data={data} />
 }
 
 export interface MatchRouteOptions {
@@ -372,37 +275,34 @@ export interface MatchRouteOptions {
 }
 
 export type UseMatchRouteOptions<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = RoutePaths<TRouteTree>,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-  TOptions extends ToOptions<
-    TRouteTree,
-    TFrom,
-    TTo,
-    TMaskFrom,
-    TMaskTo
-  > = ToOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-  TRelaxedOptions = Omit<TOptions, 'search' | 'params'> &
-    DeepPartial<Pick<TOptions, 'search' | 'params'>>,
-> = TRelaxedOptions & MatchRouteOptions
+> = ToSubOptionsProps<TRouter, TFrom, TTo> &
+  DeepPartial<MakeOptionalSearchParams<TRouter, TFrom, TTo>> &
+  DeepPartial<MakeOptionalPathParams<TRouter, TFrom, TTo>> &
+  MaskOptions<TRouter, TMaskFrom, TMaskTo> &
+  MatchRouteOptions
 
-export function useMatchRoute<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
->() {
+export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
+
+  useRouterState({
+    select: (s) => [s.location.href, s.resolvedLocation.href, s.status],
+    structuralSharing: true as any,
+  })
 
   return React.useCallback(
     <
-      TFrom extends RoutePaths<TRouteTree> = RoutePaths<TRouteTree>,
-      TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
-      TMaskTo extends string = '',
-      TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+      const TFrom extends string = string,
+      const TTo extends string | undefined = undefined,
+      const TMaskFrom extends string = TFrom,
+      const TMaskTo extends string = '',
     >(
-      opts: UseMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
+      opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+    ): false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams'] => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return router.matchRoute(rest as any, {
@@ -417,17 +317,17 @@ export function useMatchRoute<
 }
 
 export type MakeMatchRouteOptions<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = RoutePaths<TRouteTree>,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = UseMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo> & {
+> = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
         params?: RouteByPath<
-          TRouteTree,
+          TRouter['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
       ) => ReactNode)
@@ -435,16 +335,14 @@ export type MakeMatchRouteOptions<
 }
 
 export function MatchRoute<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RoutePaths<TRouteTree> = RoutePaths<TRouteTree>,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouteTree> = TFrom,
-  TMaskTo extends string = '',
->(
-  props: MakeMatchRouteOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-): any {
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const matchRoute = useMatchRoute()
-  const params = matchRoute(props as any)
+  const params = matchRoute(props as any) as boolean
 
   if (typeof props.children === 'function') {
     return (props.children as any)(params)
@@ -453,182 +351,94 @@ export function MatchRoute<
   return params ? props.children : null
 }
 
-export function getRenderedMatches<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
->(state: RouterState<TRouteTree>) {
-  return state.pendingMatches?.some((d) => d.showPending)
-    ? state.pendingMatches
-    : state.matches
+export type MakeRouteMatchUnion<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+> = TRoute extends any
+  ? RouteMatch<
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema'],
+      TRoute['types']['loaderData'],
+      TRoute['types']['allContext'],
+      TRoute['types']['loaderDeps']
+    >
+  : never
+
+export interface UseMatchesBaseOptions<
+  TRouter extends AnyRouter,
+  TSelected,
+  TStructuralSharing,
+> {
+  select?: (
+    matches: Array<MakeRouteMatchUnion<TRouter>>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
-export function useMatch<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TReturnIntersection extends boolean = false,
-  TRouteMatchState = RouteMatch<TRouteTree, TFrom, TReturnIntersection>,
-  TSelected = TRouteMatchState,
->(
-  opts: StrictOrFrom<TFrom, TReturnIntersection> & {
-    select?: (match: TRouteMatchState) => TSelected
-  },
-): TSelected {
-  const nearestMatchId = React.useContext(matchContext)
-
-  const matchSelection = useRouterState({
-    select: (state) => {
-      const match = getRenderedMatches(state).find((d) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId,
-      )
-
-      invariant(
-        match,
-        `Could not find ${
-          opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'
-        }`,
-      )
-
-      return opts.select ? opts.select(match as any) : match
-    },
-  })
-
-  return matchSelection as any
-}
+export type UseMatchesResult<
+  TRouter extends AnyRouter,
+  TSelected,
+> = unknown extends TSelected ? Array<MakeRouteMatchUnion<TRouter>> : TSelected
 
 export function useMatches<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
-  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
-  T = Array<TRouteMatch>,
->(opts?: {
-  select?: (matches: Array<TRouteMatch>) => T
-  experimental_returnIntersection?: TReturnIntersection
-}): T {
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+): UseMatchesResult<TRouter, TSelected> {
   return useRouterState({
-    select: (state) => {
-      const matches = getRenderedMatches(state)
+    select: (state: RouterState<TRouter['routeTree']>) => {
+      const matches = state.matches
       return opts?.select
-        ? opts.select(matches as Array<TRouteMatch>)
-        : (matches as T)
+        ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
+        : matches
     },
-  })
+    structuralSharing: opts?.structuralSharing,
+  } as any) as UseMatchesResult<TRouter, TSelected>
 }
 
 export function useParentMatches<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
-  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
-  T = Array<TRouteMatch>,
->(opts?: {
-  select?: (matches: Array<TRouteMatch>) => T
-  experimental_returnIntersection?: TReturnIntersection
-}): T {
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+): UseMatchesResult<TRouter, TSelected> {
   const contextMatchId = React.useContext(matchContext)
 
   return useMatches({
-    select: (matches) => {
+    select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
         matches.findIndex((d) => d.id === contextMatchId),
       )
-      return opts?.select
-        ? opts.select(matches as Array<TRouteMatch>)
-        : (matches as T)
+      return opts?.select ? opts.select(matches) : matches
     },
-  })
+    structuralSharing: opts?.structuralSharing,
+  } as any)
 }
 
 export function useChildMatches<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId extends RouteIds<TRouteTree> = ParseRoute<TRouteTree>['id'],
-  TReturnIntersection extends boolean = false,
-  TRouteMatch = RouteMatch<TRouteTree, TRouteId, TReturnIntersection>,
-  T = Array<TRouteMatch>,
->(opts?: {
-  select?: (matches: Array<TRouteMatch>) => T
-  experimental_returnIntersection?: TReturnIntersection
-}): T {
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+): UseMatchesResult<TRouter, TSelected> {
   const contextMatchId = React.useContext(matchContext)
 
   return useMatches({
-    select: (matches) => {
+    select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         matches.findIndex((d) => d.id === contextMatchId) + 1,
       )
-      return opts?.select
-        ? opts.select(matches as Array<TRouteMatch>)
-        : (matches as T)
+      return opts?.select ? opts.select(matches) : matches
     },
-  })
-}
-
-export function useLoaderDeps<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TRouteMatch extends RouteMatch<TRouteTree, TFrom> = RouteMatch<
-    TRouteTree,
-    TFrom
-  >,
-  TSelected = Required<TRouteMatch>['loaderDeps'],
->(
-  opts: StrictOrFrom<TFrom> & {
-    select?: (match: TRouteMatch) => TSelected
-  },
-): TSelected {
-  return useMatch({
-    ...opts,
-    select: (s) => {
-      return typeof opts.select === 'function'
-        ? opts.select(s.loaderDeps)
-        : s.loaderDeps
-    },
-  })
-}
-
-export function useLoaderData<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TFrom extends RouteIds<TRouteTree> = RouteIds<TRouteTree>,
-  TRouteMatch extends RouteMatch<TRouteTree, TFrom> = RouteMatch<
-    TRouteTree,
-    TFrom
-  >,
-  TSelected = Required<TRouteMatch>['loaderData'],
->(
-  opts: StrictOrFrom<TFrom> & {
-    select?: (match: TRouteMatch) => TSelected
-  },
-): TSelected {
-  return useMatch({
-    ...opts,
-    select: (s) => {
-      return typeof opts.select === 'function'
-        ? opts.select(s.loaderData)
-        : s.loaderData
-    },
-  })
-}
-
-export function isServerSideError(error: unknown): error is {
-  __isServerError: true
-  data: Record<string, any>
-} {
-  if (!(typeof error === 'object' && error && 'data' in error)) return false
-  if (!('__isServerError' in error && error.__isServerError)) return false
-  if (!(typeof error.data === 'object' && error.data)) return false
-
-  return error.__isServerError === true
-}
-
-export function defaultDeserializeError(serializedData: Record<string, any>) {
-  if ('name' in serializedData && 'message' in serializedData) {
-    const error = new Error(serializedData.message)
-    error.name = serializedData.name
-    if (process.env.NODE_ENV === 'development') {
-      error.stack = serializedData.stack
-    }
-    return error
-  }
-
-  return serializedData.data
+    structuralSharing: opts?.structuralSharing,
+  } as any)
 }

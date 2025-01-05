@@ -1,9 +1,12 @@
 import * as React from 'react'
+import type { RouteIds } from './routeInfo'
+import type { AnyRouter } from './router'
 
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
   ? TYesResult
   : TNoResult
+
 export type PickAsRequired<TValue, TKey extends keyof TValue> = Omit<
   TValue,
   TKey
@@ -14,21 +17,21 @@ export type PickRequired<T> = {
   [K in keyof T as undefined extends T[K] ? never : K]: T[K]
 }
 
+export type PickOptional<T> = {
+  [K in keyof T as undefined extends T[K] ? K : never]: T[K]
+}
+
 // from https://stackoverflow.com/a/76458160
-export type WithoutEmpty<T> = T extends T ? ({} extends T ? never : T) : never
+export type WithoutEmpty<T> = T extends any ? ({} extends T ? never : T) : never
 
 // export type Expand<T> = T
 export type Expand<T> = T extends object
   ? T extends infer O
-    ? { [K in keyof O]: O[K] }
+    ? O extends Function
+      ? O
+      : { [K in keyof O]: O[K] }
     : never
   : T
-
-export type UnionToIntersection<T> = (
-  T extends any ? (k: T) => void : never
-) extends (k: infer I) => any
-  ? I
-  : never
 
 export type DeepPartial<T> = T extends object
   ? {
@@ -36,10 +39,12 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export type MakeDifferenceOptional<T, U> = Omit<U, keyof T> &
-  Partial<Pick<U, keyof T & keyof U>> &
-  PickRequired<Omit<U, keyof PickRequired<T>>>
+export type MakeDifferenceOptional<TLeft, TRight> = Omit<
+  TRight,
+  keyof TLeft
+> & {
+  [K in keyof TLeft & keyof TRight]?: TRight[K]
+}
 
 // from https://stackoverflow.com/a/53955431
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -49,11 +54,17 @@ export type IsUnion<T, U extends T = T> = (
   ? false
   : true
 
-export type Assign<TLeft, TRight> = keyof TLeft extends never
-  ? TRight
-  : keyof TRight extends never
-    ? TLeft
-    : Omit<TLeft, keyof TRight> & TRight
+export type Assign<TLeft, TRight> = TLeft extends any
+  ? TRight extends any
+    ? keyof TLeft extends never
+      ? TRight
+      : keyof TRight extends never
+        ? TLeft
+        : keyof TLeft & keyof TRight extends never
+          ? TLeft & TRight
+          : Omit<TLeft, keyof TRight> & TRight
+    : never
+  : never
 
 export type Timeout = ReturnType<typeof setTimeout>
 
@@ -65,20 +76,82 @@ export type NonNullableUpdater<TPrevious, TResult = TPrevious> =
   | TResult
   | ((prev: TPrevious) => TResult)
 
-// from https://github.com/type-challenges/type-challenges/issues/737
-type LastInUnion<T> =
-  UnionToIntersection<T extends unknown ? (x: T) => 0 : never> extends (
-    x: infer L,
-  ) => 0
-    ? L
+export type ExtractObjects<TUnion> = TUnion extends MergeAllPrimitive
+  ? never
+  : TUnion
+
+export type PartialMergeAllObject<TUnion> =
+  ExtractObjects<TUnion> extends infer TObj
+    ? {
+        [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
+          ? TKey extends keyof TObj
+            ? TObj[TKey]
+            : never
+          : never
+      }
     : never
-export type UnionToTuple<T, TLast = LastInUnion<T>> = [T] extends [never]
-  ? []
-  : [...UnionToTuple<Exclude<T, TLast>>, TLast]
 
-//
+export type MergeAllPrimitive =
+  | ReadonlyArray<any>
+  | number
+  | string
+  | bigint
+  | boolean
+  | symbol
+  | undefined
+  | null
 
-export const isServer = typeof document === 'undefined'
+export type ExtractPrimitives<TUnion> = TUnion extends MergeAllPrimitive
+  ? TUnion
+  : TUnion extends object
+    ? never
+    : TUnion
+
+export type PartialMergeAll<TUnion> =
+  | ExtractPrimitives<TUnion>
+  | PartialMergeAllObject<TUnion>
+
+export type Constrain<T, TConstraint, TDefault = TConstraint> =
+  | (T extends TConstraint ? T : never)
+  | TDefault
+
+export type ConstrainLiteral<T, TConstraint, TDefault = TConstraint> =
+  | (T & TConstraint)
+  | TDefault
+
+/**
+ * To be added to router types
+ */
+export type UnionToIntersection<T> = (
+  T extends any ? (arg: T) => any : never
+) extends (arg: infer T) => any
+  ? T
+  : never
+
+/**
+ * Merges everything in a union into one object.
+ * This mapped type is homomorphic which means it preserves stuff! :)
+ */
+export type MergeAllObjects<
+  TUnion,
+  TIntersected = UnionToIntersection<ExtractObjects<TUnion>>,
+> = [keyof TIntersected] extends [never]
+  ? never
+  : {
+      [TKey in keyof TIntersected]: TUnion extends any
+        ? TUnion[TKey & keyof TUnion]
+        : never
+    }
+
+export type MergeAll<TUnion> =
+  | MergeAllObjects<TUnion>
+  | ExtractPrimitives<TUnion>
+
+export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
+  ? unknown extends T
+    ? never
+    : 'Function is not serializable'
+  : { [K in keyof T]: ValidateJSON<T[K]> }
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
@@ -134,12 +207,11 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
     let equalItems = 0
 
     for (let i = 0; i < nextSize; i++) {
-      const key = array ? i : nextItems[i]
+      const key = array ? i : (nextItems[i] as any)
       if (
-        !array &&
+        ((!array && prevItems.includes(key)) || array) &&
         prev[key] === undefined &&
-        next[key] === undefined &&
-        prevItems.includes(key)
+        next[key] === undefined
       ) {
         copy[key] = undefined
         equalItems++
@@ -188,11 +260,23 @@ function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
 
-export function isPlainArray(value: unknown) {
+export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
-export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
+function getObjectKeys(obj: any, ignoreUndefined: boolean) {
+  let keys = Object.keys(obj)
+  if (ignoreUndefined) {
+    keys = keys.filter((key) => obj[key] !== undefined)
+  }
+  return keys
+}
+
+export function deepEqual(
+  a: any,
+  b: any,
+  opts?: { partial?: boolean; ignoreUndefined?: boolean },
+): boolean {
   if (a === b) {
     return true
   }
@@ -202,20 +286,22 @@ export function deepEqual(a: any, b: any, partial: boolean = false): boolean {
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const aKeys = Object.keys(a)
-    const bKeys = Object.keys(b)
+    const ignoreUndefined = opts?.ignoreUndefined ?? true
+    const aKeys = getObjectKeys(a, ignoreUndefined)
+    const bKeys = getObjectKeys(b, ignoreUndefined)
 
-    if (!partial && aKeys.length !== bKeys.length) {
+    if (!opts?.partial && aKeys.length !== bKeys.length) {
       return false
     }
 
-    return !bKeys.some(
-      (key) => !(key in a) || !deepEqual(a[key], b[key], partial),
-    )
+    return bKeys.every((key) => deepEqual(a[key], b[key], opts))
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
-    return !a.some((item, index) => !deepEqual(item, b[index], partial))
+    if (a.length !== b.length) {
+      return false
+    }
+    return !a.some((item, index) => !deepEqual(item, b[index], opts))
   }
 
   return false
@@ -267,16 +353,23 @@ export type StringLiteral<T> = T extends string
     : T
   : never
 
-export type StrictOrFrom<TFrom, TReturnIntersection extends boolean = false> =
-  | {
-      from: StringLiteral<TFrom> | TFrom
-      strict?: true
-    }
-  | {
+export type StrictOrFrom<
+  TRouter extends AnyRouter,
+  TFrom,
+  TStrict extends boolean = true,
+> = TStrict extends false
+  ? {
       from?: never
-      strict: false
-      experimental_returnIntersection?: TReturnIntersection
+      strict: TStrict
     }
+  : {
+      from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
+      strict?: TStrict
+    }
+
+export type ThrowOrOptional<T, TThrow extends boolean> = TThrow extends true
+  ? T
+  : T | undefined
 
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
@@ -292,17 +385,149 @@ export function escapeJSON(jsonString: string) {
     .replace(/"/g, '\\"') // Escape double quotes
 }
 
-export function removeTrailingSlash(value: string): string {
-  if (value.endsWith('/') && value !== '/') {
-    return value.slice(0, -1)
-  }
-  return value
+export type ControlledPromise<T> = Promise<T> & {
+  resolve: (value: T) => void
+  reject: (value: any) => void
+  status: 'pending' | 'resolved' | 'rejected'
+  value?: T
 }
 
-// intended to only compare path name
-// see the usage in the isActive under useLinkProps
-// /sample/path1 = /sample/path1/
-// /sample/path1/some <> /sample/path1
-export function exactPathTest(pathName1: string, pathName2: string): boolean {
-  return removeTrailingSlash(pathName1) === removeTrailingSlash(pathName2)
+export function createControlledPromise<T>(onResolve?: (value: T) => void) {
+  let resolveLoadPromise!: (value: T) => void
+  let rejectLoadPromise!: (value: any) => void
+
+  const controlledPromise = new Promise<T>((resolve, reject) => {
+    resolveLoadPromise = resolve
+    rejectLoadPromise = reject
+  }) as ControlledPromise<T>
+
+  controlledPromise.status = 'pending'
+
+  controlledPromise.resolve = (value: T) => {
+    controlledPromise.status = 'resolved'
+    controlledPromise.value = value
+    resolveLoadPromise(value)
+    onResolve?.(value)
+  }
+
+  controlledPromise.reject = (e) => {
+    controlledPromise.status = 'rejected'
+    rejectLoadPromise(e)
+  }
+
+  return controlledPromise
+}
+
+/**
+ * Taken from https://www.developerway.com/posts/implementing-advanced-use-previous-hook#part3
+ */
+export function usePrevious<T>(value: T): T | null {
+  // initialise the ref with previous and current values
+  const ref = React.useRef<{ value: T; prev: T | null }>({
+    value: value,
+    prev: null,
+  })
+
+  const current = ref.current.value
+
+  // if the value passed into hook doesn't match what we store as "current"
+  // move the "current" to the "previous"
+  // and store the passed value as "current"
+  if (value !== current) {
+    ref.current = {
+      value: value,
+      prev: current,
+    }
+  }
+
+  // return the previous value only
+  return ref.current.prev
+}
+
+/**
+ * React hook to wrap `IntersectionObserver`.
+ *
+ * This hook will create an `IntersectionObserver` and observe the ref passed to it.
+ *
+ * When the intersection changes, the callback will be called with the `IntersectionObserverEntry`.
+ *
+ * @param ref - The ref to observe
+ * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
+ * @param options - The options to pass to the hook
+ * @param callback - The callback to call when the intersection changes
+ * @returns The IntersectionObserver instance
+ * @example
+ * ```tsx
+ * const MyComponent = () => {
+ * const ref = React.useRef<HTMLDivElement>(null)
+ * useIntersectionObserver(
+ *  ref,
+ *  (entry) => { doSomething(entry) },
+ *  { rootMargin: '10px' },
+ *  { disabled: false }
+ * )
+ * return <div ref={ref} />
+ * ```
+ */
+export function useIntersectionObserver<T extends Element>(
+  ref: React.RefObject<T>,
+  callback: (entry: IntersectionObserverEntry | undefined) => void,
+  intersectionObserverOptions: IntersectionObserverInit = {},
+  options: { disabled?: boolean } = {},
+): IntersectionObserver | null {
+  const isIntersectionObserverAvailable = React.useRef(
+    typeof IntersectionObserver === 'function',
+  )
+
+  const observerRef = React.useRef<IntersectionObserver | null>(null)
+
+  React.useEffect(() => {
+    if (
+      !ref.current ||
+      !isIntersectionObserverAvailable.current ||
+      options.disabled
+    ) {
+      return
+    }
+
+    observerRef.current = new IntersectionObserver(([entry]) => {
+      callback(entry)
+    }, intersectionObserverOptions)
+
+    observerRef.current.observe(ref.current)
+
+    return () => {
+      observerRef.current?.disconnect()
+    }
+  }, [callback, intersectionObserverOptions, options.disabled, ref])
+
+  return observerRef.current
+}
+
+/**
+ * React hook to take a `React.ForwardedRef` and returns a `ref` that can be used on a DOM element.
+ *
+ * @param ref - The forwarded ref
+ * @returns The inner ref returned by `useRef`
+ * @example
+ * ```tsx
+ * const MyComponent = React.forwardRef((props, ref) => {
+ *  const innerRef = useForwardedRef(ref)
+ *  return <div ref={innerRef} />
+ * })
+ * ```
+ */
+export function useForwardedRef<T>(ref?: React.ForwardedRef<T>) {
+  const innerRef = React.useRef<T>(null)
+
+  React.useEffect(() => {
+    if (!ref) return
+    if (typeof ref === 'function') {
+      ref(innerRef.current)
+    } else {
+      ref.current = innerRef.current
+    }
+  })
+
+  return innerRef
 }

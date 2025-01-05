@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import * as React from 'react'
-import { Invoice } from '../utils/mockTodos'
+import type { Invoice } from '../utils/mockTodos'
 
 export function InvoiceFields({
   invoice,

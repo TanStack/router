@@ -6,3 +6,11 @@
 **/dist
 pnpm-lock.yaml
 **/snapshots
+**/.vercel
+**/.vinxi
+**/.output
+**/node_modules
+node_modules
+
+**/test-results
+**/tests/generator/file-modification/routes/(test)/*

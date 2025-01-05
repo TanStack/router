@@ -6,8 +6,9 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { Auth } from '../utils/auth'
 import { Spinner } from '../components/Spinner'
+import { Breadcrumbs } from '../components/Breadcrumbs'
+import type { Auth } from '../utils/auth'
 
 function RouterSpinner() {
   const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
@@ -26,6 +27,7 @@ function RootComponent() {
       <div className={`min-h-screen flex flex-col`}>
         <div className={`flex items-center border-b gap-2`}>
           <h1 className={`text-3xl p-2`}>Kitchen Sink</h1>
+          <Breadcrumbs />
           {/* Show a global spinner when the router is transitioning */}
           <div className={`text-3xl`}>
             <RouterSpinner />
@@ -67,7 +69,7 @@ function RootComponent() {
               )
             })}
           </div>
-          <div className={`flex-1 border-l border-gray-200`}>
+          <div className={`flex-1 border-l`}>
             {/* Render our first route match */}
             <Outlet />
           </div>

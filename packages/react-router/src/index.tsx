@@ -1,25 +1,29 @@
-//
 export {
   createHistory,
   createBrowserHistory,
   createHashHistory,
   createMemoryHistory,
-  type BlockerFn,
-  type HistoryLocation,
-  type RouterHistory,
-  type ParsedPath,
-  type HistoryState,
+} from '@tanstack/history'
+export type {
+  BlockerFn,
+  HistoryLocation,
+  RouterHistory,
+  ParsedPath,
+  HistoryState,
 } from '@tanstack/history'
 export { default as invariant } from 'tiny-invariant'
 export { default as warning } from 'tiny-warning'
-export { useAwaited, Await, type AwaitOptions } from './awaited'
-export {
-  defer,
-  isDehydratedDeferred,
-  type DeferredPromiseState,
-  type DeferredPromise,
-} from './defer'
+
+export { useAwaited, Await } from './awaited'
+export type { AwaitOptions } from './awaited'
+
+export { ScriptOnce } from './ScriptOnce'
+
+export { defer, TSR_DEFERRED_PROMISE } from './defer'
+export type { DeferredPromiseState, DeferredPromise } from './defer'
+
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
+
 export {
   FileRoute,
   createFileRoute,
@@ -27,76 +31,81 @@ export {
   LazyRoute,
   createLazyRoute,
   createLazyFileRoute,
-  type FileRoutesByPath,
-  type Trim,
-  type TrimLeft,
-  type TrimRight,
-  type RemoveUnderScores,
-  type ResolveFilePath,
-  type FileRoutePath,
-  type LazyRouteOptions,
 } from './fileRoute'
+export type {
+  FileRoutesByPath,
+  FileRouteTypes,
+  LazyRouteOptions,
+} from './fileRoute'
+
 export * from './history'
+
 export { lazyRouteComponent } from './lazyRouteComponent'
-export {
-  useLinkProps,
-  createLink,
-  Link,
-  type CleanPath,
-  type Split,
-  type ParsePathParams,
-  type Join,
-  type Last,
-  type RemoveTrailingSlashes,
-  type RemoveLeadingSlashes,
-  type SearchPaths,
-  type SearchRelativePathAutoComplete,
-  type RelativeToParentPathAutoComplete,
-  type RelativeToCurrentPathAutoComplete,
-  type AbsolutePathAutoComplete,
-  type RelativeToPathAutoComplete,
-  type NavigateOptions,
-  type ToOptions,
-  type ToMaskOptions,
-  type ToSubOptions,
-  type ResolveRoute,
-  type ParamOptions,
-  type SearchParamOptions,
-  type PathParamOptions,
-  type ToPathOption,
-  type ActiveOptions,
-  type LinkOptions,
-  type CheckPath,
-  type CheckPathError,
-  type ResolveRelativePath,
-  type UseLinkPropsOptions,
-  type ActiveLinkOptions,
-  type LinkProps,
-  type LinkComponent,
+
+export { useLinkProps, createLink, Link, linkOptions } from './link'
+export type {
+  ParsePathParams,
+  RemoveTrailingSlashes,
+  RemoveLeadingSlashes,
+  InferDescendantToPaths,
+  RelativeToPath,
+  RelativeToParentPath,
+  RelativeToCurrentPath,
+  AbsoluteToPath,
+  RelativeToPathAutoComplete,
+  NavigateOptions,
+  ToOptions,
+  ToMaskOptions,
+  ToSubOptions,
+  ResolveRoute,
+  SearchParamOptions,
+  PathParamOptions,
+  ToPathOption,
+  ActiveOptions,
+  LinkOptions,
+  ResolveRelativePath,
+  UseLinkPropsOptions,
+  ActiveLinkOptions,
+  LinkProps,
+  LinkComponent,
+  LinkComponentProps,
+  CreateLinkProps,
+  MakeOptionalPathParams,
 } from './link'
-export { type ParsedLocation } from './location'
+
+export type { ParsedLocation } from './location'
+
 export {
-  matchContext,
   Matches,
-  Match,
-  Outlet,
   useMatchRoute,
   MatchRoute,
-  useMatch,
   useMatches,
   useParentMatches,
   useChildMatches,
-  useLoaderDeps,
-  useLoaderData,
-  isServerSideError,
-  defaultDeserializeError,
-  getRenderedMatches,
-  type RouteMatch,
-  type AnyRouteMatch,
-  type MatchRouteOptions,
-  type UseMatchRouteOptions,
-  type MakeMatchRouteOptions,
+  isMatch,
 } from './Matches'
+export type {
+  RouteMatch,
+  AnyRouteMatch,
+  MatchRouteOptions,
+  UseMatchRouteOptions,
+  MakeMatchRouteOptions,
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
+} from './Matches'
+
+export { matchContext } from './matchContext'
+
+export { Match, Outlet } from './Match'
+
+export { isServerSideError, defaultDeserializeError } from './isServerSideError'
+
+export { useMatch } from './useMatch'
+
+export { useLoaderDeps } from './useLoaderDeps'
+
+export { useLoaderData } from './useLoaderData'
+
 export {
   joinPaths,
   cleanPath,
@@ -109,18 +118,18 @@ export {
   matchPathname,
   removeBasepath,
   matchByPath,
-  type Segment,
 } from './path'
+export type { Segment } from './path'
+
 export { encode, decode } from './qss'
+
+export { redirect, isRedirect } from './redirects'
+export type { AnyRedirect, Redirect, ResolvedRedirect } from './redirects'
+
+export { rootRouteId } from './root'
+export type { RootRouteId } from './root'
+
 export {
-  redirect,
-  isRedirect,
-  type AnyRedirect,
-  type Redirect,
-  type ResolvedRedirect,
-} from './redirects'
-export {
-  rootRouteId,
   RouteApi,
   getRouteApi,
   Route,
@@ -131,71 +140,91 @@ export {
   createRootRouteWithContext,
   createRouteMask,
   NotFoundRoute,
-  type RootRouteId,
-  type AnyPathParams,
-  type SearchSchemaInput,
-  type AnySearchSchema,
-  type AnyContext,
-  type RouteContext,
-  type PreloadableObj,
-  type RoutePathOptions,
-  type StaticDataRouteOption,
-  type RoutePathOptionsIntersection,
-  type RouteOptions,
-  type ParamsFallback,
-  type FileBaseRouteOptions,
-  type BaseRouteOptions,
-  type UpdatableRouteOptions,
-  type UpdatableStaticRouteOption,
-  type MetaDescriptor,
-  type RouteLinkEntry,
-  type ParseParamsOption,
-  type ParseParamsFn,
-  type ParseParamsObj,
-  type SearchSchemaValidator,
-  type SearchSchemaValidatorObj,
-  type SearchSchemaValidatorFn,
-  type RouteLoaderFn,
-  type LoaderFnContext,
-  type SearchFilter,
-  type ResolveId,
-  type InferFullSearchSchema,
-  type InferFullSearchSchemaInput,
-  type ResolveFullSearchSchema,
-  type ResolveFullSearchSchemaInput,
-  type AnyRoute,
-  type MergeFromFromParent,
-  type ResolveAllParams,
-  type RouteConstraints,
-  type AnyRootRoute,
-  type RootSearchSchema,
-  type ResolveFullPath,
-  type RouteMask,
-  type ErrorRouteProps,
-  type ErrorComponentProps,
-  type NotFoundRouteProps,
-  type ReactNode,
-  type SyncRouteComponent,
-  type AsyncRouteComponent,
-  type RouteComponent,
-  type ErrorRouteComponent,
-  type NotFoundRouteComponent,
-  type TrimPath,
-  type TrimPathLeft,
-  type TrimPathRight,
 } from './route'
-export {
-  type ParseRoute,
-  type RoutesById,
-  type RouteById,
-  type RouteIds,
-  type RoutesByPath,
-  type RouteByPath,
-  type RoutePaths,
-  type RoutePathsAutoComplete,
-  type FullSearchSchema,
-  type AllParams,
+export type {
+  AnyPathParams,
+  ResolveParams,
+  SearchSchemaInput,
+  AnyContext,
+  RouteContext,
+  PreloadableObj,
+  RoutePathOptions,
+  StaticDataRouteOption,
+  RoutePathOptionsIntersection,
+  RouteOptions,
+  FileBaseRouteOptions,
+  BaseRouteOptions,
+  UpdatableRouteOptions,
+  UpdatableStaticRouteOption,
+  MetaDescriptor,
+  RouteLinkEntry,
+  ParseParamsFn,
+  RouteLoaderFn,
+  LoaderFnContext,
+  SearchFilter,
+  ResolveId,
+  InferFullSearchSchema,
+  InferFullSearchSchemaInput,
+  ResolveFullSearchSchema,
+  ResolveFullSearchSchemaInput,
+  AnyRoute,
+  RouteConstraints,
+  AnyRootRoute,
+  ResolveFullPath,
+  RouteMask,
+  ErrorRouteProps,
+  ErrorComponentProps,
+  NotFoundRouteProps,
+  ReactNode,
+  SyncRouteComponent,
+  AsyncRouteComponent,
+  RouteComponent,
+  ErrorRouteComponent,
+  NotFoundRouteComponent,
+  TrimPath,
+  TrimPathLeft,
+  TrimPathRight,
+  RootRouteOptions,
+  AnyRouteWithContext,
+  ParseSplatParams,
+  SplatParams,
+  StringifyParamsFn,
+  ParamsOptions,
+  FullSearchSchemaOption,
+  RouteContextFn,
+  RouteContextOptions,
+  BeforeLoadFn,
+  BeforeLoadContextOptions,
+  ContextOptions,
+  InferAllParams,
+  InferAllContext,
+  LooseReturnType,
+  LooseAsyncReturnType,
+  ContextReturnType,
+  ContextAsyncReturnType,
+  RouteContextParameter,
+  BeforeLoadContextParameter,
+  ResolveAllContext,
+  ResolveLoaderData,
+  ResolveAllParamsFromParent,
+  ResolveRouteContext,
+} from './route'
+
+export type {
+  ParseRoute,
+  RoutesById,
+  RouteById,
+  RouteIds,
+  RoutesByPath,
+  RouteByPath,
+  RoutePaths,
+  FullSearchSchema,
+  AllParams,
+  AllLoaderData,
+  FullSearchSchemaInput,
+  AllContext,
 } from './routeInfo'
+
 export {
   componentTypes,
   createRouter,
@@ -205,59 +234,91 @@ export {
   PathParamError,
   getInitialRouterState,
   defaultSerializeError,
-  type Register,
-  type AnyRouter,
-  type RegisteredRouter,
-  type HydrationCtx,
-  type RouterContextOptions,
-  type RouterOptions,
-  type RouterTransformer,
-  type RouterErrorSerializer,
-  type RouterState,
-  type ListenerFn,
-  type BuildNextOptions,
-  type DehydratedRouterState,
-  type DehydratedRouteMatch,
-  type DehydratedRouter,
-  type RouterConstructorOptions,
-  type RouterEvents,
-  type RouterEvent,
-  type RouterListener,
 } from './router'
-export {
-  RouterProvider,
-  getRouteMatch,
-  type RouterProps,
-  type CommitLocationOptions,
-  type MatchLocation,
-  type NavigateFn,
-  type BuildLocationFn,
-  type InjectedHtmlEntry,
+export type {
+  Register,
+  AnyRouter,
+  RegisteredRouter,
+  HydrationCtx,
+  RouterContextOptions,
+  TrailingSlashOption,
+  RouterOptions,
+  RouterErrorSerializer,
+  RouterState,
+  ListenerFn,
+  BuildNextOptions,
+  DehydratedRouterState,
+  DehydratedRouteMatch,
+  DehydratedRouter,
+  RouterConstructorOptions,
+  RouterEvents,
+  RouterEvent,
+  RouterListener,
+  AnyRouterWithContext,
+  ExtractedEntry,
+  ExtractedStream,
+  ExtractedPromise,
+  StreamState,
+} from './router'
+
+export { RouterProvider, RouterContextProvider } from './RouterProvider'
+export type {
+  RouterProps,
+  CommitLocationOptions,
+  MatchLocation,
+  NavigateFn,
+  BuildLocationFn,
+  InjectedHtmlEntry,
 } from './RouterProvider'
+
 export {
   useScrollRestoration,
   useElementScrollRestoration,
   ScrollRestoration,
-  type ScrollRestorationOptions,
 } from './scroll-restoration'
+export type { ScrollRestorationOptions } from './scroll-restoration'
+
 export {
   defaultParseSearch,
   defaultStringifySearch,
   parseSearchWith,
   stringifySearchWith,
-  type SearchSerializer,
-  type SearchParser,
 } from './searchParams'
+export type { SearchSerializer, SearchParser } from './searchParams'
+
+export { defaultTransformer } from './transformer'
+export type {
+  RouterTransformer,
+  TransformerParse,
+  TransformerStringify,
+  DefaultTransformerParse,
+  DefaultTransformerStringify,
+} from './transformer'
+
+export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
-export { useNavigate, Navigate, type UseNavigateResult } from './useNavigate'
+
+export { useNavigate, Navigate } from './useNavigate'
+export type { UseNavigateResult } from './useNavigate'
+
 export { useParams } from './useParams'
+
 export { useSearch } from './useSearch'
+
 export {
   getRouterContext, // SSR
 } from './routerContext'
+
 export { useRouteContext } from './useRouteContext'
+
 export { useRouter } from './useRouter'
+
 export { useRouterState } from './useRouterState'
+
+export { useLocation } from './useLocation'
+
+export { useCanGoBack } from './useCanGoBack'
+
 export {
   escapeJSON, // SSR
   useLayoutEffect, // SSR
@@ -270,11 +331,45 @@ export {
   useStableCallback,
   shallow,
 } from './utils'
+
 export {
   notFound,
   isNotFound,
   CatchNotFound,
   DefaultGlobalNotFound,
-  type NotFoundError,
-  type NotFoundErrorData,
 } from './not-found'
+export type { NotFoundError, NotFoundErrorData } from './not-found'
+
+export type { Manifest, RouterManagedTag } from './manifest'
+
+export { createControlledPromise } from './utils'
+export type {
+  ControlledPromise,
+  Constrain,
+  Expand,
+  MergeAll,
+  Assign,
+} from './utils'
+
+export type {
+  ResolveValidatorInput,
+  ResolveValidatorOutput,
+  AnyValidator,
+  DefaultValidator,
+  ValidatorFn,
+  AnySchema,
+  AnyValidatorAdapter,
+  AnyValidatorFn,
+  AnyValidatorObj,
+  ResolveValidatorInputFn,
+  ResolveValidatorOutputFn,
+  ResolveSearchValidatorInput,
+  ResolveSearchValidatorInputFn,
+  Validator,
+  ValidatorAdapter,
+  ValidatorObj,
+} from './validators'
+
+export { retainSearchParams, stripSearchParams } from './searchMiddleware'
+
+export * from './typePrimitives'
