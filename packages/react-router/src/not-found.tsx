@@ -5,7 +5,6 @@ import type { ErrorInfo } from 'react'
 import type { RegisteredRouter } from './router'
 import type { RouteIds } from './routeInfo'
 
-
 export interface NotFoundErrorData {}
 
 export type NotFoundError = {
@@ -24,12 +23,14 @@ export type NotFoundError = {
     ```ts
     declare module '@tanstack/react-router' {
       interface NotFoundErrorData {
-        // your properties here
+        data: {
+          // your properties here
+        }
       }
     }
     ```
    */
-  data?: object extends NotFoundErrorData ? any : NotFoundErrorData
+  data?: NotFoundErrorData extends { data: infer TData } ? TData : any
   throw?: boolean
   routeId?: RouteIds<RegisteredRouter['routeTree']>
   headers?: HeadersInit
