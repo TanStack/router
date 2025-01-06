@@ -17,12 +17,12 @@
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
-    "@rsbuild/core": "1.1.9",
-    "@rsbuild/plugin-react": "1.1.0",
+    "@playwright/test": "^1.49.1",
+    "@rsbuild/core": "^1.1.13",
+    "@rsbuild/plugin-react": "^1.1.0",
     "@tanstack/router-plugin": "workspace:^",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "typescript": "^5.6.2"
+    "typescript": "^5.7.2"
   }
 }

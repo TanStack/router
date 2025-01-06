@@ -4,9 +4,9 @@ This site is built with TanStack Router!
 
 - [TanStack Router Docs](https://tanstack.com/router)
 
-It's deployed automagically with Vercel!
+It's deployed automagically with Netlify!
 
-- [Vercel](https://vercel.com/)
+- [Netlify](https://netlify.com/)
 
 ## Development
 

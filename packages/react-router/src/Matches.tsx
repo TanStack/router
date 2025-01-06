@@ -13,7 +13,14 @@ import type {
 } from './structuralSharing'
 import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
-import type { ResolveRelativePath, ToOptions } from './link'
+import type {
+  MakeOptionalPathParams,
+  MakeOptionalSearchParams,
+  MaskOptions,
+  ResolveRelativePath,
+  ResolveRoute,
+  ToSubOptionsProps,
+} from './link'
 import type {
   AllContext,
   AllLoaderData,
@@ -23,7 +30,6 @@ import type {
   RouteById,
   RouteByPath,
   RouteIds,
-  RoutePaths,
 } from './routeInfo'
 import type {
   Constrain,
@@ -270,22 +276,15 @@ export interface MatchRouteOptions {
 
 export type UseMatchRouteOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = RoutePaths<
-    TRouter['routeTree']
-  >,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-  TOptions extends ToOptions<
-    TRouter,
-    TFrom,
-    TTo,
-    TMaskFrom,
-    TMaskTo
-  > = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  TRelaxedOptions = Omit<TOptions, 'search' | 'params'> &
-    DeepPartial<Pick<TOptions, 'search' | 'params'>>,
-> = TRelaxedOptions & MatchRouteOptions
+> = ToSubOptionsProps<TRouter, TFrom, TTo> &
+  DeepPartial<MakeOptionalSearchParams<TRouter, TFrom, TTo>> &
+  DeepPartial<MakeOptionalPathParams<TRouter, TFrom, TTo>> &
+  MaskOptions<TRouter, TMaskFrom, TMaskTo> &
+  MatchRouteOptions
 
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
@@ -297,16 +296,13 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
   return React.useCallback(
     <
-      TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-      TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-      TMaskTo extends string = '',
-      TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+      const TFrom extends string = string,
+      const TTo extends string | undefined = undefined,
+      const TMaskFrom extends string = TFrom,
+      const TMaskTo extends string = '',
     >(
       opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ):
-      | false
-      | RouteByPath<TRouter['routeTree'], TResolved>['types']['allParams'] => {
+    ): false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams'] => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return router.matchRoute(rest as any, {
@@ -322,11 +318,9 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
 export type MakeMatchRouteOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
-    TRouter['routeTree']
-  >,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
@@ -342,15 +336,13 @@ export type MakeMatchRouteOptions<
 
 export function MatchRoute<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
-    TRouter['routeTree']
-  >,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
-  TMaskTo extends string = '',
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const matchRoute = useMatchRoute()
-  const params = matchRoute(props as any)
+  const params = matchRoute(props as any) as boolean
 
   if (typeof props.children === 'function') {
     return (props.children as any)(params)

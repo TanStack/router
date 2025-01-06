@@ -9,22 +9,22 @@ Hosting is the process of deploying your application to the internet so that use
 
 TanStack Start is **designed to work with any hosting provider**, so if you already have a hosting provider in mind, you can deploy your application there using the full-stack APIs provided by TanStack Start.
 
-However, since hosting is one of the most crucial aspects of your application's performance, reliability, and scalability, we highly recommend using [Vercel](https://vercel.com?utm_source=tanstack) for the best possible hosting experience.
+However, since hosting is one of the most crucial aspects of your application's performance, reliability, and scalability, we highly recommend using our Official Hosting Partner [Netlify](https://www.netlify.com?utm_source=tanstack).
 
-## What is Vercel?
+## What is Netlify?
 
-<a href="https://vercel.com?utm_source=tanstack" alt="Vercel Logo">
+<a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-dark.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" width="280">
-    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/vercel-light.svg" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" width="280">
+    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" width="280">
   </picture>
 </a>
 
-Vercel is a leading hosting platform that provides a fast, secure, and reliable environment for deploying your web applications. With Vercel, you can deploy your TanStack Start application in just a few clicks and benefit from features like a global edge network, automatic scaling, and seamless integrations with GitHub and GitLab. Vercel is designed to make your development process as smooth as possible, from local development to production deployment.
+Netlify is a leading hosting platform that provides a fast, secure, and reliable environment for deploying your web applications. With Netlify, you can deploy your TanStack Start application in just a few clicks and benefit from features like a global edge network, automatic scaling, and seamless integrations with GitHub and GitLab. Netlify is designed to make your development process as smooth as possible, from local development to production deployment.
 
-- To learn more about Vercel, visit the [Vercel website](https://vercel.com?utm_source=tanstack)
-- To sign up, visit the [Vercel dashboard](https://vercel.com/signup?utm_source=tanstack)
+- To learn more about Netlify, visit the [Netlify website](https://www.netlify.com?utm_source=tanstack)
+- To sign up, visit the [Netlify dashboard](https://www.netlify.com/signup?utm_source=tanstack)
 
 ## Deployment
 
@@ -33,14 +33,37 @@ Vercel is a leading hosting platform that provides a fast, secure, and reliable 
 
 When a TanStack Start application is being deployed, the `server.preset` value in the `app.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
 
+- [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
 - [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
-- [`netlify`](#netlify): Deploy to Netlify
 - [`node-server`](#nodejs): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
 
 Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice.
+
+### Netlify
+
+Set the `server.preset` value to `netlify` in your `app.config.ts` file.
+
+```ts
+// app.config.ts
+import { defineConfig } from '@tanstack/start/config'
+
+export default defineConfig({
+  server: {
+    preset: 'netlify',
+  },
+})
+```
+
+Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
+
+```sh
+npm run build --preset netlify
+```
+
+Deploy you application to Netlify using their one-click deployment process, and you're ready to go!
 
 ### Vercel
 
@@ -105,29 +128,6 @@ compatibility_date = "2024-11-13"
 ```
 
 Deploy you application to Cloudflare Pages using their one-click deployment process, and you're ready to go!
-
-### Netlify
-
-Set the `server.preset` value to `netlify` in your `app.config.ts` file.
-
-```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/start/config'
-
-export default defineConfig({
-  server: {
-    preset: 'netlify',
-  },
-})
-```
-
-Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
-
-```sh
-npm run build --preset netlify
-```
-
-Deploy you application to Netlify using their one-click deployment process, and you're ready to go!
 
 ### Node.js
 

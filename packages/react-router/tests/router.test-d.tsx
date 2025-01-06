@@ -56,7 +56,7 @@ test('when navigating using router', () => {
   expectTypeOf(router.navigate<typeof router, '/posts'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'/posts' | '/' | '.' | '..' | undefined>()
+    .toEqualTypeOf<'/posts' | '/' | '.' | '..'>()
 
   expectTypeOf(router.navigate<typeof router, '/posts'>)
     .parameter(0)
@@ -90,7 +90,7 @@ test('when building location using router', () => {
   expectTypeOf(router.buildLocation<typeof router, '/posts'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'/posts' | '/' | '.' | '..' | undefined>()
+    .toEqualTypeOf<'/posts' | '/' | '.' | '..'>()
 
   expectTypeOf(router.buildLocation<typeof router, '/posts'>)
     .parameter(0)
