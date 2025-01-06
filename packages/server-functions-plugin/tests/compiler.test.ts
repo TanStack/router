@@ -822,7 +822,7 @@ describe('server function compilation', () => {
       });
       outer(outer_useServer);
       const outer_useServer_1 = createServerRpc({
-        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=test--outer_useServer_1").then(module => module.default(...args)),
+        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=outer_useServer_1").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--outer_useServer_1"
       });
@@ -834,7 +834,7 @@ describe('server function compilation', () => {
 
       import { createServerRpc } from "my-rpc-lib-server";
       const outer_useServer = createServerRpc({
-        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=test--outer_useServer").then(module => module.default(...args)),
+        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=outer_useServer").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--outer_useServer"
       });
@@ -1059,7 +1059,7 @@ describe('server function compilation', () => {
         return 'hello from the server';
       };
       const myServerFn_createServerFn_handler = createServerRpc({
-        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=test--myServerFn_createServerFn_handler").then(module => module.default(...args)),
+        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=myServerFn_createServerFn_handler").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test--myServerFn_createServerFn_handler"
       });

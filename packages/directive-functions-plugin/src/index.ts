@@ -7,6 +7,8 @@ import type { Plugin } from 'vite'
 
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
+export type { DirectiveFn, CompileDirectivesOpts } from './compilers'
+
 export type DirectiveFunctionsViteOptions = Pick<
   CompileDirectivesOpts,
   'directive' | 'directiveLabel' | 'getRuntimeCode' | 'replacer'

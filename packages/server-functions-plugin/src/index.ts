@@ -1,13 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { TanStackDirectiveFunctionsPlugin } from '@tanstack/directive-functions-plugin'
-import type { CompileDirectivesOpts, DirectiveFn } from './compilers'
+import type { DirectiveFn } from '@tanstack/directive-functions-plugin'
 import type { Plugin } from 'vite'
-
-export type DirectiveFunctionsViteOptions = Pick<
-  CompileDirectivesOpts,
-  'directive' | 'directiveLabel' | 'getRuntimeCode' | 'replacer'
->
 
 export type CreateClientRpcFn = (functionId: string) => any
 export type CreateSsrRpcFn = (functionId: string) => any

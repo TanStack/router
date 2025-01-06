@@ -1,4 +1,3 @@
-import path from 'node:path'
 import * as babel from '@babel/core'
 import _generate from '@babel/generator'
 import { parse } from '@babel/parser'
@@ -454,10 +453,7 @@ export function findDirectives(
     }
 
     const functionId = makeFileLocationUrlSafe(
-      `${opts.filename.replace(
-        path.extname(opts.filename),
-        '',
-      )}--${functionName}`.replace(opts.root, ''),
+      `${opts.filename}--${functionName}`.replace(opts.root, ''),
     )
 
     const [filename, searchParamsStr] = opts.filename.split('?')
