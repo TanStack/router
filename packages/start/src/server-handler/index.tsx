@@ -24,12 +24,24 @@ async function handleServerAction(event: H3Event) {
   return handleServerRequest(toWebRequest(event), event)
 }
 
+function sanitizeBase(base: string | undefined) {
+  if (!base) {
+    throw new Error(
+      '🚨 process.env.TSS_SERVER_BASE is required in start/server-handler/index',
+    )
+  }
+
+  return base.replace(/^\/|\/$/g, '')
+}
+
 export async function handleServerRequest(request: Request, _event?: H3Event) {
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
   // extract the serverFnId from the url as host/_server/:serverFnId
   // Define a regex to match the path and extract the :thing part
-  const regex = /\/_server\/([^/?#]+)/
+  const regex = new RegExp(
+    `/${sanitizeBase(process.env.TSS_SERVER_BASE)}/([^/?#]+)`,
+  )
 
   // Execute the regex
   const match = url.pathname.match(regex)
@@ -48,12 +60,15 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
     console.info(`\nServerFn Request: ${serverFnId}`)
 
   let action: Function
+  // In dev, we (for now) use Vinxi to get the "server" server-side router
+  // Then we use that router's devServer.ssrLoadModule to get the serverFn
   if (process.env.NODE_ENV === 'development') {
     action = (await (globalThis as any).app
       .getRouter('server')
       .internals.devServer.ssrLoadModule(serverFnInfo.splitFilename)
       .then((d: any) => d.default)) as Function
   } else {
+    // In prod, we use the serverFn's chunkName to get the serverFn
     const router = (globalThis as any).app.getRouter('server')
     const filePath = join(
       router.outDir,

@@ -138,7 +138,7 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
       (() => {
         let serverFunctionsManifest: Record<string, DirectiveFn>
         return {
-          name: 'tanstack-start-server-fn-vite-plugin-build-',
+          name: 'tanstack-start-server-fn-vite-plugin-build',
           enforce: 'post',
           apply: 'build',
           config(config) {
