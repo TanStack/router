@@ -82,16 +82,6 @@
         "default": "./dist/cjs/api/index.cjs"
       }
     },
-    "./client-runtime": {
-      "import": {
-        "types": "./dist/esm/client-runtime/index.d.ts",
-        "default": "./dist/esm/client-runtime/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/client-runtime/index.d.cts",
-        "default": "./dist/cjs/client-runtime/index.cjs"
-      }
-    },
     "./config": {
       "import": {
         "types": "./dist/esm/config/index.d.ts",
@@ -104,22 +94,32 @@
         "default": "./dist/esm/router-manifest/index.js"
       }
     },
+    "./client-runtime": {
+      "import": {
+        "types": "./dist/esm/client-runtime/index.d.ts",
+        "default": "./dist/esm/client-runtime/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/client-runtime/index.d.cts",
+        "default": "./dist/cjs/client-runtime/index.cjs"
+      }
+    },
     "./server-runtime": {
       "import": {
         "types": "./dist/esm/server-runtime/index.d.ts",
         "default": "./dist/esm/server-runtime/index.js"
       }
     },
-    "./react-server-runtime": {
-      "import": {
-        "types": "./dist/esm/react-server-runtime/index.d.ts",
-        "default": "./dist/esm/react-server-runtime/index.js"
-      }
-    },
     "./server-handler": {
       "import": {
         "types": "./dist/esm/server-handler/index.d.ts",
         "default": "./dist/esm/server-handler/index.js"
+      }
+    },
+    "./ssr-runtime": {
+      "import": {
+        "types": "./dist/esm/ssr-runtime/index.d.ts",
+        "default": "./dist/esm/ssr-runtime/index.js"
       }
     },
     "./package.json": "./package.json"
