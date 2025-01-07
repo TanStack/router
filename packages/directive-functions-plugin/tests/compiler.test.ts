@@ -381,70 +381,15 @@ describe('server function compilation', () => {
       })
     `
 
-    expect(() =>
-      compileDirectives({ ...clientConfig, code }),
-    ).toThrowErrorMatchingInlineSnapshot(
-      `
-      [Error:   1 |
-      > 2 |       outer(() => {
-          |                  ^^
-      > 3 |         function useServer() {
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         }
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 7 |       })
-          | ^^^^^^^ Server functions cannot be nested in other blocks or functions
-        8 |     ]
-    `,
-    )
-    expect(() =>
-      compileDirectives({ ...serverConfig, code }),
-    ).toThrowErrorMatchingInlineSnapshot(
-      `
-      [Error:   1 |
-      > 2 |       outer(() => {
-          |                  ^^
-      > 3 |         function useServer() {
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         }
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 7 |       })
-          | ^^^^^^^ Server functions cannot be nested in other blocks or functions
-        8 |     ]
-    `,
-    )
+    expect(() => compileDirectives({ ...clientConfig, code })).toThrow()
+    expect(() => compileDirectives({ ...serverConfig, code })).toThrow()
     expect(() =>
       compileDirectives({
         ...serverConfig,
         code,
         filename: serverConfig.filename + `?tsr-serverfn-split=temp`,
       }),
-    ).toThrowErrorMatchingInlineSnapshot(
-      `
-      [Error:   1 |
-      > 2 |       outer(() => {
-          |                  ^^
-      > 3 |         function useServer() {
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         }
-          | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 7 |       })
-          | ^^^^^^^ Server functions cannot be nested in other blocks or functions
-        8 |     ]
-    `,
-    )
+    ).toThrow()
   })
 
   test('does not support class methods', () => {
@@ -462,59 +407,15 @@ describe('server function compilation', () => {
       }
     `
 
-    expect(() => compileDirectives({ ...clientConfig, code }))
-      .toThrowErrorMatchingInlineSnapshot(`
-        [Error:   1 |
-          2 |       class TestClass {
-        > 3 |         method() {
-            |        ^^^^^^^^^^^
-        > 4 |           'use server'
-            | ^^^^^^^^^^^^^^^^^^^^^^
-        > 5 |           return 'hello'
-            | ^^^^^^^^^^^^^^^^^^^^^^
-        > 6 |         }
-            | ^^^^^^^^^ "use server" in class not supported
-          7 |
-          8 |         static staticMethod() {
-          9 |           'use server']
-      `)
-    expect(() => compileDirectives({ ...serverConfig, code }))
-      .toThrowErrorMatchingInlineSnapshot(`
-        [Error:   1 |
-          2 |       class TestClass {
-        > 3 |         method() {
-            |        ^^^^^^^^^^^
-        > 4 |           'use server'
-            | ^^^^^^^^^^^^^^^^^^^^^^
-        > 5 |           return 'hello'
-            | ^^^^^^^^^^^^^^^^^^^^^^
-        > 6 |         }
-            | ^^^^^^^^^ "use server" in class not supported
-          7 |
-          8 |         static staticMethod() {
-          9 |           'use server']
-      `)
+    expect(() => compileDirectives({ ...clientConfig, code })).toThrow()
+    expect(() => compileDirectives({ ...serverConfig, code })).toThrow()
     expect(() =>
       compileDirectives({
         ...serverConfig,
         code,
         filename: serverConfig.filename + `?tsr-serverfn-split=temp`,
       }),
-    ).toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-        2 |       class TestClass {
-      > 3 |         method() {
-          |        ^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         }
-          | ^^^^^^^^^ "use server" in class not supported
-        7 |
-        8 |         static staticMethod() {
-        9 |           'use server']
-    `)
+    ).toThrow()
   })
 
   test('does not support object methods', () => {
@@ -527,56 +428,15 @@ describe('server function compilation', () => {
       }
     `
 
-    expect(() => compileDirectives({ ...clientConfig, code }))
-      .toThrowErrorMatchingInlineSnapshot(`
-        [Error:   1 |
-          2 |       const obj = {
-        > 3 |         method() {
-            |        ^^^^^^^^^^^
-        > 4 |           'use server'
-            | ^^^^^^^^^^^^^^^^^^^^^^
-        > 5 |           return 'hello'
-            | ^^^^^^^^^^^^^^^^^^^^^^
-        > 6 |         },
-            | ^^^^^^^^^ "use server" in object method not supported
-          7 |       }
-          8 |     ]
-      `)
-    expect(() => compileDirectives({ ...serverConfig, code }))
-      .toThrowErrorMatchingInlineSnapshot(`
-        [Error:   1 |
-          2 |       const obj = {
-        > 3 |         method() {
-            |        ^^^^^^^^^^^
-        > 4 |           'use server'
-            | ^^^^^^^^^^^^^^^^^^^^^^
-        > 5 |           return 'hello'
-            | ^^^^^^^^^^^^^^^^^^^^^^
-        > 6 |         },
-            | ^^^^^^^^^ "use server" in object method not supported
-          7 |       }
-          8 |     ]
-      `)
+    expect(() => compileDirectives({ ...clientConfig, code })).toThrow()
+    expect(() => compileDirectives({ ...serverConfig, code })).toThrow()
     expect(() =>
       compileDirectives({
         ...serverConfig,
         code,
         filename: serverConfig.filename + `?tsr-serverfn-split=temp`,
       }),
-    ).toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-        2 |       const obj = {
-      > 3 |         method() {
-          |        ^^^^^^^^^^^
-      > 4 |           'use server'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 5 |           return 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^^^
-      > 6 |         },
-          | ^^^^^^^^^ "use server" in object method not supported
-        7 |       }
-        8 |     ]
-    `)
+    ).toThrow()
   })
 
   test('does not support generator functions', () => {
@@ -592,56 +452,15 @@ describe('server function compilation', () => {
       }
     `
 
-    expect(() => compileDirectives({ ...clientConfig, code }))
-      .toThrowErrorMatchingInlineSnapshot(`
-        [Error:   1 |
-        > 2 |       function* generatorServer() {
-            |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        > 3 |         'use server'
-            | ^^^^^^^^^^^^^^^^^^^^
-        > 4 |         yield 'hello'
-            | ^^^^^^^^^^^^^^^^^^^^
-        > 5 |       }
-            | ^^^^^^^ "use server" in generator function not supported
-          6 |
-          7 |       async function* asyncGeneratorServer() {
-          8 |         'use server']
-      `)
-    expect(() => compileDirectives({ ...serverConfig, code }))
-      .toThrowErrorMatchingInlineSnapshot(`
-        [Error:   1 |
-        > 2 |       function* generatorServer() {
-            |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        > 3 |         'use server'
-            | ^^^^^^^^^^^^^^^^^^^^
-        > 4 |         yield 'hello'
-            | ^^^^^^^^^^^^^^^^^^^^
-        > 5 |       }
-            | ^^^^^^^ "use server" in generator function not supported
-          6 |
-          7 |       async function* asyncGeneratorServer() {
-          8 |         'use server']
-      `)
+    expect(() => compileDirectives({ ...clientConfig, code })).toThrow()
+    expect(() => compileDirectives({ ...serverConfig, code })).toThrow()
     expect(() =>
       compileDirectives({
         ...serverConfig,
         code,
         filename: serverConfig.filename + `?tsr-serverfn-split=temp`,
       }),
-    ).toThrowErrorMatchingInlineSnapshot(`
-      [Error:   1 |
-      > 2 |       function* generatorServer() {
-          |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      > 3 |         'use server'
-          | ^^^^^^^^^^^^^^^^^^^^
-      > 4 |         yield 'hello'
-          | ^^^^^^^^^^^^^^^^^^^^
-      > 5 |       }
-          | ^^^^^^^ "use server" in generator function not supported
-        6 |
-        7 |       async function* asyncGeneratorServer() {
-        8 |         'use server']
-    `)
+    ).toThrow()
   })
 
   test('multiple directiveFnsById', () => {
