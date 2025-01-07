@@ -161,9 +161,9 @@ function isFunction(d: any): d is Function {
   return typeof d === 'function'
 }
 
-export function functionalUpdate<TResult>(
-  updater: Updater<TResult> | NonNullableUpdater<TResult>,
-  previous: TResult,
+export function functionalUpdate<TPrevious, TResult = TPrevious>(
+  updater: Updater<TPrevious, TResult> | NonNullableUpdater<TPrevious, TResult>,
+  previous: TPrevious,
 ): TResult {
   if (isFunction(updater)) {
     return updater(previous)

@@ -40,7 +40,7 @@ export interface RouterHistory {
 }
 
 export interface HistoryLocation extends ParsedPath {
-  state: HistoryState
+  state: ParsedHistoryState
 }
 
 export interface ParsedPath {
@@ -50,7 +50,9 @@ export interface ParsedPath {
   hash: string
 }
 
-export interface HistoryState {
+export interface HistoryState {}
+
+export type ParsedHistoryState = HistoryState & {
   key?: string
   __TSR_index: number
 }
@@ -254,7 +256,7 @@ function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
     ...state,
     key: createRandomKey(),
     [stateIndexKey]: index,
-  }
+  } as ParsedHistoryState
 }
 
 /**
@@ -553,7 +555,7 @@ export function createMemoryHistory(
   let index = opts.initialIndex
     ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
     : entries.length - 1
-  const states = entries.map<HistoryState>((_entry, index) =>
+  const states = entries.map((_entry, index) =>
     assignKeyAndIndex(index, undefined),
   )
 
@@ -591,7 +593,7 @@ export function createMemoryHistory(
 
 export function parseHref(
   href: string,
-  state: HistoryState | undefined,
+  state: ParsedHistoryState | undefined,
 ): HistoryLocation {
   const hashIndex = href.indexOf('#')
   const searchIndex = href.indexOf('?')
