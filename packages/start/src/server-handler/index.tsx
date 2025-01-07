@@ -50,23 +50,28 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
     payload?: any
   }
 
-  invariant(typeof serverFnId === 'string', 'Invalid server action')
+  if (typeof serverFnId !== 'string') {
+    throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
+  }
 
   const serverFnInfo = serverFnManifest[serverFnId]
 
-  invariant(serverFnInfo, 'Server function not found')
+  if (!serverFnInfo) {
+    console.log('serverFnManifest', serverFnManifest)
+    throw new Error('Server function info not found for ' + serverFnId)
+  }
 
   if (process.env.NODE_ENV === 'development')
     console.info(`\nServerFn Request: ${serverFnId}`)
 
-  let action: Function
+  let action: Function | undefined
   // In dev, we (for now) use Vinxi to get the "server" server-side router
   // Then we use that router's devServer.ssrLoadModule to get the serverFn
   if (process.env.NODE_ENV === 'development') {
-    action = (await (globalThis as any).app
+    action = await (globalThis as any).app
       .getRouter('server')
       .internals.devServer.ssrLoadModule(serverFnInfo.splitFilename)
-      .then((d: any) => d.default)) as Function
+      .then((d: any) => d.default)
   } else {
     // In prod, we use the serverFn's chunkName to get the serverFn
     const router = (globalThis as any).app.getRouter('server')
@@ -76,10 +81,15 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
       serverFnInfo.chunkName + '.mjs',
     )
     const url = pathToFileURL(filePath).toString()
-    action = (await import(url).then((d) => d.default)) as Function
+    action = (await import(/* @vite-ignore */ url).then(
+      (d) => d.default,
+    )) as Function
   }
 
-  invariant(action, 'Server function not found')
+  if (!action) {
+    console.log('serverFnManifest', serverFnManifest)
+    throw new Error('Server function fn not resolved for ' + serverFnId)
+  }
 
   const response = await (async () => {
     try {

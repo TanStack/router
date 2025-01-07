@@ -44,7 +44,7 @@ export type CompileDirectivesOpts = ParseAstOptions & {
     directiveFnsById: Record<string, DirectiveFn>
   }) => string
   replacer: ReplacerFn
-  devSplitImporter: string
+  // devSplitImporter: string
 }
 
 export type ParseAstOptions = {
@@ -247,7 +247,7 @@ export function findDirectives(
     replacer?: ReplacerFn
     splitFunctionName?: string | null
     directiveSplitParam: string
-    devSplitImporter: string
+    // devSplitImporter: string
   },
 ) {
   const directiveFnsById: Record<string, DirectiveFn> = {}
@@ -481,10 +481,7 @@ export function findDirectives(
           : {}),
         ...(replacer.includes('$$splitImportFn$$')
           ? {
-              $$splitImportFn$$:
-                process.env.NODE_ENV === 'production'
-                  ? `(...args) => import(${JSON.stringify(splitFilename)}).then(module => module.default(...args))`
-                  : `(...args) => ${opts.devSplitImporter}(${JSON.stringify(splitFilename)}).then(module => module.default(...args))`,
+              $$splitImportFn$$: `(...args) => import(${JSON.stringify(splitFilename)}).then(module => module.default(...args))`,
             }
           : {}),
       })

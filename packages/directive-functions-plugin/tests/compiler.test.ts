@@ -14,7 +14,7 @@ const clientConfig: Omit<CompileDirectivesOpts, 'code'> = {
     filename: ${JSON.stringify(opts.filename)},
     functionId: ${JSON.stringify(opts.functionId)},
   })`,
-  devSplitImporter: `devImport`,
+  // devSplitImporter: `devImport`,
 }
 
 const ssrConfig: Omit<CompileDirectivesOpts, 'code'> = {
@@ -28,7 +28,7 @@ const ssrConfig: Omit<CompileDirectivesOpts, 'code'> = {
     filename: ${JSON.stringify(opts.filename)},
     functionId: ${JSON.stringify(opts.functionId)},
   })`,
-  devSplitImporter: `devImport`,
+  // devSplitImporter: `devImport`,
 }
 
 const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
@@ -49,7 +49,7 @@ const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
     filename: ${JSON.stringify(opts.filename)},
     functionId: ${JSON.stringify(opts.functionId)},
   })`,
-  devSplitImporter: `devImport`,
+  // devSplitImporter: `devImport`,
 }
 
 describe('server function compilation', () => {
@@ -641,7 +641,7 @@ describe('server function compilation', () => {
       });
       outer(outer_useServer);
       const outer_useServer_1 = createServerRpc({
-        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=outer_useServer_1").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=outer_useServer_1").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test_ts_tsr-directive-use-server-split_outer_useServer--outer_useServer_1"
       });
@@ -653,7 +653,7 @@ describe('server function compilation', () => {
 
       import { createServerRpc } from "my-rpc-lib-server";
       const outer_useServer = createServerRpc({
-        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=outer_useServer").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=outer_useServer").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test_ts_tsr-directive-use-server-split_outer_useServer_1--outer_useServer"
       });
@@ -878,7 +878,7 @@ describe('server function compilation', () => {
         return 'hello from the server';
       };
       const myServerFn_createServerFn_handler = createServerRpc({
-        fn: (...args) => devImport("test.ts?tsr-directive-use-server-split=myServerFn_createServerFn_handler").then(module => module.default(...args)),
+        fn: (...args) => import("test.ts?tsr-directive-use-server-split=myServerFn_createServerFn_handler").then(module => module.default(...args)),
         filename: "test.ts",
         functionId: "test_ts_tsr-directive-use-server-split_myServerFn2_createServerFn_handler--myServerFn_createServerFn_handler"
       });

@@ -12,6 +12,7 @@ export type { DirectiveFn, CompileDirectivesOpts } from './compilers'
 export type DirectiveFunctionsViteOptions = Pick<
   CompileDirectivesOpts,
   'directive' | 'directiveLabel' | 'getRuntimeCode' | 'replacer'
+  // | 'devSplitImporter'
 >
 
 const createDirectiveRx = (directive: string) =>
@@ -48,7 +49,6 @@ export function TanStackDirectiveFunctionsPlugin(
         filename: id,
         // globalThis.app currently refers to Vinxi's app instance. In the future, it can just be the
         // vite dev server instance we get from Nitro.
-        devSplitImporter: `(globalThis.app.getRouter('server').internals.devServer.ssrLoadModule)`,
       })
 
       opts.onDirectiveFnsById?.(directiveFnsById)

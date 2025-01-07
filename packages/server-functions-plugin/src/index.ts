@@ -11,6 +11,11 @@ export type CreateServerRpcFn = (
   splitImportFn: string,
 ) => any
 
+declare global {
+  // eslint-disable-next-line no-var
+  var TSR_directiveFnsById: Record<string, DirectiveFn>
+}
+
 export function createTanStackServerFnPlugin(_opts?: {}): {
   client: Array<Plugin>
   ssr: Array<Plugin>
@@ -19,7 +24,15 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
   const ROOT = process.cwd()
   const manifestFilename =
     'node_modules/.tanstack-start/server-functions-manifest.json'
-  const directiveFnsById: Record<string, DirectiveFn> = {}
+
+  globalThis.TSR_directiveFnsById = {}
+
+  const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
+    // When directives are compiled, save them so we
+    // can create a manifest
+    console.log('onDirectiveFnsById', d)
+    Object.assign(globalThis.TSR_directiveFnsById, d)
+  }
 
   const directiveFnsByIdToManifest = (
     directiveFnsById: Record<string, DirectiveFn>,
@@ -49,9 +62,13 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
     },
     load(id) {
       if (id === 'tsr:server-fn-manifest') {
-        return `export default ${JSON.stringify(
-          directiveFnsByIdToManifest(directiveFnsById),
-        )}`
+        if (process.env.NODE_ENV === 'production') {
+          return `export default ${JSON.stringify(
+            directiveFnsByIdToManifest(globalThis.TSR_directiveFnsById),
+          )}`
+        }
+
+        return `export default globalThis.TSR_directiveFnsById`
       }
 
       return null
@@ -70,11 +87,8 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
         replacer: (opts) =>
           // On the client, all we need is the function ID
           `createClientRpc(${JSON.stringify(opts.functionId)})`,
-        onDirectiveFnsById: (d) => {
-          // When directives are compiled, save them so we
-          // can create a manifest
-          Object.assign(directiveFnsById, d)
-        },
+        onDirectiveFnsById,
+        // devSplitImporter: `(globalThis.app.getRouter('server').internals.devServer.ssrLoadModule)`,
       }),
       // Now that we have the directiveFnsById, we need to create a new
       // virtual module that can be used to import that manifest
@@ -88,7 +102,9 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
           mkdirSync(path.dirname(manifestFilename), { recursive: true })
           writeFileSync(
             path.join(ROOT, manifestFilename),
-            JSON.stringify(directiveFnsByIdToManifest(directiveFnsById)),
+            JSON.stringify(
+              directiveFnsByIdToManifest(globalThis.TSR_directiveFnsById),
+            ),
           )
         },
       },
@@ -106,11 +122,8 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
           // is split into a worker. Similar to the client, we'll use the ID
           // to call into the worker using a local http event.
           `createSsrRpc(${JSON.stringify(opts.functionId)})`,
-        onDirectiveFnsById: (d) => {
-          // When directives are compiled, save them so we
-          // can create a manifest
-          Object.assign(directiveFnsById, d)
-        },
+        onDirectiveFnsById,
+        // devSplitImporter: `(globalThis.app.getRouter('server').internals.devServer.ssrLoadModule)`,
       }),
     ],
     server: [
@@ -129,14 +142,12 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
           // to create a new chunk/entry for the server function and also
           // replace other function references to it with the import statement
           `createServerRpc(${JSON.stringify(opts.functionId)}, ${opts.isSplitFn ? opts.fn : opts.splitImportFn})`,
-        onDirectiveFnsById: (d) => {
-          // When directives are compiled, save them so we
-          // can create a manifest
-          Object.assign(directiveFnsById, d)
-        },
+        onDirectiveFnsById,
+        // devSplitImporter: `(globalThis.app.getRouter('server').internals.devServer.ssrLoadModule)`,
       }),
       (() => {
         let serverFunctionsManifest: Record<string, DirectiveFn>
+
         return {
           name: 'tanstack-start-server-fn-vite-plugin-build',
           enforce: 'post',
