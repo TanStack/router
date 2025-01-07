@@ -5,6 +5,7 @@ import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 
 import { splitPrefix } from '../constants'
+import { logDiff } from '../../logger'
 import { parseAst } from './ast'
 import type { ParseAstOptions } from './ast'
 
@@ -37,6 +38,23 @@ interface State {
   splitModulesById: SplitModulesById
 }
 
+function addSplitSearchParamToFilename(filename: string) {
+  const [bareFilename, ...searchParams] = filename.split('?')
+  const filenameSearchParams = new URLSearchParams(searchParams.join('&'))
+  filenameSearchParams.set(splitPrefix, '')
+  return `${bareFilename}?${filenameSearchParams.toString()}`
+}
+
+function removeSplitSearchParamFromFilename(filename: string) {
+  const [bareFilename, ...searchParams] = filename.split('?')
+  const filenameSearchParams = new URLSearchParams(searchParams.join('&'))
+  filenameSearchParams.delete(splitPrefix)
+  if (filenameSearchParams.size === 0) {
+    return bareFilename!
+  }
+  return `${bareFilename}?${filenameSearchParams.toString()}`
+}
+
 export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
 
@@ -45,7 +63,11 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
       enter(programPath, programState) {
         const state = programState as unknown as State
 
-        const splitUrl = `${splitPrefix}:${opts.filename}?${splitPrefix}`
+        // We need to extract the existing search params from the filename, if any
+        // and add the splitPrefix to them, then write them back to the filename
+        const splitUrl = `${splitPrefix}:${addSplitSearchParamToFilename(
+          opts.filename,
+        )}`
 
         /**
          * If the component for the route is being imported from
@@ -251,21 +273,16 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
     },
   })
 
-  if (debug) console.info('')
-  if (debug) console.info('Dead Code Elimination Input 1:')
-  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
-  if (debug) console.info('')
-  if (debug) console.info('')
-  if (debug) console.info('')
+  const beforeDCE = debug ? generate(ast, { sourceMaps: true }).code : ''
 
   deadCodeElimination(ast)
 
-  if (debug) console.info('')
-  if (debug) console.info('Dead Code Elimination Output 1:')
-  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
-  if (debug) console.info('')
-  if (debug) console.info('')
-  if (debug) console.info('')
+  const afterDCE = debug ? generate(ast, { sourceMaps: true }).code : ''
+
+  if (debug) {
+    console.info('Code Splitting DCE Input/Output')
+    logDiff(beforeDCE, afterDCE)
+  }
 
   return generate(ast, {
     sourceMaps: true,
@@ -491,7 +508,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                       ),
                     ),
                     t.stringLiteral(
-                      opts.filename.split(`?${splitPrefix}`)[0] as string,
+                      removeSplitSearchParamFromFilename(opts.filename),
                     ),
                   ),
                 )
@@ -503,21 +520,16 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
     },
   })
 
-  if (debug) console.info('')
-  if (debug) console.info('Dead Code Elimination Input 2:')
-  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
-  if (debug) console.info('')
-  if (debug) console.info('')
-  if (debug) console.info('')
+  const beforeDCE = debug ? generate(ast, { sourceMaps: true }).code : ''
 
   deadCodeElimination(ast)
 
-  if (debug) console.info('')
-  if (debug) console.info('Dead Code Elimination Output 2:')
-  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
-  if (debug) console.info('')
-  if (debug) console.info('')
-  if (debug) console.info('')
+  const afterDCE = debug ? generate(ast, { sourceMaps: true }).code : ''
+
+  if (debug) {
+    console.info('Code Splitting DCE Input/Output')
+    logDiff(beforeDCE, afterDCE)
+  }
 
   // if there are exported identifiers, then we need to add a warning
   // to the file to let the user know that the exported identifiers

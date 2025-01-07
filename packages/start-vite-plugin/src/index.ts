@@ -2,6 +2,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { compileEliminateDeadCode, compileStartOutput } from './compilers'
 
+import { logDiff } from './logger'
 import type { Plugin } from 'vite'
 
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
@@ -69,13 +70,10 @@ plugins: [
         env: opts.env,
       })
 
-      if (debug) console.info('')
-      if (debug) console.info('Compiled createServerFn Output')
-      if (debug) console.info('')
-      if (debug) console.info(compiled.code)
-      if (debug) console.info('')
-      if (debug) console.info('')
-      if (debug) console.info('')
+      if (debug) {
+        console.info('Start Output Input/Output: ', id)
+        logDiff(code, compiled.code)
+      }
 
       return compiled
     },
@@ -101,14 +99,6 @@ export function TanStackStartViteDeadCodeElimination(
       if (transformFuncs.some((fn) => code.includes(fn))) {
         if (debug) console.info('Handling dead code elimination: ', id)
 
-        if (debug) console.info('')
-        if (debug) console.info('Dead Code Elimination Input:')
-        if (debug) console.info('')
-        if (debug) console.info(code)
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
-
         const compiled = compileEliminateDeadCode({
           code,
           root: ROOT,
@@ -116,13 +106,10 @@ export function TanStackStartViteDeadCodeElimination(
           env: opts.env,
         })
 
-        if (debug) console.info('')
-        if (debug) console.info('Dead Code Elimination Output:')
-        if (debug) console.info('')
-        if (debug) console.info(compiled.code)
-        if (debug) console.info('')
-        if (debug) console.info('')
-        if (debug) console.info('')
+        if (debug) {
+          console.info('Start DCE Input/Output: ', id)
+          logDiff(code, compiled.code)
+        }
 
         return compiled
       }

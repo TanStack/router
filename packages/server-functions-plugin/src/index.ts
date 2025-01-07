@@ -30,7 +30,6 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
   const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
     // When directives are compiled, save them so we
     // can create a manifest
-    console.log('onDirectiveFnsById', d)
     Object.assign(globalThis.TSR_directiveFnsById, d)
   }
 
@@ -190,7 +189,6 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
                     }) as any),
               ...serverFnEntries,
             }
-            console.log(config.build.rollupOptions.input)
           },
         }
       })(),

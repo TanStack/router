@@ -1,6 +1,6 @@
-import invariant from 'tiny-invariant'
 import {
   defaultTransformer,
+  invariant,
   isNotFound,
   isRedirect,
 } from '@tanstack/react-router'
@@ -229,10 +229,13 @@ export function createServerFn<
         serverFn,
       })
 
-      invariant(
-        extractedFn.url,
-        `createServerFn must be called with a function that has a 'url' property. Are you using the @tanstack/start-vite-plugin properly?`,
-      )
+      if (!extractedFn.url) {
+        console.info(extractedFn)
+        invariant(
+          false,
+          `createServerFn must be called with a function that has a 'url' property. Ensure that the @tanstack/start-vite-plugin is ordered **before** the @tanstack/server-functions-plugin.`,
+        )
+      }
 
       const resolvedMiddleware = [
         ...(resolvedOptions.middleware || []),

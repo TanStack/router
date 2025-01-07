@@ -1,6 +1,7 @@
 import { isAbsolute, join, normalize } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { logDiff } from '../logger'
 import { getConfig } from './config'
 import {
   compileCodeSplitReferenceRoute,
@@ -70,27 +71,16 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   const handleSplittingFile = (code: string, id: string) => {
     if (debug) console.info('Splitting route: ', id)
 
-    if (debug) console.info('')
-    if (debug) console.info('Split Route Input: ', id)
-    if (debug) console.info('')
-    if (debug) console.info(code)
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
-
     const compiledVirtualRoute = compileCodeSplitVirtualRoute({
       code,
       root: ROOT,
       filename: id,
     })
 
-    if (debug) console.info('')
-    if (debug) console.info('Split Route Output: ', id)
-    if (debug) console.info('')
-    if (debug) console.info(compiledVirtualRoute.code)
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
+    if (debug) {
+      console.info('Code Splitting Input/Output: ', id)
+      logDiff(code, compiledVirtualRoute.code)
+    }
 
     return compiledVirtualRoute
   }
@@ -104,13 +94,10 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       filename: id,
     })
 
-    if (debug) console.info('')
-    if (debug) console.info('Handling createRoute output: ', id)
-    if (debug) console.info('')
-    if (debug) console.info(compiledReferenceRoute.code)
-    if (debug) console.info('')
-    if (debug) console.info('')
-    if (debug) console.info('')
+    if (debug) {
+      console.info('Router Compiler Input/Output: ', id)
+      logDiff(code, compiledReferenceRoute.code)
+    }
 
     return compiledReferenceRoute
   }
