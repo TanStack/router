@@ -57,7 +57,6 @@ Feature/Capability Key:
 | `<Block>`/`useBlocker`                         | ✅                                               | 🔶                                                    | ❓                                                    |
 | Deferred Primitives                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Navigation Scroll Restoration                  | ✅                                               | ✅                                                    | ❓                                                    |
-| Loader Caching (SWR + Invalidation)            | 🔶 (TanStack Query is recommended)               | 🛑                                                    | ✅                                                    |
 | Router Invalidation                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Runtime Route Manipulation (Fog of War)        | 🛑                                               | ✅                                                    | ✅                                                    |
 | --                                             | --                                               | --                                                    | --                                                    |
