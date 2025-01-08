@@ -467,7 +467,7 @@ export function findDirectives(
         splitImportFn: '$$splitImportFn$$',
         // extractedFilename,
         filename: filename!,
-        functionId: functionId,
+        functionId,
         isSourceFn: !!opts.isSourceFile,
       })
 
@@ -494,7 +494,7 @@ export function findDirectives(
       nodePath: directiveFn,
       referenceName,
       functionName: functionName || '',
-      functionId: functionId,
+      functionId,
       extractedFilename,
       filename: opts.filename,
       chunkName: fileNameToChunkName(opts.root, extractedFilename),

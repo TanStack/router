@@ -62,9 +62,10 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
     load(id) {
       if (id === 'tsr:server-fn-manifest') {
         if (process.env.NODE_ENV === 'production') {
-          return `export default ${JSON.stringify(
-            directiveFnsByIdToManifest(globalThis.TSR_directiveFnsById),
-          )}`
+          const manifest = JSON.parse(
+            readFileSync(path.join(ROOT, manifestFilename), 'utf-8'),
+          )
+          return `export default ${JSON.stringify(manifest)}`
         }
 
         return `export default globalThis.TSR_directiveFnsById`

@@ -553,7 +553,9 @@ function tsrRoutesManifest(opts: {
         }
 
         if (process.env.TSR_VITE_DEBUG) {
-          console.info(JSON.stringify(routesManifest, null, 2))
+          console.info(
+            'Routes Manifest: \n' + JSON.stringify(routesManifest, null, 2),
+          )
         }
 
         return `export default () => (${JSON.stringify(routesManifest)})`
