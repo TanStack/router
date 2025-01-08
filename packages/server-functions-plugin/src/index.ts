@@ -42,7 +42,7 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
         {
           functionName: fn.functionName,
           referenceName: fn.referenceName,
-          splitFilename: fn.splitFilename,
+          extractedFilename: fn.extractedFilename,
           filename: fn.filename,
           chunkName: fn.chunkName,
         },
@@ -140,7 +140,7 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
           // By using the provided splitImportFn, we can both trigger vite
           // to create a new chunk/entry for the server function and also
           // replace other function references to it with the import statement
-          `createServerRpc(${JSON.stringify(opts.functionId)}, ${opts.isSplitFn ? opts.fn : opts.splitImportFn})`,
+          `createServerRpc(${JSON.stringify(opts.functionId)}, ${opts.isSourceFn ? opts.fn : opts.splitImportFn})`,
         onDirectiveFnsById,
         // devSplitImporter: `(globalThis.app.getRouter('server').internals.devServer.ssrLoadModule)`,
       }),
@@ -174,7 +174,7 @@ export function createTanStackServerFnPlugin(_opts?: {}): {
           configResolved(config) {
             const serverFnEntries = Object.fromEntries(
               Object.entries(serverFunctionsManifest).map(([id, fn]) => {
-                return [fn.chunkName, fn.splitFilename]
+                return [fn.chunkName, fn.extractedFilename]
               }),
             )
 

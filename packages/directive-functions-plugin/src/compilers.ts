@@ -17,7 +17,7 @@ export interface DirectiveFn {
   functionName: string
   functionId: string
   referenceName: string
-  splitFilename: string
+  extractedFilename: string
   filename: string
   chunkName: string
 }
@@ -32,7 +32,7 @@ export type ReplacerFn = (opts: {
   splitImportFn: string
   filename: string
   functionId: string
-  isSplitFn: boolean
+  isSourceFn: boolean
 }) => string
 
 // const debug = process.env.TSR_VITE_DEBUG === 'true'
@@ -66,15 +66,15 @@ export function parseAst(opts: ParseAstOptions): ParseResult<babel.types.File> {
 }
 
 export function compileDirectives(opts: CompileDirectivesOpts) {
-  const [_, searchParamsStr] = opts.filename.split('?')
-  const searchParams = new URLSearchParams(searchParamsStr)
-  const directiveSplitParam = `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}-split`
-  const functionName = searchParams.get(directiveSplitParam)
+  const [_, ...searchParamsStr] = opts.filename.split('?')
+  const searchParams = new URLSearchParams(searchParamsStr.join('&'))
+  const directiveSplitParam = `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
+  const isDirectiveSplitParam = searchParams.has(directiveSplitParam)
 
   const ast = parseAst(opts)
   const directiveFnsById = findDirectives(ast, {
     ...opts,
-    splitFunctionName: functionName,
+    isSourceFile: isDirectiveSplitParam,
     directiveSplitParam,
   })
 
@@ -82,7 +82,6 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
     Object.entries(directiveFnsById).map(([, fn]) => [fn.functionName, fn]),
   )
 
-  // Add runtime code if there are directives
   // Add runtime code if there are directives
   if (Object.keys(directiveFnsById).length > 0) {
     // Add a vite import to the top of the file
@@ -101,21 +100,23 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
     }
   }
 
-  // If there is a functionName, we need to remove all exports
-  // then make sure that our function is exported under the
+  // If we are in the source file, we need to remove all exports
+  // then make sure that all of our functions are exported under their
   // directive name
-  if (functionName) {
-    const directiveFn = directiveFnsByFunctionName[functionName]
-
-    if (!directiveFn) {
-      throw new Error(`${opts.directiveLabel} ${functionName} not found`)
-    }
-
+  if (isDirectiveSplitParam) {
     safeRemoveExports(ast)
 
+    // Export a single object with all of the functions
+    // e.g. export { directiveFn1, directiveFn2 }
     ast.program.body.push(
-      babel.types.exportDefaultDeclaration(
-        babel.types.identifier(directiveFn.referenceName),
+      babel.types.exportNamedDeclaration(
+        undefined,
+        Object.values(directiveFnsByFunctionName).map((fn) =>
+          babel.types.exportSpecifier(
+            babel.types.identifier(fn.referenceName),
+            babel.types.identifier(fn.referenceName),
+          ),
+        ),
       ),
     )
   }
@@ -245,9 +246,8 @@ export function findDirectives(
     directive: string
     directiveLabel: string
     replacer?: ReplacerFn
-    splitFunctionName?: string | null
+    isSourceFile?: boolean
     directiveSplitParam: string
-    // devSplitImporter: string
   },
 ) {
   const directiveFnsById: Record<string, DirectiveFn> = {}
@@ -456,20 +456,19 @@ export function findDirectives(
       `${opts.filename}--${functionName}`.replace(opts.root, ''),
     )
 
-    const [filename, searchParamsStr] = opts.filename.split('?')
-    const searchParams = new URLSearchParams(searchParamsStr)
-    searchParams.set(opts.directiveSplitParam, functionName)
-    const splitFilename = `${filename}?${searchParams.toString()}`
+    const [filename] = opts.filename.split('?')
+    // const extractedFilename = `${filename}?${opts.directiveSplitParam}=${functionName}`
+    const extractedFilename = `${filename}?${opts.directiveSplitParam}`
 
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {
       const replacer = opts.replacer({
         fn: '$$fn$$',
         splitImportFn: '$$splitImportFn$$',
-        // splitFilename,
+        // extractedFilename,
         filename: filename!,
         functionId: functionId,
-        isSplitFn: functionName === opts.splitFunctionName,
+        isSourceFn: !!opts.isSourceFile,
       })
 
       const replacement = babel.template.expression(replacer, {
@@ -481,7 +480,7 @@ export function findDirectives(
           : {}),
         ...(replacer.includes('$$splitImportFn$$')
           ? {
-              $$splitImportFn$$: `(...args) => import(${JSON.stringify(splitFilename)}).then(module => module.default(...args))`,
+              $$splitImportFn$$: `(...args) => import(${JSON.stringify(extractedFilename)}).then(module => module.default(...args))`,
             }
           : {}),
       })
@@ -496,9 +495,9 @@ export function findDirectives(
       referenceName,
       functionName: functionName || '',
       functionId: functionId,
-      splitFilename,
+      extractedFilename,
       filename: opts.filename,
-      chunkName: fileNameToChunkName(opts.root, splitFilename),
+      chunkName: fileNameToChunkName(opts.root, extractedFilename),
     }
   }
 }

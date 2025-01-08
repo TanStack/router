@@ -1,6 +1,6 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { compileEliminateDeadCode, compileStartOutput } from './compilers'
+import { compileStartOutput } from './compilers'
 
 import { logDiff } from './logger'
 import type { Plugin } from 'vite'
@@ -63,6 +63,8 @@ plugins: [
         )
       }
 
+      if (debug) console.info('Compiling Start: ', id)
+
       const compiled = compileStartOutput({
         code,
         root: ROOT,
@@ -71,50 +73,10 @@ plugins: [
       })
 
       if (debug) {
-        console.info('Start Output Input/Output: ', id)
         logDiff(code, compiled.code)
       }
 
       return compiled
-    },
-  }
-}
-
-export function TanStackStartViteDeadCodeElimination(
-  opts: TanStackStartViteOptions,
-): Plugin {
-  let ROOT: string = process.cwd()
-
-  return {
-    name: 'vite-plugin-tanstack-start-dead-code-elimination',
-    enforce: 'post',
-    configResolved: (config) => {
-      ROOT = config.root
-    },
-    transform(code, id) {
-      const url = pathToFileURL(id)
-      url.searchParams.delete('v')
-      id = fileURLToPath(url).replace(/\\/g, '/')
-
-      if (transformFuncs.some((fn) => code.includes(fn))) {
-        if (debug) console.info('Handling dead code elimination: ', id)
-
-        const compiled = compileEliminateDeadCode({
-          code,
-          root: ROOT,
-          filename: id,
-          env: opts.env,
-        })
-
-        if (debug) {
-          console.info('Start DCE Input/Output: ', id)
-          logDiff(code, compiled.code)
-        }
-
-        return compiled
-      }
-
-      return null
     },
   }
 }

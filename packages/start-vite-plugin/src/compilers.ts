@@ -233,11 +233,11 @@ function handleCreateServerFnCallExpression(
 
   const rootCallExpression = getRootCallExpression(path)
 
-  if (debug)
-    console.info(
-      'Handling createServerFn call expression:',
-      rootCallExpression.toString(),
-    )
+  // if (debug)
+  //   console.info(
+  //     'Handling createServerFn call expression:',
+  //     rootCallExpression.toString(),
+  //   )
 
   // Check if the call is assigned to a variable
   if (!rootCallExpression.parentPath.isVariableDeclarator()) {
@@ -365,11 +365,11 @@ function handleCreateMiddlewareCallExpression(
 ) {
   const rootCallExpression = getRootCallExpression(path)
 
-  if (debug)
-    console.info(
-      'Handling createMiddleware call expression:',
-      rootCallExpression.toString(),
-    )
+  // if (debug)
+  //   console.info(
+  //     'Handling createMiddleware call expression:',
+  //     rootCallExpression.toString(),
+  //   )
 
   const callExpressionPaths = {
     middleware: null as babel.NodePath<t.CallExpression> | null,
@@ -439,8 +439,8 @@ function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
     path: babel.NodePath<t.CallExpression>,
     opts: ParseAstOptions,
   ) {
-    if (debug)
-      console.info(`Handling ${env}Only call expression:`, path.toString())
+    // if (debug)
+    //   console.info(`Handling ${env}Only call expression:`, path.toString())
 
     const isEnvMatch =
       env === 'client'
@@ -486,11 +486,11 @@ function handleCreateIsomorphicFnCallExpression(
 ) {
   const rootCallExpression = getRootCallExpression(path)
 
-  if (debug)
-    console.info(
-      'Handling createIsomorphicFn call expression:',
-      rootCallExpression.toString(),
-    )
+  // if (debug)
+  //   console.info(
+  //     'Handling createIsomorphicFn call expression:',
+  //     rootCallExpression.toString(),
+  //   )
 
   const callExpressionPaths = {
     client: null as babel.NodePath<t.CallExpression> | null,

@@ -185,9 +185,6 @@ export function defineConfig(
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
             viteReact(opts.react),
-            // TanStackStartViteDeadCodeElimination({
-            //   env: router === 'client' ? 'client' : 'server',
-            // }),
             // TODO: RSCS - enable this
             // serverComponents.client(),
           ]
@@ -323,9 +320,6 @@ export function defineConfig(
             //   runtime: '@vinxi/react-server-dom/runtime',
             //   transpileDeps: ['react', 'react-dom', '@vinxi/react-server-dom'],
             // }),
-            // TanStackStartViteDeadCodeElimination({
-            //   env: router === 'client' ? 'client' : 'server',
-            // }),
             ...(viteConfig.plugins || []),
             ...(serverViteConfig.plugins || []),
           ]
@@ -378,9 +372,6 @@ export function defineConfig(
               ...tsrConfig.experimental,
             },
           }),
-          // TanStackStartViteDeadCodeElimination({
-          //   env: router === 'client' ? 'client' : 'server',
-          // }),
           ...(viteConfig.plugins || []),
           ...(apiViteConfig.plugins || []),
         ]

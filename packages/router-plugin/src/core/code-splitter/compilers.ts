@@ -5,7 +5,6 @@ import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 
 import { splitPrefix } from '../constants'
-import { logDiff } from '../../logger'
 import { parseAst } from './ast'
 import type { ParseAstOptions } from './ast'
 
@@ -39,10 +38,8 @@ interface State {
 }
 
 function addSplitSearchParamToFilename(filename: string) {
-  const [bareFilename, ...searchParams] = filename.split('?')
-  const filenameSearchParams = new URLSearchParams(searchParams.join('&'))
-  filenameSearchParams.set(splitPrefix, '')
-  return `${bareFilename}?${filenameSearchParams.toString()}`
+  const [bareFilename] = filename.split('?')
+  return `${bareFilename}?${splitPrefix}`
 }
 
 function removeSplitSearchParamFromFilename(filename: string) {
@@ -65,9 +62,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
         // We need to extract the existing search params from the filename, if any
         // and add the splitPrefix to them, then write them back to the filename
-        const splitUrl = `${splitPrefix}:${addSplitSearchParamToFilename(
-          opts.filename,
-        )}`
+        const splitUrl = addSplitSearchParamToFilename(opts.filename)
 
         /**
          * If the component for the route is being imported from
@@ -273,16 +268,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
     },
   })
 
-  const beforeDCE = debug ? generate(ast, { sourceMaps: true }).code : ''
-
   deadCodeElimination(ast)
-
-  const afterDCE = debug ? generate(ast, { sourceMaps: true }).code : ''
-
-  if (debug) {
-    console.info('Code Splitting DCE Input/Output')
-    logDiff(beforeDCE, afterDCE)
-  }
 
   return generate(ast, {
     sourceMaps: true,
@@ -520,16 +506,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
     },
   })
 
-  const beforeDCE = debug ? generate(ast, { sourceMaps: true }).code : ''
-
   deadCodeElimination(ast)
-
-  const afterDCE = debug ? generate(ast, { sourceMaps: true }).code : ''
-
-  if (debug) {
-    console.info('Code Splitting DCE Input/Output')
-    logDiff(beforeDCE, afterDCE)
-  }
 
   // if there are exported identifiers, then we need to add a warning
   // to the file to let the user know that the exported identifiers

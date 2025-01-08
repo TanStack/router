@@ -16,6 +16,7 @@ import {
 } from 'vinxi/http'
 // @ts-expect-error
 import serverFnManifest from 'tsr:server-fn-manifest'
+import type { DirectiveFn } from '../../../directive-functions-plugin/dist/esm/compilers'
 import type { H3Event } from 'vinxi/server'
 
 export default eventHandler(handleServerAction)
@@ -54,7 +55,7 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
   }
 
-  const serverFnInfo = serverFnManifest[serverFnId]
+  const serverFnInfo = serverFnManifest[serverFnId] as DirectiveFn | undefined
 
   if (!serverFnInfo) {
     console.log('serverFnManifest', serverFnManifest)
@@ -64,14 +65,14 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
   if (process.env.NODE_ENV === 'development')
     console.info(`\nServerFn Request: ${serverFnId}`)
 
-  let action: Function | undefined
+  let fnModule: undefined | { [key: string]: any }
+  let moduleUrl = serverFnInfo.extractedFilename
   // In dev, we (for now) use Vinxi to get the "server" server-side router
   // Then we use that router's devServer.ssrLoadModule to get the serverFn
   if (process.env.NODE_ENV === 'development') {
-    action = await (globalThis as any).app
+    fnModule = await (globalThis as any).app
       .getRouter('server')
-      .internals.devServer.ssrLoadModule(serverFnInfo.splitFilename)
-      .then((d: any) => d.default)
+      .internals.devServer.ssrLoadModule(serverFnInfo.extractedFilename)
   } else {
     // In prod, we use the serverFn's chunkName to get the serverFn
     const router = (globalThis as any).app.getRouter('server')
@@ -80,15 +81,22 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
       router.base,
       serverFnInfo.chunkName + '.mjs',
     )
-    const url = pathToFileURL(filePath).toString()
-    action = (await import(/* @vite-ignore */ url).then(
-      (d) => d.default,
-    )) as Function
+    moduleUrl = pathToFileURL(filePath).toString()
+    fnModule = await import(/* @vite-ignore */ moduleUrl)
   }
+
+  if (!fnModule) {
+    console.log('serverFnManifest', serverFnManifest)
+    throw new Error('Server function module not resolved for ' + serverFnId)
+  }
+
+  const action = fnModule[serverFnInfo.referenceName]
 
   if (!action) {
     console.log('serverFnManifest', serverFnManifest)
-    throw new Error('Server function fn not resolved for ' + serverFnId)
+    throw new Error(
+      `Server function module export not resolved module: ${moduleUrl} for serverFn ID: ${serverFnId}`,
+    )
   }
 
   const response = await (async () => {

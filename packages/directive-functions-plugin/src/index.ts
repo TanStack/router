@@ -42,6 +42,8 @@ export function TanStackDirectiveFunctionsPlugin(
         return null
       }
 
+      if (debug) console.info('Compiling Directives: ', id)
+
       const { compiledResult, directiveFnsById } = compileDirectives({
         ...opts,
         code,
@@ -53,7 +55,6 @@ export function TanStackDirectiveFunctionsPlugin(
 
       opts.onDirectiveFnsById?.(directiveFnsById)
 
-      if (debug) console.info('Directive Input/Output')
       if (debug) logDiff(code, compiledResult.code)
 
       return compiledResult
