@@ -9,7 +9,7 @@ Deferred data loading is a pattern that allows the router to render the next loc
 
 If you are using a library like [TanStack Query](https://react-query.tanstack.com) or any other data fetching library, then deferred data loading works a bit differently. Skip ahead to the [Deferred Data Loading with External Libraries](#deferred-data-loading-with-external-libraries) section for more information.
 
-## Deferred Data Loading with and `Await`
+## Deferred Data Loading with `Await`
 
 To defer slow or non-critical data, return an **unawaited/unresolved** promise anywhere in your loader response:
 
@@ -137,7 +137,7 @@ Streamed promises follow the same lifecycle as the loader data they are associat
 
 **Streaming requires a server that supports it and for TanStack Router to be configured to use it properly.**
 
-Please read the entire [SSR Guide](/docs/guide/server-streaming) for step by step instructions on how to set up your server for streaming.
+Please read the entire [Streaming SSR Guide](/docs/framework/react/guide/ssr#streaming-ssr) for step by step instructions on how to set up your server for streaming.
 
 ## SSR Streaming Lifecycle
 
