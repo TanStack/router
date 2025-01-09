@@ -627,7 +627,8 @@ While calling a server function from a `loader` or `beforeLoad` route lifecycle,
 To throw a notFound, you can use the `notFound` function exported from the `@tanstack/react-router` package:
 
 ```tsx
-import { createServerFn, notFound } from '@tanstack/start'
+import { notFound } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
 
 const getStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Randomly return a not found error
