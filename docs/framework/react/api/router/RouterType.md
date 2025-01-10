@@ -71,7 +71,7 @@ Builds a new parsed location object that can be used later to navigate to a new 
     - Optional
     - If `true`, the current hash will be used. If a function is provided, it will be called with the current hash and the return value will be used.
   - `state`
-    - Type: `true | NonNullableUpdater<HistoryState>`
+    - Type: `true | NonNullableUpdater<ParsedHistoryState, HistoryState>`
     - Optional
     - If `true`, the current state will be used. If a function is provided, it will be called with the current state and the return value will be used.
   - `mask`

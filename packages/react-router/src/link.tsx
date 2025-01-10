@@ -14,7 +14,7 @@ import {
 import { exactPathTest, removeTrailingSlash } from './path'
 import { useMatch } from './useMatch'
 import type { ParsedLocation } from './location'
-import type { HistoryState } from '@tanstack/history'
+import type { HistoryState, ParsedHistoryState } from '@tanstack/history'
 import type {
   AllParams,
   CatchAllPaths,
@@ -254,7 +254,7 @@ export type ToSubOptionsProps<
   TTo extends string | undefined = '.',
 > = MakeToRequired<TRouter, TFrom, TTo> & {
   hash?: true | Updater<string>
-  state?: true | NonNullableUpdater<HistoryState>
+  state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
   from?: FromPathOption<TRouter, TFrom> & {}
 }
 

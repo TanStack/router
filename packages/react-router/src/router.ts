@@ -35,6 +35,7 @@ import type * as React from 'react'
 import type {
   HistoryLocation,
   HistoryState,
+  ParsedHistoryState,
   RouterHistory,
 } from '@tanstack/history'
 import type { NoInfer } from '@tanstack/react-store'
@@ -533,13 +534,13 @@ export interface BuildNextOptions {
   params?: true | Updater<unknown>
   search?: true | Updater<unknown>
   hash?: true | Updater<string>
-  state?: true | NonNullableUpdater<HistoryState>
+  state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
   mask?: {
     to?: string | number | null
     params?: true | Updater<unknown>
     search?: true | Updater<unknown>
     hash?: true | Updater<string>
-    state?: true | NonNullableUpdater<HistoryState>
+    state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
     unmaskOnReload?: boolean
   }
   from?: string
@@ -1569,7 +1570,10 @@ export class Router<
       let nextParams =
         (dest.params ?? true) === true
           ? prevParams
-          : { ...prevParams, ...functionalUpdate(dest.params, prevParams) }
+          : {
+              ...prevParams,
+              ...functionalUpdate(dest.params as any, prevParams),
+            }
 
       if (Object.keys(nextParams).length > 0) {
         matchedRoutesResult?.matchedRoutes
