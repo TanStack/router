@@ -36,7 +36,12 @@ export type CompiledFetcherFnOptions = {
   context?: any
 }
 
-export type Fetcher<TMiddlewares, TValidator, TResponse> = {
+export type Fetcher<TMiddlewares, TValidator, TResponse> =
+  undefined extends MergeAllValidatorInputs<TMiddlewares, TValidator>
+    ? OptionalFetcher<TMiddlewares, TValidator, TResponse>
+    : RequiredFetcher<TMiddlewares, TValidator, TResponse>
+
+export interface FetcherBase {
   url: string
   __executeServer: (opts: {
     method: Method
@@ -44,36 +49,40 @@ export type Fetcher<TMiddlewares, TValidator, TResponse> = {
     headers?: HeadersInit
     context?: any
   }) => Promise<unknown>
-} & FetcherImpl<TMiddlewares, TValidator, TResponse>
+}
 
-export type FetcherImpl<TMiddlewares, TValidator, TResponse> =
-  undefined extends MergeAllValidatorInputs<TMiddlewares, TValidator>
-    ? (
-        opts?: OptionalFetcherDataOptions<
-          Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
-        >,
-      ) => Promise<FetcherData<TResponse>>
-    : (
-        opts: RequiredFetcherDataOptions<
-          Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
-        >,
-      ) => Promise<FetcherData<TResponse>>
+export interface OptionalFetcher<TMiddlewares, TValidator, TResponse>
+  extends FetcherBase {
+  (
+    ...args: [options?: OptionalFetcherDataOptions<TMiddlewares, TValidator>]
+  ): Promise<FetcherData<TResponse>>
+}
+
+export interface RequiredFetcher<TMiddlewares, TValidator, TResponse>
+  extends FetcherBase {
+  (
+    opts: RequiredFetcherDataOptions<TMiddlewares, TValidator>,
+  ): Promise<FetcherData<TResponse>>
+}
 
 export type FetcherBaseOptions = {
   headers?: HeadersInit
 }
 
-export interface RequiredFetcherDataOptions<TInput> extends FetcherBaseOptions {
-  data: TInput
+export interface RequiredFetcherDataOptions<TMiddlewares, TValidator>
+  extends FetcherBaseOptions {
+  data: Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
-export interface OptionalFetcherDataOptions<TInput> extends FetcherBaseOptions {
-  data?: TInput
+export interface OptionalFetcherDataOptions<TMiddlewares, TValidator>
+  extends FetcherBaseOptions {
+  data?: Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
-export type FetcherData<TResponse> = DefaultTransformerParse<
-  TResponse extends JsonResponse<infer TData> ? TData : TResponse
->
+export type FetcherData<TResponse> =
+  TResponse extends JsonResponse<any>
+    ? DefaultTransformerParse<ReturnType<TResponse['json']>>
+    : DefaultTransformerParse<TResponse>
 
 export type RscStream<T> = {
   __cacheState: T
@@ -116,18 +125,17 @@ type ServerFnBaseOptions<
   functionId: string
 }
 
+export type ValidatorTransformerStringify<TValidator> = Validator<
+  TransformerStringify<
+    ResolveValidatorInput<TValidator>,
+    Date | undefined | FormData
+  >,
+  any
+>
+
 export type ConstrainValidator<TValidator> = unknown extends TValidator
   ? TValidator
-  : Constrain<
-      TValidator,
-      Validator<
-        TransformerStringify<
-          ResolveValidatorInput<TValidator>,
-          Date | undefined | FormData
-        >,
-        any
-      >
-    >
+  : Constrain<TValidator, ValidatorTransformerStringify<TValidator>>
 
 export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
   middleware: <const TNewMiddlewares = undefined>(
@@ -142,10 +150,12 @@ export interface ServerFnAfterMiddleware<
 > extends ServerFnValidator<TMethod, TMiddlewares>,
     ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
 
+export type ValidatorFn<TMethod extends Method, TMiddlewares> = <TValidator>(
+  validator: ConstrainValidator<TValidator>,
+) => ServerFnAfterValidator<TMethod, TMiddlewares, TValidator>
+
 export interface ServerFnValidator<TMethod extends Method, TMiddlewares> {
-  validator: <TValidator>(
-    validator: ConstrainValidator<TValidator>,
-  ) => ServerFnAfterValidator<TMethod, TMiddlewares, TValidator>
+  validator: ValidatorFn<TMethod, TMiddlewares>
 }
 
 export interface ServerFnAfterValidator<
@@ -165,15 +175,11 @@ export interface ServerFnHandler<
   ) => Fetcher<TMiddlewares, TValidator, TNewResponse>
 }
 
-export interface ServerFnBuilder<
-  TMethod extends Method = 'GET',
-  TResponse = unknown,
-  TMiddlewares = unknown,
-  TValidator = unknown,
-> extends ServerFnMiddleware<TMethod, TValidator>,
-    ServerFnValidator<TMethod, TMiddlewares>,
-    ServerFnHandler<TMethod, TMiddlewares, TValidator> {
-  options: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>
+export interface ServerFnBuilder<TMethod extends Method = 'GET'>
+  extends ServerFnMiddleware<TMethod, undefined>,
+    ServerFnValidator<TMethod, undefined>,
+    ServerFnHandler<TMethod, undefined, undefined> {
+  options: ServerFnBaseOptions<TMethod, unknown, undefined, undefined>
 }
 
 export function createServerFn<
@@ -186,7 +192,7 @@ export function createServerFn<
     method: TMethod
   },
   __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
-): ServerFnBuilder<TMethod, TResponse, TMiddlewares, TValidator> {
+): ServerFnBuilder<TMethod> {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
     TMethod,
     TResponse,
