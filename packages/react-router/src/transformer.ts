@@ -133,18 +133,16 @@ const transformers = [
     (v) => v instanceof FormData,
     // To
     (v) => {
-      const entries: Record<string, any> = {}
-      v.forEach((value, key) => {
-        entries[key] = value
-      })
+      const entries: Record<string, Array<any>> = {}
+      v.forEach((value, key) => (entries[key] ??= []).push(value))
       return entries
     },
     // From
     (v) => {
       const formData = new FormData()
-      Object.entries(v).forEach(([key, value]) => {
-        formData.append(key, value)
-      })
+      Object.entries(v).forEach(([key, values]) =>
+        values.forEach((value) => formData.append(key, value)),
+      )
       return formData
     },
   ),

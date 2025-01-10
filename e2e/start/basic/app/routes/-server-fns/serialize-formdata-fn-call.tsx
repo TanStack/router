@@ -4,6 +4,8 @@ import { createServerFn } from '@tanstack/start'
 const testValues = {
   name: 'Sean',
   age: 25,
+  pet1: 'dog',
+  pet2: 'cat',
   __adder: 1,
 }
 
@@ -14,19 +16,27 @@ export const greetUser = createServerFn()
     }
     const name = data.get('name')
     const age = data.get('age')
+    const pets = data.getAll('pet')
 
-    if (!name || !age) {
-      throw new Error('Name and age are required')
+    if (!name || !age || pets.length === 0) {
+      throw new Error('Name, age and pets are required')
     }
 
     return {
       name: name.toString(),
       age: parseInt(age.toString(), 10),
+      pets: pets.map((pet) => pet.toString()),
     }
   })
   .handler(
-    ({ data: { name, age } }) =>
-      `Hello, ${name}! You are ${age + testValues.__adder} years old.`,
+    ({
+      data: {
+        name,
+        age,
+        pets: [pet1, pet2],
+      },
+    }) =>
+      `Hello, ${name}! You are ${age + testValues.__adder} years old, and your favorite pets are ${pet1} and ${pet2}.`,
   )
 
 // Usage
@@ -41,7 +51,8 @@ export function SerializeFormDataFnCall() {
         <code>
           <pre data-testid="expected-serialize-formdata-server-fn-result">
             Hello, {testValues.name}! You are{' '}
-            {testValues.age + testValues.__adder} years old.
+            {testValues.age + testValues.__adder} years old, and your favorite{' '}
+            pets are {testValues.pet1} and {testValues.pet2}.
           </pre>
         </code>
       </div>
@@ -56,6 +67,8 @@ export function SerializeFormDataFnCall() {
       >
         <input type="text" name="name" defaultValue={testValues.name} />
         <input type="number" name="age" defaultValue={testValues.age} />
+        <input type="text" name="pet" defaultValue={testValues.pet1} />
+        <input type="text" name="pet" defaultValue={testValues.pet2} />
         <button
           type="submit"
           data-testid="test-serialize-formdata-fn-calls-btn"
