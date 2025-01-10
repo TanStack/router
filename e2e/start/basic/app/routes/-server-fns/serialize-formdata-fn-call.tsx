@@ -1,10 +1,16 @@
 import * as React from 'react'
 import { createServerFn } from '@tanstack/start'
 
+const testValues = {
+  name: 'Sean',
+  age: 25,
+  __adder: 1,
+}
+
 export const greetUser = createServerFn()
   .validator((data: unknown) => {
     if (!(data instanceof FormData)) {
-      throw new Error('Invalid form data')
+      throw new Error('Invalid! FormData is required')
     }
     const name = data.get('name')
     const age = data.get('age')
@@ -19,7 +25,7 @@ export const greetUser = createServerFn()
     }
   })
   .handler(async ({ data: { name, age } }) => {
-    return `Hello, ${name}! You are ${age} years old.`
+    return `Hello, ${name}! You are ${age + testValues.__adder} years old.`
   })
 
 // Usage
@@ -33,7 +39,8 @@ export function SerializeFormDataFnCall() {
         It should return{' '}
         <code>
           <pre data-testid="expected-serialize-formdata-server-fn-result">
-            Hello, Sean! You are 25 years old.
+            Hello, {testValues.name}! You are{' '}
+            {testValues.age + testValues.__adder} years old.
           </pre>
         </code>
       </div>
@@ -46,8 +53,8 @@ export function SerializeFormDataFnCall() {
           greetUser({ data }).then(setFormDataResult)
         }}
       >
-        <input type="text" name="name" defaultValue="Sean" />
-        <input type="number" name="age" defaultValue="25" />
+        <input type="text" name="name" defaultValue={testValues.name} />
+        <input type="number" name="age" defaultValue={testValues.age} />
         <button
           type="submit"
           data-testid="test-serialize-formdata-fn-calls-btn"
