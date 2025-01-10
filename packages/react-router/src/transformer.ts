@@ -100,7 +100,7 @@ const transformers = [
     // Key
     'undefined',
     // Check
-    (v) => typeof v === 'undefined',
+    (v): v is undefined => v === undefined,
     // To
     () => 0,
     // From
@@ -110,7 +110,7 @@ const transformers = [
     // Key
     'date',
     // Check
-    (v) => v instanceof Date,
+    (v): v is Date => v instanceof Date,
     // To
     (v) => v.toISOString(),
     // From
@@ -120,7 +120,7 @@ const transformers = [
     // Key
     'error',
     // Check
-    (v) => v instanceof Error,
+    (v): v is Error => v instanceof Error,
     // To
     (v) => ({ ...v, message: v.message, stack: v.stack, cause: v.cause }),
     // From
@@ -130,7 +130,7 @@ const transformers = [
     // Key
     'formData',
     // Check
-    (v) => v instanceof FormData,
+    (v): v is FormData => v instanceof FormData,
     // To
     (v) => {
       const entries: Record<string, Array<any>> = {}
