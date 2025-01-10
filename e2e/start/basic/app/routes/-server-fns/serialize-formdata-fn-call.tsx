@@ -8,7 +8,7 @@ const testValues = {
 }
 
 export const greetUser = createServerFn()
-  .validator((data: unknown) => {
+  .validator((data: FormData) => {
     if (!(data instanceof FormData)) {
       throw new Error('Invalid! FormData is required')
     }
@@ -24,9 +24,10 @@ export const greetUser = createServerFn()
       age: parseInt(age.toString(), 10),
     }
   })
-  .handler(async ({ data: { name, age } }) => {
-    return `Hello, ${name}! You are ${age + testValues.__adder} years old.`
-  })
+  .handler(
+    ({ data: { name, age } }) =>
+      `Hello, ${name}! You are ${age + testValues.__adder} years old.`,
+  )
 
 // Usage
 export function SerializeFormDataFnCall() {
