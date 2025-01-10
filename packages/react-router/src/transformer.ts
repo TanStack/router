@@ -80,11 +80,11 @@ export const defaultTransformer: RouterTransformer = {
   },
 }
 
-const createTransformer = <T extends string>(
-  key: T,
-  check: (value: any) => boolean,
-  toValue: (value: any) => any = (v) => v,
-  fromValue: (value: any) => any = (v) => v,
+const createTransformer = <TKey extends string, TFrom, TTo>(
+  key: TKey,
+  check: (value: any) => value is TFrom,
+  toValue: (value: TFrom) => TTo = (v) => v as never,
+  fromValue: (value: TTo) => TFrom = (v) => v as never,
 ) => ({
   key,
   stringifyCondition: check,
@@ -100,7 +100,7 @@ const transformers = [
     // Key
     'undefined',
     // Check
-    (v) => v === undefined,
+    (v) => typeof v === 'undefined',
     // To
     () => 0,
     // From
@@ -132,7 +132,7 @@ const transformers = [
     // Check
     (v) => v instanceof FormData,
     // To
-    (v: FormData) => {
+    (v) => {
       const entries: Record<string, any> = {}
       v.forEach((value, key) => {
         entries[key] = value
@@ -143,7 +143,7 @@ const transformers = [
     (v) => {
       const formData = new FormData()
       Object.entries(v).forEach(([key, value]) => {
-        formData.append(key, value as string | Blob)
+        formData.append(key, value)
       })
       return formData
     },
@@ -162,9 +162,14 @@ export type TransformerParse<T, TSerializable> = T extends TSerializable
     ? ReadableStream
     : { [K in keyof T]: TransformerParse<T[K], TSerializable> }
 
+export type DefaultSerializeable = Date | undefined | Error | FormData
+
 export type DefaultTransformerStringify<T> = TransformerStringify<
   T,
-  Date | undefined
+  DefaultSerializeable
 >
 
-export type DefaultTransformerParse<T> = TransformerParse<T, Date | undefined>
+export type DefaultTransformerParse<T> = TransformerParse<
+  T,
+  DefaultSerializeable
+>
