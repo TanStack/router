@@ -223,3 +223,23 @@ test('Server function can return null for GET and POST calls', async ({
     page.getByTestId('allow_return_null_postFn-response'),
   ).toContainText(JSON.stringify(null))
 })
+
+test('Server function can correctly send and receive FormData', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+  const expected =
+    (await page
+      .getByTestId('expected-serialize-formdata-server-fn-result')
+      .textContent()) || ''
+  expect(expected).not.toBe('')
+
+  await page.getByTestId('test-serialize-formdata-fn-calls-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(
+    page.getByTestId('serialize-formdata-form-response'),
+  ).toContainText(expected)
+})
