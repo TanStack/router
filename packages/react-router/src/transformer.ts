@@ -94,6 +94,7 @@ const createTransformer = <T extends string>(
 })
 
 // Keep these ordered by predicted frequency
+// Also, make sure that they are unit tested in transformer.test.tsx
 const transformers = [
   createTransformer(
     // Key
