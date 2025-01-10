@@ -108,7 +108,7 @@ async function getVirtualRouteConfigFromFileExport(
   }
 
   const virtualRouteConfig =
-    'default' in exports ? exports.default : exports.routes
+    'routes' in exports ? exports.routes : exports.default
 
   return virtualRootRouteSchema.parse(virtualRouteConfig)
 }
