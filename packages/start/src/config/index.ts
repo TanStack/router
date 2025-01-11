@@ -177,6 +177,7 @@ export function defineConfig(
             TanStackServerFnsPlugin.client,
             TanStackRouterVite({
               ...tsrConfig,
+              enableRouteGeneration: true,
               autoCodeSplitting: true,
               experimental: {
                 ...tsrConfig.experimental,
@@ -239,6 +240,7 @@ export function defineConfig(
             TanStackServerFnsPlugin.ssr,
             TanStackRouterVite({
               ...tsrConfig,
+              enableRouteGeneration: false,
               autoCodeSplitting: true,
               experimental: {
                 ...tsrConfig.experimental,
@@ -269,7 +271,7 @@ export function defineConfig(
           )
 
           return [
-            config('tss-vite-config-ssr', {
+            config('tss-vite-config-server', {
               ...viteConfig.userConfig,
               ...serverViteConfig.userConfig,
               define: {
@@ -298,6 +300,7 @@ export function defineConfig(
             TanStackServerFnsPlugin.server,
             TanStackRouterVite({
               ...tsrConfig,
+              enableRouteGeneration: false,
               autoCodeSplitting: true,
               experimental: {
                 ...tsrConfig.experimental,
@@ -367,6 +370,7 @@ export function defineConfig(
           }),
           TanStackRouterVite({
             ...tsrConfig,
+            enableRouteGeneration: false,
             autoCodeSplitting: true,
             experimental: {
               ...tsrConfig.experimental,
