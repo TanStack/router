@@ -15,7 +15,7 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "bin": {
-    "create-router": "index.js"
+    "create-start": "index.js"
   },
   "scripts": {
     "dev": "BUILD_ENV=development unbuild --stub --watch",
