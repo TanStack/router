@@ -80,11 +80,11 @@ export const defaultTransformer: RouterTransformer = {
   },
 }
 
-const createTransformer = <TKey extends string, TFrom, TTo>(
+const createTransformer = <TKey extends string, TFancy, TPlain>(
   key: TKey,
-  check: (value: any) => value is TFrom,
-  toValue: (value: TFrom) => TTo = (v) => v as never,
-  fromValue: (value: TTo) => TFrom = (v) => v as never,
+  check: (value: any) => value is TFancy,
+  toValue: (value: TFancy) => TPlain,
+  fromValue: (value: TPlain) => TFancy,
 ) => ({
   key,
   stringifyCondition: check,
