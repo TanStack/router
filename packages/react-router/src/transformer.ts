@@ -139,11 +139,12 @@ const transformers = [
         Array<FormDataEntryValue> | FormDataEntryValue
       > = {}
       v.forEach((value, key) => {
-        if (entries[key]) {
-          if (Array.isArray(entries[key])) {
-            entries[key].push(value)
+        const entry = entries[key]
+        if (entry) {
+          if (Array.isArray(entry)) {
+            entry.push(value)
           } else {
-            entries[key] = [entries[key], value]
+            entries[key] = [entry, value]
           }
         } else {
           entries[key] = value
