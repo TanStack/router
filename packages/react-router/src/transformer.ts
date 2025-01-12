@@ -80,11 +80,11 @@ export const defaultTransformer: RouterTransformer = {
   },
 }
 
-const createTransformer = <T extends string>(
-  key: T,
-  check: (value: any) => boolean,
-  toValue: (value: any) => any = (v) => v,
-  fromValue: (value: any) => any = (v) => v,
+const createTransformer = <TKey extends string, TInput, TSerialized>(
+  key: TKey,
+  check: (value: any) => value is TInput,
+  toValue: (value: TInput) => TSerialized,
+  fromValue: (value: TSerialized) => TInput,
 ) => ({
   key,
   stringifyCondition: check,
@@ -94,13 +94,14 @@ const createTransformer = <T extends string>(
 })
 
 // Keep these ordered by predicted frequency
+// Make sure to keep DefaultSerializeable in sync with these transformers
 // Also, make sure that they are unit tested in transformer.test.tsx
 const transformers = [
   createTransformer(
     // Key
     'undefined',
     // Check
-    (v) => v === undefined,
+    (v): v is undefined => v === undefined,
     // To
     () => 0,
     // From
@@ -110,7 +111,7 @@ const transformers = [
     // Key
     'date',
     // Check
-    (v) => v instanceof Date,
+    (v): v is Date => v instanceof Date,
     // To
     (v) => v.toISOString(),
     // From
@@ -120,7 +121,7 @@ const transformers = [
     // Key
     'error',
     // Check
-    (v) => v instanceof Error,
+    (v): v is Error => v instanceof Error,
     // To
     (v) => ({ ...v, message: v.message, stack: v.stack, cause: v.cause }),
     // From
@@ -130,12 +131,24 @@ const transformers = [
     // Key
     'formData',
     // Check
-    (v) => v instanceof FormData,
+    (v): v is FormData => v instanceof FormData,
     // To
-    (v: FormData) => {
-      const entries: Record<string, any> = {}
+    (v) => {
+      const entries: Record<
+        string,
+        Array<FormDataEntryValue> | FormDataEntryValue
+      > = {}
       v.forEach((value, key) => {
-        entries[key] = value
+        const entry = entries[key]
+        if (entry !== undefined) {
+          if (Array.isArray(entry)) {
+            entry.push(value)
+          } else {
+            entries[key] = [entry, value]
+          }
+        } else {
+          entries[key] = value
+        }
       })
       return entries
     },
@@ -143,7 +156,11 @@ const transformers = [
     (v) => {
       const formData = new FormData()
       Object.entries(v).forEach(([key, value]) => {
-        formData.append(key, value as string | Blob)
+        if (Array.isArray(value)) {
+          value.forEach((val) => formData.append(key, val))
+        } else {
+          formData.append(key, value)
+        }
       })
       return formData
     },
@@ -162,9 +179,14 @@ export type TransformerParse<T, TSerializable> = T extends TSerializable
     ? ReadableStream
     : { [K in keyof T]: TransformerParse<T[K], TSerializable> }
 
+export type DefaultSerializable = Date | undefined | Error | FormData
+
 export type DefaultTransformerStringify<T> = TransformerStringify<
   T,
-  Date | undefined
+  DefaultSerializable
 >
 
-export type DefaultTransformerParse<T> = TransformerParse<T, Date | undefined>
+export type DefaultTransformerParse<T> = TransformerParse<
+  T,
+  DefaultSerializable
+>
