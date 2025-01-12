@@ -6,6 +6,7 @@
     "module": "esnext",
     "types": ["vite/client"],
     "moduleResolution": "Bundler",
-    "lib": ["DOM", "DOM.Iterable", "ES2022"]
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "skipLibCheck": true
   }
 }

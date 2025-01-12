@@ -15,6 +15,7 @@ import { Route as UsersImport } from './routes/users'
 import { Route as StatusImport } from './routes/status'
 import { Route as ServerFnsImport } from './routes/server-fns'
 import { Route as SearchParamsImport } from './routes/search-params'
+import { Route as ScriptsImport } from './routes/scripts'
 import { Route as PostsImport } from './routes/posts'
 import { Route as LinksImport } from './routes/links'
 import { Route as IsomorphicFnsImport } from './routes/isomorphic-fns'
@@ -63,6 +64,12 @@ const ServerFnsRoute = ServerFnsImport.update({
 const SearchParamsRoute = SearchParamsImport.update({
   id: '/search-params',
   path: '/search-params',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ScriptsRoute = ScriptsImport.update({
+  id: '/scripts',
+  path: '/scripts',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -264,6 +271,13 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsImport
+      parentRoute: typeof rootRoute
+    }
+    '/scripts': {
+      id: '/scripts'
+      path: '/scripts'
+      fullPath: '/scripts'
+      preLoaderRoute: typeof ScriptsImport
       parentRoute: typeof rootRoute
     }
     '/search-params': {
@@ -501,6 +515,7 @@ export interface FileRoutesByFullPath {
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
+  '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
@@ -530,6 +545,7 @@ export interface FileRoutesByTo {
   '/env-only': typeof EnvOnlyRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/links': typeof LinksRoute
+  '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
@@ -559,6 +575,7 @@ export interface FileRoutesById {
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
+  '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
@@ -592,6 +609,7 @@ export interface FileRouteTypes {
     | '/isomorphic-fns'
     | '/links'
     | '/posts'
+    | '/scripts'
     | '/search-params'
     | '/server-fns'
     | '/status'
@@ -620,6 +638,7 @@ export interface FileRouteTypes {
     | '/env-only'
     | '/isomorphic-fns'
     | '/links'
+    | '/scripts'
     | '/search-params'
     | '/server-fns'
     | '/status'
@@ -647,6 +666,7 @@ export interface FileRouteTypes {
     | '/isomorphic-fns'
     | '/links'
     | '/posts'
+    | '/scripts'
     | '/search-params'
     | '/server-fns'
     | '/status'
@@ -679,6 +699,7 @@ export interface RootRouteChildren {
   IsomorphicFnsRoute: typeof IsomorphicFnsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
+  ScriptsRoute: typeof ScriptsRoute
   SearchParamsRoute: typeof SearchParamsRoute
   ServerFnsRoute: typeof ServerFnsRoute
   StatusRoute: typeof StatusRoute
@@ -696,6 +717,7 @@ const rootRouteChildren: RootRouteChildren = {
   IsomorphicFnsRoute: IsomorphicFnsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
+  ScriptsRoute: ScriptsRoute,
   SearchParamsRoute: SearchParamsRoute,
   ServerFnsRoute: ServerFnsRoute,
   StatusRoute: StatusRoute,
@@ -722,6 +744,7 @@ export const routeTree = rootRoute
         "/isomorphic-fns",
         "/links",
         "/posts",
+        "/scripts",
         "/search-params",
         "/server-fns",
         "/status",
@@ -758,6 +781,9 @@ export const routeTree = rootRoute
         "/posts/$postId",
         "/posts/"
       ]
+    },
+    "/scripts": {
+      "filePath": "scripts.tsx"
     },
     "/search-params": {
       "filePath": "search-params.tsx"

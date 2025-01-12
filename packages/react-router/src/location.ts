@@ -1,4 +1,4 @@
-import type { HistoryState } from '@tanstack/history'
+import type { ParsedHistoryState } from '@tanstack/history'
 import type { AnySchema } from './validators'
 
 export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
@@ -6,7 +6,7 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
   pathname: string
   search: TSearchObj
   searchStr: string
-  state: HistoryState
+  state: ParsedHistoryState
   hash: string
   maskedLocation?: ParsedLocation<TSearchObj>
   unmaskOnReload?: boolean

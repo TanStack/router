@@ -14,7 +14,7 @@ import {
 import { exactPathTest, removeTrailingSlash } from './path'
 import { useMatch } from './useMatch'
 import type { ParsedLocation } from './location'
-import type { HistoryState } from '@tanstack/history'
+import type { HistoryState, ParsedHistoryState } from '@tanstack/history'
 import type {
   AllParams,
   CatchAllPaths,
@@ -26,7 +26,7 @@ import type {
   RouteByToPath,
   RoutePaths,
   RouteToPath,
-  TrailingSlashOptionByRouter,
+  ToPath,
 } from './routeInfo'
 import type {
   AnyRouter,
@@ -45,6 +45,10 @@ import type {
   WithoutEmpty,
 } from './utils'
 import type { ReactNode } from 'react'
+import type {
+  ValidateLinkOptions,
+  ValidateLinkOptionsArray,
+} from './typePrimitives'
 
 export type ParsePathParams<T extends string, TAcc = never> = T &
   `${string}$${string}` extends never
@@ -59,89 +63,89 @@ export type ParsePathParams<T extends string, TAcc = never> = T &
           : never
     : TAcc
 
-export type AddTrailingSlash<T> = T & `${string}/` extends never
-  ? `${T & string}/`
-  : T
+export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
 
-export type RemoveTrailingSlashes<T> = T & `${string}/` extends never
-  ? T
-  : T extends `${infer R}/`
+export type RemoveTrailingSlashes<T> = T extends `${string}/`
+  ? T extends `${infer R}/`
     ? R
     : T
-
-export type AddLeadingSlash<T> = T & `/${string}` extends never
-  ? `/${T & string}`
   : T
 
-export type RemoveLeadingSlashes<T> = T & `/${string}` extends never
-  ? T
-  : T extends `/${infer R}`
+export type AddLeadingSlash<T> = T extends `/${string}` ? T : `/${T & string}`
+
+export type RemoveLeadingSlashes<T> = T extends `/${string}`
+  ? T extends `/${infer R}`
     ? R
     : T
+  : T
 
-export type FindDescendantPaths<
+export type FindDescendantToPaths<
   TRouter extends AnyRouter,
   TPrefix extends string,
-> = `${TPrefix}${string}` & RouteToPath<TRouter>
+> = `${TPrefix}/${string}` & RouteToPath<TRouter>
 
-export type SearchPaths<
+export type InferDescendantToPaths<
   TRouter extends AnyRouter,
   TPrefix extends string,
-  TPaths = FindDescendantPaths<TRouter, TPrefix>,
-> = TPaths extends `${TPrefix}${infer TRest}` ? TRest : never
+  TPaths = FindDescendantToPaths<TRouter, TPrefix>,
+> = TPaths extends `${TPrefix}/`
+  ? never
+  : TPaths extends `${TPrefix}/${infer TRest}`
+    ? TRest
+    : never
 
-export type SearchRelativePathAutoComplete<
+export type RelativeToPath<
   TRouter extends AnyRouter,
   TTo extends string,
-  TSearchPath extends string,
-> = `${TTo}${SearchPaths<TRouter, TSearchPath>}`
-
-export type RelativeToParentPathAutoComplete<
-  TRouter extends AnyRouter,
-  TFrom extends string,
-  TTo extends string,
-  TResolvedPath extends string = RemoveTrailingSlashes<
-    ResolveRelativePath<TFrom, TTo>
-  >,
+  TResolvedPath extends string,
 > =
-  | SearchRelativePathAutoComplete<TRouter, TTo, TResolvedPath>
-  | (TResolvedPath extends ''
+  | (TResolvedPath & RouteToPath<TRouter> extends never
       ? never
-      : `${TTo}/${ParentPath<TrailingSlashOptionByRouter<TRouter>>}`)
+      : ToPath<TRouter, TTo>)
+  | `${RemoveTrailingSlashes<TTo>}/${InferDescendantToPaths<TRouter, RemoveTrailingSlashes<TResolvedPath>>}`
 
-export type RelativeToCurrentPathAutoComplete<
+export type RelativeToParentPath<
   TRouter extends AnyRouter,
   TFrom extends string,
   TTo extends string,
-  TResolvedPath extends string = RemoveTrailingSlashes<
-    ResolveRelativePath<TFrom, TTo>
-  >,
+  TResolvedPath extends string = ResolveRelativePath<TFrom, TTo>,
 > =
-  | SearchRelativePathAutoComplete<TRouter, TTo, TResolvedPath>
-  | CurrentPath<TrailingSlashOptionByRouter<TRouter>>
+  | RelativeToPath<TRouter, TTo, TResolvedPath>
+  | (TTo extends `${string}..` | `${string}../`
+      ? TResolvedPath extends '/' | ''
+        ? never
+        : FindDescendantToPaths<
+              TRouter,
+              RemoveTrailingSlashes<TResolvedPath>
+            > extends never
+          ? never
+          : `${RemoveTrailingSlashes<TTo>}/${ParentPath<TRouter>}`
+      : never)
 
-export type AbsolutePathAutoComplete<
+export type RelativeToCurrentPath<
   TRouter extends AnyRouter,
   TFrom extends string,
-> =
+  TTo extends string,
+  TResolvedPath extends string = ResolveRelativePath<TFrom, TTo>,
+> = RelativeToPath<TRouter, TTo, TResolvedPath> | CurrentPath<TRouter>
+
+export type AbsoluteToPath<TRouter extends AnyRouter, TFrom extends string> =
   | (string extends TFrom
-      ? CurrentPath<TrailingSlashOptionByRouter<TRouter>>
+      ? CurrentPath<TRouter>
       : TFrom extends `/`
         ? never
-        : FindDescendantPaths<TRouter, TFrom> extends never
-          ? never
-          : CurrentPath<TrailingSlashOptionByRouter<TRouter>>)
+        : CurrentPath<TRouter>)
   | (string extends TFrom
-      ? ParentPath<TrailingSlashOptionByRouter<TRouter>>
+      ? ParentPath<TRouter>
       : TFrom extends `/`
         ? never
-        : ParentPath<TrailingSlashOptionByRouter<TRouter>>)
+        : ParentPath<TRouter>)
   | RouteToPath<TRouter>
   | (TFrom extends '/'
       ? never
       : string extends TFrom
         ? never
-        : RemoveLeadingSlashes<SearchPaths<TRouter, TFrom>>)
+        : InferDescendantToPaths<TRouter, RemoveTrailingSlashes<TFrom>>)
 
 export type RelativeToPathAutoComplete<
   TRouter extends AnyRouter,
@@ -150,20 +154,12 @@ export type RelativeToPathAutoComplete<
 > = string extends TTo
   ? string
   : string extends TFrom
-    ? AbsolutePathAutoComplete<TRouter, TFrom>
+    ? AbsoluteToPath<TRouter, TFrom>
     : TTo & `..${string}` extends never
       ? TTo & `.${string}` extends never
-        ? AbsolutePathAutoComplete<TRouter, TFrom>
-        : RelativeToCurrentPathAutoComplete<
-            TRouter,
-            TFrom,
-            RemoveTrailingSlashes<TTo>
-          >
-      : RelativeToParentPathAutoComplete<
-          TRouter,
-          TFrom,
-          RemoveTrailingSlashes<TTo>
-        >
+        ? AbsoluteToPath<TRouter, TFrom>
+        : RelativeToCurrentPath<TRouter, TFrom, TTo>
+      : RelativeToParentPath<TRouter, TFrom, TTo>
 
 export type NavigateOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -224,15 +220,41 @@ export type ToSubOptions<
   SearchParamOptions<TRouter, TFrom, TTo> &
   PathParamOptions<TRouter, TFrom, TTo>
 
-export interface ToSubOptionsProps<
-  in out TRouter extends AnyRouter = RegisteredRouter,
-  in out TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  in out TTo extends string | undefined = '.',
+export interface RequiredToOptions<
+  in out TRouter extends AnyRouter,
+  in out TFrom extends string,
+  in out TTo extends string | undefined,
+> {
+  to: ToPathOption<TRouter, TFrom, TTo> & {}
+}
+
+export interface OptionalToOptions<
+  in out TRouter extends AnyRouter,
+  in out TFrom extends string,
+  in out TTo extends string | undefined,
 > {
   to?: ToPathOption<TRouter, TFrom, TTo> & {}
+}
+
+export type MakeToRequired<
+  TRouter extends AnyRouter,
+  TFrom extends string,
+  TTo extends string | undefined,
+> = string extends TFrom
+  ? string extends TTo
+    ? OptionalToOptions<TRouter, TFrom, TTo>
+    : TTo & CatchAllPaths<TRouter> extends never
+      ? RequiredToOptions<TRouter, TFrom, TTo>
+      : OptionalToOptions<TRouter, TFrom, TTo>
+  : OptionalToOptions<TRouter, TFrom, TTo>
+
+export type ToSubOptionsProps<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TTo extends string | undefined = '.',
+> = MakeToRequired<TRouter, TFrom, TTo> & {
   hash?: true | Updater<string>
-  state?: true | NonNullableUpdater<HistoryState>
-  // The source route path. This is automatically set when using route-level APIs, but for type-safe relative routing on the router itself, this is required
+  state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
   from?: FromPathOption<TRouter, TFrom> & {}
 }
 
@@ -309,7 +331,7 @@ export type ResolveToParams<
       ? never
       : string extends TPath
         ? ResolveAllToParams<TRouter, TParamVariant>
-        : TPath extends CatchAllPaths<TrailingSlashOptionByRouter<TRouter>>
+        : TPath extends CatchAllPaths<TRouter>
           ? ResolveAllToParams<TRouter, TParamVariant>
           : ResolveRoute<
               TRouter,
@@ -394,7 +416,7 @@ export type IsRequired<
   ResolveRelativePath<TFrom, TTo> extends infer TPath
     ? undefined extends TPath
       ? never
-      : TPath extends CatchAllPaths<TrailingSlashOptionByRouter<TRouter>>
+      : TPath extends CatchAllPaths<TRouter>
         ? never
         : IsRequiredParams<
             ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
@@ -485,30 +507,39 @@ type RemoveLastSegment<
   TAcc extends string = '',
 > = T extends `${infer TSegment}/${infer TRest}`
   ? TRest & `${string}/${string}` extends never
-    ? `${TAcc}${TSegment}`
+    ? TRest extends ''
+      ? TAcc
+      : `${TAcc}${TSegment}`
     : RemoveLastSegment<TRest, `${TAcc}${TSegment}/`>
   : TAcc
 
-export type ResolveCurrentPath<TFrom, TTo> = TTo extends '.'
+export type ResolveCurrentPath<
+  TFrom extends string,
+  TTo extends string,
+> = TTo extends '.'
   ? TFrom
   : TTo extends './'
     ? AddTrailingSlash<TFrom>
     : TTo & `./${string}` extends never
       ? never
       : TTo extends `./${infer TRest}`
-        ? ResolveRelativePath<TFrom, TRest>
+        ? AddLeadingSlash<JoinPath<TFrom, TRest>>
         : never
 
-export type ResolveParentPath<TFrom extends string, TTo> = TTo extends '../'
-  ? RemoveLastSegment<TFrom>
-  : TTo & `..${string}` extends never
+export type ResolveParentPath<
+  TFrom extends string,
+  TTo extends string,
+> = TTo extends '../' | '..'
+  ? TFrom extends '' | '/'
     ? never
-    : TTo extends `..${infer ToRest}`
-      ? ResolveRelativePath<
-          RemoveLastSegment<TFrom>,
-          RemoveLeadingSlashes<ToRest>
-        >
-      : never
+    : AddLeadingSlash<RemoveLastSegment<TFrom>>
+  : TTo & `../${string}` extends never
+    ? AddLeadingSlash<JoinPath<TFrom, TTo>>
+    : TFrom extends '' | '/'
+      ? never
+      : TTo extends `../${infer ToRest}`
+        ? ResolveParentPath<RemoveLastSegment<TFrom>, ToRest>
+        : AddLeadingSlash<JoinPath<TFrom, TTo>>
 
 export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
   ? TTo
@@ -516,15 +547,15 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
     ? TFrom
     : undefined extends TTo
       ? TFrom
-      : TFrom extends string
-        ? TTo extends string
-          ? TTo & `..${string}` extends never
-            ? TTo & `.${string}` extends never
-              ? TTo & `/${string}` extends never
-                ? AddLeadingSlash<JoinPath<TFrom, TTo>>
-                : TTo
-              : ResolveCurrentPath<TFrom, TTo>
-            : ResolveParentPath<TFrom, TTo>
+      : TTo extends string
+        ? TFrom extends string
+          ? TTo extends `/${string}`
+            ? TTo
+            : TTo extends `..${string}`
+              ? ResolveParentPath<TFrom, TTo>
+              : TTo extends `.${string}`
+                ? ResolveCurrentPath<TFrom, TTo>
+                : AddLeadingSlash<JoinPath<TFrom, TTo>>
           : never
         : never
 
@@ -555,10 +586,10 @@ const preloadWarning = 'Error preloading route! ☝️'
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-  TMaskTo extends string = '',
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   forwardedRef?: React.ForwardedRef<Element>,
@@ -976,10 +1007,10 @@ export type CreateLinkProps = LinkProps<
 
 export type LinkComponent<TComp> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string = string,
-  TTo extends string | undefined = undefined,
-  TMaskFrom extends string = TFrom,
-  TMaskTo extends string = '',
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
 >(
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => React.ReactElement
@@ -995,7 +1026,11 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    const { type: _type, ref: innerRef, ...linkProps } = useLinkProps(rest, ref)
+    const {
+      type: _type,
+      ref: innerRef,
+      ...linkProps
+    } = useLinkProps(rest as any, ref)
 
     const children =
       typeof rest.children === 'function'
@@ -1025,19 +1060,21 @@ function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
 }
 
-export type LinkOptionsFn<TComp> = <
-  const TProps,
+export type LinkOptionsFnOptions<
+  TOptions,
+  TComp,
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string = string,
-  TTo extends string | undefined = undefined,
-  TMaskFrom extends string = TFrom,
-  TMaskTo extends string = '',
+> =
+  TOptions extends ReadonlyArray<any>
+    ? ValidateLinkOptionsArray<TOptions, TComp, TRouter>
+    : ValidateLinkOptions<TOptions, TComp, TRouter>
+
+export type LinkOptionsFn<TComp> = <
+  const TOptions,
+  TRouter extends AnyRouter = RegisteredRouter,
 >(
-  options: Constrain<
-    TProps,
-    LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
-  >,
-) => TProps
+  options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
+) => TOptions
 
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {
   return options as any

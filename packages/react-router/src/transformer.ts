@@ -33,7 +33,7 @@ export const defaultTransformer: RouterTransformer = {
       return val
     }),
   encode: (value: any) => {
-    // When encodign, dive first
+    // When encoding, dive first
     if (Array.isArray(value)) {
       return value.map((v) => defaultTransformer.encode(v))
     }
@@ -94,6 +94,7 @@ const createTransformer = <T extends string>(
 })
 
 // Keep these ordered by predicted frequency
+// Also, make sure that they are unit tested in transformer.test.tsx
 const transformers = [
   createTransformer(
     // Key
@@ -124,6 +125,28 @@ const transformers = [
     (v) => ({ ...v, message: v.message, stack: v.stack, cause: v.cause }),
     // From
     (v) => Object.assign(new Error(v.message), v),
+  ),
+  createTransformer(
+    // Key
+    'formData',
+    // Check
+    (v) => v instanceof FormData,
+    // To
+    (v: FormData) => {
+      const entries: Record<string, any> = {}
+      v.forEach((value, key) => {
+        entries[key] = value
+      })
+      return entries
+    },
+    // From
+    (v) => {
+      const formData = new FormData()
+      Object.entries(v).forEach(([key, value]) => {
+        formData.append(key, value as string | Blob)
+      })
+      return formData
+    },
   ),
 ] as const
 

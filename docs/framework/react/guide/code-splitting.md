@@ -300,7 +300,7 @@ Then, call the `.lazy` method on the route definition in your `app.tsx` to impor
 ```tsx
 // src/app.tsx
 const postsRoute = createRoute({
-  getParent: () => rootRoute,
+  getParentRoute: () => rootRoute,
   path: '/posts',
 }).lazy(() => import('./posts.lazy').then((d) => d.Route))
 ```

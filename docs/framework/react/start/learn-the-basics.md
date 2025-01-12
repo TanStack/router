@@ -42,11 +42,11 @@ declare module '@tanstack/react-router' {
 
 ## Route Generation
 
-The `routeTree.gen.ts` file is generated when you run TanStack Start (via `npm run dev` or `npm run start`) for the first time. This file contains the generated route tree and and handful of TS utilities that make TanStack Start fully type-safe.
+The `routeTree.gen.ts` file is generated when you run TanStack Start (via `npm run dev` or `npm run start`) for the first time. This file contains the generated route tree and a handful of TS utilities that make TanStack Start fully type-safe.
 
 ## The Server Entry Point
 
-Althoug TanStack Start is designed with client-first APIs, it is by and large, a full-stack framework. This means that all use cases, including both dynamic and static rely on a server or build-time entry to render our application's initial HTML payload.
+Although TanStack Start is designed with client-first APIs, it is by and large, a full-stack framework. This means that all use cases, including both dynamic and static rely on a server or build-time entry to render our application's initial HTML payload.
 
 This is done via the `app/ssr.tsx` file:
 
