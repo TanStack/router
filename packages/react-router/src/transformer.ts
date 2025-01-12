@@ -80,11 +80,11 @@ export const defaultTransformer: RouterTransformer = {
   },
 }
 
-const createTransformer = <TKey extends string, TFancy, TPlain>(
+const createTransformer = <TKey extends string, TInput, TSerialized>(
   key: TKey,
-  check: (value: any) => value is TFancy,
-  toValue: (value: TFancy) => TPlain,
-  fromValue: (value: TPlain) => TFancy,
+  check: (value: any) => value is TInput,
+  toValue: (value: TInput) => TSerialized,
+  fromValue: (value: TSerialized) => TInput,
 ) => ({
   key,
   stringifyCondition: check,
@@ -179,14 +179,14 @@ export type TransformerParse<T, TSerializable> = T extends TSerializable
     ? ReadableStream
     : { [K in keyof T]: TransformerParse<T[K], TSerializable> }
 
-export type DefaultSerializeable = Date | undefined | Error | FormData
+export type DefaultSerializable = Date | undefined | Error | FormData
 
 export type DefaultTransformerStringify<T> = TransformerStringify<
   T,
-  DefaultSerializeable
+  DefaultSerializable
 >
 
 export type DefaultTransformerParse<T> = TransformerParse<
   T,
-  DefaultSerializeable
+  DefaultSerializable
 >

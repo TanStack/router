@@ -291,7 +291,7 @@ export type {
   RouterTransformer,
   TransformerParse,
   TransformerStringify,
-  DefaultSerializeable,
+  DefaultSerializable,
   DefaultTransformerParse,
   DefaultTransformerStringify,
 } from './transformer'
