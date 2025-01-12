@@ -332,7 +332,7 @@ Building non-nested routes in code-based routing does not require using a traili
 - `/posts`
   - `$postId`
 
-To do this we need to build a separate route for the post editor an include the entire path in the `path` option from the root of where we want the route to be nested (in this case, the root):
+To do this we need to build a separate route for the post editor and include the entire path in the `path` option from the root of where we want the route to be nested (in this case, the root):
 
 ```tsx
 // The posts editor route is nested under the root route
