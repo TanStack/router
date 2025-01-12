@@ -46,6 +46,14 @@ describe('transformer.stringify', () => {
       `"{"$formData":{"foo":"bar","name":"Sean"}}"`,
     )
   })
+  it('should stringify FormData with multiple values for the same key', () => {
+    const formData = new FormData()
+    formData.append('foo', 'bar')
+    formData.append('foo', 'baz')
+    expect(tf.stringify(formData)).toMatchInlineSnapshot(
+      `"{"$formData":{"foo":["bar","baz"]}}"`,
+    )
+  })
 })
 
 describe('transformer.parse', () => {
@@ -97,6 +105,18 @@ describe('transformer.parse', () => {
     expect([...parsed.entries()]).toEqual([
       ['foo', 'bar'],
       ['name', 'Sean'],
+    ])
+  })
+  it('should parse FormData with multiple values for the same key', () => {
+    const formData = new FormData()
+    formData.append('foo', 'bar')
+    formData.append('foo', 'baz')
+    const str = tf.stringify(formData)
+    const parsed = tf.parse(str) as FormData
+    expect(parsed).toBeInstanceOf(FormData)
+    expect([...parsed.entries()]).toEqual([
+      ['foo', 'bar'],
+      ['foo', 'baz'],
     ])
   })
 })
