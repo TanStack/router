@@ -140,7 +140,7 @@ const transformers = [
       > = {}
       v.forEach((value, key) => {
         const entry = entries[key]
-        if (entry) {
+        if (entry !== undefined) {
           if (Array.isArray(entry)) {
             entry.push(value)
           } else {
