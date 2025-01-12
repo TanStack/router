@@ -2,7 +2,10 @@ import * as babel from '@babel/core'
 import * as t from '@babel/types'
 import _generate from '@babel/generator'
 import { codeFrameColumns } from '@babel/code-frame'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
+import {
+  deadCodeElimination,
+  findReferencedIdentifiers,
+} from 'babel-dead-code-elimination'
 
 import { parseAst } from './ast'
 import type { ParseAstOptions } from './ast'
@@ -16,9 +19,12 @@ if (!generate) {
   generate = _generate
 }
 
-export function compileEliminateDeadCode(opts: ParseAstOptions) {
+export function compileEliminateDeadCode(
+  opts: ParseAstOptions,
+  idents: ReturnType<typeof findReferencedIdentifiers> | undefined,
+) {
   const ast = parseAst(opts)
-  deadCodeElimination(ast)
+  deadCodeElimination(ast, idents)
   return generate(ast, {
     sourceMaps: true,
     filename: opts.filename,
@@ -46,6 +52,10 @@ type IdentifierConfig = {
 
 export function compileStartOutput(opts: ParseAstOptions) {
   const ast = parseAst(opts)
+
+  // get all the identifiers referenced in the source code *before* we start
+  // so we can use them for DCE later
+  const idents = findReferencedIdentifiers(ast)
 
   babel.traverse(ast, {
     Program: {
@@ -184,11 +194,14 @@ export function compileStartOutput(opts: ParseAstOptions) {
     },
   })
 
-  return generate(ast, {
-    sourceMaps: true,
-    filename: opts.filename,
-    minified: process.env.NODE_ENV === 'production',
-  })
+  return {
+    idents,
+    compiled: generate(ast, {
+      sourceMaps: true,
+      filename: opts.filename,
+      minified: process.env.NODE_ENV === 'production',
+    }),
+  }
 }
 
 function handleCreateServerFnCallExpression(

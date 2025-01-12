@@ -1,8 +1,9 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { compileEliminateDeadCode, compileStartOutput } from './compilers'
-
+import type { findReferencedIdentifiers } from 'babel-dead-code-elimination'
 import type { Plugin } from 'vite'
+import type { InputOptions } from 'rollup'
 
 const debug = Boolean(process.env.TSR_VITE_DEBUG)
 
@@ -22,14 +23,25 @@ const eitherFuncRegex = new RegExp(
   `(function ${transformFuncs.join('|function ')})`,
 )
 
+declare module 'rollup' {
+  interface InputOptions {
+    __TSR__REF_IDENTS?: ReturnType<typeof findReferencedIdentifiers>
+  }
+}
+
 export function TanStackStartViteServerFn(
   opts: TanStackStartViteOptions,
 ): Plugin {
   let ROOT: string = process.cwd()
 
+  let inputOpts: InputOptions | undefined = undefined
+
   return {
     name: 'vite-plugin-tanstack-start-create-server-fn',
     enforce: 'pre',
+    options(options) {
+      inputOpts = options
+    },
     configResolved: (config) => {
       ROOT = config.root
     },
@@ -62,12 +74,13 @@ plugins: [
         )
       }
 
-      const compiled = compileStartOutput({
+      const { compiled, idents } = compileStartOutput({
         code,
         root: ROOT,
         filename: id,
         env: opts.env,
       })
+      if (inputOpts) inputOpts.__TSR__REF_IDENTS = idents
 
       if (debug) console.info('')
       if (debug) console.info('Compiled createServerFn Output')
@@ -87,9 +100,14 @@ export function TanStackStartViteDeadCodeElimination(
 ): Plugin {
   let ROOT: string = process.cwd()
 
+  let inputOpts: InputOptions | undefined = undefined
+
   return {
     name: 'vite-plugin-tanstack-start-dead-code-elimination',
     enforce: 'post',
+    options(options) {
+      inputOpts = options
+    },
     configResolved: (config) => {
       ROOT = config.root
     },
@@ -109,12 +127,15 @@ export function TanStackStartViteDeadCodeElimination(
         if (debug) console.info('')
         if (debug) console.info('')
 
-        const compiled = compileEliminateDeadCode({
-          code,
-          root: ROOT,
-          filename: id,
-          env: opts.env,
-        })
+        const compiled = compileEliminateDeadCode(
+          {
+            code,
+            root: ROOT,
+            filename: id,
+            env: opts.env,
+          },
+          inputOpts?.__TSR__REF_IDENTS,
+        )
 
         if (debug) console.info('')
         if (debug) console.info('Dead Code Elimination Output:')

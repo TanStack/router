@@ -36,14 +36,14 @@ describe('createIsomorphicFn compiles correctly', async () => {
     test.each(['client', 'server'] as const)(
       `should compile for ${filename} %s`,
       async (env) => {
-        const compiledResult = compileStartOutput({
+        const { compiled } = compileStartOutput({
           env,
           code,
           root: './test-files',
           filename,
         })
 
-        await expect(compiledResult.code).toMatchFileSnapshot(
+        await expect(compiled.code).toMatchFileSnapshot(
           `./snapshots/${env}/${filename}`,
         )
       },

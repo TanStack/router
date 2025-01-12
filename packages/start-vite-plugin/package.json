@@ -79,6 +79,7 @@
     "@babel/parser": "^7.26.3",
     "@babel/plugin-syntax-typescript": "^7.25.9",
     "@babel/traverse": "^7.26.4",
-    "@babel/types": "^7.26.3"
+    "@babel/types": "^7.26.3",
+    "rollup": "^4.0.0"
   }
 }
