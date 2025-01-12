@@ -28,16 +28,9 @@ export const greetUser = createServerFn()
       pets: pets.map((pet) => pet.toString()),
     }
   })
-  .handler(
-    ({
-      data: {
-        name,
-        age,
-        pets: [pet1, pet2],
-      },
-    }) =>
-      `Hello, ${name}! You are ${age + testValues.__adder} years old, and your favorite pets are ${pet1} and ${pet2}.`,
-  )
+  .handler(({ data: { name, age, pets } }) => {
+    return `Hello, ${name}! You are ${age + testValues.__adder} years old, and your favorite pets are ${pets.join(',')}.`
+  })
 
 // Usage
 export function SerializeFormDataFnCall() {
@@ -52,7 +45,7 @@ export function SerializeFormDataFnCall() {
           <pre data-testid="expected-serialize-formdata-server-fn-result">
             Hello, {testValues.name}! You are{' '}
             {testValues.age + testValues.__adder} years old, and your favorite{' '}
-            pets are {testValues.pet1} and {testValues.pet2}.
+            pets are {testValues.pet1},{testValues.pet2}.
           </pre>
         </code>
       </div>

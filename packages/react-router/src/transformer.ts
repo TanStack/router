@@ -94,6 +94,7 @@ const createTransformer = <TKey extends string, TFrom, TTo>(
 })
 
 // Keep these ordered by predicted frequency
+// Make sure to keep DefaultSerializeable in sync with these transformers
 // Also, make sure that they are unit tested in transformer.test.tsx
 const transformers = [
   createTransformer(
@@ -133,16 +134,33 @@ const transformers = [
     (v): v is FormData => v instanceof FormData,
     // To
     (v) => {
-      const entries: Record<string, Array<any>> = {}
-      v.forEach((value, key) => (entries[key] ??= []).push(value))
+      const entries: Record<
+        string,
+        Array<FormDataEntryValue> | FormDataEntryValue
+      > = {}
+      v.forEach((value, key) => {
+        if (entries[key]) {
+          if (Array.isArray(entries[key])) {
+            entries[key].push(value)
+          } else {
+            entries[key] = [entries[key], value]
+          }
+        } else {
+          entries[key] = value
+        }
+      })
       return entries
     },
     // From
     (v) => {
       const formData = new FormData()
-      Object.entries(v).forEach(([key, values]) =>
-        values.forEach((value) => formData.append(key, value)),
-      )
+      Object.entries(v).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach((val) => formData.append(key, val))
+        } else {
+          formData.append(key, value)
+        }
+      })
       return formData
     },
   ),

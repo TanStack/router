@@ -43,7 +43,7 @@ describe('transformer.stringify', () => {
     formData.append('foo', 'bar')
     formData.append('name', 'Sean')
     expect(tf.stringify(formData)).toMatchInlineSnapshot(
-      `"{"$formData":{"foo":["bar"],"name":["Sean"]}}"`,
+      `"{"$formData":{"foo":"bar","name":"Sean"}}"`,
     )
   })
   it('should stringify FormData with multiple values for the same key', () => {
