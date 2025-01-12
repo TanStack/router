@@ -11,6 +11,8 @@ export default [
           'ts-nocheck': false,
         },
       ],
+      '@typescript-eslint/array-type': 'off',
+      '@typescript-eslint/require-await': 'off',
     },
   },
 ]
