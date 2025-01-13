@@ -47,11 +47,11 @@ export type {
   ParsePathParams,
   RemoveTrailingSlashes,
   RemoveLeadingSlashes,
-  SearchPaths,
-  SearchRelativePathAutoComplete,
-  RelativeToParentPathAutoComplete,
-  RelativeToCurrentPathAutoComplete,
-  AbsolutePathAutoComplete,
+  InferDescendantToPaths,
+  RelativeToPath,
+  RelativeToParentPath,
+  RelativeToCurrentPath,
+  AbsoluteToPath,
   RelativeToPathAutoComplete,
   NavigateOptions,
   ToOptions,
@@ -291,6 +291,7 @@ export type {
   RouterTransformer,
   TransformerParse,
   TransformerStringify,
+  DefaultSerializable,
   DefaultTransformerParse,
   DefaultTransformerStringify,
 } from './transformer'
@@ -316,6 +317,8 @@ export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
 
 export { useLocation } from './useLocation'
+
+export { useCanGoBack } from './useCanGoBack'
 
 export {
   escapeJSON, // SSR

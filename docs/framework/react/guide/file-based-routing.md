@@ -413,7 +413,7 @@ The following options are available for configuration via the `tsr.config.json` 
   - See the [using automatic code-splitting](./code-splitting.md#using-automatic-code-splitting) guide.
 
 - **`quoteStyle`**
-  - (Optional, **Defaults to `single`**) whether to use `single` or `double` quotes when formatting the generated route tree file.`
+  - (Optional, **Defaults to `single`**) whether to use `single` or `double` quotes when formatting the generated route tree file.
 - **`semicolons`**
   - (Optional, **Defaults to `false`**) whether to use semicolons in the generated route tree file.
 - **`apiBase`**

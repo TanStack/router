@@ -20,7 +20,7 @@ export const debugCliOption = createOption(
 ).argParser((value) => {
   if (!DEBUG_LEVELS.includes(value as DebugLevels)) {
     throw new InvalidArgumentError(
-      `Invalid IDE: ${value}. Only the following are allowed: ${DEBUG_LEVELS.join(', ')}`,
+      `Invalid debug level: ${value}. Only the following are allowed: ${DEBUG_LEVELS.join(', ')}`,
     )
   }
   return value as DebugLevels

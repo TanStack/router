@@ -37,10 +37,10 @@ export type ResolvedRedirect<
 
 export function redirect<
   TRouter extends RegisteredRouter,
-  TTo extends string | undefined,
-  TFrom extends string = string,
-  TMaskFrom extends string = TFrom,
-  TMaskTo extends string = '',
+  const TTo extends string | undefined,
+  const TFrom extends string = string,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
 >(
   opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {

@@ -800,9 +800,10 @@ export type RouteTypesById<TRouter extends AnyRouter, TId> = RouteById<
   TId
 >['types']
 
-export function getRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter>(
-  id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>,
-) {
+export function getRouteApi<
+  const TId,
+  TRouter extends AnyRouter = RegisteredRouter,
+>(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
   return new RouteApi<TId, TRouter>({ id })
 }
 

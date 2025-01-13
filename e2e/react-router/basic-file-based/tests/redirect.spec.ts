@@ -114,4 +114,13 @@ test.describe('redirects', () => {
       expect(page.url()).toBe(url)
     })
   })
+
+  test('regression test for #3097', async ({ page }) => {
+    await page.goto(`/redirect/preload/first`)
+    const link = page.getByTestId(`link`)
+    await link.focus()
+    await link.click()
+    await page.waitForURL('/redirect/preload/third')
+    await expect(page.getByTestId(`third`)).toBeInViewport()
+  })
 })

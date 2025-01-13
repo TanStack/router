@@ -48,7 +48,7 @@ export type UseLoaderDepsRoute<out TId> = <
 
 export function useLoaderDeps<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string | undefined = undefined,
+  const TFrom extends string | undefined = undefined,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(

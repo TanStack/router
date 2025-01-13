@@ -66,24 +66,24 @@ function DashboardComponent() {
 
 ### An array of `linkOptions`
 
-When creating navigation you might loop over an array to construct a navigation bar. In which case `linkOptions` can be called multiple times to construct an array which can be used to render an array of `Link`'s
+When creating navigation you might loop over an array to construct a navigation bar. In which case `linkOptions` can be used to type check an array of object literals which are intended for `Link` props
 
 ```tsx
-const options = [
-  linkOptions({
+const options = linkOptions([
+  {
     to: '/dashboard',
     label: 'Summary',
     activeOptions: { exact: true },
-  }),
-  linkOptions({
+  },
+  {
     to: '/dashboard/invoices',
     label: 'Invoices',
-  }),
-  linkOptions({
+  },
+  {
     to: '/dashboard/users',
     label: 'Users',
-  }),
-]
+  },
+])
 
 function DashboardComponent() {
   return (

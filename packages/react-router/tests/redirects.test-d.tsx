@@ -39,7 +39,5 @@ test('can redirect to valid route', () => {
   expectTypeOf(redirect<DefaultRouter, '/invoices', string>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<
-      '/' | '/invoices' | '/invoices/$invoiceId' | '.' | '..' | undefined
-    >()
+    .toEqualTypeOf<'/' | '/invoices' | '/invoices/$invoiceId' | '.' | '..'>()
 })
