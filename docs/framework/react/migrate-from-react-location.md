@@ -2,7 +2,7 @@
 title: Migration from React Location
 ---
 
-Before you begin your journey in migrating from React Location, its important that you have a good understanding of the [Routing Concepts](./guide/routing-concepts.md) and [Design Decisions](./decisions-on-dx.md) used by TanStack Router.
+Before you begin your journey in migrating from React Location, it's important that you have a good understanding of the [Routing Concepts](./guide/routing-concepts.md) and [Design Decisions](./decisions-on-dx.md) used by TanStack Router.
 
 ## Differences between React Location and TanStack Router
 
