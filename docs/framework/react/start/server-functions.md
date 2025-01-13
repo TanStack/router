@@ -702,6 +702,10 @@ To do this, we can utilize the `url` property of the server function:
 ```ts
 const yourFn = createServerFn({ method: 'POST' })
   .validator((formData) => {
+	if (!(formData instanceof FormData)) {
+      throw new Error('Invalid form data')
+    }
+    
     const name = formData.get('name')
 
     if (!name) {
