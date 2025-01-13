@@ -12,13 +12,25 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  SearchParamError,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
   useNavigate,
 } from '../src'
-import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
+import type {
+  AnyRoute,
+  AnyRouter,
+  RouterOptions,
+  ValidatorFn,
+  ValidatorObj,
+} from '../src'
+import {
+  AnyStandardSchemaValidateFailure,
+  AnyStandardSchemaValidateSuccess,
+  StandardSchemaValidator,
+} from '../src/validators'
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -1015,6 +1027,91 @@ describe('search params in URL', () => {
       fireEvent.click(link)
 
       await checkSearch({ default: 'd2', optional: 'o1' })
+    })
+  })
+
+  describe('validates search params', () => {
+    class TestValidationError extends Error {
+      issues: Array<{ message: string }>
+      constructor(issues: Array<{ message: string }>) {
+        super('validation failed')
+        this.name = 'TestValidationError'
+        this.issues = issues
+      }
+    }
+    const testCases: [
+      StandardSchemaValidator<Record<string, unknown>, { search: string }>,
+      ValidatorFn<Record<string, unknown>, { search: string }>,
+      ValidatorObj<Record<string, unknown>, { search: string }>,
+    ] = [
+      {
+        ['~standard']: {
+          validate: (input) => {
+            const result = z.object({ search: z.string() }).safeParse(input)
+            if (result.success) {
+              return { value: result.data }
+            }
+            return new TestValidationError(result.error.issues)
+          },
+        },
+      },
+      ({ search }) => {
+        if (typeof search !== 'string') {
+          throw new TestValidationError([
+            { message: 'search must be a string' },
+          ])
+        }
+        return { search }
+      },
+      {
+        parse: ({ search }) => {
+          if (typeof search !== 'string') {
+            throw new TestValidationError([
+              { message: 'search must be a string' },
+            ])
+          }
+          return { search }
+        },
+      },
+    ]
+
+    describe.each(testCases)('search param validation', (validateSearch) => {
+      it('does not throw an error when the search param is valid', async () => {
+        let errorSpy: Error | undefined
+        const rootRoute = createRootRoute({
+          validateSearch,
+          errorComponent: ({ error }) => {
+            errorSpy = error
+          },
+        })
+
+        const history = createMemoryHistory({
+          initialEntries: ['/search?search=foo'],
+        })
+        const router = createRouter({ routeTree: rootRoute, history })
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+
+        expect(errorSpy).toBeUndefined()
+      })
+
+      it('throws an error when the search param is not valid', async () => {
+        let errorSpy: Error | undefined
+        const rootRoute = createRootRoute({
+          validateSearch,
+          errorComponent: ({ error }) => {
+            errorSpy = error
+          },
+        })
+
+        const history = createMemoryHistory({ initialEntries: ['/search'] })
+        const router = createRouter({ routeTree: rootRoute, history })
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+
+        expect(errorSpy).toBeInstanceOf(SearchParamError)
+        expect(errorSpy?.cause).toBeInstanceOf(TestValidationError)
+      })
     })
   })
 })
