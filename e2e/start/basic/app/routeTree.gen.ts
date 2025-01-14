@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as UsersImport } from './routes/users'
+import { Route as StreamImport } from './routes/stream'
 import { Route as StatusImport } from './routes/status'
 import { Route as ServerFnsImport } from './routes/server-fns'
 import { Route as SearchParamsImport } from './routes/search-params'
@@ -46,6 +47,12 @@ import { Route as RedirectTargetServerFnViaBeforeLoadImport } from './routes/red
 const UsersRoute = UsersImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const StreamRoute = StreamImport.update({
+  id: '/stream',
+  path: '/stream',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -301,6 +308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatusImport
       parentRoute: typeof rootRoute
     }
+    '/stream': {
+      id: '/stream'
+      path: '/stream'
+      fullPath: '/stream'
+      preLoaderRoute: typeof StreamImport
+      parentRoute: typeof rootRoute
+    }
     '/users': {
       id: '/users'
       path: '/users'
@@ -519,6 +533,7 @@ export interface FileRoutesByFullPath {
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
+  '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -549,6 +564,7 @@ export interface FileRoutesByTo {
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
+  '/stream': typeof StreamRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts': typeof PostsIndexRoute
@@ -579,6 +595,7 @@ export interface FileRoutesById {
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
+  '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
@@ -613,6 +630,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/server-fns'
     | '/status'
+    | '/stream'
     | '/users'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -642,6 +660,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/server-fns'
     | '/status'
+    | '/stream'
     | '/posts/$postId'
     | '/users/$userId'
     | '/posts'
@@ -670,6 +689,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/server-fns'
     | '/status'
+    | '/stream'
     | '/users'
     | '/_layout/_layout-2'
     | '/posts/$postId'
@@ -703,6 +723,7 @@ export interface RootRouteChildren {
   SearchParamsRoute: typeof SearchParamsRoute
   ServerFnsRoute: typeof ServerFnsRoute
   StatusRoute: typeof StatusRoute
+  StreamRoute: typeof StreamRoute
   UsersRoute: typeof UsersRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   RedirectIndexRoute: typeof RedirectIndexRoute
@@ -721,6 +742,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchParamsRoute: SearchParamsRoute,
   ServerFnsRoute: ServerFnsRoute,
   StatusRoute: StatusRoute,
+  StreamRoute: StreamRoute,
   UsersRoute: UsersRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
@@ -748,6 +770,7 @@ export const routeTree = rootRoute
         "/search-params",
         "/server-fns",
         "/status",
+        "/stream",
         "/users",
         "/redirect/$target",
         "/redirect/",
@@ -793,6 +816,9 @@ export const routeTree = rootRoute
     },
     "/status": {
       "filePath": "status.tsx"
+    },
+    "/stream": {
+      "filePath": "stream.tsx"
     },
     "/users": {
       "filePath": "users.tsx",

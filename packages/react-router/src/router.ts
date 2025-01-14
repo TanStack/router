@@ -6,6 +6,7 @@ import {
 import { Store, batch } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
+import jsesc from 'jsesc'
 import { rootRouteId } from './root'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -3100,7 +3101,7 @@ export class Router<
       `<script class='tsr-once'>${script}${
         process.env.NODE_ENV === 'development' && (opts?.logScript ?? true)
           ? `; console.info(\`Injected From Server:
-${script}\`)`
+${jsesc(script, { quotes: 'backtick' })}\`)`
           : ''
       }; if (typeof __TSR__ !== 'undefined') __TSR__.cleanScripts()</script>`,
     )
