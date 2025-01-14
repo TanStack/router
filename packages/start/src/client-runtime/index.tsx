@@ -27,5 +27,3 @@ export const createClientRpc: CreateClientRpcFn = (functionId) => {
     functionId,
   })
 }
-
-export { serverFnFetcher }
