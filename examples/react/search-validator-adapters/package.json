@@ -10,25 +10,25 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.62.3",
+    "@tanstack/react-query": "^5.64.1",
     "@tanstack/react-router": "^1.95.6",
     "@tanstack/arktype-adapter": "^1.95.6",
     "@tanstack/router-devtools": "^1.95.6",
     "@tanstack/router-plugin": "^1.95.6",
     "@tanstack/valibot-adapter": "^1.95.6",
     "@tanstack/zod-adapter": "^1.95.6",
-    "arktype": "2.0.0-rc.26",
+    "arktype": "2.0.0-rc.33",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "valibot": "1.0.0-beta.9",
-    "zod": "^3.23.8"
+    "valibot": "1.0.0-beta.11",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3",
+    "vite": "^6.0.7",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0"
   }
