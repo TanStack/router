@@ -1263,9 +1263,12 @@ export class Router<
             undefined,
           ]
         } catch (err: any) {
-          const searchParamError = new SearchParamError(err.message, {
-            cause: err,
-          })
+          let searchParamError = err
+          if (!(err instanceof SearchParamError)) {
+            searchParamError = new SearchParamError(err.message, {
+              cause: err,
+            })
+          }
 
           if (opts?.throwOnError) {
             throw searchParamError
