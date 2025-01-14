@@ -43,13 +43,8 @@ function addSplitSearchParamToFilename(filename: string) {
 }
 
 function removeSplitSearchParamFromFilename(filename: string) {
-  const [bareFilename, ...searchParams] = filename.split('?')
-  const filenameSearchParams = new URLSearchParams(searchParams.join('&'))
-  filenameSearchParams.delete(splitPrefix)
-  if (filenameSearchParams.size === 0) {
-    return bareFilename!
-  }
-  return `${bareFilename}?${filenameSearchParams.toString()}`
+  const [bareFilename] = filename.split('?')
+  return bareFilename!
 }
 
 export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {

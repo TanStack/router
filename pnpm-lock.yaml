@@ -23,7 +23,7 @@ overrides:
   '@tanstack/valibot-adapter': workspace:*
   '@tanstack/arktype-adapter': workspace:*
   '@tanstack/start': workspace:*
-  '@tanstack/start-vite-plugin': workspace:*
+  '@tanstack/start-plugin': workspace:*
   '@tanstack/eslint-plugin-router': workspace:*
   '@tanstack/server-functions-plugin': workspace:*
   '@tanstack/directive-functions-plugin': workspace:*
@@ -3746,9 +3746,9 @@ importers:
       '@tanstack/server-functions-plugin':
         specifier: workspace:*
         version: link:../server-functions-plugin
-      '@tanstack/start-vite-plugin':
+      '@tanstack/start-plugin':
         specifier: workspace:*
-        version: link:../start-vite-plugin
+        version: link:../start-plugin
       '@vinxi/react':
         specifier: 0.2.5
         version: 0.2.5
@@ -3773,6 +3773,9 @@ importers:
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2
+      ofetch:
+        specifier: ^1.4.1
+        version: 1.4.1
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -3802,7 +3805,7 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
 
-  packages/start-vite-plugin:
+  packages/start-plugin:
     dependencies:
       '@babel/code-frame':
         specifier: 7.26.2
@@ -12825,7 +12828,7 @@ snapshots:
 
   '@rollup/plugin-commonjs@28.0.1(rollup@4.28.0)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.28.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.28.0)
       commondir: 1.0.1
       estree-walker: 2.0.2
       fdir: 6.4.2(picomatch@4.0.2)
@@ -12837,7 +12840,7 @@ snapshots:
 
   '@rollup/plugin-commonjs@28.0.1(rollup@4.29.1)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.29.1)
+      '@rollup/pluginutils': 5.1.4(rollup@4.29.1)
       commondir: 1.0.1
       estree-walker: 2.0.2
       fdir: 6.4.2(picomatch@4.0.2)
@@ -12849,7 +12852,7 @@ snapshots:
 
   '@rollup/plugin-inject@5.0.5(rollup@4.28.0)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.28.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.28.0)
       estree-walker: 2.0.2
       magic-string: 0.30.14
     optionalDependencies:
@@ -12857,19 +12860,19 @@ snapshots:
 
   '@rollup/plugin-json@6.1.0(rollup@4.28.0)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.28.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.28.0)
     optionalDependencies:
       rollup: 4.28.0
 
   '@rollup/plugin-json@6.1.0(rollup@4.29.1)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.29.1)
+      '@rollup/pluginutils': 5.1.4(rollup@4.29.1)
     optionalDependencies:
       rollup: 4.29.1
 
   '@rollup/plugin-node-resolve@15.3.0(rollup@4.28.0)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.28.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.28.0)
       '@types/resolve': 1.20.2
       deepmerge: 4.3.1
       is-module: 1.0.0
@@ -12879,7 +12882,7 @@ snapshots:
 
   '@rollup/plugin-node-resolve@15.3.0(rollup@4.29.1)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.29.1)
+      '@rollup/pluginutils': 5.1.4(rollup@4.29.1)
       '@types/resolve': 1.20.2
       deepmerge: 4.3.1
       is-module: 1.0.0
@@ -12889,14 +12892,14 @@ snapshots:
 
   '@rollup/plugin-replace@6.0.1(rollup@4.28.0)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.28.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.28.0)
       magic-string: 0.30.14
     optionalDependencies:
       rollup: 4.28.0
 
   '@rollup/plugin-replace@6.0.1(rollup@4.29.1)':
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.29.1)
+      '@rollup/pluginutils': 5.1.4(rollup@4.29.1)
       magic-string: 0.30.14
     optionalDependencies:
       rollup: 4.29.1
@@ -12924,6 +12927,14 @@ snapshots:
       picomatch: 4.0.2
     optionalDependencies:
       rollup: 4.29.1
+
+  '@rollup/pluginutils@5.1.4(rollup@4.28.0)':
+    dependencies:
+      '@types/estree': 1.0.6
+      estree-walker: 2.0.2
+      picomatch: 4.0.2
+    optionalDependencies:
+      rollup: 4.28.0
 
   '@rollup/pluginutils@5.1.4(rollup@4.29.1)':
     dependencies:
@@ -13839,7 +13850,7 @@ snapshots:
   '@vercel/nft@0.27.7(rollup@4.28.0)':
     dependencies:
       '@mapbox/node-pre-gyp': 1.0.11
-      '@rollup/pluginutils': 5.1.3(rollup@4.28.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.28.0)
       acorn: 8.14.0
       acorn-import-attributes: 1.9.5(acorn@8.14.0)
       async-sema: 3.1.1
@@ -18589,7 +18600,7 @@ snapshots:
 
   unimport@3.14.3(rollup@4.28.0):
     dependencies:
-      '@rollup/pluginutils': 5.1.3(rollup@4.28.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.28.0)
       acorn: 8.14.0
       escape-string-regexp: 5.0.0
       estree-walker: 3.0.3

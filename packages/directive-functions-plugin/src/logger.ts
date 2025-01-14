@@ -52,7 +52,7 @@ export function logDiff(oldStr: string, newStr: string) {
 
   if (output) {
     console.log('\nDiff:')
-    console.log(output)
+    console.log(output + '\n\n')
   } else {
     console.log('No changes')
   }

@@ -5,7 +5,9 @@ import { compileStartOutput } from './compilers'
 import { logDiff } from './logger'
 import type { Plugin } from 'vite'
 
-const debug = Boolean(process.env.TSR_VITE_DEBUG)
+const debug =
+  process.env.TSR_VITE_DEBUG &&
+  ['true', 'start-plugin'].includes(process.env.TSR_VITE_DEBUG)
 
 export type TanStackStartViteOptions = {
   env: 'server' | 'ssr' | 'client'
@@ -19,9 +21,9 @@ const transformFuncs = [
   'createIsomorphicFn',
 ]
 const tokenRegex = new RegExp(transformFuncs.join('|'))
-const eitherFuncRegex = new RegExp(
-  `(function ${transformFuncs.join('|function ')})`,
-)
+// const eitherFuncRegex = new RegExp(
+//   `(function ${transformFuncs.join('|function ')})`,
+// )
 
 export function TanStackStartVitePlugin(
   opts: TanStackStartViteOptions,
@@ -40,11 +42,11 @@ export function TanStackStartVitePlugin(
       id = fileURLToPath(url).replace(/\\/g, '/')
 
       const includesToken = tokenRegex.test(code)
-      const includesEitherFunc = eitherFuncRegex.test(code)
+      // const includesEitherFunc = eitherFuncRegex.test(code)
 
       if (
-        !includesToken ||
-        includesEitherFunc
+        !includesToken
+        // includesEitherFunc
         // /node_modules/.test(id)
       ) {
         return null
@@ -52,7 +54,7 @@ export function TanStackStartVitePlugin(
 
       if (code.includes('@react-refresh')) {
         throw new Error(
-          `We detected that the '@vitejs/plugin-react' was passed before '@tanstack/start-vite-plugin'. Please make sure that '@tanstack/router-vite-plugin' is passed before '@vitejs/plugin-react' and try again: 
+          `We detected that the '@vitejs/plugin-react' was passed before '@tanstack/start-plugin'. Please make sure that '@tanstack/router-vite-plugin' is passed before '@vitejs/plugin-react' and try again: 
 e.g.
 
 plugins: [
@@ -63,7 +65,7 @@ plugins: [
         )
       }
 
-      if (debug) console.info('Compiling Start: ', id)
+      if (debug) console.info(`${opts.env} Compiling Start: `, id)
 
       const compiled = compileStartOutput({
         code,
@@ -74,6 +76,7 @@ plugins: [
 
       if (debug) {
         logDiff(code, compiled.code)
+        console.log('Output:\n', compiled.code + '\n\n')
       }
 
       return compiled

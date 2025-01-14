@@ -16,7 +16,11 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
-    externalDeps: ['@tanstack/start/router-manifest', 'tsr:server-fn-manifest'],
+    externalDeps: [
+      '@tanstack/start/client',
+      '@tanstack/start/router-manifest',
+      'tsr:server-fn-manifest',
+    ],
     entry: [
       './src/client/index.tsx',
       './src/server/index.tsx',

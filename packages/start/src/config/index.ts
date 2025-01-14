@@ -5,13 +5,14 @@ import { fileURLToPath } from 'node:url'
 import viteReact from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import { TanStackStartVitePlugin } from '@tanstack/start-vite-plugin'
+import { TanStackStartVitePlugin } from '@tanstack/start-plugin'
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
 import { createTanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
+import { createFetch } from 'ofetch'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
@@ -113,7 +114,28 @@ export function defineConfig(
 
   const viteConfig = getUserViteConfig(opts.vite)
 
-  const TanStackServerFnsPlugin = createTanStackServerFnPlugin()
+  const TanStackServerFnsPlugin = createTanStackServerFnPlugin({
+    // This is the ID that will be available to look up and import
+    // our server function manifest and resolve its module
+    manifestVirtualImportId: 'tsr:server-fn-manifest',
+    client: {
+      getRuntimeCode: () =>
+        `import { createClientRpc } from '@tanstack/start/client-runtime'`,
+      replacer: (opts) => `createClientRpc(${JSON.stringify(opts.functionId)})`,
+    },
+    ssr: {
+      getRuntimeCode: () =>
+        `import { createSsrRpc } from '@tanstack/start/ssr-runtime'`,
+      replacer: (opts) =>
+        `createSsrRpc(${JSON.stringify(opts.functionId)}, ${opts.fn})`,
+    },
+    server: {
+      getRuntimeCode: () =>
+        `import { createServerRpc } from '@tanstack/start/server-runtime'`,
+      replacer: (opts) =>
+        `createServerRpc(${JSON.stringify(opts.functionId)}, ${opts.fn})`,
+    },
+  })
 
   let vinxiApp = createApp({
     server: {
@@ -156,8 +178,8 @@ export function defineConfig(
                 ...(clientViteConfig.userConfig.define || {}),
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
-                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv('TSS_SERVER_FN_BASE', serverBase),
               },
               ssr: mergeSsrOptions([
                 viteConfig.userConfig.ssr,
@@ -171,10 +193,6 @@ export function defineConfig(
                 // include: ['@tanstack/start/server-runtime'],
               },
             }),
-            TanStackStartVitePlugin({
-              env: 'client',
-            }),
-            TanStackServerFnsPlugin.client,
             TanStackRouterVite({
               ...tsrConfig,
               enableRouteGeneration: true,
@@ -183,6 +201,10 @@ export function defineConfig(
                 ...tsrConfig.experimental,
               },
             }),
+            TanStackStartVitePlugin({
+              env: 'client',
+            }),
+            TanStackServerFnsPlugin.client,
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
             viteReact(opts.react),
@@ -216,8 +238,8 @@ export function defineConfig(
                 ...(ssrViteConfig.userConfig.define || {}),
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
-                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv('TSS_SERVER_FN_BASE', serverBase),
               },
               ssr: mergeSsrOptions([
                 viteConfig.userConfig.ssr,
@@ -234,10 +256,6 @@ export function defineConfig(
                 // include: ['@tanstack/start/server-runtime'],
               },
             }),
-            TanStackStartVitePlugin({
-              env: 'server',
-            }),
-            TanStackServerFnsPlugin.ssr,
             TanStackRouterVite({
               ...tsrConfig,
               enableRouteGeneration: false,
@@ -246,6 +264,10 @@ export function defineConfig(
                 ...tsrConfig.experimental,
               },
             }),
+            TanStackStartVitePlugin({
+              env: 'ssr',
+            }),
+            TanStackServerFnsPlugin.ssr,
             tsrRoutesManifest({
               tsrConfig,
               clientBase,
@@ -279,8 +301,8 @@ export function defineConfig(
                 ...(serverViteConfig.userConfig.define || {}),
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
-                ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv('TSS_SERVER_FN_BASE', serverBase),
               },
               ssr: mergeSsrOptions([
                 viteConfig.userConfig.ssr,
@@ -294,10 +316,6 @@ export function defineConfig(
                 // include: ['@tanstack/start/server-runtime'],
               },
             }),
-            TanStackStartVitePlugin({
-              env: 'server',
-            }),
-            TanStackServerFnsPlugin.server,
             TanStackRouterVite({
               ...tsrConfig,
               enableRouteGeneration: false,
@@ -306,6 +324,10 @@ export function defineConfig(
                 ...tsrConfig.experimental,
               },
             }),
+            TanStackStartVitePlugin({
+              env: 'server',
+            }),
+            TanStackServerFnsPlugin.server,
             // TODO: RSCS - remove this
             // resolve: {
             //   conditions: [],
@@ -364,8 +386,8 @@ export function defineConfig(
               ...(apiViteConfig.userConfig.define || {}),
               ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
               ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
-              ...injectDefineEnv('TSS_SERVER_BASE', serverBase),
               ...injectDefineEnv('TSS_API_BASE', apiBase),
+              ...injectDefineEnv('TSS_SERVER_FN_BASE', serverBase),
             },
           }),
           TanStackRouterVite({
@@ -383,17 +405,31 @@ export function defineConfig(
     })
   }
 
+  // Because Vinxi doesn't use the normal nitro dev server, it doesn't
+  // supply $fetch during dev. We need to hook into the dev server creation,
+  // nab the proper utils from the custom nitro instance that is used
+  // during dev and supply the $fetch to app.
+  // Hopefully and likely, this will just get removed when we move to
+  // Nitro directly.
+  vinxiApp.hooks.hook('app:dev:nitro:config', (devServer) => {
+    vinxiApp.hooks.hook(
+      'app:dev:server:created',
+      ({ devApp: { localFetch } }) => {
+        const $fetch = createFetch({
+          fetch: localFetch,
+          defaults: {
+            baseURL: devServer.nitro.options.runtimeConfig.app.baseURL,
+          },
+        })
+
+        // @ts-expect-error
+        globalThis.$fetch = $fetch
+      },
+    )
+  })
+
   return vinxiApp
 }
-
-// function resolveRelativePath(p: string) {
-//   return path.relative(
-//     process.cwd(),
-//     resolve(p, import.meta.url)
-//       .split('://')
-//       .at(-1)!,
-//   )
-// }
 
 function importToProjectRelative(p: string) {
   const resolved = fileURLToPath(resolve(p, import.meta.url))

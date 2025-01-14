@@ -5,18 +5,26 @@ import { logDiff } from './logger'
 import type { CompileDirectivesOpts, DirectiveFn } from './compilers'
 import type { Plugin } from 'vite'
 
-const debug = Boolean(process.env.TSR_VITE_DEBUG)
+const debug =
+  process.env.TSR_VITE_DEBUG &&
+  ['true', 'directives-functions-plugin'].includes(process.env.TSR_VITE_DEBUG)
 
-export type { DirectiveFn, CompileDirectivesOpts } from './compilers'
+export type {
+  DirectiveFn,
+  CompileDirectivesOpts,
+  ReplacerFn,
+} from './compilers'
 
 export type DirectiveFunctionsViteOptions = Pick<
   CompileDirectivesOpts,
   'directive' | 'directiveLabel' | 'getRuntimeCode' | 'replacer'
   // | 'devSplitImporter'
->
+> & {
+  envLabel: string
+}
 
 const createDirectiveRx = (directive: string) =>
-  new RegExp(`"${directive}"|'${directive}'`, 'g')
+  new RegExp(`"${directive}"|'${directive}'`, 'gm')
 
 export function TanStackDirectiveFunctionsPlugin(
   opts: DirectiveFunctionsViteOptions & {
@@ -38,11 +46,11 @@ export function TanStackDirectiveFunctionsPlugin(
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (!directiveRx.test(code)) {
+      if (!code.match(directiveRx)) {
         return null
       }
 
-      if (debug) console.info('Compiling Directives: ', id)
+      if (debug) console.info(`${opts.envLabel}: Compiling Directives: `, id)
 
       const { compiledResult, directiveFnsById } = compileDirectives({
         ...opts,
@@ -55,7 +63,10 @@ export function TanStackDirectiveFunctionsPlugin(
 
       opts.onDirectiveFnsById?.(directiveFnsById)
 
-      if (debug) logDiff(code, compiledResult.code)
+      if (debug) {
+        logDiff(code, compiledResult.code)
+        console.log('Output:\n', compiledResult.code + '\n\n')
+      }
 
       return compiledResult
     },

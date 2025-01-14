@@ -16,7 +16,6 @@ export interface DirectiveFn {
   nodePath: SupportedFunctionPath
   functionName: string
   functionId: string
-  referenceName: string
   extractedFilename: string
   filename: string
   chunkName: string
@@ -29,7 +28,7 @@ export type SupportedFunctionPath =
 
 export type ReplacerFn = (opts: {
   fn: string
-  splitImportFn: string
+  extractedFilename: string
   filename: string
   functionId: string
   isSourceFn: boolean
@@ -65,16 +64,17 @@ export function parseAst(opts: ParseAstOptions): ParseResult<babel.types.File> {
   })
 }
 
+function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
+  return `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
+}
+
 export function compileDirectives(opts: CompileDirectivesOpts) {
-  const [_, ...searchParamsStr] = opts.filename.split('?')
-  const searchParams = new URLSearchParams(searchParamsStr.join('&'))
-  const directiveSplitParam = `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
-  const isDirectiveSplitParam = searchParams.has(directiveSplitParam)
+  const directiveSplitParam = buildDirectiveSplitParam(opts)
+  const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
 
   const ast = parseAst(opts)
   const directiveFnsById = findDirectives(ast, {
     ...opts,
-    isSourceFile: isDirectiveSplitParam,
     directiveSplitParam,
   })
 
@@ -84,13 +84,13 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
 
   // Add runtime code if there are directives
   if (Object.keys(directiveFnsById).length > 0) {
-    // Add a vite import to the top of the file
-    ast.program.body.unshift(
-      babel.types.importDeclaration(
-        [babel.types.importDefaultSpecifier(babel.types.identifier('vite'))],
-        babel.types.stringLiteral('vite'),
-      ),
-    )
+    // // Add a vite import to the top of the file
+    // ast.program.body.unshift(
+    //   babel.types.importDeclaration(
+    //     [babel.types.importDefaultSpecifier(babel.types.identifier('vite'))],
+    //     babel.types.stringLiteral('vite'),
+    //   ),
+    // )
 
     if (opts.getRuntimeCode) {
       const runtimeImport = babel.template.statement(
@@ -113,8 +113,8 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
         undefined,
         Object.values(directiveFnsByFunctionName).map((fn) =>
           babel.types.exportSpecifier(
-            babel.types.identifier(fn.referenceName),
-            babel.types.identifier(fn.referenceName),
+            babel.types.identifier(fn.functionName),
+            babel.types.identifier(fn.functionName),
           ),
         ),
       ),
@@ -229,6 +229,7 @@ function makeFileLocationUrlSafe(location: string): string {
     .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
     .replace(/_{2,}/g, '_') // Collapse multiple underscores
     .replace(/^_|_$/g, '') // Trim leading/trailing underscores
+    .replace(/_--/g, '--') // Clean up the joiner
 }
 
 function makeIdentifierSafe(identifier: string): string {
@@ -246,12 +247,11 @@ export function findDirectives(
     directive: string
     directiveLabel: string
     replacer?: ReplacerFn
-    isSourceFile?: boolean
     directiveSplitParam: string
   },
 ) {
   const directiveFnsById: Record<string, DirectiveFn> = {}
-  const functionNameCounts: Record<string, number> = {}
+  const functionNameSet: Set<string> = new Set()
 
   let programPath: babel.NodePath<babel.types.Program>
 
@@ -361,16 +361,25 @@ export function findDirectives(
     // Find the nearest variable name
     let functionName = findNearestVariableName(directiveFn, opts.directiveLabel)
 
-    // Count the number of functions with the same baseLabel
-    functionNameCounts[functionName] =
-      (functionNameCounts[functionName] || 0) + 1
+    const incrementFunctionNameVersion = (functionName: string) => {
+      const [realReferenceName, count] = functionName.split(/_(\d+)$/)
+      const resolvedCount = Number(count || '0')
+      const suffix = `_${resolvedCount + 1}`
+      return makeIdentifierSafe(realReferenceName!) + suffix
+    }
 
-    // If there are multiple functions with the same fnName,
-    // append a unique identifier to the functionId
-    functionName =
-      functionNameCounts[functionName]! > 1
-        ? `${functionName}_${functionNameCounts[functionName]! - 1}`
-        : functionName
+    while (functionNameSet.has(functionName)) {
+      functionName = incrementFunctionNameVersion(functionName)
+    }
+
+    functionNameSet.add(functionName)
+
+    while (programPath.scope.hasBinding(functionName)) {
+      functionName = incrementFunctionNameVersion(functionName)
+      programPath.scope.crawl()
+    }
+
+    functionNameSet.add(functionName)
 
     // Move the function to program level while preserving its position
     // in the program body
@@ -381,27 +390,10 @@ export function findDirectives(
 
     const topParentIndex = programBody.indexOf(topParent.node as any)
 
-    // Determine the reference name for the function
-    let referenceName = makeIdentifierSafe(functionName)
-
-    // Crawl the scope to refresh all the bindings
-    programPath.scope.crawl()
-
-    // If we find this referece in the scope, we need to make it unique
-    while (programPath.scope.hasBinding(referenceName)) {
-      const [realReferenceName, count] = referenceName.split(/_(\d+)$/)
-      referenceName = realReferenceName + `_${Number(count || '0') + 1}`
-    }
-
-    // if (referenceCounts.get(referenceName) === 0) {
-
-    // referenceName += `_${(referenceCounts.get(referenceName) || 0) + 1}`
-
     // If the reference name came from the function declaration,
     // // We need to update the function name to match the reference name
     // if (babel.types.isFunctionDeclaration(directiveFn.node)) {
-    //   console.log('updating function name', directiveFn.node.id!.name)
-    //   directiveFn.node.id!.name = referenceName
+    //   directiveFn.node.id!.name = functionName
     // }
 
     // If the function has a parent that isn't the program,
@@ -414,14 +406,14 @@ export function findDirectives(
         0,
         babel.types.variableDeclaration('const', [
           babel.types.variableDeclarator(
-            babel.types.identifier(referenceName),
+            babel.types.identifier(functionName),
             babel.types.toExpression(directiveFn.node as any),
           ),
         ]),
       )
 
       // If it's an exported named function, we need to swap it with an
-      // export const originalFunctionName = referenceName
+      // export const originalFunctionName = functionName
       if (
         babel.types.isExportNamedDeclaration(directiveFn.parentPath.node) &&
         (babel.types.isFunctionDeclaration(directiveFn.node) ||
@@ -436,7 +428,7 @@ export function findDirectives(
             babel.types.variableDeclaration('const', [
               babel.types.variableDeclarator(
                 babel.types.identifier(originalFunctionName),
-                babel.types.identifier(referenceName),
+                babel.types.identifier(functionName),
               ),
             ]),
           ),
@@ -444,7 +436,7 @@ export function findDirectives(
 
         directiveFn.remove()
       } else {
-        directiveFn.replaceWith(babel.types.identifier(referenceName))
+        directiveFn.replaceWith(babel.types.identifier(functionName))
       }
 
       directiveFn = programPath.get(
@@ -452,36 +444,32 @@ export function findDirectives(
       ) as SupportedFunctionPath
     }
 
-    const functionId = makeFileLocationUrlSafe(
-      `${opts.filename}--${functionName}`.replace(opts.root, ''),
-    )
+    const [baseFilename, ..._searchParams] = opts.filename.split('?')
+    const searchParams = new URLSearchParams(_searchParams.join('&'))
+    searchParams.set(opts.directiveSplitParam, '')
 
-    const [filename] = opts.filename.split('?')
-    // const extractedFilename = `${filename}?${opts.directiveSplitParam}=${functionName}`
-    const extractedFilename = `${filename}?${opts.directiveSplitParam}`
+    const extractedFilename = `${baseFilename}?${searchParams.toString()}`
+
+    const functionId = makeFileLocationUrlSafe(
+      `${baseFilename}--${functionName}`.replace(opts.root, ''),
+    )
 
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {
       const replacer = opts.replacer({
         fn: '$$fn$$',
-        splitImportFn: '$$splitImportFn$$',
-        // extractedFilename,
-        filename: filename!,
+        extractedFilename,
+        filename: opts.filename,
         functionId,
-        isSourceFn: !!opts.isSourceFile,
+        isSourceFn: !!opts.directiveSplitParam,
       })
 
       const replacement = babel.template.expression(replacer, {
         placeholderPattern: false,
-        placeholderWhitelist: new Set(['$$fn$$', '$$splitImportFn$$']),
+        placeholderWhitelist: new Set(['$$fn$$']),
       })({
         ...(replacer.includes('$$fn$$')
           ? { $$fn$$: babel.types.toExpression(directiveFn.node) }
-          : {}),
-        ...(replacer.includes('$$splitImportFn$$')
-          ? {
-              $$splitImportFn$$: `(...args) => import(${JSON.stringify(extractedFilename)}).then(module => module.default(...args))`,
-            }
           : {}),
       })
 
@@ -492,8 +480,7 @@ export function findDirectives(
     // our map of directives
     directiveFnsById[functionId] = {
       nodePath: directiveFn,
-      referenceName,
-      functionName: functionName || '',
+      functionName,
       functionId,
       extractedFilename,
       filename: opts.filename,

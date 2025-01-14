@@ -1,6 +1,6 @@
 import { isAbsolute, join, normalize } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '../logger'
 import { getConfig } from './config'
 import {
@@ -11,6 +11,10 @@ import { splitPrefix } from './constants'
 
 import type { Config } from './config'
 import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin'
+
+const debug =
+  process.env.TSR_VITE_DEBUG &&
+  ['true', 'router-plugin'].includes(process.env.TSR_VITE_DEBUG)
 
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
@@ -62,8 +66,6 @@ const PLUGIN_NAME = 'unplugin:router-code-splitter'
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}, { framework }) => {
-  const debug = Boolean(process.env.TSR_VITE_DEBUG)
-
   let ROOT: string = process.cwd()
   let userConfig = options as Config
 
@@ -78,6 +80,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     if (debug) {
       logDiff(code, compiledVirtualRoute.code)
+      console.log('Output:\n', compiledVirtualRoute.code)
     }
 
     return compiledVirtualRoute
@@ -94,6 +97,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     if (debug) {
       logDiff(code, compiledReferenceRoute.code)
+      console.log('Output:\n', compiledReferenceRoute.code + '\n\n')
     }
 
     return compiledReferenceRoute

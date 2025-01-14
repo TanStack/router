@@ -1,8 +1,8 @@
 import {
   defaultTransformer,
-  invariant,
   isNotFound,
   isRedirect,
+  warning,
 } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import { globalMiddleware } from './registerGlobalMiddleware'
@@ -230,10 +230,10 @@ export function createServerFn<
       })
 
       if (!extractedFn.url) {
-        console.info(extractedFn)
-        invariant(
+        console.warn(extractedFn)
+        warning(
           false,
-          `createServerFn must be called with a function that has a 'url' property. Ensure that the @tanstack/start-vite-plugin is ordered **before** the @tanstack/server-functions-plugin.`,
+          `createServerFn must be called with a function that has a 'url' property. Ensure that the @tanstack/start-plugin is ordered **before** the @tanstack/server-functions-plugin.`,
         )
       }
 

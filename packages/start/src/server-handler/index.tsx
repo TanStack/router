@@ -1,6 +1,4 @@
 /// <reference types="vinxi/types/server" />
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import {
   defaultTransformer,
   isNotFound,
@@ -15,11 +13,19 @@ import {
   toWebRequest,
 } from 'vinxi/http'
 // @ts-expect-error
-import serverFnManifest from 'tsr:server-fn-manifest'
-import type { DirectiveFn } from '../../../directive-functions-plugin/dist/esm/compilers'
+import _serverFnManifest from 'tsr:server-fn-manifest'
 import type { H3Event } from 'vinxi/server'
 
 export default eventHandler(handleServerAction)
+
+const serverFnManifest = _serverFnManifest as Record<
+  string,
+  {
+    functionName: string
+    extractedFilename: string
+    importer: () => Promise<any>
+  }
+>
 
 async function handleServerAction(event: H3Event) {
   return handleServerRequest(toWebRequest(event), event)
@@ -28,7 +34,7 @@ async function handleServerAction(event: H3Event) {
 function sanitizeBase(base: string | undefined) {
   if (!base) {
     throw new Error(
-      '🚨 process.env.TSS_SERVER_BASE is required in start/server-handler/index',
+      '🚨 process.env.TSS_SERVER_FN_BASE is required in start/server-handler/index',
     )
   }
 
@@ -41,7 +47,7 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
   // extract the serverFnId from the url as host/_server/:serverFnId
   // Define a regex to match the path and extract the :thing part
   const regex = new RegExp(
-    `/${sanitizeBase(process.env.TSS_SERVER_BASE)}/([^/?#]+)`,
+    `${sanitizeBase(process.env.TSS_SERVER_FN_BASE)}/([^/?#]+)`,
   )
 
   // Execute the regex
@@ -55,7 +61,7 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
   }
 
-  const serverFnInfo = serverFnManifest[serverFnId] as DirectiveFn | undefined
+  const serverFnInfo = serverFnManifest[serverFnId]
 
   if (!serverFnInfo) {
     console.log('serverFnManifest', serverFnManifest)
@@ -66,36 +72,46 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
     console.info(`\nServerFn Request: ${serverFnId}`)
 
   let fnModule: undefined | { [key: string]: any }
-  let moduleUrl = serverFnInfo.extractedFilename
-  // In dev, we (for now) use Vinxi to get the "server" server-side router
-  // Then we use that router's devServer.ssrLoadModule to get the serverFn
+
   if (process.env.NODE_ENV === 'development') {
     fnModule = await (globalThis as any).app
       .getRouter('server')
       .internals.devServer.ssrLoadModule(serverFnInfo.extractedFilename)
   } else {
-    // In prod, we use the serverFn's chunkName to get the serverFn
-    const router = (globalThis as any).app.getRouter('server')
-    const filePath = join(
-      router.outDir,
-      router.base,
-      serverFnInfo.chunkName + '.mjs',
-    )
-    moduleUrl = pathToFileURL(filePath).toString()
-    fnModule = await import(/* @vite-ignore */ moduleUrl)
+    fnModule = await serverFnInfo.importer()
   }
+
+  // let moduleUrl = serverFnInfo.extractedFilename
+  // // In dev, we (for now) use Vinxi to get the "server" server-side router
+  // // Then we use that router's devServer.ssrLoadModule to get the serverFn
+  // if (process.env.NODE_ENV === 'development') {
+  //   fnModule = await (globalThis as any).app
+  //     .getRouter('server')
+  //     .internals.devServer.ssrLoadModule(serverFnInfo.extractedFilename)
+  // } else {
+  //   // In prod, we use the serverFn's chunkName to get the serverFn
+  //   const router = (globalThis as any).app.getRouter('server')
+  //   const filePath = join(
+  //     router.outDir,
+  //     router.base,
+  //     serverFnInfo.chunkName + '.mjs',
+  //   )
+  //   moduleUrl = pathToFileURL(filePath).toString()
+  //   fnModule = await import(/* @vite-ignore */ moduleUrl)
+  // }
 
   if (!fnModule) {
     console.log('serverFnManifest', serverFnManifest)
     throw new Error('Server function module not resolved for ' + serverFnId)
   }
 
-  const action = fnModule[serverFnInfo.referenceName]
+  const action = fnModule[serverFnInfo.functionName]
 
   if (!action) {
     console.log('serverFnManifest', serverFnManifest)
+    console.log('fnModule', fnModule)
     throw new Error(
-      `Server function module export not resolved module: ${moduleUrl} for serverFn ID: ${serverFnId}`,
+      `Server function module export not resolved for serverFn ID: ${serverFnId}`,
     )
   }
 
