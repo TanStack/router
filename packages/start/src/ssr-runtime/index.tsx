@@ -1,7 +1,6 @@
 import invariant from 'tiny-invariant'
 import { serverFnFetcher } from '../client'
 import type { CreateSsrRpcFn } from '@tanstack/server-functions-plugin'
-import 'vinxi/http'
 
 const serverBase = process.env.TSS_SERVER_FN_BASE
 

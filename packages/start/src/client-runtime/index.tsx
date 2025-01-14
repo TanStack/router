@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant'
-import { serverFnFetcher } from '@tanstack/start/client'
+import { serverFnFetcher } from '../client'
 import type { CreateClientRpcFn } from '@tanstack/server-functions-plugin'
 
 const serverBase = process.env.TSS_SERVER_FN_BASE
