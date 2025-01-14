@@ -19,6 +19,7 @@ import {
   createRouter,
   useNavigate,
 } from '../src'
+import type { StandardSchemaValidator } from '../src/validators'
 import type {
   AnyRoute,
   AnyRouter,
@@ -26,11 +27,6 @@ import type {
   ValidatorFn,
   ValidatorObj,
 } from '../src'
-import {
-  AnyStandardSchemaValidateFailure,
-  AnyStandardSchemaValidateSuccess,
-  StandardSchemaValidator,
-} from '../src/validators'
 
 afterEach(() => {
   vi.resetAllMocks()
