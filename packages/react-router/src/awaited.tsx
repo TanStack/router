@@ -1,10 +1,14 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
+import {
+  TSR_DEFERRED_PROMISE,
+  defaultDeserializeError,
+  defaultSerializeError,
+  defer,
+  isServerSideError,
+} from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { defaultSerializeError } from './router'
-import { TSR_DEFERRED_PROMISE, defer } from './defer'
-import { defaultDeserializeError, isServerSideError } from './isServerSideError'
-import type { DeferredPromise } from './defer'
+import type { DeferredPromise } from '@tanstack/router-core'
 
 export type AwaitOptions<T> = {
   promise: Promise<T>

@@ -5,7 +5,8 @@ import type {
 } from './structuralSharing'
 import type { AllParams, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { Expand, StrictOrFrom } from './utils'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
   TRouter extends AnyRouter,

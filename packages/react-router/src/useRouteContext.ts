@@ -1,7 +1,8 @@
 import { useMatch } from './useMatch'
 import type { AllContext, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { Expand, StrictOrFrom } from './utils'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseRouteContextBaseOptions<
   TRouter extends AnyRouter,

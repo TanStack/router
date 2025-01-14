@@ -7,30 +7,30 @@ import { Store, batch } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import jsesc from 'jsesc'
-import { rootRouteId } from './root'
-import { defaultParseSearch, defaultStringifySearch } from './searchParams'
-import {
-  createControlledPromise,
-  deepEqual,
-  functionalUpdate,
-  last,
-  pick,
-  replaceEqualDeep,
-} from './utils'
 import {
   cleanPath,
+  createControlledPromise,
+  deepEqual,
+  defaultParseSearch,
+  defaultSerializeError,
+  defaultStringifySearch,
+  defaultTransformer,
+  functionalUpdate,
   interpolatePath,
   joinPaths,
+  last,
   matchPathname,
   parsePathname,
+  pick,
+  replaceEqualDeep,
   resolvePath,
+  rootRouteId,
   trimPath,
   trimPathLeft,
   trimPathRight,
-} from './path'
+} from '@tanstack/router-core'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import { defaultTransformer } from './transformer'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -39,9 +39,27 @@ import type {
   RouterHistory,
 } from '@tanstack/history'
 import type { NoInfer } from '@tanstack/react-store'
-import type { Manifest } from './manifest'
+
 import type {
   AnyContext,
+  AnySchema,
+  AnyValidator,
+  CommitLocationOptions,
+  ControlledPromise,
+  Manifest,
+  NonNullableUpdater,
+  ParsedLocation,
+  PickAsRequired,
+  ResolveRelativePath,
+  RouterTransformer,
+  SearchMiddleware,
+  SearchParser,
+  SearchSerializer,
+  TrailingSlashOption,
+  Updater,
+  ViewTransitionOptions,
+} from '@tanstack/router-core'
+import type {
   AnyRoute,
   AnyRouteWithContext,
   BeforeLoadContextOptions,
@@ -52,8 +70,8 @@ import type {
   RouteComponent,
   RouteContextOptions,
   RouteMask,
-  SearchMiddleware,
 } from './route'
+
 import type {
   FullSearchSchema,
   RouteById,
@@ -62,29 +80,17 @@ import type {
   RoutesByPath,
 } from './routeInfo'
 import type {
-  ControlledPromise,
-  NonNullableUpdater,
-  PickAsRequired,
-  Updater,
-} from './utils'
-import type {
   AnyRouteMatch,
   MakeRouteMatch,
   MakeRouteMatchUnion,
   MatchRouteOptions,
 } from './Matches'
-import type { ParsedLocation } from './location'
-import type { SearchParser, SearchSerializer } from './searchParams'
-import type {
-  BuildLocationFn,
-  CommitLocationOptions,
-  NavigateFn,
-} from './RouterProvider'
+
+import type { BuildLocationFn, NavigateFn } from './RouterProvider'
+
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
-import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
-import type { RouterTransformer } from './transformer'
-import type { AnySchema, AnyValidator } from './validators'
+import type { NavigateOptions, ToOptions } from './link'
 
 export interface TSRGlobalMatch {
   index: number
@@ -192,8 +198,6 @@ export type RouterContextOptions<TRouteTree extends AnyRoute> =
     : {
         context: InferRouterContext<TRouteTree>
       }
-
-export type TrailingSlashOption = 'always' | 'never' | 'preserve'
 
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
@@ -578,10 +582,6 @@ export type DehydratedRouteMatch = Pick<
 export interface DehydratedRouter {
   state: DehydratedRouterState
   manifest?: Manifest
-}
-
-export interface ViewTransitionOptions {
-  types: Array<string>
 }
 
 export type RouterConstructorOptions<
@@ -3249,24 +3249,5 @@ export function getInitialRouterState(
     pendingMatches: [],
     cachedMatches: [],
     statusCode: 200,
-  }
-}
-
-export function defaultSerializeError(err: unknown) {
-  if (err instanceof Error) {
-    const obj = {
-      name: err.name,
-      message: err.message,
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      ;(obj as any).stack = err.stack
-    }
-
-    return obj
-  }
-
-  return {
-    data: err,
   }
 }

@@ -1,9 +1,129 @@
+export { default as invariant } from 'tiny-invariant'
+export { default as warning } from 'tiny-warning'
+
+export {
+  defer,
+  TSR_DEFERRED_PROMISE,
+  isMatch,
+  isServerSideError,
+  defaultDeserializeError,
+  joinPaths,
+  cleanPath,
+  trimPathLeft,
+  trimPathRight,
+  trimPath,
+  resolvePath,
+  parsePathname,
+  interpolatePath,
+  matchPathname,
+  removeBasepath,
+  matchByPath,
+  encode,
+  decode,
+  rootRouteId,
+  defaultSerializeError,
+  defaultParseSearch,
+  defaultStringifySearch,
+  parseSearchWith,
+  stringifySearchWith,
+  escapeJSON, // SSR
+  pick,
+  functionalUpdate,
+  replaceEqualDeep,
+  isPlainObject,
+  isPlainArray,
+  deepEqual,
+  shallow,
+  createControlledPromise,
+  retainSearchParams,
+  stripSearchParams,
+} from '@tanstack/router-core'
+
+export type {
+  DeferredPromiseState,
+  DeferredPromise,
+  ParsedLocation,
+  ParsePathParams,
+  RemoveTrailingSlashes,
+  RemoveLeadingSlashes,
+  ActiveOptions,
+  Segment,
+  ResolveRelativePath,
+  RootRouteId,
+  AnyPathParams,
+  ResolveParams,
+  SearchSchemaInput,
+  AnyContext,
+  RouteContext,
+  PreloadableObj,
+  RoutePathOptions,
+  StaticDataRouteOption,
+  RoutePathOptionsIntersection,
+  UpdatableStaticRouteOption,
+  MetaDescriptor,
+  RouteLinkEntry,
+  ParseParamsFn,
+  SearchFilter,
+  ResolveId,
+  InferFullSearchSchema,
+  InferFullSearchSchemaInput,
+  ErrorRouteProps,
+  ErrorComponentProps,
+  NotFoundRouteProps,
+  TrimPath,
+  TrimPathLeft,
+  TrimPathRight,
+  ParseSplatParams,
+  SplatParams,
+  StringifyParamsFn,
+  ParamsOptions,
+  InferAllParams,
+  InferAllContext,
+  LooseReturnType,
+  LooseAsyncReturnType,
+  ContextReturnType,
+  ContextAsyncReturnType,
+  ResolveLoaderData,
+  ResolveRouteContext,
+  SearchSerializer,
+  SearchParser,
+  TrailingSlashOption,
+  ExtractedEntry,
+  ExtractedStream,
+  ExtractedPromise,
+  StreamState,
+  Manifest,
+  RouterManagedTag,
+  ControlledPromise,
+  Constrain,
+  Expand,
+  MergeAll,
+  Assign,
+  ResolveValidatorInput,
+  ResolveValidatorOutput,
+  AnyValidator,
+  DefaultValidator,
+  ValidatorFn,
+  AnySchema,
+  AnyValidatorAdapter,
+  AnyValidatorFn,
+  AnyValidatorObj,
+  ResolveValidatorInputFn,
+  ResolveValidatorOutputFn,
+  ResolveSearchValidatorInput,
+  ResolveSearchValidatorInputFn,
+  Validator,
+  ValidatorAdapter,
+  ValidatorObj,
+} from '@tanstack/router-core'
+
 export {
   createHistory,
   createBrowserHistory,
   createHashHistory,
   createMemoryHistory,
 } from '@tanstack/history'
+
 export type {
   BlockerFn,
   HistoryLocation,
@@ -11,16 +131,11 @@ export type {
   ParsedPath,
   HistoryState,
 } from '@tanstack/history'
-export { default as invariant } from 'tiny-invariant'
-export { default as warning } from 'tiny-warning'
 
 export { useAwaited, Await } from './awaited'
 export type { AwaitOptions } from './awaited'
 
 export { ScriptOnce } from './ScriptOnce'
-
-export { defer, TSR_DEFERRED_PROMISE } from './defer'
-export type { DeferredPromiseState, DeferredPromise } from './defer'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
 
@@ -44,9 +159,6 @@ export { lazyRouteComponent } from './lazyRouteComponent'
 
 export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {
-  ParsePathParams,
-  RemoveTrailingSlashes,
-  RemoveLeadingSlashes,
   InferDescendantToPaths,
   RelativeToPath,
   RelativeToParentPath,
@@ -61,9 +173,7 @@ export type {
   SearchParamOptions,
   PathParamOptions,
   ToPathOption,
-  ActiveOptions,
   LinkOptions,
-  ResolveRelativePath,
   UseLinkPropsOptions,
   ActiveLinkOptions,
   LinkProps,
@@ -73,8 +183,6 @@ export type {
   MakeOptionalPathParams,
 } from './link'
 
-export type { ParsedLocation } from './location'
-
 export {
   Matches,
   useMatchRoute,
@@ -82,8 +190,8 @@ export {
   useMatches,
   useParentMatches,
   useChildMatches,
-  isMatch,
 } from './Matches'
+
 export type {
   RouteMatch,
   AnyRouteMatch,
@@ -98,36 +206,14 @@ export { matchContext } from './matchContext'
 
 export { Match, Outlet } from './Match'
 
-export { isServerSideError, defaultDeserializeError } from './isServerSideError'
-
 export { useMatch } from './useMatch'
 
 export { useLoaderDeps } from './useLoaderDeps'
 
 export { useLoaderData } from './useLoaderData'
 
-export {
-  joinPaths,
-  cleanPath,
-  trimPathLeft,
-  trimPathRight,
-  trimPath,
-  resolvePath,
-  parsePathname,
-  interpolatePath,
-  matchPathname,
-  removeBasepath,
-  matchByPath,
-} from './path'
-export type { Segment } from './path'
-
-export { encode, decode } from './qss'
-
 export { redirect, isRedirect } from './redirects'
 export type { AnyRedirect, Redirect, ResolvedRedirect } from './redirects'
-
-export { rootRouteId } from './root'
-export type { RootRouteId } from './root'
 
 export {
   RouteApi,
@@ -142,29 +228,12 @@ export {
   NotFoundRoute,
 } from './route'
 export type {
-  AnyPathParams,
-  ResolveParams,
-  SearchSchemaInput,
-  AnyContext,
-  RouteContext,
-  PreloadableObj,
-  RoutePathOptions,
-  StaticDataRouteOption,
-  RoutePathOptionsIntersection,
   RouteOptions,
   FileBaseRouteOptions,
   BaseRouteOptions,
   UpdatableRouteOptions,
-  UpdatableStaticRouteOption,
-  MetaDescriptor,
-  RouteLinkEntry,
-  ParseParamsFn,
   RouteLoaderFn,
   LoaderFnContext,
-  SearchFilter,
-  ResolveId,
-  InferFullSearchSchema,
-  InferFullSearchSchemaInput,
   ResolveFullSearchSchema,
   ResolveFullSearchSchemaInput,
   AnyRoute,
@@ -172,42 +241,24 @@ export type {
   AnyRootRoute,
   ResolveFullPath,
   RouteMask,
-  ErrorRouteProps,
-  ErrorComponentProps,
-  NotFoundRouteProps,
   ReactNode,
   SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,
   ErrorRouteComponent,
   NotFoundRouteComponent,
-  TrimPath,
-  TrimPathLeft,
-  TrimPathRight,
   RootRouteOptions,
   AnyRouteWithContext,
-  ParseSplatParams,
-  SplatParams,
-  StringifyParamsFn,
-  ParamsOptions,
   FullSearchSchemaOption,
   RouteContextFn,
   RouteContextOptions,
   BeforeLoadFn,
   BeforeLoadContextOptions,
   ContextOptions,
-  InferAllParams,
-  InferAllContext,
-  LooseReturnType,
-  LooseAsyncReturnType,
-  ContextReturnType,
-  ContextAsyncReturnType,
   RouteContextParameter,
   BeforeLoadContextParameter,
   ResolveAllContext,
-  ResolveLoaderData,
   ResolveAllParamsFromParent,
-  ResolveRouteContext,
 } from './route'
 
 export type {
@@ -233,15 +284,14 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-  defaultSerializeError,
 } from './router'
+
 export type {
   Register,
   AnyRouter,
   RegisteredRouter,
   HydrationCtx,
   RouterContextOptions,
-  TrailingSlashOption,
   RouterOptions,
   RouterErrorSerializer,
   RouterState,
@@ -259,7 +309,6 @@ export type {
   ClientExtractedEntry,
   ClientExtractedPromise,
   ControllablePromise,
-  StreamState,
   TSRGlobal,
   TSRGlobalMatch,
 } from './router'
@@ -281,23 +330,14 @@ export {
 } from './scroll-restoration'
 export type { ScrollRestorationOptions } from './scroll-restoration'
 
-export {
-  defaultParseSearch,
-  defaultStringifySearch,
-  parseSearchWith,
-  stringifySearchWith,
-} from './searchParams'
-export type { SearchSerializer, SearchParser } from './searchParams'
-
-export { defaultTransformer } from './transformer'
+export { defaultTransformer } from '@tanstack/router-core'
 export type {
   RouterTransformer,
-  TransformerParse,
   TransformerStringify,
   DefaultSerializable,
-  DefaultTransformerParse,
   DefaultTransformerStringify,
-} from './transformer'
+} from '@tanstack/router-core'
+export type { TransformerParse, DefaultTransformerParse } from './transformer'
 
 export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
@@ -324,16 +364,8 @@ export { useLocation } from './useLocation'
 export { useCanGoBack } from './useCanGoBack'
 
 export {
-  escapeJSON, // SSR
   useLayoutEffect, // SSR
-  pick,
-  functionalUpdate,
-  replaceEqualDeep,
-  isPlainObject,
-  isPlainArray,
-  deepEqual,
   useStableCallback,
-  shallow,
 } from './utils'
 
 export {
@@ -343,37 +375,5 @@ export {
   DefaultGlobalNotFound,
 } from './not-found'
 export type { NotFoundError } from './not-found'
-
-export type { Manifest, RouterManagedTag } from './manifest'
-
-export { createControlledPromise } from './utils'
-export type {
-  ControlledPromise,
-  Constrain,
-  Expand,
-  MergeAll,
-  Assign,
-} from './utils'
-
-export type {
-  ResolveValidatorInput,
-  ResolveValidatorOutput,
-  AnyValidator,
-  DefaultValidator,
-  ValidatorFn,
-  AnySchema,
-  AnyValidatorAdapter,
-  AnyValidatorFn,
-  AnyValidatorObj,
-  ResolveValidatorInputFn,
-  ResolveValidatorOutputFn,
-  ResolveSearchValidatorInput,
-  ResolveSearchValidatorInputFn,
-  Validator,
-  ValidatorAdapter,
-  ValidatorObj,
-} from './validators'
-
-export { retainSearchParams, stripSearchParams } from './searchMiddleware'
 
 export * from './typePrimitives'
