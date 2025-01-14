@@ -96,7 +96,7 @@ test('invoking a server function with custom response status code', async ({
       )
       resolve()
     })
-    })
+  })
   await requestPromise
 })
 
