@@ -16,7 +16,6 @@ export {
   type CompiledFetcherFn,
   type Fetcher,
   type RscStream,
-  type FetcherImpl,
   type FetcherData,
   type FetcherBaseOptions,
   type ServerFn,
