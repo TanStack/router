@@ -4274,7 +4274,6 @@ describe('search middleware', () => {
       }),
       search: {
         middlewares: [
-          // @ts-expect-error we cannot use zodValidator here to due to circular dependency
           // this means we cannot get the correct input type for this schema
           stripSearchParams({ foo: 'default' }),
           retainSearchParams(true),
