@@ -68,6 +68,7 @@
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "@tanstack/react-store": "^0.7.0",
+    "@tanstack/router-core": "workspace:^",
     "jsesc": "^3.1.0",
     "tiny-invariant": "^1.3.3",
     "tiny-warning": "^1.0.3"

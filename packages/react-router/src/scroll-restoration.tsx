@@ -1,8 +1,7 @@
 import * as React from 'react'
+import { functionalUpdate } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { functionalUpdate } from './utils'
-import type { ParsedLocation } from './location'
-import type { NonNullableUpdater } from './utils'
+import type { NonNullableUpdater, ParsedLocation } from '@tanstack/router-core'
 
 const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect

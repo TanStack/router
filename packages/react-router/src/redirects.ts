@@ -1,7 +1,7 @@
 import type { NavigateOptions } from './link'
 import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { PickAsRequired } from './utils'
+import type { PickAsRequired } from '@tanstack/router-core'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 

@@ -2,14 +2,16 @@ import * as React from 'react'
 import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
 import type { NavigateOptions, ToOptions } from './link'
-import type { ParsedLocation } from './location'
+import type {
+  ParsedLocation,
+  ViewTransitionOptions,
+} from '@tanstack/router-core'
 import type { RoutePaths } from './routeInfo'
 import type {
   AnyRouter,
   RegisteredRouter,
   Router,
   RouterOptions,
-  ViewTransitionOptions,
 } from './router'
 
 export interface CommitLocationOptions {

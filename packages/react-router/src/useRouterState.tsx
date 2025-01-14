@@ -1,7 +1,7 @@
 import { useStore } from '@tanstack/react-store'
 import { useRef } from 'react'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { replaceEqualDeep } from './utils'
 import type {
   StructuralSharingOption,
   ValidateSelected,

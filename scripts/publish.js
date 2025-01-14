@@ -13,6 +13,10 @@ await publish({
       packageDir: 'packages/history',
     },
     {
+      name: '@tanstack/router-core',
+      packageDir: 'packages/router-core',
+    },
+    {
       name: '@tanstack/react-router',
       packageDir: 'packages/react-router',
     },
