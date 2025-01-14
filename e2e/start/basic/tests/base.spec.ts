@@ -244,15 +244,9 @@ test('Server function can correctly send and receive FormData', async ({
   ).toContainText(expected)
 })
 
-test('streaming loader data', async ({
-  page,
-}) => {
+test('streaming loader data', async ({ page }) => {
   await page.goto('/stream')
 
-  await expect(
-    page.getByTestId('promise-data'),
-  ).toContainText('promise-data')
-  await expect(
-    page.getByTestId('stream-data'),
-  ).toContainText('stream-data')
+  await expect(page.getByTestId('promise-data')).toContainText('promise-data')
+  await expect(page.getByTestId('stream-data')).toContainText('stream-data')
 })
