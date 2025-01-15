@@ -34,7 +34,7 @@ test('can navigate to the route', async () => {
   }
 
   const search = type({
-    'search?': 'string = "default"',
+    search: 'string = "default"',
   })
 
   const arkTypeRoute = createRoute({
