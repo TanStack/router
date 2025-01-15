@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start",
-  "version": "1.95.1",
+  "version": "1.97.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -82,16 +82,6 @@
         "default": "./dist/cjs/api/index.cjs"
       }
     },
-    "./client-runtime": {
-      "import": {
-        "types": "./dist/esm/client-runtime/index.d.ts",
-        "default": "./dist/esm/client-runtime/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/client-runtime/index.d.cts",
-        "default": "./dist/cjs/client-runtime/index.cjs"
-      }
-    },
     "./config": {
       "import": {
         "types": "./dist/esm/config/index.d.ts",
@@ -104,22 +94,32 @@
         "default": "./dist/esm/router-manifest/index.js"
       }
     },
+    "./client-runtime": {
+      "import": {
+        "types": "./dist/esm/client-runtime/index.d.ts",
+        "default": "./dist/esm/client-runtime/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/client-runtime/index.d.cts",
+        "default": "./dist/cjs/client-runtime/index.cjs"
+      }
+    },
     "./server-runtime": {
       "import": {
         "types": "./dist/esm/server-runtime/index.d.ts",
         "default": "./dist/esm/server-runtime/index.js"
       }
     },
-    "./react-server-runtime": {
-      "import": {
-        "types": "./dist/esm/react-server-runtime/index.d.ts",
-        "default": "./dist/esm/react-server-runtime/index.js"
-      }
-    },
     "./server-handler": {
       "import": {
         "types": "./dist/esm/server-handler/index.d.ts",
         "default": "./dist/esm/server-handler/index.js"
+      }
+    },
+    "./ssr-runtime": {
+      "import": {
+        "types": "./dist/esm/ssr-runtime/index.d.ts",
+        "default": "./dist/esm/ssr-runtime/index.js"
       }
     },
     "./package.json": "./package.json"
@@ -137,7 +137,8 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/start-vite-plugin": "workspace:^",
+    "@tanstack/server-functions-plugin": "workspace:^",
+    "@tanstack/start-plugin": "workspace:^",
     "@vinxi/react": "0.2.5",
     "@vinxi/react-server-dom": "^0.0.3",
     "@vinxi/server-components": "0.5.0",
@@ -146,13 +147,14 @@
     "import-meta-resolve": "^4.1.0",
     "isbot": "^5.1.17",
     "jsesc": "^3.0.2",
+    "ofetch": "^1.4.1",
     "tiny-invariant": "^1.3.3",
     "vinxi": "0.5.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/jsesc": "^3.0.3",
     "@testing-library/react": "^16.1.0",
+    "@types/jsesc": "^3.0.3",
     "nitropack": "^2.10.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

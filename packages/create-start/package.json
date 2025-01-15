@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/create-start",
-  "version": "1.95.1",
+  "version": "1.97.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tim O'Connell",
   "license": "MIT",
@@ -15,7 +15,7 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "bin": {
-    "create-router": "index.js"
+    "create-start": "index.js"
   },
   "scripts": {
     "dev": "BUILD_ENV=development unbuild --stub --watch",

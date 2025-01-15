@@ -8,8 +8,11 @@ export const defaultRenderHandler: HandlerCallback<AnyRouter> = ({
   responseHeaders,
 }) => {
   try {
-    const html = ReactDOMServer.renderToString(<StartServer router={router} />)
-
+    let html = ReactDOMServer.renderToString(<StartServer router={router} />)
+    html = html.replace(
+      `</body>`,
+      `${router.injectedHtml.map((d) => d()).join('')}</body>`,
+    )
     return new Response(`<!DOCTYPE html>${html}`, {
       status: router.state.statusCode,
       headers: responseHeaders,

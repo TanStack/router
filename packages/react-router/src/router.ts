@@ -6,6 +6,7 @@ import {
 import { Store, batch } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
+import jsesc from 'jsesc'
 import { rootRouteId } from './root'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -35,6 +36,7 @@ import type * as React from 'react'
 import type {
   HistoryLocation,
   HistoryState,
+  ParsedHistoryState,
   RouterHistory,
 } from '@tanstack/history'
 import type { NoInfer } from '@tanstack/react-store'
@@ -533,13 +535,13 @@ export interface BuildNextOptions {
   params?: true | Updater<unknown>
   search?: true | Updater<unknown>
   hash?: true | Updater<string>
-  state?: true | NonNullableUpdater<HistoryState>
+  state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
   mask?: {
     to?: string | number | null
     params?: true | Updater<unknown>
     search?: true | Updater<unknown>
     hash?: true | Updater<string>
-    state?: true | NonNullableUpdater<HistoryState>
+    state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
     unmaskOnReload?: boolean
   }
   from?: string
@@ -1569,7 +1571,10 @@ export class Router<
       let nextParams =
         (dest.params ?? true) === true
           ? prevParams
-          : { ...prevParams, ...functionalUpdate(dest.params, prevParams) }
+          : {
+              ...prevParams,
+              ...functionalUpdate(dest.params as any, prevParams),
+            }
 
       if (Object.keys(nextParams).length > 0) {
         matchedRoutesResult?.matchedRoutes
@@ -3096,7 +3101,7 @@ export class Router<
       `<script class='tsr-once'>${script}${
         process.env.NODE_ENV === 'development' && (opts?.logScript ?? true)
           ? `; console.info(\`Injected From Server:
-${script}\`)`
+${jsesc(script, { quotes: 'backtick' })}\`)`
           : ''
       }; if (typeof __TSR__ !== 'undefined') __TSR__.cleanScripts()</script>`,
     )

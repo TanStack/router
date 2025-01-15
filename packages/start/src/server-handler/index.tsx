@@ -12,40 +12,108 @@ import {
   getResponseStatus,
   toWebRequest,
 } from 'vinxi/http'
-import { getManifest } from 'vinxi/manifest'
+// @ts-expect-error
+import _serverFnManifest from 'tsr:server-fn-manifest'
 import type { H3Event } from 'vinxi/server'
 
 export default eventHandler(handleServerAction)
+
+const serverFnManifest = _serverFnManifest as Record<
+  string,
+  {
+    functionName: string
+    extractedFilename: string
+    importer: () => Promise<any>
+  }
+>
 
 async function handleServerAction(event: H3Event) {
   return handleServerRequest(toWebRequest(event), event)
 }
 
+function sanitizeBase(base: string | undefined) {
+  if (!base) {
+    throw new Error(
+      '🚨 process.env.TSS_SERVER_FN_BASE is required in start/server-handler/index',
+    )
+  }
+
+  return base.replace(/^\/|\/$/g, '')
+}
+
 export async function handleServerRequest(request: Request, _event?: H3Event) {
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
+  // extract the serverFnId from the url as host/_server/:serverFnId
+  // Define a regex to match the path and extract the :thing part
+  const regex = new RegExp(
+    `${sanitizeBase(process.env.TSS_SERVER_FN_BASE)}/([^/?#]+)`,
+  )
+
+  // Execute the regex
+  const match = url.pathname.match(regex)
+  const serverFnId = match ? match[1] : null
   const search = Object.fromEntries(url.searchParams.entries()) as {
-    _serverFnId?: string
-    _serverFnName?: string
     payload?: any
   }
 
-  const serverFnId = search._serverFnId
-  const serverFnName = search._serverFnName
-
-  if (!serverFnId || !serverFnName) {
-    throw new Error('Invalid request')
+  if (typeof serverFnId !== 'string') {
+    throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
   }
 
-  invariant(typeof serverFnId === 'string', 'Invalid server action')
+  const serverFnInfo = serverFnManifest[serverFnId]
+
+  if (!serverFnInfo) {
+    console.log('serverFnManifest', serverFnManifest)
+    throw new Error('Server function info not found for ' + serverFnId)
+  }
 
   if (process.env.NODE_ENV === 'development')
-    console.info(`ServerFn Request: ${serverFnId} - ${serverFnName}`)
-  if (process.env.NODE_ENV === 'development') console.info()
+    console.info(`\nServerFn Request: ${serverFnId}`)
 
-  const action = (await getManifest('server').chunks[serverFnId]?.import())?.[
-    serverFnName
-  ] as Function
+  let fnModule: undefined | { [key: string]: any }
+
+  if (process.env.NODE_ENV === 'development') {
+    fnModule = await (globalThis as any).app
+      .getRouter('server')
+      .internals.devServer.ssrLoadModule(serverFnInfo.extractedFilename)
+  } else {
+    fnModule = await serverFnInfo.importer()
+  }
+
+  // let moduleUrl = serverFnInfo.extractedFilename
+  // // In dev, we (for now) use Vinxi to get the "server" server-side router
+  // // Then we use that router's devServer.ssrLoadModule to get the serverFn
+  // if (process.env.NODE_ENV === 'development') {
+  //   fnModule = await (globalThis as any).app
+  //     .getRouter('server')
+  //     .internals.devServer.ssrLoadModule(serverFnInfo.extractedFilename)
+  // } else {
+  //   // In prod, we use the serverFn's chunkName to get the serverFn
+  //   const router = (globalThis as any).app.getRouter('server')
+  //   const filePath = join(
+  //     router.outDir,
+  //     router.base,
+  //     serverFnInfo.chunkName + '.mjs',
+  //   )
+  //   moduleUrl = pathToFileURL(filePath).toString()
+  //   fnModule = await import(/* @vite-ignore */ moduleUrl)
+  // }
+
+  if (!fnModule) {
+    console.log('serverFnManifest', serverFnManifest)
+    throw new Error('Server function module not resolved for ' + serverFnId)
+  }
+
+  const action = fnModule[serverFnInfo.functionName]
+
+  if (!action) {
+    console.log('serverFnManifest', serverFnManifest)
+    console.log('fnModule', fnModule)
+    throw new Error(
+      `Server function module export not resolved for serverFn ID: ${serverFnId}`,
+    )
+  }
 
   const response = await (async () => {
     try {

@@ -279,7 +279,7 @@ Server functions can accept `FormData` objects as parameters
 ```tsx
 import { createServerFn } from '@tanstack/start'
 
-export const greetUser = createServerFn()
+export const greetUser = createServerFn({ method: 'POST' })
   .validator((data) => {
     if (!(data instanceof FormData)) {
       throw new Error('Invalid form data')
@@ -627,7 +627,8 @@ While calling a server function from a `loader` or `beforeLoad` route lifecycle,
 To throw a notFound, you can use the `notFound` function exported from the `@tanstack/react-router` package:
 
 ```tsx
-import { createServerFn, notFound } from '@tanstack/start'
+import { notFound } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
 
 const getStuff = createServerFn({ method: 'GET' }).handler(async () => {
   // Randomly return a not found error
@@ -700,8 +701,12 @@ to send the form data to the server function.
 To do this, we can utilize the `url` property of the server function:
 
 ```ts
-const yourFn = createServerFn()
+const yourFn = createServerFn({ method: 'POST' })
   .validator((formData) => {
+    if (!(formData instanceof FormData)) {
+      throw new Error('Invalid form data')
+    }
+
     const name = formData.get('name')
 
     if (!name) {
@@ -739,7 +744,7 @@ to attach the argument to the [`FormData`](https://developer.mozilla.org/en-US/d
 server function:
 
 ```tsx
-const yourFn = createServerFn()
+const yourFn = createServerFn({ method: 'POST' })
   .validator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
