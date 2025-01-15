@@ -232,7 +232,7 @@ function SearchParamBindingComponent() {
   return (
     <div>
       <input
-        id="search-input"
+        name="Filter"
         value={filter}
         onChange={(e) =>
           navigate({

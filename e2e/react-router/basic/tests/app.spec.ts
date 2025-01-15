@@ -45,3 +45,30 @@ test('Navigating to a post page with viewTransition types', async ({
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
+
+test('#3162 - Binding an input to search params with stable cursor position', async ({
+  page,
+}) => {
+  await page
+    .getByRole('link', { name: 'Search Param Binding', exact: true })
+    .click()
+  expect(page.url()).toBe('http://localhost:3000/search-param-binding')
+
+  await page.getByRole('textbox', { name: 'Filter' }).fill('Hello World')
+  expect(page.getByRole('textbox', { name: 'Filter' })).toHaveValue('Hello World')
+  expect(page.url()).toBe('http://localhost:3000/search-param-binding?filter=Hello%20World')
+
+  await page.getByRole('textbox', { name: 'Filter' }).click()
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('ArrowLeft')
+  }
+  await page.keyboard.press('Space')
+  await page.keyboard.press('H')
+  await page.keyboard.press('A')
+  await page.keyboard.press('P')
+  await page.keyboard.press('P')
+  await page.keyboard.press('Y')
+  await page.getByRole('textbox', { name: 'Filter' }).blur()
+
+  expect(page.getByRole('textbox', { name: 'Filter' })).toHaveValue('Hello Happy World')
+  expect(page.url()).toBe('http://localhost:3000/search-param-binding?filter=Hello%20Happy%20World')})
