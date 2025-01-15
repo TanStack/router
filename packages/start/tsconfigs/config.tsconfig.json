@@ -2,6 +2,7 @@
   "extends": "../../../tsconfig.json",
   "include": ["../src/config/index.ts"],
   "compilerOptions": {
+    "rootDir": "../src/config",
     "outDir": "../dist/esm/config",
     "target": "esnext",
     "noEmit": false

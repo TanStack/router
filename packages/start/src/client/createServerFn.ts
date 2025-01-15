@@ -1,8 +1,8 @@
-import invariant from 'tiny-invariant'
 import {
   defaultTransformer,
   isNotFound,
   isRedirect,
+  warning,
 } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import { globalMiddleware } from './registerGlobalMiddleware'
@@ -235,10 +235,13 @@ export function createServerFn<
         serverFn,
       })
 
-      invariant(
-        extractedFn.url,
-        `createServerFn must be called with a function that is marked with the 'use server' pragma. Are you using the @tanstack/start-vite-plugin ?`,
-      )
+      if (!extractedFn.url) {
+        console.warn(extractedFn)
+        warning(
+          false,
+          `createServerFn must be called with a function that has a 'url' property. Ensure that the @tanstack/start-plugin is ordered **before** the @tanstack/server-functions-plugin.`,
+        )
+      }
 
       const resolvedMiddleware = [
         ...(resolvedOptions.middleware || []),

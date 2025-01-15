@@ -83,8 +83,10 @@
       "@tanstack/valibot-adapter": "workspace:*",
       "@tanstack/arktype-adapter": "workspace:*",
       "@tanstack/start": "workspace:*",
-      "@tanstack/start-vite-plugin": "workspace:*",
-      "@tanstack/eslint-plugin-router": "workspace:*"
+      "@tanstack/start-plugin": "workspace:*",
+      "@tanstack/eslint-plugin-router": "workspace:*",
+      "@tanstack/server-functions-plugin": "workspace:*",
+      "@tanstack/directive-functions-plugin": "workspace:*"
     }
   }
 }

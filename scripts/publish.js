@@ -65,8 +65,8 @@ await publish({
       packageDir: 'packages/start',
     },
     {
-      name: '@tanstack/start-vite-plugin',
-      packageDir: 'packages/start-vite-plugin',
+      name: '@tanstack/start-plugin',
+      packageDir: 'packages/start-plugin',
     },
     {
       name: '@tanstack/create-router',
