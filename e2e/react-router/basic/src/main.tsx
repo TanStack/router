@@ -7,6 +7,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useNavigate,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
@@ -58,6 +59,15 @@ function RootComponent() {
           }}
         >
           Layout
+        </Link>{' '}
+        <Link
+          to="/search-param-binding"
+          search={{}}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Search Param Binding
         </Link>{' '}
         <Link
           // @ts-expect-error
@@ -204,11 +214,43 @@ function LayoutBComponent() {
   return <div>I'm layout B!</div>
 }
 
+const searchParamBindingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/search-param-binding',
+  component: SearchParamBindingComponent,
+  validateSearch: (input): { filter?: string } => {
+    return {
+      filter: typeof input.filter === 'string' ? input.filter : undefined,
+    }
+  },
+})
+
+function SearchParamBindingComponent() {
+  const navigate = useNavigate()
+  const { filter } = searchParamBindingRoute.useSearch()
+
+  return (
+    <div>
+      <input
+        id="search-input"
+        value={filter}
+        onChange={(e) =>
+          navigate({
+            to: '.',
+            search: { filter: e.target.value },
+          })
+        }
+      />
+    </div>
+  )
+}
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   layoutRoute.addChildren([
     layout2Route.addChildren([layoutARoute, layoutBRoute]),
   ]),
+  searchParamBindingRoute,
   indexRoute,
 ])
 
