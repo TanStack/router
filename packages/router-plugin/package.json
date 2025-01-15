@@ -123,7 +123,7 @@
     "chokidar": "^3.6.0",
     "diff": "^7.0.0",
     "unplugin": "^1.16.0",
-    "zod": "^3.23.8"
+    "zod": "^3.24.1"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2",
