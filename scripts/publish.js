@@ -69,6 +69,10 @@ await publish({
       packageDir: 'packages/start-plugin',
     },
     {
+      name: '@tanstack/directive-functions-plugin',
+      packageDir: 'packages/directive-functions-plugin',
+    },
+    {
       name: '@tanstack/create-router',
       packageDir: 'packages/create-router',
     },
