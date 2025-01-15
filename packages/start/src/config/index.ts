@@ -126,8 +126,7 @@ export function defineConfig(
     ssr: {
       getRuntimeCode: () =>
         `import { createSsrRpc } from '@tanstack/start/ssr-runtime'`,
-      replacer: (opts) =>
-        `createSsrRpc(${JSON.stringify(opts.functionId)}, ${opts.fn})`,
+      replacer: (opts) => `createSsrRpc(${JSON.stringify(opts.functionId)})`,
     },
     server: {
       getRuntimeCode: () =>
