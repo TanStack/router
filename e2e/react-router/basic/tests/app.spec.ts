@@ -52,13 +52,13 @@ test('#3162 - Binding an input to search params with stable cursor position', as
   await page
     .getByRole('link', { name: 'Search Param Binding', exact: true })
     .click()
-  expect(page.url()).toBe('http://localhost:3000/search-param-binding')
+  expect(page).toHaveURL(/.*\/search-param-binding/)
 
-  await page.getByRole('textbox', { name: 'Filter' }).fill('Hello World')
-  expect(page.getByRole('textbox', { name: 'Filter' })).toHaveValue('Hello World')
-  expect(page.url()).toBe('http://localhost:3000/search-param-binding?filter=Hello%20World')
+  await page.getByTestId('filter').fill('Hello World')
+  expect(page.getByTestId('filter')).toHaveValue('Hello World')
+  expect(page).toHaveURL(/.*\/search-param-binding\?filter=Hello%20World/)
 
-  await page.getByRole('textbox', { name: 'Filter' }).click()
+  await page.getByTestId('filter').click()
   for (let i = 0; i < 5; i++) {
     await page.keyboard.press('ArrowLeft')
   }
@@ -68,7 +68,10 @@ test('#3162 - Binding an input to search params with stable cursor position', as
   await page.keyboard.press('P')
   await page.keyboard.press('P')
   await page.keyboard.press('Y')
-  await page.getByRole('textbox', { name: 'Filter' }).blur()
+  await page.getByTestId('filter').blur()
 
-  expect(page.getByRole('textbox', { name: 'Filter' })).toHaveValue('Hello Happy World')
-  expect(page.url()).toBe('http://localhost:3000/search-param-binding?filter=Hello%20Happy%20World')})
+  expect(page.getByTestId('filter')).toHaveValue('Hello Happy World')
+  expect(page).toHaveURL(
+    /.*\/search-param-binding\?filter=Hello%20Happy%20World/,
+  )
+})
