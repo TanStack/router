@@ -32,11 +32,7 @@ test.describe('redirects', () => {
 
         const requestPromise = new Promise<void>((resolve) => {
           page.on('request', (request) => {
-            if (
-              request
-                .url()
-                .startsWith(`http://localhost:${PORT}/_server/?_serverFnId=`)
-            ) {
+            if (request.url().startsWith(`http://localhost:${PORT}/_server/`)) {
               requestHappened = true
               resolve()
             }

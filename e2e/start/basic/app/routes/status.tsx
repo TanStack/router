@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/start'
 import { setResponseStatus } from 'vinxi/http'
 
-export const helloFn = createServerFn().handler(() => {
+const helloFn = createServerFn().handler(() => {
   setResponseStatus(225, `hello`)
   return {
     hello: 'world',

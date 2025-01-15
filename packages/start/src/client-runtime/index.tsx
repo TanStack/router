@@ -1,22 +1,29 @@
-import { fetcher } from './fetcher'
-import { getBaseUrl } from './getBaseUrl'
-import type { ServerFn } from '../client/createServerFn'
+import invariant from 'tiny-invariant'
+import { serverFnFetcher } from '../client'
+import type { CreateClientRpcFn } from '@tanstack/server-functions-plugin'
 
-export function createServerReference(
-  _fn: ServerFn<any, any, any, any>,
-  id: string,
-  name: string,
-) {
-  // let base = getBaseUrl(import.meta.env.SERVER_BASE_URL, id, name)
-  const base = getBaseUrl(window.location.origin, id, name)
+const serverBase = process.env.TSS_SERVER_FN_BASE
 
-  const proxyFn = (...args: Array<any>) => fetcher(base, args, fetch)
-
-  return Object.assign(proxyFn, {
-    url: base,
-    filename: id,
-    functionId: name,
-  })
+function sanitizeBase(base: string) {
+  return base.replace(/^\/|\/$/g, '')
 }
 
-export { fetcher }
+export const createClientRpc: CreateClientRpcFn = (functionId) => {
+  invariant(
+    serverBase,
+    '🚨A process.env.TSS_SERVER_FN_BASE env variable is required for the server functions client runtime, but was not provided.',
+  )
+
+  const url = `/${sanitizeBase(serverBase)}/${functionId}`
+
+  const clientFn = (...args: Array<any>) => {
+    return serverFnFetcher(url, args, (url, requestInit) =>
+      fetch(url, requestInit),
+    )
+  }
+
+  return Object.assign(clientFn, {
+    url,
+    functionId,
+  })
+}

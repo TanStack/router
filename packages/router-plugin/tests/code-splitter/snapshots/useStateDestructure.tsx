@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('tsr-split:useStateDestructure.tsx?tsr-split');
+const $$splitComponentImporter = () => import('useStateDestructure.tsx?tsr-split');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { startProject } from '~/projects/start';
 import { createFileRoute } from '@tanstack/react-router';

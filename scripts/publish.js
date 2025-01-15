@@ -61,12 +61,20 @@ await publish({
       packageDir: 'packages/react-cross-context',
     },
     {
-      name: '@tanstack/start',
-      packageDir: 'packages/start',
+      name: '@tanstack/directive-functions-plugin',
+      packageDir: 'packages/directive-functions-plugin',
     },
     {
-      name: '@tanstack/start-vite-plugin',
-      packageDir: 'packages/start-vite-plugin',
+      name: '@tanstack/server-functions-plugin',
+      packageDir: 'packages/server-functions-plugin',
+    },
+    {
+      name: '@tanstack/start-plugin',
+      packageDir: 'packages/start-plugin',
+    },
+    {
+      name: '@tanstack/start',
+      packageDir: 'packages/start',
     },
     {
       name: '@tanstack/create-router',

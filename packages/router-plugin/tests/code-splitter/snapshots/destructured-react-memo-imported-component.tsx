@@ -1,6 +1,6 @@
-const $$splitLoaderImporter = () => import('tsr-split:destructured-react-memo-imported-component.tsx?tsr-split');
+const $$splitLoaderImporter = () => import('destructured-react-memo-imported-component.tsx?tsr-split');
 import { lazyFn } from '@tanstack/react-router';
-const $$splitComponentImporter = () => import('tsr-split:destructured-react-memo-imported-component.tsx?tsr-split');
+const $$splitComponentImporter = () => import('destructured-react-memo-imported-component.tsx?tsr-split');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({

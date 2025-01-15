@@ -7,6 +7,8 @@ export const withUseServer = TanStackStart.createServerFn({
 
   return withUseServer.__executeServer(opts);
 }, async function () {
+  'use server';
+
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
   return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));

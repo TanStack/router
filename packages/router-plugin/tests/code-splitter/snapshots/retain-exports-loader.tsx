@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('tsr-split:retain-exports-loader.tsx?tsr-split');
+const $$splitComponentImporter = () => import('retain-exports-loader.tsx?tsr-split');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export function loaderFn() {

@@ -1,6 +1,6 @@
-const $$splitLoaderImporter = () => import('tsr-split:imported-default-component-destructured-loader.tsx?tsr-split');
+const $$splitLoaderImporter = () => import('imported-default-component-destructured-loader.tsx?tsr-split');
 import { lazyFn } from '@tanstack/react-router';
-const $$splitComponentImporter = () => import('tsr-split:imported-default-component-destructured-loader.tsx?tsr-split');
+const $$splitComponentImporter = () => import('imported-default-component-destructured-loader.tsx?tsr-split');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({

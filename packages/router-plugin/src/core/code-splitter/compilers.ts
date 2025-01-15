@@ -37,6 +37,16 @@ interface State {
   splitModulesById: SplitModulesById
 }
 
+function addSplitSearchParamToFilename(filename: string) {
+  const [bareFilename] = filename.split('?')
+  return `${bareFilename}?${splitPrefix}`
+}
+
+function removeSplitSearchParamFromFilename(filename: string) {
+  const [bareFilename] = filename.split('?')
+  return bareFilename!
+}
+
 export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
 
@@ -45,7 +55,9 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
       enter(programPath, programState) {
         const state = programState as unknown as State
 
-        const splitUrl = `${splitPrefix}:${opts.filename}?${splitPrefix}`
+        // We need to extract the existing search params from the filename, if any
+        // and add the splitPrefix to them, then write them back to the filename
+        const splitUrl = addSplitSearchParamToFilename(opts.filename)
 
         /**
          * If the component for the route is being imported from
@@ -251,25 +263,12 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
     },
   })
 
-  if (debug) console.info('')
-  if (debug) console.info('Dead Code Elimination Input 1:')
-  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
-  if (debug) console.info('')
-  if (debug) console.info('')
-  if (debug) console.info('')
-
   deadCodeElimination(ast)
-
-  if (debug) console.info('')
-  if (debug) console.info('Dead Code Elimination Output 1:')
-  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
-  if (debug) console.info('')
-  if (debug) console.info('')
-  if (debug) console.info('')
 
   return generate(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
+    minified: process.env.NODE_ENV === 'production',
   })
 }
 
@@ -490,7 +489,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                       ),
                     ),
                     t.stringLiteral(
-                      opts.filename.split(`?${splitPrefix}`)[0] as string,
+                      removeSplitSearchParamFromFilename(opts.filename),
                     ),
                   ),
                 )
@@ -502,21 +501,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
     },
   })
 
-  if (debug) console.info('')
-  if (debug) console.info('Dead Code Elimination Input 2:')
-  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
-  if (debug) console.info('')
-  if (debug) console.info('')
-  if (debug) console.info('')
-
   deadCodeElimination(ast)
-
-  if (debug) console.info('')
-  if (debug) console.info('Dead Code Elimination Output 2:')
-  if (debug) console.info(generate(ast, { sourceMaps: true }).code)
-  if (debug) console.info('')
-  if (debug) console.info('')
-  if (debug) console.info('')
 
   // if there are exported identifiers, then we need to add a warning
   // to the file to let the user know that the exported identifiers
@@ -543,6 +528,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
   return generate(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
+    minified: process.env.NODE_ENV === 'production',
   })
 }
 

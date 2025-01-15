@@ -16,7 +16,6 @@ export {
   type CompiledFetcherFn,
   type Fetcher,
   type RscStream,
-  type FetcherImpl,
   type FetcherData,
   type FetcherBaseOptions,
   type ServerFn,
@@ -50,3 +49,4 @@ export { StartClient } from './StartClient'
 export { mergeHeaders } from './headers'
 export { renderRsc } from './renderRSC'
 export { useServerFn } from './useServerFn'
+export { serverFnFetcher } from './serverFnFetcher'

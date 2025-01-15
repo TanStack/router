@@ -5,12 +5,12 @@ import {
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
-import type { MiddlewareOptions } from '../client/createServerFn'
+import type { MiddlewareOptions } from './createServerFn'
 
-export async function fetcher(
-  base: string,
+export async function serverFnFetcher(
+  url: string,
   args: Array<any>,
-  handler: (request: Request) => Promise<Response>,
+  handler: (url: string, requestInit: RequestInit) => Promise<Response>,
 ) {
   const _first = args[0]
 
@@ -43,17 +43,20 @@ export async function fetcher(
         }),
       })
 
-      if (encodedPayload) base += `&${encodedPayload}`
+      if (encodedPayload) {
+        if (url.includes('?')) {
+          url += `&${encodedPayload}`
+        } else {
+          url += `?${encodedPayload}`
+        }
+      }
     }
 
-    // Create the request
-    const request = new Request(base, {
+    const handlerResponse = await handler(url, {
       method: first.method,
       headers,
       ...getFetcherRequestOptions(first),
     })
-
-    const handlerResponse = await handler(request)
 
     const response = await handleResponseErrors(handlerResponse)
 
@@ -78,16 +81,16 @@ export async function fetcher(
 
   // If not a custom fetcher, just proxy the arguments
   // through as a POST request
-  const request = new Request(base, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(args),
-  })
-
-  const response = await handleResponseErrors(await handler(request))
+  const response = await handleResponseErrors(
+    await handler(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(args),
+    }),
+  )
 
   // If the response is JSON, return it parsed
   const contentType = response.headers.get('content-type')
