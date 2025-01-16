@@ -670,6 +670,10 @@ export type RouterEvents = {
     pathChanged: boolean
     hrefChanged: boolean
   }
+  onStreamedValue: {
+    type: 'onStreamedValue'
+    key: string
+  }
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -807,7 +811,12 @@ export class Router<
 
     if (typeof document !== 'undefined') {
       ;(window as any).__TSR__ROUTER__ = this
+      this.streamedKeys = new Set<string>(
+        Object.keys(window.__TSR__?.streamedValues || {}),
+      )
     }
+
+    this.subscribe('onStreamedValue', ({ key }) => this.streamedKeys.add(key))
   }
 
   // These are default implementations that can optionally be overridden
@@ -3133,7 +3142,7 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
       'Key has already been streamed: ' + key,
     )
 
-    this.streamedKeys.add(key)
+    this.emit({ type: 'onStreamedValue', key })
     this.injectScript(
       `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`,
     )
