@@ -72,40 +72,81 @@ export const Match = React.memo(function MatchImpl({
     select: (s) => s.loadedAt,
   })
 
-  return (
-    <matchContext.Provider value={matchId}>
-      <ResolvedSuspenseBoundary fallback={pendingElement}>
-        <ResolvedCatchBoundary
-          getResetKey={() => resetKey}
-          errorComponent={routeErrorComponent || ErrorComponent}
-          onCatch={(error, errorInfo) => {
-            // Forward not found errors (we don't want to show the error component for these)
-            if (isNotFound(error)) throw error
-            warning(false, `Error in route match: ${matchId}`)
-            routeOnCatch?.(error, errorInfo)
-          }}
-        >
-          <ResolvedNotFoundBoundary
-            fallback={(error) => {
-              // If the current not found handler doesn't exist or it has a
-              // route ID which doesn't match the current route, rethrow the error
-              if (
-                !routeNotFoundComponent ||
-                (error.routeId && error.routeId !== routeId) ||
-                (!error.routeId && !route.isRoot)
-              )
-                throw error
+  const parentRouteId = useRouterState({
+    select: (s) => {
+      const index = s.matches.findIndex((d) => d.id === matchId)
+      return s.matches[index - 1]?.routeId as string
+    },
+  })
 
-              return React.createElement(routeNotFoundComponent, error as any)
+  return (
+    <>
+      <matchContext.Provider value={matchId}>
+        <ResolvedSuspenseBoundary fallback={pendingElement}>
+          <ResolvedCatchBoundary
+            getResetKey={() => resetKey}
+            errorComponent={routeErrorComponent || ErrorComponent}
+            onCatch={(error, errorInfo) => {
+              // Forward not found errors (we don't want to show the error component for these)
+              if (isNotFound(error)) throw error
+              warning(false, `Error in route match: ${matchId}`)
+              routeOnCatch?.(error, errorInfo)
             }}
           >
-            <MatchInner matchId={matchId} />
-          </ResolvedNotFoundBoundary>
-        </ResolvedCatchBoundary>
-      </ResolvedSuspenseBoundary>
-    </matchContext.Provider>
+            <ResolvedNotFoundBoundary
+              fallback={(error) => {
+                // If the current not found handler doesn't exist or it has a
+                // route ID which doesn't match the current route, rethrow the error
+                if (
+                  !routeNotFoundComponent ||
+                  (error.routeId && error.routeId !== routeId) ||
+                  (!error.routeId && !route.isRoot)
+                )
+                  throw error
+
+                return React.createElement(routeNotFoundComponent, error as any)
+              }}
+            >
+              <MatchInner matchId={matchId} />
+            </ResolvedNotFoundBoundary>
+          </ResolvedCatchBoundary>
+        </ResolvedSuspenseBoundary>
+      </matchContext.Provider>
+      {parentRouteId === rootRouteId ? (
+        <HydrationMismatchHandler matchId={matchId} />
+      ) : null}
+    </>
   )
 })
+
+function HydrationMismatchHandler({ matchId }: { matchId: string }) {
+  const router = useRouter()
+
+  // const [hadHydrationError, setHadHydrationError] = React.useState<
+  //   false | (() => void)
+  // >(false)
+
+  // htmlWasRemoved = () =>
+  //   setHadHydrationError(() => () => setHadHydrationError(false))
+
+  return (
+    <script
+      suppressHydrationWarning
+      // key={
+      //   router.state.resolvedLocation.state.key +
+      //   (hadHydrationError ? 'rehydrated' : '')
+      // }
+      key={router.state.location.state.key}
+      id="tsr-handler"
+      ref={() => {
+        router.emit({
+          type: 'onRendered',
+          toLocation: router.state.location,
+        })
+      }}
+    />
+  )
+}
 
 export const MatchInner = React.memo(function MatchInnerImpl({
   matchId,

@@ -301,6 +301,16 @@ export function createBrowserHistory(opts?: {
         win.history.state,
       ))
 
+  // Ensure there is always a key to start
+  if (!win.history.state?.key) {
+    win.history.replaceState(
+      {
+        key: createRandomKey(),
+      },
+      '',
+    )
+  }
+
   let currentLocation = parseLocation()
   let rollbackLocation: HistoryLocation | undefined
 
