@@ -3792,6 +3792,9 @@ importers:
       '@types/jsesc':
         specifier: ^3.0.3
         version: 3.0.3
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.24.2
       nitropack:
         specifier: ^2.10.4
         version: 2.10.4(typescript@5.7.2)

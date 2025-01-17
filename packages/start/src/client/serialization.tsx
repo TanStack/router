@@ -14,11 +14,31 @@ import invariant from 'tiny-invariant'
 import type {
   AnyRouteMatch,
   AnyRouter,
-  ExtractedEntry,
-  ExtractedPromise,
-  ExtractedStream,
+  ClientExtractedBaseEntry,
+  DeferredPromise,
   StreamState,
+  TSRGlobalMatch,
 } from '@tanstack/react-router'
+import type { ResolvePromiseState } from './tsrScript'
+
+export interface ServerExtractedBaseEntry extends ClientExtractedBaseEntry {
+  dataType: '__beforeLoadContext' | 'loaderData'
+  id: number
+  matchIndex: number
+}
+
+export interface ServerExtractedStream extends ServerExtractedBaseEntry {
+  type: 'stream'
+  streamState: StreamState
+}
+
+export type ServerExtractedEntry =
+  | ServerExtractedStream
+  | ServerExtractedPromise
+export interface ServerExtractedPromise extends ServerExtractedBaseEntry {
+  type: 'promise'
+  promise: DeferredPromise<any>
+}
 
 export function serializeLoaderData(
   dataType: '__beforeLoadContext' | 'loaderData',
@@ -47,7 +67,7 @@ export function serializeLoaderData(
     // If it's a stream, we need to tee it so we can read it multiple times
     if (type === 'stream') {
       const [copy1, copy2] = value.tee()
-      const entry: ExtractedStream = {
+      const entry: ServerExtractedStream = {
         dataType,
         type,
         path,
@@ -59,14 +79,14 @@ export function serializeLoaderData(
       extracted.push(entry)
       return copy1
     } else if (type === 'promise') {
-      defer(value)
-      const entry: ExtractedPromise = {
+      const deferredPromise = defer(value)
+      const entry: ServerExtractedPromise = {
         dataType,
         type,
         path,
         id: extracted.length,
         matchIndex: ctx.match.index,
-        promiseState: value,
+        promise: deferredPromise,
       }
       extracted.push(entry)
     }
@@ -138,14 +158,14 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
 
   const extracted = (fullMatch as any).extracted as
     | undefined
-    | Array<ExtractedEntry>
+    | Array<ServerExtractedEntry>
 
   const [serializedBeforeLoadData, serializedLoaderData] = (
     ['__beforeLoadContext', 'loaderData'] as const
   ).map((dataType) => {
     return extracted
       ? extracted.reduce(
-          (acc: any, entry: ExtractedEntry) => {
+          (acc: any, entry: ServerExtractedEntry) => {
             if (entry.dataType !== dataType) {
               return deepImmutableSetByPath(
                 acc,
@@ -179,7 +199,7 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
               }),
             )
           : {},
-      },
+      } satisfies TSRGlobalMatch,
       {
         isScriptContext: true,
         wrap: true,
@@ -247,7 +267,7 @@ export function replaceBy<T>(
   return obj
 }
 
-function DehydratePromise({ entry }: { entry: ExtractedPromise }) {
+function DehydratePromise({ entry }: { entry: ServerExtractedPromise }) {
   return (
     <div className="tsr-once">
       <React.Suspense fallback={null}>
@@ -257,14 +277,18 @@ function DehydratePromise({ entry }: { entry: ExtractedPromise }) {
   )
 }
 
-function InnerDehydratePromise({ entry }: { entry: ExtractedPromise }) {
+function InnerDehydratePromise({ entry }: { entry: ServerExtractedPromise }) {
   const router = useRouter()
-  if (entry.promiseState[TSR_DEFERRED_PROMISE].status === 'pending') {
-    throw entry.promiseState
+  if (entry.promise[TSR_DEFERRED_PROMISE].status === 'pending') {
+    throw entry.promise
   }
 
   const code = `__TSR__.resolvePromise(${jsesc(
-    { ...entry, value: entry.promiseState[TSR_DEFERRED_PROMISE] },
+    {
+      id: entry.id,
+      matchIndex: entry.matchIndex,
+      promiseState: entry.promise[TSR_DEFERRED_PROMISE],
+    } satisfies ResolvePromiseState,
     {
       isScriptContext: true,
       wrap: true,
@@ -277,7 +301,7 @@ function InnerDehydratePromise({ entry }: { entry: ExtractedPromise }) {
   return <></>
 }
 
-function DehydrateStream({ entry }: { entry: ExtractedStream }) {
+function DehydrateStream({ entry }: { entry: ServerExtractedStream }) {
   invariant(entry.streamState, 'StreamState should be defined')
   const router = useRouter()
 
