@@ -126,7 +126,6 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
   const compiledResult = generate(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
-    minified: process.env.NODE_ENV === 'production',
   })
 
   return {
