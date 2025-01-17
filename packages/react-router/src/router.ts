@@ -606,6 +606,10 @@ export type RouterEvents = {
     type: 'onInjectedHtml'
     promise: Promise<string>
   }
+  onRendered: {
+    type: 'onRendered'
+    toLocation: ParsedLocation
+  }
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
