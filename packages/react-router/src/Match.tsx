@@ -112,37 +112,33 @@ export const Match = React.memo(function MatchImpl({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {parentRouteId === rootRouteId ? (
-        <HydrationMismatchHandler matchId={matchId} />
-      ) : null}
+      {parentRouteId === rootRouteId ? <OnRendered matchId={matchId} /> : null}
     </>
   )
 })
 
-function HydrationMismatchHandler({ matchId }: { matchId: string }) {
+// On Rendered can't happen above the root layout because it actually
+// renders a dummy dom element to track the rendered state of the app.
+// We render a script tag with a key that changes based on the current
+// location state.key. Also, because it's below the root layout, it
+// allows us to fire onRendered events even after a hydration mismatch
+// error that occurred above the root layout (like bad head/link tags,
+// which is common).
+function OnRendered({ matchId }: { matchId: string }) {
   const router = useRouter()
-
-  // const [hadHydrationError, setHadHydrationError] = React.useState<
-  //   false | (() => void)
-  // >(false)
-
-  // htmlWasRemoved = () =>
-  //   setHadHydrationError(() => () => setHadHydrationError(false))
 
   return (
     <script
       suppressHydrationWarning
-      // key={
-      //   router.state.resolvedLocation.state.key +
-      //   (hadHydrationError ? 'rehydrated' : '')
-      // }
-      key={router.state.location.state.key}
+      key={router.state.resolvedLocation.state.key}
       id="tsr-handler"
-      ref={() => {
-        router.emit({
-          type: 'onRendered',
-          toLocation: router.state.location,
-        })
+      ref={(el) => {
+        if (el) {
+          router.emit({
+            type: 'onRendered',
+            toLocation: router.state.location,
+          })
+        }
       }}
     />
   )
@@ -175,25 +171,6 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     const Comp = route.options.component ?? router.options.defaultComponent
     return Comp ? <Comp /> : <Outlet />
   }, [route.options.component, router.options.defaultComponent])
-
-  // function useChangedDiff(value: any) {
-  //   const ref = React.useRef(value)
-  //   const changed = ref.current !== value
-  //   if (changed) {
-  //     console.log(
-  //       'Changed:',
-  //       value,
-  //       Object.fromEntries(
-  //         Object.entries(value).filter(
-  //           ([key, val]) => val !== ref.current[key],
-  //         ),
-  //       ),
-  //     )
-  //   }
-  //   ref.current = value
-  // }
-
-  // useChangedDiff(match)
 
   const RouteErrorComponent =
     (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
