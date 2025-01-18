@@ -11,9 +11,9 @@ test('Smoke - Renders home', async ({ page }) => {
 // Test for scroll related stuff
 ;[
   linkOptions({ to: '/normal-page' }),
-  // linkOptions({to:'/lazy-page'}),
-  // linkOptions({to:'/virtual-page'}),
-  // linkOptions({to:'/lazy-with-loader-page'}),
+  linkOptions({ to: '/lazy-page' }),
+  linkOptions({ to: '/virtual-page' }),
+  linkOptions({ to: '/lazy-with-loader-page' }),
   linkOptions({ to: '/page-with-search', search: { where: 'footer' } }),
 ].forEach((options) => {
   test(`On navigate to ${options.to} (from the header), scroll should be at top`, async ({
