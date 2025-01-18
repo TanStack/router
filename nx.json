@@ -4,15 +4,6 @@
   "nxCloudAccessToken": "ZWJiNDliYTgtNzFiMi00NDg2LWFkZGMtYjIxOWY0MDU1ZGYxfHJlYWQtb25seQ==",
   "useInferencePlugins": false,
   "parallel": 5,
-  "plugins": [
-    {
-      "plugin": "@nx/playwright/plugin",
-      "options": {
-        "ciTargetName": "e2e-ci",
-        "targetName": "e2e"
-      }
-    }
-  ],
   "namedInputs": {
     "sharedGlobals": [
       "{workspaceRoot}/.nvmrc",
