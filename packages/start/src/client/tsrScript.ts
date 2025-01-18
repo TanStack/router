@@ -53,6 +53,7 @@ const __TSR__: StartTSRGlobal = {
               },
             })
             ex.value.controller = controller
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           } else if (ex.type === 'promise') {
             let resolve: ControllablePromise['reject'] | undefined
             let reject: ControllablePromise['reject'] | undefined
