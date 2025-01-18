@@ -2,25 +2,25 @@ import { defaultSerializeError } from './router'
 
 export const TSR_DEFERRED_PROMISE = Symbol.for('TSR_DEFERRED_PROMISE')
 
-export type DeferredPromiseState<T> = {
-  [TSR_DEFERRED_PROMISE]:
-    | {
-        status: 'pending'
-        data?: T
-        error?: unknown
-      }
-    | {
-        status: 'success'
-        data: T
-      }
-    | {
-        status: 'error'
-        data?: T
-        error: unknown
-      }
-}
+export type DeferredPromiseState<T> =
+  | {
+      status: 'pending'
+      data?: T
+      error?: unknown
+    }
+  | {
+      status: 'success'
+      data: T
+    }
+  | {
+      status: 'error'
+      data?: T
+      error: unknown
+    }
 
-export type DeferredPromise<T> = Promise<T> & DeferredPromiseState<T>
+export type DeferredPromise<T> = Promise<T> & {
+  [TSR_DEFERRED_PROMISE]: DeferredPromiseState<T>
+}
 
 export function defer<T>(
   _promise: Promise<T>,

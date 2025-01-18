@@ -32,7 +32,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       const router = createRouter()
 
       // Inject a few of the SSR helpers and defaults
-      router.serializeLoaderData = serializeLoaderData as any
+      router.serializeLoaderData = serializeLoaderData
 
       if (getRouterManifest) {
         router.manifest = getRouterManifest()
