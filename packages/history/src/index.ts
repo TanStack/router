@@ -305,6 +305,7 @@ export function createBrowserHistory(opts?: {
   if (!win.history.state?.key) {
     win.history.replaceState(
       {
+        [stateIndexKey]: 0,
         key: createRandomKey(),
       },
       '',
@@ -625,7 +626,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || { [stateIndexKey]: 0 },
+    state: state || { [stateIndexKey]: 0, key: createRandomKey() },
   }
 }
 
