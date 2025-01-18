@@ -125,6 +125,7 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
 
       const extracted = dMatch.extracted
 
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (extracted) {
         Object.entries(extracted).forEach(([_, ex]: any) => {
           deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
