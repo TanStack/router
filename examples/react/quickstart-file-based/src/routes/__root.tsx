@@ -26,6 +26,14 @@ function RootComponent() {
           }}
         >
           About
+        </Link>{' '}
+        <Link
+          to="/workingpreload"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Hover me!
         </Link>
       </div>
       <hr />
