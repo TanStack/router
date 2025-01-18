@@ -89,6 +89,9 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
+      tinyglobby:
+        specifier: ^0.2.10
+        version: 0.2.10
       typescript:
         specifier: ^5.7.2
         version: 5.7.2
@@ -11763,7 +11766,7 @@ snapshots:
   '@eslint/config-array@0.19.0':
     dependencies:
       '@eslint/object-schema': 2.1.4
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -11773,7 +11776,7 @@ snapshots:
   '@eslint/eslintrc@3.2.0':
     dependencies:
       ajv: 6.12.6
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       espree: 10.3.0
       globals: 14.0.0
       ignore: 5.3.2
@@ -11996,7 +11999,7 @@ snapshots:
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -13203,7 +13206,7 @@ snapshots:
       '@typescript-eslint/types': 8.18.2
       '@typescript-eslint/typescript-estree': 8.18.2(typescript@5.7.2)
       '@typescript-eslint/visitor-keys': 8.18.2
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       eslint: 9.17.0(jiti@2.4.1)
       typescript: 5.7.2
     transitivePeerDependencies:
@@ -13231,7 +13234,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/typescript-estree': 8.18.2(typescript@5.7.2)
       '@typescript-eslint/utils': 8.18.2(eslint@9.17.0(jiti@2.4.1))(typescript@5.7.2)
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       eslint: 9.17.0(jiti@2.4.1)
       ts-api-utils: 1.4.3(typescript@5.7.2)
       typescript: 5.7.2
@@ -13244,7 +13247,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.18.2
       '@typescript-eslint/visitor-keys': 8.18.2
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       fast-glob: 3.3.2
       is-glob: 4.0.3
       minimatch: 9.0.5
@@ -13613,12 +13616,6 @@ snapshots:
   agent-base@6.0.2:
     dependencies:
       debug: 4.4.0(supports-color@9.4.0)
-    transitivePeerDependencies:
-      - supports-color
-
-  agent-base@7.1.1:
-    dependencies:
-      debug: 4.4.0
     transitivePeerDependencies:
       - supports-color
 
@@ -14383,10 +14380,6 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  debug@4.4.0:
-    dependencies:
-      ms: 2.1.3
-
   debug@4.4.0(supports-color@9.4.0):
     dependencies:
       ms: 2.1.3
@@ -14594,7 +14587,7 @@ snapshots:
 
   esbuild-register@3.6.0(esbuild@0.24.2):
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       esbuild: 0.24.2
     transitivePeerDependencies:
       - supports-color
@@ -14742,7 +14735,7 @@ snapshots:
       '@types/doctrine': 0.0.9
       '@typescript-eslint/scope-manager': 8.18.2
       '@typescript-eslint/utils': 8.18.2(eslint@9.17.0(jiti@2.4.1))(typescript@5.7.2)
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       doctrine: 3.0.0
       enhanced-resolve: 5.17.1
       eslint: 9.17.0(jiti@2.4.1)
@@ -14943,7 +14936,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.6
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       escape-string-regexp: 4.0.0
       eslint-scope: 8.2.0
       eslint-visitor-keys: 4.2.0
@@ -15526,8 +15519,8 @@ snapshots:
 
   http-proxy-agent@7.0.2:
     dependencies:
-      agent-base: 7.1.1
-      debug: 4.4.0
+      agent-base: 7.1.1(supports-color@9.4.0)
+      debug: 4.4.0(supports-color@9.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -15557,13 +15550,6 @@ snapshots:
     dependencies:
       agent-base: 6.0.2
       debug: 4.4.0(supports-color@9.4.0)
-    transitivePeerDependencies:
-      - supports-color
-
-  https-proxy-agent@7.0.5:
-    dependencies:
-      agent-base: 7.1.1
-      debug: 4.4.0
     transitivePeerDependencies:
       - supports-color
 
@@ -15838,7 +15824,7 @@ snapshots:
       form-data: 4.0.1
       html-encoding-sniffer: 4.0.0
       http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.5
+      https-proxy-agent: 7.0.5(supports-color@9.4.0)
       is-potential-custom-element-name: 1.0.1
       nwsapi: 2.2.16
       parse5: 7.2.1
@@ -17454,7 +17440,7 @@ snapshots:
     dependencies:
       '@kwsites/file-exists': 1.1.1
       '@kwsites/promise-deferred': 1.1.1
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -17604,7 +17590,7 @@ snapshots:
   stylus@0.64.0:
     dependencies:
       '@adobe/css-tools': 4.3.3
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       glob: 10.4.5
       sax: 1.4.1
       source-map: 0.7.4
@@ -18251,7 +18237,7 @@ snapshots:
   vite-node@2.1.8(@types/node@22.10.2)(jiti@2.4.1)(less@4.1.3)(sass@1.83.4)(stylus@0.64.0)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1):
     dependencies:
       cac: 6.7.14
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       es-module-lexer: 1.5.4
       pathe: 1.1.2
       vite: 6.0.3(@types/node@22.10.2)(jiti@2.4.1)(less@4.1.3)(sass@1.83.4)(stylus@0.64.0)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1)
@@ -18276,7 +18262,7 @@ snapshots:
       '@volar/typescript': 2.4.11
       '@vue/language-core': 2.0.29(typescript@5.7.2)
       compare-versions: 6.1.1
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       kolorist: 1.8.0
       local-pkg: 0.5.1
       magic-string: 0.30.17
@@ -18314,7 +18300,7 @@ snapshots:
 
   vite-tsconfig-paths@5.1.4(typescript@5.7.2)(vite@6.0.3(@types/node@22.10.2)(jiti@2.4.1)(less@4.1.3)(sass@1.83.4)(stylus@0.64.0)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1)):
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       globrex: 0.1.2
       tsconfck: 3.1.4(typescript@5.7.2)
     optionalDependencies:
@@ -18349,7 +18335,7 @@ snapshots:
       '@vitest/spy': 2.1.8
       '@vitest/utils': 2.1.8
       chai: 5.1.2
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       expect-type: 1.1.0
       magic-string: 0.30.17
       pathe: 1.1.2
@@ -18382,7 +18368,7 @@ snapshots:
 
   vue-eslint-parser@9.4.3(eslint@9.17.0(jiti@2.4.1)):
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@9.4.0)
       eslint: 9.17.0(jiti@2.4.1)
       eslint-scope: 7.2.2
       eslint-visitor-keys: 3.4.3

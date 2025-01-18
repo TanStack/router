@@ -42,6 +42,7 @@
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-unused-imports": "^4.1.4",
+    "tinyglobby": "^0.2.10",
     "jsdom": "^25.0.1",
     "nx": "^20.3.0",
     "prettier": "^3.4.2",
