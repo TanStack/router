@@ -301,6 +301,17 @@ export function createBrowserHistory(opts?: {
         win.history.state,
       ))
 
+  // Ensure there is always a key to start
+  if (!win.history.state?.key) {
+    win.history.replaceState(
+      {
+        [stateIndexKey]: 0,
+        key: createRandomKey(),
+      },
+      '',
+    )
+  }
+
   let currentLocation = parseLocation()
   let rollbackLocation: HistoryLocation | undefined
 
@@ -615,7 +626,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || { [stateIndexKey]: 0 },
+    state: state || { [stateIndexKey]: 0, key: createRandomKey() },
   }
 }
 

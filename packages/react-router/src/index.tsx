@@ -275,7 +275,6 @@ export type {
 } from './RouterProvider'
 
 export {
-  useScrollRestoration,
   useElementScrollRestoration,
   ScrollRestoration,
 } from './scroll-restoration'

@@ -682,6 +682,10 @@ export type RouterEvents = {
     pathChanged: boolean
     hrefChanged: boolean
   }
+  onRendered: {
+    type: 'onRendered'
+    toLocation: ParsedLocation
+  }
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]

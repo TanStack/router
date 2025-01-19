@@ -36,7 +36,7 @@ function Root() {
 }
 ```
 
-Just render the `ScrollRestoration` component (or use the `useScrollRestoration` hook) at the root of your application and it will handle everything automatically!
+Just render the `ScrollRestoration` component at the root of your application and it will handle everything automatically!
 
 ## Custom Cache Keys
 
