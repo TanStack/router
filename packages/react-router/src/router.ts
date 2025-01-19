@@ -2713,7 +2713,11 @@ export class Router<
                           }))
                         } catch (err) {
                           if (isResolvedRedirect(err)) {
-                            await this.navigate(err)
+                            await this.navigate({
+                              ...err,
+                              replace: true,
+                              ignoreBlocker: true,
+                            })
                           }
                         }
                       })()
