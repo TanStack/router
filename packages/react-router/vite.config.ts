@@ -6,13 +6,14 @@ import packageJson from './package.json'
 import type { UserConfig } from 'vitest/config'
 
 const config = defineConfig({
-  plugins: [
-    react(),
-  ] as UserConfig['plugins'],
+  plugins: [react()] as UserConfig['plugins'],
   resolve: {
     alias: {
-      '@tanstack/router-core': path.resolve(__dirname, './../node_modules/@tanstack/router-core/src/')
-    }
+      '@tanstack/router-core': path.resolve(
+        __dirname,
+        './../node_modules/@tanstack/router-core/src/',
+      ),
+    },
   },
   test: {
     name: packageJson.name,
@@ -24,9 +25,9 @@ const config = defineConfig({
     alias: [
       {
         find: '@tanstack/router-core',
-        replacement: path.resolve(__dirname, '../router-core/src/index.ts')
-      }
-    ]
+        replacement: path.resolve(__dirname, '../router-core/src/index.ts'),
+      },
+    ],
   },
 })
 
