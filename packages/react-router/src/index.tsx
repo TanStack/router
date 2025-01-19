@@ -323,6 +323,8 @@ export { useLocation } from './useLocation'
 
 export { useCanGoBack } from './useCanGoBack'
 
+export { useCanGoForward } from './useCanGoForward'
+
 export {
   escapeJSON, // SSR
   useLayoutEffect, // SSR
