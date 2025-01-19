@@ -10,7 +10,7 @@ import type { RouteIds } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsOptions, UseParamsResult } from './useParams'
 import type { UseSearchOptions, UseSearchResult } from './useSearch'
-import type { Constrain, ConstrainLiteral } from './utils'
+import type { Constrain, ConstrainLiteral } from '@tanstack/router-core'
 
 export type ValidateFromPath<
   TFrom,

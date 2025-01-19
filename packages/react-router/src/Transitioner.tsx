@@ -1,8 +1,8 @@
 import * as React from 'react'
+import { trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
-import { trimPathRight } from './path'
 
 export function Transitioner() {
   const router = useRouter()

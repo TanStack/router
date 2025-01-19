@@ -1,4 +1,8 @@
-import type { Constrain, ValidateJSON } from './utils'
+import type {
+  Constrain,
+  OptionalStructuralSharing,
+  ValidateJSON,
+} from '@tanstack/router-core'
 import type { AnyRouter } from './router'
 
 export type DefaultStructuralSharingEnabled<TRouter extends AnyRouter> =
@@ -7,12 +11,6 @@ export type DefaultStructuralSharingEnabled<TRouter extends AnyRouter> =
       // TODO in V2: default to true
       false
     : NonNullable<TRouter['options']['defaultStructuralSharing']>
-
-export interface OptionalStructuralSharing<TStructuralSharing, TConstraint> {
-  readonly structuralSharing?:
-    | Constrain<TStructuralSharing, TConstraint>
-    | undefined
-}
 
 export interface RequiredStructuralSharing<TStructuralSharing, TConstraint> {
   readonly structuralSharing: Constrain<TStructuralSharing, TConstraint>

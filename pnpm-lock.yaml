@@ -10,6 +10,7 @@ overrides:
   vite: 6.0.3
   '@tanstack/react-query': 5.62.3
   '@tanstack/history': workspace:*
+  '@tanstack/router-core': workspace:*
   '@tanstack/react-cross-context': workspace:*
   '@tanstack/react-router': workspace:*
   '@tanstack/router-cli': workspace:*
@@ -3473,6 +3474,9 @@ importers:
       '@tanstack/react-store':
         specifier: ^0.7.0
         version: 0.7.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       jsesc:
         specifier: ^3.0.2
         version: 3.0.2
@@ -3541,6 +3545,15 @@ importers:
       '@types/yargs':
         specifier: ^17.0.33
         version: 17.0.33
+
+  packages/router-core:
+    dependencies:
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../history
+      '@tanstack/store':
+        specifier: ^0.6.0
+        version: 0.6.0
 
   packages/router-devtools:
     dependencies:
@@ -5872,6 +5885,9 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/store@0.6.0':
+    resolution: {integrity: sha512-+m2OBglsjXcLmmKOX6/9v8BDOCtyxhMmZLsRUDswOOSdIIR9mvv6i0XNKsmTh3AlYU8c1mRcodC8/Vyf+69VlQ==}
 
   '@tanstack/store@0.7.0':
     resolution: {integrity: sha512-CNIhdoUsmD2NolYuaIs8VfWM467RK6oIBAW4nPEKZhg1smZ+/CwtCdpURgp7nxSqOaV9oKkzdWD80+bC66F/Jg==}
@@ -12777,6 +12793,8 @@ snapshots:
       '@tanstack/virtual-core': 3.11.2
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+
+  '@tanstack/store@0.6.0': {}
 
   '@tanstack/store@0.7.0': {}
 
