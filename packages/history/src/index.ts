@@ -115,7 +115,7 @@ export function createHistory(opts: {
   notifyOnIndexChange?: boolean
 }): RouterHistory {
   let location = opts.getLocation()
-  let length = 0
+  let length = 1
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
 
   const notify = (action: SubscriberHistoryAction) => {
