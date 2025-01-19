@@ -31,6 +31,7 @@ export interface RouterHistory {
   back: (navigateOpts?: NavigateOptions) => void
   forward: (navigateOpts?: NavigateOptions) => void
   canGoBack: () => boolean
+  canGoForward: () => boolean
   createHref: (href: string) => string
   block: (blocker: NavigationBlocker) => () => void
   flush: () => void
@@ -92,18 +93,19 @@ type TryNavigateArgs = {
 )
 
 const stateIndexKey = '__TSR_index'
+const persistIndexKey = '__TSR_lastIndex'
 const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
 
 export function createHistory(opts: {
   getLocation: () => HistoryLocation
-  getLength: () => number
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
   go: (n: number) => void
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
+  getLength?: () => number
   flush?: () => void
   destroy?: () => void
   onBlocked?: () => void
@@ -113,6 +115,7 @@ export function createHistory(opts: {
   notifyOnIndexChange?: boolean
 }): RouterHistory {
   let location = opts.getLocation()
+  let length = 0
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
 
   const notify = (action: SubscriberHistoryAction) => {
@@ -157,12 +160,12 @@ export function createHistory(opts: {
     task()
   }
 
-  return {
+  const history: RouterHistory = {
     get location() {
       return location
     },
     get length() {
-      return opts.getLength()
+      return opts.getLength?.() ?? length
     },
     subscribers,
     subscribe: (cb: (opts: SubscriberArgs) => void) => {
@@ -178,6 +181,7 @@ export function createHistory(opts: {
       tryNavigation({
         task: () => {
           opts.pushState(path, state)
+          length += 1
           notify({ type: 'PUSH' })
         },
         navigateOpts,
@@ -231,6 +235,7 @@ export function createHistory(opts: {
       })
     },
     canGoBack: () => location.state[stateIndexKey] !== 0,
+    canGoForward: () => location.state[stateIndexKey] !== history.length - 1,
     createHref: (str) => opts.createHref(str),
     block: (blocker) => {
       if (!opts.setBlockers) return () => {}
@@ -246,6 +251,8 @@ export function createHistory(opts: {
     destroy: () => opts.destroy?.(),
     notify,
   }
+
+  return history
 }
 
 function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
@@ -365,6 +372,10 @@ export function createBrowserHistory(opts?: {
 
     // Update the location in memory
     currentLocation = parseHref(destHref, state)
+    sessionStorage.setItem(
+      persistIndexKey,
+      currentLocation.state.__TSR_index.toString(),
+    )
 
     // Keep track of the next location we need to flush to the URL
     next = {
@@ -471,7 +482,10 @@ export function createBrowserHistory(opts?: {
 
   const history = createHistory({
     getLocation,
-    getLength: () => win.history.length,
+    getLength: () => {
+      const lastIndex = sessionStorage.getItem(persistIndexKey)
+      return lastIndex ? parseInt(lastIndex) + 1 : 1
+    },
     pushState: (href, state) => queueHistoryAction('push', href, state),
     replaceState: (href, state) => queueHistoryAction('replace', href, state),
     back: (ignoreBlocker) => {
@@ -552,9 +566,10 @@ export function createMemoryHistory(
   },
 ): RouterHistory {
   const entries = opts.initialEntries
-  let index = opts.initialIndex
-    ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
-    : entries.length - 1
+  let index =
+    opts.initialIndex != null
+      ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
+      : entries.length - 1
   const states = entries.map((_entry, index) =>
     assignKeyAndIndex(index, undefined),
   )
