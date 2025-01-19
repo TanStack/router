@@ -10,8 +10,8 @@ You can extend this interface to add additional properties to the state object a
 ```tsx
 declare module '@tanstack/react-router' {
   interface HistoryState {
-    additionalRequiredProperty: number;
-    additionalProperty?: string;
+    additionalRequiredProperty: number
+    additionalProperty?: string
   }
 }
 ```
