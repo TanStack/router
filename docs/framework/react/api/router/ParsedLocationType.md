@@ -11,7 +11,7 @@ interface ParsedLocation {
   pathname: string
   search: TFullSearchSchema
   searchStr: string
-  state: HistoryState
+  state: ParsedHistoryState
   hash: string
   maskedLocation?: ParsedLocation
   unmaskOnReload?: boolean
