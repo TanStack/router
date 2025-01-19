@@ -8,7 +8,10 @@ The `HistoryState` interface is an interface exported by the `history` package t
 You can extend this interface to add additional properties to the state object across your application.
 
 ```tsx
-interface HistoryState {
-  key: string // This is the unique ID for any given history entry
+declare module '@tanstack/react-router' {
+  interface HistoryState {
+    additionalRequiredProperty: number;
+    additionalProperty?: string;
+  }
 }
 ```
