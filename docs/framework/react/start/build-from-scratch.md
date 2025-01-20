@@ -86,17 +86,17 @@ To tell Vinxi that it should start TanStack Start's minimal behavior, we need to
 ```typescript
 // app.config.ts
 import { defineConfig } from '@tanstack/start/config'
-import tsConfigPaths from "vite-tsconfig-paths";
+import tsConfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-    vite: {
-        plugins: [
-            tsConfigPaths({
-                projects: ["./tsconfig.json"],
-            }),
-        ],
-    },
-});
+  vite: {
+    plugins: [
+      tsConfigPaths({
+        projects: ['./tsconfig.json'],
+      }),
+    ],
+  },
+})
 ```
 
 ## Add the Basic Templating
