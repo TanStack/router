@@ -1250,3 +1250,86 @@ describe('history: History gives correct notifcations and state', () => {
     unsub()
   })
 })
+
+describe('router loader abort behavior', () => {
+  it('should abort previous route loader even with pendingComponent present', async () => {
+    const abortSpy = vi.fn()
+    let resolveLoader: (value: unknown) => void
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        const navigate = useNavigate()
+        return (
+          <div>
+            <nav>
+              <button onClick={() => navigate({ to: '/a' })}>Go to A</button>
+              <button onClick={() => navigate({ to: '/b' })}>Go to B</button>
+            </nav>
+            <Outlet />
+          </div>
+        )
+      },
+    })
+
+    const routeA = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/a',
+      component: () => <h1>Route A</h1>,
+      pendingComponent: () => <h1>Loading Route A...</h1>,
+      gcTime: 0,
+      staleTime: 0,
+      pendingMs: 0,
+      pendingMinMs: 1000,
+    })
+
+    const routeB = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/b',
+      component: () => <h1>Route B</h1>,
+      pendingComponent: () => <h1>Loading Route B...</h1>,
+      gcTime: 0,
+      staleTime: 0,
+      pendingMs: 0,
+      pendingMinMs: 1000,
+      loader: async ({ abortController }) => {
+        abortController.signal.addEventListener('abort', () => {
+          abortSpy()
+          console.log('Loader aborted!')
+        })
+
+        await new Promise((resolve) => {
+          resolveLoader = resolve
+        })
+
+        return null
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([routeA, routeB]),
+      history: createMemoryHistory({
+        initialEntries: ['/a'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+    await act(() => router.load())
+
+    expect(screen.getByText('Route A')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Go to B'))
+    })
+
+    await screen.findByText('Loading Route B...')
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Go to A'))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    expect(abortSpy).toHaveBeenCalled()
+
+    resolveLoader!(null)
+  })
+})
