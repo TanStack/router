@@ -49,7 +49,10 @@ const __TSR__: StartTSRGlobal = {
             let controller
             ex.value = new ReadableStream({
               start(c) {
-                controller = c
+                controller = {
+                  enqueue: (chunk: unknown) => { try { c.enqueue(chunk); } catch {} },
+                  close: () => { try { c.close(); } catch {} },
+                }
               },
             })
             ex.value.controller = controller
