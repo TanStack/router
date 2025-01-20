@@ -50,8 +50,16 @@ const __TSR__: StartTSRGlobal = {
             ex.value = new ReadableStream({
               start(c) {
                 controller = {
-                  enqueue: (chunk: unknown) => { try { c.enqueue(chunk); } catch {} },
-                  close: () => { try { c.close(); } catch {} },
+                  enqueue: (chunk: unknown) => {
+                    try {
+                      c.enqueue(chunk)
+                    } catch {}
+                  },
+                  close: () => {
+                    try {
+                      c.close()
+                    } catch {}
+                  },
                 }
               },
             })
