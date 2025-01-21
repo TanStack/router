@@ -3758,7 +3758,7 @@ importers:
         version: link:../start-config
       '@tanstack/start-router-manifest':
         specifier: workspace:*
-        version: link:../start-server-functions-handler copy
+        version: link:../start-router-manifest
       '@tanstack/start-server':
         specifier: workspace:*
         version: link:../start-server
@@ -3949,6 +3949,28 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
 
+  packages/start-router-manifest:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.3.4(vite@6.0.3(@types/node@22.10.2)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))
+      vinxi:
+        specifier: 0.5.1
+        version: 0.5.1(@types/node@22.10.2)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
+    devDependencies:
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.2
+
   packages/start-server:
     dependencies:
       '@tanstack/react-cross-context':
@@ -4050,28 +4072,6 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
-    devDependencies:
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
-      typescript:
-        specifier: ^5.7.2
-        version: 5.7.2
-
-  packages/start-server-functions-handler copy:
-    dependencies:
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../react-router
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(vite@6.0.3(@types/node@22.10.2)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))
-      vinxi:
-        specifier: 0.5.1
-        version: 0.5.1(@types/node@22.10.2)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       react:
         specifier: ^18.2.0
