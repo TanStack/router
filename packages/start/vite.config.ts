@@ -17,22 +17,7 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
-    externalDeps: [
-      '@tanstack/start/client',
-      '@tanstack/start/server',
-      '@tanstack/start/router-manifest',
-      'tsr:server-fn-manifest',
-    ],
-    entry: [
-      './src/client/index.tsx',
-      './src/server/index.tsx',
-      './src/api/index.ts',
-      './src/client-runtime/index.tsx',
-      './src/server-runtime/index.tsx',
-      './src/ssr-runtime/index.tsx',
-      './src/server-handler/index.tsx',
-    ],
     srcDir: './src',
-    exclude: ['./src/config'],
+    entry: './src/index.tsx',
   }),
 )

@@ -1,5 +1,5 @@
 import { json } from '@tanstack/start'
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/start-api-routes'
 import axios from 'redaxios'
 
 import type { User } from '~/utils/users'

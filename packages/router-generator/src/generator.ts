@@ -371,7 +371,8 @@ export async function generator(config: Config, root: string) {
 
     if (!routeCode) {
       const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
-        tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
+        tsrImports:
+          "import { createAPIFileRoute } from '@tanstack/start-api-routes';",
         tsrPath: escapedRoutePath,
         tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
         tsrExportEnd: ');',

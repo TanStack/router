@@ -90,7 +90,7 @@ Then configure TanStack Start's `app.config.ts` file:
 
 ```typescript
 // app.config.ts
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/start-config'
 
 export default defineConfig({})
 ```
@@ -159,8 +159,8 @@ information to our server entry point:
 import {
   createStartHandler,
   defaultStreamHandler,
-} from '@tanstack/start/server'
-import { getRouterManifest } from '@tanstack/start/router-manifest'
+} from '@tanstack/start-server'
+import { getRouterManifest } from '@tanstack/start-router-manifest'
 
 import { createRouter } from './router'
 
