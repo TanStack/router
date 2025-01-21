@@ -321,7 +321,7 @@ function Test() {
 
 ## Server Function Context
 
-In addition to the single parameter that server functions accept, you can also access server request context from within any server function using utilities from `@tanstack/start-server`. Under the hood, we use [Unjs](https://unjs.io/)'s `h3` package to perform cross-platform HTTP requests.
+In addition to the single parameter that server functions accept, you can also access server request context from within any server function using utilities from `@tanstack/start/server`. Under the hood, we use [Unjs](https://unjs.io/)'s `h3` package to perform cross-platform HTTP requests.
 
 There are many context functions available to you for things like:
 
@@ -332,7 +332,7 @@ There are many context functions available to you for things like:
 - Dealing with multi-part form data
 - Reading/Setting custom server context properties
 
-For a full list of available context functions, see all of the available [h3 Methods](https://h3.unjs.io/utils/request) or inspect the [@tanstack/start-server Source Code](https://github.com/tanstack/router/tree/main/packages/start/src/server/index.tsx).
+For a full list of available context functions, see all of the available [h3 Methods](https://h3.unjs.io/utils/request) or inspect the [@tanstack/start/server Source Code](https://github.com/tanstack/router/tree/main/packages/start/src/server/index.tsx).
 
 For starters, here are a few examples:
 
@@ -342,7 +342,7 @@ Let's use the `getWebRequest` function to access the request itself from within 
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
-import { getWebRequest } from '@tanstack/start-server'
+import { getWebRequest } from '@tanstack/start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -361,7 +361,7 @@ Use the `getHeaders` function to access all headers from within a server functio
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
-import { getHeaders } from '@tanstack/start-server'
+import { getHeaders } from '@tanstack/start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -382,7 +382,7 @@ You can also access individual headers using the `getHeader` function:
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
-import { getHeader } from '@tanstack/start-server'
+import { getHeader } from '@tanstack/start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -431,7 +431,7 @@ To respond with custom headers, you can use the `setHeader` function:
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
-import { setHeader } from '@tanstack/start-server'
+import { setHeader } from '@tanstack/start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -447,7 +447,7 @@ To respond with a custom status code, you can use the `setResponseStatus` functi
 
 ```tsx
 import { createServerFn } from '@tanstack/start'
-import { setResponseStatus } from '@tanstack/start-server'
+import { setResponseStatus } from '@tanstack/start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -599,7 +599,7 @@ export const auth = createServerFn({ method: 'GET' }).handler(async () => {
 })
 ```
 
-> ⚠️ Do not use `@tanstack/start-server`'s `sendRedirect` function to send soft redirects from within server functions. This will send the redirect using the `Location` header and will force a full page hard navigation on the client.
+> ⚠️ Do not use `@tanstack/start/server`'s `sendRedirect` function to send soft redirects from within server functions. This will send the redirect using the `Location` header and will force a full page hard navigation on the client.
 
 ## Redirect Headers
 

@@ -30,7 +30,7 @@ Now, you'll need to update your `app.config.ts` file to include the following:
 
 ```ts
 // app.config.ts
-import { defineConfig } from '@tanstack/start-config'
+import { defineConfig } from '@tanstack/start/config'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({

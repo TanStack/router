@@ -55,8 +55,8 @@ This is done via the `app/ssr.tsx` file:
 import {
   createStartHandler,
   defaultStreamHandler,
-} from '@tanstack/start-server'
-import { getRouterManifest } from '@tanstack/start-router-manifest'
+} from '@tanstack/start/server'
+import { getRouterManifest } from '@tanstack/start/router-manifest'
 
 import { createRouter } from './router'
 

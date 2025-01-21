@@ -14,7 +14,7 @@ TanStack Start is built on Nitro, which means we can take advantage of Nitro's p
 ```js
 // app.config.js
 
-import { defineConfig } from '@tanstack/start-config'
+import { defineConfig } from '@tanstack/start/config'
 
 export default defineConfig({
   server: {

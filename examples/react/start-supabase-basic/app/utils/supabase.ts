@@ -1,4 +1,4 @@
-import { parseCookies, setCookie } from '@tanstack/start-server'
+import { parseCookies, setCookie } from '@tanstack/start/server'
 import { createServerClient } from '@supabase/ssr'
 
 export function getSupabaseServerClient() {
