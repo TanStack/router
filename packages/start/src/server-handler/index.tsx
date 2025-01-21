@@ -1,4 +1,3 @@
-/// <reference types="vinxi/types/server" />
 import {
   defaultTransformer,
   isNotFound,
@@ -11,10 +10,10 @@ import {
   getEvent,
   getResponseStatus,
   toWebRequest,
-} from 'vinxi/http'
+} from '@tanstack/start/server'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
-import type { H3Event } from 'vinxi/server'
+import type { H3Event } from '@tanstack/start/server'
 
 export default eventHandler(handleServerAction)
 
@@ -28,7 +27,7 @@ const serverFnManifest = _serverFnManifest as Record<
 >
 
 async function handleServerAction(event: H3Event) {
-  return handleServerRequest(toWebRequest(event), event)
+  return handleServerRequest(toWebRequest(event)!, event)
 }
 
 function sanitizeBase(base: string | undefined) {

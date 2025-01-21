@@ -1,5 +1,5 @@
 // app/services/session.server.ts
-import { useSession } from 'vinxi/http'
+import { useSession } from '@tanstack/start/server'
 import type { User } from '@prisma/client'
 
 type SessionUser = {

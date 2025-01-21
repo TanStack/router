@@ -1,4 +1,4 @@
-import { eventHandler, toWebRequest } from 'vinxi/http'
+import { eventHandler, toWebRequest } from '@tanstack/start/server'
 import vinxiFileRoutes from 'vinxi/routes'
 import type { ResolveParams } from '@tanstack/react-router'
 
@@ -29,7 +29,7 @@ export type HTTP_API_METHOD = (typeof HTTP_API_METHODS)[number]
  */
 export function createStartAPIHandler(cb: StartAPIHandlerCallback) {
   return eventHandler(async (event) => {
-    const request = toWebRequest(event)
+    const request = toWebRequest(event)!
     const res = await cb({ request })
     return res
   })

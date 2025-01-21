@@ -43,7 +43,14 @@ Create a `tsconfig.json` file with at least the following settings:
 
 # Install Dependencies
 
-TanStack Start is powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
+TanStack Start is powered by the following packages and need to be installed as dependencies:
+
+- [@tanstack/start](https://github.com/tanstack/start)
+- [@tanstack/react-router](https://tanstack.com/router)
+- [Vinxi](https://vinxi.vercel.app/)
+
+> [!NOTE]
+> Vinxi is a temporary dependency that will be replaced by a simple vite plugin or a dedicated Start CLI.
 
 To install them, run:
 
@@ -51,13 +58,13 @@ To install them, run:
 npm i @tanstack/start @tanstack/react-router vinxi
 ```
 
-You'll also need React and the Vite React plugin, so install them too:
+You'll also need React and the Vite React plugin, so install their dependencies as well:
 
 ```shell
 npm i react react-dom @vitejs/plugin-react
 ```
 
-and some TypeScript:
+Please, for you, your fellow developers, and your users' sake, use TypeScript:
 
 ```shell
 npm i -D typescript @types/react @types/react-dom
@@ -65,7 +72,7 @@ npm i -D typescript @types/react @types/react-dom
 
 # Update Configuration Files
 
-We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
+We'll then update our `package.json` to use Vinxi's CLI and set `"type": "module"`:
 
 ```jsonc
 {
@@ -79,7 +86,7 @@ We'll then update our `package.json` to reference the new Vinxi entry point and 
 }
 ```
 
-To tell Vinxi that it should start TanStack Start's minimal behavior, we need to configure the `app.config.ts` file:
+Then configure TanStack Start's `app.config.ts` file:
 
 ```typescript
 // app.config.ts

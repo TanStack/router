@@ -1,14 +1,18 @@
-import { eventHandler, getResponseHeaders, toWebRequest } from 'vinxi/http'
+import {
+  eventHandler,
+  getResponseHeaders,
+  toWebRequest,
+} from '@tanstack/start/server'
 import { createMemoryHistory } from '@tanstack/react-router'
 import { serializeLoaderData } from '../client/serialization'
 import { mergeHeaders } from '../client/headers'
-import type { EventHandler, EventHandlerRequest, H3Event } from 'vinxi/http'
+import type { H3Event } from '@tanstack/start/server'
 import type { AnyRouter, Manifest } from '@tanstack/react-router'
 import type { HandlerCallback } from './defaultStreamHandler'
 
 export type CustomizeStartHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
-) => EventHandler
+) => ReturnType<typeof eventHandler>
 
 export function createStartHandler<TRouter extends AnyRouter>({
   createRouter,
@@ -20,6 +24,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
   return (cb) => {
     return eventHandler(async (event) => {
       const request = toWebRequest(event)
+      if (!request) throw new Error('No request found')
 
       const url = new URL(request.url)
       const href = url.href.replace(url.origin, '')
@@ -62,7 +67,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
 }
 
 function getRequestHeaders(opts: {
-  event: H3Event<EventHandlerRequest>
+  event: H3Event
   router: AnyRouter
 }): Headers {
   ;(opts.event as any).__tsrHeadersSent = true

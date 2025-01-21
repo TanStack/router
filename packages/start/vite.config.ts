@@ -19,6 +19,7 @@ export default mergeConfig(
   tanstackViteConfig({
     externalDeps: [
       '@tanstack/start/client',
+      '@tanstack/start/server',
       '@tanstack/start/router-manifest',
       'tsr:server-fn-manifest',
     ],

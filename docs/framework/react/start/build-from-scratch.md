@@ -45,7 +45,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 
 TanStack Start is (currently\*) powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
 
-> [!NOTE] > \*Vinxi will be removed before version 1.0.0 is released and TanStack will rely only on Vite and Nitro. The commands and APIs that use Vinxi will likely be replaced with a Vite plugin.
+> [!NOTE] > \*Vinxi will be removed before version 1.0.0 is released and TanStack will rely only on Vite and Nitro. The commands and APIs that use Vinxi will likely be replaced with a Vite plugin or dedicated TanStack Start CLI.
 
 To install them, run:
 
@@ -67,7 +67,7 @@ npm i -D typescript @types/react @types/react-dom
 
 ## Update Configuration Files
 
-We'll then update our `package.json` to reference the new Vinxi entry point and set `"type": "module"`:
+We'll then update our `package.json` to use Vinxi's CLI and set `"type": "module"`:
 
 ```json
 {
@@ -81,7 +81,7 @@ We'll then update our `package.json` to reference the new Vinxi entry point and 
 }
 ```
 
-To tell Vinxi that it should start TanStack Start's minimal behavior, we need to configure the `app.config.ts` file:
+Then configure TanStack Start's `app.config.ts` file:
 
 ```typescript
 // app.config.ts
@@ -160,7 +160,6 @@ information to our server entry point:
 
 ```tsx
 // app/ssr.tsx
-/// <reference types="vinxi/types/server" />
 import {
   createStartHandler,
   defaultStreamHandler,
