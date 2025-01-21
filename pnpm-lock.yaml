@@ -3091,6 +3091,9 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      '@tanstack/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
       '@trpc/client':
         specifier: 11.0.0-rc.660
         version: 11.0.0-rc.660(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(typescript@5.7.2)
@@ -3140,6 +3143,9 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      '@tanstack/start':
+        specifier: workspace:^
+        version: link:../../../packages/start
       '@trpc/client':
         specifier: 11.0.0-rc.660
         version: 11.0.0-rc.660(@trpc/server@11.0.0-rc.660(typescript@5.7.2))(typescript@5.7.2)
