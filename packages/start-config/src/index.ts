@@ -120,17 +120,17 @@ export function defineConfig(
     manifestVirtualImportId: 'tsr:server-fn-manifest',
     client: {
       getRuntimeCode: () =>
-        `import { createClientRpc } from '@tanstack/start-runtime'`,
+        `import { createClientRpc } from '@tanstack/start/server-functions-client'`,
       replacer: (opts) => `createClientRpc(${JSON.stringify(opts.functionId)})`,
     },
     ssr: {
       getRuntimeCode: () =>
-        `import { createSsrRpc } from '@tanstack/start-ssr-runtime'`,
+        `import { createSsrRpc } from '@tanstack/start/server-functions-ssr'`,
       replacer: (opts) => `createSsrRpc(${JSON.stringify(opts.functionId)})`,
     },
     server: {
       getRuntimeCode: () =>
-        `import { createServerRpc } from '@tanstack/start-server-runtime'`,
+        `import { createServerRpc } from '@tanstack/start/server-functions-server'`,
       replacer: (opts) =>
         `createServerRpc(${JSON.stringify(opts.functionId)}, ${opts.fn})`,
     },

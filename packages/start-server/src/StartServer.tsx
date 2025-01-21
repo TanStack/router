@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Context } from '@tanstack/react-cross-context'
 import { RouterProvider } from '@tanstack/react-router'
 import jsesc from 'jsesc'
-import { AfterEachMatch } from '@tanstack/start'
+import { AfterEachMatch } from '@tanstack/start-client'
 import type { AnyRouter } from '@tanstack/react-router'
 
 export function StartServer<TRouter extends AnyRouter>(props: {

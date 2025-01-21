@@ -23,6 +23,7 @@ overrides:
   '@tanstack/valibot-adapter': workspace:*
   '@tanstack/arktype-adapter': workspace:*
   '@tanstack/start': workspace:*
+  '@tanstack/start-client': workspace:*
   '@tanstack/start-server': workspace:*
   '@tanstack/start-api-routes': workspace:*
   '@tanstack/start-server-functions-fetcher': workspace:*
@@ -3746,6 +3747,65 @@ importers:
 
   packages/start:
     dependencies:
+      '@tanstack/start-api-routes':
+        specifier: workspace:*
+        version: link:../start-api-routes
+      '@tanstack/start-client':
+        specifier: workspace:*
+        version: link:../start-client
+      '@tanstack/start-config':
+        specifier: workspace:*
+        version: link:../start-config
+      '@tanstack/start-router-manifest':
+        specifier: workspace:*
+        version: link:../start-server-functions-handler copy
+      '@tanstack/start-server':
+        specifier: workspace:*
+        version: link:../start-server
+      '@tanstack/start-server-functions-client':
+        specifier: workspace:*
+        version: link:../start-server-functions-client
+      '@tanstack/start-server-functions-handler':
+        specifier: workspace:*
+        version: link:../start-server-functions-handler
+      '@tanstack/start-server-functions-server':
+        specifier: workspace:*
+        version: link:../start-server-functions-server
+      '@tanstack/start-server-functions-ssr':
+        specifier: workspace:*
+        version: link:../start-server-functions-ssr
+    devDependencies:
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.24.2
+
+  packages/start-api-routes:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@tanstack/start-server':
+        specifier: workspace:*
+        version: link:../start-server
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.3.4(vite@6.0.3(@types/node@22.10.2)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))
+      vinxi:
+        specifier: 0.5.1
+        version: 0.5.1(@types/node@22.10.2)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
+    devDependencies:
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.2
+
+  packages/start-client:
+    dependencies:
       '@tanstack/react-cross-context':
         specifier: workspace:*
         version: link:../react-cross-context
@@ -3780,31 +3840,6 @@ importers:
       esbuild:
         specifier: ^0.24.2
         version: 0.24.2
-
-  packages/start-api-routes:
-    dependencies:
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../react-router
-      '@tanstack/start-server':
-        specifier: workspace:*
-        version: link:../start-server
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(vite@6.0.3(@types/node@22.10.2)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))
-      vinxi:
-        specifier: 0.5.1
-        version: 0.5.1(@types/node@22.10.2)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
-    devDependencies:
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
-      typescript:
-        specifier: ^5.7.2
-        version: 5.7.2
 
   packages/start-config:
     dependencies:
@@ -3922,9 +3957,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
-      '@tanstack/start':
+      '@tanstack/start-client':
         specifier: workspace:*
-        version: link:../start
+        version: link:../start-client
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.0.3(@types/node@22.10.2)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))
@@ -3984,9 +4019,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
-      '@tanstack/start':
+      '@tanstack/start-client':
         specifier: workspace:*
-        version: link:../start
+        version: link:../start-client
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.0.3(@types/node@22.10.2)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))

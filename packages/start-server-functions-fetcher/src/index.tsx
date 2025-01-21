@@ -5,7 +5,7 @@ import {
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
-import type { MiddlewareClientFnOptions } from '@tanstack/start'
+import type { MiddlewareClientFnOptions } from '@tanstack/start-client'
 
 export async function serverFnFetcher(
   url: string,

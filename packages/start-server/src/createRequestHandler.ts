@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/react-router'
-import { mergeHeaders, serializeLoaderData } from '@tanstack/start'
+import { mergeHeaders, serializeLoaderData } from '@tanstack/start-client'
 import type { AnyRouter, Manifest } from '@tanstack/react-router'
 import type { HandlerCallback } from './defaultStreamHandler'
 

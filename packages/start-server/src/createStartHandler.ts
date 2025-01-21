@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/react-router'
-import { mergeHeaders, serializeLoaderData } from '@tanstack/start'
+import { mergeHeaders, serializeLoaderData } from '@tanstack/start-client'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import type { H3Event } from 'h3'
 import type { AnyRouter, Manifest } from '@tanstack/react-router'
