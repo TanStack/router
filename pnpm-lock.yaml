@@ -3144,7 +3144,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/start':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../packages/start
       '@trpc/client':
         specifier: 11.0.0-rc.660
