@@ -25,7 +25,7 @@ function createRouterStream(router: AnyRouter) {
 
   async function digestRouterStream(): Promise<void> {
     try {
-      while (isAppRendering || router.injectedHtml.length) {
+      while (router.injectedHtml.length) {
         // Wait for any of the injected promises to settle
         const getHtml = await Promise.race(router.injectedHtml)
         // On success, push the html
@@ -34,7 +34,14 @@ function createRouterStream(router: AnyRouter) {
           routerStream.write(getHtml())
         }
       }
-      routerStream.end()
+
+      if (isAppRendering) {
+        setImmediate(() => {
+          digestRouterStream()
+        })
+      } else {
+        routerStream.end()
+      }
     } catch (error) {
       console.error('Error processing HTML injection:', error)
       routerStream.destroy(
