@@ -1,9 +1,25 @@
-import { PassThrough } from 'node:stream'
-import type { Readable } from 'node:stream'
+import { ReadableStream } from 'node:stream/web'
+import { Readable } from 'node:stream'
 import type { AnyRouter } from '@tanstack/react-router'
 
+export function transformReadableStreamWithRouter(
+  router: AnyRouter,
+  routerStream: ReadableStream,
+) {
+  return transformStreamWithRouter(router, routerStream)
+}
+
+export function transformPipeableStreamWithRouter(
+  router: AnyRouter,
+  routerStream: Readable,
+) {
+  return Readable.fromWeb(
+    transformStreamWithRouter(router, Readable.toWeb(routerStream)),
+  )
+}
+
 function createRouterStream(router: AnyRouter) {
-  const routerStream = new PassThrough()
+  const routerStream = createPassthrough()
 
   let digesting = false
 
@@ -50,146 +66,185 @@ const patternHtmlEnd = /(<\/html>)/
 
 // regex pattern for matching closing tags
 const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
+
 const textDecoder = new TextDecoder()
+
+type ReadablePassthrough = {
+  stream: ReadableStream
+  write: (chunk: string) => void
+  end: (chunk?: string) => void
+  destroy: (error: unknown) => void
+  destroyed: boolean
+}
+
+function createPassthrough() {
+  let controller: ReadableStreamDefaultController<any>
+  const stream = new ReadableStream({
+    start(c) {
+      controller = c
+    },
+  })
+
+  const res: ReadablePassthrough = {
+    stream,
+    write: (chunk) => {
+      controller.enqueue(chunk)
+    },
+    end: (chunk) => {
+      if (chunk) {
+        controller.enqueue(chunk)
+      }
+      controller.close()
+      res.destroyed = true
+    },
+    destroy: (error) => {
+      controller.error(error)
+    },
+    destroyed: false,
+  }
+
+  return res
+}
+
+async function readStream(
+  stream: ReadableStream,
+  opts: {
+    onData?: (chunk: ReadableStreamReadValueResult<any>) => void
+    onEnd?: () => void
+    onError?: (error: unknown) => void
+  },
+) {
+  try {
+    const reader = stream.getReader()
+    let chunk
+    while (!(chunk = await reader.read()).done) {
+      opts.onData?.(chunk)
+    }
+    opts.onEnd?.()
+  } catch (error) {
+    opts.onError?.(error)
+  }
+}
+
 export function transformStreamWithRouter(
   router: AnyRouter,
-  appStream: Readable,
+  appStream: ReadableStream,
 ) {
-  const finalPassThrough = new PassThrough()
+  const finalPassThrough = createPassthrough()
   const [routerStream, digestRouterStream] = createRouterStream(router)
+
   let routerStreamBuffer = ''
   let pendingClosingTags = ''
-  let isRouterStreamDone = false
-  let isAppStreamDone = false
-
-  let bodyStarted = false
+  let isRouterStreamDone = false as boolean
+  let isAppStreamDone = false as boolean
+  let bodyStarted = false as boolean
   let leftover = ''
   let leftoverHtml = ''
 
-  const textDecoder = new TextDecoder()
-
-  // Buffer and handle `routerStream` data
-  routerStream.on('data', (chunk) => {
-    const decoded = textDecoder.decode(chunk)
-
-    if (!bodyStarted) {
-      routerStreamBuffer += decoded
-    } else {
-      if (!finalPassThrough.write(decoded)) {
-        routerStream.pause()
-        finalPassThrough.once('drain', () => routerStream.resume())
-      }
-    }
-  })
-
-  const getBufferedRouterStream = () => {
+  function getBufferedRouterStream() {
     const html = routerStreamBuffer
     routerStreamBuffer = ''
     return html
   }
 
-  appStream.on('data', (chunk) => {
-    digestRouterStream()
-
-    const chunkString = leftover + textDecoder.decode(chunk)
-    const bodyStartMatch = chunkString.match(patternBodyStart)
-    const bodyEndMatch = chunkString.match(patternBodyEnd)
-    const htmlEndMatch = chunkString.match(patternHtmlEnd)
-
-    if (bodyStartMatch) {
-      bodyStarted = true
-    }
-
-    if (!bodyStarted) {
-      if (!finalPassThrough.write(chunkString)) {
-        appStream.pause()
-        finalPassThrough.once('drain', () => appStream.resume())
-      }
-      leftover = ''
-      return
-    }
-
-    if (
-      bodyEndMatch &&
-      htmlEndMatch &&
-      bodyEndMatch.index! < htmlEndMatch.index!
-    ) {
-      const bodyIndex = bodyEndMatch.index!
-      pendingClosingTags = chunkString.slice(bodyIndex)
-      finalPassThrough.write(
-        getBufferedRouterStream() + chunkString.slice(0, bodyIndex),
-      )
-      leftover = ''
-      return
-    }
-
-    let result
-    let lastIndex = 0
-    while ((result = patternClosingTag.exec(chunkString)) !== null) {
-      lastIndex = result.index + result[0].length
-    }
-
-    if (lastIndex > 0) {
-      const processed =
-        chunkString.slice(0, lastIndex) +
-        getBufferedRouterStream() +
-        leftoverHtml
-      finalPassThrough.write(processed)
-      leftover = chunkString.slice(lastIndex)
-    } else {
-      leftover = chunkString
-      leftoverHtml += getBufferedRouterStream()
-    }
-  })
-
   function finish() {
-    finalPassThrough.end(leftoverHtml + pendingClosingTags)
+    const finalHtml = leftoverHtml + pendingClosingTags
+    finalPassThrough.end(finalHtml)
   }
 
-  appStream.on('end', () => {
-    digestRouterStream(true)
-    isAppStreamDone = true
-    if (isRouterStreamDone) finish()
+  function decodeChunk(chunk: unknown): string {
+    if (chunk instanceof Uint8Array) {
+      return textDecoder.decode(chunk)
+    }
+    return String(chunk)
+  }
+
+  // Buffer and handle `routerStream` data
+  readStream(routerStream.stream, {
+    onData: (chunk) => {
+      const text = decodeChunk(chunk.value)
+
+      if (!bodyStarted) {
+        routerStreamBuffer += text
+      } else {
+        finalPassThrough.write(text)
+      }
+    },
+    onEnd: () => {
+      console.log('routerStream done')
+      isRouterStreamDone = true
+      if (isAppStreamDone) finish()
+    },
+    onError: (error) => {
+      console.error('Error reading routerStream:', error)
+      finalPassThrough.destroy(error)
+    },
   })
 
-  routerStream.on('end', () => {
-    isRouterStreamDone = true
-    if (isAppStreamDone) finish()
+  // Transform the appStream
+  readStream(appStream, {
+    onData: (chunk) => {
+      digestRouterStream()
+
+      const text = decodeChunk(chunk.value)
+
+      const chunkString = leftover + text
+      const bodyStartMatch = chunkString.match(patternBodyStart)
+      const bodyEndMatch = chunkString.match(patternBodyEnd)
+      const htmlEndMatch = chunkString.match(patternHtmlEnd)
+
+      if (bodyStartMatch) {
+        bodyStarted = true
+      }
+
+      if (!bodyStarted) {
+        finalPassThrough.write(chunkString)
+        leftover = ''
+        return
+      }
+
+      if (
+        bodyEndMatch &&
+        htmlEndMatch &&
+        bodyEndMatch.index! < htmlEndMatch.index!
+      ) {
+        const bodyIndex = bodyEndMatch.index!
+        pendingClosingTags = chunkString.slice(bodyIndex)
+        finalPassThrough.write(
+          getBufferedRouterStream() + chunkString.slice(0, bodyIndex),
+        )
+        leftover = ''
+        return
+      }
+
+      let result
+      let lastIndex = 0
+      while ((result = patternClosingTag.exec(chunkString)) !== null) {
+        lastIndex = result.index + result[0].length
+      }
+
+      if (lastIndex > 0) {
+        const processed =
+          chunkString.slice(0, lastIndex) +
+          getBufferedRouterStream() +
+          leftoverHtml
+        finalPassThrough.write(processed)
+        leftover = chunkString.slice(lastIndex)
+      } else {
+        leftover = chunkString
+        leftoverHtml += getBufferedRouterStream()
+      }
+    },
+    onEnd: () => {
+      digestRouterStream(true)
+      isAppStreamDone = true
+      if (isRouterStreamDone) finish()
+    },
+    onError: (error) => {
+      console.error('Error reading appStream:', error)
+      finalPassThrough.destroy(error)
+    },
   })
 
-  // Error handling
-  appStream.on('error', (err) => {
-    console.error('Error in appStream:', err)
-    finalPassThrough.destroy(err)
-  })
-
-  routerStream.on('error', (err) => {
-    console.error('Error in routerStream:', err)
-    finalPassThrough.destroy(err)
-  })
-
-  return finalPassThrough
+  return finalPassThrough.stream
 }
-
-// export function transformReadableStreamWithRouter(router: AnyRouter) {
-//   const callbacks = transformHtmlCallbacks(() =>
-//     router.injectedHtml.map((d) => d()).join(''),
-//   )
-
-//   const encoder = new TextEncoder()
-
-//   return new TransformStream<string>({
-//     transform(chunk, controller) {
-//       return callbacks.transform(chunk, (chunkToPush) => {
-//         controller.enqueue(encoder.encode(chunkToPush))
-//         return true
-//       })
-//     },
-//     flush(controller) {
-//       return callbacks.flush((chunkToPush) => {
-//         controller.enqueue(chunkToPush)
-//         return true
-//       })
-//     },
-//   })
-// }
