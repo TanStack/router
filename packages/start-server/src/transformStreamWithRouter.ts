@@ -34,6 +34,7 @@ function createRouterStream(router: AnyRouter) {
           routerStream.write(getHtml())
         }
       }
+      routerStream.end()
     } catch (error) {
       console.error('Error processing HTML injection:', error)
       routerStream.destroy(
@@ -128,8 +129,6 @@ export function transformStreamWithRouter(
 
   let routerStreamBuffer = ''
   let pendingClosingTags = ''
-  let isRouterStreamDone = false as boolean
-  let isAppStreamDone = false as boolean
   let bodyStarted = false as boolean
   let leftover = ''
   let leftoverHtml = ''
@@ -138,11 +137,6 @@ export function transformStreamWithRouter(
     const html = routerStreamBuffer
     routerStreamBuffer = ''
     return html
-  }
-
-  function finish() {
-    const finalHtml = leftoverHtml + pendingClosingTags
-    finalPassThrough.end(finalHtml)
   }
 
   function decodeChunk(chunk: unknown): string {
@@ -164,8 +158,8 @@ export function transformStreamWithRouter(
       }
     },
     onEnd: () => {
-      isRouterStreamDone = true
-      if (isAppStreamDone) finish()
+      const finalHtml = leftoverHtml + pendingClosingTags
+      finalPassThrough.end(finalHtml)
     },
     onError: (error) => {
       console.error('Error reading routerStream:', error)
@@ -227,8 +221,6 @@ export function transformStreamWithRouter(
     },
     onEnd: () => {
       appDoneRendering()
-      isAppStreamDone = true
-      if (isRouterStreamDone) finish()
     },
     onError: (error) => {
       console.error('Error reading appStream:', error)
