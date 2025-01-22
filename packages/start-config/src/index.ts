@@ -121,18 +121,19 @@ export function defineConfig(
     client: {
       getRuntimeCode: () =>
         `import { createClientRpc } from '@tanstack/start/server-functions-client'`,
-      replacer: (opts) => `createClientRpc(${JSON.stringify(opts.functionId)})`,
+      replacer: (opts) =>
+        `createClientRpc('${opts.functionId}', '${serverBase}')`,
     },
     ssr: {
       getRuntimeCode: () =>
         `import { createSsrRpc } from '@tanstack/start/server-functions-ssr'`,
-      replacer: (opts) => `createSsrRpc(${JSON.stringify(opts.functionId)})`,
+      replacer: (opts) => `createSsrRpc('${opts.functionId}', '${serverBase}')`,
     },
     server: {
       getRuntimeCode: () =>
         `import { createServerRpc } from '@tanstack/start/server-functions-server'`,
       replacer: (opts) =>
-        `createServerRpc(${JSON.stringify(opts.functionId)}, ${opts.fn})`,
+        `createServerRpc('${opts.functionId}', '${serverBase}', ${opts.fn})`,
     },
   })
 
@@ -178,7 +179,6 @@ export function defineConfig(
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
-                ...injectDefineEnv('TSS_SERVER_FN_BASE', serverBase),
               },
               ssr: mergeSsrOptions([
                 viteConfig.userConfig.ssr,
@@ -239,7 +239,6 @@ export function defineConfig(
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
-                ...injectDefineEnv('TSS_SERVER_FN_BASE', serverBase),
               },
               ssr: mergeSsrOptions([
                 viteConfig.userConfig.ssr,
@@ -408,7 +407,6 @@ export function defineConfig(
               ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
               ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
               ...injectDefineEnv('TSS_API_BASE', apiBase),
-              ...injectDefineEnv('TSS_SERVER_FN_BASE', serverBase),
             },
           }),
           TanStackRouterVite({

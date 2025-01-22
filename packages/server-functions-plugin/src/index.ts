@@ -7,11 +7,10 @@ import type {
   ReplacerFn,
 } from '@tanstack/directive-functions-plugin'
 
-export type CreateClientRpcFn = (functionId: string) => any
-export type CreateSsrRpcFn = (functionId: string) => any
-export type CreateServerRpcFn = (
+export type CreateRpcFn = (
   functionId: string,
-  splitImportFn: string,
+  serverBase: string,
+  splitImportFn?: string,
 ) => any
 
 declare global {
