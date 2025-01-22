@@ -9,6 +9,6 @@ export function ScriptOnce({
 }) {
   const router = useRouter()
 
-  router.injectScript(children, { logScript: log })
+  router.injectScript(() => children, { logScript: log })
   return null
 }

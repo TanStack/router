@@ -3,16 +3,16 @@ import { StartServer } from './StartServer'
 import type { HandlerCallback } from './defaultStreamHandler'
 import type { AnyRouter } from '@tanstack/react-router'
 
-export const defaultRenderHandler: HandlerCallback<AnyRouter> = ({
+export const defaultRenderHandler: HandlerCallback<AnyRouter> = async ({
   router,
   responseHeaders,
 }) => {
   try {
     let html = ReactDOMServer.renderToString(<StartServer router={router} />)
-    html = html.replace(
-      `</body>`,
-      `${router.injectedHtml.map((d) => d()).join('')}</body>`,
+    const injectedHtml = await Promise.all(router.injectedHtml).then((htmls) =>
+      htmls.join(''),
     )
+    html = html.replace(`</body>`, `${injectedHtml}</body>`)
     return new Response(`<!DOCTYPE html>${html}`, {
       status: router.state.statusCode,
       headers: responseHeaders,

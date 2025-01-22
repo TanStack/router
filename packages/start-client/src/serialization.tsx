@@ -297,7 +297,7 @@ function InnerDehydratePromise({ entry }: { entry: ServerExtractedPromise }) {
     },
   )})`
 
-  router.injectScript(code)
+  router.injectScript(() => code)
 
   return <></>
 }
@@ -321,7 +321,7 @@ function DehydrateStream({ entry }: { entry: ServerExtractedStream }) {
             )}))`
           : `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.close()`
 
-        router.injectScript(code)
+        router.injectScript(() => code)
 
         return <></>
       }}

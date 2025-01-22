@@ -3,7 +3,7 @@ import { isbot } from 'isbot'
 import ReactDOMServer from 'react-dom/server'
 import { StartServer } from './StartServer'
 import {
-  transformReadableStreamWithRouter,
+  // transformReadableStreamWithRouter,
   transformStreamWithRouter,
 } from './transformStreamWithRouter'
 import type { AnyRouter } from '@tanstack/react-router'
@@ -19,33 +19,33 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
   router,
   responseHeaders,
 }) => {
-  if (typeof ReactDOMServer.renderToReadableStream === 'function') {
-    const stream = await ReactDOMServer.renderToReadableStream(
-      <StartServer router={router} />,
-      {
-        signal: request.signal,
-      },
-    )
+  // if (typeof ReactDOMServer.renderToReadableStream === 'function') {
+  //   const stream = await ReactDOMServer.renderToReadableStream(
+  //     <StartServer router={router} />,
+  //     {
+  //       signal: request.signal,
+  //     },
+  //   )
 
-    if (isbot(request.headers.get('User-Agent'))) {
-      await stream.allReady
-    }
+  //   if (isbot(request.headers.get('User-Agent'))) {
+  //     await stream.allReady
+  //   }
 
-    const transforms = [transformReadableStreamWithRouter(router)]
+  //   const transforms = [transformReadableStreamWithRouter(router)]
 
-    const transformedStream = transforms.reduce(
-      (stream, transform) => stream.pipeThrough(transform),
-      stream as ReadableStream,
-    )
+  //   const transformedStream = transforms.reduce(
+  //     (stream, transform) => stream.pipeThrough(transform),
+  //     stream as ReadableStream,
+  //   )
 
-    return new Response(transformedStream, {
-      status: router.state.statusCode,
-      headers: responseHeaders,
-    })
-  }
+  //   return new Response(transformedStream, {
+  //     status: router.state.statusCode,
+  //     headers: responseHeaders,
+  //   })
+  // }
 
   if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
-    const passthrough = new PassThrough()
+    const reactAppPassthrough = new PassThrough()
 
     try {
       const pipeable = ReactDOMServer.renderToPipeableStream(
@@ -54,12 +54,12 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
           ...(isbot(request.headers.get('User-Agent'))
             ? {
                 onAllReady() {
-                  pipeable.pipe(passthrough)
+                  pipeable.pipe(reactAppPassthrough)
                 },
               }
             : {
                 onShellReady() {
-                  pipeable.pipe(passthrough)
+                  pipeable.pipe(reactAppPassthrough)
                 },
               }),
           onError: (error, info) => {
@@ -71,14 +71,12 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
       console.error('Error in renderToPipeableStream:', e)
     }
 
-    const transforms = [transformStreamWithRouter(router)]
-
-    const transformedStream = transforms.reduce(
-      (stream, transform) => (stream as any).pipe(transform),
-      passthrough,
+    const responseStream = transformStreamWithRouter(
+      router,
+      reactAppPassthrough,
     )
 
-    return new Response(transformedStream as any, {
+    return new Response(responseStream as any, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })

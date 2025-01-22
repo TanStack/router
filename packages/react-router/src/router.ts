@@ -195,6 +195,8 @@ export type RouterContextOptions<TRouteTree extends AnyRoute> =
 
 export type TrailingSlashOption = 'always' | 'never' | 'preserve'
 
+export type InjectedHtmlEntry = Promise<() => string>
+
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
@@ -3099,24 +3101,33 @@ export class Router<
     this.manifest = ctx.router.manifest
   }
 
-  injectedHtml: Array<() => string> = []
-  injectHtml = (html: string) => {
-    const cb = () => {
-      this.injectedHtml = this.injectedHtml.filter((d) => d !== cb)
-      return html
-    }
-
-    this.injectedHtml.push(cb)
+  injectedHtml: Array<InjectedHtmlEntry> = []
+  injectHtml = (getHtml: () => string | Promise<string>) => {
+    const promise = Promise.resolve()
+      .then(getHtml)
+      .then((html) => {
+        return () => {
+          // Remove the promise from the array
+          this.injectedHtml = this.injectedHtml.filter((d) => promise !== d)
+          // Return the html
+          return html
+        }
+      })
+    this.injectedHtml.push(promise)
   }
-  injectScript = (script: string, opts?: { logScript?: boolean }) => {
-    this.injectHtml(
-      `<script class='tsr-once'>${script}${
+  injectScript = (
+    getScript: () => string | Promise<string>,
+    opts?: { logScript?: boolean },
+  ) => {
+    this.injectHtml(async () => {
+      const script = await getScript()
+      return `<script class='tsr-once'>${script}${
         process.env.NODE_ENV === 'development' && (opts?.logScript ?? true)
           ? `; console.info(\`Injected From Server:
 ${jsesc(script, { quotes: 'backtick' })}\`)`
           : ''
-      }; if (typeof __TSR__ !== 'undefined') __TSR__.cleanScripts()</script>`,
-    )
+      }; if (typeof __TSR__ !== 'undefined') __TSR__.cleanScripts()</script>`
+    })
   }
 
   streamedKeys: Set<string> = new Set()
@@ -3147,7 +3158,8 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
 
     this.streamedKeys.add(key)
     this.injectScript(
-      `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`,
+      () =>
+        `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`,
     )
   }
 

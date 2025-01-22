@@ -262,6 +262,7 @@ export type {
   StreamState,
   TSRGlobal,
   TSRGlobalMatch,
+  InjectedHtmlEntry,
 } from './router'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
@@ -271,7 +272,6 @@ export type {
   MatchLocation,
   NavigateFn,
   BuildLocationFn,
-  InjectedHtmlEntry,
 } from './RouterProvider'
 
 export {

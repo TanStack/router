@@ -54,8 +54,6 @@ export type BuildLocationFn = <
   },
 ) => ParsedLocation
 
-export type InjectedHtmlEntry = string | (() => Promise<string> | string)
-
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
