@@ -2,32 +2,45 @@ import { PassThrough } from 'node:stream'
 import type { Readable } from 'node:stream'
 import type { AnyRouter } from '@tanstack/react-router'
 
-function createRouterStream(router: AnyRouter): Readable {
+function createRouterStream(router: AnyRouter) {
   const routerStream = new PassThrough()
 
-  async function digestRouterInjections(): Promise<void> {
-    try {
-      while (router.injectedHtml.length > 0) {
-        // Wait for any of the injected promises to settle
-        const getHtml = await Promise.race(router.injectedHtml)
-        // On success, as long as the routerStream is not destroyed,
-        // push the html
-        if (!routerStream.destroyed) {
-          routerStream.push(getHtml())
+  let digesting = false
+
+  async function digestRouterStream(isEnd: boolean = false): Promise<void> {
+    if (!digesting) {
+      digesting = true
+
+      try {
+        while (router.injectedHtml.length > 0) {
+          // Wait for any of the injected promises to settle
+          const getHtml = await Promise.race(router.injectedHtml)
+          // On success, as long as the routerStream is not destroyed,
+          // push the html
+          const html = getHtml()
+          if (!routerStream.destroyed) {
+            routerStream.write(html)
+          }
         }
+      } catch (error) {
+        console.error('Error processing HTML injection:', error)
+        routerStream.destroy(
+          error instanceof Error ? error : new Error(String(error)),
+        )
       }
-    } catch (error) {
-      console.error('Error processing HTML injection:', error)
-      routerStream.destroy(
-        error instanceof Error ? error : new Error(String(error)),
-      )
+
+      digesting = false
+    }
+
+    if (isEnd && !routerStream.destroyed) {
+      routerStream.end()
     }
   }
 
   // Start digesting router injections into the routerStream
-  digestRouterInjections()
+  digestRouterStream()
 
-  return routerStream
+  return [routerStream, digestRouterStream] as const
 }
 
 // regex pattern for matching closing body and html tags
@@ -38,40 +51,47 @@ const patternHtmlEnd = /(<\/html>)/
 // regex pattern for matching closing tags
 const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
 const textDecoder = new TextDecoder()
-
 export function transformStreamWithRouter(
   router: AnyRouter,
   appStream: Readable,
 ) {
   const finalPassThrough = new PassThrough()
-  const routerStream = createRouterStream(router)
+  const [routerStream, digestRouterStream] = createRouterStream(router)
   let routerStreamBuffer = ''
   let pendingClosingTags = ''
   let isRouterStreamDone = false
   let isAppStreamDone = false
 
-  // Buffer the routerStream until the appStream has an open body tag
   let bodyStarted = false
   let leftover = ''
   let leftoverHtml = ''
 
-  // Buffer the routerStream so we can flush it when the appStream has an open body tag
+  const textDecoder = new TextDecoder()
+
+  // Buffer and handle `routerStream` data
   routerStream.on('data', (chunk) => {
     const decoded = textDecoder.decode(chunk)
 
-    console.log('routerStream data', decoded)
-
     if (!bodyStarted) {
-      // console.log('Non-body routerStream data', decoded)
       routerStreamBuffer += decoded
     } else {
-      finalPassThrough.write(decoded)
+      if (!finalPassThrough.write(decoded)) {
+        routerStream.pause()
+        finalPassThrough.once('drain', () => routerStream.resume())
+      }
     }
   })
 
-  appStream.on('data', (chunk) => {
-    const chunkString = leftover + textDecoder.decode(chunk)
+  const getBufferedRouterStream = () => {
+    const html = routerStreamBuffer
+    routerStreamBuffer = ''
+    return html
+  }
 
+  appStream.on('data', (chunk) => {
+    digestRouterStream()
+
+    const chunkString = leftover + textDecoder.decode(chunk)
     const bodyStartMatch = chunkString.match(patternBodyStart)
     const bodyEndMatch = chunkString.match(patternBodyEnd)
     const htmlEndMatch = chunkString.match(patternHtmlEnd)
@@ -80,20 +100,15 @@ export function transformStreamWithRouter(
       bodyStarted = true
     }
 
-    const getBufferedRouterStream = () => {
-      const html = routerStreamBuffer
-      routerStreamBuffer = ''
-      return html
-    }
-
     if (!bodyStarted) {
-      finalPassThrough.write(chunkString)
+      if (!finalPassThrough.write(chunkString)) {
+        appStream.pause()
+        finalPassThrough.once('drain', () => appStream.resume())
+      }
       leftover = ''
       return
     }
 
-    // If the body has already ended, we need to hold on to the closing tags
-    // until the routerStream has finished
     if (
       bodyEndMatch &&
       htmlEndMatch &&
@@ -108,15 +123,12 @@ export function transformStreamWithRouter(
       return
     }
 
-    // For all other closing tags, add the arbitrary HTML after them
     let result
     let lastIndex = 0
-
     while ((result = patternClosingTag.exec(chunkString)) !== null) {
       lastIndex = result.index + result[0].length
     }
 
-    // If a closing tag was found, add the arbitrary HTML and send it through
     if (lastIndex > 0) {
       const processed =
         chunkString.slice(0, lastIndex) +
@@ -125,32 +137,35 @@ export function transformStreamWithRouter(
       finalPassThrough.write(processed)
       leftover = chunkString.slice(lastIndex)
     } else {
-      // If no closing tag was found, store the chunk to process with the next one
       leftover = chunkString
       leftoverHtml += getBufferedRouterStream()
     }
   })
 
-  routerStream.on('end', () => {
-    isRouterStreamDone = true
-
-    if (isAppStreamDone) {
-      if (pendingClosingTags) {
-        finalPassThrough.write(pendingClosingTags)
-      }
-      finalPassThrough.end()
-    }
-  })
+  function finish() {
+    finalPassThrough.end(leftoverHtml + pendingClosingTags)
+  }
 
   appStream.on('end', () => {
+    digestRouterStream(true)
     isAppStreamDone = true
+    if (isRouterStreamDone) finish()
+  })
 
-    if (isRouterStreamDone) {
-      if (routerStreamBuffer || pendingClosingTags) {
-        finalPassThrough.write(routerStreamBuffer + pendingClosingTags)
-      }
-      finalPassThrough.end()
-    }
+  routerStream.on('end', () => {
+    isRouterStreamDone = true
+    if (isAppStreamDone) finish()
+  })
+
+  // Error handling
+  appStream.on('error', (err) => {
+    console.error('Error in appStream:', err)
+    finalPassThrough.destroy(err)
+  })
+
+  routerStream.on('error', (err) => {
+    console.error('Error in routerStream:', err)
+    finalPassThrough.destroy(err)
   })
 
   return finalPassThrough

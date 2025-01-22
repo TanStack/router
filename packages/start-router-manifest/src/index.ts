@@ -32,7 +32,6 @@ export function getFullRouterManifest() {
     attrs: {
       src: vinxiClientManifest.inputs[vinxiClientManifest.handler]?.output.path,
       type: 'module',
-      async: true,
       suppressHydrationWarning: true,
     },
   })
