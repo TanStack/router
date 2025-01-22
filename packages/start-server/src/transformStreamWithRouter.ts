@@ -171,7 +171,6 @@ export function transformStreamWithRouter(
       }
     },
     onEnd: () => {
-      console.log('routerStream done')
       isRouterStreamDone = true
       if (isAppStreamDone) finish()
     },
