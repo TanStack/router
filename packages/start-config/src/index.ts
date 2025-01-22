@@ -366,6 +366,7 @@ export function defineConfig(
     '@tanstack/start-server-functions-server',
     '@tanstack/start-router-manifest',
     '@tanstack/start-config',
+    '@tanstack/start-api-routes',
     '@tanstack/server-functions-plugin',
     'tsr:routes-manifest',
     'tsr:server-fn-manifest',
