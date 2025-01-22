@@ -1,12 +1,8 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
-import react from '@vitejs/plugin-react'
 import packageJson from './package.json'
-import minifyScriptPlugin from './vite-minify-plugin'
-import type { ViteUserConfig } from 'vitest/config'
 
 const config = defineConfig({
-  plugins: [minifyScriptPlugin(), react()] as ViteUserConfig['plugins'],
   test: {
     name: packageJson.name,
     watch: false,
@@ -17,22 +13,26 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
-    externalDeps: [
-      '@tanstack/start/client',
-      '@tanstack/start/server',
-      '@tanstack/start/router-manifest',
-      'tsr:server-fn-manifest',
-    ],
-    entry: [
-      './src/client/index.tsx',
-      './src/server/index.tsx',
-      './src/api/index.ts',
-      './src/client-runtime/index.tsx',
-      './src/server-runtime/index.tsx',
-      './src/ssr-runtime/index.tsx',
-      './src/server-handler/index.tsx',
-    ],
     srcDir: './src',
-    exclude: ['./src/config'],
+    entry: [
+      './src/client.tsx',
+      './src/server.tsx',
+      './src/config.tsx',
+      './src/router-manifest.tsx',
+      './src/server-functions-client.tsx',
+      './src/server-functions-server.tsx',
+      './src/server-functions-ssr.tsx',
+      './src/api.tsx',
+    ],
+    externalDeps: [
+      '@tanstack/start-client',
+      '@tanstack/start-server',
+      '@tanstack/start-config',
+      '@tanstack/start-router-manifest',
+      '@tanstack/start-server-functions-client',
+      '@tanstack/start-server-functions-server',
+      '@tanstack/start-server-functions-ssr',
+      '@tanstack/start-api-routes',
+    ],
   }),
 )
