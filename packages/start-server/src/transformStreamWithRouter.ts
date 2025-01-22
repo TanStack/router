@@ -21,42 +21,35 @@ export function transformPipeableStreamWithRouter(
 function createRouterStream(router: AnyRouter) {
   const routerStream = createPassthrough()
 
-  let digesting = false
+  let isAppRendering = true
 
-  async function digestRouterStream(isEnd: boolean = false): Promise<void> {
-    if (!digesting) {
-      digesting = true
+  async function digestRouterStream(): Promise<void> {
+    try {
+      while (isAppRendering || router.injectedHtml.length) {
+        // Wait for any of the injected promises to settle
+        const getHtml = await Promise.race(router.injectedHtml)
+        // On success, push the html
 
-      try {
-        while (router.injectedHtml.length > 0) {
-          // Wait for any of the injected promises to settle
-          const getHtml = await Promise.race(router.injectedHtml)
-          // On success, as long as the routerStream is not destroyed,
-          // push the html
-          const html = getHtml()
-          if (!routerStream.destroyed) {
-            routerStream.write(html)
-          }
+        if (!routerStream.destroyed) {
+          routerStream.write(getHtml())
         }
-      } catch (error) {
-        console.error('Error processing HTML injection:', error)
-        routerStream.destroy(
-          error instanceof Error ? error : new Error(String(error)),
-        )
       }
-
-      digesting = false
-    }
-
-    if (isEnd && !routerStream.destroyed) {
-      routerStream.end()
+    } catch (error) {
+      console.error('Error processing HTML injection:', error)
+      routerStream.destroy(
+        error instanceof Error ? error : new Error(String(error)),
+      )
     }
   }
 
   // Start digesting router injections into the routerStream
   digestRouterStream()
 
-  return [routerStream, digestRouterStream] as const
+  const appDoneRendering = () => {
+    isAppRendering = false
+  }
+
+  return [routerStream, appDoneRendering] as const
 }
 
 // regex pattern for matching closing body and html tags
@@ -131,7 +124,7 @@ export function transformStreamWithRouter(
   appStream: ReadableStream,
 ) {
   const finalPassThrough = createPassthrough()
-  const [routerStream, digestRouterStream] = createRouterStream(router)
+  const [routerStream, appDoneRendering] = createRouterStream(router)
 
   let routerStreamBuffer = ''
   let pendingClosingTags = ''
@@ -183,8 +176,6 @@ export function transformStreamWithRouter(
   // Transform the appStream
   readStream(appStream, {
     onData: (chunk) => {
-      digestRouterStream()
-
       const text = decodeChunk(chunk.value)
 
       const chunkString = leftover + text
@@ -235,7 +226,7 @@ export function transformStreamWithRouter(
       }
     },
     onEnd: () => {
-      digestRouterStream(true)
+      appDoneRendering()
       isAppStreamDone = true
       if (isRouterStreamDone) finish()
     },
