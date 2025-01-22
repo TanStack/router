@@ -186,6 +186,7 @@ export function defineConfig(
                 {
                   noExternal: [
                     '@tanstack/start',
+                    '@tanstack/start-router-manifest',
                     '@tanstack/start-server-functions-handler',
                     'tsr:routes-manifest',
                     'tsr:server-fn-manifest',
@@ -252,6 +253,7 @@ export function defineConfig(
                 {
                   noExternal: [
                     '@tanstack/start',
+                    '@tanstack/start-router-manifest',
                     '@tanstack/start-server-functions-handler',
                     'tsr:routes-manifest',
                     'tsr:server-fn-manifest',
@@ -321,6 +323,7 @@ export function defineConfig(
                 {
                   noExternal: [
                     '@tanstack/start',
+                    '@tanstack/start-router-manifest',
                     '@tanstack/start-server-functions-handler',
                     'tsr:routes-manifest',
                     'tsr:server-fn-manifest',
@@ -394,6 +397,7 @@ export function defineConfig(
               {
                 noExternal: [
                   '@tanstack/start',
+                  '@tanstack/start-router-manifest',
                   '@tanstack/start-server-functions-handler',
                   'tsr:routes-manifest',
                   'tsr:server-fn-manifest',
