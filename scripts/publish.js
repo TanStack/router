@@ -77,6 +77,14 @@ await publish({
       packageDir: 'packages/start',
     },
     {
+      name: '@tanstack/start-client',
+      packageDir: 'packages/start-client',
+    },
+    {
+      name: '@tanstack/start-server',
+      packageDir: 'packages/start-server',
+    },
+    {
       name: '@tanstack/create-router',
       packageDir: 'packages/create-router',
     },
