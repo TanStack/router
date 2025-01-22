@@ -184,7 +184,12 @@ export function defineConfig(
                 viteConfig.userConfig.ssr,
                 clientViteConfig.userConfig.ssr,
                 {
-                  noExternal: ['tsr:routes-manifest', 'tsr:server-fn-manifest'],
+                  noExternal: [
+                    '@tanstack/start',
+                    '@tanstack/start-server-functions-handler',
+                    'tsr:routes-manifest',
+                    'tsr:server-fn-manifest',
+                  ],
                 },
               ]),
               optimizeDeps: {
@@ -245,7 +250,12 @@ export function defineConfig(
                 viteConfig.userConfig.ssr,
                 ssrViteConfig.userConfig.ssr,
                 {
-                  noExternal: ['tsr:routes-manifest', 'tsr:server-fn-manifest'],
+                  noExternal: [
+                    '@tanstack/start',
+                    '@tanstack/start-server-functions-handler',
+                    'tsr:routes-manifest',
+                    'tsr:server-fn-manifest',
+                  ],
                   external: ['@vinxi/react-server-dom/client'],
                 },
               ]),
@@ -309,7 +319,12 @@ export function defineConfig(
                 viteConfig.userConfig.ssr,
                 serverViteConfig.userConfig.ssr,
                 {
-                  noExternal: ['tsr:routes-manifest', 'tsr:server-fn-manifest'],
+                  noExternal: [
+                    '@tanstack/start',
+                    '@tanstack/start-server-functions-handler',
+                    'tsr:routes-manifest',
+                    'tsr:server-fn-manifest',
+                  ],
                 },
               ]),
               optimizeDeps: {
@@ -377,7 +392,12 @@ export function defineConfig(
               viteConfig.userConfig.ssr,
               apiViteConfig.userConfig.ssr,
               {
-                noExternal: ['tsr:routes-manifest', 'tsr:server-fn-manifest'],
+                noExternal: [
+                  '@tanstack/start',
+                  '@tanstack/start-server-functions-handler',
+                  'tsr:routes-manifest',
+                  'tsr:server-fn-manifest',
+                ],
               },
             ]),
             optimizeDeps: {
