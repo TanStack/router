@@ -259,7 +259,6 @@ export type {
   ClientExtractedEntry,
   ClientExtractedPromise,
   ControllablePromise,
-  StreamState,
   TSRGlobal,
   TSRGlobalMatch,
   InjectedHtmlEntry,

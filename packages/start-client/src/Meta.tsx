@@ -121,8 +121,8 @@ export const useMetaElements = () => {
         <Asset {...asset} key={`tsr-meta-${JSON.stringify(asset)}`} />
       ))}
       <>
-        <ScriptOnce log={false} children={minifiedScript} />
-        <ScriptOnce
+        <ScriptOnce log={false} children={minifiedScript} sync={true}/>
+        <ScriptOnce  sync={true}
           children={`__TSR__.dehydrated = ${jsesc(
             router.options.transformer.stringify(dehydratedCtx),
             {

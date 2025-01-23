@@ -202,7 +202,7 @@ export function transformStreamWithRouter(
         const bodyIndex = bodyEndMatch.index!
         pendingClosingTags = chunkString.slice(bodyIndex)
         finalPassThrough.write(
-          getBufferedRouterStream() + chunkString.slice(0, bodyIndex),
+          chunkString.slice(0, bodyIndex) + getBufferedRouterStream(),
         )
         leftover = ''
         return

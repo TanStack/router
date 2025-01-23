@@ -1,4 +1,3 @@
-import * as React from 'react'
 import {
   TSR_DEFERRED_PROMISE,
   defer,
@@ -12,7 +11,6 @@ import type {
   AnyRouter,
   ClientExtractedBaseEntry,
   DeferredPromise,
-  StreamState,
   TSRGlobalMatch,
 } from '@tanstack/react-router'
 import type { ResolvePromiseState } from './tsrScript'
@@ -306,43 +304,6 @@ export function replaceBy<T>(
   }
 
   return obj
-}
-
-function StreamChunks({
-  streamState,
-  children,
-  __index = 0,
-}: {
-  streamState: StreamState
-  children: (chunk: string | null) => React.JSX.Element
-  __index?: number
-}) {
-  const promise = streamState.promises[__index]
-
-  if (!promise) {
-    return null
-  }
-
-  if (promise.status === 'pending') {
-    throw promise
-  }
-
-  const chunk = promise.value!
-
-  return (
-    <>
-      {children(chunk)}
-      <div className="tsr-once">
-        <React.Suspense fallback={null}>
-          <StreamChunks
-            streamState={streamState}
-            __index={__index + 1}
-            children={children}
-          />
-        </React.Suspense>
-      </div>
-    </>
-  )
 }
 
 function deepImmutableSetByPath<T>(obj: T, path: Array<string>, value: any): T {

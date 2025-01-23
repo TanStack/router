@@ -180,10 +180,6 @@ export type ClientExtractedEntry =
   | ClientExtractedStream
   | ClientExtractedPromise
 
-export type StreamState = {
-  promises: Array<ControlledPromise<string | null>>
-}
-
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends InferRouterContext<TRouteTree>
     ? {
@@ -3102,13 +3098,17 @@ export class Router<
 
   injectedHtml: Array<InjectedHtmlEntry> = []
   injectHtml = (getHtml: () => string | Promise<string>) => {
+    console.log('         %%%%% ##### injectHtml')
     const promise = Promise.resolve()
       .then(getHtml)
       .then((html) => {
         return () => {
           // Remove the promise from the array
+          console.log('##### injectHtml Removing promise', this.injectedHtml.length)
           this.injectedHtml = this.injectedHtml.filter((d) => promise !== d)
+          console.log('##### injectHtml after Removing promise', this.injectedHtml.length)
           // Return the html
+          console.log('##### injectHtml Returning html', html)
           return html
         }
       })
