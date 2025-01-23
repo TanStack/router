@@ -3104,9 +3104,15 @@ export class Router<
       .then((html) => {
         return () => {
           // Remove the promise from the array
-          console.log('##### injectHtml Removing promise', this.injectedHtml.length)
+          console.log(
+            '##### injectHtml Removing promise',
+            this.injectedHtml.length,
+          )
           this.injectedHtml = this.injectedHtml.filter((d) => promise !== d)
-          console.log('##### injectHtml after Removing promise', this.injectedHtml.length)
+          console.log(
+            '##### injectHtml after Removing promise',
+            this.injectedHtml.length,
+          )
           // Return the html
           console.log('##### injectHtml Returning html', html)
           return html
