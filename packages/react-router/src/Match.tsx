@@ -241,14 +241,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     throw router.getMatch(match.id)?.loadPromise
   }
 
-  return (
-    <>
-      {out}
-      {router.AfterEachMatch ? (
-        <router.AfterEachMatch match={match} matchIndex={matchIndex} />
-      ) : null}
-    </>
-  )
+  return <>{out}</>
 })
 
 export const Outlet = React.memo(function OutletImpl() {

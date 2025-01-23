@@ -1,16 +1,12 @@
 import * as React from 'react'
 import {
-  ScriptOnce,
   TSR_DEFERRED_PROMISE,
-  createControlledPromise,
   defer,
   isPlainArray,
   isPlainObject,
   pick,
-  useRouter,
 } from '@tanstack/react-router'
 import jsesc from 'jsesc'
-import invariant from 'tiny-invariant'
 import type {
   AnyRouteMatch,
   AnyRouter,
@@ -29,7 +25,7 @@ export interface ServerExtractedBaseEntry extends ClientExtractedBaseEntry {
 
 export interface ServerExtractedStream extends ServerExtractedBaseEntry {
   type: 'stream'
-  streamState: StreamState
+  stream: ReadableStream
 }
 
 export type ServerExtractedEntry =
@@ -73,7 +69,7 @@ export function serializeLoaderData(
         path,
         id: extracted.length,
         matchIndex: ctx.match.index,
-        streamState: createStreamState({ stream: copy2 }),
+        stream: copy2,
       }
 
       extracted.push(entry)
@@ -148,16 +144,17 @@ export function afterHydrate({ router }: { router: AnyRouter }) {
   })
 }
 
-export function AfterEachMatch(props: { match: any; matchIndex: number }) {
-  const router = useRouter()
-
-  const fullMatch = router.state.matches[props.matchIndex]!
+export function onMatchSettled(opts: {
+  router: AnyRouter
+  match: AnyRouteMatch
+}) {
+  const { router, match } = opts
 
   if (!router.isServer) {
     return null
   }
 
-  const extracted = (fullMatch as any).extracted as
+  const extracted = (match as any).extracted as
     | undefined
     | Array<ServerExtractedEntry>
 
@@ -176,9 +173,9 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
             }
             return acc
           },
-          { temp: fullMatch[dataType] },
+          { temp: match[dataType] },
         ).temp
-      : fullMatch[dataType]
+      : match[dataType]
   })
 
   if (
@@ -188,7 +185,7 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
   ) {
     const initCode = `__TSR__.initMatch(${jsesc(
       {
-        index: props.matchIndex,
+        index: match.index,
         __beforeLoadContext: router.options.transformer.stringify(
           serializedBeforeLoadData,
         ),
@@ -208,20 +205,63 @@ export function AfterEachMatch(props: { match: any; matchIndex: number }) {
       },
     )})`
 
-    return (
-      <>
-        <ScriptOnce children={initCode} />
-        {extracted
-          ? extracted.map((d) => {
-              if (d.type === 'stream') {
-                return <DehydrateStream key={d.id} entry={d} />
-              }
+    router.injectScript(() => initCode)
 
-              return <DehydratePromise key={d.id} entry={d} />
-            })
-          : null}
-      </>
-    )
+    if (extracted) {
+      extracted.forEach((entry) => {
+        if (entry.type === 'promise') return injectPromise(entry)
+        return injectStream(entry)
+      })
+    }
+
+    function injectPromise(entry: ServerExtractedPromise) {
+      entry.promise.then(() => {
+        const code = `__TSR__.resolvePromise(${jsesc(
+          {
+            id: entry.id,
+            matchIndex: entry.matchIndex,
+            promiseState: entry.promise[TSR_DEFERRED_PROMISE],
+          } satisfies ResolvePromiseState,
+          {
+            isScriptContext: true,
+            wrap: true,
+            json: true,
+          },
+        )})`
+
+        router.injectScript(() => code)
+      })
+    }
+
+    function injectStream(entry: ServerExtractedStream) {
+      ;(async () => {
+        try {
+          const reader = entry.stream.getReader()
+          let chunk: ReadableStreamReadResult<any> | null = null
+          while (!(chunk = await reader.read()).done) {
+            injectChunk(chunk.value)
+          }
+          // reader.releaseLock()
+        } catch (err) {
+          console.error('stream read error', err)
+        }
+      })()
+
+      function injectChunk(chunk: string | null) {
+        const code = chunk
+          ? `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.enqueue(new TextEncoder().encode(${jsesc(
+              chunk.toString(),
+              {
+                isScriptContext: true,
+                wrap: true,
+                json: true,
+              },
+            )}))`
+          : `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.close()`
+
+        router.injectScript(() => code)
+      }
+    }
   }
 
   return null
@@ -266,102 +306,6 @@ export function replaceBy<T>(
   }
 
   return obj
-}
-
-function DehydratePromise({ entry }: { entry: ServerExtractedPromise }) {
-  return (
-    <div className="tsr-once">
-      <React.Suspense fallback={null}>
-        <InnerDehydratePromise entry={entry} />
-      </React.Suspense>
-    </div>
-  )
-}
-
-function InnerDehydratePromise({ entry }: { entry: ServerExtractedPromise }) {
-  const router = useRouter()
-  if (entry.promise[TSR_DEFERRED_PROMISE].status === 'pending') {
-    throw entry.promise
-  }
-
-  const code = `__TSR__.resolvePromise(${jsesc(
-    {
-      id: entry.id,
-      matchIndex: entry.matchIndex,
-      promiseState: entry.promise[TSR_DEFERRED_PROMISE],
-    } satisfies ResolvePromiseState,
-    {
-      isScriptContext: true,
-      wrap: true,
-      json: true,
-    },
-  )})`
-
-  router.injectScript(() => code)
-
-  return <></>
-}
-
-function DehydrateStream({ entry }: { entry: ServerExtractedStream }) {
-  invariant(entry.streamState, 'StreamState should be defined')
-  const router = useRouter()
-
-  return (
-    <StreamChunks
-      streamState={entry.streamState}
-      children={(chunk) => {
-        const code = chunk
-          ? `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.enqueue(new TextEncoder().encode(${jsesc(
-              chunk.toString(),
-              {
-                isScriptContext: true,
-                wrap: true,
-                json: true,
-              },
-            )}))`
-          : `__TSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.close()`
-
-        router.injectScript(() => code)
-
-        return <></>
-      }}
-    />
-  )
-}
-
-// Readable stream with state is a stream that has a promise that resolves to the next chunk
-function createStreamState({
-  stream,
-}: {
-  stream: ReadableStream
-}): StreamState {
-  const streamState: StreamState = {
-    promises: [],
-  }
-
-  const reader = stream.getReader()
-
-  const read = (index: number): any => {
-    streamState.promises[index] = createControlledPromise()
-
-    return reader.read().then(({ done, value }) => {
-      if (done) {
-        streamState.promises[index]!.resolve(null)
-        reader.releaseLock()
-        return
-      }
-
-      streamState.promises[index]!.resolve(value)
-
-      return read(index + 1)
-    })
-  }
-
-  read(0).catch((err: any) => {
-    console.error('stream read error', err)
-  })
-
-  return streamState
 }
 
 function StreamChunks({

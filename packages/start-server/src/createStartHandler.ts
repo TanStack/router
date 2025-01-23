@@ -1,6 +1,11 @@
 import { createMemoryHistory } from '@tanstack/react-router'
-import { mergeHeaders, serializeLoaderData } from '@tanstack/start-client'
+import {
+  mergeHeaders,
+  onMatchSettled,
+  serializeLoaderData,
+} from '@tanstack/start-client'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
+import jsesc from 'jsesc'
 import type { H3Event } from 'h3'
 import type { AnyRouter, Manifest } from '@tanstack/react-router'
 import type { HandlerCallback } from './defaultStreamHandler'
@@ -32,6 +37,13 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
       // Inject a few of the SSR helpers and defaults
       router.serializeLoaderData = serializeLoaderData
+      router.onMatchSettled = onMatchSettled
+      router.serializer = (value) =>
+        jsesc(value, {
+          isScriptContext: true,
+          wrap: true,
+          json: true,
+        })
 
       if (getRouterManifest) {
         router.manifest = getRouterManifest()

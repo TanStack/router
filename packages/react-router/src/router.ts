@@ -748,13 +748,7 @@ export class Router<
   dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
   manifest?: Manifest
-  AfterEachMatch?: (props: {
-    match: Pick<
-      AnyRouteMatch,
-      'id' | 'status' | 'error' | 'loadPromise' | 'minPendingPromise'
-    >
-    matchIndex: number
-  }) => any
+  onMatchSettled?: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
   serializeLoaderData?: (
     type: '__beforeLoadContext' | 'loaderData',
     loaderData: any,
@@ -2680,6 +2674,11 @@ export class Router<
                             isFetching: false,
                           }))
                         }
+
+                        this.onMatchSettled?.({
+                          router: this,
+                          match: this.getMatch(matchId)!,
+                        })
 
                         // Last but not least, wait for the the components
                         // to be preloaded before we resolve the match
