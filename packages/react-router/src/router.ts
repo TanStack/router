@@ -1959,8 +1959,11 @@ export class Router<
         try {
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
+          const actualBrowserLocation = this.state.location
           const hrefChanged = prevLocation.href !== next.href
           const pathChanged = prevLocation.pathname !== next.pathname
+          const browserLocationChanged =
+            actualBrowserLocation.href !== next.href
 
           // Cancel any pending matches
           this.cancelMatches()
@@ -2047,9 +2050,10 @@ export class Router<
                       isLoading: false,
                       loadedAt: Date.now(),
                       matches: newMatches,
-                      pendingMatches: hasPendingFetches
-                        ? s.pendingMatches
-                        : undefined,
+                      pendingMatches:
+                        hasPendingFetches && browserLocationChanged
+                          ? s.pendingMatches
+                          : undefined,
                       cachedMatches: [
                         ...s.cachedMatches,
                         ...exitingMatches.filter((d) => d.status !== 'error'),
