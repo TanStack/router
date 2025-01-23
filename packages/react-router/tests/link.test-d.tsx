@@ -51,12 +51,13 @@ const invoicesIndexRoute = createRoute({
 const invoiceRoute = createRoute({
   getParentRoute: () => invoicesRoute,
   path: '$invoiceId',
-  validateSearch: () => ({ page: 0 }),
+  validateSearch: (): { page?: number } => ({ page: 0 }),
 })
 
 const invoiceEditRoute = createRoute({
   getParentRoute: () => invoiceRoute,
   path: 'edit',
+  validateSearch: () => ({ editId: 0 }),
 })
 
 const invoiceDetailsRoute = createRoute({
@@ -314,6 +315,7 @@ test('when navigating to the root', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(DefaultRouterObjectsLink)
@@ -325,6 +327,7 @@ test('when navigating to the root', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(RouterAlwaysTrailingSlashLink)
@@ -336,6 +339,7 @@ test('when navigating to the root', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(RouterNeverTrailingSlashLink)
@@ -347,6 +351,7 @@ test('when navigating to the root', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(RouterPreserveTrailingSlashLink)
@@ -358,6 +363,7 @@ test('when navigating to the root', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(DefaultRouterLink)
@@ -2305,23 +2311,23 @@ test('when navigating from a route with search params to the same route', () => 
 
   expectTypeOf(DefaultRouterLink)
     .parameter(0)
-    .toMatchTypeOf<{ search: unknown }>()
+    .not.toMatchTypeOf<{ search: unknown }>()
 
   expectTypeOf(DefaultRouterObjectsLink)
     .parameter(0)
-    .toMatchTypeOf<{ search: unknown }>()
+    .not.toMatchTypeOf<{ search: unknown }>()
 
   expectTypeOf(RouterAlwaysTrailingSlashesLink)
     .parameter(0)
-    .toMatchTypeOf<{ search: unknown }>()
+    .not.toMatchTypeOf<{ search: unknown }>()
 
   expectTypeOf(RouterNeverTrailingSlashesLink)
     .parameter(0)
-    .toMatchTypeOf<{ search: unknown }>()
+    .not.toMatchTypeOf<{ search: unknown }>()
 
   expectTypeOf(RouterPreserveTrailingSlashesLink)
     .parameter(0)
-    .toMatchTypeOf<{ search: unknown }>()
+    .not.toMatchTypeOf<{ search: unknown }>()
 
   expectTypeOf(DefaultRouterLink)
     .parameter(0)
@@ -2331,7 +2337,7 @@ test('when navigating from a route with search params to the same route', () => 
 
   expectTypeOf(DefaultRouterObjectsLink)
     .parameter(0)
-    .toMatchTypeOf<{ search: unknown }>()
+    .not.toMatchTypeOf<{ search: unknown }>()
 
   expectTypeOf(RouterAlwaysTrailingSlashesLink)
     .parameter(0)
@@ -2431,47 +2437,52 @@ test('when navigating to a route with search params', () => {
 
   defaultRouterLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ rootPage?: number; page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page?: number; editId: number }>()
 
   defaultRouterObjectsLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ rootPage?: number; page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page?: number; editId: number }>()
 
   routerAlwaysTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ rootPage?: number; page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page?: number; editId: number }>()
 
   routerNeverTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ rootPage?: number; page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page?: number; editId: number }>()
 
   routerPreserveTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ rootPage?: number; page: number }>()
+    .toEqualTypeOf<{ rootPage?: number; page?: number; editId: number }>()
 
   defaultRouterLinkSearch.returns.toEqualTypeOf<{
-    page: number
+    page?: number
     rootPage?: number
+    editId: number
   }>()
 
   defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{
-    page: number
+    page?: number
     rootPage?: number
+    editId: number
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
-    page: number
+    page?: number
     rootPage?: number
+    editId: number
   }>()
 
   routerNeverTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
     rootPage?: number
-    page: number
+    page?: number
+    editId: number
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
-    page: number
+    page?: number
     rootPage?: number
+    editId: number
   }>()
 
   defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2479,6 +2490,7 @@ test('when navigating to a route with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2486,6 +2498,7 @@ test('when navigating to a route with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2493,6 +2506,7 @@ test('when navigating to a route with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2500,6 +2514,7 @@ test('when navigating to a route with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2507,6 +2522,7 @@ test('when navigating to a route with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 })
 
@@ -2664,6 +2680,7 @@ test('when navigating to a route with optional search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2671,6 +2688,7 @@ test('when navigating to a route with optional search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2678,6 +2696,7 @@ test('when navigating to a route with optional search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2685,6 +2704,7 @@ test('when navigating to a route with optional search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2692,6 +2712,7 @@ test('when navigating to a route with optional search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 })
 
@@ -2774,51 +2795,60 @@ test('when navigating from a route with no search params to a route with search 
 
   defaultRouterLinkSearch.exclude<Function | boolean>().toEqualTypeOf<{
     rootPage?: number
-    page: number
+    page?: number
+    editId: number
   }>()
 
   defaultRouterObjectsLinkSearch.exclude<Function | boolean>().toEqualTypeOf<{
     rootPage?: number
-    page: number
+    page?: number
+    editId: number
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
     .toEqualTypeOf<{
       rootPage?: number
-      page: number
+      page?: number
+      editId: number
     }>()
 
   routerNeverTrailingSlashesLinkSearch
     .exclude<Function | boolean>()
     .toEqualTypeOf<{
       rootPage?: number
-      page: number
+      page?: number
+      editId: number
     }>()
 
   defaultRouterLinkSearch.returns.toEqualTypeOf<{
     rootPage?: number
-    page: number
+    page?: number
+    editId: number
   }>()
 
   defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<{
     rootPage?: number
-    page: number
+    page?: number
+    editId: number
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
     rootPage?: number
-    page: number
+    page?: number
+    editId: number
   }>()
 
   routerNeverTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
     rootPage?: number
-    page: number
+    page?: number
+    editId: number
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.returns.toEqualTypeOf<{
     rootPage?: number
-    page: number
+    page?: number
+    editId: number
   }>()
 
   defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{ rootPage?: number }>()
@@ -2923,51 +2953,61 @@ test('when navigating to a union of routes with search params', () => {
   defaultRouterLinkSearch
     .exclude<Function | boolean>()
     .toEqualTypeOf<
-      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+      | { rootPage?: number; page?: number; editId: number }
+      | { rootPage?: number }
+      | undefined
     >()
 
   defaultRouterObjectsLinkSearch
     .exclude<Function | boolean>()
     .toEqualTypeOf<
-      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+      | { rootPage?: number; page?: number; editId: number }
+      | { rootPage?: number }
+      | undefined
     >()
 
   routerAlwaysTrailingSlashesSearch
     .exclude<Function | boolean>()
     .toEqualTypeOf<
-      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+      | { rootPage?: number; page?: number; editId: number }
+      | { rootPage?: number }
+      | undefined
     >()
 
   routerNeverTrailingSlashesSearch
     .exclude<Function | boolean>()
     .toEqualTypeOf<
-      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+      | { rootPage?: number; page?: number; editId: number }
+      | { rootPage?: number }
+      | undefined
     >()
 
   routerPreserveTrailingSlashesSearch
     .exclude<Function | boolean>()
     .toEqualTypeOf<
-      { rootPage?: number; page: number } | { rootPage?: number } | undefined
+      | { rootPage?: number; page?: number; editId: number }
+      | { rootPage?: number }
+      | undefined
     >()
 
   defaultRouterLinkSearch.returns.toEqualTypeOf<
-    { rootPage?: number; page: number } | { rootPage?: number }
+    { rootPage?: number; page?: number; editId: number } | { rootPage?: number }
   >()
 
   defaultRouterObjectsLinkSearch.returns.toEqualTypeOf<
-    { rootPage?: number; page: number } | { rootPage?: number }
+    { rootPage?: number; page?: number; editId: number } | { rootPage?: number }
   >()
 
   routerAlwaysTrailingSlashesSearch.returns.toEqualTypeOf<
-    { rootPage?: number; page: number } | { rootPage?: number }
+    { rootPage?: number; page?: number; editId: number } | { rootPage?: number }
   >()
 
   routerNeverTrailingSlashesSearch.returns.toEqualTypeOf<
-    { rootPage?: number; page: number } | { rootPage?: number }
+    { rootPage?: number; page?: number; editId: number } | { rootPage?: number }
   >()
 
   routerPreserveTrailingSlashesSearch.returns.toEqualTypeOf<
-    { rootPage?: number; page: number } | { rootPage?: number }
+    { rootPage?: number; page?: number; editId: number } | { rootPage?: number }
   >()
 
   defaultRouterLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2975,6 +3015,7 @@ test('when navigating to a union of routes with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2982,6 +3023,7 @@ test('when navigating to a union of routes with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerAlwaysTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
@@ -2989,6 +3031,7 @@ test('when navigating to a union of routes with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerNeverTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
@@ -2996,6 +3039,7 @@ test('when navigating to a union of routes with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerPreserveTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
@@ -3003,6 +3047,7 @@ test('when navigating to a union of routes with search params', () => {
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 })
 
@@ -3091,7 +3136,7 @@ test('when navigating to a union of routes with search params including the root
     .exclude<Function | boolean>()
     .toEqualTypeOf<
       | { rootPage?: number }
-      | { rootPage?: number; page: number }
+      | { rootPage?: number; page?: number; editId: number }
       | { rootPage?: number; rootIndexPage: number }
       | undefined
     >()
@@ -3100,7 +3145,7 @@ test('when navigating to a union of routes with search params including the root
     .exclude<Function | boolean>()
     .toEqualTypeOf<
       | { rootPage?: number }
-      | { rootPage?: number; page: number }
+      | { rootPage?: number; page?: number; editId: number }
       | { rootPage?: number; rootIndexPage: number }
       | undefined
     >()
@@ -3109,7 +3154,7 @@ test('when navigating to a union of routes with search params including the root
     .exclude<Function | boolean>()
     .toEqualTypeOf<
       | { rootPage?: number }
-      | { rootPage?: number; page: number }
+      | { rootPage?: number; page?: number; editId: number }
       | { rootPage?: number; rootIndexPage: number }
       | undefined
     >()
@@ -3118,7 +3163,7 @@ test('when navigating to a union of routes with search params including the root
     .exclude<Function | boolean>()
     .toEqualTypeOf<
       | { rootPage?: number }
-      | { rootPage?: number; page: number }
+      | { rootPage?: number; page?: number; editId: number }
       | { rootPage?: number; rootIndexPage: number }
       | undefined
     >()
@@ -3127,37 +3172,37 @@ test('when navigating to a union of routes with search params including the root
     .exclude<Function | boolean>()
     .toEqualTypeOf<
       | { rootPage?: number }
-      | { rootPage?: number; page: number }
+      | { rootPage?: number; page?: number; editId: number }
       | { rootPage?: number; rootIndexPage: number }
       | undefined
     >()
 
   defaultRouterSearch.returns.toEqualTypeOf<
-    | { rootPage?: number; page: number }
+    | { rootPage?: number; page?: number; editId: number }
     | { rootPage?: number; rootIndexPage: number }
     | { rootPage?: number }
   >()
 
   defaultRouterObjectsSearch.returns.toEqualTypeOf<
-    | { rootPage?: number; page: number }
+    | { rootPage?: number; page?: number; editId: number }
     | { rootPage?: number; rootIndexPage: number }
     | { rootPage?: number }
   >()
 
   routerAlwaysTrailingSlashesLinkSearch.returns.toEqualTypeOf<
-    | { rootPage?: number; page: number }
+    | { rootPage?: number; page?: number; editId: number }
     | { rootPage?: number; rootIndexPage: number }
     | { rootPage?: number }
   >()
 
   routerNeverTrailingSlashesLinkSearch.returns.toEqualTypeOf<
-    | { rootPage?: number; page: number }
+    | { rootPage?: number; page?: number; editId: number }
     | { rootPage?: number; rootIndexPage: number }
     | { rootPage?: number }
   >()
 
   routerPreserveTrailingSlashesLinkSearch.returns.toEqualTypeOf<
-    | { rootPage?: number; page: number }
+    | { rootPage?: number; page?: number; editId: number }
     | { rootPage?: number; rootIndexPage: number }
     | { rootPage?: number }
   >()
@@ -3167,6 +3212,7 @@ test('when navigating to a union of routes with search params including the root
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   defaultRouterObjectsSearch.parameter(0).toEqualTypeOf<{
@@ -3174,6 +3220,7 @@ test('when navigating to a union of routes with search params including the root
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -3181,6 +3228,7 @@ test('when navigating to a union of routes with search params including the root
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -3188,6 +3236,7 @@ test('when navigating to a union of routes with search params including the root
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -3195,6 +3244,7 @@ test('when navigating to a union of routes with search params including the root
     rootIndexPage?: number
     rootPage?: number
     linesPage?: number
+    editId?: number
   }>()
 })
 
@@ -3718,6 +3768,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(DefaultRouterObjectsLink)
@@ -3729,6 +3780,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(RouterAlwaysTrailingSlashLink)
@@ -3740,6 +3792,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(RouterNeverTrailingSlashLink)
@@ -3751,6 +3804,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(RouterPreserveTrailingSlashLink)
@@ -3762,6 +3816,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(DefaultRouterLink)
@@ -4221,6 +4276,7 @@ test('linkOptions', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(defaultRouterObjectsLinkOptions)
@@ -4232,6 +4288,7 @@ test('linkOptions', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
@@ -4243,6 +4300,7 @@ test('linkOptions', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(routerNeverTrailingSlashLinkOptions)
@@ -4254,6 +4312,7 @@ test('linkOptions', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(routerPreserveTrailingSlashLinkOptions)
@@ -4265,6 +4324,7 @@ test('linkOptions', () => {
       rootIndexPage?: number
       rootPage?: number
       linesPage?: number
+      editId?: number
     }>()
 
   expectTypeOf(defaultRouterLinkOptions)
