@@ -5,7 +5,6 @@ import {
   ScrollRestoration,
   createRootRoute,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Meta, Scripts } from '@tanstack/start'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
@@ -70,6 +69,16 @@ function RootComponent() {
     </RootDocument>
   )
 }
+
+const RouterDevtools =
+  process.env.NODE_ENV === 'production'
+    ? () => null // Render nothing in production
+    : React.lazy(() =>
+        // Lazy load in development
+        import('@tanstack/router-devtools').then((res) => ({
+          default: res.TanStackRouterDevtools,
+        })),
+      )
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -149,7 +158,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <hr />
         {children}
         <ScrollRestoration />
-        <TanStackRouterDevtools position="bottom-right" />
+        <RouterDevtools position="bottom-right" />
         <Scripts />
       </body>
     </html>

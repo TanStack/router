@@ -36,7 +36,7 @@ export function useRouterState<
   })
   const router = opts?.router || contextRouter
   const previousResult =
-    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>()
+    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
 
   return useStore(router.__store, (state) => {
     if (opts?.select) {

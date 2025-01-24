@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { render } from '@testing-library/react'
-
-import React from 'react'
+import ReactDOMServer from 'react-dom/server'
 
 import {
   RouterProvider,
@@ -221,10 +220,11 @@ describe('ssr meta', () => {
       { property: 'og:image', content: 'index-image.jpg' },
     ])
 
-    const { container } = render(<RouterProvider router={router} />)
-
-    expect(container.innerHTML).toEqual(
-      `<title>Index</title><meta name="image" content="image.jpg"><meta property="og:description" content="Root description"><meta name="description" content="Index"><meta name="last-modified" content="2021-10-10"><meta property="og:image" content="index-image.jpg">`,
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+    expect(html).toEqual(
+      `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/><!--$--><!--/$-->`,
     )
   })
 })

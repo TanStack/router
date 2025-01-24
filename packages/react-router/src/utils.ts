@@ -470,7 +470,7 @@ export function usePrevious<T>(value: T): T | null {
  * ```
  */
 export function useIntersectionObserver<T extends Element>(
-  ref: React.RefObject<T>,
+  ref: React.RefObject<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},

@@ -624,7 +624,7 @@ describe('router emits events during rendering', () => {
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
 
