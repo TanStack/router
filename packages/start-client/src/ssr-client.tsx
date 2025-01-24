@@ -28,8 +28,6 @@ export interface StartSsrGlobal {
   >
   cleanScripts: () => void
   dehydrated?: any
-  queue: Array<() => boolean>
-  runQueue: () => void
   initMatch: (match: SsrMatch) => void
   resolvePromise: (opts: {
     matchId: string
