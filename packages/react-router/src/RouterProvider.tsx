@@ -77,7 +77,9 @@ export function RouterContextProvider<
   const routerContext = getRouterContext()
 
   const provider = (
-    <routerContext.Provider value={router}>{children}</routerContext.Provider>
+    <routerContext.Provider value={router as AnyRouter}>
+      {children}
+    </routerContext.Provider>
   )
 
   if (router.options.Wrap) {

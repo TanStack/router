@@ -9,8 +9,8 @@ export const defaultRenderHandler: HandlerCallback<AnyRouter> = async ({
 }) => {
   try {
     let html = ReactDOMServer.renderToString(<StartServer router={router} />)
-    const injectedHtml = await Promise.all(router.injectedHtml).then((htmls) =>
-      htmls.join(''),
+    const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
+      (htmls) => htmls.join(''),
     )
     html = html.replace(`</body>`, `${injectedHtml}</body>`)
     return new Response(`<!DOCTYPE html>${html}`, {

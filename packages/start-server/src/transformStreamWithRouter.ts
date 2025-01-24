@@ -1,5 +1,6 @@
 import { ReadableStream } from 'node:stream/web'
 import { Readable } from 'node:stream'
+import { createControlledPromise } from '@tanstack/react-router'
 import type { AnyRouter } from '@tanstack/react-router'
 
 export function transformReadableStreamWithRouter(
@@ -18,52 +19,11 @@ export function transformPipeableStreamWithRouter(
   )
 }
 
-function createRouterStream(router: AnyRouter) {
-  const routerStream = createPassthrough()
-
-  let isAppRendering = true
-
-  async function digestRouterStream(): Promise<void> {
-    try {
-      while (router.injectedHtml.length) {
-        // Wait for any of the injected promises to settle
-        const getHtml = await Promise.race(router.injectedHtml)
-        // On success, push the html
-
-        if (!routerStream.destroyed) {
-          routerStream.write(getHtml())
-        }
-      }
-
-      if (isAppRendering) {
-        setImmediate(() => {
-          digestRouterStream()
-        })
-      } else {
-        routerStream.end()
-      }
-    } catch (error) {
-      console.error('Error processing HTML injection:', error)
-      routerStream.destroy(
-        error instanceof Error ? error : new Error(String(error)),
-      )
-    }
-  }
-
-  // Start digesting router injections into the routerStream
-  digestRouterStream()
-
-  const appDoneRendering = () => {
-    isAppRendering = false
-  }
-
-  return [routerStream, appDoneRendering] as const
-}
-
 // regex pattern for matching closing body and html tags
 const patternBodyStart = /(<body)/
 const patternBodyEnd = /(<\/body>)/
 const patternHtmlEnd = /(<\/html>)/
+const patternHeadEnd = /(<\/head>)/
 
 // regex pattern for matching closing tags
 const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
@@ -132,8 +92,8 @@ export function transformStreamWithRouter(
   appStream: ReadableStream,
 ) {
   const finalPassThrough = createPassthrough()
-  const [routerStream, appDoneRendering] = createRouterStream(router)
 
+  let isAppRendering = true as boolean
   let routerStreamBuffer = ''
   let pendingClosingTags = ''
   let bodyStarted = false as boolean
@@ -153,38 +113,81 @@ export function transformStreamWithRouter(
     return String(chunk)
   }
 
-  // Buffer and handle `routerStream` data
-  readStream(routerStream.stream, {
-    onData: (chunk) => {
-      const text = decodeChunk(chunk.value)
+  const injectedHtmlDonePromise = createControlledPromise<void>()
 
-      if (!bodyStarted) {
-        routerStreamBuffer += text
-      } else {
-        finalPassThrough.write(text)
-      }
-    },
-    onEnd: () => {
-      const finalHtml = leftoverHtml + pendingClosingTags
-      finalPassThrough.end(finalHtml)
-    },
-    onError: (error) => {
-      console.error('Error reading routerStream:', error)
-      finalPassThrough.destroy(error)
-    },
+  let processingCount = 0
+
+  // Process any already-injected HTML
+  router.serverSsr!.injectedHtml.forEach((promise) => {
+    console.log('pre-added injected html')
+    handleInjectedHtml(promise)
   })
+
+  // Listen for any new injected HTML
+  const stopListeningToInjectedHtml = router.subscribe(
+    'onInjectedHtml',
+    (e) => {
+      console.log('subscription injected html')
+      handleInjectedHtml(e.promise)
+    },
+  )
+
+  function handleInjectedHtml(promise: Promise<string>) {
+    // If the app is done rendering and we've already resolved the promise,
+    // stop processing
+    if (!isAppRendering && injectedHtmlDonePromise.status !== 'pending') {
+      console.log('stop listening to injected html')
+      stopListeningToInjectedHtml()
+      return
+    }
+
+    processingCount++
+
+    promise
+      .then((html) => {
+        console.log('injected html')
+        if (!bodyStarted) {
+          routerStreamBuffer += html
+        } else {
+          finalPassThrough.write(html)
+        }
+      })
+      .catch(injectedHtmlDonePromise.reject)
+      .finally(() => {
+        processingCount--
+        console.log('processing count', processingCount)
+        if (!isAppRendering && processingCount === 0) {
+          injectedHtmlDonePromise.resolve()
+        }
+      })
+  }
+
+  injectedHtmlDonePromise
+    .then(() => {
+      const finalHtml =
+        leftoverHtml + getBufferedRouterStream() + pendingClosingTags
+
+      finalPassThrough.end(finalHtml)
+    })
+    .catch((err) => {
+      console.error('Error reading routerStream:', err)
+      finalPassThrough.destroy(err)
+    })
 
   // Transform the appStream
   readStream(appStream, {
     onData: (chunk) => {
+      console.log('app data')
       const text = decodeChunk(chunk.value)
 
       const chunkString = leftover + text
       const bodyStartMatch = chunkString.match(patternBodyStart)
       const bodyEndMatch = chunkString.match(patternBodyEnd)
       const htmlEndMatch = chunkString.match(patternHtmlEnd)
+      const headEndMatch = chunkString.match(patternHeadEnd)
 
       if (bodyStartMatch) {
+        console.log('body start')
         bodyStarted = true
       }
 
@@ -194,16 +197,35 @@ export function transformStreamWithRouter(
         return
       }
 
+      // If either the body end or html end is in the chunk,
+      // We need to get all of our data in asap
       if (
         bodyEndMatch &&
         htmlEndMatch &&
         bodyEndMatch.index! < htmlEndMatch.index!
       ) {
-        const bodyIndex = bodyEndMatch.index!
-        pendingClosingTags = chunkString.slice(bodyIndex)
-        finalPassThrough.write(
-          chunkString.slice(0, bodyIndex) + getBufferedRouterStream(),
-        )
+        const bodyEndIndex = bodyEndMatch.index!
+        pendingClosingTags = chunkString.slice(bodyEndIndex)
+
+        let html = ''
+
+        if (headEndMatch) {
+          // If the body start is also in the chunk,
+          // let's insert our buffered router stream before the end of
+          // the head tag
+          const headEndIndex = headEndMatch.index!
+          html =
+            chunkString.slice(0, headEndIndex) +
+            getBufferedRouterStream() +
+            chunkString.slice(headEndIndex + '</head>'.length, bodyEndIndex)
+        } else {
+          // If the body start is not in the chunk,
+          // let's insert our buffered router stream at the end of the body tag
+          html = chunkString.slice(0, bodyEndIndex) + getBufferedRouterStream()
+        }
+
+        finalPassThrough.write(html)
+
         leftover = ''
         return
       }
@@ -219,6 +241,7 @@ export function transformStreamWithRouter(
           chunkString.slice(0, lastIndex) +
           getBufferedRouterStream() +
           leftoverHtml
+
         finalPassThrough.write(processed)
         leftover = chunkString.slice(lastIndex)
       } else {
@@ -227,7 +250,17 @@ export function transformStreamWithRouter(
       }
     },
     onEnd: () => {
-      appDoneRendering()
+      console.log('app done rendering')
+      // Stop listening to any new injected HTML
+      stopListeningToInjectedHtml()
+
+      // Mark the app as done rendering
+      isAppRendering = false
+
+      // If there are no pending promises, resolve the injectedHtmlDonePromise
+      if (processingCount === 0) {
+        injectedHtmlDonePromise.resolve()
+      }
     },
     onError: (error) => {
       console.error('Error reading appStream:', error)

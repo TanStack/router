@@ -1,35 +1,13 @@
-import type {
-  ControllablePromise,
-  DeferredPromiseState,
-  TSRGlobal,
-  TSRGlobalMatch,
-} from '@tanstack/react-router'
+import type { ControllablePromise } from '@tanstack/react-router'
+import type { StartSsrGlobal } from '@tanstack/start-client'
 
-export interface ResolvePromiseState {
-  id: number
-  matchIndex: number
-  promiseState: DeferredPromiseState<any>
-}
-interface StartTSRGlobal extends TSRGlobal {
-  queue: Array<() => boolean>
-  runQueue: () => void
-  initMatch: (match: TSRGlobalMatch) => void
-  resolvePromise: (p: ResolvePromiseState) => void
-}
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    __TSR__: StartTSRGlobal
-  }
-}
-
-const __TSR__: StartTSRGlobal = {
+const __TSR_SSR__: StartSsrGlobal = {
   matches: [],
   streamedValues: {},
   queue: [],
   runQueue: () => {
     let changed = false as boolean
-    __TSR__.queue = __TSR__.queue.filter((fn) => {
+    __TSR_SSR__.queue = __TSR_SSR__.queue.filter((fn) => {
       if (fn()) {
         changed = true
         return false
@@ -37,13 +15,13 @@ const __TSR__: StartTSRGlobal = {
       return true
     })
     if (changed) {
-      __TSR__.runQueue()
+      __TSR_SSR__.runQueue()
     }
   },
   initMatch: (match) => {
-    __TSR__.queue.push(() => {
-      if (!__TSR__.matches[match.index]) {
-        __TSR__.matches[match.index] = match
+    __TSR_SSR__.queue.push(() => {
+      if (!__TSR_SSR__.matches[match.index]) {
+        __TSR_SSR__.matches[match.index] = match
         Object.entries(match.extracted).forEach(([id, ex]) => {
           if (ex.type === 'stream') {
             let controller
@@ -64,7 +42,6 @@ const __TSR__: StartTSRGlobal = {
               },
             })
             ex.value.controller = controller
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           } else if (ex.type === 'promise') {
             let resolve: ControllablePromise['reject'] | undefined
             let reject: ControllablePromise['reject'] | undefined
@@ -82,11 +59,11 @@ const __TSR__: StartTSRGlobal = {
       return true
     })
 
-    __TSR__.runQueue()
+    __TSR_SSR__.runQueue()
   },
   resolvePromise: (p) => {
-    __TSR__.queue.push(() => {
-      const match = __TSR__.matches[p.matchIndex]
+    __TSR_SSR__.queue.push(() => {
+      const match = __TSR_SSR__.matches[p.matchIndex]
       if (match) {
         const ex = match.extracted[p.id]
         if (
@@ -102,7 +79,7 @@ const __TSR__: StartTSRGlobal = {
       return false
     })
 
-    __TSR__.runQueue()
+    __TSR_SSR__.runQueue()
   },
   cleanScripts: () => {
     document.querySelectorAll('.tsr-once').forEach((el) => {
@@ -111,4 +88,4 @@ const __TSR__: StartTSRGlobal = {
   },
 }
 
-window.__TSR__ = __TSR__
+window.__TSR_SSR__ = __TSR_SSR__

@@ -10,7 +10,6 @@ import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
 import { matchContext } from './matchContext'
-import { defaultDeserializeError, isServerSideError } from './isServerSideError'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { rootRouteId } from './root'
@@ -157,19 +156,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     ErrorComponent
 
   if (match.status === 'notFound') {
-    let error: unknown
-    if (isServerSideError(match.error)) {
-      const deserializeError =
-        router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-
-      error = deserializeError(match.error.data)
-    } else {
-      error = match.error
-    }
-
-    invariant(isNotFound(error), 'Expected a notFound error')
-
-    return renderRouteNotFound(router, route, error)
+    invariant(isNotFound(match.error), 'Expected a notFound error')
+    return renderRouteNotFound(router, route, match.error)
   }
 
   if (match.status === 'redirected') {
@@ -201,13 +189,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       )
     }
 
-    if (isServerSideError(match.error)) {
-      const deserializeError =
-        router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-      throw deserializeError(match.error.data)
-    } else {
-      throw match.error
-    }
+    throw match.error
   }
 
   if (match.status === 'pending') {
@@ -241,7 +223,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     throw router.getMatch(match.id)?.loadPromise
   }
 
-  return <>{out}</>
+  return out
 })
 
 export const Outlet = React.memo(function OutletImpl() {

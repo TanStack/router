@@ -5,8 +5,6 @@ import {
 } from '@tanstack/history'
 import { Store, batch } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
-import jsesc from 'jsesc'
 import { rootRouteId } from './root'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import {
@@ -30,7 +28,7 @@ import {
 } from './path'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import { defaultTransformer } from './transformer'
+import type { StartSerializer } from './serializer'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -83,42 +81,15 @@ import type {
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
-import type { RouterTransformer } from './transformer'
 import type { AnySchema, AnyValidator } from './validators'
 
-export interface TSRGlobalMatch {
-  index: number
-  __beforeLoadContext?: string
-  loaderData?: string
-  extracted: Record<string, ClientExtractedEntry>
-}
-export interface TSRGlobal {
-  matches: Array<TSRGlobalMatch>
-  streamedValues: Record<
-    string,
-    {
-      value: any
-      parsed: any
-    }
-  >
-  cleanScripts: () => void
-  dehydrated?: any
-}
 declare global {
   interface Window {
-    __TSR__?: RegisteredTSRGlobal
-    __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any, any>>
+    __TSR_ROUTER__?: AnyRouter
   }
 }
 
-type RegisteredTSRGlobal = Register extends {
-  __TSR__: infer TTSR extends TSRGlobal
-}
-  ? TTSR
-  : TSRGlobal
-
 export interface Register {
-  // __TSR__: TSRGlobal
   // router: Router
 }
 
@@ -138,11 +109,6 @@ export type RegisteredRouter = Register extends {
   ? TRouter
   : AnyRouter
 
-export type HydrationCtx = {
-  router: DehydratedRouter
-  payload: Record<string, any>
-}
-
 export type InferRouterContext<TRouteTree extends AnyRoute> =
   TRouteTree extends RootRoute<
     any,
@@ -157,28 +123,10 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
     ? TRouterContext
     : AnyContext
 
-export interface ClientExtractedBaseEntry {
-  type: string
-  path: Array<string>
-}
-
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
   reject: (value?: any) => void
 }
-export interface ClientExtractedPromise extends ClientExtractedBaseEntry {
-  type: 'promise'
-  value?: ControllablePromise<any>
-}
-
-export interface ClientExtractedStream extends ClientExtractedBaseEntry {
-  type: 'stream'
-  value?: ReadableStream & { controller?: ReadableStreamDefaultController }
-}
-
-export type ClientExtractedEntry =
-  | ClientExtractedStream
-  | ClientExtractedPromise
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends InferRouterContext<TRouteTree>
@@ -191,7 +139,7 @@ export type RouterContextOptions<TRouteTree extends AnyRoute> =
 
 export type TrailingSlashOption = 'always' | 'never' | 'preserve'
 
-export type InjectedHtmlEntry = Promise<() => string>
+export type InjectedHtmlEntry = Promise<string>
 
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
@@ -199,7 +147,6 @@ export interface RouterOptions<
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
-  TSerializedError extends Record<string, any> = Record<string, any>,
 > {
   /**
    * The history object that will be used to manage the browser history.
@@ -455,19 +402,6 @@ export interface RouterOptions<
    */
   defaultNotFoundComponent?: NotFoundRouteComponent
   /**
-   * The transformer that will be used when sending data between the server and the client during SSR.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#transformer-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/ssr#data-transformers)
-   */
-  transformer?: RouterTransformer
-  /**
-   * The serializer object that will be used to determine how errors are serialized and deserialized between the server and the client.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#errorserializer-property)
-   */
-  errorSerializer?: RouterErrorSerializer<TSerializedError>
-  /**
    * Configures how trailing slashes are treated.
    *
    * - `'always'` will add a trailing slash if not present
@@ -564,20 +498,6 @@ export interface MatchedRoutesResult {
   routeParams: Record<string, string>
 }
 
-export interface DehydratedRouterState {
-  dehydratedMatches: Array<DehydratedRouteMatch>
-}
-
-export type DehydratedRouteMatch = Pick<
-  MakeRouteMatch,
-  'id' | 'status' | 'updatedAt' | 'loaderData'
->
-
-export interface DehydratedRouter {
-  state: DehydratedRouterState
-  manifest?: Manifest
-}
-
 export interface ViewTransitionOptions {
   types: Array<string>
 }
@@ -588,15 +508,13 @@ export type RouterConstructorOptions<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
-  TSerializedError extends Record<string, any>,
 > = Omit<
   RouterOptions<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory,
-    TDehydrated,
-    TSerializedError
+    TDehydrated
   >,
   'context'
 > &
@@ -680,6 +598,10 @@ export type RouterEvents = {
     pathChanged: boolean
     hrefChanged: boolean
   }
+  onInjectedHtml: {
+    type: 'onInjectedHtml'
+    promise: Promise<string>
+  }
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -704,8 +626,7 @@ export function createRouter<
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
         TRouterHistory,
-        TDehydrated,
-        TSerializedError
+        TDehydrated
       >,
 ) {
   return new Router<
@@ -741,10 +662,8 @@ export class Router<
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
-  dehydratedData?: TDehydrated
   viewTransitionPromise?: ControlledPromise<true>
   manifest?: Manifest
-  onMatchSettled?: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
   serializeLoaderData?: (
     type: '__beforeLoadContext' | 'loaderData',
     loaderData: any,
@@ -758,19 +677,13 @@ export class Router<
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
   options!: PickAsRequired<
-    Omit<
-      RouterOptions<
-        TRouteTree,
-        TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
-        TRouterHistory,
-        TDehydrated,
-        TSerializedError
-      >,
-      'transformer'
-    > & {
-      transformer: RouterTransformer
-    },
+    RouterOptions<
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
     'stringifySearch' | 'parseSearch' | 'context'
   >
   history!: TRouterHistory
@@ -792,8 +705,7 @@ export class Router<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated,
-      TSerializedError
+      TDehydrated
     >,
   ) {
     this.update({
@@ -806,11 +718,10 @@ export class Router<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
-      transformer: options.transformer ?? defaultTransformer,
     })
 
     if (typeof document !== 'undefined') {
-      ;(window as any).__TSR__ROUTER__ = this
+      ;(window as any).__TSR_ROUTER__ = this
     }
   }
 
@@ -825,8 +736,7 @@ export class Router<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated,
-      TSerializedError
+      TDehydrated
     >,
   ) => {
     if (newOptions.notFoundRoute) {
@@ -1615,7 +1525,7 @@ export class Router<
                 }) ?? {}),
               }
             }
-          } catch (e) {
+          } catch {
             // ignore errors here because they are already handled in matchRoutes
           }
         })
@@ -1677,7 +1587,7 @@ export class Router<
                       ) ?? {}),
                     }
                     return validatedSearch
-                  } catch (e) {
+                  } catch {
                     // ignore errors here because they are already handled in matchRoutes
                   }
                 }
@@ -2444,14 +2354,10 @@ export class Router<
                     (await route.options.beforeLoad?.(beforeLoadFnContext)) ??
                     {}
 
-                  if (this.serializeLoaderData) {
-                    beforeLoadContext = this.serializeLoaderData(
-                      '__beforeLoadContext',
+                  if (this.serverSsr?.reduceBeforeLoadContext) {
+                    beforeLoadContext = this.serverSsr.reduceBeforeLoadContext(
                       beforeLoadContext,
-                      {
-                        router: this,
-                        match: this.getMatch(matchId)!,
-                      },
+                      { match: this.getMatch(matchId)! },
                     )
                   }
 
@@ -2671,7 +2577,7 @@ export class Router<
                           }))
                         }
 
-                        this.onMatchSettled?.({
+                        this.serverSsr?.onMatchSettled({
                           router: this,
                           match: this.getMatch(matchId)!,
                         })
@@ -3025,147 +2931,29 @@ export class Router<
     return match
   }
 
-  dehydrate = (): DehydratedRouter => {
-    const pickError =
-      this.options.errorSerializer?.serialize ?? defaultSerializeError
-
-    return {
-      state: {
-        dehydratedMatches: this.state.matches.map((d) => {
-          return {
-            ...pick(d, ['id', 'status', 'updatedAt']),
-            // If an error occurs server-side during SSRing,
-            // send a small subset of the error to the client
-            error: d.error
-              ? {
-                  data: pickError(d.error),
-                  __isServerError: true,
-                }
-              : undefined,
-            // NOTE: We don't send the loader data here, because
-            // there is a potential that it needs to be streamed.
-            // Instead, we render it next to the route match in the HTML
-            // which gives us the potential to stream it via suspense.
-          }
-        }),
-      },
-      manifest: this.manifest,
-    }
+  ssr?: {
+    manifest: Manifest | undefined
+    serializer: StartSerializer
   }
 
-  hydrate = () => {
-    // Client hydrates from window
-    let ctx: HydrationCtx | undefined
-
-    if (typeof document !== 'undefined') {
-      ctx = this.options.transformer.parse(window.__TSR__?.dehydrated) as any
-    }
-
-    invariant(
-      ctx,
-      'Expected to find a dehydrated data on window.__TSR__.dehydrated... but we did not. Please file an issue!',
-    )
-
-    this.dehydratedData = ctx.payload as any
-    this.options.hydrate?.(ctx.payload as any)
-    const dehydratedState = ctx.router.state
-
-    const matches = this.matchRoutes(this.state.location).map((match) => {
-      const dehydratedMatch = dehydratedState.dehydratedMatches.find(
-        (d) => d.id === match.id,
-      )
-
-      invariant(
-        dehydratedMatch,
-        `Could not find a client-side match for dehydrated match with id: ${match.id}!`,
-      )
-
-      return {
-        ...match,
-        ...dehydratedMatch,
-      }
-    })
-
-    this.__store.setState((s) => {
-      return {
-        ...s,
-        matches: matches as any,
-      }
-    })
-
-    this.manifest = ctx.router.manifest
+  serverSsr?: {
+    injectedHtml: Array<InjectedHtmlEntry>
+    injectHtml: (getHtml: () => string | Promise<string>) => void
+    injectScript: (
+      getScript: () => string | Promise<string>,
+      opts?: { logScript?: boolean },
+    ) => void
+    streamValue: (key: string, value: any) => void
+    streamedKeys: Set<string>
+    reduceBeforeLoadContext: (
+      beforeLoadContext: any,
+      opts: { match: AnyRouteMatch },
+    ) => any
+    onMatchSettled: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
   }
 
-  injectedHtml: Array<InjectedHtmlEntry> = []
-  injectHtml = (getHtml: () => string | Promise<string>) => {
-    console.log('         %%%%% ##### injectHtml')
-    const promise = Promise.resolve()
-      .then(getHtml)
-      .then((html) => {
-        return () => {
-          // Remove the promise from the array
-          console.log(
-            '##### injectHtml Removing promise',
-            this.injectedHtml.length,
-          )
-          this.injectedHtml = this.injectedHtml.filter((d) => promise !== d)
-          console.log(
-            '##### injectHtml after Removing promise',
-            this.injectedHtml.length,
-          )
-          // Return the html
-          console.log('##### injectHtml Returning html', html)
-          return html
-        }
-      })
-    this.injectedHtml.push(promise)
-  }
-  injectScript = (
-    getScript: () => string | Promise<string>,
-    opts?: { logScript?: boolean },
-  ) => {
-    this.injectHtml(async () => {
-      const script = await getScript()
-      return `<script class='tsr-once'>${script}${
-        process.env.NODE_ENV === 'development' && (opts?.logScript ?? true)
-          ? `; console.info(\`Injected From Server:
-${jsesc(script, { quotes: 'backtick' })}\`)`
-          : ''
-      }; if (typeof __TSR__ !== 'undefined') __TSR__.cleanScripts()</script>`
-    })
-  }
-
-  streamedKeys: Set<string> = new Set()
-
-  getStreamedValue = <T>(key: string): T | undefined => {
-    if (this.isServer) {
-      return undefined
-    }
-
-    const streamedValue = window.__TSR__?.streamedValues[key]
-
-    if (!streamedValue) {
-      return
-    }
-
-    if (!streamedValue.parsed) {
-      streamedValue.parsed = this.options.transformer.parse(streamedValue.value)
-    }
-
-    return streamedValue.parsed
-  }
-
-  streamValue = (key: string, value: any) => {
-    warning(
-      !this.streamedKeys.has(key),
-      'Key has already been streamed: ' + key,
-    )
-
-    this.streamedKeys.add(key)
-    this.injectScript(
-      () =>
-        `__TSR__.streamedValues['${key}'] = { value: ${this.serializer?.(this.options.transformer.stringify(value))}}`,
-    )
+  clientSsr?: {
+    getStreamedValue: <T>(key: string) => T | undefined
   }
 
   _handleNotFound = (

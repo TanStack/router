@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { defaultTransformer as tf } from '../src/transformer'
+import { startSerializer as tf } from '../src/transformer'
 
 describe('transformer.stringify', () => {
   it('should stringify dates', () => {

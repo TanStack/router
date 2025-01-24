@@ -12,8 +12,10 @@ export const Scripts = () => {
       state.matches
         .map((match) => router.looseRoutesById[match.routeId]!)
         .forEach((route) =>
-          router.manifest?.routes[route.id]?.assets
-            ?.filter((d) => d.tag === 'script')
+          router
+            .ssr!.manifest?.routes[route.id]?.assets?.filter(
+              (d) => d.tag === 'script',
+            )
             .forEach((asset) => {
               assetScripts.push({
                 tag: 'script',
