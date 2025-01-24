@@ -23,7 +23,6 @@ export function transformPipeableStreamWithRouter(
 const patternBodyStart = /(<body)/
 const patternBodyEnd = /(<\/body>)/
 const patternHtmlEnd = /(<\/html>)/
-const patternHeadEnd = /(<\/head>)/
 
 // regex pattern for matching closing tags
 const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
@@ -131,13 +130,6 @@ export function transformStreamWithRouter(
   )
 
   function handleInjectedHtml(promise: Promise<string>) {
-    // If the app is done rendering and we've already resolved the promise,
-    // stop processing
-    if (!isAppRendering && injectedHtmlDonePromise.status !== 'pending') {
-      stopListeningToInjectedHtml()
-      return
-    }
-
     processingCount++
 
     promise
@@ -147,12 +139,19 @@ export function transformStreamWithRouter(
         } else {
           finalPassThrough.write(html)
         }
+
+        return new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve()
+          }, 1000)
+        })
       })
       .catch(injectedHtmlDonePromise.reject)
       .finally(() => {
         processingCount--
 
         if (!isAppRendering && processingCount === 0) {
+          stopListeningToInjectedHtml()
           injectedHtmlDonePromise.resolve()
         }
       })
@@ -228,9 +227,6 @@ export function transformStreamWithRouter(
       }
     },
     onEnd: () => {
-      // Stop listening to any new injected HTML
-      stopListeningToInjectedHtml()
-
       // Mark the app as done rendering
       isAppRendering = false
 

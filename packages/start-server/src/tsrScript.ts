@@ -60,18 +60,51 @@ const __TSR_SSR__: StartSsrGlobal = {
 
     __TSR_SSR__.runQueue()
   },
-  resolvePromise: (p) => {
+  resolvePromise: ({ matchId, id, promiseState }) => {
     __TSR_SSR__.queue.push(() => {
-      const match = __TSR_SSR__.matches[p.matchIndex]
+      const match = __TSR_SSR__.matches.find((m) => m.id === matchId)
       if (match) {
-        const ex = match.extracted[p.id]
+        const ex = match.extracted[id]
         if (
           ex &&
           ex.type === 'promise' &&
           ex.value &&
-          p.promiseState.status === 'success'
+          promiseState.status === 'success'
         ) {
-          ex.value.resolve(p.promiseState.data)
+          ex.value.resolve(promiseState.data)
+          return true
+        }
+      }
+      return false
+    })
+
+    __TSR_SSR__.runQueue()
+  },
+  injectChunk: ({ matchId, id, chunk }) => {
+    __TSR_SSR__.queue.push(() => {
+      const match = __TSR_SSR__.matches.find((m) => m.id === matchId)
+
+      if (match) {
+        const ex = match.extracted[id]
+        if (ex && ex.type === 'stream' && ex.value?.controller) {
+          ex.value.controller.enqueue(
+            new TextEncoder().encode(chunk.toString()),
+          )
+          return true
+        }
+      }
+      return false
+    })
+
+    __TSR_SSR__.runQueue()
+  },
+  closeStream: ({ matchId, id }) => {
+    __TSR_SSR__.queue.push(() => {
+      const match = __TSR_SSR__.matches.find((m) => m.id === matchId)
+      if (match) {
+        const ex = match.extracted[id]
+        if (ex && ex.type === 'stream' && ex.value?.controller) {
+          ex.value.controller.close()
           return true
         }
       }

@@ -31,7 +31,13 @@ export interface StartSsrGlobal {
   queue: Array<() => boolean>
   runQueue: () => void
   initMatch: (match: SsrMatch) => void
-  resolvePromise: (p: ResolvePromiseState) => void
+  resolvePromise: (opts: {
+    matchId: string
+    id: string
+    promiseState: DeferredPromiseState<any>
+  }) => void
+  injectChunk: (opts: { matchId: string; id: string; chunk: string }) => void
+  closeStream: (opts: { matchId: string; id: string }) => void
 }
 
 export interface SsrMatch {
@@ -64,8 +70,8 @@ export interface ClientExtractedBaseEntry {
 }
 
 export interface ResolvePromiseState {
+  matchId: string
   id: number
-  matchIndex: number
   promiseState: DeferredPromiseState<any>
 }
 

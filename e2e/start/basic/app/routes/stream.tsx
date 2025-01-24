@@ -10,8 +10,16 @@ export const Route = createFileRoute('/stream')({
       ),
       stream: new ReadableStream({
         start(controller) {
-          controller.enqueue('stream-data')
-          controller.close()
+          controller.enqueue('stream-data-1')
+          setTimeout(() => {
+            controller.enqueue('stream-data-2')
+          }, 300)
+          setTimeout(() => {
+            controller.enqueue('stream-data-3')
+          }, 450)
+          setTimeout(() => {
+            controller.close()
+          }, 600)
         },
       }),
     }
@@ -34,7 +42,8 @@ function Home() {
         const { value, done: readerDone } = await reader.read()
         done = readerDone
         if (value) {
-          result += decoder.decode(value, { stream: !done })
+          const decoded = decoder.decode(value, { stream: !done })
+          result += decoded
         }
       }
       setStreamData(result)

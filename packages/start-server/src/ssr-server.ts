@@ -1,6 +1,5 @@
 import {
   TSR_DEFERRED_PROMISE,
-  createControlledPromise,
   defer,
   isPlainArray,
   isPlainObject,
@@ -62,9 +61,11 @@ export function attachRouterServerSsrUtils(
         type: 'onInjectedHtml',
         promise,
       })
+
+      return promise.then(() => {})
     },
     injectScript: (getScript, opts) => {
-      router.serverSsr!.injectHtml(async () => {
+      return router.serverSsr!.injectHtml(async () => {
         const script = await getScript()
         return `<script class='tsr-once'>${script}${
           process.env.NODE_ENV === 'development' && (opts?.logScript ?? true)
@@ -257,8 +258,8 @@ export function onMatchSettled(opts: {
 
         return `__TSR_SSR__.resolvePromise(${jsesc(
           {
+            matchId: match.id,
             id: entry.id,
-            matchIndex: entry.matchIndex,
             promiseState: entry.promise[TSR_DEFERRED_PROMISE],
           } satisfies ResolvePromiseState,
           {
@@ -271,39 +272,52 @@ export function onMatchSettled(opts: {
     }
 
     function injectStream(entry: ServerExtractedStream) {
-      const controlledPromise = createControlledPromise<void>()
-
       // Inject a promise that resolves when the stream is done
       // We do this to keep the stream open until we're done
-      router.serverSsr!.injectHtml(() => controlledPromise.then(() => ''))
-      ;(async () => {
+      router.serverSsr!.injectHtml(async () => {
+        //
         try {
           const reader = entry.stream.getReader()
           let chunk: ReadableStreamReadResult<any> | null = null
           while (!(chunk = await reader.read()).done) {
-            injectChunk(chunk.value)
+            if (chunk.value) {
+              const code = `__TSR_SSR__.injectChunk(${jsesc(
+                {
+                  matchId: match.id,
+                  id: entry.id,
+                  chunk: chunk.value,
+                },
+                {
+                  isScriptContext: true,
+                  wrap: true,
+                  json: true,
+                },
+              )})`
+
+              router.serverSsr!.injectScript(() => code)
+            }
           }
-          controlledPromise.resolve()
+
+          router.serverSsr!.injectScript(
+            () =>
+              `__TSR_SSR__.closeStream(${jsesc(
+                {
+                  matchId: match.id,
+                  id: entry.id,
+                },
+                {
+                  isScriptContext: true,
+                  wrap: true,
+                  json: true,
+                },
+              )})`,
+          )
         } catch (err) {
           console.error('stream read error', err)
-          controlledPromise.reject(err)
         }
-      })()
 
-      function injectChunk(chunk: string | null) {
-        const code = chunk
-          ? `__TSR_SSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.enqueue(new TextEncoder().encode(${jsesc(
-              chunk.toString(),
-              {
-                isScriptContext: true,
-                wrap: true,
-                json: true,
-              },
-            )}))`
-          : `__TSR_SSR__.matches[${entry.matchIndex}].extracted[${entry.id}].value.controller.close()`
-
-        router.serverSsr!.injectScript(() => code)
-      }
+        return ''
+      })
     }
   }
 

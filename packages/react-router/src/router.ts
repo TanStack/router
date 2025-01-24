@@ -2910,11 +2910,11 @@ export class Router<
 
   serverSsr?: {
     injectedHtml: Array<InjectedHtmlEntry>
-    injectHtml: (getHtml: () => string | Promise<string>) => void
+    injectHtml: (getHtml: () => string | Promise<string>) => Promise<void>
     injectScript: (
       getScript: () => string | Promise<string>,
       opts?: { logScript?: boolean },
-    ) => void
+    ) => Promise<void>
     streamValue: (key: string, value: any) => void
     streamedKeys: Set<string>
     onMatchSettled: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
