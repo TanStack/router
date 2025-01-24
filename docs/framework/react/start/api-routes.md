@@ -237,13 +237,13 @@ You can set the status code of the response by either:
   })
   ```
 
-- Using the `setResponseStatus` helper function from `vinxi/http`
+- Using the `setResponseStatus` helper function from `@tanstack/start/server`
 
   ```ts
   // routes/api/hello.ts
   import { json } from '@tanstack/start'
   import { createAPIFileRoute } from '@tanstack/start/api'
-  import { setResponseStatus } from 'vinxi/http'
+  import { setResponseStatus } from '@tanstack/start/server'
 
   export const APIRoute = createAPIFileRoute('/users/$id')({
     GET: async ({ request, params }) => {
@@ -283,12 +283,12 @@ Sometimes you may need to set headers in the response. You can do this by either
   // Hello, World!
   ```
 
-- Or using the `setHeaders` helper function from `vinxi/http`.
+- Or using the `setHeaders` helper function from `@tanstack/start/server`.
 
   ```ts
   // routes/api/hello.ts
   import { createAPIFileRoute } from '@tanstack/start/api'
-  import { setHeaders } from 'vinxi/http'
+  import { setHeaders } from '@tanstack/start/server'
 
   export const APIRoute = createAPIFileRoute('/hello')({
     GET: async ({ request }) => {

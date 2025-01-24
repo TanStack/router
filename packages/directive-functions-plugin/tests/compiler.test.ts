@@ -310,6 +310,8 @@ describe('server function compilation', () => {
         'use server'
         return 'hello'
       }
+
+      multiDirective()
     `
 
     const client = compileDirectives({ ...clientConfig, code })
@@ -325,19 +327,25 @@ describe('server function compilation', () => {
 
     expect(client.compiledResult.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib-client";
-      createClientRpc("test_ts--multiDirective_1");"
+      const multiDirective_1 = createClientRpc("test_ts--multiDirective_1");
+      const multiDirective = multiDirective_1;
+      multiDirective();"
     `)
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from "my-rpc-lib-server";
-      createSsrRpc("test_ts--multiDirective_1");"
+      const multiDirective_1 = createSsrRpc("test_ts--multiDirective_1");
+      const multiDirective = multiDirective_1;
+      multiDirective();"
     `)
     expect(server.compiledResult.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from "my-rpc-lib-server";
-      createServerRpc("test_ts--multiDirective_1", function multiDirective() {
+      const multiDirective_1 = createServerRpc("test_ts--multiDirective_1", function () {
         'use strict';
 
         return 'hello';
       });
+      const multiDirective = multiDirective_1;
+      multiDirective();
       export { multiDirective_1 };"
     `)
   })
@@ -589,6 +597,55 @@ describe('server function compilation', () => {
       const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
       const myServerFn2 = createServerFn().handler(myServerFn2_createServerFn_handler, myFunc2);
       export { myServerFn_createServerFn_handler, myServerFn2_createServerFn_handler };"
+    `)
+  })
+
+  test('async function with directive', () => {
+    const code = `
+      async function bytesSignupServerFn({ email }: { email: string }) {
+        'use server'
+
+        return 'test'
+      }
+
+      bytesSignupServerFn()
+
+    `
+
+    const client = compileDirectives({ ...clientConfig, code })
+    const ssr = compileDirectives({ ...ssrConfig, code })
+    const server = compileDirectives({
+      ...serverConfig,
+      code,
+      filename:
+        ssr.directiveFnsById[Object.keys(ssr.directiveFnsById)[0]!]!
+          .extractedFilename,
+    })
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createClientRpc } from "my-rpc-lib-client";
+      const bytesSignupServerFn_1 = createClientRpc("test_ts--bytesSignupServerFn_1");
+      const bytesSignupServerFn = bytesSignupServerFn_1;
+      bytesSignupServerFn();"
+    `)
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createSsrRpc } from "my-rpc-lib-server";
+      const bytesSignupServerFn_1 = createSsrRpc("test_ts--bytesSignupServerFn_1");
+      const bytesSignupServerFn = bytesSignupServerFn_1;
+      bytesSignupServerFn();"
+    `)
+    expect(server.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createServerRpc } from "my-rpc-lib-server";
+      const bytesSignupServerFn_1 = createServerRpc("test_ts--bytesSignupServerFn_1", async function ({
+        email
+      }: {
+        email: string;
+      }) {
+        return 'test';
+      });
+      const bytesSignupServerFn = bytesSignupServerFn_1;
+      bytesSignupServerFn();
+      export { bytesSignupServerFn_1 };"
     `)
   })
 })

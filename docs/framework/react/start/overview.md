@@ -3,7 +3,7 @@ id: overview
 title: TanStack Start Overview
 ---
 
-TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, bundling, and more, powered by TanStack Router, Vinxi, and Vite. It is ready to deploy to your favorite hosting provider!
+TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, bundling, and more using tools like [Nitro](https://nitro.unjs.io/) and [Vite](https://vitejs.dev/). It is ready to deploy to your favorite hosting provider!
 
 ## Router or Start?
 
@@ -39,7 +39,7 @@ What you get with TanStack Start:
 
 ## How does it work?
 
-TanStack Start uses a tool called **Vinxi** to bundle and deploy your application. In fact, this is the same tool that powers Solid Start! With Vinxi, we can do a few things we couldn't do before:
+TanStack Start uses [Nitro](https://nitro.unjs.io/) and [Vite](https://vitejs.dev/) to bundle and deploy your application. In fact, these are the same tools that power Solid Start! With these tools, we can do a few things we couldn't do before:
 
 - Provide a unified API for SSR, streaming, and hydration
 - Extract server-only code from your client-side code (e.g. server functions)

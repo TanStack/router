@@ -9,13 +9,13 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.97.0",
-    "@tanstack/router-devtools": "^1.97.0",
+    "@tanstack/react-router": "^1.97.14",
+    "@tanstack/router-devtools": "^1.97.14",
     "redaxios": "^0.5.1",
     "framer-motion": "^11.13.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zod": "^3.23.8"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.47",

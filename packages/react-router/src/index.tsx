@@ -255,10 +255,13 @@ export type {
   RouterEvent,
   RouterListener,
   AnyRouterWithContext,
-  ExtractedEntry,
-  ExtractedStream,
-  ExtractedPromise,
+  ClientExtractedBaseEntry,
+  ClientExtractedEntry,
+  ClientExtractedPromise,
+  ControllablePromise,
   StreamState,
+  TSRGlobal,
+  TSRGlobalMatch,
 } from './router'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'

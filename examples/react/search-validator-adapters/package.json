@@ -11,17 +11,17 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.3",
-    "@tanstack/react-router": "^1.97.0",
-    "@tanstack/arktype-adapter": "^1.97.0",
-    "@tanstack/router-devtools": "^1.97.0",
-    "@tanstack/router-plugin": "^1.97.0",
-    "@tanstack/valibot-adapter": "^1.97.0",
-    "@tanstack/zod-adapter": "^1.97.0",
-    "arktype": "2.0.0-rc.26",
+    "@tanstack/react-router": "^1.97.14",
+    "@tanstack/arktype-adapter": "^1.97.14",
+    "@tanstack/router-devtools": "^1.97.14",
+    "@tanstack/router-plugin": "^1.97.14",
+    "@tanstack/valibot-adapter": "^1.97.14",
+    "@tanstack/zod-adapter": "^1.97.14",
+    "arktype": "^2.0.0-rc.33",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "valibot": "1.0.0-beta.9",
-    "zod": "^3.23.8"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.47",

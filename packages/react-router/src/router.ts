@@ -31,7 +31,6 @@ import {
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
 import { defaultTransformer } from './transformer'
-import type { DeferredPromiseState } from './defer'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -87,29 +86,39 @@ import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { RouterTransformer } from './transformer'
 import type { AnySchema, AnyValidator } from './validators'
 
+export interface TSRGlobalMatch {
+  index: number
+  __beforeLoadContext?: string
+  loaderData?: string
+  extracted: Record<string, ClientExtractedEntry>
+}
+export interface TSRGlobal {
+  matches: Array<TSRGlobalMatch>
+  streamedValues: Record<
+    string,
+    {
+      value: any
+      parsed: any
+    }
+  >
+  cleanScripts: () => void
+  dehydrated?: any
+}
 declare global {
   interface Window {
-    __TSR__?: {
-      matches: Array<{
-        __beforeLoadContext?: string
-        loaderData?: string
-        extracted?: Array<ExtractedEntry>
-      }>
-      streamedValues: Record<
-        string,
-        {
-          value: any
-          parsed: any
-        }
-      >
-      cleanScripts: () => void
-      dehydrated?: any
-    }
+    __TSR__?: RegisteredTSRGlobal
     __TSR_ROUTER_CONTEXT__?: React.Context<Router<any, any, any>>
   }
 }
 
+type RegisteredTSRGlobal = Register extends {
+  __TSR__: infer TTSR extends TSRGlobal
+}
+  ? TTSR
+  : TSRGlobal
+
 export interface Register {
+  // __TSR__: TSRGlobal
   // router: Router
 }
 
@@ -148,25 +157,28 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
     ? TRouterContext
     : AnyContext
 
-export interface ExtractedBaseEntry {
-  dataType: '__beforeLoadContext' | 'loaderData'
+export interface ClientExtractedBaseEntry {
   type: string
   path: Array<string>
-  id: number
-  matchIndex: number
 }
 
-export interface ExtractedStream extends ExtractedBaseEntry {
-  type: 'stream'
-  streamState: StreamState
+export type ControllablePromise<T = any> = Promise<T> & {
+  resolve: (value: T) => void
+  reject: (value?: any) => void
 }
-
-export interface ExtractedPromise extends ExtractedBaseEntry {
+export interface ClientExtractedPromise extends ClientExtractedBaseEntry {
   type: 'promise'
-  promiseState: DeferredPromiseState<any>
+  value?: ControllablePromise<any>
 }
 
-export type ExtractedEntry = ExtractedStream | ExtractedPromise
+export interface ClientExtractedStream extends ClientExtractedBaseEntry {
+  type: 'stream'
+  value?: ReadableStream & { controller?: ReadableStreamDefaultController }
+}
+
+export type ClientExtractedEntry =
+  | ClientExtractedStream
+  | ClientExtractedPromise
 
 export type StreamState = {
   promises: Array<ControlledPromise<string | null>>

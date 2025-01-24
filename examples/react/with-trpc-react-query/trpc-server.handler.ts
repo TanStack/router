@@ -1,4 +1,4 @@
-import { defineEventHandler, toWebRequest } from 'vinxi/http'
+import { defineEventHandler, toWebRequest } from '@tanstack/start/server'
 import { initTRPC } from '@trpc/server'
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
 

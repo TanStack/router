@@ -52,7 +52,6 @@ This is done via the `app/ssr.tsx` file:
 
 ```tsx
 // app/ssr.tsx
-/// <reference types="vinxi/types/server" />
 import {
   createStartHandler,
   defaultStreamHandler,
@@ -79,7 +78,6 @@ Getting our html to the client is only half the battle. Once there, we need to h
 
 ```tsx
 // app/client.tsx
-/// <reference types="vinxi/types/client" />
 import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/start'
 import { createRouter } from './router'

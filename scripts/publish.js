@@ -77,6 +77,14 @@ await publish({
       packageDir: 'packages/start',
     },
     {
+      name: '@tanstack/start-client',
+      packageDir: 'packages/start-client',
+    },
+    {
+      name: '@tanstack/start-server',
+      packageDir: 'packages/start-server',
+    },
+    {
       name: '@tanstack/create-router',
       packageDir: 'packages/create-router',
     },
@@ -87,6 +95,38 @@ await publish({
     {
       name: '@tanstack/create-start',
       packageDir: 'packages/create-start',
+    },
+    {
+      name: '@tanstack/start-config',
+      packageDir: 'packages/start-config',
+    },
+    {
+      name: '@tanstack/start-api-routes',
+      packageDir: 'packages/start-api-routes',
+    },
+    {
+      name: '@tanstack/start-server-functions-fetcher',
+      packageDir: 'packages/start-server-functions-fetcher',
+    },
+    {
+      name: '@tanstack/start-server-functions-handler',
+      packageDir: 'packages/start-server-functions-handler',
+    },
+    {
+      name: '@tanstack/start-server-functions-client',
+      packageDir: 'packages/start-server-functions-client',
+    },
+    {
+      name: '@tanstack/start-server-functions-ssr',
+      packageDir: 'packages/start-server-functions-ssr',
+    },
+    {
+      name: '@tanstack/start-server-functions-server',
+      packageDir: 'packages/start-server-functions-server',
+    },
+    {
+      name: '@tanstack/start-router-manifest',
+      packageDir: 'packages/start-router-manifest',
     },
   ],
   branchConfigs: {

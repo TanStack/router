@@ -60,6 +60,7 @@ title: Router API
   - [`MatchRouteOptions Type`](./router/MatchRouteOptionsType.md)
   - [`NavigateOptions Type`](./router/NavigateOptionsType.md)
   - [`NotFoundError Type`](./router/NotFoundErrorType.md)
+  - [`ParsedHistoryState Type`](./router/ParsedHistoryStateType.md)
   - [`ParsedLocation Type`](./router/ParsedLocationType.md)
   - [`Redirect Type`](./router/RedirectType.md)
   - [`Register Type`](./router/RegisterType.md)

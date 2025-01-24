@@ -16,7 +16,7 @@
     "@tanstack/router-plugin": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zod": "^3.23.8"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",
