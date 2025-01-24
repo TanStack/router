@@ -13,13 +13,13 @@ export const Route = createFileRoute('/stream')({
           controller.enqueue('stream-data-1')
           setTimeout(() => {
             controller.enqueue('stream-data-2')
-          }, 300)
+          }, 1000)
           setTimeout(() => {
             controller.enqueue('stream-data-3')
-          }, 450)
+          }, 2000)
           setTimeout(() => {
             controller.close()
-          }, 600)
+          }, 3000)
         },
       }),
     }
@@ -35,7 +35,6 @@ function Home() {
     async function fetchStream() {
       const reader = stream.getReader()
       const decoder = new TextDecoder('utf-8')
-      let result = ''
       let done = false
 
       while (!done) {
@@ -43,10 +42,10 @@ function Home() {
         done = readerDone
         if (value) {
           const decoded = decoder.decode(value, { stream: !done })
-          result += decoded
+          console.log('decoded', decoded)
+          setStreamData((prev) => prev + decoded)
         }
       }
-      setStreamData(result)
     }
 
     fetchStream()
