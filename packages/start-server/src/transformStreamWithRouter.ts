@@ -23,7 +23,7 @@ export function transformPipeableStreamWithRouter(
 const patternBodyStart = /(<body)/
 const patternBodyEnd = /(<\/body>)/
 const patternHtmlEnd = /(<\/html>)/
-
+const patternHeadStart = /(<head.*?>)/
 // regex pattern for matching closing tags
 const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
 
@@ -96,6 +96,7 @@ export function transformStreamWithRouter(
   let routerStreamBuffer = ''
   let pendingClosingTags = ''
   let bodyStarted = false as boolean
+  let headStarted = false as boolean
   let leftover = ''
   let leftoverHtml = ''
 
@@ -178,6 +179,23 @@ export function transformStreamWithRouter(
       const bodyStartMatch = chunkString.match(patternBodyStart)
       const bodyEndMatch = chunkString.match(patternBodyEnd)
       const htmlEndMatch = chunkString.match(patternHtmlEnd)
+
+      if (!headStarted) {
+        const headStartMatch = chunkString.match(patternHeadStart)
+        if (headStartMatch) {
+          headStarted = true
+          const index = headStartMatch.index!
+          const headTag = headStartMatch[0]
+          const remaining = chunkString.slice(index + headTag.length)
+          finalPassThrough.write(
+            chunkString.slice(0, index) +
+              headTag +
+              getBufferedRouterStream() +
+              remaining,
+          )
+          return
+        }
+      }
 
       if (bodyStartMatch) {
         bodyStarted = true
