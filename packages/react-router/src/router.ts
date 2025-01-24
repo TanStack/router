@@ -663,16 +663,6 @@ export class Router<
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
-  manifest?: Manifest
-  serializeLoaderData?: (
-    type: '__beforeLoadContext' | 'loaderData',
-    loaderData: any,
-    ctx: {
-      router: AnyRouter
-      match: AnyRouteMatch
-    },
-  ) => any
-  serializer?: (data: any) => string
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -2503,12 +2493,10 @@ export class Router<
                           let loaderData =
                             await route.options.loader?.(getLoaderContext())
 
-                          if (this.serializeLoaderData) {
-                            loaderData = this.serializeLoaderData(
-                              'loaderData',
+                          if (this.serverSsr?.reduceLoaderData) {
+                            loaderData = this.serverSsr.reduceLoaderData(
                               loaderData,
                               {
-                                router: this,
                                 match: this.getMatch(matchId)!,
                               },
                             )
@@ -2949,6 +2937,7 @@ export class Router<
       beforeLoadContext: any,
       opts: { match: AnyRouteMatch },
     ) => any
+    reduceLoaderData: (loaderData: any, opts: { match: AnyRouteMatch }) => any
     onMatchSettled: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
   }
 

@@ -83,7 +83,14 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
       router.serverSsr!.streamedKeys.add(key)
       router.serverSsr!.injectScript(
         () =>
-          `__TSR_SSR__.streamedValues['${key}'] = { value: ${router.serializer?.(router.ssr!.serializer.stringify(value))}}`,
+          `__TSR_SSR__.streamedValues['${key}'] = { value: ${jsesc(
+            router.ssr!.serializer.stringify(value),
+            {
+              isScriptContext: true,
+              wrap: true,
+              json: true,
+            },
+          )}}`,
       )
     },
     reduceBeforeLoadContext: (ctx, { match }) => {
@@ -95,6 +102,12 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
           match,
         },
       )
+    },
+    reduceLoaderData: (loaderData, { match }) => {
+      return extractAsyncDataToMatch('loaderData', loaderData, {
+        router: router,
+        match,
+      })
     },
     onMatchSettled,
   }

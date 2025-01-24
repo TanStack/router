@@ -184,7 +184,6 @@ export function transformStreamWithRouter(
       const bodyStartMatch = chunkString.match(patternBodyStart)
       const bodyEndMatch = chunkString.match(patternBodyEnd)
       const htmlEndMatch = chunkString.match(patternHtmlEnd)
-      const headEndMatch = chunkString.match(patternHeadEnd)
 
       if (bodyStartMatch) {
         console.log('body start')
@@ -207,24 +206,9 @@ export function transformStreamWithRouter(
         const bodyEndIndex = bodyEndMatch.index!
         pendingClosingTags = chunkString.slice(bodyEndIndex)
 
-        let html = ''
-
-        if (headEndMatch) {
-          // If the body start is also in the chunk,
-          // let's insert our buffered router stream before the end of
-          // the head tag
-          const headEndIndex = headEndMatch.index!
-          html =
-            chunkString.slice(0, headEndIndex) +
-            getBufferedRouterStream() +
-            chunkString.slice(headEndIndex + '</head>'.length, bodyEndIndex)
-        } else {
-          // If the body start is not in the chunk,
-          // let's insert our buffered router stream at the end of the body tag
-          html = chunkString.slice(0, bodyEndIndex) + getBufferedRouterStream()
-        }
-
-        finalPassThrough.write(html)
+        finalPassThrough.write(
+          chunkString.slice(0, bodyEndIndex) + getBufferedRouterStream(),
+        )
 
         leftover = ''
         return
