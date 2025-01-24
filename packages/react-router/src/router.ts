@@ -2340,16 +2340,9 @@ export class Router<
                     matches,
                   }
 
-                  let beforeLoadContext =
+                  const beforeLoadContext =
                     (await route.options.beforeLoad?.(beforeLoadFnContext)) ??
                     {}
-
-                  if (this.serverSsr?.reduceBeforeLoadContext) {
-                    beforeLoadContext = this.serverSsr.reduceBeforeLoadContext(
-                      beforeLoadContext,
-                      { match: this.getMatch(matchId)! },
-                    )
-                  }
 
                   if (
                     isRedirect(beforeLoadContext) ||
@@ -2490,17 +2483,8 @@ export class Router<
                           }))
 
                           // Kick off the loader!
-                          let loaderData =
+                          const loaderData =
                             await route.options.loader?.(getLoaderContext())
-
-                          if (this.serverSsr?.reduceLoaderData) {
-                            loaderData = this.serverSsr.reduceLoaderData(
-                              loaderData,
-                              {
-                                match: this.getMatch(matchId)!,
-                              },
-                            )
-                          }
 
                           handleRedirectAndNotFound(
                             this.getMatch(matchId)!,
@@ -2933,11 +2917,6 @@ export class Router<
     ) => void
     streamValue: (key: string, value: any) => void
     streamedKeys: Set<string>
-    reduceBeforeLoadContext: (
-      beforeLoadContext: any,
-      opts: { match: AnyRouteMatch },
-    ) => any
-    reduceLoaderData: (loaderData: any, opts: { match: AnyRouteMatch }) => any
     onMatchSettled: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
   }
 

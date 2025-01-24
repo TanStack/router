@@ -93,22 +93,6 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
           )}}`,
       )
     },
-    reduceBeforeLoadContext: (ctx, { match }) => {
-      return extractAsyncDataToMatch(
-        '__beforeLoadContext',
-        ctx.beforeLoadContext,
-        {
-          router: router,
-          match,
-        },
-      )
-    },
-    reduceLoaderData: (loaderData, { match }) => {
-      return extractAsyncDataToMatch('loaderData', loaderData, {
-        router: router,
-        match,
-      })
-    },
     onMatchSettled,
   }
 
@@ -160,10 +144,6 @@ export function extractAsyncDataToMatch(
     router: AnyRouter
   },
 ) {
-  if (!ctx.router.isServer) {
-    return data
-  }
-
   ;(ctx.match as any).extracted = (ctx.match as any).extracted || []
 
   const extracted = (ctx.match as any).extracted
@@ -222,6 +202,11 @@ export function onMatchSettled(opts: {
   const [serializedBeforeLoadData, serializedLoaderData] = (
     ['__beforeLoadContext', 'loaderData'] as const
   ).map((dataType) => {
+    const data = extractAsyncDataToMatch(dataType, match[dataType], {
+      router: router,
+      match,
+    })
+
     return extracted
       ? extracted.reduce(
           (acc: any, entry: ServerExtractedEntry) => {
@@ -234,10 +219,15 @@ export function onMatchSettled(opts: {
             }
             return acc
           },
-          { temp: match[dataType] },
+          { temp: data },
         ).temp
-      : match[dataType]
+      : data
   })
+
+  // return extractAsyncDataToMatch('__beforeLoadContext', ctx.beforeLoadContext, {
+  //   router: router,
+  //   match,
+  // })
 
   if (
     serializedBeforeLoadData !== undefined ||
@@ -276,7 +266,7 @@ export function onMatchSettled(opts: {
     }
 
     function injectPromise(entry: ServerExtractedPromise) {
-      router.serverSsr!.injectHtml(async () => {
+      router.serverSsr!.injectScript(async () => {
         await entry.promise
 
         return `__TSR_SSR__.resolvePromise(${jsesc(
