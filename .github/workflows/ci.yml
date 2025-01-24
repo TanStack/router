@@ -22,11 +22,6 @@ permissions:
 
 jobs:
   test-and-publish:
-    strategy:
-      matrix:
-        environment:
-          - default
-          - react-latest
     name: Test & Publish
     if: github.repository_owner == 'TanStack'
     runs-on: ubuntu-latest
@@ -39,11 +34,6 @@ jobs:
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
-      - name: optionally install react@latest
-        run: |
-          if [ "${{ matrix.environment }}" == "react-latest" ]; then
-            pnpm install react@latest react-dom@latest -w
-          fi
       - name: Run Tests
         run: pnpm run test:ci --parallel=3
       - name: Stop Nx Agents
