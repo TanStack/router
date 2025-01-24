@@ -103,22 +103,6 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
 
 export function dehydrateRouter(router: AnyRouter) {
   const dehydratedRouter: DehydratedRouter = {
-    state: {
-      dehydratedMatches: router.state.matches.map((d) => {
-        return {
-          ...pick(d, ['id', 'status', 'updatedAt']),
-          // If an error occurs server-side during SSRing,
-          // send a small subset of the error to the client
-          error: d.error
-            ? router.ssr!.serializer.stringify(d.error)
-            : undefined,
-          // NOTE: We don't send the loader data here, because
-          // there is a potential that it needs to be streamed.
-          // Instead, we render it next to the route match in the HTML
-          // which gives us the potential to stream it via suspense.
-        }
-      }),
-    },
     manifest: router.ssr!.manifest,
     dehydratedData: router.options.dehydrate?.(),
   }
@@ -235,11 +219,12 @@ export function onMatchSettled(opts: {
   ) {
     const initCode = `__TSR_SSR__.initMatch(${jsesc(
       {
-        index: match.index,
+        id: match.id,
         __beforeLoadContext: router.ssr!.serializer.stringify(
           serializedBeforeLoadData,
         ),
         loaderData: router.ssr!.serializer.stringify(serializedLoaderData),
+        error: router.ssr!.serializer.stringify(match.error),
         extracted: extracted
           ? Object.fromEntries(
               extracted.map((entry) => {
@@ -247,6 +232,8 @@ export function onMatchSettled(opts: {
               }),
             )
           : {},
+        updatedAt: match.updatedAt,
+        status: match.status,
       } satisfies SsrMatch,
       {
         isScriptContext: true,

@@ -20,41 +20,40 @@ const __TSR_SSR__: StartSsrGlobal = {
   },
   initMatch: (match) => {
     __TSR_SSR__.queue.push(() => {
-      if (!__TSR_SSR__.matches[match.index]) {
-        __TSR_SSR__.matches[match.index] = match
-        Object.entries(match.extracted).forEach(([_id, ex]) => {
-          if (ex.type === 'stream') {
-            let controller
-            ex.value = new ReadableStream({
-              start(c) {
-                controller = {
-                  enqueue: (chunk: unknown) => {
-                    try {
-                      c.enqueue(chunk)
-                    } catch {}
-                  },
-                  close: () => {
-                    try {
-                      c.close()
-                    } catch {}
-                  },
-                }
-              },
-            })
-            ex.value.controller = controller
-          } else {
-            let resolve: ControllablePromise['reject'] | undefined
-            let reject: ControllablePromise['reject'] | undefined
+      __TSR_SSR__.matches.push(match)
 
-            ex.value = new Promise((_resolve, _reject) => {
-              reject = _reject
-              resolve = _resolve
-            }) as ControllablePromise
-            ex.value.reject = reject!
-            ex.value.resolve = resolve!
-          }
-        })
-      }
+      Object.entries(match.extracted).forEach(([_id, ex]) => {
+        if (ex.type === 'stream') {
+          let controller
+          ex.value = new ReadableStream({
+            start(c) {
+              controller = {
+                enqueue: (chunk: unknown) => {
+                  try {
+                    c.enqueue(chunk)
+                  } catch {}
+                },
+                close: () => {
+                  try {
+                    c.close()
+                  } catch {}
+                },
+              }
+            },
+          })
+          ex.value.controller = controller
+        } else {
+          let resolve: ControllablePromise['reject'] | undefined
+          let reject: ControllablePromise['reject'] | undefined
+
+          ex.value = new Promise((_resolve, _reject) => {
+            reject = _reject
+            resolve = _resolve
+          }) as ControllablePromise
+          ex.value.reject = reject!
+          ex.value.resolve = resolve!
+        }
+      })
 
       return true
     })

@@ -35,10 +35,13 @@ export interface StartSsrGlobal {
 }
 
 export interface SsrMatch {
-  index: number
+  id: string
   __beforeLoadContext?: string
   loaderData?: string
+  error?: string
   extracted: Record<string, ClientExtractedEntry>
+  updatedAt: MakeRouteMatch['updatedAt']
+  status: MakeRouteMatch['status']
 }
 
 export type ClientExtractedEntry =
@@ -76,7 +79,6 @@ export type DehydratedRouteMatch = Pick<
 >
 
 export interface DehydratedRouter {
-  state: DehydratedRouterState
   manifest: Manifest | undefined
   dehydratedData: any
 }
@@ -87,7 +89,7 @@ export function hydrate(router: AnyRouter) {
     'Expected to find a dehydrated data on window.__TSR_SSR__.dehydrated... but we did not. Please file an issue!',
   )
 
-  const { state, manifest, dehydratedData } = startSerializer.parse(
+  const { manifest, dehydratedData } = startSerializer.parse(
     window.__TSR_SSR__.dehydrated,
   ) as DehydratedRouter
 
@@ -123,26 +125,24 @@ export function hydrate(router: AnyRouter) {
   const matches = router.matchRoutes(router.state.location).map((match) => {
     const route = router.looseRoutesById[match.routeId]!
 
-    const dehydratedMatch = state.dehydratedMatches.find(
-      (d) => d.id === match.id,
-    )
-
-    invariant(
-      dehydratedMatch,
-      `Could not find a client-side match for dehydrated match with id: ${match.id}!`,
-    )
-
     // Right after hydration and before the first render, we need to rehydrate each match
     // This includes rehydrating the loaderData and also using the beforeLoadContext
     // to reconstruct any context that was serialized on the server
 
-    const dMatch = window.__TSR_SSR__?.matches[match.index]
-    if (dMatch) {
+    const dehydratedMatch = window.__TSR_SSR__!.matches.find(
+      (d) => d.id === match.id,
+    )
+
+    if (dehydratedMatch) {
+      Object.assign(match, dehydratedMatch)
+
       const parentMatch = router.state.matches[match.index - 1]
       const parentContext = parentMatch?.context ?? router.options.context ?? {}
-      if (dMatch.__beforeLoadContext) {
+
+      // Handle beforeLoadContext
+      if (dehydratedMatch.__beforeLoadContext) {
         match.__beforeLoadContext = router.ssr!.serializer.parse(
-          dMatch.__beforeLoadContext,
+          dehydratedMatch.__beforeLoadContext,
         ) as any
 
         match.context = {
@@ -152,14 +152,26 @@ export function hydrate(router: AnyRouter) {
         }
       }
 
-      if (dMatch.loaderData) {
-        match.loaderData = router.ssr!.serializer.parse(dMatch.loaderData)
+      // Handle loaderData
+      if (dehydratedMatch.loaderData) {
+        match.loaderData = router.ssr!.serializer.parse(
+          dehydratedMatch.loaderData,
+        )
       }
 
-      const extracted = dMatch.extracted
+      // Handle error
+      if (dehydratedMatch.error) {
+        match.error = router.ssr!.serializer.parse(dehydratedMatch.error)
+      }
 
-      Object.entries(extracted).forEach(([_, ex]: any) => {
+      // Handle extracted
+      Object.entries((match as any).extracted).forEach(([_, ex]: any) => {
         deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
+      })
+    } else {
+      Object.assign(match, {
+        status: 'success',
+        updatedAt: Date.now(),
       })
     }
 
@@ -176,10 +188,7 @@ export function hydrate(router: AnyRouter) {
       scripts: headFnContent?.scripts,
     })
 
-    return {
-      ...match,
-      ...dehydratedMatch,
-    }
+    return match
   })
 
   router.__store.setState((s) => {
