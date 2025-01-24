@@ -97,7 +97,7 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
     onMatchSettled,
   }
 
-  router.serverSsr!.injectScript(() => minifiedTsrBootStrapScript, {
+  router.serverSsr.injectScript(() => minifiedTsrBootStrapScript, {
     logScript: false,
   })
 }
