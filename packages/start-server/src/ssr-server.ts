@@ -263,8 +263,10 @@ export function onMatchSettled(opts: {
     }
 
     function injectPromise(entry: ServerExtractedPromise) {
-      entry.promise.then(() => {
-        const code = `__TSR_SSR__.resolvePromise(${jsesc(
+      router.serverSsr!.injectHtml(async () => {
+        await entry.promise
+
+        return `__TSR_SSR__.resolvePromise(${jsesc(
           {
             id: entry.id,
             matchIndex: entry.matchIndex,
@@ -276,8 +278,6 @@ export function onMatchSettled(opts: {
             json: true,
           },
         )})`
-
-        router.serverSsr!.injectScript(() => code)
       })
     }
 
