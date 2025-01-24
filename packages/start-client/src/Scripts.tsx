@@ -1,4 +1,4 @@
-import { useRouter, useRouterState } from '@tanstack/react-router'
+import { useRouter, useRouterState, warning } from '@tanstack/react-router'
 import { Asset } from './Asset'
 import type { RouterManagedTag } from '@tanstack/react-router'
 
@@ -8,14 +8,18 @@ export const Scripts = () => {
   const assetScripts = useRouterState({
     select: (state) => {
       const assetScripts: Array<RouterManagedTag> = []
+      const manifest = router.ssr?.manifest
+
+      if (!manifest) {
+        warning(false, '<Scripts /> found no manifest')
+        return []
+      }
 
       state.matches
         .map((match) => router.looseRoutesById[match.routeId]!)
         .forEach((route) =>
-          router
-            .ssr!.manifest?.routes[route.id]?.assets?.filter(
-              (d) => d.tag === 'script',
-            )
+          manifest.routes[route.id]?.assets
+            ?.filter((d) => d.tag === 'script')
             .forEach((asset) => {
               assetScripts.push({
                 tag: 'script',

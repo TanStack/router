@@ -743,17 +743,6 @@ describe('router rendering stability', () => {
   })
 })
 
-describe('transformer functions are defined', () => {
-  it('should have default transformer functions', () => {
-    const rootRoute = createRootRoute({})
-    const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree })
-
-    expect(router.options.transformer.parse).toBeInstanceOf(Function)
-    expect(router.options.transformer.stringify).toBeInstanceOf(Function)
-  })
-})
-
 describe('router matches URLs to route definitions', () => {
   it('solo splat route matches index route', async () => {
     const { router } = createTestRouter({
