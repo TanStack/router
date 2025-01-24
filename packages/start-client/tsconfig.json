@@ -8,7 +8,5 @@
     "src",
     "vite.config.ts",
     "src/tsrScript.ts",
-    "../start-server/src/ssr-server.ts",
-    "../start-server/src/vite-env.d.ts"
   ]
 }
