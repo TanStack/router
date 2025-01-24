@@ -22,7 +22,7 @@ const __TSR_SSR__: StartSsrGlobal = {
     __TSR_SSR__.queue.push(() => {
       if (!__TSR_SSR__.matches[match.index]) {
         __TSR_SSR__.matches[match.index] = match
-        Object.entries(match.extracted).forEach(([id, ex]) => {
+        Object.entries(match.extracted).forEach(([_id, ex]) => {
           if (ex.type === 'stream') {
             let controller
             ex.value = new ReadableStream({
@@ -42,7 +42,7 @@ const __TSR_SSR__: StartSsrGlobal = {
               },
             })
             ex.value.controller = controller
-          } else if (ex.type === 'promise') {
+          } else {
             let resolve: ControllablePromise['reject'] | undefined
             let reject: ControllablePromise['reject'] | undefined
 
