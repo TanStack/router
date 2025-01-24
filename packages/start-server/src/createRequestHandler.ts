@@ -1,5 +1,6 @@
 import { createMemoryHistory } from '@tanstack/react-router'
-import { mergeHeaders, serializeLoaderData } from '@tanstack/start-client'
+import { mergeHeaders } from '@tanstack/start-client'
+import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import type { AnyRouter, Manifest } from '@tanstack/react-router'
 import type { HandlerCallback } from './defaultStreamHandler'
 
@@ -19,12 +20,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
   return async (cb) => {
     const router = createRouter()
 
-    // Inject a few of the SSR helpers and defaults
-    router.serializeLoaderData = serializeLoaderData
-
-    if (getRouterManifest) {
-      router.manifest = getRouterManifest()
-    }
+    attachRouterServerSsrUtils(router, getRouterManifest?.())
 
     const url = new URL(request.url, 'http://localhost')
 
@@ -41,6 +37,8 @@ export function createRequestHandler<TRouter extends AnyRouter>({
     })
 
     await router.load()
+
+    dehydrateRouter(router)
 
     const responseHeaders = getRequestHeaders({
       router,

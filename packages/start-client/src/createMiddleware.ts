@@ -2,10 +2,10 @@ import type { ConstrainValidator, Method } from './createServerFn'
 import type {
   Assign,
   Constrain,
-  DefaultTransformerStringify,
   Expand,
   ResolveValidatorInput,
   ResolveValidatorOutput,
+  SerializerStringify,
 } from '@tanstack/react-router'
 
 export type MergeAllMiddleware<
@@ -111,7 +111,7 @@ export type MiddlewareServerNextFn = <
   TNewClientAfterContext = undefined,
 >(ctx?: {
   context?: TNewServerContext
-  sendContext?: DefaultTransformerStringify<TNewClientAfterContext>
+  sendContext?: SerializerStringify<TNewClientAfterContext>
 }) => Promise<
   ServerResultWithContext<TNewServerContext, TNewClientAfterContext>
 >
@@ -148,7 +148,7 @@ export type MiddlewareClientNextFn = <
   TNewClientContext = undefined,
 >(ctx?: {
   context?: TNewClientContext
-  sendContext?: DefaultTransformerStringify<TNewServerContext>
+  sendContext?: SerializerStringify<TNewServerContext>
   headers?: HeadersInit
 }) => Promise<ClientResultWithContext<TNewServerContext, TNewClientContext>>
 

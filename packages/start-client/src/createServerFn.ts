@@ -1,19 +1,15 @@
-import {
-  defaultTransformer,
-  isNotFound,
-  isRedirect,
-  warning,
-} from '@tanstack/react-router'
+import { isNotFound, isRedirect, warning } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import { globalMiddleware } from './registerGlobalMiddleware'
+import { startSerializer } from './serializer'
 import type {
   AnyValidator,
   Constrain,
-  DefaultTransformerParse,
-  DefaultTransformerStringify,
   Expand,
   ResolveValidatorInput,
-  TransformerStringify,
+  SerializerParse,
+  SerializerStringify,
+  SerializerStringifyBy,
   Validator,
 } from '@tanstack/react-router'
 import type {
@@ -81,8 +77,8 @@ export interface OptionalFetcherDataOptions<TMiddlewares, TValidator>
 
 export type FetcherData<TResponse> =
   TResponse extends JsonResponse<any>
-    ? DefaultTransformerParse<ReturnType<TResponse['json']>>
-    : DefaultTransformerParse<TResponse>
+    ? SerializerParse<ReturnType<TResponse['json']>>
+    : SerializerParse<TResponse>
 
 export type RscStream<T> = {
   __cacheState: T
@@ -92,9 +88,7 @@ export type Method = 'GET' | 'POST'
 
 export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
   ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
-) =>
-  | Promise<DefaultTransformerStringify<TResponse>>
-  | DefaultTransformerStringify<TResponse>
+) => Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
 
 export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
   method: TMethod
@@ -125,8 +119,8 @@ type ServerFnBaseOptions<
   functionId: string
 }
 
-export type ValidatorTransformerStringify<TValidator> = Validator<
-  TransformerStringify<
+export type ValidatorSerializerStringify<TValidator> = Validator<
+  SerializerStringifyBy<
     ResolveValidatorInput<TValidator>,
     Date | undefined | FormData
   >,
@@ -135,7 +129,7 @@ export type ValidatorTransformerStringify<TValidator> = Validator<
 
 export type ConstrainValidator<TValidator> = unknown extends TValidator
   ? TValidator
-  : Constrain<TValidator, ValidatorTransformerStringify<TValidator>>
+  : Constrain<TValidator, ValidatorSerializerStringify<TValidator>>
 
 export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
   middleware: <const TNewMiddlewares = undefined>(
@@ -307,12 +301,12 @@ function extractFormDataContext(formData: FormData) {
   }
 
   try {
-    const context = defaultTransformer.parse(serializedContext)
+    const context = startSerializer.parse(serializedContext)
     return {
       context,
       data: formData,
     }
-  } catch (e) {
+  } catch {
     return {
       data: formData,
     }

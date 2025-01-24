@@ -201,28 +201,32 @@ This pattern can be useful for pages that have slow or high-latency data fetchin
 
 Streaming dehydration/hydration is an advanced pattern that goes beyond markup and allows you to dehydrate and stream any supporting data from the server to the client and rehydrate it on arrival. This is useful for applications that may need to further use/manage the underlying data that was used to render the initial markup on the server.
 
-## Data Transformers
+## Data Serialization
 
-When using SSR, data passed between the server and the client must be serialized before it is sent across network-boundaries. By default, TanStack Router will serialize data using a very lightweight serializer that supports a few basic types beyond JSON.stringify/JSON.parse.
+When using SSR, data passed between the server and the client must be serialized before it is sent across network-boundaries. TanStack Router handles this serialization using a very lightweight serializer that supports common data types beyond JSON.stringify/JSON.parse.
 
 Out of the box, the following types are supported:
 
-- `Date`
 - `undefined`
+- `Date`
+- `Error`
+- `FormData`
 
 If you feel that there are other types that should be supported by default, please open an issue on the TanStack Router repository.
 
-If you are using more complex data types like `Map`, `Set`, `BigInt`, etc, you may need to use a custom serializer to ensure that your type-definitions are accurate and your data is correctly serialized and deserialized. This is where the `transformer` option on `createRouter` comes in.
+If you are using more complex data types like `Map`, `Set`, `BigInt`, etc, you may need to use a custom serializer to ensure that your type-definitions are accurate and your data is correctly serialized and deserialized. We are currently working on both a more robust serializer and a way to customize the serializer for your application. Open an issue if you are interested in helping out!
 
-The Data Transformer API allows the usage of a custom serializer that can allow us to transparently use these data types when communicating across the network.
+<!-- This is where the `serializer` option on `createRouter` comes in. -->
 
-The following example shows usage with [SuperJSON](https://github.com/blitz-js/superjson), however, anything that implements [`Router Transformer`](../api/router/RouterOptionsType.md#transformer-property) can be used.
+The Data Serialization API allows the usage of a custom serializer that can allow us to transparently use these data types when communicating across the network.
+
+<!-- The following example shows usage with [SuperJSON](https://github.com/blitz-js/superjson), however, anything that implements [`Start Serializer`](../api/router/RouterOptionsType.md#serializer-property) can be used. -->
 
 ```tsx
 import { SuperJSON } from 'superjson'
 
 const router = createRouter({
-  transformer: SuperJSON,
+  serializer: SuperJSON,
 })
 ```
 

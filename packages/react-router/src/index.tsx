@@ -17,8 +17,6 @@ export { default as warning } from 'tiny-warning'
 export { useAwaited, Await } from './awaited'
 export type { AwaitOptions } from './awaited'
 
-export { ScriptOnce } from './ScriptOnce'
-
 export { defer, TSR_DEFERRED_PROMISE } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 
@@ -95,15 +93,9 @@ export type {
 } from './Matches'
 
 export { matchContext } from './matchContext'
-
 export { Match, Outlet } from './Match'
-
-export { isServerSideError, defaultDeserializeError } from './isServerSideError'
-
 export { useMatch } from './useMatch'
-
 export { useLoaderDeps } from './useLoaderDeps'
-
 export { useLoaderData } from './useLoaderData'
 
 export {
@@ -239,7 +231,6 @@ export type {
   Register,
   AnyRouter,
   RegisteredRouter,
-  HydrationCtx,
   RouterContextOptions,
   TrailingSlashOption,
   RouterOptions,
@@ -247,22 +238,23 @@ export type {
   RouterState,
   ListenerFn,
   BuildNextOptions,
-  DehydratedRouterState,
-  DehydratedRouteMatch,
-  DehydratedRouter,
   RouterConstructorOptions,
   RouterEvents,
   RouterEvent,
   RouterListener,
   AnyRouterWithContext,
-  ClientExtractedBaseEntry,
-  ClientExtractedEntry,
-  ClientExtractedPromise,
   ControllablePromise,
-  StreamState,
-  TSRGlobal,
-  TSRGlobalMatch,
+  InjectedHtmlEntry,
 } from './router'
+
+export type {
+  StartSerializer,
+  Serializable,
+  SerializerParse,
+  SerializerParseBy,
+  SerializerStringify,
+  SerializerStringifyBy,
+} from './serializer'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type {
@@ -271,7 +263,6 @@ export type {
   MatchLocation,
   NavigateFn,
   BuildLocationFn,
-  InjectedHtmlEntry,
 } from './RouterProvider'
 
 export {
@@ -289,16 +280,6 @@ export {
 } from './searchParams'
 export type { SearchSerializer, SearchParser } from './searchParams'
 
-export { defaultTransformer } from './transformer'
-export type {
-  RouterTransformer,
-  TransformerParse,
-  TransformerStringify,
-  DefaultSerializable,
-  DefaultTransformerParse,
-  DefaultTransformerStringify,
-} from './transformer'
-
 export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
 
@@ -306,7 +287,6 @@ export { useNavigate, Navigate } from './useNavigate'
 export type { UseNavigateResult } from './useNavigate'
 
 export { useParams } from './useParams'
-
 export { useSearch } from './useSearch'
 
 export {
@@ -314,13 +294,9 @@ export {
 } from './routerContext'
 
 export { useRouteContext } from './useRouteContext'
-
 export { useRouter } from './useRouter'
-
 export { useRouterState } from './useRouterState'
-
 export { useLocation } from './useLocation'
-
 export { useCanGoBack } from './useCanGoBack'
 
 export {
@@ -377,3 +353,5 @@ export type {
 export { retainSearchParams, stripSearchParams } from './searchMiddleware'
 
 export * from './typePrimitives'
+
+export { ScriptOnce } from './ScriptOnce'
