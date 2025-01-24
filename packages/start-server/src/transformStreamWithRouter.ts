@@ -119,7 +119,6 @@ export function transformStreamWithRouter(
 
   // Process any already-injected HTML
   router.serverSsr!.injectedHtml.forEach((promise) => {
-    console.log('pre-added injected html')
     handleInjectedHtml(promise)
   })
 
@@ -127,7 +126,6 @@ export function transformStreamWithRouter(
   const stopListeningToInjectedHtml = router.subscribe(
     'onInjectedHtml',
     (e) => {
-      console.log('subscription injected html')
       handleInjectedHtml(e.promise)
     },
   )
@@ -136,7 +134,6 @@ export function transformStreamWithRouter(
     // If the app is done rendering and we've already resolved the promise,
     // stop processing
     if (!isAppRendering && injectedHtmlDonePromise.status !== 'pending') {
-      console.log('stop listening to injected html')
       stopListeningToInjectedHtml()
       return
     }
@@ -145,7 +142,6 @@ export function transformStreamWithRouter(
 
     promise
       .then((html) => {
-        console.log('injected html')
         if (!bodyStarted) {
           routerStreamBuffer += html
         } else {
@@ -155,7 +151,7 @@ export function transformStreamWithRouter(
       .catch(injectedHtmlDonePromise.reject)
       .finally(() => {
         processingCount--
-        console.log('processing count', processingCount)
+
         if (!isAppRendering && processingCount === 0) {
           injectedHtmlDonePromise.resolve()
         }
@@ -177,7 +173,6 @@ export function transformStreamWithRouter(
   // Transform the appStream
   readStream(appStream, {
     onData: (chunk) => {
-      console.log('app data')
       const text = decodeChunk(chunk.value)
 
       const chunkString = leftover + text
@@ -186,7 +181,6 @@ export function transformStreamWithRouter(
       const htmlEndMatch = chunkString.match(patternHtmlEnd)
 
       if (bodyStartMatch) {
-        console.log('body start')
         bodyStarted = true
       }
 
@@ -234,7 +228,6 @@ export function transformStreamWithRouter(
       }
     },
     onEnd: () => {
-      console.log('app done rendering')
       // Stop listening to any new injected HTML
       stopListeningToInjectedHtml()
 

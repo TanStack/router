@@ -195,10 +195,6 @@ export function onMatchSettled(opts: {
 }) {
   const { router, match } = opts
 
-  const extracted = (match as any).extracted as
-    | undefined
-    | Array<ServerExtractedEntry>
-
   const [serializedBeforeLoadData, serializedLoaderData] = (
     ['__beforeLoadContext', 'loaderData'] as const
   ).map((dataType) => {
@@ -206,6 +202,10 @@ export function onMatchSettled(opts: {
       router: router,
       match,
     })
+
+    const extracted = (match as any).extracted as
+      | undefined
+      | Array<ServerExtractedEntry>
 
     return extracted
       ? extracted.reduce(
@@ -224,10 +224,9 @@ export function onMatchSettled(opts: {
       : data
   })
 
-  // return extractAsyncDataToMatch('__beforeLoadContext', ctx.beforeLoadContext, {
-  //   router: router,
-  //   match,
-  // })
+  const extracted = (match as any).extracted as
+    | undefined
+    | Array<ServerExtractedEntry>
 
   if (
     serializedBeforeLoadData !== undefined ||
