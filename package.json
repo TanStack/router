@@ -67,6 +67,8 @@
     "overrides": {
       "react": "$react",
       "react-dom": "$react-dom",
+      "@types/react": "$react",
+      "@types/react-dom": "$react-dom",
       "eslint": "$eslint",
       "vite": "$vite",
       "@tanstack/react-query": "5.62.3",

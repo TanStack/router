@@ -8,6 +8,8 @@ overrides:
   use-sync-external-store: 1.2.2
   react: ^18.3.1
   react-dom: ^18.3.1
+  '@types/react': ^18.3.1
+  '@types/react-dom': ^18.3.1
   eslint: ^9.17.0
   vite: 6.0.9
   '@tanstack/react-query': 5.62.3
@@ -63,10 +65,10 @@ importers:
         specifier: ^22.10.2
         version: 22.10.2
       '@types/react':
-        specifier: ^18.3.11
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.3.0
+        specifier: ^18.3.1
         version: 18.3.1
       eslint:
         specifier: ^9.17.0
@@ -151,10 +153,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -194,10 +196,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       esbuild:
         specifier: ^0.24.2
@@ -234,10 +236,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -274,10 +276,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -314,10 +316,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -360,10 +362,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -397,10 +399,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -440,10 +442,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -483,10 +485,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -526,10 +528,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@types/react':
-        specifier: ^18.3.3
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.3.0
+        specifier: ^18.3.1
         version: 18.3.1
       typescript:
         specifier: ^5.7.2
@@ -569,10 +571,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       '@types/react':
-        specifier: ^18.3.3
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.3.0
+        specifier: ^18.3.1
         version: 18.3.1
       typescript:
         specifier: ^5.7.2
@@ -609,10 +611,10 @@ importers:
         specifier: ^1.49.1
         version: 1.49.1
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -658,10 +660,10 @@ importers:
         specifier: ^22.10.2
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -725,10 +727,10 @@ importers:
         specifier: ^22.10.2
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -792,10 +794,10 @@ importers:
         specifier: ^22.10.2
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -841,10 +843,10 @@ importers:
         version: 0.5.1(@types/node@22.10.2)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -887,10 +889,10 @@ importers:
         specifier: ^22.10.2
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       typescript:
         specifier: ^5.7.2
@@ -933,10 +935,10 @@ importers:
         specifier: ^22.10.2
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -994,10 +996,10 @@ importers:
         specifier: ^22.10.2
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1043,10 +1045,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1077,10 +1079,10 @@ importers:
         version: 0.5.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1117,10 +1119,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1157,10 +1159,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1197,10 +1199,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1237,10 +1239,10 @@ importers:
         version: 0.5.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1283,10 +1285,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1457,10 +1459,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1500,10 +1502,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1537,10 +1539,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1577,10 +1579,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1620,10 +1622,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1666,10 +1668,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1715,10 +1717,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1758,10 +1760,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1798,10 +1800,10 @@ importers:
         version: 0.5.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1835,10 +1837,10 @@ importers:
         version: 0.5.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1866,10 +1868,10 @@ importers:
         version: 18.3.1(react@18.3.1)
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1906,10 +1908,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       esbuild:
         specifier: ^0.24.0
@@ -1940,10 +1942,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -1980,10 +1982,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@types/react':
-        specifier: ^18.3.3
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.3.0
+        specifier: ^18.3.1
         version: 18.3.1
       typescript:
         specifier: ^5.6.2
@@ -2011,10 +2013,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@types/react':
-        specifier: ^18.3.3
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.3.0
+        specifier: ^18.3.1
         version: 18.3.1
       html-webpack-plugin:
         specifier: ^5.6.3
@@ -2066,10 +2068,10 @@ importers:
         specifier: ^22.10.2
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2106,10 +2108,10 @@ importers:
         specifier: workspace:*
         version: link:../../../../../packages/router-devtools
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2143,10 +2145,10 @@ importers:
         version: 18.3.1(react@18.3.1)
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2214,10 +2216,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2257,10 +2259,10 @@ importers:
         specifier: ^22.7.4
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2294,10 +2296,10 @@ importers:
         specifier: workspace:*
         version: link:../../../../../packages/router-devtools
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2328,10 +2330,10 @@ importers:
         version: 18.3.1(react@18.3.1)
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2371,10 +2373,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2408,10 +2410,10 @@ importers:
         version: 18.3.1(react@18.3.1)
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2469,10 +2471,10 @@ importers:
         specifier: ^16.1.0
         version: 16.1.0(@testing-library/dom@10.4.0)(@types/react-dom@18.3.1)(@types/react@18.3.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -2515,10 +2517,10 @@ importers:
         specifier: ^22.5.4
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -2573,10 +2575,10 @@ importers:
         specifier: ^22.5.4
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -2634,10 +2636,10 @@ importers:
         specifier: ^22.5.4
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -2680,10 +2682,10 @@ importers:
         version: 0.5.1(@types/node@22.10.2)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -2735,10 +2737,10 @@ importers:
         specifier: ^22.5.4
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -2817,10 +2819,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -2860,10 +2862,10 @@ importers:
         specifier: ^22.5.4
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       typescript:
         specifier: ^5.7.2
@@ -2906,10 +2908,10 @@ importers:
         specifier: ^22.5.4
         version: 22.10.2
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -2958,10 +2960,10 @@ importers:
         version: 0.5.1(@types/node@22.10.2)(ioredis@5.4.1)(jiti@2.4.1)(terser@5.36.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
     devDependencies:
       '@types/react':
-        specifier: ^18.3.5
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.3.0
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -3031,10 +3033,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.65
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.21
+        specifier: ^18.3.1
         version: 18.3.1
       autoprefixer:
         specifier: ^10.4.20
@@ -3077,10 +3079,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -3129,10 +3131,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -3184,10 +3186,10 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/react':
-        specifier: ^18.2.47
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.2.18
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -3238,10 +3240,10 @@ importers:
         specifier: workspace:*
         version: link:../router-plugin
       '@types/react':
-        specifier: ^18.3.3
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
-        specifier: ^18.3.0
+        specifier: ^18.3.1
         version: 18.3.1
       '@vitejs/plugin-react':
         specifier: ^4.3.2
@@ -3326,7 +3328,7 @@ importers:
         specifier: workspace:*
         version: link:../start
       '@types/react':
-        specifier: ^18.3.12
+        specifier: ^18.3.1
         version: 18.3.12
       '@types/react-dom':
         specifier: ^18.3.1
@@ -5642,7 +5644,7 @@ packages:
   '@radix-ui/react-compose-refs@1.1.0':
     resolution: {integrity: sha512-b4inOtiaOnYf9KWyO3jAeeCG6FeyfY6ldiEPanbUjWd+xIk5wZeHa8yVwmrJ2vderhu/BQvzCrJI0lHd+wIiqw==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -5651,7 +5653,7 @@ packages:
   '@radix-ui/react-context@1.1.1':
     resolution: {integrity: sha512-UASk9zi+crv9WteK/NU4PLvOoL3OuE6BWVKNF6hPRBtYBDXQ2u5iu3O59zUlJiTVvkyuycnqrztsHVJwcK9K+Q==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -5660,8 +5662,8 @@ packages:
   '@radix-ui/react-dialog@1.1.2':
     resolution: {integrity: sha512-Yj4dZtqa2o+kG61fzB0H2qUvmwBA2oyQroGLyNtBj1beo1khoQ3q1a2AO8rrQYjd8256CO9+N8L9tvsS+bnIyA==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^18.3.1
+      '@types/react-dom': ^18.3.1
       react: ^18.3.1
       react-dom: ^18.3.1
     peerDependenciesMeta:
@@ -5673,8 +5675,8 @@ packages:
   '@radix-ui/react-dismissable-layer@1.1.1':
     resolution: {integrity: sha512-QSxg29lfr/xcev6kSz7MAlmDnzbP1eI/Dwn3Tp1ip0KT5CUELsxkekFEMVBEoykI3oV39hKT4TKZzBNMbcTZYQ==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^18.3.1
+      '@types/react-dom': ^18.3.1
       react: ^18.3.1
       react-dom: ^18.3.1
     peerDependenciesMeta:
@@ -5686,7 +5688,7 @@ packages:
   '@radix-ui/react-focus-guards@1.1.1':
     resolution: {integrity: sha512-pSIwfrT1a6sIoDASCSpFwOasEwKTZWDw/iBdtnqKO7v6FeOzYJ7U53cPzYFVR3geGGXgVHaH+CdngrrAzqUGxg==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -5695,8 +5697,8 @@ packages:
   '@radix-ui/react-focus-scope@1.1.0':
     resolution: {integrity: sha512-200UD8zylvEyL8Bx+z76RJnASR2gRMuxlgFCPAe/Q/679a/r0eK3MBVYMb7vZODZcffZBdob1EGnky78xmVvcA==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^18.3.1
+      '@types/react-dom': ^18.3.1
       react: ^18.3.1
       react-dom: ^18.3.1
     peerDependenciesMeta:
@@ -5708,7 +5710,7 @@ packages:
   '@radix-ui/react-id@1.1.0':
     resolution: {integrity: sha512-EJUrI8yYh7WOjNOqpoJaf1jlFIH2LvtgAl+YcFqNCa+4hj64ZXmPkAKOFs/ukjz3byN6bdb/AVUqHkI8/uWWMA==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -5717,8 +5719,8 @@ packages:
   '@radix-ui/react-portal@1.1.2':
     resolution: {integrity: sha512-WeDYLGPxJb/5EGBoedyJbT0MpoULmwnIPMJMSldkuiMsBAv7N1cRdsTWZWht9vpPOiN3qyiGAtbK2is47/uMFg==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^18.3.1
+      '@types/react-dom': ^18.3.1
       react: ^18.3.1
       react-dom: ^18.3.1
     peerDependenciesMeta:
@@ -5730,8 +5732,8 @@ packages:
   '@radix-ui/react-presence@1.1.1':
     resolution: {integrity: sha512-IeFXVi4YS1K0wVZzXNrbaaUvIJ3qdY+/Ih4eHFhWA9SwGR9UDX7Ck8abvL57C4cv3wwMvUE0OG69Qc3NCcTe/A==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^18.3.1
+      '@types/react-dom': ^18.3.1
       react: ^18.3.1
       react-dom: ^18.3.1
     peerDependenciesMeta:
@@ -5743,8 +5745,8 @@ packages:
   '@radix-ui/react-primitive@2.0.0':
     resolution: {integrity: sha512-ZSpFm0/uHa8zTvKBDjLFWLo8dkr4MBsiDLz0g3gMUwqgLHz9rTaRRGYDgvZPtBJgYCBKXkS9fzmoySgr8CO6Cw==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^18.3.1
+      '@types/react-dom': ^18.3.1
       react: ^18.3.1
       react-dom: ^18.3.1
     peerDependenciesMeta:
@@ -5756,7 +5758,7 @@ packages:
   '@radix-ui/react-slot@1.1.0':
     resolution: {integrity: sha512-FUCf5XMfmW4dtYl69pdS4DbxKy8nj4M7SafBgPllysxmdachynNflAdp/gCsnYWNDnge6tI9onzMp5ARYc1KNw==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -5765,7 +5767,7 @@ packages:
   '@radix-ui/react-use-callback-ref@1.1.0':
     resolution: {integrity: sha512-CasTfvsy+frcFkbXtSJ2Zu9JHpN8TYKxkgJGWbjiZhFivxaeW7rMeZt7QELGVLaYVfFMsKHjb7Ak0nMEe+2Vfw==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -5774,7 +5776,7 @@ packages:
   '@radix-ui/react-use-controllable-state@1.1.0':
     resolution: {integrity: sha512-MtfMVJiSr2NjzS0Aa90NPTnvTSg6C/JLCV7ma0W6+OMV78vd8OyRpID+Ng9LxzsPbLeuBnWBA1Nq30AtBIDChw==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -5783,7 +5785,7 @@ packages:
   '@radix-ui/react-use-escape-keydown@1.1.0':
     resolution: {integrity: sha512-L7vwWlR1kTTQ3oh7g1O0CBF3YCyyTj8NmhLR+phShpyA50HCfBFKVJTpshm9PzLiKmehsrQzTYTpX9HvmC9rhw==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -5792,7 +5794,7 @@ packages:
   '@radix-ui/react-use-layout-effect@1.1.0':
     resolution: {integrity: sha512-+FPE0rOdziWSrH9athwI1R0HDVbWlEhd+FR+aSDk4uWGmSJ9Z54sdZVDQPZAinJhJXwfT+qnj969mCsT2gfm5w==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -6297,8 +6299,8 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@testing-library/dom': ^10.0.0
-      '@types/react': ^18.0.0 || ^19.0.0
-      '@types/react-dom': ^18.0.0 || ^19.0.0
+      '@types/react': ^18.3.1
+      '@types/react-dom': ^18.3.1
       react: ^18.3.1
       react-dom: ^18.3.1
     peerDependenciesMeta:
@@ -9893,7 +9895,7 @@ packages:
     resolution: {integrity: sha512-DtSYaao4mBmX+HDo5YWYdBWQwYIQQshUV/dVxFxK+KM26Wjwp1gZ6rv6OC3oujI6Bfu6Xyg3TwK533AQutsn/g==}
     engines: {node: '>=10'}
     peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -9903,7 +9905,7 @@ packages:
     resolution: {integrity: sha512-I2U4JVEsQenxDAKaVa3VZ/JeJZe0/2DxPWL8Tj8yLKctQJQiZM52pn/GWFpSp8dftjM3pSAHVJZscAnC/y+ySQ==}
     engines: {node: '>=10'}
     peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -9913,7 +9915,7 @@ packages:
     resolution: {integrity: sha512-ZWj0fHEMyWkHzKYUr2Bs/4zU6XLmq9HsgBURm7g5pAVfyn49DgUiNgY2d4lXRlYSiCif9YBGpQleewkcqddc7g==}
     engines: {node: '>=10'}
     peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -10855,7 +10857,7 @@ packages:
     resolution: {integrity: sha512-elOQwe6Q8gqZgDA8mrh44qRTQqpIHDcZ3hXTLjBe1i4ph8XpNJnO+aQf3NaG+lriLopI4HMx9VjQLfPQ6vhnoA==}
     engines: {node: '>=10'}
     peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
@@ -10865,7 +10867,7 @@ packages:
     resolution: {integrity: sha512-epTbsLuzZ7lPClpz2TyryBfztm7m+28DlEv2ZCQ3MDr5ssiwyOwGH/e5F9CkfWjJ1t4clvI58yF822/GUkjjhw==}
     engines: {node: '>=10'}
     peerDependencies:
-      '@types/react': ^16.9.0 || ^17.0.0 || ^18.0.0
+      '@types/react': ^18.3.1
       react: ^18.3.1
     peerDependenciesMeta:
       '@types/react':
