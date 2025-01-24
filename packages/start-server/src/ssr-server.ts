@@ -1,5 +1,6 @@
 import {
   TSR_DEFERRED_PROMISE,
+  createControlledPromise,
   defer,
   isPlainArray,
   isPlainObject,
@@ -281,6 +282,11 @@ export function onMatchSettled(opts: {
     }
 
     function injectStream(entry: ServerExtractedStream) {
+      const controlledPromise = createControlledPromise<void>()
+
+      // Inject a promise that resolves when the stream is done
+      // We do this to keep the stream open until we're done
+      router.serverSsr!.injectHtml(() => controlledPromise.then(() => ''))
       ;(async () => {
         try {
           const reader = entry.stream.getReader()
@@ -288,9 +294,10 @@ export function onMatchSettled(opts: {
           while (!(chunk = await reader.read()).done) {
             injectChunk(chunk.value)
           }
-          // reader.releaseLock()
+          controlledPromise.resolve()
         } catch (err) {
           console.error('stream read error', err)
+          controlledPromise.reject(err)
         }
       })()
 
