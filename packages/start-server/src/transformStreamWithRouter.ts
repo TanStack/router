@@ -176,9 +176,15 @@ export function transformStreamWithRouter(
       const text = decodeChunk(chunk.value)
 
       const chunkString = leftover + text
-      const bodyStartMatch = chunkString.match(patternBodyStart)
       const bodyEndMatch = chunkString.match(patternBodyEnd)
       const htmlEndMatch = chunkString.match(patternHtmlEnd)
+
+      if (!bodyStarted) {
+        const bodyStartMatch = chunkString.match(patternBodyStart)
+        if (bodyStartMatch) {
+          bodyStarted = true
+        }
+      }
 
       if (!headStarted) {
         const headStartMatch = chunkString.match(patternHeadStart)
@@ -195,10 +201,6 @@ export function transformStreamWithRouter(
           )
           return
         }
-      }
-
-      if (bodyStartMatch) {
-        bodyStarted = true
       }
 
       if (!bodyStarted) {
