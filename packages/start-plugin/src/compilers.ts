@@ -413,17 +413,16 @@ function handleCreateMiddlewareCallExpression(
     }
   }
 
-  const useFnPath = callExpressionPaths.server?.get(
+  const serverFnPath = callExpressionPaths.server?.get(
     'arguments.0',
   ) as babel.NodePath<any>
 
-  if (!callExpressionPaths.server || !useFnPath.node) {
-    throw new Error('createMiddleware must be called with a "use" property!')
-  }
-
-  // If we're on the client, remove the server call expression
-
-  if (opts.env === 'client' || opts.env === 'ssr') {
+  if (
+    callExpressionPaths.server &&
+    serverFnPath.node &&
+    (opts.env === 'client' || opts.env === 'ssr')
+  ) {
+    // If we're on the client, remove the server call expression
     if (t.isMemberExpression(callExpressionPaths.server.node.callee)) {
       callExpressionPaths.server.replaceWith(
         callExpressionPaths.server.node.callee.object,
