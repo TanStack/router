@@ -1600,7 +1600,7 @@ export type ErrorComponentProps = {
 }
 export type NotFoundRouteProps = {
   // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
-  data: unknown
+  data: NotFoundError['data'] | null | undefined
 }
 //
 
