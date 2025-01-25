@@ -7,6 +7,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useLocation,
   useNavigate,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -227,13 +228,49 @@ const searchParamBindingRoute = createRoute({
 
 function SearchParamBindingComponent() {
   const navigate = useNavigate()
-  const { filter } = searchParamBindingRoute.useSearch()
+
+  const useLocationFilter = useLocation({
+    select(state) {
+      return state.search.filter
+    },
+  })
+
+  const { filter: useSearchFilter } = searchParamBindingRoute.useSearch()
+
+  const {
+    search: { filter: useMatchFilter },
+  } = searchParamBindingRoute.useMatch()
 
   return (
     <div>
+      <div>useLocation</div>
       <input
-        data-testid="filter"
-        value={filter}
+        data-testid="useLocation-filter"
+        value={useLocationFilter}
+        onChange={(e) =>
+          navigate({
+            to: '.',
+            search: { filter: e.target.value },
+          })
+        }
+      />
+
+      <div>useSearch</div>
+      <input
+        data-testid="useSearch-filter"
+        value={useSearchFilter}
+        onChange={(e) =>
+          navigate({
+            to: '.',
+            search: { filter: e.target.value },
+          })
+        }
+      />
+
+      <div>useMatch</div>
+      <input
+        data-testid="useMatch-filter"
+        value={useMatchFilter}
         onChange={(e) =>
           navigate({
             to: '.',
