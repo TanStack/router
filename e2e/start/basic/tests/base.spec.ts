@@ -32,13 +32,10 @@ test('Navigating nested layouts', async ({ page }) => {
   await expect(page.locator('body')).toContainText("I'm layout B!")
 })
 
-test('Navigating to route with scripts', async ({ page }) => {
-  await page.goto('/')
-
-  await page.getByRole('link', { name: 'Scripts' }).click()
-
-  await expect(page.getByTestId('script')).toHaveCount(1)
-  await expect(page.getByTestId('script2')).toHaveCount(0)
+test('directly going to a route with scripts', async ({ page }) => {
+  await page.goto('/scripts')
+  expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
+  expect(await page.evaluate('window.SCRIPT_2')).toBe(undefined)
 })
 
 test('Navigating to a not-found route', async ({ page }) => {

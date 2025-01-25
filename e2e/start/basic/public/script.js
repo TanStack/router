@@ -1,2 +1,2 @@
-// eslint-disable no-empty-file
-// This empty script file is for testing purposes only
+console.log('SCRIPT_1 loaded')
+window.SCRIPT_1 = true

@@ -7,13 +7,11 @@ export const Route = createFileRoute('/scripts')({
     scripts: [
       {
         src: 'script.js',
-        ['data-testid']: 'script',
       },
       isProd
         ? undefined
         : {
             src: 'script2.js',
-            ['data-testid']: 'script2',
           },
     ],
   }),
