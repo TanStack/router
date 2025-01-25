@@ -546,7 +546,9 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
       throw new SearchParamError('Async validation not supported')
 
     if (result.issues)
-      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2))
+      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2), {
+        cause: result,
+      })
 
     return result.value
   }
@@ -1166,9 +1168,12 @@ export class Router<
             undefined,
           ]
         } catch (err: any) {
-          const searchParamError = new SearchParamError(err.message, {
-            cause: err,
-          })
+          let searchParamError = err
+          if (!(err instanceof SearchParamError)) {
+            searchParamError = new SearchParamError(err.message, {
+              cause: err,
+            })
+          }
 
           if (opts?.throwOnError) {
             throw searchParamError
