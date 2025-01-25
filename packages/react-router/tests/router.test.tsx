@@ -19,7 +19,7 @@ import {
   createRouter,
   useNavigate,
 } from '../src'
-import type { StandardSchemaValidator } from '../src/validators'
+import type { StandardSchemaValidator } from '@tanstack/router-core'
 import type {
   AnyRoute,
   AnyRouter,
