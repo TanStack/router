@@ -34,7 +34,7 @@
     "node-fetch": "^3.3.2",
     "serve-static": "^1.16.2",
     "vite": "^6.0.3",
-    "@types/react": "^19.0.1",
+    "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.1"
   }
 }
