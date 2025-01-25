@@ -22,8 +22,8 @@
     "convex": "^1.17.3",
     "ky": "^1.7.2",
     "msw": "^2.6.8",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-hot-toast": "^2.4.1",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.5.5",
@@ -32,8 +32,8 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/react": "^18.2.65",
-    "@types/react-dom": "^18.2.21",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
