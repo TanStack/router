@@ -185,7 +185,7 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
       unsubOnBeforeLoad()
       unsubOnBeforeRouteMount()
     }
-  }, [options?.getKey, router])
+  }, [options?.getKey, options?.scrollBehavior, router])
 }
 
 export function ScrollRestoration(props: ScrollRestorationOptions) {

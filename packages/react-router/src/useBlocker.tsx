@@ -230,7 +230,14 @@ export function useBlocker(
     return disabled
       ? undefined
       : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
-  }, [shouldBlockFn, enableBeforeUnload, disabled, withResolver, history])
+  }, [
+    shouldBlockFn,
+    enableBeforeUnload,
+    disabled,
+    withResolver,
+    history,
+    router,
+  ])
 
   return resolver
 }
