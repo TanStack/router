@@ -10,17 +10,17 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.62.3",
+    "@tanstack/react-query": "^5.64.2",
     "@tanstack/react-router": "^1.97.18",
     "@tanstack/arktype-adapter": "^1.97.18",
     "@tanstack/router-devtools": "^1.97.18",
     "@tanstack/router-plugin": "^1.97.18",
     "@tanstack/valibot-adapter": "^1.97.18",
     "@tanstack/zod-adapter": "^1.97.18",
-    "arktype": "^2.0.0-rc.33",
+    "arktype": "^2.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "valibot": "1.0.0-beta.9",
+    "valibot": "1.0.0-beta.14",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -28,8 +28,8 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3",
+    "vite": "^6.0.11",
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0"
+    "@testing-library/react": "^16.2.0"
   }
 }
