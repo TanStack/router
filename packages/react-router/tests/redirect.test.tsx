@@ -209,7 +209,7 @@ describe('redirect', () => {
             })
           }
         },
-        component: () => {
+        component: function Component() {
           const router = useRouter()
           return (
             <button

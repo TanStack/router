@@ -60,7 +60,7 @@ export function Navigate<
     navigate({
       ...props,
     } as any)
-  }, [])
+  }, [navigate, props])
 
   return null
 }

@@ -670,6 +670,7 @@ export function useLinkProps<
 
   const next = React.useMemo(
     () => router.buildLocation(options as any),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [router, options, currentSearch],
   )
   const preload = React.useMemo(() => {
