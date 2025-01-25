@@ -54,7 +54,7 @@ export type IsUnion<T, U extends T = T> = (
   ? false
   : true
 
-export type HasKeys<T> = T extends object
+export type IsNonEmptyObject<T> = T extends object
   ? keyof T extends never
     ? false
     : true
@@ -62,9 +62,9 @@ export type HasKeys<T> = T extends object
 
 export type Assign<TLeft, TRight> = TLeft extends any
   ? TRight extends any
-    ? HasKeys<TLeft> extends false
+    ? IsNonEmptyObject<TLeft> extends false
       ? TRight
-      : HasKeys<TRight> extends false
+      : IsNonEmptyObject<TRight> extends false
         ? TLeft
         : keyof TLeft & keyof TRight extends never
           ? TLeft & TRight
@@ -72,13 +72,13 @@ export type Assign<TLeft, TRight> = TLeft extends any
     : never
   : never
 
-export type Intersect<TLeft, TRight> = TLeft extends any
+export type IntersectAssign<TLeft, TRight> = TLeft extends any
   ? TRight extends any
-    ? HasKeys<TLeft> extends false
+    ? IsNonEmptyObject<TLeft> extends false
       ? TRight
-      : HasKeys<TRight> extends false
+      : IsNonEmptyObject<TRight> extends false
         ? TLeft
-        : TLeft & TRight
+        : TRight & TLeft
     : never
   : never
 

@@ -157,7 +157,7 @@ test('createServerFn overrides properties', () => {
     .validator(
       () =>
         ({
-          input: 'a',
+          input: 'a' as 'a' | 'b' | 'c',
         }) as const,
     )
     .client(({ context, next }) => {
@@ -167,7 +167,7 @@ test('createServerFn overrides properties', () => {
       return next({ sendContext: newContext, context: newContext })
     })
     .server(({ data, context, next }) => {
-      expectTypeOf(data).toEqualTypeOf<{ readonly input: 'a' }>()
+      expectTypeOf(data).toEqualTypeOf<{ readonly input: 'a' | 'b' | 'c' }>()
 
       expectTypeOf(context).toEqualTypeOf<{
         readonly context: 'a'
@@ -190,7 +190,7 @@ test('createServerFn overrides properties', () => {
     .validator(
       () =>
         ({
-          input: 'b',
+          input: 'b' as 'b' | 'c',
         }) as const,
     )
     .client(({ context, next }) => {

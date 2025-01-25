@@ -83,13 +83,33 @@ const linesRoute = createRoute({
   },
 })
 
+const linesFormRoute = createRoute({
+  getParentRoute: () => linesRoute,
+  path: 'form',
+  validateSearch: (): { mode: 'new' | 'edit' | 'view' } => ({ mode: 'view' }),
+})
+
+const linesFormEditRoute = createRoute({
+  getParentRoute: () => linesFormRoute,
+  path: 'edit',
+  validateSearch: (): { mode: 'view' | 'edit' | 'cancel' } => ({
+    mode: 'view',
+  }),
+})
+
 const routeTreeTuples = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   invoicesRoute.addChildren([
     invoicesIndexRoute,
     invoiceRoute.addChildren([
       invoiceEditRoute,
-      invoiceDetailsRoute.addChildren([detailRoute.addChildren([linesRoute])]),
+      invoiceDetailsRoute.addChildren([
+        detailRoute.addChildren([
+          linesRoute.addChildren([
+            linesFormRoute.addChildren([linesFormEditRoute]),
+          ]),
+        ]),
+      ]),
     ]),
   ]),
   indexRoute,
@@ -102,7 +122,11 @@ const routeTreeObjects = rootRoute.addChildren({
     invoiceRoute: invoiceRoute.addChildren({
       invoiceEditRoute,
       invoiceDetailsRoute: invoiceDetailsRoute.addChildren({
-        detailRoute: detailRoute.addChildren({ linesRoute }),
+        detailRoute: detailRoute.addChildren({
+          linesRoute: linesRoute.addChildren({
+            linesFormRoute: linesFormRoute.addChildren({ linesFormEditRoute }),
+          }),
+        }),
       }),
     }),
   }),
@@ -173,6 +197,8 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
@@ -189,6 +215,8 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/edit'
       | '/posts'
@@ -206,6 +234,8 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/'
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
@@ -223,6 +253,8 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/edit'
       | '/posts'
@@ -246,6 +278,10 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/edit'
@@ -316,6 +352,7 @@ test('when navigating to the root', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(DefaultRouterObjectsLink)
@@ -328,6 +365,7 @@ test('when navigating to the root', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(RouterAlwaysTrailingSlashLink)
@@ -340,6 +378,7 @@ test('when navigating to the root', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(RouterNeverTrailingSlashLink)
@@ -352,6 +391,7 @@ test('when navigating to the root', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(RouterPreserveTrailingSlashLink)
@@ -364,6 +404,7 @@ test('when navigating to the root', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(DefaultRouterLink)
@@ -406,6 +447,8 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/posts'
       | '/posts/$postId'
       | '$postId'
@@ -425,6 +468,8 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/posts'
       | '/posts/$postId'
       | '$postId'
@@ -444,6 +489,8 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/posts/'
       | '/posts/$postId/'
       | '$postId/'
@@ -463,6 +510,8 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/posts'
       | '/posts/$postId'
       | '$postId'
@@ -490,6 +539,10 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/posts'
       | '/posts/'
       | '/posts/$postId'
@@ -734,6 +787,8 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId/details'
       | '../invoices/$invoiceId/details/$detailId'
       | '../invoices/$invoiceId/details/$detailId/lines'
+      | '../invoices/$invoiceId/details/$detailId/lines/form'
+      | '../invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '../invoices'
       | '..'
       | undefined
@@ -750,6 +805,8 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId/details'
       | '../invoices/$invoiceId/details/$detailId'
       | '../invoices/$invoiceId/details/$detailId/lines'
+      | '../invoices/$invoiceId/details/$detailId/lines/form'
+      | '../invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '../invoices'
       | '..'
       | undefined
@@ -766,6 +823,8 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId/details/'
       | '../invoices/$invoiceId/details/$detailId/'
       | '../invoices/$invoiceId/details/$detailId/lines/'
+      | '../invoices/$invoiceId/details/$detailId/lines/form/'
+      | '../invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '../invoices/'
       | '../'
       | undefined
@@ -782,6 +841,8 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId/details'
       | '../invoices/$invoiceId/details/$detailId'
       | '../invoices/$invoiceId/details/$detailId/lines'
+      | '../invoices/$invoiceId/details/$detailId/lines/form'
+      | '../invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '../invoices'
       | '..'
       | undefined
@@ -805,6 +866,10 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId/details/$detailId/'
       | '../invoices/$invoiceId/details/$detailId/lines'
       | '../invoices/$invoiceId/details/$detailId/lines/'
+      | '../invoices/$invoiceId/details/$detailId/lines/form'
+      | '../invoices/$invoiceId/details/$detailId/lines/form/edit'
+      | '../invoices/$invoiceId/details/$detailId/lines/form/'
+      | '../invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '../invoices'
       | '../invoices/'
       | '../'
@@ -827,6 +892,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '.'
       | '..'
     >()
@@ -844,6 +911,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '.'
       | '..'
     >()
@@ -863,6 +932,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | './'
       | '../'
     >()
@@ -880,6 +951,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '.'
       | '..'
     >()
@@ -907,6 +980,10 @@ test('cannot navigate to a branch with an index', () => {
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '.'
       | '..'
       | './'
@@ -933,6 +1010,8 @@ test('from autocompletes to all absolute routes', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | undefined
     >()
 
@@ -951,6 +1030,8 @@ test('from autocompletes to all absolute routes', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | undefined
     >()
 })
@@ -974,6 +1055,8 @@ test('from does not allow invalid routes', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+          | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | undefined
     >()
 
@@ -992,6 +1075,8 @@ test('from does not allow invalid routes', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | undefined
     >()
 })
@@ -2491,6 +2576,7 @@ test('when navigating to a route with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2499,6 +2585,7 @@ test('when navigating to a route with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2507,6 +2594,7 @@ test('when navigating to a route with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2515,6 +2603,7 @@ test('when navigating to a route with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2523,6 +2612,7 @@ test('when navigating to a route with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 })
 
@@ -2681,6 +2771,7 @@ test('when navigating to a route with optional search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2689,6 +2780,7 @@ test('when navigating to a route with optional search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2697,6 +2789,7 @@ test('when navigating to a route with optional search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2705,6 +2798,7 @@ test('when navigating to a route with optional search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -2713,6 +2807,7 @@ test('when navigating to a route with optional search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 })
 
@@ -3016,6 +3111,7 @@ test('when navigating to a union of routes with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   defaultRouterObjectsLinkSearch.parameter(0).toEqualTypeOf<{
@@ -3024,6 +3120,7 @@ test('when navigating to a union of routes with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerAlwaysTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
@@ -3032,6 +3129,7 @@ test('when navigating to a union of routes with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerNeverTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
@@ -3040,6 +3138,7 @@ test('when navigating to a union of routes with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerPreserveTrailingSlashesSearch.parameter(0).toEqualTypeOf<{
@@ -3048,6 +3147,7 @@ test('when navigating to a union of routes with search params', () => {
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 })
 
@@ -3213,6 +3313,7 @@ test('when navigating to a union of routes with search params including the root
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   defaultRouterObjectsSearch.parameter(0).toEqualTypeOf<{
@@ -3221,6 +3322,7 @@ test('when navigating to a union of routes with search params including the root
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerAlwaysTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -3229,6 +3331,7 @@ test('when navigating to a union of routes with search params including the root
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerNeverTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -3237,6 +3340,7 @@ test('when navigating to a union of routes with search params including the root
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 
   routerPreserveTrailingSlashesLinkSearch.parameter(0).toEqualTypeOf<{
@@ -3245,6 +3349,7 @@ test('when navigating to a union of routes with search params including the root
     rootPage?: number
     linesPage?: number
     editId?: number
+    mode?: 'new' | 'edit' | 'view'
   }>()
 })
 
@@ -3626,6 +3731,8 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
@@ -3642,6 +3749,8 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/edit'
       | '/posts'
@@ -3659,6 +3768,8 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/'
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
@@ -3676,6 +3787,8 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/edit'
       | '/posts'
@@ -3699,6 +3812,10 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/edit'
@@ -3769,6 +3886,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(DefaultRouterObjectsLink)
@@ -3781,6 +3899,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(RouterAlwaysTrailingSlashLink)
@@ -3793,6 +3912,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(RouterNeverTrailingSlashLink)
@@ -3805,6 +3925,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(RouterPreserveTrailingSlashLink)
@@ -3817,6 +3938,7 @@ test('when passing a component with props to createLink and navigating to the ro
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'new' | 'edit' | 'view'
     }>()
 
   expectTypeOf(DefaultRouterLink)
@@ -4035,6 +4157,8 @@ test('navigation edge cases', () => {
       | '../../invoices/$invoiceId/details'
       | '../../invoices/$invoiceId/details/$detailId'
       | '../../invoices/$invoiceId/details/$detailId/lines'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form/edit'
       | undefined
     >()
 
@@ -4051,6 +4175,8 @@ test('navigation edge cases', () => {
       | '../../invoices/$invoiceId/details/'
       | '../../invoices/$invoiceId/details/$detailId/'
       | '../../invoices/$invoiceId/details/$detailId/lines/'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form/'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | undefined
     >()
 
@@ -4067,6 +4193,8 @@ test('navigation edge cases', () => {
       | '../../invoices/$invoiceId/details'
       | '../../invoices/$invoiceId/details/$detailId'
       | '../../invoices/$invoiceId/details/$detailId/lines'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form/edit'
       | undefined
     >()
 
@@ -4086,6 +4214,8 @@ test('navigation edge cases', () => {
       | '../../invoices/$invoiceId/details'
       | '../../invoices/$invoiceId/details/$detailId'
       | '../../invoices/$invoiceId/details/$detailId/lines'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '../../posts/'
       | '../../posts/$postId/'
       | '../../invoices/'
@@ -4094,6 +4224,8 @@ test('navigation edge cases', () => {
       | '../../invoices/$invoiceId/details/'
       | '../../invoices/$invoiceId/details/$detailId/'
       | '../../invoices/$invoiceId/details/$detailId/lines/'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form/'
+      | '../../invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | undefined
     >()
 })
@@ -4134,6 +4266,8 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
@@ -4150,6 +4284,8 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/edit'
       | '/posts'
@@ -4167,6 +4303,8 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/'
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
@@ -4184,6 +4322,8 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/edit'
       | '/posts'
@@ -4207,6 +4347,10 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/details/$detailId/'
       | '/invoices/$invoiceId/details/$detailId/lines'
       | '/invoices/$invoiceId/details/$detailId/lines/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/'
       | '/invoices/$invoiceId/edit'
@@ -4277,6 +4421,7 @@ test('linkOptions', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'view' | 'edit' | 'new'
     }>()
 
   expectTypeOf(defaultRouterObjectsLinkOptions)
@@ -4289,6 +4434,7 @@ test('linkOptions', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'view' | 'edit' | 'new'
     }>()
 
   expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
@@ -4301,6 +4447,7 @@ test('linkOptions', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'view' | 'edit' | 'new'
     }>()
 
   expectTypeOf(routerNeverTrailingSlashLinkOptions)
@@ -4313,6 +4460,7 @@ test('linkOptions', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'view' | 'edit' | 'new'
     }>()
 
   expectTypeOf(routerPreserveTrailingSlashLinkOptions)
@@ -4325,6 +4473,7 @@ test('linkOptions', () => {
       rootPage?: number
       linesPage?: number
       editId?: number
+      mode?: 'edit' | 'view' | 'new'
     }>()
 
   expectTypeOf(defaultRouterLinkOptions)
@@ -4376,4 +4525,91 @@ test('linkOptions', () => {
     label: string
     to: '/'
   }>()
+})
+
+test('when navigating to a route with conflicting validateSearch', () => {
+  const DefaultRouterLink = Link<
+    DefaultRouter,
+    string,
+    '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+  >
+
+  const DefaultRouterObjectsLink = Link<
+    DefaultRouterObjects,
+    string,
+    '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+  >
+
+  const RouterAlwaysTrailingSlashLink = Link<
+    RouterAlwaysTrailingSlashes,
+    string,
+    '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
+  >
+
+  const RouterNeverTrailingSlashLink = Link<
+    RouterNeverTrailingSlashes,
+    string,
+    '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+  >
+  const RouterPreserveTrailingSlashLink = Link<
+    RouterPreserveTrailingSlashes,
+    string,
+    | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
+    | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+  >
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{
+      mode: 'edit' | 'view'
+      linesPage?: number | undefined
+      page?: number | undefined
+      rootPage?: number | undefined
+    }>()
+
+  expectTypeOf(DefaultRouterObjectsLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{
+      mode: 'edit' | 'view'
+      linesPage?: number | undefined
+      page?: number | undefined
+      rootPage?: number | undefined
+    }>()
+
+  expectTypeOf(RouterAlwaysTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{
+      mode: 'edit' | 'view'
+      linesPage?: number | undefined
+      page?: number | undefined
+      rootPage?: number | undefined
+    }>()
+
+  expectTypeOf(RouterNeverTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{
+      mode: 'edit' | 'view'
+      linesPage?: number | undefined
+      page?: number | undefined
+      rootPage?: number | undefined
+    }>()
+
+  expectTypeOf(RouterPreserveTrailingSlashLink)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{
+      mode: 'edit' | 'view'
+      linesPage?: number | undefined
+      page?: number | undefined
+      rootPage?: number | undefined
+    }>()
 })

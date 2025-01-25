@@ -31,7 +31,7 @@ import type {
   Constrain,
   ConstrainLiteral,
   Expand,
-  Intersect,
+  IntersectAssign,
   NoInfer,
 } from './utils'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
@@ -677,7 +677,7 @@ export type ResolveFullSearchSchema<
   TSearchValidator,
 > = unknown extends TParentRoute
   ? ResolveValidatorOutput<TSearchValidator>
-  : Intersect<
+  : IntersectAssign<
       InferFullSearchSchema<TParentRoute>,
       ResolveValidatorOutput<TSearchValidator>
     >
@@ -685,7 +685,7 @@ export type ResolveFullSearchSchema<
 export type ResolveFullSearchSchemaInput<
   TParentRoute extends AnyRoute,
   TSearchValidator,
-> = Intersect<
+> = IntersectAssign<
   InferFullSearchSchemaInput<TParentRoute>,
   ResolveSearchValidatorInput<TSearchValidator>
 >
