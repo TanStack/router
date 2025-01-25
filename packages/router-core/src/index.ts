@@ -15,6 +15,16 @@ export type {
   ResolveRelativePath,
   LinkCurrentTargetElement,
 } from './link'
+
+export type {
+  StartSerializer,
+  Serializable,
+  SerializerParse,
+  SerializerParseBy,
+  SerializerStringify,
+  SerializerStringifyBy,
+} from './serializer'
+
 export type { ParsedLocation } from './location'
 export type { Manifest, RouterManagedTag } from './manifest'
 export { isMatch } from './Matches'

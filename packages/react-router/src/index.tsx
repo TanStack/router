@@ -38,6 +38,12 @@ export {
 } from '@tanstack/router-core'
 
 export type {
+  StartSerializer,
+  Serializable,
+  SerializerParse,
+  SerializerParseBy,
+  SerializerStringify,
+  SerializerStringifyBy,
   DeferredPromiseState,
   DeferredPromise,
   ParsedLocation,
@@ -298,15 +304,6 @@ export type {
   ControllablePromise,
   InjectedHtmlEntry,
 } from './router'
-
-export type {
-  StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
-} from './serializer'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type {
