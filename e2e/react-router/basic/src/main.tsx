@@ -229,24 +229,18 @@ const searchParamBindingRoute = createRoute({
 function SearchParamBindingComponent() {
   const navigate = useNavigate()
 
-  const useLocationFilter = useLocation({
-    select(state) {
-      return state.search.filter
-    },
-  })
+  const useLocationFilter = useLocation()
 
-  const { filter: useSearchFilter } = searchParamBindingRoute.useSearch()
+  const useSearchFilter = searchParamBindingRoute.useSearch()
 
-  const {
-    search: { filter: useMatchFilter },
-  } = searchParamBindingRoute.useMatch()
+  const useMatchFilter = searchParamBindingRoute.useMatch()
 
   return (
     <div>
       <div>useLocation</div>
       <input
         data-testid="useLocation-filter"
-        value={useLocationFilter}
+        value={useLocationFilter.search.filter}
         onChange={(e) =>
           navigate({
             to: '.',
@@ -258,7 +252,7 @@ function SearchParamBindingComponent() {
       <div>useSearch</div>
       <input
         data-testid="useSearch-filter"
-        value={useSearchFilter}
+        value={useSearchFilter.filter}
         onChange={(e) =>
           navigate({
             to: '.',
@@ -270,7 +264,7 @@ function SearchParamBindingComponent() {
       <div>useMatch</div>
       <input
         data-testid="useMatch-filter"
-        value={useMatchFilter}
+        value={useMatchFilter.search.filter}
         onChange={(e) =>
           navigate({
             to: '.',
