@@ -24,6 +24,8 @@ cd myApp
 npm init -y
 ```
 
+> [!NOTE] > We use `npm` in all of these examples, but you can use your package manager of choice instead.
+
 ## TypeScript Configuration
 
 We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.json` file with at least the following settings:
@@ -56,7 +58,7 @@ npm i @tanstack/start @tanstack/react-router vinxi
 You'll also need React and the Vite React plugin, so install them too:
 
 ```shell
-npm i react react-dom; npm i -D @vitejs/plugin-react
+npm i react react-dom && npm i -D @vitejs/plugin-react vite-tsconfig-paths
 ```
 
 and some TypeScript:
