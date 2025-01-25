@@ -27,7 +27,6 @@ import {
 } from '@tanstack/router-core'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import type { StartSerializer } from './serializer'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -51,6 +50,7 @@ import type {
   SearchMiddleware,
   SearchParser,
   SearchSerializer,
+  StartSerializer,
   TrailingSlashOption,
   Updater,
   ViewTransitionOptions,
