@@ -28,7 +28,6 @@ export default defineConfig({
 
 Many of the options available for prerendering are documented in the [Nitro config prerender documentation](https://nitro.unjs.io/config#prerender).
 
-
 ## Prerendering dynamic routes with Nitro
 
 Nitro ships with some prebuilt hooks that let you customize the prerendering process among other things. One of these hooks is the `prerender:routes` hook. This hook allows you to fetch async data and add routes to a `Set` of routes to be prerendered.
