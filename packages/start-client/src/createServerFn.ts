@@ -14,9 +14,9 @@ import type {
 } from '@tanstack/react-router'
 import type {
   AnyMiddleware,
-  MergeAllServerContext,
-  MergeAllValidatorInputs,
-  MergeAllValidatorOutputs,
+  AssignAllServerContext,
+  IntersectAllValidatorInputs,
+  IntersectAllValidatorOutputs,
   MiddlewareClientFnResult,
   MiddlewareServerFnResult,
 } from './createMiddleware'
@@ -33,7 +33,7 @@ export type CompiledFetcherFnOptions = {
 }
 
 export type Fetcher<TMiddlewares, TValidator, TResponse> =
-  undefined extends MergeAllValidatorInputs<TMiddlewares, TValidator>
+  undefined extends IntersectAllValidatorInputs<TMiddlewares, TValidator>
     ? OptionalFetcher<TMiddlewares, TValidator, TResponse>
     : RequiredFetcher<TMiddlewares, TValidator, TResponse>
 
@@ -67,12 +67,12 @@ export type FetcherBaseOptions = {
 
 export interface RequiredFetcherDataOptions<TMiddlewares, TValidator>
   extends FetcherBaseOptions {
-  data: Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
+  data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
 export interface OptionalFetcherDataOptions<TMiddlewares, TValidator>
   extends FetcherBaseOptions {
-  data?: Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
+  data?: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
 export type FetcherData<TResponse> =
@@ -92,8 +92,8 @@ export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
 
 export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
   method: TMethod
-  data: Expand<MergeAllValidatorOutputs<TMiddlewares, TValidator>>
-  context: Expand<MergeAllServerContext<TMiddlewares>>
+  data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
+  context: Expand<AssignAllServerContext<TMiddlewares>>
 }
 
 export type CompiledFetcherFn<TResponse> = {

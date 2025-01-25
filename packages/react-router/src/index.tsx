@@ -329,6 +329,7 @@ export type {
   Expand,
   MergeAll,
   Assign,
+  IntersectAssign,
 } from './utils'
 
 export type {

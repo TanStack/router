@@ -3,12 +3,13 @@ import type {
   Assign,
   Constrain,
   Expand,
+  IntersectAssign,
   ResolveValidatorInput,
   ResolveValidatorOutput,
   SerializerStringify,
 } from '@tanstack/react-router'
 
-export type MergeAllMiddleware<
+export type AssignAllMiddleware<
   TMiddlewares,
   TType extends keyof AnyMiddleware['_types'],
   TAcc = undefined,
@@ -16,48 +17,67 @@ export type MergeAllMiddleware<
   infer TMiddleware extends AnyMiddleware,
   ...infer TRest,
 ]
-  ? MergeAllMiddleware<TRest, TType, Assign<TAcc, TMiddleware['_types'][TType]>>
+  ? AssignAllMiddleware<
+      TRest,
+      TType,
+      Assign<TAcc, TMiddleware['_types'][TType]>
+    >
   : TAcc
 
-export type MergeAllClientAfterContext<
+export type AssignAllClientAfterContext<
   TMiddlewares,
   TClientContext = undefined,
   TClientAfterContext = undefined,
 > = unknown extends TClientContext
   ? TClientContext
   : Assign<
-      MergeAllMiddleware<TMiddlewares, 'allClientAfterContext'>,
+      AssignAllMiddleware<TMiddlewares, 'allClientAfterContext'>,
       Assign<TClientContext, TClientAfterContext>
     >
 
 /**
  * Recursively resolve the client context type produced by a sequence of middleware
  */
-export type MergeAllClientContext<
+export type AssignAllClientContext<
   TMiddlewares,
   TContext = undefined,
 > = unknown extends TContext
   ? TContext
-  : Assign<MergeAllMiddleware<TMiddlewares, 'allClientContext'>, TContext>
+  : Assign<AssignAllMiddleware<TMiddlewares, 'allClientContext'>, TContext>
 
 /**
  * Recursively resolve the server context type produced by a sequence of middleware
  */
-export type MergeAllServerContext<
+export type AssignAllServerContext<
   TMiddlewares,
   TContext = undefined,
 > = unknown extends TContext
   ? TContext
-  : Assign<MergeAllMiddleware<TMiddlewares, 'allServerContext'>, TContext>
+  : Assign<AssignAllMiddleware<TMiddlewares, 'allServerContext'>, TContext>
+
+export type IntersectAllMiddleware<
+  TMiddlewares,
+  TType extends keyof AnyMiddleware['_types'],
+  TAcc = undefined,
+> = TMiddlewares extends readonly [
+  infer TMiddleware extends AnyMiddleware,
+  ...infer TRest,
+]
+  ? IntersectAllMiddleware<
+      TRest,
+      TType,
+      IntersectAssign<TAcc, TMiddleware['_types'][TType]>
+    >
+  : TAcc
 
 /**
  * Recursively resolve the input type produced by a sequence of middleware
  */
-export type MergeAllValidatorInputs<TMiddlewares, TValidator> =
+export type IntersectAllValidatorInputs<TMiddlewares, TValidator> =
   unknown extends TValidator
     ? TValidator
-    : Assign<
-        MergeAllMiddleware<TMiddlewares, 'allInput'>,
+    : IntersectAssign<
+        IntersectAllMiddleware<TMiddlewares, 'allInput'>,
         TValidator extends undefined
           ? undefined
           : ResolveValidatorInput<TValidator>
@@ -65,11 +85,11 @@ export type MergeAllValidatorInputs<TMiddlewares, TValidator> =
 /**
  * Recursively merge the output type produced by a sequence of middleware
  */
-export type MergeAllValidatorOutputs<TMiddlewares, TValidator> =
+export type IntersectAllValidatorOutputs<TMiddlewares, TValidator> =
   unknown extends TValidator
     ? TValidator
-    : Assign<
-        MergeAllMiddleware<TMiddlewares, 'allOutput'>,
+    : IntersectAssign<
+        IntersectAllMiddleware<TMiddlewares, 'allOutput'>,
         TValidator extends undefined
           ? undefined
           : ResolveValidatorOutput<TValidator>
@@ -121,8 +141,8 @@ export interface MiddlewareServerFnOptions<
   in out TValidator,
   in out TServerContext,
 > {
-  data: Expand<MergeAllValidatorOutputs<TMiddlewares, TValidator>>
-  context: Expand<MergeAllServerContext<TMiddlewares, TServerContext>>
+  data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
+  context: Expand<AssignAllServerContext<TMiddlewares, TServerContext>>
   next: MiddlewareServerNextFn
   method: Method
   filename: string
@@ -156,8 +176,8 @@ export interface MiddlewareClientFnOptions<
   in out TMiddlewares,
   in out TValidator,
 > {
-  data: Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
-  context: Expand<MergeAllClientContext<TMiddlewares>>
+  data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
+  context: Expand<AssignAllClientContext<TMiddlewares>>
   sendContext?: unknown // cc Chris Horobin
   method: Method
   next: MiddlewareClientNextFn
@@ -192,9 +212,9 @@ export interface MiddlewareClientAfterFnOptions<
   in out TClientContext,
   in out TClientAfterContext,
 > {
-  data: Expand<MergeAllValidatorInputs<TMiddlewares, TValidator>>
+  data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
   context: Expand<
-    MergeAllClientAfterContext<
+    AssignAllClientAfterContext<
       TMiddlewares,
       TClientContext,
       TClientAfterContext
@@ -254,15 +274,15 @@ export interface MiddlewareTypes<
   _types: {
     middlewares: TMiddlewares
     input: ResolveValidatorInput<TValidator>
-    allInput: MergeAllValidatorInputs<TMiddlewares, TValidator>
+    allInput: IntersectAllValidatorInputs<TMiddlewares, TValidator>
     output: ResolveValidatorOutput<TValidator>
-    allOutput: MergeAllValidatorOutputs<TMiddlewares, TValidator>
+    allOutput: IntersectAllValidatorOutputs<TMiddlewares, TValidator>
     clientContext: TClientContext
-    allClientContext: MergeAllClientContext<TMiddlewares, TClientContext>
+    allClientContext: AssignAllClientContext<TMiddlewares, TClientContext>
     serverContext: TServerContext
-    allServerContext: MergeAllServerContext<TMiddlewares, TServerContext>
+    allServerContext: AssignAllServerContext<TMiddlewares, TServerContext>
     clientAfterContext: TClientAfterContext
-    allClientAfterContext: MergeAllClientAfterContext<
+    allClientAfterContext: AssignAllClientAfterContext<
       TMiddlewares,
       TClientContext,
       TClientAfterContext
