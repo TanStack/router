@@ -9,7 +9,7 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/history": "^1.97.8",
-    "@tanstack/react-query": "^5.62.3",
+    "@tanstack/react-query": "^5.64.2",
     "@tanstack/react-router": "^1.97.18",
     "@tanstack/router-plugin": "^1.97.18",
     "@router-mono-react-query/post-query": "workspace:*",
@@ -23,7 +23,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3",
-    "vite-plugin-dts": "^4.4.0"
+    "vite": "^6.0.11",
+    "vite-plugin-dts": "^4.5.0"
   }
 }

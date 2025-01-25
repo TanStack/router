@@ -65,9 +65,9 @@
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
+    "@testing-library/react": "^16.2.0",
     "@tanstack/react-router": "workspace:^",
-    "valibot": "1.0.0-beta.9",
+    "valibot": "1.0.0-beta.14",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

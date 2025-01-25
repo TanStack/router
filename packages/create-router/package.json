@@ -40,13 +40,13 @@
     "tinyglobby": "^0.2.10",
     "picocolors": "^1.1.1",
     "validate-npm-package-name": "^6.0.0",
-    "yocto-spinner": "^0.1.2"
+    "yocto-spinner": "^0.2.0"
   },
   "devDependencies": {
     "@types/cross-spawn": "^6.0.6",
     "@types/validate-npm-package-name": "^4.0.2",
     "@types/which": "^3.0.4",
-    "unbuild": "^3.0.1"
+    "unbuild": "^3.3.1"
   },
   "peerDependencies": {
     "@rsbuild/core": "^1.0.2",

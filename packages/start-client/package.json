@@ -63,12 +63,12 @@
   "dependencies": {
     "@tanstack/react-cross-context": "workspace:^",
     "@tanstack/react-router": "workspace:^",
-    "jsesc": "^3.0.2",
+    "jsesc": "^3.1.0",
     "tiny-invariant": "^1.3.3",
     "vinxi": "^0.5.1"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.1.0",
+    "@testing-library/react": "^16.2.0",
     "@types/jsesc": "^3.0.3",
     "@vitejs/plugin-react": "^4.3.4"
   },

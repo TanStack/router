@@ -59,7 +59,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "import-meta-resolve": "^4.1.0",
     "ofetch": "^1.4.1",
-    "vite": "^6.0.3",
+    "vite": "^6.0.11",
     "vinxi": "0.5.1",
     "zod": "^3.24.1",
     "nitropack": "^2.10.4"

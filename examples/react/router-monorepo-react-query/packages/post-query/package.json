@@ -8,13 +8,13 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@tanstack/react-query": "^5.62.3",
+    "@tanstack/react-query": "^5.64.2",
     "redaxios": "^0.5.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.11"
   }
 }
