@@ -1202,7 +1202,7 @@ const createHistoryRouter = () => {
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/posts',
-    component: function Component () {
+    component: function Component() {
       const navigate = useNavigate()
 
       return (
