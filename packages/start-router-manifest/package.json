@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-router-manifest",
-  "version": "1.97.14",
+  "version": "1.97.18",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -62,8 +62,8 @@
     "vinxi": "0.5.1"
   },
   "devDependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "typescript": "^5.7.2"
   },
   "peerDependencies": {

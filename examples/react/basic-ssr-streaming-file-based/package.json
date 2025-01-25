@@ -11,13 +11,13 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.97.14",
-    "@tanstack/router-devtools": "^1.97.14",
-    "@tanstack/router-plugin": "^1.97.14",
-    "@tanstack/start": "^1.97.15",
+    "@tanstack/react-router": "^1.97.18",
+    "@tanstack/router-devtools": "^1.97.18",
+    "@tanstack/router-plugin": "^1.97.18",
+    "@tanstack/start": "^1.97.18",
     "get-port": "^7.1.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "superjson": "^2.2.2"
   },
@@ -33,6 +33,8 @@
     "isbot": "^5.1.17",
     "node-fetch": "^3.3.2",
     "serve-static": "^1.16.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.1"
   }
 }

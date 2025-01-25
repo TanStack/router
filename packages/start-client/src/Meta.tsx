@@ -1,9 +1,6 @@
-import { ScriptOnce, useRouter, useRouterState } from '@tanstack/react-router'
+import { useRouter, useRouterState } from '@tanstack/react-router'
 import * as React from 'react'
-import jsesc from 'jsesc'
-import { Context } from '@tanstack/react-cross-context'
 import { Asset } from './Asset'
-import minifiedScript from './tsrScript?script-string'
 import type { RouterManagedTag } from '@tanstack/react-router'
 
 export const useMeta = () => {
@@ -81,7 +78,7 @@ export const useMeta = () => {
       state.matches
         .map((match) => router.looseRoutesById[match.routeId]!)
         .forEach((route) =>
-          router.manifest?.routes[route.id]?.preloads
+          router.ssr?.manifest?.routes[route.id]?.preloads
             ?.filter(Boolean)
             .forEach((preload) => {
               preloadMeta.push({
@@ -108,32 +105,13 @@ export const useMeta = () => {
 }
 
 export const useMetaElements = () => {
-  const router = useRouter()
   const meta = useMeta()
-
-  const dehydratedCtx = React.useContext(
-    Context.get('TanStackRouterHydrationContext', {}),
-  )
 
   return (
     <>
-      {meta.map((asset, i) => (
+      {meta.map((asset) => (
         <Asset {...asset} key={`tsr-meta-${JSON.stringify(asset)}`} />
       ))}
-      <>
-        <ScriptOnce log={false} children={minifiedScript} sync={true} />
-        <ScriptOnce
-          sync={true}
-          children={`__TSR__.dehydrated = ${jsesc(
-            router.options.transformer.stringify(dehydratedCtx),
-            {
-              isScriptContext: true,
-              wrap: true,
-              json: true,
-            },
-          )}`}
-        />
-      </>
     </>
   )
 }

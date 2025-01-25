@@ -1,10 +1,10 @@
 import {
-  defaultTransformer,
   encode,
   isNotFound,
   isPlainObject,
   isRedirect,
 } from '@tanstack/react-router'
+import { startSerializer } from '@tanstack/start-client'
 import type { MiddlewareClientFnOptions } from '@tanstack/start-client'
 
 export async function serverFnFetcher(
@@ -39,7 +39,7 @@ export async function serverFnFetcher(
     if (first.method === 'GET') {
       // If the method is GET, we need to move the payload to the query string
       const encodedPayload = encode({
-        payload: defaultTransformer.stringify({
+        payload: startSerializer.stringify({
           data: first.data,
           context: first.context,
         }),
@@ -66,7 +66,7 @@ export async function serverFnFetcher(
     if (response.headers.get('content-type')?.includes('application/json')) {
       // Even though the response is JSON, we need to decode it
       // because the server may have transformed it
-      const json = defaultTransformer.decode(await response.json())
+      const json = startSerializer.decode(await response.json())
 
       // If the response is a redirect or not found, throw it
       // for the router to handle
@@ -97,7 +97,7 @@ export async function serverFnFetcher(
   // If the response is JSON, return it parsed
   const contentType = response.headers.get('content-type')
   if (contentType && contentType.includes('application/json')) {
-    return defaultTransformer.decode(await response.json())
+    return startSerializer.decode(await response.json())
   } else {
     // Otherwise, return the text as a fallback
     // If the user wants more than this, they can pass a
@@ -109,14 +109,14 @@ export async function serverFnFetcher(
 function getFetcherRequestOptions(opts: MiddlewareClientFnOptions<any, any>) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {
-      opts.data.set('__TSR_CONTEXT', defaultTransformer.stringify(opts.context))
+      opts.data.set('__TSR_CONTEXT', startSerializer.stringify(opts.context))
       return {
         body: opts.data,
       }
     }
 
     return {
-      body: defaultTransformer.stringify({
+      body: startSerializer.stringify({
         data: opts.data ?? null,
         context: opts.context,
       }),
@@ -132,7 +132,7 @@ async function handleResponseErrors(response: Response) {
     const isJson = contentType && contentType.includes('application/json')
 
     if (isJson) {
-      throw defaultTransformer.decode(await response.json())
+      throw startSerializer.decode(await response.json())
     }
 
     throw new Error(await response.text())

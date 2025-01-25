@@ -1,20 +1,14 @@
-import { isPlainObject } from './utils'
+import { isPlainObject } from '@tanstack/react-router'
+import type { StartSerializer } from '@tanstack/react-router'
 
-export interface RouterTransformer {
-  stringify: (obj: unknown) => string
-  parse: (str: string) => unknown
-  encode: <T>(value: T) => T
-  decode: <T>(value: T) => T
-}
-
-export const defaultTransformer: RouterTransformer = {
+export const startSerializer: StartSerializer = {
   stringify: (value: any) =>
     JSON.stringify(value, function replacer(key, val) {
       const ogVal = this[key]
-      const transformer = transformers.find((t) => t.stringifyCondition(ogVal))
+      const serializer = serializers.find((t) => t.stringifyCondition(ogVal))
 
-      if (transformer) {
-        return transformer.stringify(ogVal)
+      if (serializer) {
+        return serializer.stringify(ogVal)
       }
 
       return val
@@ -23,10 +17,10 @@ export const defaultTransformer: RouterTransformer = {
     JSON.parse(value, function parser(key, val) {
       const ogVal = this[key]
       if (isPlainObject(ogVal)) {
-        const transformer = transformers.find((t) => t.parseCondition(ogVal))
+        const serializer = serializers.find((t) => t.parseCondition(ogVal))
 
-        if (transformer) {
-          return transformer.parse(ogVal)
+        if (serializer) {
+          return serializer.parse(ogVal)
         }
       }
 
@@ -35,21 +29,21 @@ export const defaultTransformer: RouterTransformer = {
   encode: (value: any) => {
     // When encoding, dive first
     if (Array.isArray(value)) {
-      return value.map((v) => defaultTransformer.encode(v))
+      return value.map((v) => startSerializer.encode(v))
     }
 
     if (isPlainObject(value)) {
       return Object.fromEntries(
         Object.entries(value).map(([key, v]) => [
           key,
-          defaultTransformer.encode(v),
+          startSerializer.encode(v),
         ]),
       )
     }
 
-    const transformer = transformers.find((t) => t.stringifyCondition(value))
-    if (transformer) {
-      return transformer.stringify(value)
+    const serializer = serializers.find((t) => t.stringifyCondition(value))
+    if (serializer) {
+      return serializer.stringify(value)
     }
 
     return value
@@ -57,21 +51,21 @@ export const defaultTransformer: RouterTransformer = {
   decode: (value: any) => {
     // Attempt transform first
     if (isPlainObject(value)) {
-      const transformer = transformers.find((t) => t.parseCondition(value))
-      if (transformer) {
-        return transformer.parse(value)
+      const serializer = serializers.find((t) => t.parseCondition(value))
+      if (serializer) {
+        return serializer.parse(value)
       }
     }
 
     if (Array.isArray(value)) {
-      return value.map((v) => defaultTransformer.decode(v))
+      return value.map((v) => startSerializer.decode(v))
     }
 
     if (isPlainObject(value)) {
       return Object.fromEntries(
         Object.entries(value).map(([key, v]) => [
           key,
-          defaultTransformer.decode(v),
+          startSerializer.decode(v),
         ]),
       )
     }
@@ -80,7 +74,7 @@ export const defaultTransformer: RouterTransformer = {
   },
 }
 
-const createTransformer = <TKey extends string, TInput, TSerialized>(
+const createSerializer = <TKey extends string, TInput, TSerialized>(
   key: TKey,
   check: (value: any) => value is TInput,
   toValue: (value: TInput) => TSerialized,
@@ -94,10 +88,10 @@ const createTransformer = <TKey extends string, TInput, TSerialized>(
 })
 
 // Keep these ordered by predicted frequency
-// Make sure to keep DefaultSerializeable in sync with these transformers
-// Also, make sure that they are unit tested in transformer.test.tsx
-const transformers = [
-  createTransformer(
+// Make sure to keep DefaultSerializeable in sync with these serializers
+// Also, make sure that they are unit tested in serializer.test.tsx
+const serializers = [
+  createSerializer(
     // Key
     'undefined',
     // Check
@@ -107,7 +101,7 @@ const transformers = [
     // From
     () => undefined,
   ),
-  createTransformer(
+  createSerializer(
     // Key
     'date',
     // Check
@@ -117,17 +111,22 @@ const transformers = [
     // From
     (v) => new Date(v),
   ),
-  createTransformer(
+  createSerializer(
     // Key
     'error',
     // Check
     (v): v is Error => v instanceof Error,
     // To
-    (v) => ({ ...v, message: v.message, stack: v.stack, cause: v.cause }),
+    (v) => ({
+      ...v,
+      message: v.message,
+      stack: process.env.NODE_ENV === 'development' ? v.stack : undefined,
+      cause: v.cause,
+    }),
     // From
     (v) => Object.assign(new Error(v.message), v),
   ),
-  createTransformer(
+  createSerializer(
     // Key
     'formData',
     // Check
@@ -166,27 +165,3 @@ const transformers = [
     },
   ),
 ] as const
-
-export type TransformerStringify<T, TSerializable> = T extends TSerializable
-  ? T
-  : T extends (...args: Array<any>) => any
-    ? 'Function is not serializable'
-    : { [K in keyof T]: TransformerStringify<T[K], TSerializable> }
-
-export type TransformerParse<T, TSerializable> = T extends TSerializable
-  ? T
-  : T extends React.JSX.Element
-    ? ReadableStream
-    : { [K in keyof T]: TransformerParse<T[K], TSerializable> }
-
-export type DefaultSerializable = Date | undefined | Error | FormData
-
-export type DefaultTransformerStringify<T> = TransformerStringify<
-  T,
-  DefaultSerializable
->
-
-export type DefaultTransformerParse<T> = TransformerParse<
-  T,
-  DefaultSerializable
->

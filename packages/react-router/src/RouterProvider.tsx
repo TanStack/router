@@ -54,8 +54,6 @@ export type BuildLocationFn = <
   },
 ) => ParsedLocation
 
-export type InjectedHtmlEntry = string | (() => Promise<string> | string)
-
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
@@ -79,7 +77,9 @@ export function RouterContextProvider<
   const routerContext = getRouterContext()
 
   const provider = (
-    <routerContext.Provider value={router}>{children}</routerContext.Provider>
+    <routerContext.Provider value={router as AnyRouter}>
+      {children}
+    </routerContext.Provider>
   )
 
   if (router.options.Wrap) {

@@ -219,7 +219,7 @@ export function Matches() {
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && window.__TSR__)
+    router.isServer || (typeof document !== 'undefined' && router.clientSsr)
       ? SafeFragment
       : React.Suspense
 

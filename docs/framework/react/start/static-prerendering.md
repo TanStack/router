@@ -27,3 +27,38 @@ export default defineConfig({
 ```
 
 Many of the options available for prerendering are documented in the [Nitro config prerender documentation](https://nitro.unjs.io/config#prerender).
+
+## Prerendering dynamic routes with Nitro
+
+Nitro ships with some prebuilt hooks that let you customize the prerendering process among other things. One of these hooks is the `prerender:routes` hook. This hook allows you to fetch async data and add routes to a `Set` of routes to be prerendered.
+
+For this example, let's pretend we have a blog with a list of posts. We want to prerender each post page. Our post route looks like `/posts/$postId`. We can use the `prerender:routes` hook to fetch the all of our posts and add each post path to the routes set.
+
+```
+// app.config.js
+
+import { defineConfig } from '@tanstack/start/config'
+
+export default defineConfig({
+  server: {
+    hooks: {
+      "prerender:routes": async (routes) => {
+          // fetch the pages you want to render
+          const posts = await fetch('https://api.example.com/posts')
+          const postsData = await posts.json()
+
+          // add each post path to the routes set
+          postsData.forEach((post) => {
+            routes.add(`/posts/${post.id}`)
+          })
+      }
+    },
+    prerender: {
+      routes: ['/'],
+      crawlLinks: true,
+    },
+  },
+})
+```
+
+As of writing, the [Nitro hooks documentation](https://nitro.build/config#hooks) does not include any information on the provided hooks.

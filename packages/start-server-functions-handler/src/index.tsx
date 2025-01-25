@@ -1,9 +1,4 @@
-import {
-  defaultTransformer,
-  isNotFound,
-  isPlainObject,
-  isRedirect,
-} from '@tanstack/react-router'
+import { isNotFound, isPlainObject, isRedirect } from '@tanstack/react-router'
 import invariant from 'tiny-invariant'
 import {
   eventHandler,
@@ -11,6 +6,7 @@ import {
   getResponseStatus,
   toWebRequest,
 } from '@tanstack/start-server'
+import { startSerializer } from '@tanstack/start-client'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
 import type { H3Event } from '@tanstack/start-server'
@@ -139,12 +135,12 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
           }
 
           // If there's a payload, we need to parse it
-          return defaultTransformer.parse(search.payload)
+          return startSerializer.parse(search.payload)
         }
 
         // For non-form, non-get
         const jsonPayloadAsString = await request.text()
-        return defaultTransformer.parse(jsonPayloadAsString)
+        return startSerializer.parse(jsonPayloadAsString)
       })()
 
       const result = await action(arg)
@@ -183,7 +179,7 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
       }
 
       return new Response(
-        result !== undefined ? defaultTransformer.stringify(result) : undefined,
+        result !== undefined ? startSerializer.stringify(result) : undefined,
         {
           status: getResponseStatus(getEvent()),
           headers: {
@@ -215,7 +211,7 @@ export async function handleServerRequest(request: Request, _event?: H3Event) {
       console.error(error)
       console.info()
 
-      return new Response(defaultTransformer.stringify(error), {
+      return new Response(startSerializer.stringify(error), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',

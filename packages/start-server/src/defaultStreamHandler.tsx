@@ -2,10 +2,12 @@ import { PassThrough } from 'node:stream'
 import { isbot } from 'isbot'
 import ReactDOMServer from 'react-dom/server'
 import { StartServer } from './StartServer'
+
 import {
+  transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
-  transformStreamWithRouter,
 } from './transformStreamWithRouter'
+import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/react-router'
 
 export type HandlerCallback<TRouter extends AnyRouter> = (ctx: {
@@ -31,21 +33,19 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
       await stream.allReady
     }
 
-    const transforms = [transformReadableStreamWithRouter(router)]
-
-    const transformedStream = transforms.reduce(
-      (stream, transform) => stream.pipeThrough(transform),
-      stream as ReadableStream,
+    const responseStream = transformReadableStreamWithRouter(
+      router,
+      stream as unknown as ReadableStream,
     )
 
-    return new Response(transformedStream, {
+    return new Response(responseStream as any, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })
   }
 
   if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
-    const passthrough = new PassThrough()
+    const reactAppPassthrough = new PassThrough()
 
     try {
       const pipeable = ReactDOMServer.renderToPipeableStream(
@@ -54,12 +54,12 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
           ...(isbot(request.headers.get('User-Agent'))
             ? {
                 onAllReady() {
-                  pipeable.pipe(passthrough)
+                  pipeable.pipe(reactAppPassthrough)
                 },
               }
             : {
                 onShellReady() {
-                  pipeable.pipe(passthrough)
+                  pipeable.pipe(reactAppPassthrough)
                 },
               }),
           onError: (error, info) => {
@@ -71,14 +71,12 @@ export const defaultStreamHandler: HandlerCallback<AnyRouter> = async ({
       console.error('Error in renderToPipeableStream:', e)
     }
 
-    const transforms = [transformStreamWithRouter(router)]
-
-    const transformedStream = transforms.reduce(
-      (stream, transform) => (stream as any).pipe(transform),
-      passthrough,
+    const responseStream = transformPipeableStreamWithRouter(
+      router,
+      reactAppPassthrough,
     )
 
-    return new Response(transformedStream as any, {
+    return new Response(responseStream as any, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })

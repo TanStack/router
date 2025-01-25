@@ -1,137 +1,265 @@
-import { Transform } from 'node:stream'
+import { ReadableStream } from 'node:stream/web'
+import { Readable } from 'node:stream'
+import { createControlledPromise } from '@tanstack/react-router'
 import type { AnyRouter } from '@tanstack/react-router'
 
-export function transformStreamWithRouter(router: AnyRouter) {
-  const callbacks = transformHtmlCallbacks(() =>
-    router.injectedHtml.map((d) => d()).join(''),
-  )
-  return new Transform({
-    transform(chunk, _encoding, callback) {
-      callbacks
-        .transform(chunk, this.push.bind(this))
-        .then(() => callback())
-        .catch((err) => callback(err))
-    },
-    flush(callback) {
-      callbacks
-        .flush(this.push.bind(this))
-        .then(() => callback())
-        .catch((err) => callback(err))
-    },
-  })
+export function transformReadableStreamWithRouter(
+  router: AnyRouter,
+  routerStream: ReadableStream,
+) {
+  return transformStreamWithRouter(router, routerStream)
 }
 
-export function transformReadableStreamWithRouter(router: AnyRouter) {
-  const callbacks = transformHtmlCallbacks(() =>
-    router.injectedHtml.map((d) => d()).join(''),
+export function transformPipeableStreamWithRouter(
+  router: AnyRouter,
+  routerStream: Readable,
+) {
+  return Readable.fromWeb(
+    transformStreamWithRouter(router, Readable.toWeb(routerStream)),
   )
-
-  const encoder = new TextEncoder()
-
-  return new TransformStream<string>({
-    transform(chunk, controller) {
-      return callbacks.transform(chunk, (chunkToPush) => {
-        controller.enqueue(encoder.encode(chunkToPush))
-        return true
-      })
-    },
-    flush(controller) {
-      return callbacks.flush((chunkToPush) => {
-        controller.enqueue(chunkToPush)
-        return true
-      })
-    },
-  })
 }
 
 // regex pattern for matching closing body and html tags
 const patternBodyStart = /(<body)/
 const patternBodyEnd = /(<\/body>)/
 const patternHtmlEnd = /(<\/html>)/
-
+const patternHeadStart = /(<head.*?>)/
 // regex pattern for matching closing tags
-const pattern = /(<\/[a-zA-Z][\w:.-]*?>)/g
+const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
 
 const textDecoder = new TextDecoder()
 
-function transformHtmlCallbacks(getHtml: () => string) {
-  let bodyStarted = false
+type ReadablePassthrough = {
+  stream: ReadableStream
+  write: (chunk: string) => void
+  end: (chunk?: string) => void
+  destroy: (error: unknown) => void
+  destroyed: boolean
+}
+
+function createPassthrough() {
+  let controller: ReadableStreamDefaultController<any>
+  const stream = new ReadableStream({
+    start(c) {
+      controller = c
+    },
+  })
+
+  const res: ReadablePassthrough = {
+    stream,
+    write: (chunk) => {
+      controller.enqueue(chunk)
+    },
+    end: (chunk) => {
+      if (chunk) {
+        controller.enqueue(chunk)
+      }
+      controller.close()
+      res.destroyed = true
+    },
+    destroy: (error) => {
+      controller.error(error)
+    },
+    destroyed: false,
+  }
+
+  return res
+}
+
+async function readStream(
+  stream: ReadableStream,
+  opts: {
+    onData?: (chunk: ReadableStreamReadValueResult<any>) => void
+    onEnd?: () => void
+    onError?: (error: unknown) => void
+  },
+) {
+  try {
+    const reader = stream.getReader()
+    let chunk
+    while (!(chunk = await reader.read()).done) {
+      opts.onData?.(chunk)
+    }
+    opts.onEnd?.()
+  } catch (error) {
+    opts.onError?.(error)
+  }
+}
+
+export function transformStreamWithRouter(
+  router: AnyRouter,
+  appStream: ReadableStream,
+) {
+  const finalPassThrough = createPassthrough()
+
+  let isAppRendering = true as boolean
+  let routerStreamBuffer = ''
+  let pendingClosingTags = ''
+  let bodyStarted = false as boolean
+  let headStarted = false as boolean
   let leftover = ''
-  // If a closing tag is split across chunks, store the HTML to add after it
-  // This expects that all the HTML that's added is closed properly
   let leftoverHtml = ''
 
-  return {
-    // eslint-disable-next-line @typescript-eslint/require-await
-    async transform(chunk: any, push: (chunkToPush: string) => boolean) {
-      const chunkString = leftover + textDecoder.decode(chunk)
+  function getBufferedRouterStream() {
+    const html = routerStreamBuffer
+    routerStreamBuffer = ''
+    return html
+  }
 
-      const bodyStartMatch = chunkString.match(patternBodyStart)
+  function decodeChunk(chunk: unknown): string {
+    if (chunk instanceof Uint8Array) {
+      return textDecoder.decode(chunk)
+    }
+    return String(chunk)
+  }
+
+  const injectedHtmlDonePromise = createControlledPromise<void>()
+
+  let processingCount = 0
+
+  // Process any already-injected HTML
+  router.serverSsr!.injectedHtml.forEach((promise) => {
+    handleInjectedHtml(promise)
+  })
+
+  // Listen for any new injected HTML
+  const stopListeningToInjectedHtml = router.subscribe(
+    'onInjectedHtml',
+    (e) => {
+      handleInjectedHtml(e.promise)
+    },
+  )
+
+  function handleInjectedHtml(promise: Promise<string>) {
+    processingCount++
+
+    promise
+      .then((html) => {
+        if (!bodyStarted) {
+          routerStreamBuffer += html
+        } else {
+          finalPassThrough.write(html)
+        }
+
+        return new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve()
+          }, 1000)
+        })
+      })
+      .catch(injectedHtmlDonePromise.reject)
+      .finally(() => {
+        processingCount--
+
+        if (!isAppRendering && processingCount === 0) {
+          stopListeningToInjectedHtml()
+          injectedHtmlDonePromise.resolve()
+        }
+      })
+  }
+
+  injectedHtmlDonePromise
+    .then(() => {
+      const finalHtml =
+        leftoverHtml + getBufferedRouterStream() + pendingClosingTags
+
+      finalPassThrough.end(finalHtml)
+    })
+    .catch((err) => {
+      console.error('Error reading routerStream:', err)
+      finalPassThrough.destroy(err)
+    })
+
+  // Transform the appStream
+  readStream(appStream, {
+    onData: (chunk) => {
+      const text = decodeChunk(chunk.value)
+
+      const chunkString = leftover + text
       const bodyEndMatch = chunkString.match(patternBodyEnd)
       const htmlEndMatch = chunkString.match(patternHtmlEnd)
 
-      try {
+      if (!bodyStarted) {
+        const bodyStartMatch = chunkString.match(patternBodyStart)
         if (bodyStartMatch) {
           bodyStarted = true
         }
+      }
 
-        if (!bodyStarted) {
-          push(chunkString)
-          leftover = ''
+      if (!headStarted) {
+        const headStartMatch = chunkString.match(patternHeadStart)
+        if (headStartMatch) {
+          headStarted = true
+          const index = headStartMatch.index!
+          const headTag = headStartMatch[0]
+          const remaining = chunkString.slice(index + headTag.length)
+          finalPassThrough.write(
+            chunkString.slice(0, index) +
+              headTag +
+              getBufferedRouterStream() +
+              remaining,
+          )
           return
         }
+      }
 
-        const html = getHtml()
+      if (!bodyStarted) {
+        finalPassThrough.write(chunkString)
+        leftover = ''
+        return
+      }
 
-        // If a </body></html> sequence was found
-        if (
-          bodyEndMatch &&
-          htmlEndMatch &&
-          bodyEndMatch.index! < htmlEndMatch.index!
-        ) {
-          const bodyIndex = bodyEndMatch.index! + bodyEndMatch[0].length
-          const htmlIndex = htmlEndMatch.index! + htmlEndMatch[0].length
+      // If either the body end or html end is in the chunk,
+      // We need to get all of our data in asap
+      if (
+        bodyEndMatch &&
+        htmlEndMatch &&
+        bodyEndMatch.index! < htmlEndMatch.index!
+      ) {
+        const bodyEndIndex = bodyEndMatch.index!
+        pendingClosingTags = chunkString.slice(bodyEndIndex)
 
-          // Add the arbitrary HTML before the closing body tag
-          const processed =
-            chunkString.slice(0, bodyIndex) +
-            html +
-            chunkString.slice(bodyIndex, htmlIndex) +
-            chunkString.slice(htmlIndex)
+        finalPassThrough.write(
+          chunkString.slice(0, bodyEndIndex) + getBufferedRouterStream(),
+        )
 
-          push(processed)
-          leftover = ''
-        } else {
-          // For all other closing tags, add the arbitrary HTML after them
-          let result
-          let lastIndex = 0
+        leftover = ''
+        return
+      }
 
-          while ((result = pattern.exec(chunkString)) !== null) {
-            lastIndex = result.index + result[0].length
-          }
+      let result
+      let lastIndex = 0
+      while ((result = patternClosingTag.exec(chunkString)) !== null) {
+        lastIndex = result.index + result[0].length
+      }
 
-          // If a closing tag was found, add the arbitrary HTML and send it through
-          if (lastIndex > 0) {
-            const processed =
-              chunkString.slice(0, lastIndex) + html + leftoverHtml
-            push(processed)
-            leftover = chunkString.slice(lastIndex)
-          } else {
-            // If no closing tag was found, store the chunk to process with the next one
-            leftover = chunkString
-            leftoverHtml += html
-          }
-        }
-      } catch (err) {
-        console.error('Error transforming HTML:', err)
-        throw err
+      if (lastIndex > 0) {
+        const processed =
+          chunkString.slice(0, lastIndex) +
+          getBufferedRouterStream() +
+          leftoverHtml
+
+        finalPassThrough.write(processed)
+        leftover = chunkString.slice(lastIndex)
+      } else {
+        leftover = chunkString
+        leftoverHtml += getBufferedRouterStream()
       }
     },
-    // eslint-disable-next-line @typescript-eslint/require-await
-    async flush(push: (chunkToPush: string) => boolean) {
-      if (leftover) {
-        push(leftover)
+    onEnd: () => {
+      // Mark the app as done rendering
+      isAppRendering = false
+
+      // If there are no pending promises, resolve the injectedHtmlDonePromise
+      if (processingCount === 0) {
+        injectedHtmlDonePromise.resolve()
       }
     },
-  }
+    onError: (error) => {
+      console.error('Error reading appStream:', error)
+      finalPassThrough.destroy(error)
+    },
+  })
+
+  return finalPassThrough.stream
 }

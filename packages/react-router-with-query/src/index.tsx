@@ -49,7 +49,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
           }
         } else {
           // On the client, pick up the deferred data from the stream
-          const dehydratedClient = router.getStreamedValue<any>(
+          const dehydratedClient = router.clientSsr!.getStreamedValue<any>(
             '__QueryClient__' + hash(options.queryKey),
           )
 
@@ -75,7 +75,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
         ) {
           streamedQueryKeys.add(hash(options.queryKey))
 
-          router.streamValue(
+          router.serverSsr!.streamValue(
             '__QueryClient__' + hash(options.queryKey),
             dehydrate(queryClient, {
               shouldDehydrateMutation: () => false,

@@ -276,23 +276,6 @@ const router = createRouter({
 - Type: `(err: TSerializedError) => unknown`
 - This method is called to define how errors are deserialized from the router's dehydrated state.
 
-### `transformer` property
-
-- Type: `RouterTransformer`
-- Optional
-- The transformer that will be used when sending data between the server and the client during SSR.
-- Defaults to a very lightweight transformer that supports a few basic types. See the [SSR guide](../../guide/ssr.md) for more information.
-
-#### `transformer.stringify` method
-
-- Type: `(obj: unknown) => string`
-- This method is called when stringifying data to be sent to the client.
-
-#### `transformer.parse` method
-
-- Type: `(str: string) => unknown`
-- This method is called when parsing the string encoded by the server.
-
 ### `trailingSlash` property
 
 - Type: `'always' | 'never' | 'preserve'`

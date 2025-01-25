@@ -62,7 +62,6 @@ export {
   globalMiddleware,
 } from './registerGlobalMiddleware'
 export { serverOnly, clientOnly } from './envOnly'
-export { DehydrateRouter } from './DehydrateRouter'
 export { json } from './json'
 export { Meta } from './Meta'
 export { Scripts } from './Scripts'
@@ -71,4 +70,16 @@ export { mergeHeaders } from './headers'
 export { renderRsc } from './renderRSC'
 export { useServerFn } from './useServerFn'
 export { serverFnFetcher } from './serverFnFetcher'
-export { serializeLoaderData, AfterEachMatch } from './serialization'
+export {
+  type DehydratedRouterState,
+  type DehydratedRouteMatch,
+  type DehydratedRouter,
+  type ClientExtractedBaseEntry,
+  type StartSsrGlobal,
+  type ClientExtractedEntry,
+  type SsrMatch,
+  type ClientExtractedPromise,
+  type ClientExtractedStream,
+  type ResolvePromiseState,
+} from './ssr-client'
+export { startSerializer } from './serializer'
