@@ -20,7 +20,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "@tanstack/router-devtools": "^1.97.17",
+    "@tanstack/router-devtools": "^1.97.18",
     "vite": "^6.0.3",
     "vite-plugin-dts": "^4.4.0"
   },

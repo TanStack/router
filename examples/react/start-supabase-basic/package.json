@@ -15,9 +15,9 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.3",
-    "@tanstack/react-router": "^1.97.17",
-    "@tanstack/router-devtools": "^1.97.17",
-    "@tanstack/start": "^1.97.17",
+    "@tanstack/react-router": "^1.97.18",
+    "@tanstack/router-devtools": "^1.97.18",
+    "@tanstack/start": "^1.97.18",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vinxi": "0.5.1"
