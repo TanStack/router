@@ -1,4 +1,3 @@
-import path from 'node:path'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
 import react from '@vitejs/plugin-react'
