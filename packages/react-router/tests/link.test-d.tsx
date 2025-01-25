@@ -1055,7 +1055,7 @@ test('from does not allow invalid routes', () => {
       | '/invoices/$invoiceId/details'
       | '/invoices/$invoiceId/details/$detailId'
       | '/invoices/$invoiceId/details/$detailId/lines'
-          | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
       | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | undefined
     >()
