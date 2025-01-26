@@ -3,16 +3,19 @@
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
+import {
+  createControlledPromise,
+  pick,
+  rootRouteId,
+} from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { createControlledPromise, pick } from './utils'
 import { CatchNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
-import { rootRouteId } from './root'
 import type { AnyRoute } from './route'
 
 export const Match = React.memo(function MatchImpl({
