@@ -21,7 +21,7 @@ export default createApp({
       base: '/trpc',
       handler: './trpc-server.handler.ts',
       target: 'server',
-      plugins: () => [reactRefresh()],
+      plugins: () => [],
     },
     {
       type: 'spa',
