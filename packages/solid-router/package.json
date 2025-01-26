@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/react-router",
+  "name": "@tanstack/solid-router",
   "version": "1.97.21",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
@@ -15,7 +15,7 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "keywords": [
-    "react",
+    "solidjs",
     "location",
     "router",
     "routing",
