@@ -13,8 +13,8 @@ type LazyRouteFn<TRoutePath extends RouterIds> = () => Promise<
 
 type RouterMap = {
   // __root__ is a special route that isn't lazy loaded, so we need to manually bind it
-  // null is used to indicate that the route has no components to render
-  [K in Exclude<RouterIds, '__root__'>]: LazyRouteFn<K> | null
+  // You could consider adding null to the returned type to have routes without rendering
+  [K in Exclude<RouterIds, '__root__'>]: LazyRouteFn<K>
 }
 
 const routerMap: RouterMap = {
@@ -34,9 +34,6 @@ router.routesById['__root__'].update({
 })
 
 Object.entries(routerMap).forEach(([path, component]) => {
-  if (component === null) {
-    return
-  }
   const foundRoute = router.routesById[path as RouterIds]
   // Bind the lazy route to the actual route
   foundRoute.lazy(component)
