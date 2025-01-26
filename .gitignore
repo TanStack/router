@@ -6,6 +6,7 @@ node_modules
 package-lock.json
 yarn.lock
 
+
 # builds
 types
 build
@@ -23,6 +24,7 @@ coverage
 # tests
 packages/router-generator/tests/**/*.gen.ts
 packages/router-generator/tests/**/*.gen.js
+packages/solid-router-copy/
 
 # misc
 .DS_Store
