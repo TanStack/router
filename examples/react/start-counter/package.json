@@ -9,8 +9,8 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.97.20",
-    "@tanstack/start": "^1.97.20",
+    "@tanstack/react-router": "^1.97.21",
+    "@tanstack/start": "^1.97.22",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vinxi": "0.5.1"
