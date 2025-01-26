@@ -3,15 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "rsbuild dev --port 3001",
+    "dev": "rsbuild dev --port 3000",
     "build": "rsbuild build && tsc --noEmit",
     "preview": "rsbuild preview"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
     "@tanstack/react-router": "^1.97.21",
     "@tanstack/router-devtools": "^1.97.21",
+    "postcss": "^8.5.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
     "@rsbuild/core": "1.2.2",

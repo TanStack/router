@@ -3,16 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3001",
+    "dev": "vite --port 3000",
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
     "start": "vite",
     "test:unit": "vitest"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@tanstack/arktype-adapter": "^1.97.21",
     "@tanstack/react-query": "^5.64.2",
     "@tanstack/react-router": "^1.97.21",
-    "@tanstack/arktype-adapter": "^1.97.21",
     "@tanstack/router-devtools": "^1.97.21",
     "@tanstack/router-plugin": "^1.97.22",
     "@tanstack/valibot-adapter": "^1.97.21",
@@ -20,16 +21,17 @@
     "arktype": "^2.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
     "valibot": "1.0.0-beta.14",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.0.11",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0"
+    "vite": "^6.0.11"
   }
 }

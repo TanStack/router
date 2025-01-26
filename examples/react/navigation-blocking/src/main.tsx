@@ -10,6 +10,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './styles.css'
 
 const rootRoute = createRootRoute({
   component: RootComponent,

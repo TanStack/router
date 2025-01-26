@@ -37,6 +37,7 @@ import {
   postInvoice,
 } from './mockTodos'
 import type { Invoice } from './mockTodos'
+import './styles.css'
 
 //
 

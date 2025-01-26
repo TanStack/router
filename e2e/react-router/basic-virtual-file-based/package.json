@@ -11,6 +11,7 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.0.0",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
@@ -18,6 +19,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "redaxios": "^0.5.1",
+    "tailwindcss": "^4.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

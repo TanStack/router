@@ -24,7 +24,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     ],
     scripts: [
       {
-        src: 'https://cdn.tailwindcss.com',
+        src: 'https://unpkg.com/@tailwindcss/browser@4',
       },
       {
         type: 'module',
