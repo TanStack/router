@@ -3696,8 +3696,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0
       unplugin:
-        specifier: ^1.16.0
-        version: 1.16.1
+        specifier: ^2.1.2
+        version: 2.1.2
       vite:
         specifier: 6.0.11
         version: 6.0.11(@types/node@22.10.10)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
