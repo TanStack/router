@@ -729,6 +729,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tailwindcss/vite':
+        specifier: ^4.0.0
+        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.10.2
         version: 22.10.10
@@ -741,18 +744,12 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-      autoprefixer:
-        specifier: ^10.4.20
-        version: 10.4.20(postcss@8.5.1)
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.1
       tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17
+        specifier: ^4.0.0
+        version: 4.0.0
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -796,6 +793,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tailwindcss/vite':
+        specifier: ^4.0.0
+        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.10.2
         version: 22.10.10
@@ -815,8 +815,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17
+        specifier: ^4.0.0
+        version: 4.0.0
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -863,6 +863,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tailwindcss/vite':
+        specifier: ^4.0.0
+        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.10.2
         version: 22.10.10
@@ -882,8 +885,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17
+        specifier: ^4.0.0
+        version: 4.0.0
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -915,6 +918,9 @@ importers:
         specifier: 0.5.1
         version: 0.5.1(@types/node@22.10.10)(db0@0.2.1)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.0.0
+        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
@@ -931,8 +937,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17
+        specifier: ^4.0.0
+        version: 4.0.0
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -1004,6 +1010,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tailwindcss/vite':
+        specifier: ^4.0.0
+        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.10.2
         version: 22.10.10
@@ -1023,8 +1032,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17
+        specifier: ^4.0.0
+        version: 4.0.0
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -1065,6 +1074,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tailwindcss/vite':
+        specifier: ^4.0.0
+        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.10.2
         version: 22.10.10
@@ -1084,8 +1096,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17
+        specifier: ^4.0.0
+        version: 4.0.0
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
