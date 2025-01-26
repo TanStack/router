@@ -49,7 +49,7 @@ export type IsUnion<T, U extends T = T> = (
   ? false
   : true
 
-  export type IsNonEmptyObject<T> = T extends object
+export type IsNonEmptyObject<T> = T extends object
   ? keyof T extends never
     ? false
     : true
