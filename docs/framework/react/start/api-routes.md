@@ -7,21 +7,7 @@ API Routes are a powerful feature of TanStack Start that allow you to create ser
 
 By default, API Routes are defined in your `./app/routes/api` directory of your project and are automatically handled by the TanStack Start server.
 
-> 🧠 This means that by default, your API Routes will be prefixed with `/api` and will be served from the same server as your application. You can customize this base path by changing the `apiBase` in your TanStack Start config.
-
-Topics covered in this guide:
-
-- [File Route Conventions](#file-route-conventions)
-- [Nested Directories vs File-names](#nested-directories-vs-file-names)
-- [Setting up the entry handler](#setting-up-the-entry-handler)
-- [Defining an API Route](#defining-an-api-route)
-- [Dynamic Path Params](#dynamic-path-params)
-- [Wildcard/Splat Param](#wildcardsplat-param)
-- [Handling requests with a body](#handling-requests-with-a-body)
-- [Responding with JSON](#responding-with-json)
-- [Using the `json` helper function](#using-the-json-helper-function)
-- [Responding with a status code](#responding-with-a-status-code)
-- [Setting headers in the response](#setting-headers-in-the-response)
+> 🧠 This means that by default, your API Routes will be prefixed with `/api` and will be served from the same server as your application. You can customize this base path by changing the `server.apiBaseURL` in your TanStack Start config.
 
 ## File Route Conventions
 
@@ -53,7 +39,9 @@ In the examples above, you may have noticed that the file naming conventions are
 
 ## Setting up the entry handler
 
-Your TanStack Start project needs an entry handler to handle the API incoming requests and route them to the appropriate API route handler. This is done by creating an `app/api.ts` file in your project:
+Before you can create your API routes, you need to set up the entry handler for your TanStack Start project. This entry handler, similar to `client` and `ssr`, handles the API incoming requests and routes them to the appropriate API route handler. The API entry handler is defined in the `app/api.ts` file in your project.
+
+Here's an example implementation:
 
 ```ts
 // app/api.ts
@@ -78,7 +66,7 @@ API Routes export an APIRoute instance by calling the `createAPIFileRoute` funct
 // routes/api/hello.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const APIRoute = createAPIFileRoute('/hello')({
+export const APIRoute = createAPIFileRoute('/api/hello')({
   GET: async ({ request }) => {
     return new Response('Hello, World! from ' + request.url)
   },
@@ -155,7 +143,7 @@ To handle POST requests,you can add a `POST` handler to the route object. The ha
 // routes/api/hello.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const APIRoute = createAPIFileRoute('/hello')({
+export const APIRoute = createAPIFileRoute('/api/hello')({
   POST: async ({ request }) => {
     const body = await request.json()
     return new Response(`Hello, ${body.name}!`)
@@ -180,7 +168,7 @@ When returning JSON using a Response object, this is a common pattern:
 // routes/api/hello.ts
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const APIRoute = createAPIFileRoute('/hello')({
+export const APIRoute = createAPIFileRoute('/api/hello')({
   GET: async ({ request }) => {
     return new Response(JSON.stringify({ message: 'Hello, World!' }), {
       headers: {
@@ -203,7 +191,7 @@ Or you can use the `json` helper function to automatically set the `Content-Type
 import { json } from '@tanstack/start'
 import { createAPIFileRoute } from '@tanstack/start/api'
 
-export const APIRoute = createAPIFileRoute('/hello')({
+export const APIRoute = createAPIFileRoute('/api/hello')({
   GET: async ({ request }) => {
     return json({ message: 'Hello, World!' })
   },
@@ -269,7 +257,7 @@ Sometimes you may need to set headers in the response. You can do this by either
   // routes/api/hello.ts
   import { createAPIFileRoute } from '@tanstack/start/api'
 
-  export const APIRoute = createAPIFileRoute('/hello')({
+  export const APIRoute = createAPIFileRoute('/api/hello')({
     GET: async ({ request }) => {
       return new Response('Hello, World!', {
         headers: {
@@ -290,7 +278,7 @@ Sometimes you may need to set headers in the response. You can do this by either
   import { createAPIFileRoute } from '@tanstack/start/api'
   import { setHeaders } from '@tanstack/start/server'
 
-  export const APIRoute = createAPIFileRoute('/hello')({
+  export const APIRoute = createAPIFileRoute('/api/hello')({
     GET: async ({ request }) => {
       setHeaders({
         'Content-Type': 'text/plain',
