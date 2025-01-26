@@ -13,7 +13,6 @@ import type {
   AnySchema,
   AnyValidator,
   Assign,
-  IntersectAssign,
   Constrain,
   ConstrainLiteral,
   ContextAsyncReturnType,
@@ -25,6 +24,7 @@ import type {
   InferAllParams,
   InferFullSearchSchema,
   InferFullSearchSchemaInput,
+  IntersectAssign,
   NoInfer,
   NotFoundRouteProps,
   ParamsOptions,
@@ -822,7 +822,6 @@ export class Route<
 
     const isRoot = !options?.path && !options?.id
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     this.parentRoute = this.options.getParentRoute?.()
 
     if (isRoot) {
