@@ -13,6 +13,8 @@ Look for and use mutation utilities that support:
 - Organizing mutation state as a globally accessible resource
 - Submission state history and garbage collection
 
+Some suggested libraries:
+
 - [TanStack Query](https://tanstack.com/query/latest/docs/react/guides/mutations)
 - [SWR](https://swr.vercel.app/)
 - [RTK Query](https://redux-toolkit.js.org/rtk-query/overview)
