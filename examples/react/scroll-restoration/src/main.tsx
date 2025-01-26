@@ -12,6 +12,7 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import './styles.css'
 
 const rootRoute = createRootRoute({
   component: RootComponent,

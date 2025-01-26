@@ -16,6 +16,7 @@ import type {
   ErrorComponentProps,
   SearchSchemaInput,
 } from '@tanstack/react-router'
+import './styles.css'
 
 type PostType = {
   id: number

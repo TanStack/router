@@ -1,6 +1,7 @@
 import { createApp } from 'vinxi'
 import reactRefresh from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import tailwindcss from '@tailwindcss/vite'
 
 export default createApp({
   server: {
@@ -35,6 +36,7 @@ export default createApp({
           autoCodeSplitting: true,
         }),
         reactRefresh(),
+        tailwindcss(),
       ],
     },
   ],

@@ -25,7 +25,7 @@ function RootComponent() {
     <>
       <div className={`min-h-screen flex flex-col`}>
         <div className={`flex items-center border-b gap-2`}>
-          <h1 className={`text-3xl p-2`}>With tRPC</h1>
+          <h1 className={`text-3xl p-2`}>With tRPC + TanStack Query</h1>
           {/* Show a global spinner when the router is transitioning */}
           <div
             className={`text-3xl duration-300 delay-0 opacity-0 ${
