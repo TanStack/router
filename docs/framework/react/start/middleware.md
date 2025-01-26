@@ -3,11 +3,11 @@ id: middleware
 title: Middleware
 ---
 
-## What is Middleware?
+## What is Server Function Middleware?
 
 Middleware allows you to customize the behavior of server functions created with `createServerFn` with things like shared validation, context, and much more. Middleware can even depend on other middleware to create a chain of operations that are executed hierarchically and in order.
 
-## What kinds of things can I do with Middleware?
+## What kinds of things can I do with Middleware in my Server Functions?
 
 - **Authentication**: Verify a user's identity before executing a server function.
 - **Authorization**: Check if a user has the necessary permissions to execute a server function.
@@ -17,7 +17,7 @@ Middleware allows you to customize the behavior of server functions created with
 - **Error Handling**: Handle errors in a consistent way.
 - And many more! The possibilities are up to you!
 
-## Defining Middleware
+## Defining Middleware for Server Functions
 
 Middleware is defined using the `createMiddleware` function. This function returns a `Middleware` object that can be used to continue customizing the middleware with methods like `middleware`, `validator`, `server`, and `client`.
 
@@ -30,6 +30,21 @@ const loggingMiddleware = createMiddleware().server(async ({ next, data }) => {
   console.log('Response processed:', result)
   return result
 })
+```
+
+## Using Middleware in Your Server Functions
+
+Once you've defined your middleware, you can use it in combination with the `createServerFn` function to customize the behavior of your server functions.
+
+```tsx
+import { createServerFn } from '@tanstack/start'
+import { loggingMiddleware } from './middleware'
+
+const fn = createServerFn()
+  .middleware([loggingMiddleware])
+  .handler(async () => {
+    // ...
+  })
 ```
 
 ## Middleware Methods
@@ -46,6 +61,8 @@ Several methods are available to customize the middleware. If you are (hopefully
 The `middleware` method is used to dependency middleware to the chain that will executed **before** the current middleware. Just call the `middleware` method with an array of middleware objects.
 
 ```tsx
+import { createMiddleware } from '@tanstack/start'
+
 const loggingMiddleware = createMiddleware().middleware([
   authMiddleware,
   loggingMiddleware,
@@ -59,6 +76,8 @@ Type-safe context and payload validation are also inherited from parent middlewa
 The `validator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this. Here is an example:
 
 ```tsx
+import { createMiddleware } from '@tanstack/start'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const mySchema = z.object({
@@ -86,6 +105,8 @@ The `server` method is used to define **server-side** logic that the middleware 
 The `next` function is used to execute the next middleware in the chain. **You must await and return (or return directly) the result of the `next` function provided to you** for the chain to continue executing.
 
 ```tsx
+import { createMiddleware } from '@tanstack/start'
+
 const loggingMiddleware = createMiddleware().server(async ({ next }) => {
   console.log('Request received')
   const result = await next()
@@ -99,6 +120,8 @@ const loggingMiddleware = createMiddleware().server(async ({ next }) => {
 The `next` function can be optionally called with an object that has a `context` property with an object value. Whatever properties you pass to this `context` value will be merged into the parent `context` and provided to the next middleware.
 
 ```tsx
+import { createMiddleware } from '@tanstack/start'
+
 const awesomeMiddleware = createMiddleware().server(({ next }) => {
   return next({
     context: {
@@ -128,6 +151,10 @@ By default, middleware validation is only performed on the server to keep the cl
 > The client-side validation schema is derived from the server-side schema. This is because the client-side validation schema is used to validate the data before it is sent to the server. If the client-side schema were different from the server-side schema, the server would receive data that it did not expect, which could lead to unexpected behavior.
 
 ```tsx
+import { createMiddleware } from '@tanstack/start'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
+
 const workspaceMiddleware = createMiddleware({ validateClient: true })
   .validator(zodValidator(mySchema))
   .server(({ next, data }) => {
@@ -187,6 +214,9 @@ const requestLogger = createMiddleware()
 You may have noticed that in the example above that while client-sent context is type-safe, it is is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.** Here's an example:
 
 ```tsx
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
+
 const requestLogger = createMiddleware()
   .client(async ({ next, context }) => {
     return next({
@@ -257,7 +287,7 @@ Middleware can be used in two different ways:
 
 ## Global Middleware
 
-Global middleware is registered using the `registerGlobalMiddleware` function. This function receives an array of middleware to be appended to the global middleware array. There is currently no way to remove global middleware once it has been registered. If you need this functionality, please let us know by opening an issue on GitHub.
+Global middleware is registered using the `registerGlobalMiddleware` function. This function receives an array of middleware to be appended to the global middleware array. There is currently no way to remove global middleware once it has been registered.
 
 Here's an example of registering global middleware:
 
