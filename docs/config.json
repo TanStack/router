@@ -371,6 +371,10 @@
               "to": "framework/react/examples/router-monorepo-simple"
             },
             {
+              "label": "Monorepo basic (with lazy loading)",
+              "to": "examples/react/router-monorepo-simple-lazy"
+            },
+            {
               "label": "Monorepo with React Query",
               "to": "framework/react/examples/router-monorepo-react-query"
             }
