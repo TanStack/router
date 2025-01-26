@@ -5,6 +5,7 @@ import { router } from '@router-mono-simple-lazy/router'
 import { RootComponent } from './rootComponent'
 import type { RouteById, RouterIds } from '@router-mono-simple-lazy/router'
 import type { LazyRoute } from '@tanstack/react-router'
+import './style.css'
 
 // Generic to enforce that the route returned matches the route path
 type LazyRouteFn<TRoutePath extends RouterIds> = () => Promise<
