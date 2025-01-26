@@ -1,19 +1,19 @@
 <img src="https://static.scarf.sh/a.png?x-pxid=d988eb79-b0fc-4a2b-8514-6a1ab932d188" />
 
-# TanStack React Router
+# TanStack Solid Router
 
 ![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header.png)
 
-🤖 Type-safe router w/ built-in caching & URL state management for React!
+🤖 Type-safe router w/ built-in caching & URL state management for Solid!
 
 <a href="https://twitter.com/intent/tweet?button_hashtag=TanStack" target="\_parent">
   <img alt="#TanStack" src="https://img.shields.io/twitter/url?color=%2308a0e9&label=%23TanStack&style=social&url=https%3A%2F%2Ftwitter.com%2Fintent%2Ftweet%3Fbutton_hashtag%3DTanStack">
 </a><a href="https://discord.com/invite/WrRKjPJ" target="\_parent">
   <img alt="" src="https://img.shields.io/badge/Discord-TanStack-%235865F2" />
-</a><a href="https://npmjs.com/package/@tanstack/react-router" target="\_parent">
+</a><a href="https://npmjs.com/package/@tanstack/solid-router" target="\_parent">
   <img alt="" src="https://img.shields.io/npm/dm/@tanstack/router.svg" />
-</a><a href="https://bundlephobia.com/result?p=@tanstack/react-router" target="\_parent">
-  <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" />
+</a><a href="https://bundlephobia.com/result?p=@tanstack/solid-router" target="\_parent">
+  <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/solid-router" />
 </a><a href="#badge">
     <img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg">
   </a><a href="https://github.com/tanstack/router/discussions">
@@ -26,6 +26,5 @@
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow @TannerLinsley" />
 </a>
 
-Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/tannerlinsley/react-query), [React Table](https://github.com/tanstack/react-table), [React Charts](https://github.com/tannerlinsley/react-charts), [React Virtual](https://github.com/tannerlinsley/react-virtual)
 
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
