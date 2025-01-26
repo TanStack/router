@@ -16,11 +16,13 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
     "@tanstack/router-devtools": "^1.97.23",
+    "tailwindcss": "^4.0.0",
     "vite": "^6.0.11",
     "vite-plugin-dts": "^4.5.0"
   },
