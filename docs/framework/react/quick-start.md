@@ -135,7 +135,7 @@ function About() {
 
 #### `src/main.tsx`
 
-Regardless if you are using the `@tanstack/router-plugin` package and running `vite`/`npm run dev` or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the following file will be generated for you at `src/routeTree.gen.ts`.
+Regardless of whether you are using the `@tanstack/router-plugin` package and running the `npm run dev`/`npm run build` scripts, or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the following file will be generated for you at `src/routeTree.gen.ts`.
 
 Import the generated route tree and create a new router instance:
 
