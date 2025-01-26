@@ -20,6 +20,7 @@ import {
 } from '@tanstack/react-query'
 import { NotFoundError, postQueryOptions, postsQueryOptions } from './posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import './styles.css'
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient

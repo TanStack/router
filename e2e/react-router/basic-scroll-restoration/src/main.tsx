@@ -13,6 +13,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import HasShown from './has-shown'
+import './styles.css'
 
 const rootRoute = createRootRoute({
   component: RootComponent,

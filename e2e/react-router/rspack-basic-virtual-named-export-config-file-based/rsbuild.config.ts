@@ -4,14 +4,6 @@ import { TanStackRouterRspack } from '@tanstack/router-plugin/rspack'
 
 export default defineConfig({
   plugins: [pluginReact()],
-  html: {
-    tags: [
-      {
-        tag: 'script',
-        attrs: { src: 'https://cdn.tailwindcss.com' },
-      },
-    ],
-  },
   tools: {
     rspack: {
       plugins: [TanStackRouterRspack()],

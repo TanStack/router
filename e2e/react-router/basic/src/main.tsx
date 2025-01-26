@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
+import './styles.css'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 const rootRoute = createRootRoute({
