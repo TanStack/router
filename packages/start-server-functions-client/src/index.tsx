@@ -9,9 +9,7 @@ export const createClientRpc: CreateRpcFn = (functionId, serverBase) => {
   const url = `/${sanitizeBase(serverBase)}/${functionId}`
 
   const clientFn = (...args: Array<any>) => {
-    return serverFnFetcher(url, args, (url, requestInit) =>
-      fetch(url, requestInit),
-    )
+    return serverFnFetcher(url, args, fetch)
   }
 
   return Object.assign(clientFn, {
