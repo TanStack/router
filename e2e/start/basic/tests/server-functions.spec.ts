@@ -214,3 +214,23 @@ test('server function can correctly send and receive headers', async ({
   "accept-encoding": "gzip, deflate, br, zstd"
 }`)
 })
+
+test('Direct POST submitting FormData to a Server function returns the correct message', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+
+  const expected =
+    (await page
+      .getByTestId('expected-submit-post-formdata-server-fn-result')
+      .textContent()) || ''
+  expect(expected).not.toBe('')
+
+  await page.getByTestId('test-submit-post-formdata-fn-calls-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  const result = await page.innerText('body')
+  expect(result).toBe(expected)
+})

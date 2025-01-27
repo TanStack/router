@@ -88,7 +88,7 @@ const createSerializer = <TKey extends string, TInput, TSerialized>(
 })
 
 // Keep these ordered by predicted frequency
-// Make sure to keep DefaultSerializeable in sync with these serializers
+// Make sure to keep DefaultSerializable in sync with these serializers
 // Also, make sure that they are unit tested in serializer.test.tsx
 const serializers = [
   createSerializer(

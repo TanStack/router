@@ -135,12 +135,21 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
     )
   }
 
+  // Known FormData 'Content-Type' header values
+  const formDataContentTypes = [
+    'multipart/form-data',
+    'application/x-www-form-urlencoded',
+  ]
+
   const response = await (async () => {
     try {
       const arg = await (async () => {
         // FormData
         if (
-          request.headers.get('Content-Type')?.includes('multipart/form-data')
+          request.headers.get('Content-Type') &&
+          formDataContentTypes.some((type) =>
+            request.headers.get('Content-Type')?.includes(type),
+          )
         ) {
           // We don't support GET requests with FormData payloads... that seems impossible
           invariant(
