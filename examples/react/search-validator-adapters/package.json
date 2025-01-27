@@ -10,7 +10,6 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.0.0",
     "@tanstack/arktype-adapter": "^1.97.23",
     "@tanstack/react-query": "^5.64.2",
     "@tanstack/react-router": "^1.97.23",
@@ -21,7 +20,9 @@
     "arktype": "^2.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.0.0",
+    "postcss": "^8.5.1",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
     "valibot": "1.0.0-beta.14",
     "zod": "^3.24.1"
   },

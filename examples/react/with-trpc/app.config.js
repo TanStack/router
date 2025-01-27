@@ -1,11 +1,10 @@
 import { createApp } from 'vinxi'
 import reactRefresh from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import tailwindcss from '@tailwindcss/vite'
 
 export default createApp({
   server: {
-    preset: 'netlify', // change to 'node' or 'bun' or anyof the supported presets for nitro (nitro.unjs.io)
+    preset: 'node-server', // change to 'netlify' or 'bun' or anyof the supported presets for nitro (nitro.unjs.io)
     experimental: {
       asyncContext: true,
     },
@@ -36,7 +35,6 @@ export default createApp({
           autoCodeSplitting: true,
         }),
         reactRefresh(),
-        tailwindcss(),
       ],
     },
   ],

@@ -1122,9 +1122,6 @@ importers:
 
   examples/react/authenticated-routes:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1134,6 +1131,12 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1144,8 +1147,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1168,15 +1171,18 @@ importers:
 
   examples/react/basic:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1187,8 +1193,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -1208,9 +1214,6 @@ importers:
 
   examples/react/basic-default-search-params:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -1220,6 +1223,12 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1230,8 +1239,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1254,9 +1263,6 @@ importers:
 
   examples/react/basic-file-based:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1266,6 +1272,12 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1276,8 +1288,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1300,9 +1312,6 @@ importers:
 
   examples/react/basic-file-based-codesplitting:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1312,6 +1321,12 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1322,8 +1337,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1346,9 +1361,6 @@ importers:
 
   examples/react/basic-react-query:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -1361,6 +1373,12 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1371,8 +1389,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -1392,9 +1410,6 @@ importers:
 
   examples/react/basic-react-query-file-based:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -1410,6 +1425,12 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1420,8 +1441,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1587,9 +1608,6 @@ importers:
 
   examples/react/basic-virtual-file-based:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1602,6 +1620,12 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1612,8 +1636,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1636,9 +1660,6 @@ importers:
 
   examples/react/basic-virtual-inside-file-based:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1651,6 +1672,12 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1661,8 +1688,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1685,15 +1712,18 @@ importers:
 
   examples/react/deferred-data:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1704,8 +1734,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1728,18 +1758,21 @@ importers:
 
   examples/react/kitchen-sink:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
       immer:
         specifier: ^10.1.1
         version: 10.1.1
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1750,8 +1783,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1774,9 +1807,6 @@ importers:
 
   examples/react/kitchen-sink-file-based:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1786,9 +1816,15 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
       immer:
         specifier: ^10.1.1
         version: 10.1.1
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1799,8 +1835,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1823,9 +1859,6 @@ importers:
 
   examples/react/kitchen-sink-react-query:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -1838,9 +1871,15 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
       immer:
         specifier: ^10.1.1
         version: 10.1.1
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1851,8 +1890,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1875,9 +1914,6 @@ importers:
 
   examples/react/kitchen-sink-react-query-file-based:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -1893,9 +1929,15 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
       immer:
         specifier: ^10.1.1
         version: 10.1.1
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1906,8 +1948,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1930,9 +1972,6 @@ importers:
 
   examples/react/large-file-based:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -1945,6 +1984,12 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1955,8 +2000,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -1982,9 +2027,6 @@ importers:
       '@radix-ui/react-dialog':
         specifier: ^1.1.5
         version: 1.1.5(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -1994,6 +2036,12 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -2004,8 +2052,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2025,9 +2073,6 @@ importers:
 
   examples/react/navigation-blocking:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -2037,6 +2082,12 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -2047,8 +2098,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2068,15 +2119,18 @@ importers:
 
   examples/react/quickstart:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -2084,8 +2138,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2139,9 +2193,6 @@ importers:
 
   examples/react/quickstart-file-based:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2151,6 +2202,12 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -2161,8 +2218,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -2185,15 +2242,15 @@ importers:
 
   examples/react/quickstart-rspack-file-based:
     dependencies:
-      '@tailwindcss/postcss':
-        specifier: ^4.0.0
-        version: 4.0.0
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
       postcss:
         specifier: ^8.5.1
         version: 8.5.1
@@ -2204,8 +2261,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
     devDependencies:
       '@rsbuild/core':
         specifier: 1.2.2
@@ -2812,9 +2869,6 @@ importers:
 
   examples/react/scroll-restoration:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2824,6 +2878,12 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -2831,8 +2891,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2852,9 +2912,6 @@ importers:
 
   examples/react/search-validator-adapters:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/arktype-adapter':
         specifier: workspace:*
         version: link:../../../packages/arktype-adapter
@@ -2879,6 +2936,12 @@ importers:
       arktype:
         specifier: ^2.0.2
         version: 2.0.2
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -2886,8 +2949,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       valibot:
         specifier: 1.0.0-beta.14
         version: 1.0.0-beta.14(typescript@5.7.3)
@@ -2919,9 +2982,6 @@ importers:
 
   examples/react/start-basic:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2956,9 +3016,15 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -2971,9 +3037,6 @@ importers:
       '@prisma/client':
         specifier: 5.22.0
         version: 5.22.0(prisma@5.22.0)
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3011,9 +3074,15 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -3023,9 +3092,6 @@ importers:
 
   examples/react/start-basic-react-query:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -3069,9 +3135,15 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -3084,9 +3156,6 @@ importers:
       '@babel/plugin-syntax-typescript':
         specifier: ^7.25.9
         version: 7.25.9(@babel/core@7.26.7)
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3118,9 +3187,15 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -3133,9 +3208,6 @@ importers:
       '@clerk/tanstack-start':
         specifier: 0.8.16
         version: 0.8.16(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(@types/node@22.10.10)(db0@0.2.1)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3170,9 +3242,15 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -3185,9 +3263,6 @@ importers:
       '@convex-dev/react-query':
         specifier: 0.0.0-alpha.8
         version: 0.0.0-alpha.8(@tanstack/react-query@5.64.2(react@19.0.0))(convex@1.18.2(@clerk/clerk-react@5.22.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -3256,8 +3331,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -3298,9 +3373,6 @@ importers:
 
   examples/react/start-large:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -3341,9 +3413,15 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -3362,9 +3440,6 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.48.1
         version: 2.48.1
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3390,9 +3465,15 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -3402,9 +3483,6 @@ importers:
 
   examples/react/start-trellaux:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -3460,9 +3538,15 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       typescript:
         specifier: ^5.6.2
         version: 5.7.3
@@ -3472,18 +3556,21 @@ importers:
 
   examples/react/with-framer-motion:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
       framer-motion:
         specifier: ^11.18.2
         version: 11.18.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3494,8 +3581,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -3518,9 +3605,6 @@ importers:
 
   examples/react/with-trpc:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3539,6 +3623,12 @@ importers:
       '@trpc/server':
         specifier: 11.0.0-rc.724
         version: 11.0.0-rc.724(typescript@5.7.3)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3549,8 +3639,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       vinxi:
         specifier: 0.5.1
         version: 0.5.1(@types/node@22.10.10)(db0@0.2.1)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
@@ -3570,9 +3660,6 @@ importers:
 
   examples/react/with-trpc-react-query:
     dependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -3600,6 +3687,12 @@ importers:
       '@trpc/server':
         specifier: 11.0.0-rc.724
         version: 11.0.0-rc.724(typescript@5.7.3)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3610,8 +3703,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^3.4.17
+        version: 3.4.17
       vinxi:
         specifier: 0.5.1
         version: 0.5.1(@types/node@22.10.10)(db0@0.2.1)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
@@ -6570,87 +6663,6 @@ packages:
 
   '@swc/types@0.1.17':
     resolution: {integrity: sha512-V5gRru+aD8YVyCOMAjMpWR1Ui577DD5KSJsHP8RAxopAH22jFz6GZd/qxqjO6MJHQhcsjvjOFXyDhyLQUnMveQ==}
-
-  '@tailwindcss/node@4.0.0':
-    resolution: {integrity: sha512-tfG2uBvo6j6kDIPmntxwXggCOZAt7SkpAXJ6pTIYirNdk5FBqh/CZZ9BZPpgcl/tNFLs6zc4yghM76sqiELG9g==}
-
-  '@tailwindcss/oxide-android-arm64@4.0.0':
-    resolution: {integrity: sha512-EAhjU0+FIdyGPR+7MbBWubLLPtmOu+p7c2egTTFBRk/n//zYjNvVK0WhcBK5Y7oUB5mo4EjA2mCbY7dcEMWSRw==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [android]
-
-  '@tailwindcss/oxide-darwin-arm64@4.0.0':
-    resolution: {integrity: sha512-hdz4xnSWS11cIp+7ye+3dGHqs0X33z+BXXTtgPOguDWVa+TdXUzwxonklSzf5wlJFuot3dv5eWzhlNai0oYYQg==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@tailwindcss/oxide-darwin-x64@4.0.0':
-    resolution: {integrity: sha512-+dOUUaXTkPKKhtUI9QtVaYg+MpmLh2CN0dHohiYXaBirEyPMkjaT0zbRgzQlNnQWjCVVXPQluIEb0OMEjSTH+Q==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [darwin]
-
-  '@tailwindcss/oxide-freebsd-x64@4.0.0':
-    resolution: {integrity: sha512-CJhGDhxnrmu4SwyC62fA+wP24MhA/TZlIhRHqg1kRuIHoGoVR2uSSm1qxTxU37tSSZj8Up0q6jsBJCAP4k7rgQ==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [freebsd]
-
-  '@tailwindcss/oxide-linux-arm-gnueabihf@4.0.0':
-    resolution: {integrity: sha512-Wy7Av0xzXfY2ujZBcYy4+7GQm25/J1iHvlQU2CfwdDCuPWfIjYzR6kggz+uVdSJyKV2s64znchBxRE8kV4uXSA==}
-    engines: {node: '>= 10'}
-    cpu: [arm]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-arm64-gnu@4.0.0':
-    resolution: {integrity: sha512-srwBo2l6pvM0swBntc1ucuhGsfFOLkqPRFQ3dWARRTfSkL1U9nAsob2MKc/n47Eva/W9pZZgMOuf7rDw8pK1Ew==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-arm64-musl@4.0.0':
-    resolution: {integrity: sha512-abhusswkduYWuezkBmgo0K0/erGq3M4Se5xP0fhc/0dKs0X/rJUYYCFWntHb3IGh3aVzdQ0SXJs93P76DbUqtw==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-x64-gnu@4.0.0':
-    resolution: {integrity: sha512-hGtRYIUEx377/HlU49+jvVKKwU1MDSKYSMMs0JFO2Wp7LGxk5+0j5+RBk9NFnmp/lbp32yPTgIOO5m1BmDq36A==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-x64-musl@4.0.0':
-    resolution: {integrity: sha512-7xgQgSAThs0I14VAgmxpJnK6XFSZBxHMGoDXkLyYkEnu+8WRQMbCP93dkCUn2PIv+Q+JulRgc00PJ09uORSLXQ==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@tailwindcss/oxide-win32-arm64-msvc@4.0.0':
-    resolution: {integrity: sha512-qEcgTIPcWY5ZE7f6VxQ/JPrSFMcehzVIlZj7sGE3mVd5YWreAT+Fl1vSP8q2pjnWXn0avZG3Iw7a2hJQAm+fTQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [win32]
-
-  '@tailwindcss/oxide-win32-x64-msvc@4.0.0':
-    resolution: {integrity: sha512-bqT0AY8RXb8GMDy28JtngvqaOSB2YixbLPLvUo6I6lkvvUwA6Eqh2Tj60e2Lh7O/k083f8tYiB0WEK4wmTI7Jg==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [win32]
-
-  '@tailwindcss/oxide@4.0.0':
-    resolution: {integrity: sha512-W3FjpJgy4VV1JiL7iBYDf2n/WkeDg1Il+0Q7eWnqPyvkPPCo/Mbwc5BiaT7dfBNV6tQKAhVE34rU5xl8pSl50w==}
-    engines: {node: '>= 10'}
-
-  '@tailwindcss/postcss@4.0.0':
-    resolution: {integrity: sha512-lI2bPk4TvwavHdehjr5WiC6HnZ59hacM6ySEo4RM/H7tsjWd8JpqiNW9ThH7rO/yKtrn4mGBoXshpvn8clXjPg==}
-
-  '@tailwindcss/vite@4.0.0':
-    resolution: {integrity: sha512-4uukMiU9gHui8KMPMdWic5SP1O/tmQ1NFSRNrQWmcop5evAVl/LZ6/LuWL3quEiecp2RBcRWwqJrG+mFXlRlew==}
-    peerDependencies:
-      vite: 6.0.11
 
   '@tanstack/config@0.16.0':
     resolution: {integrity: sha512-1uX8OD0tvAeyTQMRje3T1Z0TbMGaYoFl+FajisIISNvVPH1dLr5947vPJbKyTfthltWBtkcnlw4cql3e3VlPYQ==}
@@ -10801,9 +10813,6 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
-  tailwindcss@4.0.0:
-    resolution: {integrity: sha512-ULRPI3A+e39T7pSaf1xoi58AqqJxVCLg8F/uM5A3FadUbnyDTgltVnXJvdkTjwCOGA6NazqHVcwPJC5h2vRYVQ==}
-
   tapable@2.2.1:
     resolution: {integrity: sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==}
     engines: {node: '>=6'}
@@ -13504,76 +13513,6 @@ snapshots:
   '@swc/types@0.1.17':
     dependencies:
       '@swc/counter': 0.1.3
-
-  '@tailwindcss/node@4.0.0':
-    dependencies:
-      enhanced-resolve: 5.18.0
-      jiti: 2.4.2
-      tailwindcss: 4.0.0
-
-  '@tailwindcss/oxide-android-arm64@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-darwin-arm64@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-darwin-x64@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-freebsd-x64@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm-gnueabihf@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm64-gnu@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm64-musl@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-linux-x64-gnu@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-linux-x64-musl@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-win32-arm64-msvc@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide-win32-x64-msvc@4.0.0':
-    optional: true
-
-  '@tailwindcss/oxide@4.0.0':
-    optionalDependencies:
-      '@tailwindcss/oxide-android-arm64': 4.0.0
-      '@tailwindcss/oxide-darwin-arm64': 4.0.0
-      '@tailwindcss/oxide-darwin-x64': 4.0.0
-      '@tailwindcss/oxide-freebsd-x64': 4.0.0
-      '@tailwindcss/oxide-linux-arm-gnueabihf': 4.0.0
-      '@tailwindcss/oxide-linux-arm64-gnu': 4.0.0
-      '@tailwindcss/oxide-linux-arm64-musl': 4.0.0
-      '@tailwindcss/oxide-linux-x64-gnu': 4.0.0
-      '@tailwindcss/oxide-linux-x64-musl': 4.0.0
-      '@tailwindcss/oxide-win32-arm64-msvc': 4.0.0
-      '@tailwindcss/oxide-win32-x64-msvc': 4.0.0
-
-  '@tailwindcss/postcss@4.0.0':
-    dependencies:
-      '@alloc/quick-lru': 5.2.0
-      '@tailwindcss/node': 4.0.0
-      '@tailwindcss/oxide': 4.0.0
-      lightningcss: 1.29.1
-      postcss: 8.5.1
-      tailwindcss: 4.0.0
-
-  '@tailwindcss/vite@4.0.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))':
-    dependencies:
-      '@tailwindcss/node': 4.0.0
-      '@tailwindcss/oxide': 4.0.0
-      lightningcss: 1.29.1
-      tailwindcss: 4.0.0
-      vite: 6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
   '@tanstack/config@0.16.0(@types/node@22.10.10)(esbuild@0.24.2)(eslint@9.19.0(jiti@2.4.2))(rollup@4.32.0)(typescript@5.7.3)(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))':
     dependencies:
@@ -16518,6 +16457,7 @@ snapshots:
       lightningcss-linux-x64-musl: 1.29.1
       lightningcss-win32-arm64-msvc: 1.29.1
       lightningcss-win32-x64-msvc: 1.29.1
+    optional: true
 
   lilconfig@3.1.3: {}
 
@@ -18181,8 +18121,6 @@ snapshots:
       sucrase: 3.35.0
     transitivePeerDependencies:
       - ts-node
-
-  tailwindcss@4.0.0: {}
 
   tapable@2.2.1: {}
 
