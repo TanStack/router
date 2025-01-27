@@ -7,10 +7,14 @@ import {
   getResponseStatus,
   toWebRequest,
 } from '@tanstack/start-server'
-import { mergeHeaders, startSerializer } from '@tanstack/start-client'
+import { startSerializer } from '@tanstack/start-client'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
 import type { H3Event } from '@tanstack/start-server'
+
+// NOTE: This is a dummy export to silence warnings about
+// only having a default export.
+export const dummy = 1
 
 export default eventHandler(handleServerAction)
 
@@ -31,13 +35,18 @@ async function handleServerAction(event: H3Event) {
   // handling it for us, but not all headers were being returned with the
   // response from the h3 utils. So we merge the headers from h3 and
   // the headers from the response and set them on the response.
-  ;[...mergeHeaders(getHeaders(), response.headers).entries()].forEach(
-    ([key, value]) => {
-      if (key && value) {
-        response.headers.set(key, value)
-      }
-    },
-  )
+  Object.entries(getHeaders()).forEach(([key, value]) => {
+    if (
+      key &&
+      value &&
+      (!response.headers.has(key) || !response.headers.get(key)) &&
+      // For some reason, content-length is being set by h3, but doesn't
+      // match the actual content length of the response.
+      key.toLowerCase() !== 'content-length'
+    ) {
+      response.headers.set(key, value)
+    }
+  })
 
   return response
 }
