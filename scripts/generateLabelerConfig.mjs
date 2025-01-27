@@ -23,7 +23,7 @@ function generateLabelerConfig() {
   // Convert the pairs into valid yaml
   const labelerConfigYamlStr = pairs
     .map(([packageLabel, packagePath]) => {
-      let result = `'${packageLabel}'` + '\n' + `  - '${packagePath}'`
+      let result = `'${packageLabel}':` + '\n' + `  - '${packagePath}'`
       return result
     })
     .join('\n')
