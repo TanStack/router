@@ -62,6 +62,8 @@
   },
   "dependencies": {
     "@tanstack/server-functions-plugin": "workspace:^",
+    "@tanstack/start-client": "workspace:^",
+    "@tanstack/start-server": "workspace:^",
     "@tanstack/start-server-functions-fetcher": "workspace:^",
     "@vitejs/plugin-react": "^4.3.4",
     "tiny-invariant": "^1.3.3"

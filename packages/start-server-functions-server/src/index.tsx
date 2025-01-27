@@ -12,7 +12,7 @@ export const createServerRpc: CreateRpcFn = (
 ) => {
   invariant(
     splitImportFn,
-    '🚨splitImportFnis required for the server functions ssr runtime, but was not provided.',
+    '🚨splitImportFn required for the server functions server runtime, but was not provided.',
   )
 
   const url = `/${sanitizeBase(serverBase)}/${functionId}`
