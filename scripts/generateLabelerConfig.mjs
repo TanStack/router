@@ -30,7 +30,7 @@ function generateLabelerConfig() {
 
   // Write to '.github/labeler.yml'
   const labelerConfigPath = path.resolve('.github/labeler.yml')
-  fs.writeFileSync(labelerConfigPath, labelerConfigYamlStr, {
+  fs.writeFileSync(labelerConfigPath, labelerConfigYamlStr + '\n', {
     encoding: 'utf-8',
   })
 }
