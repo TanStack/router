@@ -104,9 +104,7 @@ export function hydrate(router: AnyRouter) {
   }
 
   router.clientSsr = {
-    streamedKeys: new Set(
-      Object.keys(window.__TSR_SSR__?.streamedValues || {}),
-    ),
+    streamedKeys: new Set(Object.keys(window.__TSR_SSR__.streamedValues)),
     getStreamedValue: <T,>(key: string): T | undefined => {
       if (router.isServer) {
         return undefined
