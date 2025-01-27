@@ -57,8 +57,8 @@ importers:
         specifier: ^1.50.0
         version: 1.50.0
       '@tanstack/config':
-        specifier: ^0.16.0
-        version: 0.16.0(@types/node@22.10.10)(esbuild@0.24.2)(eslint@9.19.0(jiti@2.4.2))(rollup@4.32.0)(typescript@5.7.3)(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        specifier: ^0.16.1
+        version: 0.16.1(@types/node@22.10.10)(esbuild@0.24.2)(eslint@9.19.0(jiti@2.4.2))(rollup@4.32.0)(typescript@5.7.3)(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@tanstack/react-query':
         specifier: 5.64.2
         version: 5.64.2(react@19.0.0)
@@ -592,11 +592,11 @@ importers:
         specifier: ^1.50.0
         version: 1.50.0
       '@rsbuild/core':
-        specifier: ^1.2.2
-        version: 1.2.2
+        specifier: ^1.2.3
+        version: 1.2.3
       '@rsbuild/plugin-react':
         specifier: ^1.1.0
-        version: 1.1.0(@rsbuild/core@1.2.2)
+        version: 1.1.0(@rsbuild/core@1.2.3)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -641,11 +641,11 @@ importers:
         specifier: ^1.50.0
         version: 1.50.0
       '@rsbuild/core':
-        specifier: ^1.2.2
-        version: 1.2.2
+        specifier: ^1.2.3
+        version: 1.2.3
       '@rsbuild/plugin-react':
         specifier: ^1.1.0
-        version: 1.1.0(@rsbuild/core@1.2.2)
+        version: 1.1.0(@rsbuild/core@1.2.3)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2265,11 +2265,11 @@ importers:
         version: 3.4.17
     devDependencies:
       '@rsbuild/core':
-        specifier: 1.2.2
-        version: 1.2.2
+        specifier: 1.2.3
+        version: 1.2.3
       '@rsbuild/plugin-react':
         specifier: 1.1.0
-        version: 1.1.0(@rsbuild/core@1.2.2)
+        version: 1.1.0(@rsbuild/core@1.2.3)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2934,8 +2934,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
       arktype:
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: ^2.0.3
+        version: 2.0.3
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -3618,11 +3618,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/start
       '@trpc/client':
-        specifier: 11.0.0-rc.724
-        version: 11.0.0-rc.724(@trpc/server@11.0.0-rc.724(typescript@5.7.3))(typescript@5.7.3)
+        specifier: 11.0.0-rc.729
+        version: 11.0.0-rc.729(@trpc/server@11.0.0-rc.729(typescript@5.7.3))(typescript@5.7.3)
       '@trpc/server':
-        specifier: 11.0.0-rc.724
-        version: 11.0.0-rc.724(typescript@5.7.3)
+        specifier: 11.0.0-rc.729
+        version: 11.0.0-rc.729(typescript@5.7.3)
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -3679,14 +3679,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/start
       '@trpc/client':
-        specifier: 11.0.0-rc.724
-        version: 11.0.0-rc.724(@trpc/server@11.0.0-rc.724(typescript@5.7.3))(typescript@5.7.3)
+        specifier: 11.0.0-rc.729
+        version: 11.0.0-rc.729(@trpc/server@11.0.0-rc.729(typescript@5.7.3))(typescript@5.7.3)
       '@trpc/react-query':
-        specifier: 11.0.0-rc.724
-        version: 11.0.0-rc.724(@tanstack/react-query@5.64.2(react@19.0.0))(@trpc/client@11.0.0-rc.724(@trpc/server@11.0.0-rc.724(typescript@5.7.3))(typescript@5.7.3))(@trpc/server@11.0.0-rc.724(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)
+        specifier: 11.0.0-rc.729
+        version: 11.0.0-rc.729(@tanstack/react-query@5.64.2(react@19.0.0))(@trpc/client@11.0.0-rc.729(@trpc/server@11.0.0-rc.729(typescript@5.7.3))(typescript@5.7.3))(@trpc/server@11.0.0-rc.729(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)
       '@trpc/server':
-        specifier: 11.0.0-rc.724
-        version: 11.0.0-rc.724(typescript@5.7.3)
+        specifier: 11.0.0-rc.729
+        version: 11.0.0-rc.729(typescript@5.7.3)
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -3734,8 +3734,8 @@ importers:
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.0)(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       arktype:
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: ^2.0.3
+        version: 2.0.3
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3750,10 +3750,10 @@ importers:
         version: 5.5.0
       '@rsbuild/core':
         specifier: ^1.0.2
-        version: 1.2.2
+        version: 1.2.3
       '@rsbuild/plugin-react':
         specifier: ^1.0.1
-        version: 1.1.0(@rsbuild/core@1.2.2)
+        version: 1.1.0(@rsbuild/core@1.2.3)
       '@swc/core':
         specifier: ^1.7.25
         version: 1.10.9(@swc/helpers@0.5.15)
@@ -4098,8 +4098,8 @@ importers:
         specifier: workspace:*
         version: link:../history
       '@tanstack/store':
-        specifier: ^0.6.0
-        version: 0.6.0
+        specifier: ^0.7.0
+        version: 0.7.0
 
   packages/router-devtools:
     dependencies:
@@ -4169,7 +4169,7 @@ importers:
         version: 7.26.7
       '@rsbuild/core':
         specifier: '>=1.0.2'
-        version: 1.2.2
+        version: 1.2.3
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
@@ -4745,11 +4745,11 @@ packages:
     resolution: {integrity: sha512-2TB7O5JmC7UX7QHRGGftxRVQjV4Ce6oOIDGIDDERyT9dQ8lK/tRGfFubzO80rWeXm/gSrA8jirlXSWSE1i5ynQ==}
     engines: {node: '>=18'}
 
-  '@ark/schema@0.37.0':
-    resolution: {integrity: sha512-uLkP3ixV6LgVEm8wLl0IkAVFfQ0o6IU+uI9AaFQHV4wLMAIwbE90uEDXAEm4H2kv18oypSIUNpz8Q5zzQDDIuw==}
+  '@ark/schema@0.38.0':
+    resolution: {integrity: sha512-ATH7tNpJvNmipTSRZD1Klfg00PBCQf+73grcrzIv6cbDanW7HJKYeNLeV1K3h0vXRthSD8OxQ3y0PI3dGcV/Cw==}
 
-  '@ark/util@0.37.0':
-    resolution: {integrity: sha512-4x6wVil/IMnIlHSQczCOXw2Z6YdKPyay942M0FwOHRo5K4vYYcujMNDnBaaW2Xi5A8kJqe8Lnc061SlFX0yGzQ==}
+  '@ark/util@0.38.0':
+    resolution: {integrity: sha512-0Vo0gCbaOsv/Z9TYsmk+qKZGn/FZyWlVsx2hcrHIP12S8Vcz9/EichNS/gb58K1q7jMlgXoPg2wS7OvuyfKILQ==}
 
   '@asamuzakjp/css-color@2.8.3':
     resolution: {integrity: sha512-GIc76d9UI1hCvOATjZPyHFmE5qhRccp3/zGfMPapK3jBi+yocEzp6BBB0UnfRYP9NP4FANqUZYb0hnfs3TM3hw==}
@@ -6410,8 +6410,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rsbuild/core@1.2.2':
-    resolution: {integrity: sha512-PQ1ax5Z6yMvbgsBXa8bcNUiz+NVVf2PdrXj5A/xfqnnviZRjV/jCxQFWjw8ajAbJcmLxBcWYJnj4npz6g+FAAA==}
+  '@rsbuild/core@1.2.3':
+    resolution: {integrity: sha512-lUCt8gQe9E2PI3srcEJ1Na3GQYmsYuvAqK0f/k00HM0pEjrbOFC9Xq2kR85UoXHFqlTCIw/fLLDe91PKRCbKAw==}
     engines: {node: '>=16.7.0'}
     hasBin: true
 
@@ -6664,8 +6664,8 @@ packages:
   '@swc/types@0.1.17':
     resolution: {integrity: sha512-V5gRru+aD8YVyCOMAjMpWR1Ui577DD5KSJsHP8RAxopAH22jFz6GZd/qxqjO6MJHQhcsjvjOFXyDhyLQUnMveQ==}
 
-  '@tanstack/config@0.16.0':
-    resolution: {integrity: sha512-1uX8OD0tvAeyTQMRje3T1Z0TbMGaYoFl+FajisIISNvVPH1dLr5947vPJbKyTfthltWBtkcnlw4cql3e3VlPYQ==}
+  '@tanstack/config@0.16.1':
+    resolution: {integrity: sha512-GLt1xyQCGRty58N2jv0ONouv8OU46FjkbcSSTiAKwydcX+JycZ7FCLWt05lefrvuV8Eay0eNuN0sYUemObZLEA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -6698,9 +6698,6 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@tanstack/store@0.6.0':
-    resolution: {integrity: sha512-+m2OBglsjXcLmmKOX6/9v8BDOCtyxhMmZLsRUDswOOSdIIR9mvv6i0XNKsmTh3AlYU8c1mRcodC8/Vyf+69VlQ==}
-
   '@tanstack/store@0.7.0':
     resolution: {integrity: sha512-CNIhdoUsmD2NolYuaIs8VfWM467RK6oIBAW4nPEKZhg1smZ+/CwtCdpURgp7nxSqOaV9oKkzdWD80+bC66F/Jg==}
 
@@ -6730,24 +6727,24 @@ packages:
       '@types/react-dom':
         optional: true
 
-  '@trpc/client@11.0.0-rc.724':
-    resolution: {integrity: sha512-Ou62Zw2wmfJ/X9/YlSacrGbkLP7FE1Ohv/bgQJYzWctSeEkQkIAsFOgy7a/T0Ry7kD78w3YTf7U1MKOf5X3NNA==}
+  '@trpc/client@11.0.0-rc.729':
+    resolution: {integrity: sha512-soDEkBWeLX+WOa+FRqkkCWY6GEaogDc85zWcvxXaXUiZ45ORiz4bVzGyLUYJGuzxYs1cUxv0RAhy6zhGtC688Q==}
     peerDependencies:
-      '@trpc/server': 11.0.0-rc.724+0eee7e763
+      '@trpc/server': 11.0.0-rc.729+a60413241
       typescript: '>=5.7.2'
 
-  '@trpc/react-query@11.0.0-rc.724':
-    resolution: {integrity: sha512-m98fkA7h51FKWe16fQACQN0aZJzLa7emtdBVqJqzCg6h8OTbexNbHx2NYpF3zAWZft5sGTVSljL9ixWFqLUYqg==}
+  '@trpc/react-query@11.0.0-rc.729':
+    resolution: {integrity: sha512-pesyuBcSvV+lj2y0g3kPIk/opONI5j/HKvwgaJh8UtJJCukh09cFKZmtObfemfwfwK4U3HyQ9mSnzUbnEv3sRQ==}
     peerDependencies:
       '@tanstack/react-query': 5.64.2
-      '@trpc/client': 11.0.0-rc.724+0eee7e763
-      '@trpc/server': 11.0.0-rc.724+0eee7e763
+      '@trpc/client': 11.0.0-rc.729+a60413241
+      '@trpc/server': 11.0.0-rc.729+a60413241
       react: ^19.0.0
       react-dom: ^19.0.0
       typescript: '>=5.7.2'
 
-  '@trpc/server@11.0.0-rc.724':
-    resolution: {integrity: sha512-kdDDwLYWGlnoXxgNeOzgb620lsnueEXMn8PLPDZW5Lpm5T3kJPT4F0JYTZINk/DM0e7q4iWx488FvwBNpNhACA==}
+  '@trpc/server@11.0.0-rc.729':
+    resolution: {integrity: sha512-rjkzNpnmbuFWT/BSSRN14/23ebt9CnkZqaq+WPdWZiBsxaDVvQRmm2mcjtKhEokwxWX1p1yuJhdIwG5yt5YuDw==}
     peerDependencies:
       typescript: '>=5.7.2'
 
@@ -7314,8 +7311,8 @@ packages:
     resolution: {integrity: sha512-COROpnaoap1E2F000S62r6A60uHZnmlvomhfyT2DlTcrY1OrBKn2UhH7qn5wTC9zMvD0AY7csdPSNwKP+7WiQw==}
     engines: {node: '>= 0.4'}
 
-  arktype@2.0.2:
-    resolution: {integrity: sha512-bSTdxrlpzRKqHDbBx/Dy8MxqGftfRMUQf0aZbAM1bs8JNguI91zlgdUAfDNSLjKVruj2sdN2Yr/WWgXsdpANEA==}
+  arktype@2.0.3:
+    resolution: {integrity: sha512-s+cLyFKHrSs59nyZ9zdNT79/ydpO/+tuNbcNxii82ux58PI1rUHQD4UXfUH7kgj8tgqXDsY8ipmrdOL7EG1WrQ==}
 
   array-each@1.0.1:
     resolution: {integrity: sha512-zHjL5SZa68hkKHBFBK6DJCTtr9sfTCPCaph/L7tMSLcTFgy+zX7E+6q5UArbtOtMBCtxdICpfTCspRse+ywyXA==}
@@ -11364,8 +11361,8 @@ packages:
       vite:
         optional: true
 
-  vite-plugin-externalize-deps@0.8.0:
-    resolution: {integrity: sha512-MdC8kRNQ1ZjhUicU2HcqGVhL0UUFqv83Zp1JZdHjE82PoPR8wsSWZ3axpot7B6img3sW6g8shYJikE0CKA0chA==}
+  vite-plugin-externalize-deps@0.9.0:
+    resolution: {integrity: sha512-wg3qb5gCy2d1KpPKyD9wkXMcYJ84yjgziHrStq9/8R7chhUC73mhQz+tVtvhFiICQHsBn1pnkY4IBbPqF9JHNw==}
     peerDependencies:
       vite: 6.0.11
 
@@ -11728,11 +11725,11 @@ snapshots:
       typescript: 5.6.1-rc
       validate-npm-package-name: 5.0.1
 
-  '@ark/schema@0.37.0':
+  '@ark/schema@0.38.0':
     dependencies:
-      '@ark/util': 0.37.0
+      '@ark/util': 0.38.0
 
-  '@ark/util@0.37.0': {}
+  '@ark/util@0.38.0': {}
 
   '@asamuzakjp/css-color@2.8.3':
     dependencies:
@@ -13250,7 +13247,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.32.0':
     optional: true
 
-  '@rsbuild/core@1.2.2':
+  '@rsbuild/core@1.2.3':
     dependencies:
       '@rspack/core': 1.2.2(@swc/helpers@0.5.15)
       '@rspack/lite-tapable': 1.0.1
@@ -13259,9 +13256,9 @@ snapshots:
     transitivePeerDependencies:
       - '@rspack/tracing'
 
-  '@rsbuild/plugin-react@1.1.0(@rsbuild/core@1.2.2)':
+  '@rsbuild/plugin-react@1.1.0(@rsbuild/core@1.2.3)':
     dependencies:
-      '@rsbuild/core': 1.2.2
+      '@rsbuild/core': 1.2.3
       '@rspack/plugin-react-refresh': 1.0.1(react-refresh@0.16.0)
       react-refresh: 0.16.0
 
@@ -13514,7 +13511,7 @@ snapshots:
     dependencies:
       '@swc/counter': 0.1.3
 
-  '@tanstack/config@0.16.0(@types/node@22.10.10)(esbuild@0.24.2)(eslint@9.19.0(jiti@2.4.2))(rollup@4.32.0)(typescript@5.7.3)(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))':
+  '@tanstack/config@0.16.1(@types/node@22.10.10)(esbuild@0.24.2)(eslint@9.19.0(jiti@2.4.2))(rollup@4.32.0)(typescript@5.7.3)(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))':
     dependencies:
       '@commitlint/parse': 19.5.0
       '@eslint/js': 9.19.0
@@ -13537,7 +13534,7 @@ snapshots:
       typescript-eslint: 8.21.0(eslint@9.19.0(jiti@2.4.2))(typescript@5.7.3)
       v8flags: 4.0.1
       vite-plugin-dts: 4.0.3(@types/node@22.10.10)(rollup@4.32.0)(typescript@5.7.3)(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-      vite-plugin-externalize-deps: 0.8.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-plugin-externalize-deps: 0.9.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       vite-tsconfig-paths: 5.1.4(typescript@5.7.3)(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       vue-eslint-parser: 9.4.3(eslint@9.19.0(jiti@2.4.2))
     transitivePeerDependencies:
@@ -13577,8 +13574,6 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@tanstack/store@0.6.0': {}
-
   '@tanstack/store@0.7.0': {}
 
   '@tanstack/virtual-core@3.11.2': {}
@@ -13614,21 +13609,21 @@ snapshots:
       '@types/react': 19.0.8
       '@types/react-dom': 19.0.3(@types/react@19.0.8)
 
-  '@trpc/client@11.0.0-rc.724(@trpc/server@11.0.0-rc.724(typescript@5.7.3))(typescript@5.7.3)':
+  '@trpc/client@11.0.0-rc.729(@trpc/server@11.0.0-rc.729(typescript@5.7.3))(typescript@5.7.3)':
     dependencies:
-      '@trpc/server': 11.0.0-rc.724(typescript@5.7.3)
+      '@trpc/server': 11.0.0-rc.729(typescript@5.7.3)
       typescript: 5.7.3
 
-  '@trpc/react-query@11.0.0-rc.724(@tanstack/react-query@5.64.2(react@19.0.0))(@trpc/client@11.0.0-rc.724(@trpc/server@11.0.0-rc.724(typescript@5.7.3))(typescript@5.7.3))(@trpc/server@11.0.0-rc.724(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)':
+  '@trpc/react-query@11.0.0-rc.729(@tanstack/react-query@5.64.2(react@19.0.0))(@trpc/client@11.0.0-rc.729(@trpc/server@11.0.0-rc.729(typescript@5.7.3))(typescript@5.7.3))(@trpc/server@11.0.0-rc.729(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)':
     dependencies:
       '@tanstack/react-query': 5.64.2(react@19.0.0)
-      '@trpc/client': 11.0.0-rc.724(@trpc/server@11.0.0-rc.724(typescript@5.7.3))(typescript@5.7.3)
-      '@trpc/server': 11.0.0-rc.724(typescript@5.7.3)
+      '@trpc/client': 11.0.0-rc.729(@trpc/server@11.0.0-rc.729(typescript@5.7.3))(typescript@5.7.3)
+      '@trpc/server': 11.0.0-rc.729(typescript@5.7.3)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       typescript: 5.7.3
 
-  '@trpc/server@11.0.0-rc.724(typescript@5.7.3)':
+  '@trpc/server@11.0.0-rc.729(typescript@5.7.3)':
     dependencies:
       typescript: 5.7.3
 
@@ -14337,10 +14332,10 @@ snapshots:
 
   aria-query@5.3.2: {}
 
-  arktype@2.0.2:
+  arktype@2.0.3:
     dependencies:
-      '@ark/schema': 0.37.0
-      '@ark/util': 0.37.0
+      '@ark/schema': 0.38.0
+      '@ark/util': 0.38.0
 
   array-each@1.0.1: {}
 
@@ -18806,7 +18801,7 @@ snapshots:
       - rollup
       - supports-color
 
-  vite-plugin-externalize-deps@0.8.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
+  vite-plugin-externalize-deps@0.9.0(vite@6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
     dependencies:
       vite: 6.0.11(@types/node@22.10.10)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
