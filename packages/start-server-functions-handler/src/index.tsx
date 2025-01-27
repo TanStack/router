@@ -3,10 +3,11 @@ import invariant from 'tiny-invariant'
 import {
   eventHandler,
   getEvent,
+  getHeaders,
   getResponseStatus,
   toWebRequest,
 } from '@tanstack/start-server'
-import { startSerializer } from '@tanstack/start-client'
+import { mergeHeaders, startSerializer } from '@tanstack/start-client'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
 import type { H3Event } from '@tanstack/start-server'
@@ -24,7 +25,21 @@ const serverFnManifest = _serverFnManifest as Record<
 
 async function handleServerAction(event: H3Event) {
   const request = toWebRequest(event)!
-  return handleServerRequest(request, event)
+  const response = (await handleServerRequest(request, event)) as Response
+
+  // NOTE: I'm not sure if nitro should be handling this or if Vinxi was
+  // handling it for us, but not all headers were being returned with the
+  // response from the h3 utils. So we merge the headers from h3 and
+  // the headers from the response and set them on the response.
+  ;[...mergeHeaders(getHeaders(), response.headers).entries()].forEach(
+    ([key, value]) => {
+      if (key && value) {
+        response.headers.set(key, value)
+      }
+    },
+  )
+
+  return response
 }
 
 function sanitizeBase(base: string | undefined) {
@@ -37,7 +52,7 @@ function sanitizeBase(base: string | undefined) {
   return base.replace(/^\/|\/$/g, '')
 }
 
-export async function handleServerRequest(request: Request, _event?: H3Event) {
+async function handleServerRequest(request: Request, _event?: H3Event) {
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
   // extract the serverFnId from the url as host/_server/:serverFnId

@@ -356,6 +356,7 @@ export function defineConfig(
 
   const noExternal = [
     '@tanstack/start',
+    '@tanstack/start/server',
     '@tanstack/start-client',
     '@tanstack/start-server',
     '@tanstack/start-server-functions-fetcher',
