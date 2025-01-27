@@ -84,14 +84,15 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
       router.serverSsr!.streamedKeys.add(key)
       router.serverSsr!.injectScript(
         () =>
-          `__TSR_SSR__.streamedValues['${key}'] = { value: ${jsesc(
-            router.ssr!.serializer.stringify(value),
-            {
-              isScriptContext: true,
-              wrap: true,
-              json: true,
-            },
-          )}}`,
+          `__TSR_SSR__.setStreamedValue(${jsesc(key, {
+            isScriptContext: true,
+            wrap: true,
+            json: true,
+          })}, ${jsesc(router.ssr!.serializer.stringify(value), {
+            isScriptContext: true,
+            wrap: true,
+            json: true,
+          })})`,
       )
     },
     onMatchSettled,

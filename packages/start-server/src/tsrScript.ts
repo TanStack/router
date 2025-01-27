@@ -1,9 +1,17 @@
-import type { ControllablePromise } from '@tanstack/react-router'
+import type { AnyRouter, ControllablePromise } from '@tanstack/react-router'
 import type { StartSsrGlobal } from '@tanstack/start-client'
+
+declare const __TSR_ROUTER__: AnyRouter | undefined
 
 const __TSR_SSR__: StartSsrGlobal = {
   matches: [],
   streamedValues: {},
+  setStreamedValue(key, value) {
+    __TSR_SSR__.streamedValues[key] = { value }
+    if (typeof __TSR_ROUTER__ !== 'undefined') {
+      __TSR_ROUTER__.emit({ type: 'onStreamedValue', key })
+    }
+  },
   initMatch: (match) => {
     __TSR_SSR__.matches.push(match)
 

@@ -23,9 +23,10 @@ export interface StartSsrGlobal {
     string,
     {
       value: any
-      parsed: any
+      parsed?: any
     }
   >
+  setStreamedValue: (key: string, value: unknown) => void
   cleanScripts: () => void
   dehydrated?: any
   initMatch: (match: SsrMatch) => void
@@ -103,6 +104,9 @@ export function hydrate(router: AnyRouter) {
   }
 
   router.clientSsr = {
+    streamedKeys: new Set(
+      Object.keys(window.__TSR_SSR__?.streamedValues || {}),
+    ),
     getStreamedValue: <T,>(key: string): T | undefined => {
       if (router.isServer) {
         return undefined
@@ -121,6 +125,9 @@ export function hydrate(router: AnyRouter) {
       return streamedValue.parsed
     },
   }
+  router.subscribe('onStreamedValue', ({ key }) =>
+    router.clientSsr!.streamedKeys.add(key),
+  )
 
   // Allow the user to handle custom hydration data
   router.options.hydrate?.(dehydratedData)

@@ -603,6 +603,10 @@ export type RouterEvents = {
     type: 'onInjectedHtml'
     promise: Promise<string>
   }
+  onStreamedValue: {
+    type: 'onStreamedValue'
+    key: string
+  }
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -2926,6 +2930,7 @@ export class Router<
 
   clientSsr?: {
     getStreamedValue: <T>(key: string) => T | undefined
+    streamedKeys: Set<string>
   }
 
   _handleNotFound = (
