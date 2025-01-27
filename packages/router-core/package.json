@@ -60,6 +60,6 @@
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
-    "@tanstack/store": "^0.6.0"
+    "@tanstack/store": "^0.7.0"
   }
 }
