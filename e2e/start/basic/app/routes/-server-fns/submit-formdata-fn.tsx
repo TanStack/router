@@ -20,7 +20,7 @@ export const greetUser = createServerFn()
     }
   })
   .handler(({ data: { name } }) => {
-    return new Response(`Hello, ${name}!.`)
+    return new Response(`Hello, ${name}!`)
   })
 
 export function SubmitFormDataFn() {
