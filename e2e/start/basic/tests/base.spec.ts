@@ -97,8 +97,6 @@ test('invoking a server function with custom response status code', async ({
   await requestPromise
 })
 
-// START /server-fns
-
 test('Consistent server function returns both on client and server for GET and POST calls', async ({
   page,
 }) => {
@@ -216,8 +214,6 @@ test('Direct POST submitting FormData to a Server function returns the correct m
   const result = await page.innerText('body')
   expect(result).toBe(expected)
 })
-
-// END /server-fns
 
 test('isomorphic functions can have different implementations on client and server', async ({
   page,
