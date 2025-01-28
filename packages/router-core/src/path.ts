@@ -208,48 +208,55 @@ interface InterpolatePathOptions {
   decodeCharMap?: Map<string, string>
 }
 
+type InterPolatePathResult = {
+  interpolatedPath: string
+  usedParams: Record<string, unknown>
+}
 export function interpolatePath({
   path,
   params,
   leaveWildcards,
   leaveParams,
   decodeCharMap,
-}: InterpolatePathOptions) {
+}: InterpolatePathOptions): InterPolatePathResult {
   const interpolatedPathSegments = parsePathname(path)
-  const encodedParams: any = {}
 
-  for (const [key, value] of Object.entries(params)) {
+  function encodeParam(key: string): any {
+    const value = params[key]
     const isValueString = typeof value === 'string'
 
     if (['*', '_splat'].includes(key)) {
       // the splat/catch-all routes shouldn't have the '/' encoded out
-      encodedParams[key] = isValueString ? encodeURI(value) : value
+      return isValueString ? encodeURI(value) : value
     } else {
-      encodedParams[key] = isValueString
-        ? encodePathParam(value, decodeCharMap)
-        : value
+      return isValueString ? encodePathParam(value, decodeCharMap) : value
     }
   }
 
-  return joinPaths(
+  const usedParams: Record<string, unknown> = {}
+  const interpolatedPath = joinPaths(
     interpolatedPathSegments.map((segment) => {
       if (segment.type === 'wildcard') {
-        const value = encodedParams._splat
+        usedParams._splat = params._splat
+        const value = encodeParam('_splat')
         if (leaveWildcards) return `${segment.value}${value ?? ''}`
         return value
       }
 
       if (segment.type === 'param') {
+        const key = segment.value.substring(1)
+        usedParams[key] = params[key]
         if (leaveParams) {
-          const value = encodedParams[segment.value]
+          const value = encodeParam(segment.value)
           return `${segment.value}${value ?? ''}`
         }
-        return encodedParams![segment.value.substring(1)] ?? 'undefined'
+        return encodeParam(key) ?? 'undefined'
       }
 
       return segment.value
     }),
   )
+  return { usedParams, interpolatedPath }
 }
 
 function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {

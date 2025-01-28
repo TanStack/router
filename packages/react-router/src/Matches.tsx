@@ -63,6 +63,7 @@ export interface RouteMatch<
   index: number
   pathname: string
   params: TAllParams
+  _strictParams: TAllParams
   status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
   isFetching: false | 'beforeLoad' | 'loader'
   error: unknown
@@ -77,6 +78,7 @@ export interface RouteMatch<
   __beforeLoadContext: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
+  _strictSearch: TFullSearchSchema
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'

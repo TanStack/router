@@ -59,7 +59,7 @@ import type {
   RouteMatch,
 } from './Matches'
 import type { NavigateOptions, ToMaskOptions } from './link'
-import type { RouteById, RouteIds, RoutePaths } from './routeInfo'
+import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, Router } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
@@ -154,6 +154,7 @@ export type FileBaseRouteOptions<
   TRouterContext = {},
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
+  TRemountDepsFn = AnyContext,
 > = ParamsOptions<TPath, TParams> & {
   validateSearch?: Constrain<TSearchValidator, AnyValidator, DefaultValidator>
 
@@ -203,6 +204,18 @@ export type FileBaseRouteOptions<
   loaderDeps?: (
     opts: FullSearchSchemaOption<TParentRoute, TSearchValidator>,
   ) => TLoaderDeps
+
+  remountDeps?: Constrain<
+    TRemountDepsFn,
+    (
+      opt: RemountDepsOptions<
+        TId,
+        FullSearchSchemaOption<TParentRoute, TSearchValidator>,
+        Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>,
+        TLoaderDeps
+      >,
+    ) => any
+  >
 
   loader?: Constrain<
     TLoaderFn,
@@ -274,6 +287,30 @@ export interface RouteContextOptions<
   deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
+
+export interface RemountDepsOptions<
+  in out TRouteId,
+  in out TFullSearchSchema,
+  in out TAllParams,
+  in out TLoaderDeps,
+> {
+  routeId: TRouteId
+  search: TFullSearchSchema
+  params: TAllParams
+  loaderDeps: TLoaderDeps
+}
+
+export type MakeRemountDepsOptionsUnion<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRoute extends AnyRoute = ParseRoute<TRouteTree>,
+> = TRoute extends any
+  ? RemountDepsOptions<
+      TRoute['id'],
+      TRoute['types']['fullSearchSchema'],
+      TRoute['types']['allParams'],
+      TRoute['types']['loaderDeps']
+    >
+  : never
 
 export interface BeforeLoadContextOptions<
   in out TParentRoute extends AnyRoute,
