@@ -1,77 +1,5 @@
 import { expect, test } from '@playwright/test'
 
-test('Navigating to post', async ({ page }) => {
-  await page.goto('/')
-
-  await page.getByRole('link', { name: 'Posts' }).click()
-  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
-  await page.getByRole('link', { name: 'Deep View' }).click()
-  await expect(page.getByRole('heading')).toContainText('sunt aut facere')
-})
-
-test('Navigating to user', async ({ page }) => {
-  await page.goto('/')
-
-  await page.getByRole('link', { name: 'Users' }).click()
-  await page.getByRole('link', { name: 'Leanne Graham' }).click()
-  await expect(page.getByRole('heading')).toContainText('Leanne Graham')
-})
-
-test('Navigating nested layouts', async ({ page }) => {
-  await page.goto('/')
-
-  await page.getByRole('link', { name: 'Layout', exact: true }).click()
-
-  await expect(page.locator('body')).toContainText("I'm a layout")
-  await expect(page.locator('body')).toContainText("I'm a nested layout")
-
-  await page.getByRole('link', { name: 'Layout A' }).click()
-  await expect(page.locator('body')).toContainText("I'm layout A!")
-
-  await page.getByRole('link', { name: 'Layout B' }).click()
-  await expect(page.locator('body')).toContainText("I'm layout B!")
-})
-
-test('directly going to a route with scripts', async ({ page }) => {
-  await page.goto('/scripts')
-  expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
-  expect(await page.evaluate('window.SCRIPT_2')).toBe(undefined)
-})
-
-test('Navigating to a not-found route', async ({ page }) => {
-  await page.goto('/')
-
-  await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
-  await page.getByRole('link', { name: 'Start Over' }).click()
-  await expect(page.getByRole('heading')).toContainText('Welcome Home!')
-})
-
-test('Navigating to deferred route', async ({ page }) => {
-  await page.goto('/')
-
-  await page.getByRole('link', { name: 'Deferred' }).click()
-
-  await expect(page.getByTestId('regular-person')).toContainText('John Doe')
-  await expect(page.getByTestId('deferred-person')).toContainText(
-    'Tanner Linsley',
-  )
-  await expect(page.getByTestId('deferred-stuff')).toContainText(
-    'Hello deferred!',
-  )
-})
-
-test('Directly visiting the deferred route', async ({ page }) => {
-  await page.goto('/deferred')
-
-  await expect(page.getByTestId('regular-person')).toContainText('John Doe')
-  await expect(page.getByTestId('deferred-person')).toContainText(
-    'Tanner Linsley',
-  )
-  await expect(page.getByTestId('deferred-stuff')).toContainText(
-    'Hello deferred!',
-  )
-})
-
 test('invoking a server function with custom response status code', async ({
   page,
 }) => {
@@ -241,9 +169,68 @@ test('Server function can correctly send and receive FormData', async ({
   ).toContainText(expected)
 })
 
-test('streaming loader data', async ({ page }) => {
-  await page.goto('/stream')
+test('server function can correctly send and receive headers', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
 
-  await expect(page.getByTestId('promise-data')).toContainText('promise-data')
-  await expect(page.getByTestId('stream-data')).toContainText('stream-data')
+  await page.waitForLoadState('networkidle')
+  // console.log(await page.getByTestId('test-headers-result').textContent())
+  await expect(page.getByTestId('test-headers-result')).toContainText(`{
+  "accept": "application/json",
+  "accept-encoding": "gzip, deflate, br, zstd",
+  "accept-language": "en-US",
+  "connection": "keep-alive",
+  "content-type": "application/json",
+  "host": "localhost:42322",
+  "sec-ch-ua": "\\"Not(A:Brand\\";v=\\"99\\", \\"HeadlessChrome\\";v=\\"133\\", \\"Chromium\\";v=\\"133\\"",
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": "\\"Windows\\"",
+  "sec-fetch-dest": "document",
+  "sec-fetch-mode": "navigate",
+  "sec-fetch-site": "none",
+  "sec-fetch-user": "?1",
+  "upgrade-insecure-requests": "1",
+  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6943.16 Safari/537.36"
+}`)
+
+  await page.getByTestId('test-headers-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('test-headers-result')).toContainText(`{
+  "host": "localhost:42322",
+  "connection": "keep-alive",
+  "sec-ch-ua-platform": "\\"Windows\\"",
+  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6943.16 Safari/537.36",
+  "accept": "application/json",
+  "sec-ch-ua": "\\"Not(A:Brand\\";v=\\"99\\", \\"HeadlessChrome\\";v=\\"133\\", \\"Chromium\\";v=\\"133\\"",
+  "content-type": "application/json",
+  "sec-ch-ua-mobile": "?0",
+  "accept-language": "en-US",
+  "sec-fetch-site": "same-origin",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-dest": "empty",
+  "referer": "http://localhost:42322/server-fns",
+  "accept-encoding": "gzip, deflate, br, zstd"
+}`)
+})
+
+test('Direct POST submitting FormData to a Server function returns the correct message', async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+
+  const expected =
+    (await page
+      .getByTestId('expected-submit-post-formdata-server-fn-result')
+      .textContent()) || ''
+  expect(expected).not.toBe('')
+
+  await page.getByTestId('test-submit-post-formdata-fn-calls-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  const result = await page.innerText('body')
+  expect(result).toBe(expected)
 })
