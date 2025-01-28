@@ -529,7 +529,7 @@ function handleCreateIsomorphicFnCallExpression(
     )
   }
 
-  const resolvedEnv = opts.env === 'ssr' ? 'client' : opts.env
+  const resolvedEnv = opts.env === 'ssr' ? 'server' : opts.env
 
   const envCallExpression = callExpressionPaths[resolvedEnv]
 
