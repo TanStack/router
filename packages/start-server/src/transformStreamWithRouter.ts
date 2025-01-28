@@ -140,12 +140,6 @@ export function transformStreamWithRouter(
         } else {
           finalPassThrough.write(html)
         }
-
-        return new Promise<void>((resolve) => {
-          setTimeout(() => {
-            resolve()
-          }, 1000)
-        })
       })
       .catch(injectedHtmlDonePromise.reject)
       .finally(() => {
