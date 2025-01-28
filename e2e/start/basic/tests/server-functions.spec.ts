@@ -95,6 +95,7 @@ test('isomorphic functions can have different implementations on client and serv
 
   await expect(page.getByTestId('server-result')).toContainText('server')
   await expect(page.getByTestId('client-result')).toContainText('client')
+  await expect(page.getByTestId('ssr-result')).toContainText('server')
 
   await expect(page.getByTestId('server-echo-result')).toContainText(
     'server received hello',
