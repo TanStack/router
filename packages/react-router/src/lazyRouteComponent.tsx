@@ -13,9 +13,9 @@ function isModuleNotFoundError(error: any): boolean {
   // safari: "Importing a module script failed."
   if (typeof error?.message !== 'string') return false
   return (
-    error.message.startsWith('Failed to fetch dynamically imported module')
-    || error.message.startsWith('error loading dynamically imported module')
-    || error.message.startsWith('Importing a module script failed')
+    error.message.startsWith('Failed to fetch dynamically imported module') ||
+    error.message.startsWith('error loading dynamically imported module') ||
+    error.message.startsWith('Importing a module script failed')
   )
 }
 
