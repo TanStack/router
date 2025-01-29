@@ -16,6 +16,8 @@ import { isRedirect } from './redirects'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
+import { ScrollRestoration } from './scroll-restoration'
+import type { ParsedLocation } from '@tanstack/router-core'
 import type { AnyRoute } from './route'
 
 export const Match = React.memo(function MatchImpl({
@@ -26,6 +28,10 @@ export const Match = React.memo(function MatchImpl({
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
+  })
+  const isLastMatch = useRouterState({
+    select: (s) =>
+      s.matches.findIndex((d) => d.id === matchId) === s.matches.length - 1,
   })
 
   invariant(
@@ -112,7 +118,12 @@ export const Match = React.memo(function MatchImpl({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {parentRouteId === rootRouteId ? <OnRendered matchId={matchId} /> : null}
+      {isLastMatch ? (
+        <>
+          <OnRendered />
+          <ScrollRestoration />
+        </>
+      ) : null}
     </>
   )
 })
@@ -124,24 +135,32 @@ export const Match = React.memo(function MatchImpl({
 // allows us to fire onRendered events even after a hydration mismatch
 // error that occurred above the root layout (like bad head/link tags,
 // which is common).
-function OnRendered({ matchId }: { matchId: string }) {
+function OnRendered() {
   const router = useRouter()
 
-  return (
-    <script
-      suppressHydrationWarning
-      key={router.state.resolvedLocation.state.key}
-      id="tsr-handler"
-      ref={(el) => {
-        if (el) {
-          router.emit({
-            type: 'onRendered',
-            toLocation: router.state.location,
-          })
-        }
-      }}
-    />
+  const prevLocationRef = React.useRef<undefined | ParsedLocation<{}>>(
+    undefined,
   )
+
+  return null
+
+  // return (
+  //   <span
+  //     key={router.state.resolvedLocation?.state.key}
+  //     suppressHydrationWarning
+  //     style={{ display: 'none' }}
+  //     ref={(el) => {
+  //       if (el) {
+  //         router.emit({
+  //           type: 'onRendered',
+  //           ...getLocationChangeInfo(router.state),
+  //         })
+  //       } else {
+  //         prevLocationRef.current = router.state.resolvedLocation
+  //       }
+  //     }}
+  //   />
+  // )
 }
 
 export const MatchInner = React.memo(function MatchInnerImpl({
@@ -151,7 +170,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 }): any {
   const router = useRouter()
 
-  const { match, matchIndex, routeId } = useRouterState({
+  const { match, routeId } = useRouterState({
     select: (s) => {
       const matchIndex = s.matches.findIndex((d) => d.id === matchId)
       const match = s.matches[matchIndex]!
