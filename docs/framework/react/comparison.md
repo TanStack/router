@@ -57,6 +57,8 @@ Feature/Capability Key:
 | `<Block>`/`useBlocker`                         | ✅                                               | 🔶                                                    | ❓                                                    |
 | Deferred Primitives                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Navigation Scroll Restoration                  | ✅                                               | ✅                                                    | ❓                                                    |
+| ElementScroll Restoration                      | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Async Scroll Restoration                       | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Router Invalidation                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Runtime Route Manipulation (Fog of War)        | 🛑                                               | ✅                                                    | ✅                                                    |
 | --                                             | --                                               | --                                                    | --                                                    |

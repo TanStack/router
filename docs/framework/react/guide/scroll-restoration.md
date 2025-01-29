@@ -3,6 +3,12 @@ id: scroll-restoration
 title: Scroll Restoration
 ---
 
+## Hash/Top-of-Page Scrolling
+
+Out of the box, TanStack Router supports both **hash scrolling** and **top-of-page scrolling** without any additional configuration.
+
+## Scroll Restoration
+
 Scroll restoration is the process of restoring the scroll position of a page when the user navigates back to it. This is normally a built-in feature for standard HTML based websites, but can be difficult to replicate for SPA applications because:
 
 - SPAs typically use the `history.pushState` API for navigation, so the browser doesn't know to restore the scroll position natively
@@ -24,19 +30,15 @@ It does this by:
 That may sound like a lot, but for you, it's as simple as this:
 
 ```tsx
-import { ScrollRestoration } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-function Root() {
-  return (
-    <>
-      <ScrollRestoration />
-      <Outlet />
-    </>
-  )
-}
+const router = createRouter({
+  scrollRestoration: true,
+})
 ```
 
-Just render the `ScrollRestoration` component (or use the `useScrollRestoration` hook) at the root of your application and it will handle everything automatically!
+> [!NOTE]
+> The `<ScrollRestoration />` component still works, but has been deprecated.
 
 ## Custom Cache Keys
 
@@ -51,38 +53,26 @@ The default `getKey` is `(location) => location.state.key!`, where `key` is the 
 You could sync scrolling to the pathname:
 
 ```tsx
-import { ScrollRestoration } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-function Root() {
-  return (
-    <>
-      <ScrollRestoration getKey={(location) => location.pathname} />
-      <Outlet />
-    </>
-  )
-}
+const router = createRouter({
+  getScrollRestorationKey: (location) => location.pathname,
+})
 ```
 
 You can conditionally sync only some paths, then use the key for the rest:
 
 ```tsx
-import { ScrollRestoration } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-function Root() {
-  return (
-    <>
-      <ScrollRestoration
-        getKey={(location) => {
-          const paths = ['/', '/chat']
-          return paths.includes(location.pathname)
-            ? location.pathname
-            : location.state.key!
-        }}
-      />
-      <Outlet />
-    </>
-  )
-}
+const router = createRouter({
+  getScrollRestorationKey: (location) => {
+    const paths = ['/', '/chat']
+    return paths.includes(location.pathname)
+      ? location.pathname
+      : location.state.key!
+  },
+})
 ```
 
 ## Preventing Scroll Restoration
@@ -143,14 +133,9 @@ function Component() {
 To control the scroll behavior when navigating between pages, you can use the `scrollBehavior` option. This allows you to make the transition between pages instant instead of a smooth scroll. The global configuration of scroll restoration behavior has the same options as those supported by the browser, which are `smooth`, `instant`, and `auto` (see [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView#behavior) for more information).
 
 ```tsx
-import { ScrollRestoration } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 
-function Root() {
-  return (
-    <>
-      <ScrollRestoration scrollBehavior="instant" />
-      <Outlet />
-    </>
-  )
-}
+const router = createRouter({
+  scrollBehavior: 'instant',
+})
 ```
