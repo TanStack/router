@@ -62,8 +62,8 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
       routeIdent: 'component',
       localImporterIdent: '$$splitComponentImporter', // const $$splitComponentImporter = () => import('...')
       splitStrategy: 'react-component',
-      exporterIdent: 'component', // export { component }
-      localExporterIdent: 'component', // const component = ...
+      localExporterIdent: 'SplitComponent', // const SplitComponent = ...
+      exporterIdent: 'component', // export { SplitComponent as component }
     },
   ],
   [
@@ -72,8 +72,8 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
       routeIdent: 'loader',
       localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
       splitStrategy: 'normal',
-      exporterIdent: 'loader', // export { loader }
-      localExporterIdent: 'loader', // const loader = ...
+      localExporterIdent: 'SplitLoader', // const SplitLoader = ...
+      exporterIdent: 'loader', // export { SplitLoader as loader }
     },
   ],
 ])
