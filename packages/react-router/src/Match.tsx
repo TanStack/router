@@ -114,26 +114,41 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 }): any {
   const router = useRouter()
 
-  const { match, matchIndex, routeId } = useRouterState({
+  const { match, key, routeId } = useRouterState({
     select: (s) => {
       const matchIndex = s.matches.findIndex((d) => d.id === matchId)
       const match = s.matches[matchIndex]!
       const routeId = match.routeId as string
-      return {
+
+      const remountFn =
+        (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+        router.options.defaultRemountDeps
+      const remountDeps = remountFn?.({
         routeId,
-        matchIndex,
+        loaderDeps: match.loaderDeps,
+        params: match._strictParams,
+        search: match._strictSearch,
+      })
+      const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+
+      return {
+        key,
+        routeId,
         match: pick(match, ['id', 'status', 'error']),
       }
     },
     structuralSharing: true as any,
   })
 
-  const route = router.routesById[routeId]!
+  const route = router.routesById[routeId] as AnyRoute
 
   const out = React.useMemo(() => {
     const Comp = route.options.component ?? router.options.defaultComponent
-    return Comp ? <Comp /> : <Outlet />
-  }, [route.options.component, router.options.defaultComponent])
+    if (Comp) {
+      return <Comp key={key} />
+    }
+    return <Outlet />
+  }, [key, route.options.component, router.options.defaultComponent])
 
   // function useChangedDiff(value: any) {
   //   const ref = React.useRef(value)
@@ -184,7 +199,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     if (router.isServer) {
       return (
         <RouteErrorComponent
-          error={match.error}
+          error={match.error as any}
+          reset={undefined as any}
           info={{
             componentStack: '',
           }}

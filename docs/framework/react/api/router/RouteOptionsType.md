@@ -266,3 +266,35 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `(error: Error, errorInfo: ErrorInfo) => void`
 - Optional - Defaults to `routerOptions.defaultOnCatch`
 - A function that will be called when errors are caught when the route encounters an error.
+
+### `remountDeps` method
+
+- Type:
+
+```tsx
+type remountDeps = (opts: RemountDepsOptions) => any
+
+interface RemountDepsOptions<
+  in out TRouteId,
+  in out TFullSearchSchema,
+  in out TAllParams,
+  in out TLoaderDeps,
+> {
+  routeId: TRouteId
+  search: TFullSearchSchema
+  params: TAllParams
+  loaderDeps: TLoaderDeps
+}
+```
+
+- Optional
+- A function that will be called to determine whether a route component shall be remounted after navigation. If this function returns a different value than previously, it will remount.
+- The return value needs to be JSON serializable.
+- By default, a route component will not be remounted if it stays active after a navigation
+
+Example:  
+If you want to configure to remount a route component upon `params` change, use:
+
+```tsx
+remountDeps: ({ params }) => params
+```
