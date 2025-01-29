@@ -22,9 +22,11 @@ bun create @tanstack/router
 deno init --npm @tanstack/router
 ```
 
-Follow the prompts to setup the project.
+Follow the prompts to setup the a fully setup TanStack Router project.
 
 ### Manual Setup
+
+Alternatively, you can manually setup the project using the following steps:
 
 #### Install TanStack Router, Vite Plugin, and the Router Devtools
 
@@ -55,7 +57,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    TanStackRouterVite(),
+    TanStackRouterVite{ autoCodeSplitting: true }),
     viteReact(),
     // ...,
   ],
@@ -63,18 +65,14 @@ export default defineConfig({
 ```
 
 > [!TIP]
-> If you are not using Vite, or any supported bundler, you can check out the [File-Based Routing](./guide/file-based-routing.md) guide for more info.
+> If you are not using Vite, or any supported bundler, you can check out the [TanStack Router CLI](./guide/file-based-routing.md#configuration-with-the-tanstack-router-cli) guide for more info.
 
 Create the following files:
 
 - `src/routes/__root.tsx`
-- `src/routes/index.lazy.tsx`
-- `src/routes/about.lazy.tsx`
+- `src/routes/index.tsx`
+- `src/routes/about.tsx`
 - `src/main.tsx`
-
-All routes/\*.tsx files should export an object named **Route**, created using createRootRoute or createLazyFileRoute.
-
-> 🧠 Route files with the `.lazy.tsx` extension are lazy loaded via separate bundles to keep the main bundle size as lean as possible.
 
 #### `src/routes/__root.tsx`
 
@@ -101,7 +99,7 @@ export const Route = createRootRoute({
 })
 ```
 
-#### `src/routes/index.lazy.tsx`
+#### `src/routes/index.tsx`
 
 ```tsx
 import { createLazyFileRoute } from '@tanstack/react-router'
@@ -119,7 +117,7 @@ function Index() {
 }
 ```
 
-#### `src/routes/about.lazy.tsx`
+#### `src/routes/about.tsx`
 
 ```tsx
 import { createLazyFileRoute } from '@tanstack/react-router'
@@ -135,7 +133,7 @@ function About() {
 
 #### `src/main.tsx`
 
-Regardless of whether you are using the `@tanstack/router-plugin` package and running the `npm run dev`/`npm run build` scripts, or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the following file will be generated for you at `src/routeTree.gen.ts`.
+Regardless of whether you are using the `@tanstack/router-plugin` package and running the `npm run dev`/`npm run build` scripts, or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the route tree file will be generated at `src/routeTree.gen.ts`.
 
 Import the generated route tree and create a new router instance:
 
