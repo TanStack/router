@@ -169,11 +169,15 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   const shouldScrollRestoration =
     force ?? router.options.scrollRestoration ?? false
 
-  if (typeof document === 'undefined' || router.isScrollRestoring) {
+  if (shouldScrollRestoration) {
+    router.isScrollRestoring = true
+  }
+
+  if (typeof document === 'undefined' || router.isScrollRestorationSetup) {
     return
   }
 
-  router.isScrollRestoring = true
+  router.isScrollRestorationSetup = true
 
   //
   ignoreScroll = false
@@ -223,7 +227,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   const onScroll = (event: Event) => {
     // unobserveDom()
 
-    if (ignoreScroll) {
+    if (ignoreScroll || !router.isScrollRestoring) {
       return
     }
 
@@ -268,7 +272,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   }
 
   // Throttle the scroll event to avoid excessive updates
-  if (typeof document !== 'undefined' && shouldScrollRestoration) {
+  if (typeof document !== 'undefined') {
     document.addEventListener('scroll', throttle(onScroll, 100), true)
   }
 
@@ -288,10 +292,10 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       storageKey,
       cacheKey,
       router.options.scrollRestorationBehavior,
-      shouldScrollRestoration,
+      router.isScrollRestoring,
     )
 
-    if (shouldScrollRestoration) {
+    if (router.isScrollRestoring) {
       // Mark the location as having been seen
       scrollRestorationCache.set((state) => {
         state[cacheKey] = state[cacheKey] || ({} as ScrollRestorationByElement)
@@ -300,12 +304,6 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       })
     }
   })
-
-  // return () => {
-  //   unobserveDom()
-  //   document.removeEventListener('scroll', throttle(onScroll, 100))
-  //   unsubOnResolved()
-  // }
 }
 
 export function ScrollRestoration() {
