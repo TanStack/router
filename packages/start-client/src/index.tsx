@@ -71,8 +71,6 @@ export { renderRsc } from './renderRSC'
 export { useServerFn } from './useServerFn'
 export { serverFnFetcher } from './serverFnFetcher'
 export {
-  type DehydratedRouterState,
-  type DehydratedRouteMatch,
   type DehydratedRouter,
   type ClientExtractedBaseEntry,
   type StartSsrGlobal,
