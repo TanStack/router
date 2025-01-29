@@ -17,10 +17,8 @@ function HomeComponent() {
       {(
         [
           linkOptions({ to: '/normal-page' }),
-          linkOptions({ to: '/lazy-page' }),
-          linkOptions({ to: '/virtual-page' }),
-          linkOptions({ to: '/lazy-with-loader-page' }),
-          linkOptions({ to: '/page-with-search', search: { where: 'footer' } }),
+          linkOptions({ to: '/with-loader' }),
+          linkOptions({ to: '/with-search', search: { where: 'footer' } }),
         ] as const
       ).map((options, i) => (
         <div key={`index-page-tests-${options.to}-${i}`} className="border p-2">

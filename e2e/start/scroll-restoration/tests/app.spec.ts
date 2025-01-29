@@ -11,17 +11,14 @@ test('Smoke - Renders home', async ({ page }) => {
 // Test for scroll related stuff
 ;[
   linkOptions({ to: '/normal-page' }),
-  // linkOptions({to:'/lazy-page'}),
-  // linkOptions({to:'/virtual-page'}),
-  // linkOptions({to:'/lazy-with-loader-page'}),
-  linkOptions({ to: '/page-with-search', search: { where: 'footer' } }),
+  linkOptions({ to: '/with-loader' }),
+  linkOptions({ to: '/with-search', search: { where: 'footer' } }),
 ].forEach((options) => {
   test(`On navigate to ${options.to} (from the header), scroll should be at top`, async ({
     page,
   }) => {
     await page.goto('/')
     await page.getByRole('link', { name: `Head-${options.to}` }).click()
-    await page.waitForTimeout(1)
     await expect(page.getByTestId('at-the-top')).toBeInViewport()
   })
 
@@ -33,7 +30,6 @@ test('Smoke - Renders home', async ({ page }) => {
     await page
       .getByRole('link', { name: `${options.to}#at-the-bottom` })
       .click()
-    await page.waitForTimeout(1)
     await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
   })
 
@@ -46,7 +42,6 @@ test('Smoke - Renders home', async ({ page }) => {
       url = `${url}?where=${options.search}`
     }
     await page.goto(`${url}#at-the-bottom`)
-    await page.waitForTimeout(1)
     await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
   })
 })

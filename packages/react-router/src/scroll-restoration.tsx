@@ -1,5 +1,6 @@
 import { functionalUpdate } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
+import { ScriptOnce } from './ScriptOnce'
 import type { AnyRouter } from './router'
 import type { NonNullableUpdater, ParsedLocation } from '@tanstack/router-core'
 
@@ -134,7 +135,7 @@ export function restoreScroll(
 
     if (hash) {
       const hashScrollIntoViewOptions =
-        window.history.state.__hashScrollIntoViewOptions ?? true
+        (window.history.state || {}).__hashScrollIntoViewOptions ?? true
 
       if (hashScrollIntoViewOptions) {
         console.log('scrollIntoView')
@@ -305,12 +306,10 @@ export function ScrollRestoration() {
       ? userKey
       : null
 
-  return null
-
-  // return (
-  //   <ScriptOnce
-  //     children={`(${restoreScroll.toString()})(${JSON.stringify(storageKey)},${JSON.stringify(resolvedKey)}, undefined, true)`}
-  //     log={false}
-  //   />
-  // )
+  return (
+    <ScriptOnce
+      children={`(${restoreScroll.toString()})(${JSON.stringify(storageKey)},${JSON.stringify(resolvedKey)}, undefined, true)`}
+      log={false}
+    />
+  )
 }

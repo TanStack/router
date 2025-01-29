@@ -17,6 +17,7 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import { getLocationChangeInfo } from './Transitioner'
 import type { ParsedLocation } from '@tanstack/router-core'
 import type { AnyRoute } from './route'
 
@@ -78,13 +79,6 @@ export const Match = React.memo(function MatchImpl({
     select: (s) => s.loadedAt,
   })
 
-  const parentRouteId = useRouterState({
-    select: (s) => {
-      const index = s.matches.findIndex((d) => d.id === matchId)
-      return s.matches[index - 1]?.routeId as string
-    },
-  })
-
   return (
     <>
       <matchContext.Provider value={matchId}>
@@ -142,25 +136,23 @@ function OnRendered() {
     undefined,
   )
 
-  return null
-
-  // return (
-  //   <span
-  //     key={router.state.resolvedLocation?.state.key}
-  //     suppressHydrationWarning
-  //     style={{ display: 'none' }}
-  //     ref={(el) => {
-  //       if (el) {
-  //         router.emit({
-  //           type: 'onRendered',
-  //           ...getLocationChangeInfo(router.state),
-  //         })
-  //       } else {
-  //         prevLocationRef.current = router.state.resolvedLocation
-  //       }
-  //     }}
-  //   />
-  // )
+  return (
+    <span
+      key={router.state.resolvedLocation?.state.key}
+      suppressHydrationWarning
+      style={{ display: 'none' }}
+      ref={(el) => {
+        if (el) {
+          router.emit({
+            type: 'onRendered',
+            ...getLocationChangeInfo(router.state),
+          })
+        } else {
+          prevLocationRef.current = router.state.resolvedLocation
+        }
+      }}
+    />
+  )
 }
 
 export const MatchInner = React.memo(function MatchInnerImpl({
