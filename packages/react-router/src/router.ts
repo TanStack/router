@@ -670,6 +670,7 @@ export class Router<
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
+  isScrollRestoring = false
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>

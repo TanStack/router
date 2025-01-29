@@ -77,6 +77,9 @@ export function getCssSelector(el: any): string {
   }
   return `${path.join(' > ')}`.toLowerCase()
 }
+
+let ignoreScroll = false
+
 // NOTE: This function must remain pure and not use any outside variables
 // unless they are passed in as arguments. Why? Because we need to be able to
 // toString() it into a script tag to execute as early as possible in the browser
@@ -99,7 +102,7 @@ export function restoreScroll(
   const elementEntries = byKey[resolvedKey]
 
   //
-  ;(window as any).ignoreScroll = true
+  ignoreScroll = true
 
   //
   ;(() => {
@@ -158,16 +161,25 @@ export function restoreScroll(
   })()
 
   //
-  ;(window as any).ignoreScroll = false
+  ignoreScroll = false
 }
 
-export function setupScrollRestoration(router: AnyRouter) {
-  if (typeof document === 'undefined') {
+export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
+  const shouldScrollRestoration =
+    router.options.scrollRestoration ?? force ?? false
+
+  if (
+    typeof document === 'undefined' ||
+    router.isScrollRestoring ||
+    !shouldScrollRestoration
+  ) {
     return
   }
 
+  router.isScrollRestoring = true
+
   //
-  ;(window as any).ignoreScroll = false
+  ignoreScroll = false
 
   const getKey =
     router.options.getScrollRestorationKey || defaultGetScrollRestorationKey
@@ -176,9 +188,9 @@ export function setupScrollRestoration(router: AnyRouter) {
 
   // // Create a MutationObserver to monitor DOM changes
   // const mutationObserver = new MutationObserver(() => {
-  //   ;(window as any).ignoreScroll = true
+  //   ;ignoreScroll = true
   //   requestAnimationFrame(() => {
-  //     ;(window as any).ignoreScroll = false
+  //     ;ignoreScroll = false
 
   //     // Attempt to restore scroll position on each dom
   //     // mutation until the user scrolls. We do this
@@ -214,7 +226,7 @@ export function setupScrollRestoration(router: AnyRouter) {
   const onScroll = (event: Event) => {
     // unobserveDom()
 
-    if ((window as any).ignoreScroll) {
+    if (ignoreScroll) {
       return
     }
 
