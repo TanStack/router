@@ -47,35 +47,37 @@ function removeSplitSearchParamFromFilename(filename: string) {
   return bareFilename!
 }
 
-type SplitRouteIdent = 'component' | 'loader'
-const nodeSplitConfig = new Map<
-  SplitRouteIdent,
-  {
-    routeIdent: SplitRouteIdent
-    exportName: string
-    importerName: string
-    splitStrategy: 'normal' | 'react-component'
-  }
->([
+type SplitRouteIdentNodes = 'component' | 'loader'
+type SplitNodeMeta = {
+  routeIdent: SplitRouteIdentNodes
+  splitStrategy: 'normal' | 'react-component'
+  localImporterIdent: string
+  exporterIdent: string
+  localExporterIdent: string
+}
+const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
     'component',
     {
       routeIdent: 'component',
-      exportName: 'component',
-      importerName: '$$splitComponentImporter',
+      localImporterIdent: '$$splitComponentImporter',
       splitStrategy: 'react-component',
+      exporterIdent: 'component',
+      localExporterIdent: 'component',
     },
   ],
   [
     'loader',
     {
       routeIdent: 'loader',
-      exportName: 'loader',
-      importerName: '$$splitLoaderImporter',
+      localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
       splitStrategy: 'normal',
+      exporterIdent: 'loader', // export { loader }
+      localExporterIdent: 'loader', // const loader = ...
     },
   ],
 ])
+const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NOES_CONFIG.keys()] as const
 
 export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
@@ -133,7 +135,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                       if (t.isIdentifier(prop.key)) {
                         const key = prop.key.name
                         // find key in nodeSplitConfig
-                        const isNodeConfigAvailable = nodeSplitConfig.has(
+                        const isNodeConfigAvailable = SPLIT_NOES_CONFIG.has(
                           key as any,
                         )
 
@@ -141,7 +143,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           return
                         }
 
-                        const splitNodeMeta = nodeSplitConfig.get(key as any)!
+                        const splitNodeMeta = SPLIT_NOES_CONFIG.get(key as any)!
 
                         if (splitNodeMeta.splitStrategy === 'react-component') {
                           const value = prop.value
@@ -190,12 +192,12 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           // If not, define it with the dynamic import statement
                           if (
                             !hasImportedOrDefinedIdentifier(
-                              splitNodeMeta.importerName,
+                              splitNodeMeta.localImporterIdent,
                             )
                           ) {
                             programPath.unshiftContainer('body', [
                               template.statement(
-                                `const ${splitNodeMeta.importerName} = () => import('${splitUrl}')`,
+                                `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
                               )(),
                             ])
                           }
@@ -203,11 +205,11 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           // If it's a component, we need to pass the function to check the Route.ssr value
                           if (key === 'component') {
                             prop.value = template.expression(
-                              `lazyRouteComponent(${splitNodeMeta.importerName}, '${splitNodeMeta.exportName}', () => Route.ssr)`,
+                              `lazyRouteComponent(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
                             )()
                           } else {
                             prop.value = template.expression(
-                              `lazyRouteComponent(${splitNodeMeta.importerName}, '${splitNodeMeta.exportName}')`,
+                              `lazyRouteComponent(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
                             )()
                           }
 
@@ -264,19 +266,19 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           // If not, define it with the dynamic import statement
                           if (
                             !hasImportedOrDefinedIdentifier(
-                              splitNodeMeta.importerName,
+                              splitNodeMeta.localImporterIdent,
                             )
                           ) {
                             programPath.unshiftContainer('body', [
                               template.statement(
-                                `const ${splitNodeMeta.importerName} = () => import('${splitUrl}')`,
+                                `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
                               )(),
                             ])
                           }
 
                           // Add the lazyFn call with the dynamic import to the prop value
                           prop.value = template.expression(
-                            `lazyFn(${splitNodeMeta.importerName}, '${splitNodeMeta.exportName}')`,
+                            `lazyFn(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
                           )()
                         }
                       }
@@ -325,9 +327,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   })
 }
 
-const splitNodeTypes = ['component', 'loader'] as const
-type SplitNodeType = (typeof splitNodeTypes)[number]
-
 export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
 
@@ -338,7 +337,10 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
       enter(programPath, programState) {
         const state = programState as unknown as State
 
-        const splitNodesByType: Record<SplitNodeType, t.Node | undefined> = {
+        const trackedNodesToSplitByType: Record<
+          SplitRouteIdentNodes,
+          { node: t.Node | undefined; meta: SplitNodeMeta } | undefined
+        > = {
           component: undefined,
           loader: undefined,
         }
@@ -369,7 +371,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 if (t.isObjectExpression(options)) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
-                      splitNodeTypes.forEach((splitType) => {
+                      SPLIT_ROUTE_IDENT_NODES.forEach((splitType) => {
                         if (
                           !t.isIdentifier(prop.key) ||
                           prop.key.name !== splitType
@@ -392,7 +394,11 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                         if (isExported && t.isIdentifier(value)) {
                           removeExports(ast, value)
                         } else {
-                          splitNodesByType[splitType] = prop.value
+                          const meta = SPLIT_NOES_CONFIG.get(splitType)!
+                          trackedNodesToSplitByType[splitType] = {
+                            node: prop.value,
+                            meta,
+                          }
                         }
                       })
                     }
@@ -407,12 +413,15 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
           state,
         )
 
-        splitNodeTypes.forEach((splitType) => {
-          let splitNode = splitNodesByType[splitType]
+        SPLIT_ROUTE_IDENT_NODES.forEach((SPLIT_TYPE) => {
+          const splitKey = trackedNodesToSplitByType[SPLIT_TYPE]
 
-          if (!splitNode) {
+          if (!splitKey) {
             return
           }
+
+          let splitNode = splitKey.node
+          const splitMeta = splitKey.meta
 
           while (t.isIdentifier(splitNode)) {
             const binding = programPath.scope.getBinding(splitNode.name)
@@ -426,7 +435,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 'body',
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
-                    t.identifier(splitType),
+                    t.identifier(splitMeta.localExporterIdent),
                     t.functionExpression(
                       splitNode.id || null, // Anonymize the function expression
                       splitNode.params,
@@ -445,7 +454,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 'body',
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
-                    t.identifier(splitType),
+                    t.identifier(splitMeta.localExporterIdent),
                     splitNode as any,
                   ),
                 ]),
@@ -458,7 +467,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 'body',
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
-                    t.identifier(splitType),
+                    t.identifier(splitMeta.localExporterIdent),
                     splitNode.local,
                   ),
                 ]),
@@ -467,7 +476,10 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
               programPath.pushContainer(
                 'body',
                 t.variableDeclaration('const', [
-                  t.variableDeclarator(t.identifier(splitType), splitNode.init),
+                  t.variableDeclarator(
+                    t.identifier(splitMeta.localExporterIdent),
+                    splitNode.init,
+                  ),
                 ]),
               )
             } else if (t.isCallExpression(splitNode)) {
@@ -476,7 +488,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
               if (!splitNodeAst) {
                 throw new Error(
-                  `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}"`,
+                  `Failed to parse the generated code for "${SPLIT_TYPE}" in the node type "${splitNode.type}"`,
                 )
               }
 
@@ -484,7 +496,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
               if (!statement) {
                 throw new Error(
-                  `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}" as no statement was found in the program body`,
+                  `Failed to parse the generated code for "${SPLIT_TYPE}" in the node type "${splitNode.type}" as no statement was found in the program body`,
                 )
               }
 
@@ -493,12 +505,15 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 programPath.pushContainer(
                   'body',
                   t.variableDeclaration('const', [
-                    t.variableDeclarator(t.identifier(splitType), expression),
+                    t.variableDeclarator(
+                      t.identifier(splitMeta.localExporterIdent),
+                      expression,
+                    ),
                   ]),
                 )
               } else {
                 throw new Error(
-                  `Unexpected expression type encounter for "${splitType}" in the node type "${splitNode.type}"`,
+                  `Unexpected expression type encounter for "${SPLIT_TYPE}" in the node type "${splitNode.type}"`,
                 )
               }
             } else {
@@ -517,8 +532,8 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
           programPath.pushContainer('body', [
             t.exportNamedDeclaration(null, [
               t.exportSpecifier(
-                t.identifier(splitType),
-                t.identifier(splitType),
+                t.identifier(splitMeta.localExporterIdent),
+                t.identifier(splitMeta.exporterIdent),
               ),
             ]),
           ])
