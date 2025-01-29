@@ -159,11 +159,17 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                               `lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)`,
                             )()
 
-                            programPath.pushContainer('body', [
-                              template.statement(
-                                `function DummyComponent() { return null }`,
-                              )(),
-                            ])
+                            if (
+                              !hasImportedOrDefinedIdentifier(
+                                'TSRDummyComponent',
+                              )
+                            ) {
+                              programPath.pushContainer('body', [
+                                template.statement(
+                                  `export function TSRDummyComponent() { return null }`,
+                                )(),
+                              ])
+                            }
 
                             found = true
                           }
