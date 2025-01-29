@@ -12,7 +12,6 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import HasShown from './has-shown'
 import './styles.css'
 
 const rootRoute = createRootRoute({
@@ -60,7 +59,7 @@ function IndexComponent() {
       <h3 id="greeting" className="bg-red-600">
         Welcome Home!
       </h3>
-      <HasShown id="top-message" />
+      <div id="top-message" />
       <div className="space-y-2">
         {Array.from({ length: 50 }).map((_, i) => (
           <div
@@ -141,7 +140,7 @@ function ByElementComponent() {
         >
           <div className="h-[100px] p-2 rounded-lg bg-red-600 border">
             First Regular List Item
-            <HasShown id="first-regular-list-item" />
+            <div id="first-regular-list-item" />
           </div>
           {Array.from({ length: 50 }).map((_, i) => (
             <div
