@@ -30,10 +30,6 @@ export const Match = React.memo(function MatchImpl({
   const routeId = useRouterState({
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
   })
-  const isLastMatch = useRouterState({
-    select: (s) =>
-      s.matches.findIndex((d) => d.id === matchId) === s.matches.length - 1,
-  })
 
   invariant(
     routeId,
@@ -79,6 +75,13 @@ export const Match = React.memo(function MatchImpl({
     select: (s) => s.loadedAt,
   })
 
+  const parentRouteId = useRouterState({
+    select: (s) => {
+      const index = s.matches.findIndex((d) => d.id === matchId)
+      return s.matches[index - 1]?.routeId as string
+    },
+  })
+
   return (
     <>
       <matchContext.Provider value={matchId}>
@@ -112,7 +115,7 @@ export const Match = React.memo(function MatchImpl({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {isLastMatch ? (
+      {parentRouteId === rootRouteId ? (
         <>
           <OnRendered />
           <ScrollRestoration />
@@ -137,10 +140,9 @@ function OnRendered() {
   )
 
   return (
-    <span
+    <script
       key={router.state.resolvedLocation?.state.key}
       suppressHydrationWarning
-      style={{ display: 'none' }}
       ref={(el) => {
         if (el) {
           router.emit({
