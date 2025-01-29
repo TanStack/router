@@ -12,6 +12,7 @@ import {
   defaultParseSearch,
   defaultStringifySearch,
   functionalUpdate,
+  getLocationChangeInfo,
   interpolatePath,
   joinPaths,
   last,
@@ -27,7 +28,6 @@ import {
 } from '@tanstack/router-core'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import { getLocationChangeInfo } from './Transitioner'
 
 import { setupScrollRestoration } from './scroll-restoration'
 import type * as React from 'react'

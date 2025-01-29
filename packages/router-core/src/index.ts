@@ -108,7 +108,7 @@ export type {
   ResolveSearchSchema,
 } from './route'
 
-export { defaultSerializeError } from './router'
+export { defaultSerializeError, getLocationChangeInfo } from './router'
 export type {
   ViewTransitionOptions,
   ExtractedBaseEntry,

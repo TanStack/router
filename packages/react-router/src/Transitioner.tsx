@@ -1,9 +1,8 @@
 import * as React from 'react'
-import { trimPathRight } from '@tanstack/router-core'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
-import type { ParsedLocation } from '@tanstack/router-core'
 
 export function Transitioner() {
   const router = useRouter()
@@ -122,16 +121,4 @@ export function Transitioner() {
   }, [isAnyPending, previousIsAnyPending, router])
 
   return null
-}
-
-export function getLocationChangeInfo(routerState: {
-  resolvedLocation?: ParsedLocation
-  location: ParsedLocation
-}) {
-  const fromLocation = routerState.resolvedLocation
-  const toLocation = routerState.location
-  const pathChanged = fromLocation?.pathname !== toLocation.pathname
-  const hrefChanged = fromLocation?.href !== toLocation.href
-  const hashChanged = fromLocation?.hash !== toLocation.hash
-  return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }

@@ -5,6 +5,7 @@ import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
   createControlledPromise,
+  getLocationChangeInfo,
   pick,
   rootRouteId,
 } from '@tanstack/router-core'
@@ -17,7 +18,6 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import { getLocationChangeInfo } from './Transitioner'
 import type { ParsedLocation } from '@tanstack/router-core'
 import type { AnyRoute } from './route'
 
