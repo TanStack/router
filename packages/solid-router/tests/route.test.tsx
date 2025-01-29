@@ -1,6 +1,6 @@
-import React from 'react'
+import * as Solid from 'solid-js'
 import { afterEach, describe, expect, it, test, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@solidjs/testing-library'
 
 import {
   RouterProvider,
@@ -74,11 +74,11 @@ describe('throws invariant exception when trying to access properties before `cr
     const IndexComponent = () => {
       const navigate = useNavigate()
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -93,9 +93,9 @@ describe('throws invariant exception when trying to access properties before `cr
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -185,7 +185,7 @@ describe('onEnter event', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, context: { foo: 'bar' } })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -216,7 +216,7 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
 
@@ -256,7 +256,7 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
 
@@ -288,7 +288,7 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
 
@@ -318,7 +318,7 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
 
@@ -345,7 +345,7 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
 
@@ -375,7 +375,7 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
 

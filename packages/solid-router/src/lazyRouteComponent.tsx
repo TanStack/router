@@ -1,5 +1,6 @@
-import * as React from 'react'
+import { Dynamic, isServer } from 'solid-js/web'
 import { Outlet } from './Match'
+import type * as Solid from 'solid-js'
 import type { AsyncRouteComponent } from './route'
 
 // If the load fails due to module not found, it may mean a new version of
@@ -14,23 +15,14 @@ function isModuleNotFoundError(error: any): boolean {
   )
 }
 
-export function ClientOnly({
-  children,
-  fallback = null,
-}: React.PropsWithChildren<{ fallback?: React.ReactNode }>) {
-  return useHydrated() ? <>{children}</> : <>{fallback}</>
-}
-
-function subscribe() {
-  return () => {}
+export function ClientOnly(
+  props: Solid.ParentProps<{ fallback?: Solid.JSX.Element }>,
+) {
+  return useHydrated() ? <>{props.children}</> : <>{props.fallback}</>
 }
 
 export function useHydrated() {
-  return React.useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false,
-  )
+  return isServer
 }
 
 export function lazyRouteComponent<
@@ -106,14 +98,14 @@ export function lazyRouteComponent<
       throw load()
     }
 
-    if (ssr?.() === false) {
+     if (ssr?.() === false) {
       return (
         <ClientOnly fallback={<Outlet />}>
-          {React.createElement(comp, props)}
+          <Dynamic component={comp} {...props} />
         </ClientOnly>
       )
     }
-    return React.createElement(comp, props)
+    return <Dynamic component={comp} {...props} />
   }
 
   ;(lazyComp as any).preload = load

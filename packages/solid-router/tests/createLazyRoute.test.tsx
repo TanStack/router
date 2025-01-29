@@ -5,7 +5,7 @@ import {
   fireEvent,
   render,
   screen,
-} from '@testing-library/react'
+} from '@solidjs/testing-library'
 import {
   Link,
   RouterProvider,
@@ -54,7 +54,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
 }
 
 describe('preload: matched routes', { timeout: 20000 }, () => {
-  configure({ reactStrictMode: true })
+
 
   it('should wait for lazy options to be streamed in before ', async () => {
     const { router } = createTestRouter(
@@ -79,7 +79,7 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
   it('should render the heavy/lazy component', async () => {
     const { router } = createTestRouter(createBrowserHistory())
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const linkToHeavy = await screen.findByText('Link to heavy')
     expect(linkToHeavy).toBeInTheDocument()

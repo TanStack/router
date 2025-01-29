@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@solidjs/testing-library'
 import {
   Link,
   Outlet,
@@ -105,7 +105,7 @@ const defaultRouter = createRouter({
 type DefaultRouter = typeof defaultRouter
 
 test('when filtering useMatches by loaderData', async () => {
-  render(<RouterProvider router={defaultRouter} />)
+  render(() => <RouterProvider router={defaultRouter} />)
 
   const searchLink = await screen.findByRole('link', { name: 'To Invoices' })
 

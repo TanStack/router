@@ -1,17 +1,7 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 import type { ConstrainLiteral } from '@tanstack/router-core'
-
-export function useStableCallback<T extends (...args: Array<any>) => any>(
-  fn: T,
-): T {
-  const fnRef = React.useRef(fn)
-  fnRef.current = fn
-
-  const ref = React.useRef((...args: Array<any>) => fnRef.current(...args))
-  return ref.current as T
-}
 
 export type StrictOrFrom<
   TRouter extends AnyRouter,
@@ -28,33 +18,34 @@ export type StrictOrFrom<
     }
 
 export const useLayoutEffect =
-  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+  typeof window !== 'undefined' ? Solid.createRenderEffect : Solid.createEffect
 
 /**
  * Taken from https://www.developerway.com/posts/implementing-advanced-use-previous-hook#part3
  */
 export function usePrevious<T>(value: T): T | null {
   // initialise the ref with previous and current values
-  const ref = React.useRef<{ value: T; prev: T | null }>({
+  let ref: { value: T; prev: T | null } = {
     value: value,
     prev: null,
-  })
+  }
 
-  const current = ref.current.value
+  const current = ref.value
 
   // if the value passed into hook doesn't match what we store as "current"
   // move the "current" to the "previous"
   // and store the passed value as "current"
   if (value !== current) {
-    ref.current = {
+    ref = {
       value: value,
       prev: current,
     }
   }
 
   // return the previous value only
-  return ref.current.prev
+  return ref.prev
 }
+
 
 /**
  * React hook to wrap `IntersectionObserver`.
@@ -82,64 +73,32 @@ export function usePrevious<T>(value: T): T | null {
  * ```
  */
 export function useIntersectionObserver<T extends Element>(
-  ref: React.RefObject<T | null>,
+  ref: Solid.Accessor<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},
-): IntersectionObserver | null {
-  const isIntersectionObserverAvailable = React.useRef(
-    typeof IntersectionObserver === 'function',
-  )
+): Solid.Accessor<IntersectionObserver | null> {
+  const isIntersectionObserverAvailable =
+    typeof IntersectionObserver === 'function'
+  let observerRef: IntersectionObserver | null = null
 
-  const observerRef = React.useRef<IntersectionObserver | null>(null)
-
-  React.useEffect(() => {
-    if (
-      !ref.current ||
-      !isIntersectionObserverAvailable.current ||
-      options.disabled
-    ) {
+  Solid.createEffect(() => {
+    const r = ref()
+    if (!r || !isIntersectionObserverAvailable || options.disabled) {
       return
     }
 
-    observerRef.current = new IntersectionObserver(([entry]) => {
+    observerRef = new IntersectionObserver(([entry]) => {
       callback(entry)
     }, intersectionObserverOptions)
 
-    observerRef.current.observe(ref.current)
+    observerRef.observe(r)
 
-    return () => {
-      observerRef.current?.disconnect()
-    }
-  }, [callback, intersectionObserverOptions, options.disabled, ref])
-
-  return observerRef.current
-}
-
-/**
- * React hook to take a `React.ForwardedRef` and returns a `ref` that can be used on a DOM element.
- *
- * @param ref - The forwarded ref
- * @returns The inner ref returned by `useRef`
- * @example
- * ```tsx
- * const MyComponent = React.forwardRef((props, ref) => {
- *  const innerRef = useForwardedRef(ref)
- *  return <div ref={innerRef} />
- * })
- * ```
- */
-export function useForwardedRef<T>(ref?: React.ForwardedRef<T>) {
-  const innerRef = React.useRef<T>(null)
-
-  React.useEffect(() => {
-    if (!ref) return
-    if (typeof ref === 'function') {
-      ref(innerRef.current)
-    } else {
-      ref.current = innerRef.current
-    }
+    Solid.onCleanup(() => {
+      observerRef?.disconnect()
+    })
   })
 
-  return innerRef
+  return () => observerRef
 }
+

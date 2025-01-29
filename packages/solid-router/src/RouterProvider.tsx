@@ -1,6 +1,6 @@
-import * as React from 'react'
 import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
+import type * as Solid from 'solid-js'
 import type { NavigateOptions, ToOptions } from './link'
 import type {
   ParsedLocation,
@@ -20,7 +20,7 @@ export interface CommitLocationOptions {
   hashScrollIntoView?: boolean | ScrollIntoViewOptions
   viewTransition?: boolean | ViewTransitionOptions
   /**
-   * @deprecated All navigations use React transitions under the hood now
+   * @deprecated All navigations use Solid transitions under the hood now
    **/
   startTransition?: boolean
   ignoreBlocker?: boolean
@@ -64,7 +64,7 @@ export function RouterContextProvider<
   children,
   ...rest
 }: RouterProps<TRouter, TDehydrated> & {
-  children: React.ReactNode
+  children: Solid.JSXElement
 }) {
   // Allow the router to update options on the router instance
   router.update({

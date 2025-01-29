@@ -1,4 +1,3 @@
-import * as React from 'react'
 import warning from 'tiny-warning'
 import { DefaultGlobalNotFound } from './not-found'
 import type { AnyRouter } from './router'

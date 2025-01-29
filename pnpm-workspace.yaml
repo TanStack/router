@@ -1,5 +1,6 @@
 packages:
   - 'packages/*'
+  - '!packages/solid-router-copy'
   - 'examples/react/*'
   - 'examples/react/router-monorepo-react-query/packages/*'
   - 'examples/react/router-monorepo-simple/packages/*'

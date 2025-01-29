@@ -3,7 +3,7 @@ import {
   createMemoryHistory,
   parseHref,
 } from '@tanstack/history'
-import { Store, batch } from '@tanstack/react-store'
+import { Store, batch } from '@tanstack/solid-store'
 import invariant from 'tiny-invariant'
 import {
   cleanPath,
@@ -27,14 +27,14 @@ import {
 } from '@tanstack/router-core'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import type * as React from 'react'
+import type * as Solid from 'solid-js'
 import type {
   HistoryLocation,
   HistoryState,
   ParsedHistoryState,
   RouterHistory,
 } from '@tanstack/history'
-import type { NoInfer } from '@tanstack/react-store'
+import type { NoInfer } from '@tanstack/solid-store'
 
 import type {
   AnyContext,
@@ -98,7 +98,7 @@ export interface Register {
   // router: Router
 }
 
-export type AnyRouter = Router<any, any, any, any, any, any>
+export type  AnyRouter = Router<any, any, any, any, any, any>
 
 export type AnyRouterWithContext<TContext> = Router<
   AnyRouteWithContext<TContext>,
@@ -264,7 +264,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultoncatch-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
    */
-  defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
+  defaultOnCatch?: (error: Error) => void
   /**
    * If `true`, route navigations will called using `document.startViewTransition()`.
    *
@@ -377,7 +377,7 @@ export interface RouterOptions<
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#wrap-property)
    */
-  Wrap?: (props: { children: any }) => React.JSX.Element
+  Wrap?: (props: { children: any }) => Solid.JSX.Element
   /**
    * A component that will be used to wrap the inner contents of the router.
    *
@@ -387,7 +387,7 @@ export interface RouterOptions<
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#innerwrap-property)
    */
-  InnerWrap?: (props: { children: any }) => React.JSX.Element
+  InnerWrap?: (props: { children: any }) => Solid.JSXElement
   /**
    * Use `notFoundComponent` instead.
    *
@@ -719,7 +719,7 @@ export class Router<
   // These are default implementations that can optionally be overridden
   // by the router provider once rendered. We provide these so that the
   // router can be used in a non-react environment if necessary
-  startReactTransition: (fn: () => void) => void = (fn) => fn()
+  startSolidTransition: (fn: () => void) => void = (fn) => fn()
 
   update = (
     newOptions: RouterConstructorOptions<
@@ -1863,7 +1863,7 @@ export class Router<
 
     // eslint-disable-next-line prefer-const
     loadPromise = new Promise<void>((resolve) => {
-      this.startReactTransition(async () => {
+      this.startSolidTransition(async () => {
         try {
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation

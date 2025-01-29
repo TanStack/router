@@ -1,4 +1,4 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
@@ -11,7 +11,7 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRoute, ReactNode } from './route'
+import type { AnyRoute, SolidNode } from './route'
 import type {
   ControlledPromise,
   DeepPartial,
@@ -83,9 +83,9 @@ export interface RouteMatch<
   loaderDeps: TLoaderDeps
   preload: boolean
   invalid: boolean
-  meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
-  links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
-  scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
+  meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
+  links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
+  scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
@@ -128,7 +128,7 @@ export function Matches() {
   const ResolvedSuspense =
     router.isServer || (typeof document !== 'undefined' && router.clientSsr)
       ? SafeFragment
-      : React.Suspense
+      : Solid.Suspense
 
   const inner = (
     <ResolvedSuspense fallback={pendingElement}>
@@ -158,7 +158,7 @@ function MatchesInner() {
   return (
     <matchContext.Provider value={matchId}>
       <CatchBoundary
-        getResetKey={() => resetKey}
+        getResetKey={() => resetKey()}
         errorComponent={ErrorComponent}
         onCatch={(error) => {
           warning(
@@ -168,7 +168,7 @@ function MatchesInner() {
           warning(false, error.message || error.toString())
         }}
       >
-        {matchId ? <Match matchId={matchId} /> : null}
+        {matchId() ? <Match matchId={matchId()!} /> : null}
       </CatchBoundary>
     </matchContext.Provider>
   )
@@ -201,8 +201,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     structuralSharing: true as any,
   })
 
-  return React.useCallback(
-    <
+  return <
       const TFrom extends string = string,
       const TTo extends string | undefined = undefined,
       const TMaskFrom extends string = TFrom,
@@ -218,9 +217,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         fuzzy,
         includeSearch,
       })
-    },
-    [router],
-  )
+    }
 }
 
 export type MakeMatchRouteOptions<
@@ -237,8 +234,8 @@ export type MakeMatchRouteOptions<
           TRouter['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
-      ) => ReactNode)
-    | React.ReactNode
+      ) => Solid.JSXElement)
+    | Solid.JSXElement
 }
 
 export function MatchRoute<
@@ -315,13 +312,13 @@ export function useParentMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextMatchId = React.useContext(matchContext)
+  const contextMatchId = Solid.useContext(matchContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
-        matches.findIndex((d) => d.id === contextMatchId),
+        matches.findIndex((d) => d.id === contextMatchId()),
       )
       return opts?.select ? opts.select(matches) : matches
     },
@@ -337,12 +334,12 @@ export function useChildMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextMatchId = React.useContext(matchContext)
+  const contextMatchId = Solid.useContext(matchContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
-        matches.findIndex((d) => d.id === contextMatchId) + 1,
+        matches.findIndex((d) => d.id === contextMatchId()) + 1,
       )
       return opts?.select ? opts.select(matches) : matches
     },

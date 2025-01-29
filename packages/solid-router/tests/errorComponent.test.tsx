@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import {
   Link,
@@ -73,7 +73,7 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
             defaultPreload: options.preload,
           })
 
-          render(<RouterProvider router={router} />)
+          render(() => <RouterProvider router={router} />)
 
           const linkToAbout = await screen.findByRole('link', {
             name: 'link to about',
@@ -116,7 +116,7 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
             defaultPreload: options.preload,
           })
 
-          render(<RouterProvider router={router} />)
+          render(() => <RouterProvider router={router} />)
 
           const errorComponent = await screen.findByText(
             `Error: error thrown`,

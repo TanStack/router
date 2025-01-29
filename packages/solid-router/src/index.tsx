@@ -241,7 +241,7 @@ export type {
   AnyRootRoute,
   ResolveFullPath,
   RouteMask,
-  ReactNode,
+  SolidNode,
   SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,
@@ -341,8 +341,7 @@ export { useLocation } from './useLocation'
 export { useCanGoBack } from './useCanGoBack'
 
 export {
-  useLayoutEffect, // SSR
-  useStableCallback,
+  useLayoutEffect
 } from './utils'
 
 export {

@@ -1,6 +1,6 @@
-import pluginReact from '@eslint-react/eslint-plugin'
+import pluginSolid from '@eslint-react/eslint-plugin'
 // @ts-expect-error
-import pluginReactHooks from 'eslint-plugin-react-hooks'
+import pluginSolidHooks from 'eslint-plugin-react-hooks'
 import rootConfig from '../../eslint.config.js'
 
 export default [
@@ -10,8 +10,8 @@ export default [
   },
   {
     plugins: {
-      'react-hooks': pluginReactHooks,
-      '@eslint-react': pluginReact,
+      'react-hooks': pluginSolidHooks,
+      '@eslint-react': pluginSolid,
     },
     rules: {
       '@eslint-react/no-unstable-context-value': 'off',

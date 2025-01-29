@@ -1,15 +1,12 @@
-import React from 'react'
+import * as Solid from 'solid-js'
 import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 import {
-  act,
   cleanup,
-  configure,
   fireEvent,
   render,
-  renderHook,
   screen,
   waitFor,
-} from '@testing-library/react'
+} from '@solidjs/testing-library'
 
 import { z } from 'zod'
 import {
@@ -30,7 +27,6 @@ import {
   useMatchRoute,
   useParams,
   useRouteContext,
-  useRouterState,
   useSearch,
 } from '../src'
 import {
@@ -59,71 +55,74 @@ afterEach(() => {
 const WAIT_TIME = 300
 
 describe('Link', () => {
-  test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
-    /**
-     * This is the hook that will be testet.
-     *
-     * @returns custom state
-     */
-    const useLocationFromState = () => {
-      const { location } = useRouterState()
 
-      // could return anything just to prove it will work.
-      const memoLocation = React.useMemo(() => {
-        return {
-          href: location.href,
-          pathname: location.pathname,
-        }
-      }, [location.href, location.pathname])
+  // rerender doesn't exist in solid
 
-      return memoLocation
-    }
+  // test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
+  //   /**
+  //    * This is the hook that will be testet.
+  //    *
+  //    * @returns custom state
+  //    */
+  //   const useLocationFromState = () => {
+  //     const { location } = useRouterState()
 
-    const IndexComponent = ({ children }: { children: React.ReactNode }) => {
-      return <h1 data-testid="testId">{children}</h1>
-    }
-    const RouterContainer = ({ children }: { children: React.ReactNode }) => {
-      const childrenRef = React.useRef(children)
-      const memoedRouteTree = React.useMemo(() => {
-        const rootRoute = createRootRoute()
-        const indexRoute = createRoute({
-          getParentRoute: () => rootRoute,
-          path: '/',
-          component: () => (
-            <IndexComponent>{childrenRef.current}</IndexComponent>
-          ),
-        })
-        return rootRoute.addChildren([indexRoute])
-      }, [])
+  //     // could return anything just to prove it will work.
+  //     const memoLocation = Solid.useMemo(() => {
+  //       return {
+  //         href: location.href,
+  //         pathname: location.pathname,
+  //       }
+  //     }, [location.href, location.pathname])
 
-      const memoedRouter = React.useMemo(() => {
-        const router = createRouter({
-          routeTree: memoedRouteTree,
-        })
+  //     return memoLocation
+  //   }
 
-        return router
-      }, [memoedRouteTree])
-      return <RouterProvider router={memoedRouter} />
-    }
+  //   const IndexComponent = ({ children }: { children: Solid.JSXElement }) => {
+  //     return <h1 data-testid="testId">{children}</h1>
+  //   }
+  //   const RouterContainer = ({ children }: { children: Solid.JSXElement }) => {
+  //     const childrenRef = Solid.useRef(children)
+  //     const memoedRouteTree = Solid.useMemo(() => {
+  //       const rootRoute = createRootRoute()
+  //       const indexRoute = createRoute({
+  //         getParentRoute: () => rootRoute,
+  //         path: '/',
+  //         component: () => (
+  //           <IndexComponent>{childrenRef.current}</IndexComponent>
+  //         ),
+  //       })
+  //       return rootRoute.addChildren([indexRoute])
+  //     }, [])
 
-    const { result, rerender } = renderHook(
-      () => {
-        return useLocationFromState()
-      },
-      { wrapper: RouterContainer },
-    )
-    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible())
-    expect(result.current).toBeTruthy()
+  //     const memoedRouter = Solid.useMemo(() => {
+  //       const router = createRouter({
+  //         routeTree: memoedRouteTree,
+  //       })
 
-    const original = result.current
+  //       return router
+  //     }, [memoedRouteTree])
+  //     return <RouterProvider router={memoedRouter} />
+  //   }
 
-    rerender()
+  //   const { result, rerender } = renderHook(
+  //     () => {
+  //       return useLocationFromState()
+  //     },
+  //     { wrapper: RouterContainer },
+  //   )
+  //   await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible())
+  //   expect(result.current).toBeTruthy()
 
-    await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible())
-    const updated = result.current
+  //   const original = result.current
 
-    expect(original).toBe(updated)
-  })
+  //   rerender()
+
+  //   await waitFor(() => expect(screen.getByTestId('testId')).toBeVisible())
+  //   const updated = result.current
+
+  //   expect(original).toBe(updated)
+  // })
 
   test('when a Link is disabled', async () => {
     const rootRoute = createRootRoute()
@@ -150,7 +149,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -175,10 +174,10 @@ describe('Link', () => {
         return (
           <>
             <h1>Index</h1>
-            <Link to="/" activeProps={{ className: 'active' }}>
+            <Link to="/" activeProps={{ class: 'active' }}>
               Index
             </Link>
-            <Link to="/posts" inactiveProps={{ className: 'inactive' }}>
+            <Link to="/posts" inactiveProps={{ class: 'inactive' }}>
               Posts
             </Link>
           </>
@@ -198,7 +197,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
 
@@ -230,14 +229,14 @@ describe('Link', () => {
               <Link
                 to="/"
                 activeOptions={{ exact: true }}
-                inactiveProps={{ className: 'inactive' }}
+                inactiveProps={{ class: 'inactive' }}
               >
                 Index exact
               </Link>
               <Link
                 to="/"
                 search={{ foo: undefined }}
-                inactiveProps={{ className: 'inactive' }}
+                inactiveProps={{ class: 'inactive' }}
                 activeOptions={{ explicitUndefined: opts.explicitUndefined }}
               >
                 Index foo=undefined
@@ -249,7 +248,7 @@ describe('Link', () => {
                   exact: true,
                   explicitUndefined: opts.explicitUndefined,
                 }}
-                inactiveProps={{ className: 'inactive' }}
+                inactiveProps={{ class: 'inactive' }}
               >
                 Index foo=undefined-exact
               </Link>
@@ -257,7 +256,7 @@ describe('Link', () => {
                 to="/"
                 search={{ foo: 'bar' }}
                 inactiveProps={{
-                  className: 'inactive',
+                  class: 'inactive',
                 }}
               >
                 Index foo=bar
@@ -271,7 +270,7 @@ describe('Link', () => {
         routeTree: rootRoute.addChildren([indexRoute]),
       })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       // round 1
       const indexExactLink = await screen.findByRole('link', {
@@ -420,10 +419,10 @@ describe('Link', () => {
         return (
           <>
             <h1>Index</h1>
-            <Link to="/" activeProps={{ className: 'active' }}>
+            <Link to="/" activeProps={{ class: 'active' }}>
               Index
             </Link>
-            <Link to="/posts" inactiveProps={{ className: 'inactive' }}>
+            <Link to="/posts" inactiveProps={{ class: 'inactive' }}>
               Posts
             </Link>
           </>
@@ -443,7 +442,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const errorText = await screen.findByText('Oops! Something went wrong!')
     expect(errorText).toBeInTheDocument()
@@ -474,7 +473,7 @@ describe('Link', () => {
           <>
             <h1>Posts</h1>
             <Link to="/">Index</Link>
-            <Link to="/posts" activeProps={{ className: 'active' }}>
+            <Link to="/posts" activeProps={{ class: 'active' }}>
               Posts
             </Link>
           </>
@@ -486,7 +485,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -534,7 +533,7 @@ describe('Link', () => {
           <>
             <h1>Posts</h1>
             <Link to="/">Index</Link>
-            <Link to="/posts" activeProps={{ className: 'active' }}>
+            <Link to="/posts" activeProps={{ class: 'active' }}>
               Posts
             </Link>
           </>
@@ -547,7 +546,7 @@ describe('Link', () => {
       basepath: '/app',
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -611,7 +610,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -682,7 +681,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -749,7 +748,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -816,7 +815,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -882,7 +881,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -943,7 +942,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute, authRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -997,7 +996,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -1043,7 +1042,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -1091,7 +1090,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -1153,7 +1152,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', { name: 'Post' })
 
@@ -1185,7 +1184,7 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([indexRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const errorText = await screen.findByText(
       'Expected rendering error message',
@@ -1245,7 +1244,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'To first post',
@@ -1332,7 +1331,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -1430,7 +1429,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
@@ -1558,7 +1557,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
 
@@ -1695,7 +1694,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
 
@@ -1832,7 +1831,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
 
@@ -1957,7 +1956,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
 
@@ -2101,7 +2100,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
 
@@ -2241,7 +2240,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
 
@@ -2385,7 +2384,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
 
@@ -2542,7 +2541,7 @@ describe('Link', () => {
       ]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
 
@@ -2635,7 +2634,7 @@ describe('Link', () => {
       routeMasks: [routeMask],
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const informationLink = await screen.findByRole('link', {
       name: 'To first post',
@@ -2722,7 +2721,7 @@ describe('Link', () => {
       routeTree,
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const informationLink = await screen.findByRole('link', {
       name: 'To first post',
@@ -2799,11 +2798,11 @@ describe('Link', () => {
     })
 
     const LoginComponent = () => {
-      const [status, setStatus] = React.useState<'idle' | 'success' | 'error'>(
+      const [status, setStatus] = Solid.createSignal<'idle' | 'success' | 'error'>(
         'idle',
       )
 
-      React.useEffect(() => {
+      Solid.onMount(() => {
         const onLoad = async () => {
           try {
             await router.preloadRoute({
@@ -2817,9 +2816,9 @@ describe('Link', () => {
           }
         }
         onLoad()
-      }, [])
+      })
 
-      return <>{status === 'success' ? 'Login!' : 'Waiting...'}</>
+      return <>{status() === 'success' ? 'Login!' : 'Waiting...'}</>
     }
 
     const loginRoute = createRoute({
@@ -2840,7 +2839,7 @@ describe('Link', () => {
       defaultPreload: 'intent',
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'To first post',
@@ -2946,7 +2945,7 @@ describe('Link', () => {
       routeTree,
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'To first post',
@@ -3046,7 +3045,7 @@ describe('Link', () => {
       routeTree,
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'To first post',
@@ -3141,7 +3140,7 @@ describe('Link', () => {
       defaultPreload: 'intent',
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'To first post',
@@ -3242,7 +3241,7 @@ describe('Link', () => {
       defaultPreload: 'intent',
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'To first post',
@@ -3334,7 +3333,7 @@ describe('Link', () => {
       routeTree,
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Go to posts' })
 
@@ -3404,7 +3403,7 @@ describe('Link', () => {
     const routeTree = rootRoute.addChildren([indexRoute, postRoute])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'Go to post',
@@ -3466,7 +3465,7 @@ describe('Link', () => {
     const routeTree = rootRoute.addChildren([indexRoute, postRoute])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'Go to post',
@@ -3530,7 +3529,7 @@ describe('Link', () => {
     const routeTree = rootRoute.addChildren([indexRoute, postRoute])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', {
       name: 'Go to post',
@@ -3599,7 +3598,7 @@ describe('Link', () => {
     const routeTree = rootRoute.addChildren([indexRoute, postRoute])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postLink2 = await screen.findByRole('link', {
       name: 'Go to post 2',
@@ -3635,7 +3634,7 @@ describe('Link', () => {
         defaultPreload: preload,
       })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       const indexLink = await screen.findByRole('link', { name: 'Index Link' })
       expect(indexLink).toBeInTheDocument()
@@ -3667,7 +3666,7 @@ describe('Link', () => {
         defaultPreload: preload,
       })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       const indexLink = await screen.findByRole('link', { name: 'Index Link' })
       expect(indexLink).toBeInTheDocument()
@@ -3694,16 +3693,16 @@ describe('Link', () => {
       defaultPreload: 'viewport',
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const indexLink = await screen.findByRole('link', { name: 'Index Link' })
     expect(indexLink).toBeInTheDocument()
 
     expect(ioObserveMock).toBeCalled()
-    expect(ioObserveMock).toBeCalledTimes(2) // since React.StrictMode is enabled it double renders
+    expect(ioObserveMock).toBeCalledTimes(2) // since Solid.StrictMode is enabled it double renders
 
     expect(ioDisconnectMock).toBeCalled()
-    expect(ioDisconnectMock).toBeCalledTimes(1) // since React.StrictMode is enabled it should have disconnected
+    expect(ioDisconnectMock).toBeCalledTimes(1) // since Solid.StrictMode is enabled it should have disconnected
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {
@@ -3738,7 +3737,7 @@ describe('Link', () => {
       defaultPreload: 'render',
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const aboutLink = await screen.findByRole('link', { name: 'About Link' })
     expect(aboutLink).toBeInTheDocument()
@@ -3778,7 +3777,7 @@ describe('Link', () => {
       defaultPendingComponent: () => <p>Loading...</p>,
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const linkToPosts = await screen.findByRole('link', {
       name: 'link to posts',
@@ -3891,7 +3890,7 @@ describe('Link', () => {
         defaultPreload: 'intent',
       })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       const link = await screen.findByTestId(testIdToHover)
       fireEvent.mouseOver(link)
 
@@ -3923,7 +3922,7 @@ describe('Link', () => {
 })
 
 describe('createLink', () => {
-  configure({ reactStrictMode: true })
+
 
   it('should pass the "disabled" prop to the rendered target element', async () => {
     const CustomLink = createLink('button')
@@ -3942,7 +3941,7 @@ describe('createLink', () => {
       routeTree: rootRoute.addChildren([indexRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const customElement = await screen.findByText('Index')
 
@@ -3971,7 +3970,7 @@ describe('createLink', () => {
       routeTree: rootRoute.addChildren([indexRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const customElement = await screen.findByText('Index')
 
@@ -3980,17 +3979,26 @@ describe('createLink', () => {
   })
 
   it('should pass activeProps and inactiveProps to the custom link', async () => {
-    const Button: React.FC<
-      React.PropsWithChildren<{
+    const Button: Solid.Component<
+      Solid.ParentProps<{
         active?: boolean
         foo?: boolean
         overrideMeIfYouWant: string
       }>
-    > = ({ active, foo, children, ...props }) => (
-      <button {...props}>
-        active: {active ? 'yes' : 'no'} - foo: {foo ? 'yes' : 'no'} - {children}
-      </button>
-    )
+    > = (props) => {
+      const [local, rest] = Solid.splitProps(props, [
+        'active',
+        'foo',
+        'children',
+      ])
+
+      return (
+        <button {...rest}>
+          active: {local.active ? 'yes' : 'no'} - foo:{' '}
+          {local.foo ? 'yes' : 'no'} - {local.children}
+        </button>
+      )
+    }
 
     const ButtonLink = createLink(Button)
 
@@ -4050,7 +4058,7 @@ describe('createLink', () => {
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const button1 = await screen.findByText('active: yes - foo: no - Button1')
     expect(button1.getAttribute('data-hello')).toBe('world')
@@ -4129,7 +4137,7 @@ describe('search middleware', () => {
       history: createMemoryHistory({ initialEntries: ['/?foo=bar'] }),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
     expect(postsLink).toHaveAttribute('href')
@@ -4211,7 +4219,7 @@ describe('search middleware', () => {
       history: createMemoryHistory({ initialEntries: ['/?root=abc'] }),
     })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     async function checkSearchValue(value: string) {
       const searchValue = await screen.findByTestId('search')
@@ -4230,7 +4238,7 @@ describe('search middleware', () => {
     await checkPostsLink('abc')
 
     const updateSearchLink = await screen.findByTestId('update-search')
-    act(() => fireEvent.click(updateSearchLink))
+    fireEvent.click(updateSearchLink)
     await checkSearchValue('newValue')
     await checkPostsLink('newValue')
     expect(router.state.location.search).toEqual({ root: 'newValue' })
@@ -4313,7 +4321,7 @@ describe('search middleware', () => {
 
     window.history.replaceState(null, 'root', '/?root=abc')
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const searchValue = await screen.findByTestId('posts-search')
     expect(searchValue).toHaveTextContent('default')
@@ -4402,7 +4410,7 @@ describe('search middleware', () => {
         ]),
       })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       const postLink = await screen.findByTestId('link-to-post-1')
 

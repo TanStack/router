@@ -1,7 +1,8 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 
 import { TSR_DEFERRED_PROMISE, defer } from '@tanstack/router-core'
 import type { DeferredPromise } from '@tanstack/router-core'
+import type { SolidNode } from './route'
 
 export type AwaitOptions<T> = {
   promise: Promise<T>
@@ -25,24 +26,24 @@ export function useAwaited<T>({
 
 export function Await<T>(
   props: AwaitOptions<T> & {
-    fallback?: React.ReactNode
-    children: (result: T) => React.ReactNode
+    fallback?: SolidNode
+    children: (result: T) => SolidNode
   },
 ) {
   const inner = <AwaitInner {...props} />
   if (props.fallback) {
-    return <React.Suspense fallback={props.fallback}>{inner}</React.Suspense>
+    return <Solid.Suspense fallback={props.fallback}>{inner}</Solid.Suspense>
   }
   return inner
 }
 
 function AwaitInner<T>(
   props: AwaitOptions<T> & {
-    fallback?: React.ReactNode
-    children: (result: T) => React.ReactNode
+    fallback?: SolidNode
+    children: (result: T) => SolidNode
   },
-): React.JSX.Element {
+): Solid.JSX.Element {
   const [data] = useAwaited(props)
 
-  return props.children(data) as React.JSX.Element
+  return props.children(data)
 }

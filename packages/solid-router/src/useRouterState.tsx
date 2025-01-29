@@ -1,22 +1,15 @@
-import { useStore } from '@tanstack/react-store'
-import { useRef } from 'react'
-import { replaceEqualDeep } from '@tanstack/router-core'
+import { useStore } from '@tanstack/solid-store'
 import { useRouter } from './useRouter'
+import type { AnyRouter, RegisteredRouter, RouterState } from './router'
+import type { Accessor } from 'solid-js'
 import type {
   StructuralSharingOption,
-  ValidateSelected,
-} from './structuralSharing'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
+} from './structuralSharing';
 
-export type UseRouterStateOptions<
-  TRouter extends AnyRouter,
-  TSelected,
-  TStructuralSharing,
-> = {
+export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected, TStructuralSharing extends boolean = boolean> = {
   router?: TRouter
-  select?: (
-    state: RouterState<TRouter['routeTree']>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+  select?: (state: RouterState<TRouter['routeTree']>) => TSelected // TODO: might need to ValidateJSON here
+
 } & StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
 export type UseRouterStateResult<
@@ -27,29 +20,18 @@ export type UseRouterStateResult<
 export function useRouterState<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
+
 >(
-  opts?: UseRouterStateOptions<TRouter, TSelected, TStructuralSharing>,
-): UseRouterStateResult<TRouter, TSelected> {
+  opts?: UseRouterStateOptions<TRouter, TSelected>,
+): Accessor<UseRouterStateResult<TRouter, TSelected>> {
   const contextRouter = useRouter<TRouter>({
     warn: opts?.router === undefined,
   })
   const router = opts?.router || contextRouter
-  const previousResult =
-    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
 
   return useStore(router.__store, (state) => {
-    if (opts?.select) {
-      if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
-        const newSlice = replaceEqualDeep(
-          previousResult.current,
-          opts.select(state),
-        )
-        previousResult.current = newSlice
-        return newSlice
-      }
-      return opts.select(state)
-    }
+    if (opts?.select) return opts.select(state)
+
     return state
-  }) as UseRouterStateResult<TRouter, TSelected>
+  }) as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }
