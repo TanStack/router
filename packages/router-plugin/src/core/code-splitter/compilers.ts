@@ -47,22 +47,20 @@ function removeSplitSearchParamFromFilename(filename: string) {
   return bareFilename!
 }
 
-/**
- * [routeConfigIdent, { ...splitMeta }]
- */
-const nodeSplitConfig: Array<
-  [
-    'component' | 'loader', // The key on the Route class, e.g. component, loader, errorComponent, pendingComponent, beforeLoad, etc.
-    {
-      exportName: string
-      importerName: string
-      splitStrategy: 'normal' | 'react-component'
-    },
-  ]
-> = [
+type SplitRouteIdent = 'component' | 'loader'
+const nodeSplitConfig = new Map<
+  SplitRouteIdent,
+  {
+    routeIdent: SplitRouteIdent
+    exportName: string
+    importerName: string
+    splitStrategy: 'normal' | 'react-component'
+  }
+>([
   [
     'component',
     {
+      routeIdent: 'component',
       exportName: 'component',
       importerName: '$$splitComponentImporter',
       splitStrategy: 'react-component',
@@ -71,12 +69,13 @@ const nodeSplitConfig: Array<
   [
     'loader',
     {
+      routeIdent: 'loader',
       exportName: 'loader',
       importerName: '$$splitLoaderImporter',
       splitStrategy: 'normal',
     },
   ],
-] as const
+])
 
 export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
@@ -134,15 +133,15 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                       if (t.isIdentifier(prop.key)) {
                         const key = prop.key.name
                         // find key in nodeSplitConfig
-                        const nodeConfig = nodeSplitConfig.find(
-                          ([routeConfigIdent]) => routeConfigIdent === key,
+                        const isNodeConfigAvailable = nodeSplitConfig.has(
+                          key as any,
                         )
 
-                        if (!nodeConfig) {
+                        if (!isNodeConfigAvailable) {
                           return
                         }
 
-                        const splitNodeMeta = nodeConfig[1]
+                        const splitNodeMeta = nodeSplitConfig.get(key as any)!
 
                         if (splitNodeMeta.splitStrategy === 'react-component') {
                           const value = prop.value
@@ -202,7 +201,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                           }
 
                           // If it's a component, we need to pass the function to check the Route.ssr value
-                          if (nodeConfig[0] === 'component') {
+                          if (key === 'component') {
                             prop.value = template.expression(
                               `lazyRouteComponent(${splitNodeMeta.importerName}, '${splitNodeMeta.exportName}', () => Route.ssr)`,
                             )()
@@ -253,11 +252,12 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
                           // Prepend the import statement to the program along with the importer function
                           if (!hasImportedOrDefinedIdentifier('lazyFn')) {
-                            programPath.unshiftContainer('body', [
+                            programPath.unshiftContainer(
+                              'body',
                               template.smart(
                                 `import { lazyFn } from '@tanstack/react-router'`,
-                              )() as t.Statement,
-                            ])
+                              )(),
+                            )
                           }
 
                           // Check to see if the importer function is already defined
