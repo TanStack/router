@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/react-router"
+    "directory": "packages/solid-router"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
