@@ -417,7 +417,7 @@ export interface UpdatableRouteOptions<
   postSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  onCatch?: (error: Error) => void
+  onCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
