@@ -106,10 +106,8 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
       {(
         [
           linkOptions({ to: '/normal-page' }),
-          linkOptions({ to: '/lazy-page' }),
-          linkOptions({ to: '/virtual-page' }),
-          linkOptions({ to: '/lazy-with-loader-page' }),
-          linkOptions({ to: '/page-with-search', search: { where: type } }),
+          linkOptions({ to: '/with-loader' }),
+          linkOptions({ to: '/with-search', search: { where: type } }),
         ] as const
       ).map((options, i) => (
         <Link

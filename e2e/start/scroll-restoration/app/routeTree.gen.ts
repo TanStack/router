@@ -8,20 +8,13 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
-
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexImport } from './routes/index'
-import { Route as testsPageWithSearchImport } from './routes/(tests)/page-with-search'
+import { Route as testsWithSearchImport } from './routes/(tests)/with-search'
+import { Route as testsWithLoaderImport } from './routes/(tests)/with-loader'
 import { Route as testsNormalPageImport } from './routes/(tests)/normal-page'
-import { Route as testsLazyWithLoaderPageImport } from './routes/(tests)/lazy-with-loader-page'
-import { Route as testsLazyPageImport } from './routes/(tests)/lazy-page'
-
-// Create Virtual Routes
-
-const testsVirtualPageLazyImport = createFileRoute('/(tests)/virtual-page')()
 
 // Create/Update Routes
 
@@ -31,17 +24,15 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const testsVirtualPageLazyRoute = testsVirtualPageLazyImport
-  .update({
-    id: '/(tests)/virtual-page',
-    path: '/virtual-page',
-    getParentRoute: () => rootRoute,
-  } as any)
-  .lazy(() => import('./routes/(tests)/virtual-page.lazy').then((d) => d.Route))
+const testsWithSearchRoute = testsWithSearchImport.update({
+  id: '/(tests)/with-search',
+  path: '/with-search',
+  getParentRoute: () => rootRoute,
+} as any)
 
-const testsPageWithSearchRoute = testsPageWithSearchImport.update({
-  id: '/(tests)/page-with-search',
-  path: '/page-with-search',
+const testsWithLoaderRoute = testsWithLoaderImport.update({
+  id: '/(tests)/with-loader',
+  path: '/with-loader',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -50,24 +41,6 @@ const testsNormalPageRoute = testsNormalPageImport.update({
   path: '/normal-page',
   getParentRoute: () => rootRoute,
 } as any)
-
-const testsLazyWithLoaderPageRoute = testsLazyWithLoaderPageImport
-  .update({
-    id: '/(tests)/lazy-with-loader-page',
-    path: '/lazy-with-loader-page',
-    getParentRoute: () => rootRoute,
-  } as any)
-  .lazy(() =>
-    import('./routes/(tests)/lazy-with-loader-page.lazy').then((d) => d.Route),
-  )
-
-const testsLazyPageRoute = testsLazyPageImport
-  .update({
-    id: '/(tests)/lazy-page',
-    path: '/lazy-page',
-    getParentRoute: () => rootRoute,
-  } as any)
-  .lazy(() => import('./routes/(tests)/lazy-page.lazy').then((d) => d.Route))
 
 // Populate the FileRoutesByPath interface
 
@@ -80,20 +53,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    '/(tests)/lazy-page': {
-      id: '/(tests)/lazy-page'
-      path: '/lazy-page'
-      fullPath: '/lazy-page'
-      preLoaderRoute: typeof testsLazyPageImport
-      parentRoute: typeof rootRoute
-    }
-    '/(tests)/lazy-with-loader-page': {
-      id: '/(tests)/lazy-with-loader-page'
-      path: '/lazy-with-loader-page'
-      fullPath: '/lazy-with-loader-page'
-      preLoaderRoute: typeof testsLazyWithLoaderPageImport
-      parentRoute: typeof rootRoute
-    }
     '/(tests)/normal-page': {
       id: '/(tests)/normal-page'
       path: '/normal-page'
@@ -101,18 +60,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testsNormalPageImport
       parentRoute: typeof rootRoute
     }
-    '/(tests)/page-with-search': {
-      id: '/(tests)/page-with-search'
-      path: '/page-with-search'
-      fullPath: '/page-with-search'
-      preLoaderRoute: typeof testsPageWithSearchImport
+    '/(tests)/with-loader': {
+      id: '/(tests)/with-loader'
+      path: '/with-loader'
+      fullPath: '/with-loader'
+      preLoaderRoute: typeof testsWithLoaderImport
       parentRoute: typeof rootRoute
     }
-    '/(tests)/virtual-page': {
-      id: '/(tests)/virtual-page'
-      path: '/virtual-page'
-      fullPath: '/virtual-page'
-      preLoaderRoute: typeof testsVirtualPageLazyImport
+    '/(tests)/with-search': {
+      id: '/(tests)/with-search'
+      path: '/with-search'
+      fullPath: '/with-search'
+      preLoaderRoute: typeof testsWithSearchImport
       parentRoute: typeof rootRoute
     }
   }
@@ -122,76 +81,52 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/lazy-page': typeof testsLazyPageRoute
-  '/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
   '/normal-page': typeof testsNormalPageRoute
-  '/page-with-search': typeof testsPageWithSearchRoute
-  '/virtual-page': typeof testsVirtualPageLazyRoute
+  '/with-loader': typeof testsWithLoaderRoute
+  '/with-search': typeof testsWithSearchRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/lazy-page': typeof testsLazyPageRoute
-  '/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
   '/normal-page': typeof testsNormalPageRoute
-  '/page-with-search': typeof testsPageWithSearchRoute
-  '/virtual-page': typeof testsVirtualPageLazyRoute
+  '/with-loader': typeof testsWithLoaderRoute
+  '/with-search': typeof testsWithSearchRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
-  '/(tests)/lazy-page': typeof testsLazyPageRoute
-  '/(tests)/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
   '/(tests)/normal-page': typeof testsNormalPageRoute
-  '/(tests)/page-with-search': typeof testsPageWithSearchRoute
-  '/(tests)/virtual-page': typeof testsVirtualPageLazyRoute
+  '/(tests)/with-loader': typeof testsWithLoaderRoute
+  '/(tests)/with-search': typeof testsWithSearchRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/lazy-page'
-    | '/lazy-with-loader-page'
-    | '/normal-page'
-    | '/page-with-search'
-    | '/virtual-page'
+  fullPaths: '/' | '/normal-page' | '/with-loader' | '/with-search'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/lazy-page'
-    | '/lazy-with-loader-page'
-    | '/normal-page'
-    | '/page-with-search'
-    | '/virtual-page'
+  to: '/' | '/normal-page' | '/with-loader' | '/with-search'
   id:
     | '__root__'
     | '/'
-    | '/(tests)/lazy-page'
-    | '/(tests)/lazy-with-loader-page'
     | '/(tests)/normal-page'
-    | '/(tests)/page-with-search'
-    | '/(tests)/virtual-page'
+    | '/(tests)/with-loader'
+    | '/(tests)/with-search'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  testsLazyPageRoute: typeof testsLazyPageRoute
-  testsLazyWithLoaderPageRoute: typeof testsLazyWithLoaderPageRoute
   testsNormalPageRoute: typeof testsNormalPageRoute
-  testsPageWithSearchRoute: typeof testsPageWithSearchRoute
-  testsVirtualPageLazyRoute: typeof testsVirtualPageLazyRoute
+  testsWithLoaderRoute: typeof testsWithLoaderRoute
+  testsWithSearchRoute: typeof testsWithSearchRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  testsLazyPageRoute: testsLazyPageRoute,
-  testsLazyWithLoaderPageRoute: testsLazyWithLoaderPageRoute,
   testsNormalPageRoute: testsNormalPageRoute,
-  testsPageWithSearchRoute: testsPageWithSearchRoute,
-  testsVirtualPageLazyRoute: testsVirtualPageLazyRoute,
+  testsWithLoaderRoute: testsWithLoaderRoute,
+  testsWithSearchRoute: testsWithSearchRoute,
 }
 
 export const routeTree = rootRoute
@@ -205,30 +140,22 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/(tests)/lazy-page",
-        "/(tests)/lazy-with-loader-page",
         "/(tests)/normal-page",
-        "/(tests)/page-with-search",
-        "/(tests)/virtual-page"
+        "/(tests)/with-loader",
+        "/(tests)/with-search"
       ]
     },
     "/": {
       "filePath": "index.tsx"
     },
-    "/(tests)/lazy-page": {
-      "filePath": "(tests)/lazy-page.tsx"
-    },
-    "/(tests)/lazy-with-loader-page": {
-      "filePath": "(tests)/lazy-with-loader-page.tsx"
-    },
     "/(tests)/normal-page": {
       "filePath": "(tests)/normal-page.tsx"
     },
-    "/(tests)/page-with-search": {
-      "filePath": "(tests)/page-with-search.tsx"
+    "/(tests)/with-loader": {
+      "filePath": "(tests)/with-loader.tsx"
     },
-    "/(tests)/virtual-page": {
-      "filePath": "(tests)/virtual-page.lazy.tsx"
+    "/(tests)/with-search": {
+      "filePath": "(tests)/with-search.tsx"
     }
   }
 }
