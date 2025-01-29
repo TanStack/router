@@ -8,11 +8,11 @@ const Button = (props: {
 import { Route } from "inline.tsx";
 Route.addChildren([]);
 import { test } from "inline.tsx";
-const component = () => {
+const SplitComponent = () => {
   return <div className="p-2">
         {test}
         <h3 className={styles.indexPageTitle}>{TEST_DATA.welcome}</h3>
         <Button>Click me</Button>
       </div>;
 };
-export { component };
+export { SplitComponent as component };
