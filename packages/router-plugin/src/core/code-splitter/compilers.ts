@@ -60,10 +60,10 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     'component',
     {
       routeIdent: 'component',
-      localImporterIdent: '$$splitComponentImporter',
+      localImporterIdent: '$$splitComponentImporter', // const $$splitComponentImporter = () => import('...')
       splitStrategy: 'react-component',
-      exporterIdent: 'component',
-      localExporterIdent: 'component',
+      exporterIdent: 'component', // export { component }
+      localExporterIdent: 'component', // const component = ...
     },
   ],
   [
@@ -532,8 +532,8 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
           programPath.pushContainer('body', [
             t.exportNamedDeclaration(null, [
               t.exportSpecifier(
-                t.identifier(splitMeta.localExporterIdent),
-                t.identifier(splitMeta.exporterIdent),
+                t.identifier(splitMeta.localExporterIdent), // local variable name
+                t.identifier(splitMeta.exporterIdent), // as what name it should be exported as
               ),
             ]),
           ])
