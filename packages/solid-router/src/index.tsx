@@ -340,9 +340,7 @@ export { useRouterState } from './useRouterState'
 export { useLocation } from './useLocation'
 export { useCanGoBack } from './useCanGoBack'
 
-export {
-  useLayoutEffect
-} from './utils'
+export { useLayoutEffect } from './utils'
 
 export {
   notFound,

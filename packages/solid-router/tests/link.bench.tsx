@@ -11,7 +11,7 @@ import {
   useRouter,
 } from '../src'
 import type { LinkProps } from '../src'
-import type * as Solid from 'solid-js';
+import type * as Solid from 'solid-js'
 
 const createRouterRenderer =
   (routesCount: number) => (children: Solid.JSXElement) => {
@@ -79,9 +79,7 @@ describe.each([
     () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
-          <a  href={`/params/${i}`}>
-            {i}
-          </a>
+          <a href={`/params/${i}`}>{i}</a>
         )),
       )
       render(() => <RouterProvider router={router} />)
@@ -95,7 +93,6 @@ describe.each([
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <InterpolatePathLink
-            
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
@@ -114,7 +111,6 @@ describe.each([
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <BuildLocationLink
-            
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
@@ -133,7 +129,6 @@ describe.each([
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <Link
-            
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
@@ -155,7 +150,6 @@ describe.each([
 
           return (
             <Link
-              
               from="/"
               to={to}
               params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
@@ -175,7 +169,7 @@ describe.each([
     () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
-          <Link  from="/" search={{ param: i }}>
+          <Link from="/" search={{ param: i }}>
             {i}
           </Link>
         )),

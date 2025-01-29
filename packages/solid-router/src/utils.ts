@@ -46,7 +46,6 @@ export function usePrevious<T>(value: T): T | null {
   return ref.prev
 }
 
-
 /**
  * React hook to wrap `IntersectionObserver`.
  *
@@ -101,4 +100,3 @@ export function useIntersectionObserver<T extends Element>(
 
   return () => observerRef
 }
-

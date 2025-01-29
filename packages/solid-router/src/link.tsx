@@ -15,10 +15,7 @@ import { Dynamic } from 'solid-js/web'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
-import {
-  useIntersectionObserver,
-  
-} from './utils'
+import { useIntersectionObserver } from './utils'
 
 import { useMatch } from './useMatch'
 import type {
@@ -560,7 +557,7 @@ export function useLinkProps<
     select: (s) => s.location.search,
   })
 
-    // In the rare event that the user bypasses type-safety and doesn't supply a `from`
+  // In the rare event that the user bypasses type-safety and doesn't supply a `from`
   // we'll use the current route as the `from` location so relative routing works as expected
   const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
 
@@ -760,33 +757,31 @@ export function useLinkProps<
     }
   }
 
-
-/** Call a JSX.EventHandlerUnion with the event. */
-function callHandler<T, TEvent extends Event>(
-  event: TEvent & { currentTarget: T; target: Element },
-  handler: Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
-) {
-  if (handler) {
-    if (typeof handler === 'function') {
-      handler(event)
-    } else {
-      handler[0](handler[1], event)
+  /** Call a JSX.EventHandlerUnion with the event. */
+  function callHandler<T, TEvent extends Event>(
+    event: TEvent & { currentTarget: T; target: Element },
+    handler: Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
+  ) {
+    if (handler) {
+      if (typeof handler === 'function') {
+        handler(event)
+      } else {
+        handler[0](handler[1], event)
+      }
     }
+
+    return event.defaultPrevented
   }
 
-  return event.defaultPrevented
-}
-
-function composeEventHandlers<T>(
-  handlers: Array<Solid.JSX.EventHandlerUnion<T, any> | undefined>,
-) {
-  return (event: any) => {
-    for (const handler of handlers) {
-      callHandler(event, handler)
+  function composeEventHandlers<T>(
+    handlers: Array<Solid.JSX.EventHandlerUnion<T, any> | undefined>,
+  ) {
+    return (event: any) => {
+      for (const handler of handlers) {
+        callHandler(event, handler)
+      }
     }
   }
-}
-
 
   // Get the active props
   const resolvedActiveProps: () => Omit<Solid.ComponentProps<'a'>, 'style'> & {
@@ -854,7 +849,7 @@ export type UseLinkPropsOptions<
   TTo extends string | undefined = '.',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
-  > = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
   Omit<Solid.ComponentProps<'a'>, 'style'> & { style?: Solid.JSX.CSSProperties }
 
 export type ActiveLinkOptions<
@@ -896,20 +891,19 @@ export type LinkProps<
 > = ActiveLinkOptions<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
   LinkPropsChildren
 
-  export interface LinkPropsChildren {
-    // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-    children?:
-      | Solid.JSXElement
-      | ((state: {
-          isActive: boolean
-          isTransitioning: boolean
-        }) => Solid.JSXElement)
+export interface LinkPropsChildren {
+  // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+  children?:
+    | Solid.JSXElement
+    | ((state: {
+        isActive: boolean
+        isTransitioning: boolean
+      }) => Solid.JSXElement)
 }
 
 type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
   ? Omit<Solid.ComponentProps<TComp>, keyof CreateLinkProps>
   : never
-
 
 export type LinkComponentProps<
   TComp = 'a',
@@ -949,10 +943,10 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = (props: any) => {
   const [local, rest] = Solid.splitProps(props, ['_asChild'])
 
-  const [_, linkProps] = Solid.splitProps(useLinkProps(rest as unknown as any), [
-    'type',
-    'children'
-  ])
+  const [_, linkProps] = Solid.splitProps(
+    useLinkProps(rest as unknown as any),
+    ['type', 'children'],
+  )
 
   const children = () =>
     typeof rest.children === 'function'

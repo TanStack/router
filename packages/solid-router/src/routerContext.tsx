@@ -11,7 +11,6 @@ const routerContext = Solid.createContext<Router<any, any, any>>(
   null as unknown as Router<any, any, any>,
 )
 
-
 export function getRouterContext() {
   if (typeof document === 'undefined') {
     return routerContext

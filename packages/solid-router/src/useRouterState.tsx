@@ -2,14 +2,15 @@ import { useStore } from '@tanstack/solid-store'
 import { useRouter } from './useRouter'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 import type { Accessor } from 'solid-js'
-import type {
-  StructuralSharingOption,
-} from './structuralSharing';
+import type { StructuralSharingOption } from './structuralSharing'
 
-export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected, TStructuralSharing extends boolean = boolean> = {
+export type UseRouterStateOptions<
+  TRouter extends AnyRouter,
+  TSelected,
+  TStructuralSharing extends boolean = boolean,
+> = {
   router?: TRouter
   select?: (state: RouterState<TRouter['routeTree']>) => TSelected // TODO: might need to ValidateJSON here
-
 } & StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
 export type UseRouterStateResult<
@@ -20,7 +21,6 @@ export type UseRouterStateResult<
 export function useRouterState<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-
 >(
   opts?: UseRouterStateOptions<TRouter, TSelected>,
 ): Accessor<UseRouterStateResult<TRouter, TSelected>> {
