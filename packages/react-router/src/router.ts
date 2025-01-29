@@ -27,6 +27,9 @@ import {
 } from '@tanstack/router-core'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
+import { getLocationChangeInfo } from './Transitioner'
+
+import { setupScrollRestoration } from './scroll-restoration'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -454,6 +457,15 @@ export interface RouterOptions<
   >
 
   defaultRemountDeps?: (opts: MakeRemountDepsOptionsUnion<TRouteTree>) => any
+
+  /**
+   * If `false`, scroll restoration will be disabled
+   *
+   * @default true
+   */
+  scrollRestoration?: boolean
+  getScrollRestorationKey?: (location: ParsedLocation) => string
+  scrollRestorationBehavior?: ScrollBehavior
 }
 
 export interface RouterErrorSerializer<TSerializedError> {
@@ -473,7 +485,7 @@ export interface RouterState<
   pendingMatches?: Array<TRouteMatch>
   cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
-  resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
+  resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   statusCode: number
   redirect?: ResolvedRedirect
 }
@@ -566,50 +578,37 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+type NavigationEventInfo = {
+  fromLocation?: ParsedLocation
+  toLocation: ParsedLocation
+  pathChanged: boolean
+  hrefChanged: boolean
+  hashChanged: boolean
+}
+
 export type RouterEvents = {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onBeforeLoad: {
     type: 'onBeforeLoad'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onLoad: {
     type: 'onLoad'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onResolved: {
     type: 'onResolved'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onInjectedHtml: {
     type: 'onInjectedHtml'
     promise: Promise<string>
   }
   onRendered: {
     type: 'onRendered'
-    toLocation: ParsedLocation
-  }
+  } & NavigationEventInfo
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -807,6 +806,8 @@ export class Router<
           }
         },
       })
+
+      setupScrollRestoration(this)
     }
 
     if (
@@ -1885,8 +1886,6 @@ export class Router<
         try {
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
-          const hrefChanged = prevLocation.href !== next.href
-          const pathChanged = prevLocation.pathname !== next.pathname
 
           // Cancel any pending matches
           this.cancelMatches()
@@ -1918,19 +1917,19 @@ export class Router<
           if (!this.state.redirect) {
             this.emit({
               type: 'onBeforeNavigate',
-              fromLocation: prevLocation,
-              toLocation: next,
-              pathChanged,
-              hrefChanged,
+              ...getLocationChangeInfo({
+                resolvedLocation: prevLocation,
+                location: next,
+              }),
             })
           }
 
           this.emit({
             type: 'onBeforeLoad',
-            fromLocation: prevLocation,
-            toLocation: next,
-            pathChanged,
-            hrefChanged,
+            ...getLocationChangeInfo({
+              resolvedLocation: prevLocation,
+              location: next,
+            }),
           })
 
           await this.loadMatches({
@@ -2907,7 +2906,7 @@ export class Router<
 
     const baseLocation = pending
       ? this.latestLocation
-      : this.state.resolvedLocation
+      : this.state.resolvedLocation || this.state.location
 
     const match = matchPathname(this.basepath, baseLocation.pathname, {
       ...opts,
@@ -3045,7 +3044,7 @@ export function getInitialRouterState(
     isLoading: false,
     isTransitioning: false,
     status: 'idle',
-    resolvedLocation: { ...location },
+    resolvedLocation: undefined,
     location,
     matches: [],
     pendingMatches: [],
