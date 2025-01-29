@@ -113,7 +113,6 @@ export function restoreScroll(
       for (const elementSelector in elementEntries) {
         const entry = elementEntries[elementSelector]!
         if (elementSelector === 'window') {
-          console.log('windowRestored', entry)
           window.scrollTo({
             top: entry.scrollY,
             left: entry.scrollX,
@@ -142,7 +141,6 @@ export function restoreScroll(
         (window.history.state || {}).__hashScrollIntoViewOptions ?? true
 
       if (hashScrollIntoViewOptions) {
-        console.log('scrollIntoView')
         const el = document.getElementById(hash)
         if (el) {
           el.scrollIntoView(hashScrollIntoViewOptions)
