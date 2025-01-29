@@ -1,17 +1,17 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 import { trimPathRight } from '@tanstack/router-core'
-import { useLayoutEffect, usePrevious } from './utils'
+import { usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 
 export function Transitioner() {
   const router = useRouter()
-  const mountLoadForRouter = React.useRef({ router, mounted: false })
+  let mountLoadForRouter = { router, mounted: false }
   const isLoading = useRouterState({
     select: ({ isLoading }) => isLoading,
   })
 
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
+  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
@@ -20,16 +20,18 @@ export function Transitioner() {
 
   const previousIsLoading = usePrevious(isLoading)
 
-  const isAnyPending = isLoading || isTransitioning || hasPendingMatches
+  const isAnyPending = () =>
+    isLoading() || isTransitioning() || hasPendingMatches()
+  const isPagePending = () => isLoading() || hasPendingMatches()
+
   const previousIsAnyPending = usePrevious(isAnyPending)
 
-  const isPagePending = isLoading || hasPendingMatches
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startReactTransition = (fn: () => void) => {
+    router.startSolidTransition = (fn: () => void) => {
       setIsTransitioning(true)
-      React.startTransition(() => {
+      Solid.startTransition(() => {
         fn()
         setIsTransitioning(false)
       })
@@ -38,7 +40,7 @@ export function Transitioner() {
 
   // Subscribe to location changes
   // and try to load the new location
-  React.useEffect(() => {
+  Solid.onMount(() => {
     const unsub = router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
@@ -60,33 +62,35 @@ export function Transitioner() {
     return () => {
       unsub()
     }
-  }, [router, router.history])
+  })
 
   // Try to load the initial location
-  useLayoutEffect(() => {
-    if (
-      (typeof window !== 'undefined' && router.clientSsr) ||
-      (mountLoadForRouter.current.router === router &&
-        mountLoadForRouter.current.mounted)
-    ) {
-      return
-    }
-    mountLoadForRouter.current = { router, mounted: true }
-
-    const tryLoad = async () => {
-      try {
-        await router.load()
-      } catch (err) {
-        console.error(err)
+  Solid.createEffect(() => {
+    Solid.untrack(() => {
+      if (
+        (typeof window !== 'undefined' && router.clientSsr) ||
+        (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
+      ) {
+        return
       }
-    }
+      mountLoadForRouter = { router, mounted: true }
+      const tryLoad = async () => {
+        try {
+          await router.load()
+        } catch (err) {
+          console.error(err)
+        }
+      }
+      tryLoad()
+    })
+  })
 
-    tryLoad()
-  }, [router])
+Solid.createRenderEffect(
+  Solid.on(
+    () => isLoading(),
+    (isLoading, previousIsLoading) => {
 
-  useLayoutEffect(() => {
-    // The router was loading and now it's not
-    if (previousIsLoading && !isLoading) {
+      if (previousIsLoading && !isLoading) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
@@ -100,11 +104,15 @@ export function Transitioner() {
         hrefChanged,
       })
     }
-  }, [previousIsLoading, router, isLoading])
-
-  useLayoutEffect(() => {
-    // emit onBeforeRouteMount
-    if (previousIsPagePending && !isPagePending) {
+  },
+),
+)
+Solid.createRenderEffect(
+  Solid.on(
+    () => isPagePending(),
+    (isPagePending, previousIsPagePending) => {
+      // emit onBeforeRouteMount
+      if (previousIsPagePending && !isPagePending) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
@@ -118,11 +126,16 @@ export function Transitioner() {
         hrefChanged,
       })
     }
-  }, [isPagePending, previousIsPagePending, router])
+  },
+),
+)
 
-  useLayoutEffect(() => {
-    // The router was pending and now it's not
-    if (previousIsAnyPending && !isAnyPending) {
+Solid.createRenderEffect(
+  Solid.on(
+    () => isAnyPending(),
+    (isAnyPending, previousIsAnyPending) => {
+      // The router was pending and now it's not
+      if (previousIsAnyPending && !isAnyPending) {
       const toLocation = router.state.location
       const fromLocation = router.state.resolvedLocation
       const pathChanged = fromLocation.pathname !== toLocation.pathname
@@ -154,7 +167,9 @@ export function Transitioner() {
         }
       }
     }
-  }, [isAnyPending, previousIsAnyPending, router])
+  },
+),
+)
 
-  return null
+return null
 }

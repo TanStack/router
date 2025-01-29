@@ -4,7 +4,7 @@ import {
   fireEvent,
   render,
   screen,
-} from '@testing-library/react'
+} from '@solidjs/testing-library'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -32,7 +32,7 @@ const WAIT_TIME = 100
 
 describe('redirect', () => {
   describe('SPA', () => {
-    configure({ reactStrictMode: true })
+  
     test('when `redirect` is thrown in `beforeLoad`', async () => {
       const nestedLoaderMock = vi.fn()
       const nestedFooLoaderMock = vi.fn()
@@ -82,7 +82,7 @@ describe('redirect', () => {
       ])
       const router = createRouter({ routeTree })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       const linkToAbout = await screen.findByText('link to about')
 
@@ -159,7 +159,7 @@ describe('redirect', () => {
       ])
       const router = createRouter({ routeTree })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       const linkToAbout = await screen.findByText('link to about')
 
@@ -237,7 +237,7 @@ describe('redirect', () => {
       ])
       const router = createRouter({ routeTree })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       const linkToAbout = await screen.findByTestId('link-to-about')
       expect(linkToAbout).toBeInTheDocument()

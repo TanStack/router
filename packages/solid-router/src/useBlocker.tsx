@@ -1,11 +1,11 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
 import type {
   BlockerFnArgs,
   HistoryAction,
   HistoryLocation,
 } from '@tanstack/history'
-import type { AnyRoute } from './route'
+import type { AnyRoute, SolidNode } from './route'
 import type { ParseRoute } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
@@ -159,7 +159,7 @@ export function useBlocker(
   const router = useRouter()
   const { history } = router
 
-  const [resolver, setResolver] = React.useState<BlockerResolver>({
+  const [resolver, setResolver] = Solid.createSignal<BlockerResolver>({
     status: 'idle',
     current: undefined,
     next: undefined,
@@ -168,7 +168,7 @@ export function useBlocker(
     reset: undefined,
   })
 
-  React.useEffect(() => {
+  Solid.createEffect(() => {
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
       function getLocation(
         location: HistoryLocation,
@@ -230,16 +230,9 @@ export function useBlocker(
     return disabled
       ? undefined
       : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
-  }, [
-    shouldBlockFn,
-    enableBeforeUnload,
-    disabled,
-    withResolver,
-    history,
-    router,
-  ])
+  })
 
-  return resolver
+  return resolver()
 }
 
 const _resolvePromptBlockerArgs = (
@@ -269,14 +262,14 @@ const _resolvePromptBlockerArgs = (
 export function Block<
   TRouter extends AnyRouter = RegisteredRouter,
   TWithResolver extends boolean = boolean,
->(opts: PromptProps<TRouter, TWithResolver>): React.ReactNode
+>(opts: PromptProps<TRouter, TWithResolver>): SolidNode
 
 /**
  *  @deprecated Use the UseBlockerOpts property instead
  */
-export function Block(opts: LegacyPromptProps): React.ReactNode
+export function Block(opts: LegacyPromptProps): SolidNode
 
-export function Block(opts: PromptProps | LegacyPromptProps): React.ReactNode {
+export function Block(opts: PromptProps | LegacyPromptProps): SolidNode {
   const { children, ...rest } = opts
   const args = _resolvePromptBlockerArgs(rest)
 
@@ -291,7 +284,7 @@ export function Block(opts: PromptProps | LegacyPromptProps): React.ReactNode {
 type LegacyPromptProps = {
   blockerFn?: LegacyBlockerFn
   condition?: boolean | any
-  children?: React.ReactNode | ((params: BlockerResolver) => React.ReactNode)
+  children?: SolidNode | ((params: BlockerResolver) => SolidNode)
 }
 
 type PromptProps<
@@ -299,5 +292,5 @@ type PromptProps<
   TWithResolver extends boolean = boolean,
   TParams = TWithResolver extends true ? BlockerResolver<TRouter> : void,
 > = UseBlockerOpts<TRouter, TWithResolver> & {
-  children?: React.ReactNode | ((params: TParams) => React.ReactNode)
+  children?: SolidNode | ((params: TParams) => SolidNode)
 }

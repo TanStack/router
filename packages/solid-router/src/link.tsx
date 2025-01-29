@@ -1,7 +1,9 @@
 'use client'
 
-import * as React from 'react'
-import { flushSync } from 'react-dom'
+import * as Solid from 'solid-js'
+
+import { mergeRefs } from '@solid-primitives/refs'
+
 import {
   deepEqual,
   exactPathTest,
@@ -9,13 +11,13 @@ import {
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
+import { Dynamic } from 'solid-js/web'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import {
-  useForwardedRef,
   useIntersectionObserver,
-  useLayoutEffect,
+  
 } from './utils'
 
 import { useMatch } from './useMatch'
@@ -51,7 +53,6 @@ import type {
   ToPath,
 } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { ReactNode } from 'react'
 import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
@@ -458,57 +459,87 @@ type LinkCurrentTargetElement = {
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
-  const TFrom extends string = string,
-  const TTo extends string | undefined = undefined,
-  const TMaskFrom extends string = TFrom,
-  const TMaskTo extends string = '',
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TTo extends string = '',
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  forwardedRef?: React.ForwardedRef<Element>,
-): React.ComponentPropsWithRef<'a'> {
+): Solid.ComponentProps<'a'> {
   const router = useRouter()
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
-  const hasRenderFetched = React.useRef(false)
-  const innerRef = useForwardedRef(forwardedRef)
+  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+  let hasRenderFetched = false
 
-  const {
-    // custom props
-    activeProps = () => ({ className: 'active' }),
-    inactiveProps = () => ({}),
-    activeOptions,
-    to,
-    preload: userPreload,
-    preloadDelay: userPreloadDelay,
-    hashScrollIntoView,
-    replace,
-    startTransition,
-    resetScroll,
-    viewTransition,
-    // element props
-    children,
-    target,
-    disabled,
-    style,
-    className,
-    onClick,
-    onFocus,
-    onMouseEnter,
-    onMouseLeave,
-    onTouchStart,
-    ignoreBlocker,
-    ...rest
-  } = options
+  const [local, rest] = Solid.splitProps(
+    Solid.mergeProps(
+      {
+        activeProps: () => ({ class: 'active' }),
+        inactiveProps: () => ({}),
+      },
+      options,
+    ),
+    [
+      'activeProps',
+      'inactiveProps',
+      'activeOptions',
+      'to',
+      'preload',
+      'preloadDelay',
+      'hashScrollIntoView',
+      'replace',
+      'startTransition',
+      'resetScroll',
+      'viewTransition',
+      'children',
+      'target',
+      'disabled',
+      'style',
+      'class',
+      'onClick',
+      'onFocus',
+      'onMouseEnter',
+      'onMouseLeave',
+      'onTouchStart',
+      'ignoreBlocker',
+    ],
+  )
 
-  const {
-    // prevent these from being returned
-    params: _params,
-    search: _search,
-    hash: _hash,
-    state: _state,
-    mask: _mask,
-    reloadDocument: _reloadDocument,
-    ...propsSafeToSpread
-  } = rest
+  // const {
+  //   // custom props
+  //   activeProps = () => ({ class: 'active' }),
+  //   inactiveProps = () => ({}),
+  //   activeOptions,
+  //   to,
+  //   preload: userPreload,
+  //   preloadDelay: userPreloadDelay,
+  //   hashScrollIntoView,
+  //   replace,
+  //   startTransition,
+  //   resetScroll,
+  //   viewTransition,
+  //   // element props
+  //   children,
+  //   target,
+  //   disabled,
+  //   style,
+  //   class,
+  //   onClick,
+  //   onFocus,
+  //   onMouseEnter,
+  //   onMouseLeave,
+  //   onTouchStart,
+  //   ignoreBlocker,
+  //   ...rest
+  // } = options
+
+  const [_, propsSafeToSpread] = Solid.splitProps(rest, [
+    'params',
+    'search',
+    'hash',
+    'state',
+    'mask',
+    'reloadDocument',
+  ])
 
   // If this link simply reloads the current route,
   // make sure it has a new key so it will trigger a data refresh
@@ -516,50 +547,51 @@ export function useLinkProps<
   // If this `to` is a valid external URL, return
   // null for LinkUtils
 
-  const type: 'internal' | 'external' = React.useMemo(() => {
+  const type: Solid.Accessor<'internal' | 'external'> = () => {
     try {
-      new URL(`${to}`)
+      new URL(`${local.to}`)
       return 'external'
     } catch {}
     return 'internal'
-  }, [to])
+  }
 
   // subscribe to search params to re-build location if it changes
   const currentSearch = useRouterState({
     select: (s) => s.location.search,
-    structuralSharing: true as any,
   })
 
-  // In the rare event that the user bypasses type-safety and doesn't supply a `from`
+    // In the rare event that the user bypasses type-safety and doesn't supply a `from`
   // we'll use the current route as the `from` location so relative routing works as expected
   const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
 
   // Use it as the default `from` location
   options = {
-    from: parentRouteId,
+    get from() {
+      return parentRouteId
+    },
     ...options,
   }
 
-  const next = React.useMemo(
-    () => router.buildLocation(options as any),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, options, currentSearch],
-  )
-  const preload = React.useMemo(() => {
+  const next = Solid.createMemo(() => {
+    currentSearch()
+    return Solid.untrack(() => router.buildLocation(options as any))
+  })
+
+  const preload = Solid.createMemo(() => {
     if (options.reloadDocument) {
       return false
     }
-    return userPreload ?? router.options.defaultPreload
-  }, [router.options.defaultPreload, userPreload, options.reloadDocument])
-  const preloadDelay =
-    userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
+    return local.preload ?? router.options.defaultPreload
+  })
+  const preloadDelay = () =>
+    local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const isActive = useRouterState({
     select: (s) => {
-      if (activeOptions?.exact) {
+      if (local.activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
-          next.pathname,
+          next().pathname,
           router.basepath,
         )
         if (!testExact) {
@@ -571,7 +603,7 @@ export function useLinkProps<
           router.basepath,
         ).split('/')
         const nextPathSplit = removeTrailingSlash(
-          next.pathname,
+          next().pathname,
           router.basepath,
         ).split('/')
 
@@ -583,89 +615,95 @@ export function useLinkProps<
         }
       }
 
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
+      if (local.activeOptions?.includeSearch ?? true) {
+        const searchTest = deepEqual(s.location.search, next().search, {
+          partial: !local.activeOptions?.exact,
+          ignoreUndefined: !local.activeOptions?.explicitUndefined,
         })
         if (!searchTest) {
           return false
         }
       }
 
-      if (activeOptions?.includeHash) {
-        return s.location.hash === next.hash
+      if (local.activeOptions?.includeHash) {
+        return s.location.hash === next().hash
       }
       return true
     },
   })
 
-  const doPreload = React.useCallback(() => {
-    router.preloadRoute(options as any).catch((err) => {
+  const doPreload = () =>
+    router.preloadRoute(options as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
-  }, [options, router])
 
-  const preloadViewportIoCallback = React.useCallback(
-    (entry: IntersectionObserverEntry | undefined) => {
-      if (entry?.isIntersecting) {
-        doPreload()
-      }
-    },
-    [doPreload],
-  )
+  const preloadViewportIoCallback = (
+    entry: IntersectionObserverEntry | undefined,
+  ) => {
+    if (entry?.isIntersecting) {
+      doPreload()
+    }
+  }
+
+  const [ref, setRef] = Solid.createSignal<Element | null>(null)
 
   useIntersectionObserver(
-    innerRef,
+    ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!disabled || !(preload === 'viewport') },
+    { disabled: !!local.disabled || !(local.preload === 'viewport') },
   )
 
-  useLayoutEffect(() => {
-    if (hasRenderFetched.current) {
+  Solid.createEffect(() => {
+    if (hasRenderFetched) {
       return
     }
-    if (!disabled && preload === 'render') {
+    if (!local.disabled && preload() === 'render') {
       doPreload()
-      hasRenderFetched.current = true
+      hasRenderFetched = true
     }
-  }, [disabled, doPreload, preload])
+  })
 
-  if (type === 'external') {
-    return {
-      ...propsSafeToSpread,
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      type,
-      href: to,
-      ...(children && { children }),
-      ...(target && { target }),
-      ...(disabled && { disabled }),
-      ...(style && { style }),
-      ...(className && { className }),
-      ...(onClick && { onClick }),
-      ...(onFocus && { onFocus }),
-      ...(onMouseEnter && { onMouseEnter }),
-      ...(onMouseLeave && { onMouseLeave }),
-      ...(onTouchStart && { onTouchStart }),
-    }
+  if (type() === 'external') {
+    return Solid.mergeProps(
+      propsSafeToSpread,
+      {
+        ref,
+        get type() {
+          return type()
+        },
+        get href() {
+          return local.to
+        },
+      },
+      Solid.splitProps(local, [
+        'children',
+        'target',
+        'disabled',
+        'style',
+        'class',
+        'onClick',
+        'onFocus',
+        'onMouseEnter',
+        'onMouseLeave',
+        'onTouchStart',
+      ])[0],
+    ) as any
   }
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
     if (
-      !disabled &&
+      !local.disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!target || target === '_self') &&
+      (!local.target || local.target === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
 
-      flushSync(() => {
-        setIsTransitioning(true)
-      })
+      setIsTransitioning(true)
 
       const unsub = router.subscribe('onResolved', () => {
         unsub()
@@ -676,20 +714,20 @@ export function useLinkProps<
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
         ...options,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
+        replace: local.replace,
+        resetScroll: local.resetScroll,
+        hashScrollIntoView: local.hashScrollIntoView,
+        startTransition: local.startTransition,
+        viewTransition: local.viewTransition,
+        ignoreBlocker: local.ignoreBlocker,
       } as any)
     }
   }
 
   // The click handler
   const handleFocus = (_: MouseEvent) => {
-    if (disabled) return
-    if (preload) {
+    if (local.disabled) return
+    if (preload()) {
       doPreload()
     }
   }
@@ -697,10 +735,10 @@ export function useLinkProps<
   const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
-    if (disabled) return
+    if (local.disabled) return
     const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
-    if (preload) {
+    if (preload()) {
       if (eventTarget.preloadTimeout) {
         return
       }
@@ -708,12 +746,12 @@ export function useLinkProps<
       eventTarget.preloadTimeout = setTimeout(() => {
         eventTarget.preloadTimeout = null
         doPreload()
-      }, preloadDelay)
+      }, preloadDelay())
     }
   }
 
   const handleLeave = (e: MouseEvent) => {
-    if (disabled) return
+    if (local.disabled) return
     const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
@@ -722,79 +760,93 @@ export function useLinkProps<
     }
   }
 
-  const composeHandlers =
-    (handlers: Array<undefined | ((e: any) => void)>) =>
-    (e: { persist?: () => void; defaultPrevented: boolean }) => {
-      e.persist?.()
-      handlers.filter(Boolean).forEach((handler) => {
-        if (e.defaultPrevented) return
-        handler!(e)
-      })
+
+/** Call a JSX.EventHandlerUnion with the event. */
+function callHandler<T, TEvent extends Event>(
+  event: TEvent & { currentTarget: T; target: Element },
+  handler: Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
+) {
+  if (handler) {
+    if (typeof handler === 'function') {
+      handler(event)
+    } else {
+      handler[0](handler[1], event)
     }
-
-  // Get the active props
-  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? (functionalUpdate(activeProps as any, {}) ?? {})
-    : {}
-
-  // Get the inactive props
-  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive ? {} : functionalUpdate(inactiveProps, {})
-
-  const resolvedClassName = [
-    className,
-    resolvedActiveProps.className,
-    resolvedInactiveProps.className,
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  const resolvedStyle = {
-    ...style,
-    ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style,
   }
 
-  return {
-    ...propsSafeToSpread,
-    ...resolvedActiveProps,
-    ...resolvedInactiveProps,
-    href: disabled
-      ? undefined
-      : next.maskedLocation
-        ? router.history.createHref(next.maskedLocation.href)
-        : router.history.createHref(next.href),
-    ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-    onClick: composeHandlers([onClick, handleClick]),
-    onFocus: composeHandlers([onFocus, handleFocus]),
-    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
-    onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
-    onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
-    disabled: !!disabled,
-    target,
-    ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
-    ...(resolvedClassName && { className: resolvedClassName }),
-    ...(disabled && {
-      role: 'link',
-      'aria-disabled': true,
-    }),
-    ...(isActive && { 'data-status': 'active', 'aria-current': 'page' }),
-    ...(isTransitioning && { 'data-transitioning': 'transitioning' }),
+  return event.defaultPrevented
+}
+
+function composeEventHandlers<T>(
+  handlers: Array<Solid.JSX.EventHandlerUnion<T, any> | undefined>,
+) {
+  return (event: any) => {
+    for (const handler of handlers) {
+      callHandler(event, handler)
+    }
   }
 }
 
-type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
-  ? React.JSX.IntrinsicElements[TComp]
-  : React.PropsWithoutRef<
-      TComp extends React.ComponentType<infer TProps> ? TProps : never
-    > &
-      React.RefAttributes<
-        TComp extends
-          | React.FC<{ ref: infer TRef }>
-          | React.Component<{ ref: infer TRef }>
-          ? TRef
-          : never
-      >
+
+  // Get the active props
+  const resolvedActiveProps: () => Omit<Solid.ComponentProps<'a'>, 'style'> & {
+    style?: Solid.JSX.CSSProperties
+  } = () =>
+    isActive() ? (functionalUpdate(local.activeProps as any, {}) ?? {}) : {}
+
+  // Get the inactive props
+  const resolvedInactiveProps: () => Omit<
+    Solid.ComponentProps<'a'>,
+    'style'
+  > & { style?: Solid.JSX.CSSProperties } = () =>
+    isActive() ? {} : functionalUpdate(local.inactiveProps, {})
+
+  const resolvedClassName = () =>
+    [local.class, resolvedActiveProps().class, resolvedInactiveProps().class]
+      .filter(Boolean)
+      .join(' ')
+
+  const resolvedStyle = () => ({
+    ...local.style,
+    ...resolvedActiveProps().style,
+    ...resolvedInactiveProps().style,
+  })
+
+  return Solid.mergeProps(
+    propsSafeToSpread,
+    resolvedActiveProps,
+    resolvedInactiveProps,
+    () => {
+      const maskedLocation = next().maskedLocation
+      return {
+        href: local.disabled
+          ? undefined
+          : maskedLocation
+            ? router.history.createHref(maskedLocation.href)
+            : router.history.createHref(next().href),
+        ref: mergeRefs(setRef, options.ref),
+        onClick: composeEventHandlers([local.onClick, handleClick]),
+        onFocus: composeEventHandlers([local.onFocus, handleFocus]),
+        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
+        onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
+        onTouchStart: composeEventHandlers([
+          local.onTouchStart,
+          handleTouchStart,
+        ]),
+        disabled: !!local.disabled,
+        target: local.target,
+        ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
+        ...(resolvedClassName() && { class: resolvedClassName() }),
+        ...(local.disabled && {
+          role: 'link',
+          'aria-disabled': true,
+        }),
+        ...(isActive() && { 'data-status': 'active', 'aria-current': 'page' }),
+        ...(isTransitioning() && { 'data-transitioning': 'transitioning' }),
+      }
+    },
+  ) as any
+}
 
 export type UseLinkPropsOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -802,8 +854,8 @@ export type UseLinkPropsOptions<
   TTo extends string | undefined = '.',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
-> = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
-  UseLinkReactProps<'a'>
+  > = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+  Omit<Solid.ComponentProps<'a'>, 'style'> & { style?: Solid.JSX.CSSProperties }
 
 export type ActiveLinkOptions<
   TComp = 'a',
@@ -816,7 +868,7 @@ export type ActiveLinkOptions<
   ActiveLinkOptionProps<TComp>
 
 type ActiveLinkProps<TComp> = Partial<
-  LinkComponentReactProps<TComp> & {
+  LinkComponentSolidProps<TComp> & {
     [key: `data-${string}`]: unknown
   }
 >
@@ -824,12 +876,12 @@ type ActiveLinkProps<TComp> = Partial<
 export interface ActiveLinkOptionProps<TComp = 'a'> {
   /**
    * A function that returns additional props for the `active` state of this link.
-   * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+   * These props override other props passed to the link (`style`'s are merged, `class`'s are concatenated)
    */
   activeProps?: ActiveLinkProps<TComp> | (() => ActiveLinkProps<TComp>)
   /**
    * A function that returns additional props for the `inactive` state of this link.
-   * These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
+   * These props override other props passed to the link (`style`'s are merged, `class`'s are concatenated)
    */
   inactiveProps?: ActiveLinkProps<TComp> | (() => ActiveLinkProps<TComp>)
 }
@@ -844,20 +896,20 @@ export type LinkProps<
 > = ActiveLinkOptions<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
   LinkPropsChildren
 
-export interface LinkPropsChildren {
-  // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-  children?:
-    | React.ReactNode
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => React.ReactNode)
+  export interface LinkPropsChildren {
+    // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
+    children?:
+      | Solid.JSXElement
+      | ((state: {
+          isActive: boolean
+          isTransitioning: boolean
+        }) => Solid.JSXElement)
 }
 
-type LinkComponentReactProps<TComp> = Omit<
-  UseLinkReactProps<TComp>,
-  keyof CreateLinkProps
->
+type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
+  ? Omit<Solid.ComponentProps<TComp>, keyof CreateLinkProps>
+  : never
+
 
 export type LinkComponentProps<
   TComp = 'a',
@@ -866,7 +918,7 @@ export type LinkComponentProps<
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = LinkComponentReactProps<TComp> &
+> = LinkComponentSolidProps<TComp> &
   LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type CreateLinkProps = LinkProps<
@@ -886,48 +938,43 @@ export type LinkComponent<TComp> = <
   const TMaskTo extends string = '',
 >(
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => React.ReactElement
+) => Solid.JSXElement
 
 export function createLink<const TComp>(
-  Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSXElement>,
 ): LinkComponent<TComp> {
-  return React.forwardRef(function CreatedLink(props, ref) {
-    return <Link {...(props as any)} _asChild={Comp} ref={ref} />
-  }) as any
+  return (props) => <Link {...(props as any)} _asChild={Comp} />
 }
 
-export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
-  (props, ref) => {
-    const { _asChild, ...rest } = props
-    const {
-      type: _type,
-      ref: innerRef,
-      ...linkProps
-    } = useLinkProps(rest as any, ref)
+export const Link: LinkComponent<'a'> = (props: any) => {
+  const [local, rest] = Solid.splitProps(props, ['_asChild'])
 
-    const children =
-      typeof rest.children === 'function'
-        ? rest.children({
-            isActive: (linkProps as any)['data-status'] === 'active',
-          })
-        : rest.children
+  const [_, linkProps] = Solid.splitProps(useLinkProps(rest as unknown as any), [
+    'type',
+    'children'
+  ])
 
-    if (typeof _asChild === 'undefined') {
-      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
-      // @ts-expect-error
-      delete linkProps.disabled
-    }
+  const children = () =>
+    typeof rest.children === 'function'
+      ? rest.children({
+          get isActive() {
+            return (linkProps as any)['data-status'] === 'active'
+          },
+        })
+      : rest.children
 
-    return React.createElement(
-      _asChild ? _asChild : 'a',
-      {
-        ...linkProps,
-        ref: innerRef,
-      },
-      children,
-    )
-  },
-) as any
+  if (typeof local._asChild === 'undefined') {
+    // the Retlocal.urnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
+    // @ts-expect-error
+    delete linkProps.disabled
+  }
+
+  return (
+    <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>
+      {children}
+    </Dynamic>
+  )
+}
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)

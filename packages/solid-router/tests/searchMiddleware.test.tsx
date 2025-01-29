@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import {
   Link,
@@ -83,7 +83,7 @@ async function runTest(
   router: AnyRouter,
   expectedSearch: { root: { value?: string }; posts: { value?: string } },
 ) {
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsLink = await screen.findByTestId('posts-link')
   expect(postsLink).toHaveAttribute('href')

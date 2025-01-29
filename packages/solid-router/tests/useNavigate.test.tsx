@@ -1,7 +1,7 @@
-import React from 'react'
+import * as Solid from 'solid-js'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { z } from 'zod'
 import {
@@ -26,11 +26,11 @@ test('when navigating to /posts', async () => {
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -45,9 +45,9 @@ test('when navigating to /posts', async () => {
     path: '/posts',
     component: () => {
       return (
-        <React.Fragment>
+        <>
           <h1>Posts</h1>
-        </React.Fragment>
+        </>
       )
     },
   })
@@ -56,7 +56,7 @@ test('when navigating to /posts', async () => {
     routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -74,7 +74,7 @@ test('when navigating from /posts to ./$postId', async () => {
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -84,7 +84,7 @@ test('when navigating from /posts to ./$postId', async () => {
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -96,10 +96,10 @@ test('when navigating from /posts to ./$postId', async () => {
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -112,7 +112,7 @@ test('when navigating from /posts to ./$postId', async () => {
   const PostsIndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Posts Index</h1>
         <button
           onClick={() =>
@@ -125,7 +125,7 @@ test('when navigating from /posts to ./$postId', async () => {
         >
           To the first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -139,10 +139,10 @@ test('when navigating from /posts to ./$postId', async () => {
     const params = useParams({ strict: false })
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -159,7 +159,7 @@ test('when navigating from /posts to ./$postId', async () => {
     ]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -184,7 +184,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -194,7 +194,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -206,10 +206,10 @@ test('when navigating from /posts to ../posts/$postId', async () => {
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -222,7 +222,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
   const PostsIndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Posts Index</h1>
         <button
           onClick={() =>
@@ -235,7 +235,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
         >
           To the first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -249,10 +249,10 @@ test('when navigating from /posts to ../posts/$postId', async () => {
     const navigate = useNavigate()
     const params = useParams({ strict: false })
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -269,7 +269,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
     ]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -292,7 +292,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -305,7 +305,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -330,10 +330,10 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -346,10 +346,10 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -383,9 +383,9 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
 
   const InformationComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Information</h1>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -406,7 +406,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
     ]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -437,7 +437,7 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -450,7 +450,7 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -475,10 +475,10 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -491,10 +491,10 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -526,9 +526,9 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
 
   const InformationComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Information</h1>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -549,7 +549,7 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
     ]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -580,7 +580,7 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -593,7 +593,7 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -618,10 +618,10 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -634,10 +634,10 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -669,9 +669,9 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
 
   const InformationComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Information</h1>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -692,7 +692,7 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
     ]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -721,7 +721,7 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -734,7 +734,7 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -759,10 +759,10 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -775,10 +775,10 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -816,9 +816,9 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
 
   const InformationComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Information</h1>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -843,7 +843,7 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
     ]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -872,7 +872,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -885,7 +885,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -910,10 +910,10 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -926,10 +926,10 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -941,7 +941,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
 
   const DetailsComponent = () => {
     const navigate = useNavigate()
-    const [error, setError] = React.useState<unknown>()
+    const [error, setError] = Solid.createSignal<unknown>()
     return (
       <>
         <h1>Details!</h1>
@@ -973,9 +973,9 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
 
   const InformationComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Information</h1>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1023,7 +1023,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
     ]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -1046,7 +1046,7 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button
           onClick={() =>
@@ -1055,7 +1055,7 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1067,10 +1067,10 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1083,10 +1083,10 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1098,9 +1098,9 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
 
   const InformationComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Information</h1>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1126,7 +1126,7 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
     routeMasks: [routeMask],
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -1143,7 +1143,7 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <button
           onClick={() =>
@@ -1156,7 +1156,7 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
         >
           To first post
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1168,10 +1168,10 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
 
   const PostsComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1184,10 +1184,10 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <React.Fragment>
+      <>
         <span>Params: {params.postId}</span>
         <Outlet />
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1199,9 +1199,9 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
 
   const InformationComponent = () => {
     return (
-      <React.Fragment>
+      <>
         <h1>Information</h1>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1220,7 +1220,7 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
     routeTree,
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
 
   const postButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -1240,7 +1240,7 @@ test('when setting search params with 2 parallel navigate calls', async () => {
     const navigate = useNavigate()
     const search = indexRoute.useSearch()
     return (
-      <React.Fragment>
+      <>
         <h1>Index</h1>
         <div data-testid="param1">{search.param1}</div>
         <div data-testid="param2">{search.param2}</div>
@@ -1259,7 +1259,7 @@ test('when setting search params with 2 parallel navigate calls', async () => {
         >
           search
         </button>
-      </React.Fragment>
+      </>
     )
   }
 
@@ -1277,7 +1277,7 @@ test('when setting search params with 2 parallel navigate calls', async () => {
     routeTree: rootRoute.addChildren([indexRoute]),
   })
 
-  render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
   expect(router.state.location.search).toEqual({
     param1: 'param1-default',
     param2: 'param2-default',

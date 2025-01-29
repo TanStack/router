@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render } from '@solidjs/testing-library'
 import { bench, describe } from 'vitest'
 import {
   Link,
@@ -11,9 +11,10 @@ import {
   useRouter,
 } from '../src'
 import type { LinkProps } from '../src'
+import type * as Solid from 'solid-js';
 
 const createRouterRenderer =
-  (routesCount: number) => (children: React.ReactNode) => {
+  (routesCount: number) => (children: Solid.JSXElement) => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -37,7 +38,7 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-}: React.PropsWithChildren<LinkProps>) => {
+}: Solid.PropsWithChildren<LinkProps>) => {
   const href = interpolatePath({ path: to, params })
   return <a href={href}>{children}</a>
 }
@@ -45,7 +46,7 @@ const InterpolatePathLink = ({
 const BuildLocationLink = ({
   children,
   ...props
-}: React.PropsWithChildren<LinkProps>) => {
+}: Solid.PropsWithChildren<LinkProps>) => {
   const router = useRouter()
   const { href } = router.buildLocation(props)
   return <a href={href}>{children}</a>
@@ -78,12 +79,12 @@ describe.each([
     () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
-          <a key={i} href={`/params/${i}`}>
+          <a  href={`/params/${i}`}>
             {i}
           </a>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -94,7 +95,7 @@ describe.each([
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <InterpolatePathLink
-            key={i}
+            
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
@@ -102,7 +103,7 @@ describe.each([
           </InterpolatePathLink>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -113,7 +114,7 @@ describe.each([
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <BuildLocationLink
-            key={i}
+            
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
@@ -121,7 +122,7 @@ describe.each([
           </BuildLocationLink>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -132,7 +133,7 @@ describe.each([
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
           <Link
-            key={i}
+            
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
           >
@@ -140,7 +141,7 @@ describe.each([
           </Link>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -154,7 +155,7 @@ describe.each([
 
           return (
             <Link
-              key={i}
+              
               from="/"
               to={to}
               params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
@@ -164,7 +165,7 @@ describe.each([
           )
         }),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )
@@ -174,12 +175,12 @@ describe.each([
     () => {
       const router = renderRouter(
         Array.from({ length: numberOfLinks }).map((_, i) => (
-          <Link key={i} from="/" search={{ param: i }}>
+          <Link  from="/" search={{ param: i }}>
             {i}
           </Link>
         )),
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
     },
     { warmupIterations: 1 },
   )

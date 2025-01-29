@@ -50,7 +50,7 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
-import type * as React from 'react'
+import type * as Solid from 'solid-js'
 import type { UseNavigateResult } from './useNavigate'
 import type {
   AnyRouteMatch,
@@ -335,7 +335,7 @@ export interface UpdatableRouteOptions<
   postSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  onCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
+  onCatch?: (error: Error) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -1330,11 +1330,10 @@ export function createRouteMask<
   return opts as any
 }
 
-export type ReactNode = any
+export type SolidNode = Solid.JSXElement
 
 export type SyncRouteComponent<TProps> =
-  | ((props: TProps) => ReactNode)
-  | React.LazyExoticComponent<(props: TProps) => ReactNode>
+  | ((props: TProps) => Solid.JSXElement)
 
 export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>

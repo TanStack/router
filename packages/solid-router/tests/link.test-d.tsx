@@ -3984,9 +3984,9 @@ test('when passing a component with props to createLink and navigating to the ro
     .toEqualTypeOf<
       | {
           [x: `data-${string}`]: unknown
-          ref?: React.LegacyRef<never> | undefined
+          ref?: Solid.LegacyRef<never> | undefined
           additionalProps?: number | undefined
-          key?: React.Key | null | undefined
+          key?: Solid.Key | null | undefined
         }
       | undefined
     >()
@@ -3997,9 +3997,9 @@ test('when passing a component with props to createLink and navigating to the ro
     .extract<(...args: Array<any>) => any>()
     .returns.toEqualTypeOf<{
       [x: `data-${string}`]: unknown
-      ref?: React.LegacyRef<never> | undefined
+      ref?: Solid.LegacyRef<never> | undefined
       additionalProps?: number | undefined
-      key?: React.Key | null | undefined
+      key?: Solid.Key | null | undefined
     }>()
 
   createLink((props) => expectTypeOf(props).toEqualTypeOf<CreateLinkProps>())

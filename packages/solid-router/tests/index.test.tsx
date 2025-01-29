@@ -6,9 +6,9 @@ import { expect, test } from 'vitest'
 test('index true=true', () => {
   expect(true).toBe(true)
 })
-// import { render } from '@testing-library/react'
+// import { render } from '@solidjs/testing-library'
 
-// import React from 'react'
+// import * as Solid from 'solid-js'
 
 // import {
 //   Outlet,

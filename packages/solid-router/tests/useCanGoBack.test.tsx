@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import {
   Link,
   Outlet,
@@ -59,7 +59,7 @@ describe('useCanGoBack', () => {
       history: createMemoryHistory({ initialEntries }),
     })
 
-    return render(<RouterProvider router={router} />)
+    return render(() => <RouterProvider router={router} />)
   }
 
   test('when no location behind', async () => {

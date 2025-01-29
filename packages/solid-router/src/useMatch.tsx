@@ -1,4 +1,4 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
 import { dummyMatchContext, matchContext } from './matchContext'
@@ -92,7 +92,7 @@ export function useMatch<
     TStructuralSharing
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
-  const nearestMatchId = React.useContext(
+  const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
 

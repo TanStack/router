@@ -6,7 +6,7 @@ import {
   render,
   screen,
   waitFor,
-} from '@testing-library/react'
+} from '@solidjs/testing-library'
 import { z } from 'zod'
 import {
   Link,
@@ -400,7 +400,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     })
 
     await router.load()
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     await act(() =>
       router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
@@ -416,7 +416,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     })
 
     await router.load()
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     await act(() =>
       router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
@@ -603,7 +603,7 @@ describe('encoding: URL path segment', () => {
         history: createMemoryHistory({ initialEntries: [input] }),
       })
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
 
       expect(router.state.location.pathname).toBe(output)
@@ -619,7 +619,7 @@ describe('router emits events during rendering', () => {
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     await waitFor(() => expect(mockFn1).toBeCalled())
     unsub()
@@ -632,7 +632,7 @@ describe('router emits events during rendering', () => {
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
-    await act(() => render(<RouterProvider router={router} />))
+    await act(() => render(() => <RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
 
@@ -656,7 +656,7 @@ describe('router emits events during rendering', () => {
     const unsubResolved = router.subscribe('onResolved', mockOnResolved)
 
     await act(() => router.load())
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     // Ensure the "onBeforeRouteMount" event was called once
     await waitFor(() => expect(mockOnBeforeRouteMount).toBeCalledTimes(1))
@@ -727,7 +727,7 @@ describe('router rendering stability', () => {
     const routeTree = rootRoute.addChildren([fooIdRoute, indexRoute])
     const router = createRouter({ routeTree })
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const foo1Link = await screen.findByRole('link', { name: 'Foo1' })
     const foo2Link = await screen.findByRole('link', { name: 'Foo2' })
@@ -851,7 +851,7 @@ describe('search params in URL', () => {
             `${route}?${new URLSearchParams(search as Record<string, string>).toString()}`,
           )
 
-          render(<RouterProvider router={router} />)
+          render(() => <RouterProvider router={router} />)
           await act(() => router.load())
 
           expect(await screen.findByTestId('search-root')).toHaveTextContent(
@@ -876,7 +876,7 @@ describe('search params in URL', () => {
         '',
         `${route}?${new URLSearchParams(search as Record<string, string>).toString()}`,
       )
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
       await expect(await screen.findByTestId('search-root')).toHaveTextContent(
         search.root ?? 'undefined',
@@ -917,7 +917,7 @@ describe('search params in URL', () => {
     it('should add the default search param upon initial load when no search params are present', async () => {
       window.history.replaceState(null, '', `/searchWithDefault/check`)
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
 
       await checkSearch({ default: 'd1' })
@@ -930,7 +930,7 @@ describe('search params in URL', () => {
         `/searchWithDefault/check?default=d2`,
       )
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
 
       await checkSearch({ default: 'd2' })
@@ -943,7 +943,7 @@ describe('search params in URL', () => {
         `/searchWithDefault/check?optional=o1`,
       )
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
 
       await checkSearch({ default: 'd1', optional: 'o1' })
@@ -956,7 +956,7 @@ describe('search params in URL', () => {
         `/searchWithDefault/check?default=d2&optional=o1`,
       )
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
 
       await checkSearch({ default: 'd2', optional: 'o1' })
@@ -965,7 +965,7 @@ describe('search params in URL', () => {
     it('should have the default search param when navigating without search params', async () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
       const link = await screen.findByTestId('link-without-params')
 
@@ -978,7 +978,7 @@ describe('search params in URL', () => {
     it('should have the default search param when navigating with the optional search param', async () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
       const link = await screen.findByTestId('link-with-optional-param')
 
@@ -991,7 +991,7 @@ describe('search params in URL', () => {
     it('should have the correct `default` search param when navigating with the `default` search param', async () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
       const link = await screen.findByTestId('link-with-default-param')
 
@@ -1004,7 +1004,7 @@ describe('search params in URL', () => {
     it('should have the correct search params when navigating with both search params', async () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
-      render(<RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
       await act(() => router.load())
       const link = await screen.findByTestId('link-with-both-params')
 
@@ -1067,6 +1067,7 @@ describe('search params in URL', () => {
           validateSearch,
           errorComponent: ({ error }) => {
             errorSpy = error
+            return <></>
           },
         })
 
@@ -1074,7 +1075,7 @@ describe('search params in URL', () => {
           initialEntries: ['/search?search=foo'],
         })
         const router = createRouter({ routeTree: rootRoute, history })
-        render(<RouterProvider router={router} />)
+        render(() => <RouterProvider router={router} />)
         await act(() => router.load())
 
         expect(errorSpy).toBeUndefined()
@@ -1086,12 +1087,13 @@ describe('search params in URL', () => {
           validateSearch,
           errorComponent: ({ error }) => {
             errorSpy = error
+            return <></>
           },
         })
 
         const history = createMemoryHistory({ initialEntries: ['/search'] })
         const router = createRouter({ routeTree: rootRoute, history })
-        render(<RouterProvider router={router} />)
+        render(() => <RouterProvider router={router} />)
         await act(() => router.load())
 
         expect(errorSpy).toBeInstanceOf(SearchParamError)
@@ -1231,7 +1233,7 @@ describe('history: History gives correct notifcations and state', () => {
       Parameters<Parameters<Router['history']['subscribe']>[0]>[0]['action']
     > = []
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const unsub = router.history.subscribe(({ action }) => {
       results.push(action)
@@ -1269,7 +1271,7 @@ describe('history: History gives correct notifcations and state', () => {
       Parameters<Parameters<Router['history']['subscribe']>[0]>[0]['action']
     > = []
 
-    render(<RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
     const unsub = router.history.subscribe(({ action }) => {
       results.push(action)

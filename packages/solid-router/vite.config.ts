@@ -1,11 +1,11 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
-import react from '@vitejs/plugin-react'
+import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 import type { UserConfig } from 'vitest/config'
 
 const config = defineConfig({
-  plugins: [react()] as UserConfig['plugins'],
+  plugins: [solid()] as UserConfig['plugins'],
   test: {
     name: packageJson.name,
     dir: './tests',

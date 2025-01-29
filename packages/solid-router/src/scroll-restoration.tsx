@@ -1,10 +1,7 @@
-import * as React from 'react'
+import * as Solid from 'solid-js';
 import { functionalUpdate } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type { NonNullableUpdater, ParsedLocation } from '@tanstack/router-core'
-
-const useLayoutEffect =
-  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
 const windowKey = 'window'
 const delimiter = '___'
@@ -60,8 +57,10 @@ const defaultGetKey = (location: ParsedLocation) => {
 export function useScrollRestoration(options?: ScrollRestorationOptions) {
   const router = useRouter()
 
-  useLayoutEffect(() => {
-    const getKey = options?.getKey || defaultGetKey
+  Solid.createEffect(
+    Solid.on(
+      () => options?.getKey || defaultGetKey,
+      (getKey) => {
 
     const { history } = window
     history.scrollRestoration = 'manual'
@@ -179,12 +178,14 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
       },
     )
 
-    return () => {
+    Solid.onCleanup(() => {
       document.removeEventListener('scroll', onScroll)
       unsubOnBeforeLoad()
       unsubOnBeforeRouteMount()
-    }
-  }, [options?.getKey, options?.scrollBehavior, router])
+    })
+  },
+),
+)
 }
 
 export function ScrollRestoration(props: ScrollRestorationOptions) {

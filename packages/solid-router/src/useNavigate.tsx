@@ -1,4 +1,4 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
 import type { FromPathOption, NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
@@ -22,14 +22,9 @@ export function useNavigate<
 }): UseNavigateResult<TDefaultFrom> {
   const { navigate } = useRouter()
 
-  return React.useCallback(
-    (options: NavigateOptions) => {
-      return navigate({
-        ...options,
-      })
-    },
-    [navigate],
-  ) as UseNavigateResult<TDefaultFrom>
+  return ((options: NavigateOptions) => {
+    return navigate({ ...options })
+  }) as UseNavigateResult<TDefaultFrom>
 }
 
 // NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it
@@ -49,18 +44,18 @@ export function useNavigate<
 
 export function Navigate<
   TRouter extends AnyRouter = RegisteredRouter,
-  const TFrom extends string = string,
-  const TTo extends string | undefined = undefined,
-  const TMaskFrom extends string = TFrom,
-  const TMaskTo extends string = '',
+  TFrom extends string = string,
+  TTo extends string | undefined = '.',
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '.',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
 
-  React.useEffect(() => {
+  Solid.onMount(() => {
     navigate({
       ...props,
     } as any)
-  }, [navigate, props])
+  })
 
   return null
 }
