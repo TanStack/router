@@ -1,7 +1,7 @@
 import { Outlet } from '@tanstack/react-router';
 import { importedComponent as ImportedComponent } from '../shared/imported';
 const HEADER_HEIGHT = '63px';
-const component = function Layout() {
+const SplitComponent = function Layout() {
   return <main>
       <header style={{
       height: HEADER_HEIGHT
@@ -18,4 +18,4 @@ const component = function Layout() {
       <Outlet />
     </main>;
 };
-export { component };
+export { SplitComponent as component };
