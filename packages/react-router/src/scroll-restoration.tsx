@@ -88,6 +88,7 @@ export function restoreScroll(
   storageKey: string,
   key?: string,
   behavior?: ScrollToOptions['behavior'],
+  shouldScrollRestoration?: boolean,
 ) {
   let byKey: ScrollRestorationByKey
 
@@ -108,7 +109,7 @@ export function restoreScroll(
   ;(() => {
     // If we have a cached entry for this location state,
     // we always need to prefer that over the hash scroll.
-    if (elementEntries) {
+    if (shouldScrollRestoration && elementEntries) {
       for (const elementSelector in elementEntries) {
         const entry = elementEntries[elementSelector]!
         if (elementSelector === 'window') {
@@ -166,13 +167,9 @@ export function restoreScroll(
 
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   const shouldScrollRestoration =
-    router.options.scrollRestoration ?? force ?? false
+    force ?? router.options.scrollRestoration ?? false
 
-  if (
-    typeof document === 'undefined' ||
-    router.isScrollRestoring ||
-    !shouldScrollRestoration
-  ) {
+  if (typeof document === 'undefined' || router.isScrollRestoring) {
     return
   }
 
@@ -271,7 +268,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   }
 
   // Throttle the scroll event to avoid excessive updates
-  if (typeof document !== 'undefined') {
+  if (typeof document !== 'undefined' && shouldScrollRestoration) {
     document.addEventListener('scroll', throttle(onScroll, 100), true)
   }
 
@@ -291,14 +288,17 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       storageKey,
       cacheKey,
       router.options.scrollRestorationBehavior,
+      shouldScrollRestoration,
     )
 
-    // Mark the location as having been seen
-    scrollRestorationCache.set((state) => {
-      state[cacheKey] = state[cacheKey] || ({} as ScrollRestorationByElement)
+    if (shouldScrollRestoration) {
+      // Mark the location as having been seen
+      scrollRestorationCache.set((state) => {
+        state[cacheKey] = state[cacheKey] || ({} as ScrollRestorationByElement)
 
-      return state
-    })
+        return state
+      })
+    }
   })
 
   // return () => {
@@ -317,6 +317,10 @@ export function ScrollRestoration() {
     userKey !== defaultGetScrollRestorationKey(router.latestLocation)
       ? userKey
       : null
+
+  if (!router.isScrollRestoring || !router.isServer) {
+    return null
+  }
 
   return (
     <ScriptOnce

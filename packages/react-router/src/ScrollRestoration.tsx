@@ -8,18 +8,22 @@ import {
 import type { ScrollRestorationOptions } from './scroll-restoration'
 import type { ParsedLocation } from '@tanstack/router-core'
 
+function useScrollRestoration() {
+  const router = useRouter()
+  setupScrollRestoration(router, true)
+}
+
 /**
  * @deprecated use createRouter's `scrollRestoration` option instead
  */
 export function ScrollRestoration(_props: ScrollRestorationOptions) {
-  const router = useRouter()
+  useScrollRestoration()
+
   if (process.env.NODE_ENV === 'development') {
     console.warn(
       "The ScrollRestoration component is deprecated. Use createRouter's `scrollRestoration` option instead.",
     )
   }
-
-  setupScrollRestoration(router, true)
 
   return null
 }
@@ -38,6 +42,8 @@ export function useElementScrollRestoration(
     getKey?: (location: ParsedLocation) => string
   },
 ) {
+  useScrollRestoration()
+
   const router = useRouter()
   const getKey = options.getKey || defaultGetScrollRestorationKey
 
