@@ -340,6 +340,8 @@ export { useRouterState } from './useRouterState'
 export { useLocation } from './useLocation'
 export { useCanGoBack } from './useCanGoBack'
 
+export { useCanGoForward } from './useCanGoForward'
+
 export {
   useLayoutEffect, // SSR
   useStableCallback,
