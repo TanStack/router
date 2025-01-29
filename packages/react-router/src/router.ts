@@ -61,6 +61,7 @@ import type {
   BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
+  MakeRemountDepsOptionsUnion,
   NotFoundRouteComponent,
   RootRoute,
   RouteComponent,
@@ -451,6 +452,8 @@ export interface RouterOptions<
   pathParamsAllowedCharacters?: Array<
     ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
   >
+
+  defaultRemountDeps?: (opts: MakeRemountDepsOptionsUnion<TRouteTree>) => any
 }
 
 export interface RouterErrorSerializer<TSerializedError> {
@@ -1151,19 +1154,26 @@ export class Router<
 
       const parentMatch = matches[index - 1]
 
-      const [preMatchSearch, searchError]: [Record<string, any>, any] = (() => {
+      const [preMatchSearch, strictMatchSearch, searchError]: [
+        Record<string, any>,
+        Record<string, any>,
+        any,
+      ] = (() => {
         // Validate the search params and stabilize them
         const parentSearch = parentMatch?.search ?? next.search
+        const parentStrictSearch = parentMatch?._strictSearch ?? {}
 
         try {
-          const search =
-            validateSearch(route.options.validateSearch, parentSearch) ?? {}
+          const strictSearch =
+            validateSearch(route.options.validateSearch, { ...parentSearch }) ??
+            {}
 
           return [
             {
               ...parentSearch,
-              ...search,
+              ...strictSearch,
             },
+            { ...parentStrictSearch, ...strictSearch },
             undefined,
           ]
         } catch (err: any) {
@@ -1178,7 +1188,7 @@ export class Router<
             throw searchParamError
           }
 
-          return [parentSearch, searchParamError]
+          return [parentSearch, {}, searchParamError]
         }
       })()
 
@@ -1194,7 +1204,7 @@ export class Router<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const interpolatedPath = interpolatePath({
+      const { usedParams, interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
@@ -1206,7 +1216,7 @@ export class Router<
           params: routeParams,
           leaveWildcards: true,
           decodeCharMap: this.pathParamsDecodeCharMap,
-        }) + loaderDepsHash
+        }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -1231,9 +1241,11 @@ export class Router<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
+          _strictParams: usedParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
+          _strictSearch: strictMatchSearch,
         }
       } else {
         const status =
@@ -1251,11 +1263,13 @@ export class Router<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
+          _strictParams: usedParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
           updatedAt: Date.now(),
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : preMatchSearch,
+          _strictSearch: strictMatchSearch,
           searchError: undefined,
           status,
           isFetching: false,
@@ -1463,7 +1477,7 @@ export class Router<
                 path: route.fullPath,
                 params: matchedRoutesResult?.routeParams ?? {},
                 decodeCharMap: this.pathParamsDecodeCharMap,
-              })
+              }).interpolatedPath
               const pathname = joinPaths([this.basepath, interpolatedPath])
               return pathname === fromPath
             })?.id as keyof this['routesById']
@@ -1503,7 +1517,7 @@ export class Router<
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
-      })
+      }).interpolatedPath
 
       let search = fromSearch
       if (opts._includeValidateSearch && this.options.search?.strict) {
@@ -2173,6 +2187,10 @@ export class Router<
           this._handleNotFound(matches, err, {
             updateMatch,
           })
+          this.serverSsr?.onMatchSettled({
+            router: this,
+            match: this.getMatch(match.id)!,
+          })
           throw err
         }
       }
@@ -2637,6 +2655,7 @@ export class Router<
         if (isNotFound(err) && !allPreload) {
           await triggerOnReady()
         }
+
         throw err
       }
     }
@@ -2835,8 +2854,10 @@ export class Router<
           _fromLocation: next,
         })
       }
-      // Preload errors are not fatal, but we should still log them
-      console.error(err)
+      if (!isNotFound(err)) {
+        // Preload errors are not fatal, but we should still log them
+        console.error(err)
+      }
       return undefined
     }
   }
