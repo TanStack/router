@@ -29,8 +29,6 @@ afterEach(() => {
 const WAIT_TIME = 100
 
 describe('loaders are being called', () => {
-
-
   test('called on /', async () => {
     const indexLoaderMock = vi.fn()
 

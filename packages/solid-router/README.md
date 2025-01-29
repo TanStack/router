@@ -26,5 +26,4 @@
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow @TannerLinsley" />
 </a>
 
-
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!

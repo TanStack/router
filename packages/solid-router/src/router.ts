@@ -98,7 +98,7 @@ export interface Register {
   // router: Router
 }
 
-export type  AnyRouter = Router<any, any, any, any, any, any>
+export type AnyRouter = Router<any, any, any, any, any, any>
 
 export type AnyRouterWithContext<TContext> = Router<
   AnyRouteWithContext<TContext>,

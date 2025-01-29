@@ -98,7 +98,7 @@ export function lazyRouteComponent<
       throw load()
     }
 
-     if (ssr?.() === false) {
+    if (ssr?.() === false) {
       return (
         <ClientOnly fallback={<Outlet />}>
           <Dynamic component={comp} {...props} />

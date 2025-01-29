@@ -38,7 +38,9 @@ export function CatchBoundary(
 }
 
 export function ErrorComponent({ error }: { error: any }) {
-  const [show, setShow] = Solid.createSignal(process.env.NODE_ENV !== 'production')
+  const [show, setShow] = Solid.createSignal(
+    process.env.NODE_ENV !== 'production',
+  )
 
   return (
     <div style={{ padding: '.5rem', 'max-width': '100%' }}>

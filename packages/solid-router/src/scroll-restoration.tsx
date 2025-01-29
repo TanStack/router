@@ -1,4 +1,4 @@
-import * as Solid from 'solid-js';
+import * as Solid from 'solid-js'
 import { functionalUpdate } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type { NonNullableUpdater, ParsedLocation } from '@tanstack/router-core'
@@ -61,131 +61,130 @@ export function useScrollRestoration(options?: ScrollRestorationOptions) {
     Solid.on(
       () => options?.getKey || defaultGetKey,
       (getKey) => {
+        const { history } = window
+        history.scrollRestoration = 'manual'
 
-    const { history } = window
-    history.scrollRestoration = 'manual'
+        const onScroll = (event: Event) => {
+          if (weakScrolledElements.has(event.target)) return
+          weakScrolledElements.add(event.target)
 
-    const onScroll = (event: Event) => {
-      if (weakScrolledElements.has(event.target)) return
-      weakScrolledElements.add(event.target)
+          let elementSelector = ''
 
-      let elementSelector = ''
+          if (event.target === document || event.target === window) {
+            elementSelector = windowKey
+          } else {
+            const attrId = (event.target as Element).getAttribute(
+              'data-scroll-restoration-id',
+            )
 
-      if (event.target === document || event.target === window) {
-        elementSelector = windowKey
-      } else {
-        const attrId = (event.target as Element).getAttribute(
-          'data-scroll-restoration-id',
-        )
-
-        if (attrId) {
-          elementSelector = `[data-scroll-restoration-id="${attrId}"]`
-        } else {
-          elementSelector = getCssSelector(event.target)
-        }
-      }
-
-      if (!cache.state.next[elementSelector]) {
-        cache.set((c) => ({
-          ...c,
-          next: {
-            ...c.next,
-            [elementSelector]: {
-              scrollX: NaN,
-              scrollY: NaN,
-            },
-          },
-        }))
-      }
-    }
-
-    if (typeof document !== 'undefined') {
-      document.addEventListener('scroll', onScroll, true)
-    }
-
-    const unsubOnBeforeLoad = router.subscribe('onBeforeLoad', (event) => {
-      if (event.hrefChanged) {
-        const restoreKey = getKey(event.fromLocation)
-        for (const elementSelector in cache.state.next) {
-          const entry = cache.state.next[elementSelector]!
-          if (elementSelector === windowKey) {
-            entry.scrollX = window.scrollX || 0
-            entry.scrollY = window.scrollY || 0
-          } else if (elementSelector) {
-            const element = document.querySelector(elementSelector)
-            entry.scrollX = element?.scrollLeft || 0
-            entry.scrollY = element?.scrollTop || 0
-          }
-
-          cache.set((c) => {
-            const next = { ...c.next }
-            delete next[elementSelector]
-
-            return {
-              ...c,
-              next,
-              cached: {
-                ...c.cached,
-                [[restoreKey, elementSelector].join(delimiter)]: entry,
-              },
+            if (attrId) {
+              elementSelector = `[data-scroll-restoration-id="${attrId}"]`
+            } else {
+              elementSelector = getCssSelector(event.target)
             }
-          })
-        }
-      }
-    })
-
-    const unsubOnBeforeRouteMount = router.subscribe(
-      'onBeforeRouteMount',
-      (event) => {
-        if (event.hrefChanged) {
-          if (!router.resetNextScroll) {
-            return
           }
 
-          router.resetNextScroll = true
+          if (!cache.state.next[elementSelector]) {
+            cache.set((c) => ({
+              ...c,
+              next: {
+                ...c.next,
+                [elementSelector]: {
+                  scrollX: NaN,
+                  scrollY: NaN,
+                },
+              },
+            }))
+          }
+        }
 
-          const restoreKey = getKey(event.toLocation)
-          let windowRestored = false
+        if (typeof document !== 'undefined') {
+          document.addEventListener('scroll', onScroll, true)
+        }
 
-          for (const cacheKey in cache.state.cached) {
-            const entry = cache.state.cached[cacheKey]!
-            const [key, elementSelector] = cacheKey.split(delimiter)
-            if (key === restoreKey) {
+        const unsubOnBeforeLoad = router.subscribe('onBeforeLoad', (event) => {
+          if (event.hrefChanged) {
+            const restoreKey = getKey(event.fromLocation)
+            for (const elementSelector in cache.state.next) {
+              const entry = cache.state.next[elementSelector]!
               if (elementSelector === windowKey) {
-                windowRestored = true
-                window.scrollTo({
-                  top: entry.scrollY,
-                  left: entry.scrollX,
-                  behavior: options?.scrollBehavior,
-                })
+                entry.scrollX = window.scrollX || 0
+                entry.scrollY = window.scrollY || 0
               } else if (elementSelector) {
                 const element = document.querySelector(elementSelector)
-                if (element) {
-                  element.scrollLeft = entry.scrollX
-                  element.scrollTop = entry.scrollY
-                }
+                entry.scrollX = element?.scrollLeft || 0
+                entry.scrollY = element?.scrollTop || 0
               }
+
+              cache.set((c) => {
+                const next = { ...c.next }
+                delete next[elementSelector]
+
+                return {
+                  ...c,
+                  next,
+                  cached: {
+                    ...c.cached,
+                    [[restoreKey, elementSelector].join(delimiter)]: entry,
+                  },
+                }
+              })
             }
           }
+        })
 
-          if (!windowRestored) {
-            window.scrollTo(0, 0)
-          }
+        const unsubOnBeforeRouteMount = router.subscribe(
+          'onBeforeRouteMount',
+          (event) => {
+            if (event.hrefChanged) {
+              if (!router.resetNextScroll) {
+                return
+              }
 
-          cache.set((c) => ({ ...c, next: {} }))
-          weakScrolledElements = new WeakSet<any>()
-        }
+              router.resetNextScroll = true
+
+              const restoreKey = getKey(event.toLocation)
+              let windowRestored = false
+
+              for (const cacheKey in cache.state.cached) {
+                const entry = cache.state.cached[cacheKey]!
+                const [key, elementSelector] = cacheKey.split(delimiter)
+                if (key === restoreKey) {
+                  if (elementSelector === windowKey) {
+                    windowRestored = true
+                    window.scrollTo({
+                      top: entry.scrollY,
+                      left: entry.scrollX,
+                      behavior: options?.scrollBehavior,
+                    })
+                  } else if (elementSelector) {
+                    const element = document.querySelector(elementSelector)
+                    if (element) {
+                      element.scrollLeft = entry.scrollX
+                      element.scrollTop = entry.scrollY
+                    }
+                  }
+                }
+              }
+
+              if (!windowRestored) {
+                window.scrollTo(0, 0)
+              }
+
+              cache.set((c) => ({ ...c, next: {} }))
+              weakScrolledElements = new WeakSet<any>()
+            }
+          },
+        )
+
+        Solid.onCleanup(() => {
+          document.removeEventListener('scroll', onScroll)
+          unsubOnBeforeLoad()
+          unsubOnBeforeRouteMount()
+        })
       },
-    )
-
-    Solid.onCleanup(() => {
-      document.removeEventListener('scroll', onScroll)
-      unsubOnBeforeLoad()
-      unsubOnBeforeRouteMount()
-    })
-  },
-),
-)
+    ),
+  )
 }
 
 export function ScrollRestoration(props: ScrollRestorationOptions) {

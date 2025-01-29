@@ -55,7 +55,6 @@ afterEach(() => {
 const WAIT_TIME = 300
 
 describe('Link', () => {
-
   // rerender doesn't exist in solid
 
   // test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
@@ -2798,9 +2797,9 @@ describe('Link', () => {
     })
 
     const LoginComponent = () => {
-      const [status, setStatus] = Solid.createSignal<'idle' | 'success' | 'error'>(
-        'idle',
-      )
+      const [status, setStatus] = Solid.createSignal<
+        'idle' | 'success' | 'error'
+      >('idle')
 
       Solid.onMount(() => {
         const onLoad = async () => {
@@ -3922,8 +3921,6 @@ describe('Link', () => {
 })
 
 describe('createLink', () => {
-
-
   it('should pass the "disabled" prop to the rendered target element', async () => {
     const CustomLink = createLink('button')
 

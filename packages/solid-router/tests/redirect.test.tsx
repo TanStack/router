@@ -32,7 +32,6 @@ const WAIT_TIME = 100
 
 describe('redirect', () => {
   describe('SPA', () => {
-  
     test('when `redirect` is thrown in `beforeLoad`', async () => {
       const nestedLoaderMock = vi.fn()
       const nestedFooLoaderMock = vi.fn()

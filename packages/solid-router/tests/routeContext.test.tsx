@@ -1,9 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from '@solidjs/testing-library'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
@@ -38,8 +33,6 @@ afterEach(() => {
 const WAIT_TIME = 150
 
 describe('context function', () => {
-
-
   describe('context is executed', () => {
     async function findByText(text: string) {
       const element = await screen.findByText(text)
@@ -609,8 +602,6 @@ describe('context function', () => {
 })
 
 describe('beforeLoad in the route definition', () => {
-
-
   // Present at the root route
   test('route context, present in the root route', async () => {
     const mock = vi.fn()
@@ -1461,8 +1452,6 @@ describe('beforeLoad in the route definition', () => {
 })
 
 describe('loader in the route definition', () => {
-
-
   // Present at the root route
   test('route context, present in the root route', async () => {
     const mock = vi.fn()
@@ -2363,8 +2352,6 @@ describe('loader in the route definition', () => {
 })
 
 describe('useRouteContext in the component', () => {
-
-
   // Present at the root route
   test('route context, present in the root route', async () => {
     const rootRoute = createRootRoute({

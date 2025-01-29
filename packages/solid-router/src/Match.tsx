@@ -20,7 +20,6 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import type { AnyRoute } from './route'
 
 export const Match = (props: { matchId: string }) => {
-
   const e = new Error()
   const router = useRouter()
   const routeId = useRouterState({
@@ -80,7 +79,7 @@ export const Match = (props: { matchId: string }) => {
       >
         <Dynamic
           component={ResolvedCatchBoundary()}
-          getResetKey={()=>resetKey()}
+          getResetKey={() => resetKey()}
           errorComponent={routeErrorComponent() || ErrorComponent}
           onCatch={(error: Error) => {
             // Forward not found errors (we don't want to show the error component for these)
@@ -101,12 +100,7 @@ export const Match = (props: { matchId: string }) => {
               )
                 throw error
 
-              return (
-                <Dynamic
-                  component={routeNotFoundComponent()}
-                  {...(error)}
-                />
-              )
+              return <Dynamic component={routeNotFoundComponent()} {...error} />
             }}
           >
             <MatchInner matchId={props.matchId} />
@@ -161,7 +155,6 @@ export const MatchInner = (props: { matchId: string }): any => {
   // useChangedDiff(match)
   const match = () => matchState().match
 
-
   return (
     <Solid.Switch>
       <Solid.Match when={match().status === 'notFound'}>
@@ -172,66 +165,62 @@ export const MatchInner = (props: { matchId: string }): any => {
         }}
       </Solid.Match>
       <Solid.Match when={match().status === 'redirected'}>
-      {(_) => {
-        invariant(isRedirect(match().error), 'Expected a redirect error')
-        throw router.getMatch(match().id)?.loadPromise
-      }}
+        {(_) => {
+          invariant(isRedirect(match().error), 'Expected a redirect error')
+          throw router.getMatch(match().id)?.loadPromise
+        }}
       </Solid.Match>
       <Solid.Match when={match().status === 'error'}>
-      {(_) => {
-        
-        if (router.isServer) {
-          const RouteErrorComponent =
-          (route().options.errorComponent ?? router.options.defaultErrorComponent) ||
-          ErrorComponent
+        {(_) => {
+          if (router.isServer) {
+            const RouteErrorComponent =
+              (route().options.errorComponent ??
+                router.options.defaultErrorComponent) ||
+              ErrorComponent
 
-          
-          return (
-            <RouteErrorComponent
-              error={match().error}
-              info={{
-                componentStack: '',
-              }}
-            />
-          )
-        }
-    
-        throw match().error
+            return (
+              <RouteErrorComponent
+                error={match().error}
+                info={{
+                  componentStack: '',
+                }}
+              />
+            )
+          }
 
-      }}
+          throw match().error
+        }}
       </Solid.Match>
       <Solid.Match when={match().status === 'pending'}>
-      {(_) => {
-        
-        const pendingMinMs =
-      route().options.pendingMinMs ?? router.options.defaultPendingMinMs
+        {(_) => {
+          const pendingMinMs =
+            route().options.pendingMinMs ?? router.options.defaultPendingMinMs
 
-    if (pendingMinMs && !router.getMatch(match().id)?.minPendingPromise) {
-      // Create a promise that will resolve after the minPendingMs
-      if (!router.isServer) {
-        const minPendingPromise = createControlledPromise<void>()
+          if (pendingMinMs && !router.getMatch(match().id)?.minPendingPromise) {
+            // Create a promise that will resolve after the minPendingMs
+            if (!router.isServer) {
+              const minPendingPromise = createControlledPromise<void>()
 
-        Promise.resolve().then(() => {
-          router.updateMatch(match().id, (prev) => ({
-            ...prev,
-            minPendingPromise,
-          }))
-        })
+              Promise.resolve().then(() => {
+                router.updateMatch(match().id, (prev) => ({
+                  ...prev,
+                  minPendingPromise,
+                }))
+              })
 
-        setTimeout(() => {
-          minPendingPromise.resolve()
+              setTimeout(() => {
+                minPendingPromise.resolve()
 
-          // We've handled the minPendingPromise, so we can delete it
-          router.updateMatch(match().id, (prev) => ({
-            ...prev,
-            minPendingPromise: undefined,
-          }))
-        }, pendingMinMs)
-      }
-    }
-      throw router.getMatch(match().id)?.loadPromise
-
-      }}
+                // We've handled the minPendingPromise, so we can delete it
+                router.updateMatch(match().id, (prev) => ({
+                  ...prev,
+                  minPendingPromise: undefined,
+                }))
+              }, pendingMinMs)
+            }
+          }
+          throw router.getMatch(match().id)?.loadPromise
+        }}
       </Solid.Match>
     </Solid.Switch>
   )

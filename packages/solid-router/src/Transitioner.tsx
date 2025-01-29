@@ -85,91 +85,96 @@ export function Transitioner() {
     })
   })
 
-Solid.createRenderEffect(
-  Solid.on(
-    () => isLoading(),
-    (isLoading, previousIsLoading) => {
+  Solid.createRenderEffect(
+    Solid.on(
+      () => isLoading(),
+      (isLoading, previousIsLoading) => {
+        if (previousIsLoading && !isLoading) {
+          const toLocation = router.state.location
+          const fromLocation = router.state.resolvedLocation
+          const pathChanged = fromLocation.pathname !== toLocation.pathname
+          const hrefChanged = fromLocation.href !== toLocation.href
 
-      if (previousIsLoading && !isLoading) {
-      const toLocation = router.state.location
-      const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.pathname !== toLocation.pathname
-      const hrefChanged = fromLocation.href !== toLocation.href
+          router.emit({
+            type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
+            fromLocation,
+            toLocation,
+            pathChanged,
+            hrefChanged,
+          })
+        }
+      },
+    ),
+  )
+  Solid.createRenderEffect(
+    Solid.on(
+      () => isPagePending(),
+      (isPagePending, previousIsPagePending) => {
+        // emit onBeforeRouteMount
+        if (previousIsPagePending && !isPagePending) {
+          const toLocation = router.state.location
+          const fromLocation = router.state.resolvedLocation
+          const pathChanged = fromLocation.pathname !== toLocation.pathname
+          const hrefChanged = fromLocation.href !== toLocation.href
 
-      router.emit({
-        type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
-        fromLocation,
-        toLocation,
-        pathChanged,
-        hrefChanged,
-      })
-    }
-  },
-),
-)
-Solid.createRenderEffect(
-  Solid.on(
-    () => isPagePending(),
-    (isPagePending, previousIsPagePending) => {
-      // emit onBeforeRouteMount
-      if (previousIsPagePending && !isPagePending) {
-      const toLocation = router.state.location
-      const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.pathname !== toLocation.pathname
-      const hrefChanged = fromLocation.href !== toLocation.href
+          router.emit({
+            type: 'onBeforeRouteMount',
+            fromLocation,
+            toLocation,
+            pathChanged,
+            hrefChanged,
+          })
+        }
+      },
+    ),
+  )
 
-      router.emit({
-        type: 'onBeforeRouteMount',
-        fromLocation,
-        toLocation,
-        pathChanged,
-        hrefChanged,
-      })
-    }
-  },
-),
-)
+  Solid.createRenderEffect(
+    Solid.on(
+      () => isAnyPending(),
+      (isAnyPending, previousIsAnyPending) => {
+        // The router was pending and now it's not
+        if (previousIsAnyPending && !isAnyPending) {
+          const toLocation = router.state.location
+          const fromLocation = router.state.resolvedLocation
+          const pathChanged = fromLocation.pathname !== toLocation.pathname
+          const hrefChanged = fromLocation.href !== toLocation.href
 
-Solid.createRenderEffect(
-  Solid.on(
-    () => isAnyPending(),
-    (isAnyPending, previousIsAnyPending) => {
-      // The router was pending and now it's not
-      if (previousIsAnyPending && !isAnyPending) {
-      const toLocation = router.state.location
-      const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.pathname !== toLocation.pathname
-      const hrefChanged = fromLocation.href !== toLocation.href
+          router.emit({
+            type: 'onResolved',
+            fromLocation,
+            toLocation,
+            pathChanged,
+            hrefChanged,
+          })
 
-      router.emit({
-        type: 'onResolved',
-        fromLocation,
-        toLocation,
-        pathChanged,
-        hrefChanged,
-      })
+          router.__store.setState((s) => ({
+            ...s,
+            status: 'idle',
+            resolvedLocation: s.location,
+          }))
 
-      router.__store.setState((s) => ({
-        ...s,
-        status: 'idle',
-        resolvedLocation: s.location,
-      }))
+          if (
+            typeof document !== 'undefined' &&
+            (document as any).querySelector
+          ) {
+            const hashScrollIntoViewOptions =
+              router.state.location.state.__hashScrollIntoViewOptions ?? true
 
-      if (typeof document !== 'undefined' && (document as any).querySelector) {
-        const hashScrollIntoViewOptions =
-          router.state.location.state.__hashScrollIntoViewOptions ?? true
-
-        if (hashScrollIntoViewOptions && router.state.location.hash !== '') {
-          const el = document.getElementById(router.state.location.hash)
-          if (el) {
-            el.scrollIntoView(hashScrollIntoViewOptions)
+            if (
+              hashScrollIntoViewOptions &&
+              router.state.location.hash !== ''
+            ) {
+              const el = document.getElementById(router.state.location.hash)
+              if (el) {
+                el.scrollIntoView(hashScrollIntoViewOptions)
+              }
+            }
           }
         }
-      }
-    }
-  },
-),
-)
+      },
+    ),
+  )
 
-return null
+  return null
 }

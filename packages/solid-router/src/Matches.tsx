@@ -202,22 +202,22 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   })
 
   return <
-      const TFrom extends string = string,
-      const TTo extends string | undefined = undefined,
-      const TMaskFrom extends string = TFrom,
-      const TMaskTo extends string = '',
-    >(
-      opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ): false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams'] => {
-      const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
+    const TFrom extends string = string,
+    const TTo extends string | undefined = undefined,
+    const TMaskFrom extends string = TFrom,
+    const TMaskTo extends string = '',
+  >(
+    opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  ): false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams'] => {
+    const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      return router.matchRoute(rest as any, {
-        pending,
-        caseSensitive,
-        fuzzy,
-        includeSearch,
-      })
-    }
+    return router.matchRoute(rest as any, {
+      pending,
+      caseSensitive,
+      fuzzy,
+      includeSearch,
+    })
+  }
 }
 
 export type MakeMatchRouteOptions<

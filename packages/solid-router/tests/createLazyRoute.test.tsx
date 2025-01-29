@@ -54,8 +54,6 @@ function createTestRouter(initialHistory?: RouterHistory) {
 }
 
 describe('preload: matched routes', { timeout: 20000 }, () => {
-
-
   it('should wait for lazy options to be streamed in before ', async () => {
     const { router } = createTestRouter(
       createMemoryHistory({ initialEntries: ['/'] }),
