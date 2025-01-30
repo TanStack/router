@@ -8,6 +8,7 @@ import './styles.css'
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
+  scrollRestoration: true,
 })
 
 // Register things for typesafety

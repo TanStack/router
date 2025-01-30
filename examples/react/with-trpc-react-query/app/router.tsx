@@ -32,6 +32,7 @@ export const trpcQueryUtils = createTRPCQueryUtils({
 export function createRouter() {
   const router = createTanStackRouter({
     routeTree,
+    scrollRestoration: true,
     defaultPreload: 'intent',
     context: {
       trpcQueryUtils,

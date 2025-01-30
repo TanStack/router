@@ -10,6 +10,7 @@ export const router = createRouter({
   defaultPendingComponent: () => (
     <div>Loading form global pending component...</div>
   ),
+  scrollRestoration: true,
 })
 
 export type RouterType = typeof router

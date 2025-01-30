@@ -319,6 +319,7 @@ const router = createRouter({
   routeTree,
   routeMasks: [photoModalToPhotoMask],
   defaultPreload: 'intent',
+  scrollRestoration: true,
 })
 
 // Register things for typesafety

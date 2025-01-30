@@ -183,7 +183,9 @@ import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/start'
 import { createRouter } from './router'
 
-const router = createRouter()
+const router = createRouter({
+  scrollRestoration: true,
+})
 
 hydrateRoot(document!, <StartClient router={router} />)
 ```
@@ -233,7 +235,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
-        <ScrollRestoration />
         <Scripts />
       </body>
     </html>
