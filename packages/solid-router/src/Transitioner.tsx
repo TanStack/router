@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { trimPathRight } from '@tanstack/router-core'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -90,17 +90,9 @@ export function Transitioner() {
       () => isLoading(),
       (isLoading, previousIsLoading) => {
         if (previousIsLoading && !isLoading) {
-          const toLocation = router.state.location
-          const fromLocation = router.state.resolvedLocation
-          const pathChanged = fromLocation.pathname !== toLocation.pathname
-          const hrefChanged = fromLocation.href !== toLocation.href
-
           router.emit({
-            type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
-            fromLocation,
-            toLocation,
-            pathChanged,
-            hrefChanged,
+            type: 'onLoad',
+            ...getLocationChangeInfo(router.state),
           })
         }
       },
@@ -112,17 +104,9 @@ export function Transitioner() {
       (isPagePending, previousIsPagePending) => {
         // emit onBeforeRouteMount
         if (previousIsPagePending && !isPagePending) {
-          const toLocation = router.state.location
-          const fromLocation = router.state.resolvedLocation
-          const pathChanged = fromLocation.pathname !== toLocation.pathname
-          const hrefChanged = fromLocation.href !== toLocation.href
-
           router.emit({
             type: 'onBeforeRouteMount',
-            fromLocation,
-            toLocation,
-            pathChanged,
-            hrefChanged,
+            ...getLocationChangeInfo(router.state),
           })
         }
       },
@@ -135,17 +119,9 @@ export function Transitioner() {
       (isAnyPending, previousIsAnyPending) => {
         // The router was pending and now it's not
         if (previousIsAnyPending && !isAnyPending) {
-          const toLocation = router.state.location
-          const fromLocation = router.state.resolvedLocation
-          const pathChanged = fromLocation.pathname !== toLocation.pathname
-          const hrefChanged = fromLocation.href !== toLocation.href
-
           router.emit({
             type: 'onResolved',
-            fromLocation,
-            toLocation,
-            pathChanged,
-            hrefChanged,
+            ...getLocationChangeInfo(router.state),
           })
 
           router.__store.setState((s) => ({
