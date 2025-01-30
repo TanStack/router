@@ -1,16 +1,9 @@
 import * as babel from '@babel/core'
-import _generate from '@babel/generator'
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-import { parseAst } from '@tanstack/router-utils'
-import type { ParseAstOptions } from '@tanstack/router-utils';
-
-let generate = _generate
-
-if ('default' in generate) {
-  generate = generate.default as typeof generate
-}
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import type { ParseAstOptions } from '@tanstack/router-utils'
 
 export interface DirectiveFn {
   nodePath: SupportedFunctionPath
@@ -105,7 +98,7 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
 
   deadCodeElimination(ast)
 
-  const compiledResult = generate(ast, {
+  const compiledResult = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
   })

@@ -1,22 +1,12 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
-import _generate from '@babel/generator'
 import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-import { parseAst } from '@tanstack/router-utils'
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { splitPrefix } from '../constants'
-import type { ParseAstOptions } from '@tanstack/router-utils';
+import type { ParseAstOptions } from '@tanstack/router-utils'
 
 const debug = process.env.TSR_VITE_DEBUG
-
-// Babel is a CJS package and uses `default` as named binding (`exports.default =`).
-// https://github.com/babel/babel/issues/15269.
-let generate = (_generate as any)['default'] as typeof _generate
-
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-if (!generate) {
-  generate = _generate
-}
 
 type SplitModulesById = Record<
   string,
@@ -320,7 +310,7 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
   deadCodeElimination(ast)
 
-  return generate(ast, {
+  return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
   })
@@ -482,7 +472,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 ]),
               )
             } else if (t.isCallExpression(splitNode)) {
-              const outputSplitNodeCode = generate(splitNode).code
+              const outputSplitNodeCode = generateFromAst(splitNode).code
               const splitNodeAst = babel.parse(outputSplitNodeCode)
 
               if (!splitNodeAst) {
@@ -592,7 +582,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
     }
   }
 
-  return generate(ast, {
+  return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
   })

@@ -1,24 +1,14 @@
 import * as babel from '@babel/core'
 import * as t from '@babel/types'
-import _generate from '@babel/generator'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-import { parseAst } from '@tanstack/router-utils'
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { ParseAstOptions } from '@tanstack/router-utils'
-
-// Babel is a CJS package and uses `default` as named binding (`exports.default =`).
-// https://github.com/babel/babel/issues/15269.
-let generate = (_generate as any)['default'] as typeof _generate
-
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-if (!generate) {
-  generate = _generate
-}
 
 export function compileEliminateDeadCode(opts: ParseAstOptions) {
   const ast = parseAst(opts)
   deadCodeElimination(ast)
-  return generate(ast, {
+  return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
     filename: opts.filename,
@@ -187,7 +177,7 @@ export function compileStartOutput(opts: CompileOptions) {
     },
   })
 
-  return generate(ast, {
+  return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
     filename: opts.filename,

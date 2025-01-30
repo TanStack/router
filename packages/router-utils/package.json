@@ -64,11 +64,13 @@
   },
   "dependencies": {
     "@babel/parser": "^7.26.7",
+    "@babel/generator": "^7.26.5",
     "ansis": "^3.5.2",
     "diff": "^7.0.0"
   },
   "devDependencies": {
     "@babel/types": "^7.26.7",
+    "@types/babel__generator": "^7.6.8",
     "@types/diff": "^6.0.0"
   }
 }

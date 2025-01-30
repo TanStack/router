@@ -3995,9 +3995,6 @@ importers:
       '@babel/generator':
         specifier: ^7.26.5
         version: 7.26.5
-      '@babel/parser':
-        specifier: ^7.26.7
-        version: 7.26.7
       '@babel/plugin-syntax-jsx':
         specifier: ^7.25.9
         version: 7.25.9(@babel/core@7.26.7)
@@ -4208,9 +4205,6 @@ importers:
       '@babel/generator':
         specifier: ^7.26.5
         version: 7.26.5
-      '@babel/parser':
-        specifier: ^7.26.7
-        version: 7.26.7
       '@babel/plugin-syntax-jsx':
         specifier: ^7.25.9
         version: 7.25.9(@babel/core@7.26.7)
@@ -4271,6 +4265,9 @@ importers:
 
   packages/router-utils:
     dependencies:
+      '@babel/generator':
+        specifier: ^7.26.5
+        version: 7.26.5
       '@babel/parser':
         specifier: ^7.26.7
         version: 7.26.7
@@ -4284,6 +4281,9 @@ importers:
       '@babel/types':
         specifier: ^7.26.7
         version: 7.26.7
+      '@types/babel__generator':
+        specifier: ^7.6.8
+        version: 7.6.8
       '@types/diff':
         specifier: ^6.0.0
         version: 6.0.0
@@ -4300,12 +4300,6 @@ importers:
         specifier: 7.26.2
         version: 7.26.2
       '@babel/core':
-        specifier: ^7.26.7
-        version: 7.26.7
-      '@babel/generator':
-        specifier: ^7.26.5
-        version: 7.26.5
-      '@babel/parser':
         specifier: ^7.26.7
         version: 7.26.7
       '@babel/plugin-syntax-jsx':
@@ -4332,9 +4326,6 @@ importers:
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
-      '@types/babel__generator':
-        specifier: ^7.6.8
-        version: 7.6.8
       '@types/babel__template':
         specifier: ^7.4.4
         version: 7.4.4
@@ -4503,9 +4494,6 @@ importers:
       '@babel/generator':
         specifier: ^7.26.5
         version: 7.26.5
-      '@babel/parser':
-        specifier: ^7.26.7
-        version: 7.26.7
       '@babel/plugin-syntax-jsx':
         specifier: ^7.25.9
         version: 7.25.9(@babel/core@7.26.7)

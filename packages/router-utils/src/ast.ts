@@ -1,6 +1,7 @@
 import { parse } from '@babel/parser'
-import type { ParseResult } from '@babel/parser';
-import type * as  _babel_types from '@babel/types'
+import _generate from '@babel/generator'
+import type { ParseResult } from '@babel/parser'
+import type * as _babel_types from '@babel/types'
 
 export type ParseAstOptions = {
   code: string
@@ -9,7 +10,9 @@ export type ParseAstOptions = {
   env?: 'server' | 'client' | 'ssr'
 }
 
-export function parseAst(opts: ParseAstOptions) : ParseResult<_babel_types.File> {
+export function parseAst(
+  opts: ParseAstOptions,
+): ParseResult<_babel_types.File> {
   return parse(opts.code, {
     plugins: ['jsx', 'typescript'],
     sourceType: 'module',
@@ -20,3 +23,11 @@ export function parseAst(opts: ParseAstOptions) : ParseResult<_babel_types.File>
     },
   })
 }
+
+let generate = _generate
+
+if ('default' in generate) {
+  generate = generate.default as typeof generate
+}
+
+export { generate as generateFromAst }
