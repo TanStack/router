@@ -47,7 +47,7 @@ type DefaultRouter = typeof defaultRouter
 
 test('can select router state', () => {
   expectTypeOf(useRouterState<DefaultRouter>)
-    .returns.toHaveProperty('location')
+    .returns.returns.toHaveProperty('location')
     .toMatchTypeOf<{
       search: { page?: number | undefined }
     }>()
