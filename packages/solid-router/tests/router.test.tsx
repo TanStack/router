@@ -1,4 +1,3 @@
-import { act, useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -8,6 +7,7 @@ import {
   waitFor,
 } from '@solidjs/testing-library'
 import { z } from 'zod'
+import { onMount } from 'solid-js'
 import {
   Link,
   Outlet,
@@ -275,7 +275,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/posts/tanner')
   })
@@ -285,7 +285,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/posts/🚀')
   })
@@ -295,7 +295,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
   })
@@ -309,7 +309,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.location.pathname).toBe(
       '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
@@ -321,7 +321,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -339,7 +339,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -357,7 +357,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -379,7 +379,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     const match = router.state.matches.find(
       (r) => r.routeId === routes.postIdRoute.id,
@@ -402,8 +402,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     await router.load()
     render(() => <RouterProvider router={router} />)
 
-    await act(() =>
-      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
+    await router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }
     )
 
     expect(router.state.location.pathname).toBe('/posts/%40jane')
@@ -418,9 +417,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     await router.load()
     render(() => <RouterProvider router={router} />)
 
-    await act(() =>
-      router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
-    )
+    await router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } })
 
     expect(router.state.location.pathname).toBe('/posts/@jane')
   })
@@ -604,7 +601,7 @@ describe('encoding: URL path segment', () => {
       })
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
 
       expect(router.state.location.pathname).toBe(output)
     },
@@ -632,9 +629,9 @@ describe('router emits events during rendering', () => {
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
-    await act(() => render(() => <RouterProvider router={router} />))
+    await render(() => <RouterProvider router={router} />)
 
-    await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
+    await router.navigate({ to: '/$', params: { _splat: 'tanner' } })
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
     unsub()
@@ -655,7 +652,7 @@ describe('router emits events during rendering', () => {
     )
     const unsubResolved = router.subscribe('onResolved', mockOnResolved)
 
-    await act(() => router.load())
+    await router.load()
     render(() => <RouterProvider router={router} />)
 
     // Ensure the "onBeforeRouteMount" event was called once
@@ -717,9 +714,9 @@ describe('router rendering stability', () => {
     function FooIdRouteComponent() {
       const id = fooIdRoute.useParams({ select: (s) => s.id })
 
-      useEffect(() => {
+      onMount(() => {
         callerMock()
-      }, [])
+      })
 
       return <div>Foo page {id}</div>
     }
@@ -757,7 +754,7 @@ describe('router matches URLs to route definitions', () => {
       history: createMemoryHistory({ initialEntries: ['/solo-splat'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
@@ -770,7 +767,7 @@ describe('router matches URLs to route definitions', () => {
       history: createMemoryHistory({ initialEntries: ['/solo-splat/test'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
@@ -783,7 +780,7 @@ describe('router matches URLs to route definitions', () => {
       history: createMemoryHistory({ initialEntries: ['/layout-splat/test'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
@@ -797,7 +794,7 @@ describe('router matches URLs to route definitions', () => {
       history: createMemoryHistory({ initialEntries: ['/layout-splat'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
@@ -813,13 +810,13 @@ describe('invalidate', () => {
       history: createMemoryHistory({ initialEntries: ['/'] }),
     })
 
-    await act(() => router.load())
+    await router.load()
 
     router.state.matches.forEach((match) => {
       expect(match.invalid).toBe(false)
     })
 
-    await act(() => router.invalidate())
+    await router.invalidate()
 
     router.state.matches.forEach((match) => {
       expect(match.invalid).toBe(false)
@@ -852,7 +849,7 @@ describe('search params in URL', () => {
           )
 
           render(() => <RouterProvider router={router} />)
-          await act(() => router.load())
+          await router.load()
 
           expect(await screen.findByTestId('search-root')).toHaveTextContent(
             search.root ?? '$undefined',
@@ -877,7 +874,7 @@ describe('search params in URL', () => {
         `${route}?${new URLSearchParams(search as Record<string, string>).toString()}`,
       )
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
       await expect(await screen.findByTestId('search-root')).toHaveTextContent(
         search.root ?? 'undefined',
       )
@@ -918,7 +915,7 @@ describe('search params in URL', () => {
       window.history.replaceState(null, '', `/searchWithDefault/check`)
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
 
       await checkSearch({ default: 'd1' })
     })
@@ -931,7 +928,7 @@ describe('search params in URL', () => {
       )
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
 
       await checkSearch({ default: 'd2' })
     })
@@ -944,7 +941,7 @@ describe('search params in URL', () => {
       )
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
 
       await checkSearch({ default: 'd1', optional: 'o1' })
     })
@@ -957,7 +954,7 @@ describe('search params in URL', () => {
       )
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
 
       await checkSearch({ default: 'd2', optional: 'o1' })
     })
@@ -966,7 +963,7 @@ describe('search params in URL', () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
       const link = await screen.findByTestId('link-without-params')
 
       expect(link).toBeInTheDocument()
@@ -979,7 +976,7 @@ describe('search params in URL', () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
       const link = await screen.findByTestId('link-with-optional-param')
 
       expect(link).toBeInTheDocument()
@@ -992,7 +989,7 @@ describe('search params in URL', () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
       const link = await screen.findByTestId('link-with-default-param')
 
       expect(link).toBeInTheDocument()
@@ -1005,7 +1002,7 @@ describe('search params in URL', () => {
       window.history.replaceState(null, '', `/searchWithDefault`)
 
       render(() => <RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
       const link = await screen.findByTestId('link-with-both-params')
 
       expect(link).toBeInTheDocument()
@@ -1076,7 +1073,7 @@ describe('search params in URL', () => {
         })
         const router = createRouter({ routeTree: rootRoute, history })
         render(() => <RouterProvider router={router} />)
-        await act(() => router.load())
+        await router.load()
 
         expect(errorSpy).toBeUndefined()
       })
@@ -1094,7 +1091,7 @@ describe('search params in URL', () => {
         const history = createMemoryHistory({ initialEntries: ['/search'] })
         const router = createRouter({ routeTree: rootRoute, history })
         render(() => <RouterProvider router={router} />)
-        await act(() => router.load())
+        await router.load()
 
         expect(errorSpy).toBeInstanceOf(SearchParamError)
         expect(errorSpy?.cause).toBeInstanceOf(TestValidationError)
@@ -1111,17 +1108,13 @@ describe('route ids should be consistent after rebuilding the route tree', () =>
 
     const originalRouteIds = Object.keys(router.routesById)
 
-    await act(() =>
-      router.navigate({
+    await router.navigate({
         to: '/parent/child',
-      }),
-    )
+      })
 
-    await act(() =>
-      router.navigate({
+    await router.navigate({
         to: '/filBasedParent/child',
-      }),
-    )
+      })
 
     router.buildRouteTree()
 
@@ -1249,7 +1242,7 @@ describe('history: History gives correct notifcations and state', () => {
 
     expect(window.location.pathname).toBe('/posts')
 
-    act(() => router.history.back())
+    router.history.back()
 
     expect(
       await screen.findByRole('heading', { name: 'Index' }),
@@ -1307,7 +1300,7 @@ describe('history: History gives correct notifcations and state', () => {
 
     expect(window.location.pathname).toBe('/posts')
 
-    act(() => router.history.back())
+    router.history.back()
 
     expect(
       await screen.findByRole('heading', { name: 'Index' }),
@@ -1315,7 +1308,7 @@ describe('history: History gives correct notifcations and state', () => {
 
     expect(window.location.pathname).toBe('/')
 
-    act(() => router.history.go(1))
+    router.history.go(1)
 
     expect(
       await screen.findByRole('heading', { name: 'Posts' }),
