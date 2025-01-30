@@ -84,7 +84,7 @@
     "@vitest/ui": "^3.0.0",
     "combinate": "^1.1.11",
     "solid-js": "^1",
-    "vite-plugin-solid": "2.10.2",
+    "vite-plugin-solid": "2.11.0",
     "zod": "^3.23.8"
   },
   "peerDependencies": {
