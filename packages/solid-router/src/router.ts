@@ -12,6 +12,7 @@ import {
   defaultParseSearch,
   defaultStringifySearch,
   functionalUpdate,
+  getLocationChangeInfo,
   interpolatePath,
   joinPaths,
   last,
@@ -451,6 +452,15 @@ export interface RouterOptions<
   pathParamsAllowedCharacters?: Array<
     ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
   >
+
+  /**
+   * If `true`, scroll restoration will be enabled
+   *
+   * @default false
+   */
+  scrollRestoration?: boolean
+  getScrollRestorationKey?: (location: ParsedLocation) => string
+  scrollRestorationBehavior?: ScrollBehavior
 }
 
 export interface RouterErrorSerializer<TSerializedError> {
@@ -563,46 +573,37 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+type NavigationEventInfo = {
+  fromLocation?: ParsedLocation
+  toLocation: ParsedLocation
+  pathChanged: boolean
+  hrefChanged: boolean
+  hashChanged: boolean
+}
+
 export type RouterEvents = {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onBeforeLoad: {
     type: 'onBeforeLoad'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onLoad: {
     type: 'onLoad'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onResolved: {
     type: 'onResolved'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onInjectedHtml: {
     type: 'onInjectedHtml'
     promise: Promise<string>
   }
+  onRendered: {
+    type: 'onRendered'
+  } & NavigationEventInfo
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -664,6 +665,8 @@ export class Router<
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
+  isScrollRestoring = false
+  isScrollRestorationSetup = false
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -1903,19 +1906,19 @@ export class Router<
           if (!this.state.redirect) {
             this.emit({
               type: 'onBeforeNavigate',
-              fromLocation: prevLocation,
-              toLocation: next,
-              pathChanged,
-              hrefChanged,
+              ...getLocationChangeInfo({
+                resolvedLocation: prevLocation,
+                location: next,
+              }),
             })
           }
 
           this.emit({
             type: 'onBeforeLoad',
-            fromLocation: prevLocation,
-            toLocation: next,
-            pathChanged,
-            hrefChanged,
+            ...getLocationChangeInfo({
+              resolvedLocation: prevLocation,
+              location: next,
+            }),
           })
 
           await this.loadMatches({
