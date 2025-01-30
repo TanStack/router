@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-api-routes",
-  "version": "1.98.3",
+  "version": "1.98.4",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
