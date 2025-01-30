@@ -402,8 +402,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     await router.load()
     render(() => <RouterProvider router={router} />)
 
-    await router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }
-    )
+    await router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } })
 
     expect(router.state.location.pathname).toBe('/posts/%40jane')
   })
@@ -1109,12 +1108,12 @@ describe('route ids should be consistent after rebuilding the route tree', () =>
     const originalRouteIds = Object.keys(router.routesById)
 
     await router.navigate({
-        to: '/parent/child',
-      })
+      to: '/parent/child',
+    })
 
     await router.navigate({
-        to: '/filBasedParent/child',
-      })
+      to: '/filBasedParent/child',
+    })
 
     router.buildRouteTree()
 
