@@ -3,7 +3,7 @@ import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
-import type { ParseAstOptions } from '@tanstack/router-utils'
+import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 export interface DirectiveFn {
   nodePath: SupportedFunctionPath
@@ -43,7 +43,10 @@ function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
   return `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
-export function compileDirectives(opts: CompileDirectivesOpts) {
+export function compileDirectives(opts: CompileDirectivesOpts): {
+  compiledResult: GeneratorResult
+  directiveFnsById: Record<string, DirectiveFn>
+} {
   const directiveSplitParam = buildDirectiveSplitParam(opts)
   const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
 
@@ -223,7 +226,7 @@ export function findDirectives(
     replacer?: ReplacerFn
     directiveSplitParam: string
   },
-) {
+): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
   const functionNameSet: Set<string> = new Set()
 

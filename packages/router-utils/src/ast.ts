@@ -31,3 +31,4 @@ if ('default' in generate) {
 }
 
 export { generate as generateFromAst }
+export type { GeneratorResult } from '@babel/generator'

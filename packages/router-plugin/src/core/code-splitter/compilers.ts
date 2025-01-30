@@ -4,7 +4,7 @@ import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { splitPrefix } from '../constants'
-import type { ParseAstOptions } from '@tanstack/router-utils'
+import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 const debug = process.env.TSR_VITE_DEBUG
 
@@ -68,7 +68,9 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
 ])
 const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NOES_CONFIG.keys()] as const
 
-export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
+export function compileCodeSplitReferenceRoute(
+  opts: ParseAstOptions,
+): GeneratorResult {
   const ast = parseAst(opts)
 
   babel.traverse(ast, {
@@ -316,7 +318,9 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   })
 }
 
-export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
+export function compileCodeSplitVirtualRoute(
+  opts: ParseAstOptions,
+): GeneratorResult {
   const ast = parseAst(opts)
 
   const knownExportedIdents = new Set<string>()

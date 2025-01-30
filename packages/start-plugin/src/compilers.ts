@@ -3,9 +3,11 @@ import * as t from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
-import type { ParseAstOptions } from '@tanstack/router-utils'
+import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
-export function compileEliminateDeadCode(opts: ParseAstOptions) {
+export function compileEliminateDeadCode(
+  opts: ParseAstOptions,
+): GeneratorResult {
   const ast = parseAst(opts)
   deadCodeElimination(ast)
   return generateFromAst(ast, {
@@ -37,7 +39,7 @@ type IdentifierConfig = {
   paths: Array<babel.NodePath>
 }
 
-export function compileStartOutput(opts: CompileOptions) {
+export function compileStartOutput(opts: CompileOptions): GeneratorResult {
   const ast = parseAst(opts)
 
   babel.traverse(ast, {
