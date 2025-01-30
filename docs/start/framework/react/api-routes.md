@@ -35,7 +35,7 @@ It's important to remember that each route can only have a single handler file a
 
 ## Nested Directories vs File-names
 
-In the examples above, you may have noticed that the file naming conventions are flexible and allow you to mix and match directories and file names. This is intentional and allows you to organize your API Routes in a way that makes sense for your application. You can read more about this in the [TanStack Router File-based Routing Guide](../guide/file-based-routing.md#s-or-s).
+In the examples above, you may have noticed that the file naming conventions are flexible and allow you to mix and match directories and file names. This is intentional and allows you to organize your API Routes in a way that makes sense for your application. You can read more about this in the [TanStack Router File-based Routing Guide](/router/latest/docs/framework/react/guide/file-based-routing#s-or-s).
 
 ## Setting up the entry handler
 
