@@ -233,7 +233,9 @@ function getHTTPEvent() {
 
 export const HTTPEventSymbol = Symbol('$HTTPEvent')
 
-export function isEvent(obj: any) {
+export function isEvent(
+  obj: any,
+): obj is H3Event | { [HTTPEventSymbol]: H3Event } {
   return (
     typeof obj === 'object' &&
     (obj instanceof H3Event ||
@@ -264,23 +266,17 @@ function createWrapperFunction<TFn extends (...args: Array<any>) => any>(
   h3Function: TFn,
 ): WrapFunction<TFn> {
   return function (...args: Array<any>) {
-    let event = args[0]
+    const event = args[0]
     if (!isEvent(event)) {
       if (!(globalThis as any).app.config.server.experimental?.asyncContext) {
         throw new Error(
           'AsyncLocalStorage was not enabled. Use the `server.experimental.asyncContext: true` option in your app configuration to enable it. Or, pass the instance of HTTPEvent that you have as the first argument to the function.',
         )
       }
-      event = getHTTPEvent()
-      if (!event) {
-        throw new Error(
-          `No HTTPEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.`,
-        )
-      }
-      args.unshift(event)
+      args.unshift(getHTTPEvent())
     } else {
       args[0] =
-        event instanceof H3Event || event.__is_event__
+        event instanceof H3Event || (event as any).__is_event__
           ? event
           : event[HTTPEventSymbol]
     }
@@ -494,7 +490,15 @@ function getNitroAsyncContext() {
 }
 
 export function getEvent() {
-  return (getNitroAsyncContext().use() as any).event as H3Event | undefined
+  const event = (getNitroAsyncContext().use() as any).event as
+    | H3Event
+    | undefined
+  if (!event) {
+    throw new Error(
+      `No HTTPEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.`,
+    )
+  }
+  return event
 }
 
 export async function handleHTTPEvent(event: H3Event) {
