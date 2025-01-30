@@ -73,15 +73,6 @@ export interface ResolvePromiseState {
   promiseState: DeferredPromiseState<any>
 }
 
-export interface DehydratedRouterState {
-  dehydratedMatches: Array<DehydratedRouteMatch>
-}
-
-export type DehydratedRouteMatch = Pick<
-  MakeRouteMatch,
-  'id' | 'status' | 'updatedAt' | 'loaderData'
->
-
 export interface DehydratedRouter {
   manifest: Manifest | undefined
   dehydratedData: any

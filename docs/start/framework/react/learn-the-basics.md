@@ -28,6 +28,7 @@ import { routeTree } from './routeTree.gen'
 export function createRouter() {
   const router = createTanStackRouter({
     routeTree,
+    scrollRestoration: true,
   })
 
   return router
@@ -39,6 +40,8 @@ declare module '@tanstack/react-router' {
   }
 }
 ```
+
+- Notice the `scrollRestoration` property. This is used to restore the scroll position of the page when navigating between routes.
 
 ## Route Generation
 
@@ -99,11 +102,7 @@ Because it is **always rendered**, it is the perfect place to construct your app
 
 ```tsx
 // app/routes/__root.tsx
-import {
-  Outlet,
-  ScrollRestoration,
-  createRootRoute,
-} from '@tanstack/react-router'
+import { Outlet, createRootRoute } from '@tanstack/react-router'
 import { Meta, Scripts } from '@tanstack/start'
 import type { ReactNode } from 'react'
 
@@ -149,7 +148,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 ```
 
 - This layout may change in the future as we roll out SPA mode, which allows the root route to render the SPA shell without any page-specific content.
-- Notice the `ScrollRestoration` component. This is used to restore the scroll position of the page when navigating between routes.
 - Notice the `Scripts` component. This is used to load all of the client-side JavaScript for the application.
 
 ## Routes

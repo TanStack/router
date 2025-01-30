@@ -459,9 +459,9 @@ export interface RouterOptions<
   defaultRemountDeps?: (opts: MakeRemountDepsOptionsUnion<TRouteTree>) => any
 
   /**
-   * If `false`, scroll restoration will be disabled
+   * If `true`, scroll restoration will be enabled
    *
-   * @default true
+   * @default false
    */
   scrollRestoration?: boolean
   getScrollRestorationKey?: (location: ParsedLocation) => string
