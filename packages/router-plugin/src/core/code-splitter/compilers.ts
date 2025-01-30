@@ -3,10 +3,9 @@ import babel from '@babel/core'
 import _generate from '@babel/generator'
 import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-
+import { parseAst } from '@tanstack/router-utils'
 import { splitPrefix } from '../constants'
-import { parseAst } from './ast'
-import type { ParseAstOptions } from './ast'
+import type { ParseAstOptions } from '@tanstack/router-utils';
 
 const debug = process.env.TSR_VITE_DEBUG
 

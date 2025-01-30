@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.98.4",
+  "version": "1.98.3",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -112,6 +112,7 @@
     "@babel/traverse": "^7.26.7",
     "@babel/types": "^7.26.7",
     "@tanstack/router-generator": "workspace:^",
+    "@tanstack/router-utils": "workspace:^",
     "@tanstack/virtual-file-routes": "workspace:^",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.6.8",

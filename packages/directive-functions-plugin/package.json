@@ -74,6 +74,7 @@
     "@babel/template": "^7.25.9",
     "@babel/traverse": "^7.26.7",
     "@babel/types": "^7.26.7",
+    "@tanstack/router-utils": "workspace:^",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.6.8",

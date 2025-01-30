@@ -3,9 +3,8 @@ import * as t from '@babel/types'
 import _generate from '@babel/generator'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-
-import { parseAst } from './ast'
-import type { ParseAstOptions } from './ast'
+import { parseAst } from '@tanstack/router-utils'
+import type { ParseAstOptions } from '@tanstack/router-utils'
 
 // Babel is a CJS package and uses `default` as named binding (`exports.default =`).
 // https://github.com/babel/babel/issues/15269.
@@ -34,18 +33,21 @@ const handleServerOnlyCallExpression =
 const handleClientOnlyCallExpression =
   buildEnvOnlyCallExpressionHandler('client')
 
+type CompileOptions = ParseAstOptions & {
+  env: 'server' | 'client' | 'ssr'
+}
 type IdentifierConfig = {
   name: string
   type: 'ImportSpecifier' | 'ImportNamespaceSpecifier'
   namespaceId: string
   handleCallExpression: (
     path: babel.NodePath<t.CallExpression>,
-    opts: ParseAstOptions,
+    opts: CompileOptions,
   ) => void
   paths: Array<babel.NodePath>
 }
 
-export function compileStartOutput(opts: ParseAstOptions) {
+export function compileStartOutput(opts: CompileOptions) {
   const ast = parseAst(opts)
 
   babel.traverse(ast, {
@@ -479,7 +481,7 @@ function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
 
 function handleCreateIsomorphicFnCallExpression(
   path: babel.NodePath<t.CallExpression>,
-  opts: ParseAstOptions,
+  opts: CompileOptions,
 ) {
   const rootCallExpression = getRootCallExpression(path)
 

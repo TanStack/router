@@ -1,10 +1,10 @@
 import * as babel from '@babel/core'
 import _generate from '@babel/generator'
-import { parse } from '@babel/parser'
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-import type { ParseResult } from '@babel/parser'
+import { parseAst } from '@tanstack/router-utils'
+import type { ParseAstOptions } from '@tanstack/router-utils';
 
 let generate = _generate
 
@@ -44,24 +44,6 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   }) => string
   replacer: ReplacerFn
   // devSplitImporter: string
-}
-
-export type ParseAstOptions = {
-  code: string
-  filename: string
-  root: string
-}
-
-export function parseAst(opts: ParseAstOptions): ParseResult<babel.types.File> {
-  return parse(opts.code, {
-    plugins: ['jsx', 'typescript'],
-    sourceType: 'module',
-    ...{
-      root: opts.root,
-      filename: opts.filename,
-      sourceMaps: true,
-    },
-  })
 }
 
 function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
