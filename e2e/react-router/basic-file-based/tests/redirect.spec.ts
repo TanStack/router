@@ -68,27 +68,24 @@ test.describe('redirects', () => {
   const internalDirectVisitTestMatrix = combinate({
     thrower: ['beforeLoad', 'loader'] as const,
     reloadDocument: [false, true] as const,
-    preload: [false, true] as const,
   })
 
-  internalDirectVisitTestMatrix.forEach(
-    ({ thrower, reloadDocument, preload }) => {
-      test(`internal target, direct visit: thrower: ${thrower}, reloadDocument: ${reloadDocument}, preload: ${preload}`, async ({
-        page,
-      }) => {
-        await page.waitForLoadState('networkidle')
+  internalDirectVisitTestMatrix.forEach(({ thrower, reloadDocument }) => {
+    test(`internal target, direct visit: thrower: ${thrower}, reloadDocument: ${reloadDocument}`, async ({
+      page,
+    }) => {
+      await page.waitForLoadState('networkidle')
 
-        await page.goto(`/redirect/internal/via-${thrower}`)
+      await page.goto(`/redirect/internal/via-${thrower}`)
 
-        const url = `http://localhost:${PORT}/posts`
+      const url = `http://localhost:${PORT}/posts`
 
-        await page.waitForURL(url)
-        expect(page.url()).toBe(url)
-        await page.waitForLoadState('networkidle')
-        await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
-      })
-    },
-  )
+      await page.waitForURL(url)
+      expect(page.url()).toBe(url)
+      await page.waitForLoadState('networkidle')
+      await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
+    })
+  })
 
   const externalTestMatrix = combinate({
     scenario: ['navigate', 'direct_visit'] as const,
