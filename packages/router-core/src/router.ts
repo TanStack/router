@@ -1,3 +1,4 @@
+import type { ParsedLocation } from './location'
 import type { DeferredPromiseState } from './defer'
 import type { ControlledPromise } from './utils'
 
@@ -48,3 +49,15 @@ export type StreamState = {
 }
 
 export type TrailingSlashOption = 'always' | 'never' | 'preserve'
+
+export function getLocationChangeInfo(routerState: {
+  resolvedLocation?: ParsedLocation
+  location: ParsedLocation
+}) {
+  const fromLocation = routerState.resolvedLocation
+  const toLocation = routerState.location
+  const pathChanged = fromLocation?.pathname !== toLocation.pathname
+  const hrefChanged = fromLocation?.href !== toLocation.href
+  const hashChanged = fromLocation?.hash !== toLocation.hash
+  return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
+}

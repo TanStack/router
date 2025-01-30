@@ -185,77 +185,6 @@
       ]
     },
     {
-      "label": "Start",
-      "children": [],
-      "frameworks": [
-        {
-          "label": "react",
-          "children": [
-            {
-              "label": "Overview",
-              "to": "framework/react/start/overview"
-            },
-            {
-              "label": "Getting Started",
-              "to": "framework/react/start/getting-started"
-            },
-            {
-              "label": "Quick Start",
-              "to": "framework/react/start/quick-start"
-            },
-            {
-              "label": "Build from Scratch",
-              "to": "framework/react/start/build-from-scratch"
-            },
-            {
-              "label": "Learn the Basics",
-              "to": "framework/react/start/learn-the-basics"
-            },
-            {
-              "label": "Server Functions",
-              "to": "framework/react/start/server-functions"
-            },
-            {
-              "label": "Middleware",
-              "to": "framework/react/start/middleware"
-            },
-            {
-              "label": "API Routes",
-              "to": "framework/react/start/api-routes"
-            },
-            {
-              "label": "SSR",
-              "to": "framework/react/start/ssr"
-            },
-            {
-              "label": "Hosting",
-              "to": "framework/react/start/hosting"
-            },
-            {
-              "label": "Authentication",
-              "to": "framework/react/start/authentication"
-            },
-            {
-              "label": "Databases",
-              "to": "framework/react/start/databases"
-            },
-            {
-              "label": "Observability",
-              "to": "framework/react/start/observability"
-            },
-            {
-              "label": "Static Prerendering",
-              "to": "framework/react/start/static-prerendering"
-            },
-            {
-              "label": "Path Aliases",
-              "to": "framework/react/start/path-aliases"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "label": "API",
       "children": [],
       "frameworks": [
@@ -377,45 +306,6 @@
             {
               "label": "Monorepo with React Query",
               "to": "framework/react/examples/router-monorepo-react-query"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "label": "Start Examples",
-      "children": [],
-      "frameworks": [
-        {
-          "label": "react",
-          "children": [
-            {
-              "label": "Basic",
-              "to": "framework/react/examples/start-basic"
-            },
-            {
-              "label": "Basic + React Query",
-              "to": "framework/react/examples/start-basic-react-query"
-            },
-            {
-              "label": "Basic + Clerk Auth",
-              "to": "framework/react/examples/start-clerk-basic"
-            },
-            {
-              "label": "Basic + DIY Auth",
-              "to": "framework/react/examples/start-basic-auth"
-            },
-            {
-              "label": "Basic + Supabase Auth",
-              "to": "framework/react/examples/start-supabase-basic"
-            },
-            {
-              "label": "Trellaux + Convex",
-              "to": "framework/react/examples/start-convex-trellaux"
-            },
-            {
-              "label": "Trellaux",
-              "to": "framework/react/examples/start-trellaux"
             }
           ]
         }

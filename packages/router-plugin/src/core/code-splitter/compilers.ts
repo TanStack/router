@@ -47,6 +47,38 @@ function removeSplitSearchParamFromFilename(filename: string) {
   return bareFilename!
 }
 
+type SplitRouteIdentNodes = 'component' | 'loader'
+type SplitNodeMeta = {
+  routeIdent: SplitRouteIdentNodes
+  splitStrategy: 'normal' | 'react-component'
+  localImporterIdent: string
+  exporterIdent: string
+  localExporterIdent: string
+}
+const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
+  [
+    'component',
+    {
+      routeIdent: 'component',
+      localImporterIdent: '$$splitComponentImporter', // const $$splitComponentImporter = () => import('...')
+      splitStrategy: 'react-component',
+      localExporterIdent: 'SplitComponent', // const SplitComponent = ...
+      exporterIdent: 'component', // export { SplitComponent as component }
+    },
+  ],
+  [
+    'loader',
+    {
+      routeIdent: 'loader',
+      localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
+      splitStrategy: 'normal',
+      localExporterIdent: 'SplitLoader', // const SplitLoader = ...
+      exporterIdent: 'loader', // export { SplitLoader as loader }
+    },
+  ],
+])
+const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NOES_CONFIG.keys()] as const
+
 export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
 
@@ -93,8 +125,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                   path.parentPath.node.arguments[0],
                 )
 
-                let found = false
-
                 const hasImportedOrDefinedIdentifier = (name: string) => {
                   return programPath.scope.hasBinding(name)
                 }
@@ -103,7 +133,19 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
                       if (t.isIdentifier(prop.key)) {
-                        if (prop.key.name === 'component') {
+                        const key = prop.key.name
+                        // find key in nodeSplitConfig
+                        const isNodeConfigAvailable = SPLIT_NOES_CONFIG.has(
+                          key as any,
+                        )
+
+                        if (!isNodeConfigAvailable) {
+                          return
+                        }
+
+                        const splitNodeMeta = SPLIT_NOES_CONFIG.get(key as any)!
+
+                        if (splitNodeMeta.splitStrategy === 'react-component') {
                           const value = prop.value
 
                           let shouldSplit = true
@@ -126,48 +168,64 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             }
                           }
 
-                          if (shouldSplit) {
-                            // Prepend the import statement to the program along with the importer function
-                            // Check to see if lazyRouteComponent is already imported before attempting
-                            // to import it again
+                          if (!shouldSplit) {
+                            return
+                          }
 
-                            if (
-                              !hasImportedOrDefinedIdentifier(
-                                'lazyRouteComponent',
-                              )
-                            ) {
-                              programPath.unshiftContainer('body', [
-                                template.statement(
-                                  `import { lazyRouteComponent } from '@tanstack/react-router'`,
-                                )(),
-                              ])
-                            }
+                          // Prepend the import statement to the program along with the importer function
+                          // Check to see if lazyRouteComponent is already imported before attempting
+                          // to import it again
 
-                            if (
-                              !hasImportedOrDefinedIdentifier(
-                                '$$splitComponentImporter',
-                              )
-                            ) {
-                              programPath.unshiftContainer('body', [
-                                template.statement(
-                                  `const $$splitComponentImporter = () => import('${splitUrl}')`,
-                                )(),
-                              ])
-                            }
-
-                            prop.value = template.expression(
-                              `lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)`,
-                            )()
-
-                            programPath.pushContainer('body', [
+                          if (
+                            !hasImportedOrDefinedIdentifier(
+                              'lazyRouteComponent',
+                            )
+                          ) {
+                            programPath.unshiftContainer('body', [
                               template.statement(
-                                `function DummyComponent() { return null }`,
+                                `import { lazyRouteComponent } from '@tanstack/react-router'`,
                               )(),
                             ])
-
-                            found = true
                           }
-                        } else if (prop.key.name === 'loader') {
+
+                          // Check to see if the importer function is already defined
+                          // If not, define it with the dynamic import statement
+                          if (
+                            !hasImportedOrDefinedIdentifier(
+                              splitNodeMeta.localImporterIdent,
+                            )
+                          ) {
+                            programPath.unshiftContainer('body', [
+                              template.statement(
+                                `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
+                              )(),
+                            ])
+                          }
+
+                          // If it's a component, we need to pass the function to check the Route.ssr value
+                          if (key === 'component') {
+                            prop.value = template.expression(
+                              `lazyRouteComponent(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
+                            )()
+                          } else {
+                            prop.value = template.expression(
+                              `lazyRouteComponent(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                            )()
+                          }
+
+                          // If the TSRDummyComponent is not defined, define it
+                          if (
+                            !hasImportedOrDefinedIdentifier('TSRDummyComponent')
+                          ) {
+                            programPath.pushContainer('body', [
+                              template.statement(
+                                `export function TSRDummyComponent() { return null }`,
+                              )(),
+                            ])
+                          }
+                        }
+
+                        if (splitNodeMeta.splitStrategy === 'normal') {
                           const value = prop.value
 
                           let shouldSplit = true
@@ -190,46 +248,44 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
                             }
                           }
 
-                          if (shouldSplit) {
-                            // Prepend the import statement to the program along with the importer function
-                            if (!hasImportedOrDefinedIdentifier('lazyFn')) {
-                              programPath.unshiftContainer('body', [
-                                template.smart(
-                                  `import { lazyFn } from '@tanstack/react-router'`,
-                                )() as t.Statement,
-                              ])
-                            }
-
-                            if (
-                              !hasImportedOrDefinedIdentifier(
-                                '$$splitLoaderImporter',
-                              )
-                            ) {
-                              programPath.unshiftContainer('body', [
-                                template.statement(
-                                  `const $$splitLoaderImporter = () => import('${splitUrl}')`,
-                                )(),
-                              ])
-                            }
-
-                            prop.value = template.expression(
-                              `lazyFn($$splitLoaderImporter, 'loader')`,
-                            )()
-
-                            found = true
+                          if (!shouldSplit) {
+                            return
                           }
+
+                          // Prepend the import statement to the program along with the importer function
+                          if (!hasImportedOrDefinedIdentifier('lazyFn')) {
+                            programPath.unshiftContainer(
+                              'body',
+                              template.smart(
+                                `import { lazyFn } from '@tanstack/react-router'`,
+                              )(),
+                            )
+                          }
+
+                          // Check to see if the importer function is already defined
+                          // If not, define it with the dynamic import statement
+                          if (
+                            !hasImportedOrDefinedIdentifier(
+                              splitNodeMeta.localImporterIdent,
+                            )
+                          ) {
+                            programPath.unshiftContainer('body', [
+                              template.statement(
+                                `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
+                              )(),
+                            ])
+                          }
+
+                          // Add the lazyFn call with the dynamic import to the prop value
+                          prop.value = template.expression(
+                            `lazyFn(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                          )()
                         }
                       }
                     }
 
                     programPath.scope.crawl()
                   })
-                }
-
-                if (found as boolean) {
-                  programPath.pushContainer('body', [
-                    template.statement(`function TSR_Dummy_Component() {}`)(),
-                  ])
                 }
               }
             },
@@ -271,9 +327,6 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
   })
 }
 
-const splitNodeTypes = ['component', 'loader'] as const
-type SplitNodeType = (typeof splitNodeTypes)[number]
-
 export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
   const ast = parseAst(opts)
 
@@ -284,7 +337,10 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
       enter(programPath, programState) {
         const state = programState as unknown as State
 
-        const splitNodesByType: Record<SplitNodeType, t.Node | undefined> = {
+        const trackedNodesToSplitByType: Record<
+          SplitRouteIdentNodes,
+          { node: t.Node | undefined; meta: SplitNodeMeta } | undefined
+        > = {
           component: undefined,
           loader: undefined,
         }
@@ -315,7 +371,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 if (t.isObjectExpression(options)) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
-                      splitNodeTypes.forEach((splitType) => {
+                      SPLIT_ROUTE_IDENT_NODES.forEach((splitType) => {
                         if (
                           !t.isIdentifier(prop.key) ||
                           prop.key.name !== splitType
@@ -338,7 +394,11 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                         if (isExported && t.isIdentifier(value)) {
                           removeExports(ast, value)
                         } else {
-                          splitNodesByType[splitType] = prop.value
+                          const meta = SPLIT_NOES_CONFIG.get(splitType)!
+                          trackedNodesToSplitByType[splitType] = {
+                            node: prop.value,
+                            meta,
+                          }
                         }
                       })
                     }
@@ -353,12 +413,15 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
           state,
         )
 
-        splitNodeTypes.forEach((splitType) => {
-          let splitNode = splitNodesByType[splitType]
+        SPLIT_ROUTE_IDENT_NODES.forEach((SPLIT_TYPE) => {
+          const splitKey = trackedNodesToSplitByType[SPLIT_TYPE]
 
-          if (!splitNode) {
+          if (!splitKey) {
             return
           }
+
+          let splitNode = splitKey.node
+          const splitMeta = splitKey.meta
 
           while (t.isIdentifier(splitNode)) {
             const binding = programPath.scope.getBinding(splitNode.name)
@@ -372,7 +435,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 'body',
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
-                    t.identifier(splitType),
+                    t.identifier(splitMeta.localExporterIdent),
                     t.functionExpression(
                       splitNode.id || null, // Anonymize the function expression
                       splitNode.params,
@@ -391,7 +454,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 'body',
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
-                    t.identifier(splitType),
+                    t.identifier(splitMeta.localExporterIdent),
                     splitNode as any,
                   ),
                 ]),
@@ -404,7 +467,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 'body',
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
-                    t.identifier(splitType),
+                    t.identifier(splitMeta.localExporterIdent),
                     splitNode.local,
                   ),
                 ]),
@@ -413,7 +476,10 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
               programPath.pushContainer(
                 'body',
                 t.variableDeclaration('const', [
-                  t.variableDeclarator(t.identifier(splitType), splitNode.init),
+                  t.variableDeclarator(
+                    t.identifier(splitMeta.localExporterIdent),
+                    splitNode.init,
+                  ),
                 ]),
               )
             } else if (t.isCallExpression(splitNode)) {
@@ -422,7 +488,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
               if (!splitNodeAst) {
                 throw new Error(
-                  `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}"`,
+                  `Failed to parse the generated code for "${SPLIT_TYPE}" in the node type "${splitNode.type}"`,
                 )
               }
 
@@ -430,7 +496,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
 
               if (!statement) {
                 throw new Error(
-                  `Failed to parse the generated code for "${splitType}" in the node type "${splitNode.type}" as no statement was found in the program body`,
+                  `Failed to parse the generated code for "${SPLIT_TYPE}" in the node type "${splitNode.type}" as no statement was found in the program body`,
                 )
               }
 
@@ -439,12 +505,15 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 programPath.pushContainer(
                   'body',
                   t.variableDeclaration('const', [
-                    t.variableDeclarator(t.identifier(splitType), expression),
+                    t.variableDeclarator(
+                      t.identifier(splitMeta.localExporterIdent),
+                      expression,
+                    ),
                   ]),
                 )
               } else {
                 throw new Error(
-                  `Unexpected expression type encounter for "${splitType}" in the node type "${splitNode.type}"`,
+                  `Unexpected expression type encounter for "${SPLIT_TYPE}" in the node type "${splitNode.type}"`,
                 )
               }
             } else {
@@ -463,8 +532,8 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
           programPath.pushContainer('body', [
             t.exportNamedDeclaration(null, [
               t.exportSpecifier(
-                t.identifier(splitType),
-                t.identifier(splitType),
+                t.identifier(splitMeta.localExporterIdent), // local variable name
+                t.identifier(splitMeta.exporterIdent), // as what name it should be exported as
               ),
             ]),
           ])

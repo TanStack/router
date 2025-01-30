@@ -1,3 +1,3 @@
 import { importedLoader } from '../shared/imported';
-const loader = importedLoader;
-export { loader };
+const SplitLoader = importedLoader;
+export { SplitLoader as loader };

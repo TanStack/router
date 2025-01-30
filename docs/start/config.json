@@ -1,0 +1,120 @@
+{
+  "$schema": "https://raw.githubusercontent.com/TanStack/tanstack.com/main/tanstack-docs-config.schema.json",
+  "docSearch": {
+    "appId": "FQ0DQ6MA3C",
+    "apiKey": "8264730bab8a9b7fa6a0c85761d7a3fe",
+    "indexName": "tanstack"
+  },
+  "sections": [
+    {
+      "label": "Getting Started",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Overview",
+              "to": "framework/react/overview"
+            },
+            {
+              "label": "Getting Started",
+              "to": "framework/react/getting-started"
+            },
+            {
+              "label": "Quick Start",
+              "to": "framework/react/quick-start"
+            },
+            {
+              "label": "Build from Scratch",
+              "to": "framework/react/build-from-scratch"
+            },
+            {
+              "label": "Learn the Basics",
+              "to": "framework/react/learn-the-basics"
+            },
+            {
+              "label": "Server Functions",
+              "to": "framework/react/server-functions"
+            },
+            {
+              "label": "Middleware",
+              "to": "framework/react/middleware"
+            },
+            {
+              "label": "API Routes",
+              "to": "framework/react/api-routes"
+            },
+            {
+              "label": "SSR",
+              "to": "framework/react/ssr"
+            },
+            {
+              "label": "Hosting",
+              "to": "framework/react/hosting"
+            },
+            {
+              "label": "Authentication",
+              "to": "framework/react/authentication"
+            },
+            {
+              "label": "Databases",
+              "to": "framework/react/databases"
+            },
+            {
+              "label": "Observability",
+              "to": "framework/react/observability"
+            },
+            {
+              "label": "Static Prerendering",
+              "to": "framework/react/static-prerendering"
+            },
+            {
+              "label": "Path Aliases",
+              "to": "framework/react/path-aliases"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Examples",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Basic",
+              "to": "framework/react/examples/start-basic"
+            },
+            {
+              "label": "Basic + React Query",
+              "to": "framework/react/examples/start-basic-react-query"
+            },
+            {
+              "label": "Basic + Clerk Auth",
+              "to": "framework/react/examples/start-clerk-basic"
+            },
+            {
+              "label": "Basic + DIY Auth",
+              "to": "framework/react/examples/start-basic-auth"
+            },
+            {
+              "label": "Basic + Supabase Auth",
+              "to": "framework/react/examples/start-supabase-basic"
+            },
+            {
+              "label": "Trellaux + Convex",
+              "to": "framework/react/examples/start-convex-trellaux"
+            },
+            {
+              "label": "Trellaux",
+              "to": "framework/react/examples/start-trellaux"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -442,7 +442,7 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
       <Footer />
     </div>;
 }
-const component = function VersionIndex() {
+const SplitComponent = function VersionIndex() {
   const {
     sponsorsPromise
   } = librariesRouteApi.useLoaderData();
@@ -602,4 +602,4 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
       <Footer />
     </div>;
 };
-export { component };
+export { SplitComponent as component };

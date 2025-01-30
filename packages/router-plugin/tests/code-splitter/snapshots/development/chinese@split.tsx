@@ -13,10 +13,10 @@ function Demo({
       {title}
     </h1>;
 }
-const component = function HomeComponent() {
+const SplitComponent = function HomeComponent() {
   return <div className="p-2">
       <Demo title="标题很好看，谁说不是呢？" />
       <Demo title="The title looks great, who can deny that?" />
     </div>;
 };
-export { component };
+export { SplitComponent as component };
