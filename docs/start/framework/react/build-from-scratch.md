@@ -190,7 +190,7 @@ import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/start'
 import { createRouter } from './router'
 
-const router = createRouter()
+const router = createRouter({ scrollRestoration: true })
 
 hydrateRoot(document, <StartClient router={router} />)
 ```
@@ -203,11 +203,7 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // app/routes/__root.tsx
-import {
-  Outlet,
-  ScrollRestoration,
-  createRootRoute,
-} from '@tanstack/react-router'
+import { Outlet, createRootRoute } from '@tanstack/react-router'
 import { Meta, Scripts } from '@tanstack/start'
 import type { ReactNode } from 'react'
 
@@ -245,7 +241,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body>
         {children}
-        <ScrollRestoration />
         <Scripts />
       </body>
     </html>
