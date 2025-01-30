@@ -39,7 +39,7 @@ const InterpolatePathLink = ({
   params,
   children,
 }: Solid.PropsWithChildren<LinkProps>) => {
-  const href = interpolatePath({ path: to, params })
+  const href = interpolatePath({ path: to, params }).interpolatedPath
   return <a href={href}>{children}</a>
 }
 

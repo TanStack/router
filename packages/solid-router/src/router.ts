@@ -1251,7 +1251,7 @@ export class Router<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          pathname: joinPaths([this.basepath, interpolatedPath]),
+          pathname: joinPaths([this.basepath, interpolatedPath.interpolatedPath]),
           updatedAt: Date.now(),
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
@@ -1452,7 +1452,7 @@ export class Router<
       const stayingMatches = matchedRoutesResult?.matchedRoutes.filter((d) =>
         fromMatches.find((e) => e.routeId === d.id),
       )
-      let pathname: string
+      let pathname: string;
       if (dest.to) {
         pathname = this.resolvePathWithBase(fromPath, `${dest.to}`)
       } else {
@@ -1463,7 +1463,7 @@ export class Router<
                 path: route.fullPath,
                 params: matchedRoutesResult?.routeParams ?? {},
                 decodeCharMap: this.pathParamsDecodeCharMap,
-              })
+              }).interpolatedPath;
               const pathname = joinPaths([this.basepath, interpolatedPath])
               return pathname === fromPath
             })?.id as keyof this['routesById']
@@ -1503,7 +1503,7 @@ export class Router<
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
-      })
+      }).interpolatedPath
 
       let search = fromSearch
       if (opts._includeValidateSearch && this.options.search?.strict) {
