@@ -3992,9 +3992,6 @@ importers:
       '@babel/core':
         specifier: ^7.26.7
         version: 7.26.7
-      '@babel/generator':
-        specifier: ^7.26.5
-        version: 7.26.5
       '@babel/plugin-syntax-jsx':
         specifier: ^7.25.9
         version: 7.25.9(@babel/core@7.26.7)
@@ -4019,9 +4016,6 @@ importers:
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
-      '@types/babel__generator':
-        specifier: ^7.6.8
-        version: 7.6.8
       '@types/babel__template':
         specifier: ^7.4.4
         version: 7.4.4
@@ -4202,9 +4196,6 @@ importers:
       '@babel/core':
         specifier: ^7.26.7
         version: 7.26.7
-      '@babel/generator':
-        specifier: ^7.26.5
-        version: 7.26.5
       '@babel/plugin-syntax-jsx':
         specifier: ^7.25.9
         version: 7.25.9(@babel/core@7.26.7)
@@ -4235,9 +4226,6 @@ importers:
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
-      '@types/babel__generator':
-        specifier: ^7.6.8
-        version: 7.6.8
       '@types/babel__template':
         specifier: ^7.4.4
         version: 7.4.4
@@ -4491,9 +4479,6 @@ importers:
       '@babel/core':
         specifier: ^7.26.7
         version: 7.26.7
-      '@babel/generator':
-        specifier: ^7.26.5
-        version: 7.26.5
       '@babel/plugin-syntax-jsx':
         specifier: ^7.25.9
         version: 7.25.9(@babel/core@7.26.7)
@@ -4518,9 +4503,6 @@ importers:
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
-      '@types/babel__generator':
-        specifier: ^7.6.8
-        version: 7.6.8
       '@types/babel__template':
         specifier: ^7.4.4
         version: 7.4.4
