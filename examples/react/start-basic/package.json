@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/react-router": "^1.98.4",
     "@tanstack/router-devtools": "^1.98.4",
-    "@tanstack/start": "^1.98.4",
+    "@tanstack/start": "^1.98.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
