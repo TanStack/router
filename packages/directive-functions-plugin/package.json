@@ -80,11 +80,8 @@
     "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.20.6",
-    "@types/diff": "^6.0.0",
     "babel-dead-code-elimination": "^1.0.8",
-    "chalk": "^5.4.1",
     "dedent": "^1.5.3",
-    "diff": "^7.0.0",
     "tiny-invariant": "^1.3.3"
   }
 }

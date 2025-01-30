@@ -64,9 +64,11 @@
   },
   "dependencies": {
     "@babel/parser": "^7.26.7",
-    "diff": "^7.0.0"
+    "diff": "^7.0.0",
+    "chalk": "^5.4.1"
   },
   "devDependencies": {
-    "@babel/types": "^7.26.7"
+    "@babel/types": "^7.26.7",
+    "@types/diff": "^6.0.0"
   }
 }
