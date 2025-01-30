@@ -1,6 +1,5 @@
 import {
   cleanup,
-  configure,
   fireEvent,
   render,
   screen,
