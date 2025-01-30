@@ -82,7 +82,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         {children}
         <hr />
         <Nav type="footer" />
-        <ScrollRestoration />
         <Scripts />
       </body>
     </html>

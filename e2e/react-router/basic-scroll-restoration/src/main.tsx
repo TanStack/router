@@ -4,7 +4,6 @@ import {
   Link,
   Outlet,
   RouterProvider,
-  ScrollRestoration,
   createRootRoute,
   createRoute,
   createRouter,
@@ -36,7 +35,6 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
-      <ScrollRestoration getKey={(location) => location.pathname} />
       <TanStackRouterDevtools />
     </>
   )
@@ -214,6 +212,7 @@ const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   scrollRestoration: true,
+  getScrollRestorationKey: (location) => location.pathname,
 })
 
 declare global {
