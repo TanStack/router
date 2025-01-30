@@ -1,4 +1,4 @@
-import chalk from 'chalk'
+import ansis from 'ansis'
 import { diffWords } from 'diff'
 
 export function logDiff(oldStr: string, newStr: string) {
@@ -11,16 +11,16 @@ export function logDiff(oldStr: string, newStr: string) {
     const lineArray = lines.split('\n')
     if (lineArray.length > 4) {
       return [
-        chalk.dim(lineArray[0]),
-        chalk.dim(lineArray[1]),
+        ansis.dim(lineArray[0]),
+        ansis.dim(lineArray[1]),
         '',
-        chalk.dim.bold(`... (${lineArray.length - 4} lines) ...`),
+        ansis.dim.bold(`... (${lineArray.length - 4} lines) ...`),
         '',
-        chalk.dim(lineArray[lineArray.length - 2]),
-        chalk.dim(lineArray[lineArray.length - 1]),
+        ansis.dim(lineArray[lineArray.length - 2]),
+        ansis.dim(lineArray[lineArray.length - 1]),
       ].join('\n')
     }
-    return chalk.dim(lines)
+    return ansis.dim(lines)
   }
 
   differences.forEach((part, index) => {
@@ -31,14 +31,14 @@ export function logDiff(oldStr: string, newStr: string) {
         output += processUnchangedLines(unchangedLines)
         unchangedLines = ''
       }
-      output += chalk.green.bold(part.value)
+      output += ansis.green.bold(part.value)
       if (nextPart?.removed) output += ' '
     } else if (part.removed) {
       if (unchangedLines) {
         output += processUnchangedLines(unchangedLines)
         unchangedLines = ''
       }
-      output += chalk.red.bold(part.value)
+      output += ansis.red.bold(part.value)
       if (nextPart?.added) output += ' '
     } else {
       unchangedLines += part.value
@@ -52,7 +52,7 @@ export function logDiff(oldStr: string, newStr: string) {
 
   if (output) {
     console.log('\nDiff:')
-    console.log(output + '\n')
+    console.log(output + '\n\n')
   } else {
     console.log('No changes')
   }

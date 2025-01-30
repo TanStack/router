@@ -1,25 +1,16 @@
 import * as babel from '@babel/core'
 import * as t from '@babel/types'
-import _generate from '@babel/generator'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
-import { parseAst } from './ast'
-import type { ParseAstOptions } from './ast'
-
-// Babel is a CJS package and uses `default` as named binding (`exports.default =`).
-// https://github.com/babel/babel/issues/15269.
-let generate = (_generate as any)['default'] as typeof _generate
-
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-if (!generate) {
-  generate = _generate
-}
-
-export function compileEliminateDeadCode(opts: ParseAstOptions) {
+export function compileEliminateDeadCode(
+  opts: ParseAstOptions,
+): GeneratorResult {
   const ast = parseAst(opts)
   deadCodeElimination(ast)
-  return generate(ast, {
+  return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
     filename: opts.filename,
@@ -34,18 +25,21 @@ const handleServerOnlyCallExpression =
 const handleClientOnlyCallExpression =
   buildEnvOnlyCallExpressionHandler('client')
 
+type CompileOptions = ParseAstOptions & {
+  env: 'server' | 'client' | 'ssr'
+}
 type IdentifierConfig = {
   name: string
   type: 'ImportSpecifier' | 'ImportNamespaceSpecifier'
   namespaceId: string
   handleCallExpression: (
     path: babel.NodePath<t.CallExpression>,
-    opts: ParseAstOptions,
+    opts: CompileOptions,
   ) => void
   paths: Array<babel.NodePath>
 }
 
-export function compileStartOutput(opts: ParseAstOptions) {
+export function compileStartOutput(opts: CompileOptions): GeneratorResult {
   const ast = parseAst(opts)
 
   babel.traverse(ast, {
@@ -185,7 +179,7 @@ export function compileStartOutput(opts: ParseAstOptions) {
     },
   })
 
-  return generate(ast, {
+  return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
     filename: opts.filename,
@@ -479,7 +473,7 @@ function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
 
 function handleCreateIsomorphicFnCallExpression(
   path: babel.NodePath<t.CallExpression>,
-  opts: ParseAstOptions,
+  opts: CompileOptions,
 ) {
   const rootCallExpression = getRootCallExpression(path)
 

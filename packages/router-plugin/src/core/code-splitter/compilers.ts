@@ -1,23 +1,12 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
-import _generate from '@babel/generator'
 import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { splitPrefix } from '../constants'
-import { parseAst } from './ast'
-import type { ParseAstOptions } from './ast'
+import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 const debug = process.env.TSR_VITE_DEBUG
-
-// Babel is a CJS package and uses `default` as named binding (`exports.default =`).
-// https://github.com/babel/babel/issues/15269.
-let generate = (_generate as any)['default'] as typeof _generate
-
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-if (!generate) {
-  generate = _generate
-}
 
 type SplitModulesById = Record<
   string,
@@ -79,7 +68,9 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
 ])
 const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NOES_CONFIG.keys()] as const
 
-export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
+export function compileCodeSplitReferenceRoute(
+  opts: ParseAstOptions,
+): GeneratorResult {
   const ast = parseAst(opts)
 
   babel.traverse(ast, {
@@ -321,13 +312,15 @@ export function compileCodeSplitReferenceRoute(opts: ParseAstOptions) {
 
   deadCodeElimination(ast)
 
-  return generate(ast, {
+  return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
   })
 }
 
-export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
+export function compileCodeSplitVirtualRoute(
+  opts: ParseAstOptions,
+): GeneratorResult {
   const ast = parseAst(opts)
 
   const knownExportedIdents = new Set<string>()
@@ -483,7 +476,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
                 ]),
               )
             } else if (t.isCallExpression(splitNode)) {
-              const outputSplitNodeCode = generate(splitNode).code
+              const outputSplitNodeCode = generateFromAst(splitNode).code
               const splitNodeAst = babel.parse(outputSplitNodeCode)
 
               if (!splitNodeAst) {
@@ -593,7 +586,7 @@ export function compileCodeSplitVirtualRoute(opts: ParseAstOptions) {
     }
   }
 
-  return generate(ast, {
+  return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
   })

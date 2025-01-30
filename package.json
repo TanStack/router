@@ -101,7 +101,8 @@
       "@tanstack/start-plugin": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
-      "@tanstack/directive-functions-plugin": "workspace:*"
+      "@tanstack/directive-functions-plugin": "workspace:*",
+      "@tanstack/router-utils": "workspace:*"
     }
   }
 }
