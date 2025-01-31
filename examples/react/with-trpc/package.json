@@ -10,8 +10,8 @@
   "dependencies": {
     "@tanstack/react-router": "^1.98.4",
     "@tanstack/router-devtools": "^1.98.4",
-    "@tanstack/router-plugin": "^1.98.5",
-    "@tanstack/start": "^1.98.5",
+    "@tanstack/router-plugin": "^1.98.6",
+    "@tanstack/start": "^1.98.6",
     "@trpc/client": "11.0.0-rc.729",
     "@trpc/server": "11.0.0-rc.729",
     "react": "^19.0.0",
