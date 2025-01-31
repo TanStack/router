@@ -7,7 +7,7 @@ const __TSR_SSR__: StartSsrGlobal = {
   initMatch: (match) => {
     __TSR_SSR__.matches.push(match)
 
-    Object.entries(match.extracted).forEach(([_id, ex]) => {
+    match.extracted?.forEach((ex) => {
       if (ex.type === 'stream') {
         let controller
         ex.value = new ReadableStream({
@@ -45,7 +45,7 @@ const __TSR_SSR__: StartSsrGlobal = {
   resolvePromise: ({ matchId, id, promiseState }) => {
     const match = __TSR_SSR__.matches.find((m) => m.id === matchId)
     if (match) {
-      const ex = match.extracted[id]
+      const ex = match.extracted?.[id]
       if (
         ex &&
         ex.type === 'promise' &&
@@ -62,7 +62,7 @@ const __TSR_SSR__: StartSsrGlobal = {
     const match = __TSR_SSR__.matches.find((m) => m.id === matchId)
 
     if (match) {
-      const ex = match.extracted[id]
+      const ex = match.extracted?.[id]
       if (ex && ex.type === 'stream' && ex.value?.controller) {
         ex.value.controller.enqueue(new TextEncoder().encode(chunk.toString()))
         return true
@@ -73,7 +73,7 @@ const __TSR_SSR__: StartSsrGlobal = {
   closeStream: ({ matchId, id }) => {
     const match = __TSR_SSR__.matches.find((m) => m.id === matchId)
     if (match) {
-      const ex = match.extracted[id]
+      const ex = match.extracted?.[id]
       if (ex && ex.type === 'stream' && ex.value?.controller) {
         ex.value.controller.close()
         return true

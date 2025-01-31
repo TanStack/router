@@ -33,8 +33,11 @@ function Home() {
       let chunk
 
       while (!(chunk = await reader.read()).done) {
-        const decoded = decoder.decode(chunk.value, { stream: !chunk.done })
-        setStreamData((prev) => [...prev, decoded])
+        let value = chunk.value
+        if (typeof value !== 'string') {
+          value = decoder.decode(value, { stream: !chunk.done })
+        }
+        setStreamData((prev) => [...prev, value])
       }
     }
 
