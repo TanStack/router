@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vinxi dev --port 3000",
     "dev:e2e": "vinxi dev",
-    "build": "vinxi build",
+    "build": "vinxi build && tsc --noEmit",
     "start": "vinxi start",
     "test:e2e": "playwright test --project=chromium"
   },
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",
+    "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",

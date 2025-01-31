@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import combinateImport from 'combinate'
-import { derivePort } from '../../../utils'
+import { derivePort } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 import { test } from './fixture'
 

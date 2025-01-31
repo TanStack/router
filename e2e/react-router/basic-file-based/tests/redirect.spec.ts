@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import combinateImport from 'combinate'
-import { derivePort } from '../../../utils'
+import { derivePort } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 
 // somehow playwright does not correctly import default exports
