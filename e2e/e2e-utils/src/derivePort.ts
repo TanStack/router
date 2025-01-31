@@ -7,7 +7,11 @@ import * as crypto from 'node:crypto'
  * @param {number} max - Maximum port value.
  * @returns {number} A port within the range [min, max].
  */
-export function derivePort(input, min = 5600, max = 65535) {
+export function derivePort(
+  input: string,
+  min: number = 5600,
+  max: number = 65535,
+): number {
   // Hash the input using SHA-256
   const hash = crypto.createHash('sha256').update(input).digest('hex')
 

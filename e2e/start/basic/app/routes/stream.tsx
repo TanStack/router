@@ -25,7 +25,7 @@ const decoder = new TextDecoder('utf-8')
 
 function Home() {
   const { promise, stream } = Route.useLoaderData()
-  const [streamData, setStreamData] = useState([])
+  const [streamData, setStreamData] = useState<Array<string>>([])
 
   useEffect(() => {
     async function fetchStream() {
