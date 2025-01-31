@@ -14,7 +14,7 @@ The `Outlet` component is used to render the next potentially matching child rou
 A great example is configuring the root route of your application. Let's give our root route a component that renders a title, then an `<Outlet />` for our top-level routes to render.
 
 ```tsx
-import { createRootRoute } from '@tanstack/react-router'
+import { createRootRoute, Outlet } from '@tanstack/react-router'
 
 export const Route = createRootRoute({
   component: RootComponent,
