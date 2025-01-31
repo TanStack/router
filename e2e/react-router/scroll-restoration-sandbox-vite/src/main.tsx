@@ -8,7 +8,6 @@ import './styles.css'
 const router = createRouter({
   routeTree,
   scrollRestoration: true,
-  scrollRestoration: true,
 })
 
 // Register things for typesafety
