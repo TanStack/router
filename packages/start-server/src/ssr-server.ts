@@ -27,7 +27,6 @@ export type ServerExtractedEntry =
   | ServerExtractedPromise
 
 export interface ServerExtractedBaseEntry extends ClientExtractedBaseEntry {
-  dataType: '__beforeLoadContext' | 'loaderData'
   id: number
   matchIndex: number
 }
@@ -121,32 +120,21 @@ export function dehydrateRouter(router: AnyRouter) {
   )
 }
 
-export function extractAsyncDataToMatch(
-  dataType: '__beforeLoadContext' | 'loaderData',
-  data: any,
+export function extractAsyncLoaderData(
+  loaderData: any,
   ctx: {
     match: AnyRouteMatch
     router: AnyRouter
   },
 ) {
-  ;(ctx.match as any).extracted = (ctx.match as any).extracted || []
+  const extracted: Array<ServerExtractedEntry> = []
 
-  const extracted = (ctx.match as any).extracted
-
-  const replacedLoaderData = replaceBy(data, (value, path) => {
-    const type =
-      value instanceof ReadableStream
-        ? 'stream'
-        : value instanceof Promise
-          ? 'promise'
-          : undefined
-
+  const replaced = replaceBy(loaderData, (value, path) => {
     // If it's a stream, we need to tee it so we can read it multiple times
-    if (type === 'stream') {
+    if (value instanceof ReadableStream) {
       const [copy1, copy2] = value.tee()
       const entry: ServerExtractedStream = {
-        dataType,
-        type,
+        type: 'stream',
         path,
         id: extracted.length,
         matchIndex: ctx.match.index,
@@ -155,11 +143,10 @@ export function extractAsyncDataToMatch(
 
       extracted.push(entry)
       return copy1
-    } else if (type === 'promise') {
+    } else if (value instanceof Promise) {
       const deferredPromise = defer(value)
       const entry: ServerExtractedPromise = {
-        dataType,
-        type,
+        type: 'promise',
         path,
         id: extracted.length,
         matchIndex: ctx.match.index,
@@ -171,7 +158,7 @@ export function extractAsyncDataToMatch(
     return value
   })
 
-  return replacedLoaderData
+  return { replaced, extracted }
 }
 
 export function onMatchSettled(opts: {
@@ -180,148 +167,118 @@ export function onMatchSettled(opts: {
 }) {
   const { router, match } = opts
 
-  const [serializedBeforeLoadData, serializedLoaderData] = (
-    ['__beforeLoadContext', 'loaderData'] as const
-  ).map((dataType) => {
-    const data = extractAsyncDataToMatch(dataType, match[dataType], {
-      router: router,
+  let extracted: Array<ServerExtractedEntry> | undefined = undefined
+  let serializedLoaderData: any = undefined
+  if (match.loaderData !== undefined) {
+    const result = extractAsyncLoaderData(match.loaderData, {
+      router,
       match,
     })
-
-    const extracted = (match as any).extracted as
-      | undefined
-      | Array<ServerExtractedEntry>
-
-    return extracted
-      ? extracted.reduce(
-          (acc: any, entry: ServerExtractedEntry) => {
-            if (entry.dataType !== dataType) {
-              return deepImmutableSetByPath(
-                acc,
-                ['temp', ...entry.path],
-                undefined,
-              )
-            }
-            return acc
-          },
-          { temp: data },
-        ).temp
-      : data
-  })
-
-  const extracted = (match as any).extracted as
-    | undefined
-    | Array<ServerExtractedEntry>
-
-  if (
-    serializedBeforeLoadData !== undefined ||
-    serializedLoaderData !== undefined ||
-    extracted?.length
-  ) {
-    const initCode = `__TSR_SSR__.initMatch(${jsesc(
-      {
-        id: match.id,
-        __beforeLoadContext: router.ssr!.serializer.stringify(
-          serializedBeforeLoadData,
-        ),
-        loaderData: router.ssr!.serializer.stringify(serializedLoaderData),
-        error: router.ssr!.serializer.stringify(match.error),
-        extracted: extracted
-          ? Object.fromEntries(
-              extracted.map((entry) => {
-                return [entry.id, pick(entry, ['type', 'path'])]
-              }),
-            )
-          : {},
-        updatedAt: match.updatedAt,
-        status: match.status,
-      } satisfies SsrMatch,
-      {
-        isScriptContext: true,
-        wrap: true,
-        json: true,
+    match.loaderData = result.replaced
+    extracted = result.extracted
+    serializedLoaderData = extracted.reduce(
+      (acc: any, entry: ServerExtractedEntry) => {
+        return deepImmutableSetByPath(acc, ['temp', ...entry.path], undefined)
       },
-    )})`
-
-    router.serverSsr!.injectScript(() => initCode)
-
-    if (extracted) {
-      extracted.forEach((entry) => {
-        if (entry.type === 'promise') return injectPromise(entry)
-        return injectStream(entry)
-      })
-    }
-
-    function injectPromise(entry: ServerExtractedPromise) {
-      router.serverSsr!.injectScript(async () => {
-        await entry.promise
-
-        return `__TSR_SSR__.resolvePromise(${jsesc(
-          {
-            matchId: match.id,
-            id: entry.id,
-            promiseState: entry.promise[TSR_DEFERRED_PROMISE],
-          } satisfies ResolvePromiseState,
-          {
-            isScriptContext: true,
-            wrap: true,
-            json: true,
-          },
-        )})`
-      })
-    }
-
-    function injectStream(entry: ServerExtractedStream) {
-      // Inject a promise that resolves when the stream is done
-      // We do this to keep the stream open until we're done
-      router.serverSsr!.injectHtml(async () => {
-        //
-        try {
-          const reader = entry.stream.getReader()
-          let chunk: ReadableStreamReadResult<any> | null = null
-          while (!(chunk = await reader.read()).done) {
-            if (chunk.value) {
-              const code = `__TSR_SSR__.injectChunk(${jsesc(
-                {
-                  matchId: match.id,
-                  id: entry.id,
-                  chunk: chunk.value,
-                },
-                {
-                  isScriptContext: true,
-                  wrap: true,
-                  json: true,
-                },
-              )})`
-
-              router.serverSsr!.injectScript(() => code)
-            }
-          }
-
-          router.serverSsr!.injectScript(
-            () =>
-              `__TSR_SSR__.closeStream(${jsesc(
-                {
-                  matchId: match.id,
-                  id: entry.id,
-                },
-                {
-                  isScriptContext: true,
-                  wrap: true,
-                  json: true,
-                },
-              )})`,
-          )
-        } catch (err) {
-          console.error('stream read error', err)
-        }
-
-        return ''
-      })
-    }
+      { temp: result.replaced },
+    ).temp
   }
 
-  return null
+  const initCode = `__TSR_SSR__.initMatch(${jsesc(
+    {
+      id: match.id,
+      __beforeLoadContext: router.ssr!.serializer.stringify(
+        match.__beforeLoadContext,
+      ),
+      loaderData: router.ssr!.serializer.stringify(serializedLoaderData),
+      error: router.ssr!.serializer.stringify(match.error),
+      extracted: extracted?.map((entry) => pick(entry, ['type', 'path'])),
+      updatedAt: match.updatedAt,
+      status: match.status,
+    } satisfies SsrMatch,
+    {
+      isScriptContext: true,
+      wrap: true,
+      json: true,
+    },
+  )})`
+
+  router.serverSsr!.injectScript(() => initCode)
+
+  if (extracted) {
+    extracted.forEach((entry) => {
+      if (entry.type === 'promise') return injectPromise(entry)
+      return injectStream(entry)
+    })
+  }
+
+  function injectPromise(entry: ServerExtractedPromise) {
+    router.serverSsr!.injectScript(async () => {
+      await entry.promise
+
+      return `__TSR_SSR__.resolvePromise(${jsesc(
+        {
+          matchId: match.id,
+          id: entry.id,
+          promiseState: entry.promise[TSR_DEFERRED_PROMISE],
+        } satisfies ResolvePromiseState,
+        {
+          isScriptContext: true,
+          wrap: true,
+          json: true,
+        },
+      )})`
+    })
+  }
+
+  function injectStream(entry: ServerExtractedStream) {
+    // Inject a promise that resolves when the stream is done
+    // We do this to keep the stream open until we're done
+    router.serverSsr!.injectHtml(async () => {
+      //
+      try {
+        const reader = entry.stream.getReader()
+        let chunk: ReadableStreamReadResult<any> | null = null
+        while (!(chunk = await reader.read()).done) {
+          if (chunk.value) {
+            const code = `__TSR_SSR__.injectChunk(${jsesc(
+              {
+                matchId: match.id,
+                id: entry.id,
+                chunk: chunk.value,
+              },
+              {
+                isScriptContext: true,
+                wrap: true,
+                json: true,
+              },
+            )})`
+
+            router.serverSsr!.injectScript(() => code)
+          }
+        }
+
+        router.serverSsr!.injectScript(
+          () =>
+            `__TSR_SSR__.closeStream(${jsesc(
+              {
+                matchId: match.id,
+                id: entry.id,
+              },
+              {
+                isScriptContext: true,
+                wrap: true,
+                json: true,
+              },
+            )})`,
+        )
+      } catch (err) {
+        console.error('stream read error', err)
+      }
+
+      return ''
+    })
+  }
 }
 
 function deepImmutableSetByPath<T>(obj: T, path: Array<string>, value: any): T {
