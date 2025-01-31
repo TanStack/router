@@ -133,22 +133,13 @@ This is the file that will dictate the behavior of TanStack Router used within S
 from the default [preloading functionality](../guide/preloading.md) to [caching staleness](../guide/data-loading.md).
 
 ```tsx
-// app/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-
-export function createRouter() {
+export function createRouter(opts: Parameters<typeof createTanStackRouter>) {
   const router = createTanStackRouter({
     routeTree,
+    ...opts
   })
 
   return router
-}
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof createRouter>
-  }
 }
 ```
 
