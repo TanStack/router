@@ -85,7 +85,7 @@ test('when creating the root with a loader', () => {
         deps: {}
         context: {}
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: never
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -191,7 +191,7 @@ test('when creating the root route with context and a loader', () => {
         deps: {}
         context: { userId: string }
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: never
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -265,7 +265,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         deps: {}
         context: { userId: string; permission: 'view'; env: 'env1' }
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: never
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -405,7 +405,7 @@ test('when creating a child route with a loader from the root route', () => {
         deps: {}
         context: {}
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -456,7 +456,7 @@ test('when creating a child route with a loader from the root route with context
         deps: {}
         context: { userId: string }
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -676,7 +676,7 @@ test('when creating a child route with params, search and loader from the root r
         deps: {}
         context: {}
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -701,7 +701,7 @@ test('when creating a child route with params, search, loader and loaderDeps fro
         deps: { page: number }
         context: {}
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -725,7 +725,7 @@ test('when creating a child route with params, search, loader and loaderDeps fro
         deps: { page: number }
         context: { userId: string }
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -828,7 +828,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         deps: {}
         context: { userId: string; env: string; readonly permission: 'view' }
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
         route: Route
@@ -1195,7 +1195,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           detailsPermissions: readonly ['view']
         }
         location: ParsedLocation
-        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void>
+        navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<
           MakeRouteMatchFromRoute<typeof detailsRoute>
         >
@@ -1245,7 +1245,6 @@ test('when creating a child route with context, search, params and beforeLoad', 
         .toHaveProperty('to')
         .toEqualTypeOf<
           | '.'
-          | './'
           | './invoices'
           | './invoices/$invoiceId'
           | './invoices/$invoiceId/details'

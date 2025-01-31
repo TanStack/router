@@ -1,10 +1,5 @@
-import { test } from './utils'
+import { test } from '@playwright/test'
 
-test.afterEach(async ({ setupApp }) => {
-  await setupApp.killProcess()
-})
-
-test('loads', async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/')
+test('loads', async ({ page }) => {
+  await page.goto('/')
 })

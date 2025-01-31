@@ -12,12 +12,22 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  SearchParamError,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
+  useNavigate,
 } from '../src'
-import type { AnyRoute, AnyRouter, RouterOptions } from '../src'
+import type { StandardSchemaValidator } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouter,
+  MakeRemountDepsOptionsUnion,
+  RouterOptions,
+  ValidatorFn,
+  ValidatorObj,
+} from '../src'
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -52,6 +62,18 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     },
   })
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
+  const usersRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/users',
+  })
+  const userRoute = createRoute({
+    getParentRoute: () => usersRoute,
+    path: '/$userId',
+  })
+  const userFilesRoute = createRoute({
+    getParentRoute: () => userRoute,
+    path: '/files/$fileId',
+  })
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/posts',
@@ -215,8 +237,21 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     },
   })
 
+  const nestedSearchRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    validateSearch: z.object({ foo: z.string() }),
+    path: 'nested-search',
+  })
+
+  const nestedSearchChildRoute = createRoute({
+    getParentRoute: () => nestedSearchRoute,
+    validateSearch: z.object({ bar: z.string() }),
+    path: 'child',
+  })
+
   const routeTree = rootRoute.addChildren([
     indexRoute,
+    usersRoute.addChildren([userRoute.addChildren([userFilesRoute])]),
     postsRoute.addChildren([postIdRoute]),
     pathSegmentEAccentRoute,
     pathSegmentRocketEmojiRoute,
@@ -243,6 +278,7 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       searchWithDefaultIndexRoute,
       searchWithDefaultCheckRoute,
     ]),
+    nestedSearchRoute.addChildren([nestedSearchChildRoute]),
   ])
 
   const router = createRouter({ routeTree, ...options })
@@ -623,7 +659,7 @@ describe('router emits events during rendering', () => {
 
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
-    render(<RouterProvider router={router} />)
+    await act(() => render(<RouterProvider router={router} />))
 
     await act(() => router.navigate({ to: '/$', params: { _splat: 'tanner' } }))
 
@@ -672,8 +708,18 @@ describe('router emits events during rendering', () => {
 })
 
 describe('router rendering stability', () => {
-  it('should not remount the page component when navigating to the same route', async () => {
-    const callerMock = vi.fn()
+  type RemountDepsFn = (opts: MakeRemountDepsOptionsUnion) => any
+  async function setup(opts?: {
+    remountDeps: {
+      default?: RemountDepsFn
+      fooId?: RemountDepsFn
+      barId?: RemountDepsFn
+    }
+  }) {
+    const mountMocks = {
+      fooId: vi.fn(),
+      barId: vi.fn(),
+    }
 
     const rootRoute = createRootRoute({
       component: () => {
@@ -681,11 +727,33 @@ describe('router rendering stability', () => {
           <div>
             <p>Root</p>
             <div>
-              <Link to="/foo/$id" params={{ id: '1' }}>
+              <Link
+                data-testid="link-foo-1"
+                to="/foo/$fooId"
+                params={{ fooId: '1' }}
+              >
                 Foo1
               </Link>
-              <Link to="/foo/$id" params={{ id: '2' }}>
+              <Link
+                data-testid="link-foo-2"
+                to="/foo/$fooId"
+                params={{ fooId: '2' }}
+              >
                 Foo2
+              </Link>
+              <Link
+                data-testid="link-foo-3-bar-1"
+                to="/foo/$fooId/bar/$barId"
+                params={{ fooId: '3', barId: '1' }}
+              >
+                Foo3-Bar1
+              </Link>
+              <Link
+                data-testid="link-foo-3-bar-2"
+                to="/foo/$fooId/bar/$barId"
+                params={{ fooId: '3', barId: '2' }}
+              >
+                Foo3-Bar2
               </Link>
             </div>
             <Outlet />
@@ -702,54 +770,127 @@ describe('router rendering stability', () => {
     })
     const fooIdRoute = createRoute({
       getParentRoute: () => rootRoute,
-      path: '/foo/$id',
+      path: '/foo/$fooId',
       component: FooIdRouteComponent,
+      remountDeps: opts?.remountDeps.fooId,
     })
-    function FooIdRouteComponent() {
-      const id = fooIdRoute.useParams({ select: (s) => s.id })
 
+    function FooIdRouteComponent() {
+      const fooId = fooIdRoute.useParams({ select: (s) => s.fooId })
       useEffect(() => {
-        callerMock()
+        mountMocks.fooId()
       }, [])
 
-      return <div>Foo page {id}</div>
+      return (
+        <div data-testid="fooId-page">
+          Foo page <span data-testid="fooId-value">{fooId}</span> <Outlet />
+        </div>
+      )
     }
 
-    const routeTree = rootRoute.addChildren([fooIdRoute, indexRoute])
-    const router = createRouter({ routeTree })
+    const barIdRoute = createRoute({
+      getParentRoute: () => fooIdRoute,
+      path: '/bar/$barId',
+      component: BarIdRouteComponent,
+      remountDeps: opts?.remountDeps.barId,
+    })
 
-    render(<RouterProvider router={router} />)
+    function BarIdRouteComponent() {
+      const barId = fooIdRoute.useParams({ select: (s) => s.barId })
 
-    const foo1Link = await screen.findByRole('link', { name: 'Foo1' })
-    const foo2Link = await screen.findByRole('link', { name: 'Foo2' })
+      useEffect(() => {
+        mountMocks.barId()
+      }, [])
 
-    expect(foo1Link).toBeInTheDocument()
-    expect(foo2Link).toBeInTheDocument()
+      return (
+        <div data-testid="barId-page">
+          Bar page <span data-testid="barId-value">{barId}</span> <Outlet />
+        </div>
+      )
+    }
 
-    fireEvent.click(foo1Link)
+    const routeTree = rootRoute.addChildren([
+      fooIdRoute.addChildren([barIdRoute]),
+      indexRoute,
+    ])
+    const router = createRouter({
+      routeTree,
+      defaultRemountDeps: opts?.remountDeps.default,
+    })
 
-    const fooPage1 = await screen.findByText('Foo page 1')
-    expect(fooPage1).toBeInTheDocument()
+    await act(() => render(<RouterProvider router={router} />))
 
-    expect(callerMock).toBeCalledTimes(1)
+    const foo1 = await screen.findByTestId('link-foo-1')
+    const foo2 = await screen.findByTestId('link-foo-2')
 
-    fireEvent.click(foo2Link)
+    const foo3bar1 = await screen.findByTestId('link-foo-3-bar-1')
+    const foo3bar2 = await screen.findByTestId('link-foo-3-bar-2')
 
-    const fooPage2 = await screen.findByText('Foo page 2')
-    expect(fooPage2).toBeInTheDocument()
+    expect(foo1).toBeInTheDocument()
+    expect(foo2).toBeInTheDocument()
+    expect(foo3bar1).toBeInTheDocument()
+    expect(foo3bar2).toBeInTheDocument()
 
-    expect(callerMock).toBeCalledTimes(1)
+    return { router, mountMocks, links: { foo1, foo2, foo3bar1, foo3bar2 } }
+  }
+
+  async function check(
+    page: 'fooId' | 'barId',
+    expected: { value: string; mountCount: number },
+    mountMocks: Record<'fooId' | 'barId', () => void>,
+  ) {
+    const p = await screen.findByTestId(`${page}-page`)
+    expect(p).toBeInTheDocument()
+    const value = await screen.findByTestId(`${page}-value`)
+    expect(value).toBeInTheDocument()
+    expect(value).toHaveTextContent(expected.value)
+
+    expect(mountMocks[page]).toBeCalledTimes(expected.mountCount)
+  }
+
+  it('should not remount the page component when navigating to the same route but different path param if no remount deps are configured', async () => {
+    const { mountMocks, links } = await setup()
+
+    await act(() => fireEvent.click(links.foo1))
+    await check('fooId', { value: '1', mountCount: 1 }, mountMocks)
+    expect(mountMocks.barId).not.toHaveBeenCalled()
+
+    await act(() => fireEvent.click(links.foo2))
+    await check('fooId', { value: '2', mountCount: 1 }, mountMocks)
+    expect(mountMocks.barId).not.toHaveBeenCalled()
+
+    await act(() => fireEvent.click(links.foo3bar1))
+    await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
+    await check('barId', { value: '1', mountCount: 1 }, mountMocks),
+      await act(() => fireEvent.click(links.foo3bar2))
+    await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
+    await check('barId', { value: '2', mountCount: 1 }, mountMocks)
   })
-})
 
-describe('transformer functions are defined', () => {
-  it('should have default transformer functions', () => {
-    const rootRoute = createRootRoute({})
-    const routeTree = rootRoute.addChildren([])
-    const router = createRouter({ routeTree })
+  it('should remount the fooId and barId page component when navigating to the same route but different path param if defaultRemountDeps with params is used', async () => {
+    const defaultRemountDeps: RemountDepsFn = (opts) => {
+      return opts.params
+    }
+    const { mountMocks, links } = await setup({
+      remountDeps: { default: defaultRemountDeps },
+    })
 
-    expect(router.options.transformer.parse).toBeInstanceOf(Function)
-    expect(router.options.transformer.stringify).toBeInstanceOf(Function)
+    await act(() => fireEvent.click(links.foo1))
+    await check('fooId', { value: '1', mountCount: 1 }, mountMocks)
+    expect(mountMocks.barId).not.toHaveBeenCalled()
+
+    await act(() => fireEvent.click(links.foo2))
+
+    await check('fooId', { value: '2', mountCount: 2 }, mountMocks)
+    expect(mountMocks.barId).not.toHaveBeenCalled()
+
+    await act(() => fireEvent.click(links.foo3bar1))
+    await check('fooId', { value: '3', mountCount: 3 }, mountMocks)
+    await check('barId', { value: '1', mountCount: 1 }, mountMocks)
+
+    await act(() => fireEvent.click(links.foo3bar2))
+    await check('fooId', { value: '3', mountCount: 3 }, mountMocks)
+    await check('barId', { value: '2', mountCount: 2 }, mountMocks)
   })
 })
 
@@ -794,18 +935,84 @@ describe('router matches URLs to route definitions', () => {
     ])
   })
 
-  it('layout splat route matches without splat', async () => {
+  it('nested path params', async () => {
     const { router } = createTestRouter({
-      history: createMemoryHistory({ initialEntries: ['/layout-splat'] }),
+      history: createMemoryHistory({
+        initialEntries: ['/users/5678/files/123'],
+      }),
     })
 
     await act(() => router.load())
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
-      '/layout-splat',
-      '/layout-splat/',
+      '/users',
+      '/users/$userId',
+      '/users/$userId/files/$fileId',
     ])
+  })
+})
+
+describe('matches', () => {
+  describe('params', () => {
+    it('/users/$userId/files/$fileId', async () => {
+      const { router } = createTestRouter({
+        history: createMemoryHistory({
+          initialEntries: ['/users/5678/files/123'],
+        }),
+      })
+
+      await act(() => router.load())
+
+      const expectedStrictParams: Record<string, unknown> = {
+        __root__: {},
+        '/users': {},
+        '/users/$userId': { userId: '5678' },
+        '/users/$userId/files/$fileId': { userId: '5678', fileId: '123' },
+      }
+
+      expect(router.state.matches.length).toEqual(
+        Object.entries(expectedStrictParams).length,
+      )
+      router.state.matches.forEach((match) => {
+        expect(match.params).toEqual(
+          expectedStrictParams['/users/$userId/files/$fileId'],
+        )
+      })
+      router.state.matches.forEach((match) => {
+        expect(match._strictParams).toEqual(expectedStrictParams[match.routeId])
+      })
+    })
+  })
+
+  describe('search', () => {
+    it('/nested-search/child?foo=hello&bar=world', async () => {
+      const { router } = createTestRouter({
+        history: createMemoryHistory({
+          initialEntries: ['/nested-search/child?foo=hello&bar=world'],
+        }),
+      })
+
+      await act(() => router.load())
+
+      const expectedStrictSearch: Record<string, unknown> = {
+        __root__: {},
+        '/nested-search': { foo: 'hello' },
+        '/nested-search/child': { foo: 'hello', bar: 'world' },
+      }
+
+      expect(router.state.matches.length).toEqual(
+        Object.entries(expectedStrictSearch).length,
+      )
+      router.state.matches.forEach((match) => {
+        expect(match.search).toEqual(
+          expectedStrictSearch['/nested-search/child'],
+        )
+      })
+      router.state.matches.forEach((match) => {
+        expect(match._strictSearch).toEqual(expectedStrictSearch[match.routeId])
+      })
+    })
   })
 })
 
@@ -1016,6 +1223,91 @@ describe('search params in URL', () => {
       await checkSearch({ default: 'd2', optional: 'o1' })
     })
   })
+
+  describe('validates search params', () => {
+    class TestValidationError extends Error {
+      issues: Array<{ message: string }>
+      constructor(issues: Array<{ message: string }>) {
+        super('validation failed')
+        this.name = 'TestValidationError'
+        this.issues = issues
+      }
+    }
+    const testCases: [
+      StandardSchemaValidator<Record<string, unknown>, { search: string }>,
+      ValidatorFn<Record<string, unknown>, { search: string }>,
+      ValidatorObj<Record<string, unknown>, { search: string }>,
+    ] = [
+      {
+        ['~standard']: {
+          validate: (input) => {
+            const result = z.object({ search: z.string() }).safeParse(input)
+            if (result.success) {
+              return { value: result.data }
+            }
+            return new TestValidationError(result.error.issues)
+          },
+        },
+      },
+      ({ search }) => {
+        if (typeof search !== 'string') {
+          throw new TestValidationError([
+            { message: 'search must be a string' },
+          ])
+        }
+        return { search }
+      },
+      {
+        parse: ({ search }) => {
+          if (typeof search !== 'string') {
+            throw new TestValidationError([
+              { message: 'search must be a string' },
+            ])
+          }
+          return { search }
+        },
+      },
+    ]
+
+    describe.each(testCases)('search param validation', (validateSearch) => {
+      it('does not throw an error when the search param is valid', async () => {
+        let errorSpy: Error | undefined
+        const rootRoute = createRootRoute({
+          validateSearch,
+          errorComponent: ({ error }) => {
+            errorSpy = error
+          },
+        })
+
+        const history = createMemoryHistory({
+          initialEntries: ['/search?search=foo'],
+        })
+        const router = createRouter({ routeTree: rootRoute, history })
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+
+        expect(errorSpy).toBeUndefined()
+      })
+
+      it('throws an error when the search param is not valid', async () => {
+        let errorSpy: Error | undefined
+        const rootRoute = createRootRoute({
+          validateSearch,
+          errorComponent: ({ error }) => {
+            errorSpy = error
+          },
+        })
+
+        const history = createMemoryHistory({ initialEntries: ['/search'] })
+        const router = createRouter({ routeTree: rootRoute, history })
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+
+        expect(errorSpy).toBeInstanceOf(SearchParamError)
+        expect(errorSpy?.cause).toBeInstanceOf(TestValidationError)
+      })
+    })
+  })
 })
 
 describe('route ids should be consistent after rebuilding the route tree', () => {
@@ -1089,5 +1381,163 @@ describe('route id uniqueness', () => {
       expect(routeIdSet.has(route.id)).toBe(false)
       routeIdSet.add(route.id)
     })
+  })
+})
+
+const createHistoryRouter = () => {
+  const rootRoute = createRootRoute()
+
+  const IndexComponent = () => {
+    const navigate = useNavigate()
+
+    return (
+      <>
+        <h1>Index</h1>
+        <button onClick={() => navigate({ to: '/' })}>Index</button>
+        <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+        <button onClick={() => navigate({ to: '/posts', replace: true })}>
+          Replace
+        </button>
+      </>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: IndexComponent,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts',
+    component: function Component() {
+      const navigate = useNavigate()
+
+      return (
+        <>
+          <h1>Posts</h1>
+          <button onClick={() => navigate({ to: '/' })}>Index</button>
+        </>
+      )
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+  })
+
+  return { router }
+}
+
+describe('history: History gives correct notifcations and state', () => {
+  it('should work with push and back', async () => {
+    const { router: router } = createHistoryRouter()
+
+    type Router = typeof router
+
+    const results: Array<
+      Parameters<Parameters<Router['history']['subscribe']>[0]>[0]['action']
+    > = []
+
+    render(<RouterProvider router={router} />)
+
+    const unsub = router.history.subscribe(({ action }) => {
+      results.push(action)
+    })
+
+    const postsButton = await screen.findByRole('button', { name: 'Posts' })
+
+    fireEvent.click(postsButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
+
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/')
+
+    expect(results).toEqual([{ type: 'PUSH' }, { type: 'BACK' }])
+
+    unsub()
+  })
+
+  it('should work more complex scenario', async () => {
+    const { router: router } = createHistoryRouter()
+
+    type Router = typeof router
+
+    const results: Array<
+      Parameters<Parameters<Router['history']['subscribe']>[0]>[0]['action']
+    > = []
+
+    render(<RouterProvider router={router} />)
+
+    const unsub = router.history.subscribe(({ action }) => {
+      results.push(action)
+    })
+
+    const replaceButton = await screen.findByRole('button', { name: 'Replace' })
+
+    fireEvent.click(replaceButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
+
+    const indexButton = await screen.findByRole('button', { name: 'Index' })
+
+    fireEvent.click(indexButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/')
+
+    const postsButton = await screen.findByRole('button', { name: 'Posts' })
+
+    fireEvent.click(postsButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
+
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/')
+
+    act(() => router.history.go(1))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
+
+    expect(results).toEqual([
+      { type: 'REPLACE' },
+      { type: 'PUSH' },
+      { type: 'PUSH' },
+      { type: 'BACK' },
+      { type: 'GO', index: 1 },
+    ])
+
+    unsub()
   })
 })

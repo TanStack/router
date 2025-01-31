@@ -1,5 +1,11 @@
 import * as React from 'react'
-import type { Router } from './router'
+import type { AnyRouter, Router } from './router'
+
+declare global {
+  interface Window {
+    __TSR_ROUTER_CONTEXT__?: React.Context<AnyRouter>
+  }
+}
 
 const routerContext = React.createContext<Router<any, any, any>>(null!)
 

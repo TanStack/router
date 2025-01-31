@@ -1,19 +1,20 @@
 import jsesc from 'jsesc'
 
 export function ScriptOnce({
-  className,
   children,
   log,
-  ...rest
-}: { children: string; log?: boolean } & React.HTMLProps<HTMLScriptElement>) {
+}: {
+  children: string
+  log?: boolean
+  sync?: boolean
+}) {
   if (typeof document !== 'undefined') {
     return null
   }
 
   return (
     <script
-      {...rest}
-      className={`tsr-once ${className || ''}`}
+      className="tsr-once"
       dangerouslySetInnerHTML={{
         __html: [
           children,
@@ -21,7 +22,7 @@ export function ScriptOnce({
             ? `console.info(\`Injected From Server:
 ${jsesc(children.toString(), { quotes: 'backtick' })}\`)`
             : '',
-          '__TSR__.cleanScripts()',
+          'if (typeof __TSR_SSR__ !== "undefined") __TSR_SSR__.cleanScripts()',
         ]
           .filter(Boolean)
           .join('\n'),

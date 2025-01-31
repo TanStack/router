@@ -9,6 +9,7 @@ import { auth } from './utils/auth'
 import { Spinner } from './components/Spinner'
 import { routeTree } from './routeTree.gen'
 import { useSessionStorage } from './hooks/useSessionStorage'
+import './styles.css'
 
 //
 
@@ -24,6 +25,7 @@ const router = createRouter({
     auth: undefined!, // We'll inject this when we render
   },
   defaultPreload: 'intent',
+  scrollRestoration: true,
 })
 
 declare module '@tanstack/react-router' {

@@ -3,6 +3,12 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
-    "skipLibCheck": true
-  }
+    "target": "ESNext",
+    "moduleResolution": "Bundler",
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": true
+  },
+  "exclude": ["node_modules", "dist"]
 }

@@ -4,7 +4,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 export default createApp({
   server: {
-    preset: 'vercel', // change to 'node' or 'bun' or anyof the supported presets for nitro (nitro.unjs.io)
+    preset: 'node-server', // change to 'netlify' or 'bun' or anyof the supported presets for nitro (nitro.unjs.io)
     experimental: {
       asyncContext: true,
     },
@@ -21,7 +21,7 @@ export default createApp({
       base: '/trpc',
       handler: './trpc-server.handler.ts',
       target: 'server',
-      plugins: () => [reactRefresh()],
+      plugins: () => [],
     },
     {
       type: 'spa',

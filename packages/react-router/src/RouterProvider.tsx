@@ -2,19 +2,22 @@ import * as React from 'react'
 import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
 import type { NavigateOptions, ToOptions } from './link'
-import type { ParsedLocation } from './location'
+import type {
+  ParsedLocation,
+  ViewTransitionOptions,
+} from '@tanstack/router-core'
 import type { RoutePaths } from './routeInfo'
 import type {
   AnyRouter,
   RegisteredRouter,
   Router,
   RouterOptions,
-  ViewTransitionOptions,
 } from './router'
 
 export interface CommitLocationOptions {
   replace?: boolean
   resetScroll?: boolean
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
   viewTransition?: boolean | ViewTransitionOptions
   /**
    * @deprecated All navigations use React transitions under the hood now
@@ -38,7 +41,7 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => Promise<void>
+) => Promise<void> | void
 
 export type BuildLocationFn = <
   TRouter extends RegisteredRouter,
@@ -52,8 +55,6 @@ export type BuildLocationFn = <
     _includeValidateSearch?: boolean
   },
 ) => ParsedLocation
-
-export type InjectedHtmlEntry = string | (() => Promise<string> | string)
 
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -78,7 +79,9 @@ export function RouterContextProvider<
   const routerContext = getRouterContext()
 
   const provider = (
-    <routerContext.Provider value={router}>{children}</routerContext.Provider>
+    <routerContext.Provider value={router as AnyRouter}>
+      {children}
+    </routerContext.Provider>
   )
 
   if (router.options.Wrap) {

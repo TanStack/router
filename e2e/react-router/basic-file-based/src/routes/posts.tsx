@@ -11,7 +11,7 @@ function PostsComponent() {
   const posts = Route.useLoaderData()
 
   return (
-    <div className="p-2 flex gap-2">
+    <div className="p-2 flex gap-2" data-testid="posts-links">
       <ul className="list-disc pl-4">
         {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
           (post) => {

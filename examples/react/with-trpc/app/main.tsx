@@ -6,6 +6,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { trpc } from './trpc'
 
 import { Spinner } from './routes/-components/spinner'
+import './styles.css'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
@@ -13,6 +14,7 @@ import { routeTree } from './routeTree.gen'
 // Create a router instance
 const router = createRouter({
   routeTree,
+  scrollRestoration: true,
   defaultPreload: 'intent',
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>

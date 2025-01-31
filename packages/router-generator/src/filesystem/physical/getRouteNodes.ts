@@ -22,6 +22,7 @@ const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
 
 export async function getRouteNodes(
   config: Config,
+  root: string,
 ): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
     config
@@ -72,11 +73,14 @@ export async function getRouteNodes(
         file: '',
         children: virtualRouteSubtreeConfig,
       }
-      const { routeNodes: virtualRouteNodes } = await getRouteNodesVirtual({
-        ...config,
-        routesDirectory: fullDir,
-        virtualRouteConfig: dummyRoot,
-      })
+      const { routeNodes: virtualRouteNodes } = await getRouteNodesVirtual(
+        {
+          ...config,
+          routesDirectory: fullDir,
+          virtualRouteConfig: dummyRoot,
+        },
+        root,
+      )
       virtualRouteNodes.forEach((node) => {
         const filePath = replaceBackslash(path.join(dir, node.filePath))
         const routePath = `/${dir}${node.routePath}`

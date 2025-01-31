@@ -579,3 +579,32 @@ test('when a route has search params using SearchSchemaInput', () => {
     page: number
   }>
 })
+
+test('when route has a union of search params', () => {
+  const rootRoute = createRootRoute()
+
+  const postRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: (): { status: 'in' } | { status: 'out' } => {
+      return { status: 'in' }
+    },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => postRoute,
+    path: '/',
+    validateSearch: (): { detail: string } => {
+      return { detail: 'detail' }
+    },
+  })
+
+  const routeTree = rootRoute.addChildren([
+    indexRoute.addChildren([indexRoute]),
+  ])
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const router = createRouter({ routeTree })
+  expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
+    { status: 'in'; detail: string } | { status: 'out'; detail: string }
+  >
+})

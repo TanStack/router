@@ -12,28 +12,51 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as UsersImport } from './routes/users'
+import { Route as StreamImport } from './routes/stream'
 import { Route as StatusImport } from './routes/status'
 import { Route as ServerFnsImport } from './routes/server-fns'
 import { Route as SearchParamsImport } from './routes/search-params'
-import { Route as RedirectImport } from './routes/redirect'
+import { Route as ScriptsImport } from './routes/scripts'
 import { Route as PostsImport } from './routes/posts'
+import { Route as LinksImport } from './routes/links'
+import { Route as IsomorphicFnsImport } from './routes/isomorphic-fns'
+import { Route as EnvOnlyImport } from './routes/env-only'
 import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
+import { Route as NotFoundRouteImport } from './routes/not-found/route'
 import { Route as IndexImport } from './routes/index'
 import { Route as UsersIndexImport } from './routes/users.index'
+import { Route as RedirectIndexImport } from './routes/redirect/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as NotFoundIndexImport } from './routes/not-found/index'
 import { Route as UsersUserIdImport } from './routes/users.$userId'
+import { Route as RedirectTargetImport } from './routes/redirect/$target'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
+import { Route as NotFoundViaLoaderImport } from './routes/not-found/via-loader'
+import { Route as NotFoundViaBeforeLoadImport } from './routes/not-found/via-beforeLoad'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
+import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
+import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
+import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as RedirectTargetServerFnIndexImport } from './routes/redirect/$target/serverFn/index'
+import { Route as RedirectTargetServerFnViaUseServerFnImport } from './routes/redirect/$target/serverFn/via-useServerFn'
+import { Route as RedirectTargetServerFnViaLoaderImport } from './routes/redirect/$target/serverFn/via-loader'
+import { Route as RedirectTargetServerFnViaBeforeLoadImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
 
 // Create/Update Routes
 
 const UsersRoute = UsersImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const StreamRoute = StreamImport.update({
+  id: '/stream',
+  path: '/stream',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -55,15 +78,33 @@ const SearchParamsRoute = SearchParamsImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const RedirectRoute = RedirectImport.update({
-  id: '/redirect',
-  path: '/redirect',
+const ScriptsRoute = ScriptsImport.update({
+  id: '/scripts',
+  path: '/scripts',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PostsRoute = PostsImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LinksRoute = LinksImport.update({
+  id: '/links',
+  path: '/links',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const IsomorphicFnsRoute = IsomorphicFnsImport.update({
+  id: '/isomorphic-fns',
+  path: '/isomorphic-fns',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const EnvOnlyRoute = EnvOnlyImport.update({
+  id: '/env-only',
+  path: '/env-only',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -75,6 +116,12 @@ const DeferredRoute = DeferredImport.update({
 
 const LayoutRoute = LayoutImport.update({
   id: '/_layout',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const NotFoundRouteRoute = NotFoundRouteImport.update({
+  id: '/not-found',
+  path: '/not-found',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -90,10 +137,22 @@ const UsersIndexRoute = UsersIndexImport.update({
   getParentRoute: () => UsersRoute,
 } as any)
 
+const RedirectIndexRoute = RedirectIndexImport.update({
+  id: '/redirect/',
+  path: '/redirect/',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const PostsIndexRoute = PostsIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
+} as any)
+
+const NotFoundIndexRoute = NotFoundIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotFoundRouteRoute,
 } as any)
 
 const UsersUserIdRoute = UsersUserIdImport.update({
@@ -102,16 +161,53 @@ const UsersUserIdRoute = UsersUserIdImport.update({
   getParentRoute: () => UsersRoute,
 } as any)
 
+const RedirectTargetRoute = RedirectTargetImport.update({
+  id: '/redirect/$target',
+  path: '/redirect/$target',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const PostsPostIdRoute = PostsPostIdImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
 
+const NotFoundViaLoaderRoute = NotFoundViaLoaderImport.update({
+  id: '/via-loader',
+  path: '/via-loader',
+  getParentRoute: () => NotFoundRouteRoute,
+} as any)
+
+const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadImport.update({
+  id: '/via-beforeLoad',
+  path: '/via-beforeLoad',
+  getParentRoute: () => NotFoundRouteRoute,
+} as any)
+
 const LayoutLayout2Route = LayoutLayout2Import.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
+
+const RedirectTargetIndexRoute = RedirectTargetIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RedirectTargetRoute,
+} as any)
+
+const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderImport.update({
+  id: '/via-loader',
+  path: '/via-loader',
+  getParentRoute: () => RedirectTargetRoute,
+} as any)
+
+const RedirectTargetViaBeforeLoadRoute =
+  RedirectTargetViaBeforeLoadImport.update({
+    id: '/via-beforeLoad',
+    path: '/via-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
   id: '/posts_/$postId/deep',
@@ -131,6 +227,34 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
+const RedirectTargetServerFnIndexRoute =
+  RedirectTargetServerFnIndexImport.update({
+    id: '/serverFn/',
+    path: '/serverFn/',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+
+const RedirectTargetServerFnViaUseServerFnRoute =
+  RedirectTargetServerFnViaUseServerFnImport.update({
+    id: '/serverFn/via-useServerFn',
+    path: '/serverFn/via-useServerFn',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+
+const RedirectTargetServerFnViaLoaderRoute =
+  RedirectTargetServerFnViaLoaderImport.update({
+    id: '/serverFn/via-loader',
+    path: '/serverFn/via-loader',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+
+const RedirectTargetServerFnViaBeforeLoadRoute =
+  RedirectTargetServerFnViaBeforeLoadImport.update({
+    id: '/serverFn/via-beforeLoad',
+    path: '/serverFn/via-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -140,6 +264,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/not-found': {
+      id: '/not-found'
+      path: '/not-found'
+      fullPath: '/not-found'
+      preLoaderRoute: typeof NotFoundRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
@@ -156,6 +287,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeferredImport
       parentRoute: typeof rootRoute
     }
+    '/env-only': {
+      id: '/env-only'
+      path: '/env-only'
+      fullPath: '/env-only'
+      preLoaderRoute: typeof EnvOnlyImport
+      parentRoute: typeof rootRoute
+    }
+    '/isomorphic-fns': {
+      id: '/isomorphic-fns'
+      path: '/isomorphic-fns'
+      fullPath: '/isomorphic-fns'
+      preLoaderRoute: typeof IsomorphicFnsImport
+      parentRoute: typeof rootRoute
+    }
+    '/links': {
+      id: '/links'
+      path: '/links'
+      fullPath: '/links'
+      preLoaderRoute: typeof LinksImport
+      parentRoute: typeof rootRoute
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
@@ -163,11 +315,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsImport
       parentRoute: typeof rootRoute
     }
-    '/redirect': {
-      id: '/redirect'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectImport
+    '/scripts': {
+      id: '/scripts'
+      path: '/scripts'
+      fullPath: '/scripts'
+      preLoaderRoute: typeof ScriptsImport
       parentRoute: typeof rootRoute
     }
     '/search-params': {
@@ -191,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatusImport
       parentRoute: typeof rootRoute
     }
+    '/stream': {
+      id: '/stream'
+      path: '/stream'
+      fullPath: '/stream'
+      preLoaderRoute: typeof StreamImport
+      parentRoute: typeof rootRoute
+    }
     '/users': {
       id: '/users'
       path: '/users'
@@ -205,12 +364,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2Import
       parentRoute: typeof LayoutImport
     }
+    '/not-found/via-beforeLoad': {
+      id: '/not-found/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/not-found/via-beforeLoad'
+      preLoaderRoute: typeof NotFoundViaBeforeLoadImport
+      parentRoute: typeof NotFoundRouteImport
+    }
+    '/not-found/via-loader': {
+      id: '/not-found/via-loader'
+      path: '/via-loader'
+      fullPath: '/not-found/via-loader'
+      preLoaderRoute: typeof NotFoundViaLoaderImport
+      parentRoute: typeof NotFoundRouteImport
+    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdImport
       parentRoute: typeof PostsImport
+    }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: typeof RedirectTargetImport
+      parentRoute: typeof rootRoute
     }
     '/users/$userId': {
       id: '/users/$userId'
@@ -219,12 +399,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersUserIdImport
       parentRoute: typeof UsersImport
     }
+    '/not-found/': {
+      id: '/not-found/'
+      path: '/'
+      fullPath: '/not-found/'
+      preLoaderRoute: typeof NotFoundIndexImport
+      parentRoute: typeof NotFoundRouteImport
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectIndexImport
+      parentRoute: typeof rootRoute
     }
     '/users/': {
       id: '/users/'
@@ -254,10 +448,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdDeepImport
       parentRoute: typeof rootRoute
     }
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: typeof RedirectTargetViaLoaderImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
+      path: '/'
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: typeof RedirectTargetIndexImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/serverFn/via-beforeLoad': {
+      id: '/redirect/$target/serverFn/via-beforeLoad'
+      path: '/serverFn/via-beforeLoad'
+      fullPath: '/redirect/$target/serverFn/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetServerFnViaBeforeLoadImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/serverFn/via-loader': {
+      id: '/redirect/$target/serverFn/via-loader'
+      path: '/serverFn/via-loader'
+      fullPath: '/redirect/$target/serverFn/via-loader'
+      preLoaderRoute: typeof RedirectTargetServerFnViaLoaderImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/serverFn/via-useServerFn': {
+      id: '/redirect/$target/serverFn/via-useServerFn'
+      path: '/serverFn/via-useServerFn'
+      fullPath: '/redirect/$target/serverFn/via-useServerFn'
+      preLoaderRoute: typeof RedirectTargetServerFnViaUseServerFnImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/serverFn/': {
+      id: '/redirect/$target/serverFn/'
+      path: '/serverFn'
+      fullPath: '/redirect/$target/serverFn'
+      preLoaderRoute: typeof RedirectTargetServerFnIndexImport
+      parentRoute: typeof RedirectTargetImport
+    }
   }
 }
 
 // Create and export the route tree
+
+interface NotFoundRouteRouteChildren {
+  NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
+  NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
+  NotFoundIndexRoute: typeof NotFoundIndexRoute
+}
+
+const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
+  NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
+  NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
+  NotFoundIndexRoute: NotFoundIndexRoute,
+}
+
+const NotFoundRouteRouteWithChildren = NotFoundRouteRoute._addFileChildren(
+  NotFoundRouteRouteChildren,
+)
 
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
@@ -308,143 +567,281 @@ const UsersRouteChildren: UsersRouteChildren = {
 
 const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
 
+interface RedirectTargetRouteChildren {
+  RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
+  RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
+  RedirectTargetIndexRoute: typeof RedirectTargetIndexRoute
+  RedirectTargetServerFnViaBeforeLoadRoute: typeof RedirectTargetServerFnViaBeforeLoadRoute
+  RedirectTargetServerFnViaLoaderRoute: typeof RedirectTargetServerFnViaLoaderRoute
+  RedirectTargetServerFnViaUseServerFnRoute: typeof RedirectTargetServerFnViaUseServerFnRoute
+  RedirectTargetServerFnIndexRoute: typeof RedirectTargetServerFnIndexRoute
+}
+
+const RedirectTargetRouteChildren: RedirectTargetRouteChildren = {
+  RedirectTargetViaBeforeLoadRoute: RedirectTargetViaBeforeLoadRoute,
+  RedirectTargetViaLoaderRoute: RedirectTargetViaLoaderRoute,
+  RedirectTargetIndexRoute: RedirectTargetIndexRoute,
+  RedirectTargetServerFnViaBeforeLoadRoute:
+    RedirectTargetServerFnViaBeforeLoadRoute,
+  RedirectTargetServerFnViaLoaderRoute: RedirectTargetServerFnViaLoaderRoute,
+  RedirectTargetServerFnViaUseServerFnRoute:
+    RedirectTargetServerFnViaUseServerFnRoute,
+  RedirectTargetServerFnIndexRoute: RedirectTargetServerFnIndexRoute,
+}
+
+const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
+  RedirectTargetRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/not-found': typeof NotFoundRouteRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/env-only': typeof EnvOnlyRoute
+  '/isomorphic-fns': typeof IsomorphicFnsRoute
+  '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
-  '/redirect': typeof RedirectRoute
+  '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
+  '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
+  '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/users/$userId': typeof UsersUserIdRoute
+  '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
   '/users/': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
+  '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
+  '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
+  '/redirect/$target/serverFn': typeof RedirectTargetServerFnIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/redirect': typeof RedirectRoute
+  '/env-only': typeof EnvOnlyRoute
+  '/isomorphic-fns': typeof IsomorphicFnsRoute
+  '/links': typeof LinksRoute
+  '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
+  '/stream': typeof StreamRoute
+  '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/not-found': typeof NotFoundIndexRoute
   '/posts': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
   '/users': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target': typeof RedirectTargetIndexRoute
+  '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
+  '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
+  '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
+  '/redirect/$target/serverFn': typeof RedirectTargetServerFnIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/not-found': typeof NotFoundRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/env-only': typeof EnvOnlyRoute
+  '/isomorphic-fns': typeof IsomorphicFnsRoute
+  '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
-  '/redirect': typeof RedirectRoute
+  '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
+  '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/users/$userId': typeof UsersUserIdRoute
+  '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
+  '/redirect/': typeof RedirectIndexRoute
   '/users/': typeof UsersIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
+  '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
+  '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
+  '/redirect/$target/serverFn/': typeof RedirectTargetServerFnIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/not-found'
     | ''
     | '/deferred'
+    | '/env-only'
+    | '/isomorphic-fns'
+    | '/links'
     | '/posts'
-    | '/redirect'
+    | '/scripts'
     | '/search-params'
     | '/server-fns'
     | '/status'
+    | '/stream'
     | '/users'
+    | '/not-found/via-beforeLoad'
+    | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/redirect/$target'
     | '/users/$userId'
+    | '/not-found/'
     | '/posts/'
+    | '/redirect'
     | '/users/'
     | '/layout-a'
     | '/layout-b'
     | '/posts/$postId/deep'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/$target/'
+    | '/redirect/$target/serverFn/via-beforeLoad'
+    | '/redirect/$target/serverFn/via-loader'
+    | '/redirect/$target/serverFn/via-useServerFn'
+    | '/redirect/$target/serverFn'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | ''
     | '/deferred'
-    | '/redirect'
+    | '/env-only'
+    | '/isomorphic-fns'
+    | '/links'
+    | '/scripts'
     | '/search-params'
     | '/server-fns'
     | '/status'
+    | '/stream'
+    | '/not-found/via-beforeLoad'
+    | '/not-found/via-loader'
     | '/posts/$postId'
     | '/users/$userId'
+    | '/not-found'
     | '/posts'
+    | '/redirect'
     | '/users'
     | '/layout-a'
     | '/layout-b'
     | '/posts/$postId/deep'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/$target'
+    | '/redirect/$target/serverFn/via-beforeLoad'
+    | '/redirect/$target/serverFn/via-loader'
+    | '/redirect/$target/serverFn/via-useServerFn'
+    | '/redirect/$target/serverFn'
   id:
     | '__root__'
     | '/'
+    | '/not-found'
     | '/_layout'
     | '/deferred'
+    | '/env-only'
+    | '/isomorphic-fns'
+    | '/links'
     | '/posts'
-    | '/redirect'
+    | '/scripts'
     | '/search-params'
     | '/server-fns'
     | '/status'
+    | '/stream'
     | '/users'
     | '/_layout/_layout-2'
+    | '/not-found/via-beforeLoad'
+    | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/redirect/$target'
     | '/users/$userId'
+    | '/not-found/'
     | '/posts/'
+    | '/redirect/'
     | '/users/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
     | '/posts_/$postId/deep'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/$target/'
+    | '/redirect/$target/serverFn/via-beforeLoad'
+    | '/redirect/$target/serverFn/via-loader'
+    | '/redirect/$target/serverFn/via-useServerFn'
+    | '/redirect/$target/serverFn/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
+  EnvOnlyRoute: typeof EnvOnlyRoute
+  IsomorphicFnsRoute: typeof IsomorphicFnsRoute
+  LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
-  RedirectRoute: typeof RedirectRoute
+  ScriptsRoute: typeof ScriptsRoute
   SearchParamsRoute: typeof SearchParamsRoute
   ServerFnsRoute: typeof ServerFnsRoute
   StatusRoute: typeof StatusRoute
+  StreamRoute: typeof StreamRoute
   UsersRoute: typeof UsersRouteWithChildren
+  RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
+  RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
+  EnvOnlyRoute: EnvOnlyRoute,
+  IsomorphicFnsRoute: IsomorphicFnsRoute,
+  LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
-  RedirectRoute: RedirectRoute,
+  ScriptsRoute: ScriptsRoute,
   SearchParamsRoute: SearchParamsRoute,
   ServerFnsRoute: ServerFnsRoute,
   StatusRoute: StatusRoute,
+  StreamRoute: StreamRoute,
   UsersRoute: UsersRouteWithChildren,
+  RedirectTargetRoute: RedirectTargetRouteWithChildren,
+  RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
 
@@ -459,19 +856,34 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/not-found",
         "/_layout",
         "/deferred",
+        "/env-only",
+        "/isomorphic-fns",
+        "/links",
         "/posts",
-        "/redirect",
+        "/scripts",
         "/search-params",
         "/server-fns",
         "/status",
+        "/stream",
         "/users",
+        "/redirect/$target",
+        "/redirect/",
         "/posts_/$postId/deep"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/not-found": {
+      "filePath": "not-found/route.tsx",
+      "children": [
+        "/not-found/via-beforeLoad",
+        "/not-found/via-loader",
+        "/not-found/"
+      ]
     },
     "/_layout": {
       "filePath": "_layout.tsx",
@@ -482,6 +894,15 @@ export const routeTree = rootRoute
     "/deferred": {
       "filePath": "deferred.tsx"
     },
+    "/env-only": {
+      "filePath": "env-only.tsx"
+    },
+    "/isomorphic-fns": {
+      "filePath": "isomorphic-fns.tsx"
+    },
+    "/links": {
+      "filePath": "links.tsx"
+    },
     "/posts": {
       "filePath": "posts.tsx",
       "children": [
@@ -489,8 +910,8 @@ export const routeTree = rootRoute
         "/posts/"
       ]
     },
-    "/redirect": {
-      "filePath": "redirect.tsx"
+    "/scripts": {
+      "filePath": "scripts.tsx"
     },
     "/search-params": {
       "filePath": "search-params.tsx"
@@ -500,6 +921,9 @@ export const routeTree = rootRoute
     },
     "/status": {
       "filePath": "status.tsx"
+    },
+    "/stream": {
+      "filePath": "stream.tsx"
     },
     "/users": {
       "filePath": "users.tsx",
@@ -516,17 +940,44 @@ export const routeTree = rootRoute
         "/_layout/_layout-2/layout-b"
       ]
     },
+    "/not-found/via-beforeLoad": {
+      "filePath": "not-found/via-beforeLoad.tsx",
+      "parent": "/not-found"
+    },
+    "/not-found/via-loader": {
+      "filePath": "not-found/via-loader.tsx",
+      "parent": "/not-found"
+    },
     "/posts/$postId": {
       "filePath": "posts.$postId.tsx",
       "parent": "/posts"
+    },
+    "/redirect/$target": {
+      "filePath": "redirect/$target.tsx",
+      "children": [
+        "/redirect/$target/via-beforeLoad",
+        "/redirect/$target/via-loader",
+        "/redirect/$target/",
+        "/redirect/$target/serverFn/via-beforeLoad",
+        "/redirect/$target/serverFn/via-loader",
+        "/redirect/$target/serverFn/via-useServerFn",
+        "/redirect/$target/serverFn/"
+      ]
     },
     "/users/$userId": {
       "filePath": "users.$userId.tsx",
       "parent": "/users"
     },
+    "/not-found/": {
+      "filePath": "not-found/index.tsx",
+      "parent": "/not-found"
+    },
     "/posts/": {
       "filePath": "posts.index.tsx",
       "parent": "/posts"
+    },
+    "/redirect/": {
+      "filePath": "redirect/index.tsx"
     },
     "/users/": {
       "filePath": "users.index.tsx",
@@ -542,6 +993,34 @@ export const routeTree = rootRoute
     },
     "/posts_/$postId/deep": {
       "filePath": "posts_.$postId.deep.tsx"
+    },
+    "/redirect/$target/via-beforeLoad": {
+      "filePath": "redirect/$target/via-beforeLoad.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/via-loader": {
+      "filePath": "redirect/$target/via-loader.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/": {
+      "filePath": "redirect/$target/index.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/serverFn/via-beforeLoad": {
+      "filePath": "redirect/$target/serverFn/via-beforeLoad.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/serverFn/via-loader": {
+      "filePath": "redirect/$target/serverFn/via-loader.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/serverFn/via-useServerFn": {
+      "filePath": "redirect/$target/serverFn/via-useServerFn.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/serverFn/": {
+      "filePath": "redirect/$target/serverFn/index.tsx",
+      "parent": "/redirect/$target"
     }
   }
 }

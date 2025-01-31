@@ -1,13 +1,7 @@
-import { expect } from '@playwright/test'
-import { test } from './utils'
+import { expect, test } from '@playwright/test'
 
-test.afterEach(async ({ setupApp }) => {
-  await setupApp.killProcess()
-})
-
-test('opening the app', async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/')
+test('opening the app', async ({ page }) => {
+  await page.goto('/')
 
   await expect(page.getByText('Add 1 to 0?')).toBeTruthy()
   await page.click('button')

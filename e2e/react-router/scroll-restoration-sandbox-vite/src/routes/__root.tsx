@@ -2,7 +2,6 @@ import * as React from 'react'
 import {
   Link,
   Outlet,
-  ScrollRestoration,
   createRootRoute,
   linkOptions,
 } from '@tanstack/react-router'
@@ -20,7 +19,6 @@ function RootComponent() {
       <Outlet />
       <hr />
       <Nav type="footer" />
-      <ScrollRestoration />
       <TanStackRouterDevtools position="bottom-right" />
     </>
   )

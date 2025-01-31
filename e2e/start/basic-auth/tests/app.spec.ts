@@ -1,5 +1,4 @@
-import { expect } from '@playwright/test'
-import { test } from './utils'
+import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
 async function signup(
@@ -14,13 +13,8 @@ async function signup(
   await page.click('button[type="submit"]')
 }
 
-test.afterEach(async ({ setupApp }) => {
-  await setupApp.killProcess()
-})
-
 async function login(
   page: Page,
-  baseUrl: string,
   email: string,
   password: string,
   signupOnFail = false,
@@ -37,31 +31,28 @@ async function login(
   }
 }
 
-test('Posts redirects to login when not authenticated', async ({
-  page,
-  setupApp,
-}) => {
-  await page.goto(setupApp.ADDR + '/posts')
+test('Posts redirects to login when not authenticated', async ({ page }) => {
+  await page.goto('/posts')
   await expect(page.locator('h1')).toContainText('Login')
 })
 
-test('Login fails with user not found', async ({ page, setupApp }) => {
-  await login(page, setupApp.ADDR, 'bad@gmail.com', 'badpassword')
+test('Login fails with user not found', async ({ page }) => {
+  await login(page, 'bad@gmail.com', 'badpassword')
   expect(page.getByText('User not found')).toBeTruthy()
 })
 
-test('Login fails with incorrect password', async ({ page, setupApp }) => {
-  await signup(page, setupApp.ADDR, 'test@gmail.com', 'badpassword')
+test('Login fails with incorrect password', async ({ page }) => {
+  await signup(page, 'test@gmail.com', 'badpassword')
   expect(page.getByText('Incorrect password')).toBeTruthy()
 })
 
-test('Can sign up from a not found user', async ({ page, setupApp }) => {
-  await login(page, setupApp.ADDR, 'test2@gmail.com', 'badpassword', true)
+test('Can sign up from a not found user', async ({ page }) => {
+  await login(page, 'test2@gmail.com', 'badpassword', true)
   expect(page.getByText('test@gmail.com')).toBeTruthy()
 })
 
-test('Navigating to post after logging in', async ({ page, setupApp }) => {
-  await login(page, setupApp.ADDR, 'test@gmail.com', 'test')
+test('Navigating to post after logging in', async ({ page }) => {
+  await login(page, 'test@gmail.com', 'test')
   await new Promise((r) => setTimeout(r, 1000))
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()

@@ -1,8 +1,12 @@
 import type { InferFileRouteTypes } from './fileRoute'
-import type { AddTrailingSlash, RemoveTrailingSlashes } from './link'
+import type {
+  AddTrailingSlash,
+  PartialMergeAll,
+  RemoveTrailingSlashes,
+  TrailingSlashOption,
+} from '@tanstack/router-core'
 import type { AnyRoute } from './route'
-import type { AnyRouter, TrailingSlashOption } from './router'
-import type { PartialMergeAll } from './utils'
+import type { AnyRouter } from './router'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }
@@ -59,19 +63,30 @@ export type RouteIds<TRouteTree extends AnyRoute> =
     ? CodeRouteIds<TRouteTree>
     : InferFileRouteTypes<TRouteTree>['id']
 
-export type ParentPath<TOption> = 'always' extends TOption
-  ? '../'
-  : 'never' extends TOption
-    ? '..'
-    : '../' | '..'
+export type ParentPath<TRouter extends AnyRouter> =
+  TrailingSlashOptionByRouter<TRouter> extends 'always'
+    ? '../'
+    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+      ? '..'
+      : '../' | '..'
 
-export type CurrentPath<TOption> = 'always' extends TOption
-  ? './'
-  : 'never' extends TOption
-    ? '.'
-    : './' | '.'
+export type CurrentPath<TRouter extends AnyRouter> =
+  TrailingSlashOptionByRouter<TRouter> extends 'always'
+    ? './'
+    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+      ? '.'
+      : './' | '.'
 
-export type CatchAllPaths<TOption> = CurrentPath<TOption> | ParentPath<TOption>
+export type ToPath<TRouter extends AnyRouter, TTo extends string> =
+  TrailingSlashOptionByRouter<TRouter> extends 'always'
+    ? AddTrailingSlash<TTo>
+    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+      ? RemoveTrailingSlashes<TTo>
+      : AddTrailingSlash<TTo> | RemoveTrailingSlashes<TTo>
+
+export type CatchAllPaths<TRouter extends AnyRouter> =
+  | CurrentPath<TRouter>
+  | ParentPath<TRouter>
 
 export type CodeRoutesByPath<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
@@ -114,9 +129,7 @@ export type RouteToPathNeverTrailingSlash<TRoute extends AnyRoute> =
   TRoute['path'] extends '/'
     ? TRoute['fullPath'] extends '/'
       ? TRoute['fullPath']
-      : TRoute['fullPath'] extends `${infer TRest}/`
-        ? TRest
-        : TRoute['fullPath']
+      : RemoveTrailingSlashes<TRoute['fullPath']>
     : TRoute['fullPath']
 
 export type RouteToPathPreserveTrailingSlash<TRoute extends AnyRoute> =
@@ -139,11 +152,9 @@ export type RouteToByRouter<
   TRoute extends AnyRoute,
 > = RouteToPathByTrailingSlashOption<TRoute>[TrailingSlashOptionByRouter<TRouter>]
 
-export type CodeRouteToPath<
-  TRouter extends AnyRouter,
-  TRouteTree extends AnyRoute,
-> =
-  ParseRouteWithoutBranches<TRouteTree> extends infer TRoute extends AnyRoute
+export type CodeRouteToPath<TRouter extends AnyRouter> =
+  ParseRouteWithoutBranches<TRouter['routeTree']> extends infer TRoute extends
+    AnyRoute
     ? TRoute extends any
       ? RouteToByRouter<TRouter, TRoute>
       : never
@@ -159,13 +170,10 @@ export type FileRouteToPath<
     ? AddTrailingSlash<TTo>
     : TTo | AddTrailingSlash<TTo>
 
-export type RouteToPath<
-  TRouter extends AnyRouter,
-  TRouteTree extends AnyRoute,
-> = unknown extends TRouter
+export type RouteToPath<TRouter extends AnyRouter> = unknown extends TRouter
   ? string
   : InferFileRouteTypes<TRouter['routeTree']> extends never
-    ? CodeRouteToPath<TRouter, TRouteTree>
+    ? CodeRouteToPath<TRouter>
     : FileRouteToPath<TRouter>
 
 export type CodeRoutesByToPath<TRouter extends AnyRouter> =
