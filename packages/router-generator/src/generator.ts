@@ -364,25 +364,6 @@ export async function generator(config: Config, root: string) {
     ),
     config,
   )
-  // console.debug('preRouteNodes', preRouteNodes)
-  // console.debug(
-  //   'routeNodes - group-b',
-  //   [...routeNodes]
-  //     .filter((r) => r.filePath.startsWith('(group-b)'))
-  //     .map((r) => {
-  //       r.parent = undefined
-  //       return r
-  //     }),
-  // )
-  // console.debug(
-  //   'routeNodes - group-c',
-  //   [...routeNodes]
-  //     .filter((r) => r.filePath.startsWith('(group-c)'))
-  //     .map((r) => {
-  //       r.parent = undefined
-  //       return r
-  //     }),
-  // )
 
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
     preRouteNodes.filter((d) => d.isAPIRoute),
