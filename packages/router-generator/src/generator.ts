@@ -10,6 +10,7 @@ import {
   removeTrailingSlash,
   removeUnderscores,
   replaceBackslash,
+  resetRegex,
   routePathToVariable,
   trimPathLeft,
   writeIfDifferent,
@@ -158,6 +159,11 @@ export async function generator(config: Config, root: string) {
   await handleRootNode(rootRouteNode)
 
   const handleNode = async (node: RouteNode) => {
+    // Do not remove this as we need to set the lastIndex to 0 as it
+    // is necessary to reset the regex's index when using the global flag
+    // otherwise it might not match the next time it's used
+    resetRegex(routeGroupPatternRegex)
+
     let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
 
     // if the parent route is a virtual parent route, we need to find the real parent route
@@ -358,6 +364,25 @@ export async function generator(config: Config, root: string) {
     ),
     config,
   )
+  // console.debug('preRouteNodes', preRouteNodes)
+  // console.debug(
+  //   'routeNodes - group-b',
+  //   [...routeNodes]
+  //     .filter((r) => r.filePath.startsWith('(group-b)'))
+  //     .map((r) => {
+  //       r.parent = undefined
+  //       return r
+  //     }),
+  // )
+  // console.debug(
+  //   'routeNodes - group-c',
+  //   [...routeNodes]
+  //     .filter((r) => r.filePath.startsWith('(group-c)'))
+  //     .map((r) => {
+  //       r.parent = undefined
+  //       return r
+  //     }),
+  // )
 
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
     preRouteNodes.filter((d) => d.isAPIRoute),
@@ -524,7 +549,9 @@ export async function generator(config: Config, root: string) {
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
             `id: '${node.path}'`,
-            !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
+            node.isNonPath === false
+              ? `path: '${node.cleanedPath}'`
+              : undefined,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)
