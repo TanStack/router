@@ -530,9 +530,7 @@ export async function generator(config: Config, root: string) {
           `const ${node.variableName}Route = ${node.variableName}Import.update({
           ${[
             `id: '${node.path}'`,
-            node.isNonPath === false
-              ? `path: '${node.cleanedPath}'`
-              : undefined,
+            !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
           ]
             .filter(Boolean)
