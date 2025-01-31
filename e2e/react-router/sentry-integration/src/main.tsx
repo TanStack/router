@@ -75,6 +75,10 @@ declare module '@tanstack/react-router' {
 Sentry.init({
   dsn: 'https://examplePublicKey@o0.ingest.sentry.io/0',
   integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
+  transport: () => ({
+    send: (): Promise<any> => Promise.resolve(),
+    flush: () => Promise.resolve(true),
+  }),
   tracesSampleRate: 0.2,
   sendClientReports: false,
 })
