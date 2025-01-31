@@ -10,6 +10,7 @@ import {
   removeTrailingSlash,
   removeUnderscores,
   replaceBackslash,
+  resetRegex,
   routePathToVariable,
   trimPathLeft,
   writeIfDifferent,
@@ -158,6 +159,11 @@ export async function generator(config: Config, root: string) {
   await handleRootNode(rootRouteNode)
 
   const handleNode = async (node: RouteNode) => {
+    // Do not remove this as we need to set the lastIndex to 0 as it
+    // is necessary to reset the regex's index when using the global flag
+    // otherwise it might not match the next time it's used
+    resetRegex(routeGroupPatternRegex)
+
     let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
 
     // if the parent route is a virtual parent route, we need to find the real parent route
