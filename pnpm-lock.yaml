@@ -523,6 +523,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
