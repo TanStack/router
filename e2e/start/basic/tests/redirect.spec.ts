@@ -140,7 +140,7 @@ test.describe('redirects', () => {
         let fullPageLoad = false
         let q = queryString.stringify({
           externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
-          reloadDocument
+          reloadDocument,
         })
 
         if (scenario === 'navigate') {
