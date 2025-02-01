@@ -1,15 +1,26 @@
 import { expect } from '@playwright/test'
 import combinateImport from 'combinate'
-import { derivePort } from '@tanstack/router-e2e-utils'
+import { derivePort, localDummyServer } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 import { test } from './fixture'
+import { Server } from 'node:http'
+import queryString from 'node:querystring'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
 const PORT = derivePort(packageJson.name)
+const EXTERNAL_HOST_PORT = derivePort(`${packageJson.name}-external`)
 
 test.describe('redirects', () => {
+  let server: Server
+  test.beforeAll(async () => {
+    server = await localDummyServer(EXTERNAL_HOST_PORT)
+  })
+  test.afterAll(async () => {
+    server.close()
+  })
+
   const internalNavigationTestMatrix = combinate({
     thrower: ['beforeLoad', 'loader'] as const,
     reloadDocument: [false, true] as const,
@@ -93,17 +104,21 @@ test.describe('redirects', () => {
     test(`external target: scenario: ${scenario}, thrower: ${thrower}`, async ({
       page,
     }) => {
+      let q = queryString.stringify({
+        externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+      })
+
       if (scenario === 'navigate') {
-        await page.goto(`/redirect/external`)
+        await page.goto(`/redirect/external?${q}`)
         await page.waitForLoadState('networkidle')
         const link = page.getByTestId(`via-${thrower}`)
         await link.focus()
         await link.click()
       } else {
-        await page.goto(`/redirect/external/via-${thrower}`)
+        await page.goto(`/redirect/external/via-${thrower}?${q}`)
       }
 
-      const url = 'http://example.com/'
+      const url = `http://localhost:${EXTERNAL_HOST_PORT}/`
 
       await page.waitForURL(url)
       expect(page.url()).toBe(url)
@@ -123,8 +138,13 @@ test.describe('redirects', () => {
         page,
       }) => {
         let fullPageLoad = false
+        let q = queryString.stringify({
+          externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+          reloadDocument
+        })
+
         if (scenario === 'navigate') {
-          await page.goto(`/redirect/${target}/serverFn`)
+          await page.goto(`/redirect/${target}/serverFn?${q}`)
           await page.waitForLoadState('networkidle')
           const link = page.getByTestId(
             `via-${thrower}${reloadDocument ? '-reloadDocument' : ''}`,
@@ -135,15 +155,13 @@ test.describe('redirects', () => {
           await link.focus()
           await link.click()
         } else {
-          await page.goto(
-            `/redirect/${target}/serverFn/via-${thrower}${reloadDocument ? '?reloadDocument=true' : ''}`,
-          )
+          await page.goto(`/redirect/${target}/serverFn/via-${thrower}?${q}`)
         }
 
         const url =
           target === 'internal'
             ? `http://localhost:${PORT}/posts`
-            : 'http://example.com/'
+            : `http://localhost:${EXTERNAL_HOST_PORT}/`
         await page.waitForURL(url)
         expect(page.url()).toBe(url)
         if (target === 'internal' && scenario === 'navigate') {
