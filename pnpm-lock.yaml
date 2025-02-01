@@ -367,6 +367,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
@@ -471,6 +474,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
@@ -578,6 +584,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.50.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
@@ -618,6 +627,9 @@ importers:
       '@rsbuild/plugin-react':
         specifier: ^1.1.0
         version: 1.1.0(@rsbuild/core@1.2.3)
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
