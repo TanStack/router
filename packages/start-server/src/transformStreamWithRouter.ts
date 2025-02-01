@@ -49,11 +49,11 @@ function createPassthrough() {
   const res: ReadablePassthrough = {
     stream,
     write: (chunk) => {
-      controller.enqueue(encoder.encode(chunk));
+      controller.enqueue(encoder.encode(chunk))
     },
     end: (chunk) => {
       if (chunk) {
-        controller.enqueue(encoder.encode(chunk));
+        controller.enqueue(encoder.encode(chunk))
       }
       controller.close()
       res.destroyed = true
