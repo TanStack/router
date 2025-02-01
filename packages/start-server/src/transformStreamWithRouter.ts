@@ -39,6 +39,7 @@ type ReadablePassthrough = {
 
 function createPassthrough() {
   let controller: ReadableStreamDefaultController<any>
+  const encoder = new TextEncoder()
   const stream = new ReadableStream({
     start(c) {
       controller = c
@@ -48,11 +49,11 @@ function createPassthrough() {
   const res: ReadablePassthrough = {
     stream,
     write: (chunk) => {
-      controller.enqueue(chunk)
+      controller.enqueue(encoder.encode(chunk));
     },
     end: (chunk) => {
       if (chunk) {
-        controller.enqueue(chunk)
+        controller.enqueue(encoder.encode(chunk));
       }
       controller.close()
       res.destroyed = true
