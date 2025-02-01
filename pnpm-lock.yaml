@@ -679,6 +679,9 @@ importers:
       '@rsbuild/plugin-react':
         specifier: ^1.1.0
         version: 1.1.0(@rsbuild/core@1.2.3)
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin

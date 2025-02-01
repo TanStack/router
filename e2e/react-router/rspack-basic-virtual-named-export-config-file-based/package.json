@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",
+    "@tanstack/router-e2e-utils": "workspace:^",
     "@rsbuild/core": "^1.2.3",
     "@rsbuild/plugin-react": "^1.1.0",
     "@tanstack/router-plugin": "workspace:^",
