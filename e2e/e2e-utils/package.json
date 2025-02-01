@@ -4,23 +4,12 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint ./src",
-    "test:unit": "exit 0; vitest --typecheck",
-    "build": "vite build && tsc --noEmit"
+    "test:unit": "exit 0; vitest --typecheck"
   },
   "type": "module",
-  "types": "dist/esm/index.d.ts",
-  "main": "dist/cjs/index.cjs",
-  "module": "dist/esm/index.js",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.cts",
-        "default": "./dist/cjs/index.cjs"
-      }
+      "import": "./src/index.ts"
     },
     "./package.json": "./package.json"
   },
