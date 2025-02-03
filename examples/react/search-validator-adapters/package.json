@@ -10,11 +10,11 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tanstack/arktype-adapter": "^1.99.0",
+    "@tanstack/arktype-adapter": "^1.99.3",
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-router": "^1.99.0",
     "@tanstack/router-devtools": "^1.99.0",
-    "@tanstack/router-plugin": "^1.99.0",
+    "@tanstack/router-plugin": "^1.99.3",
     "@tanstack/valibot-adapter": "^1.99.0",
     "@tanstack/zod-adapter": "^1.99.0",
     "arktype": "^2.0.4",
