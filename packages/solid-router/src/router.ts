@@ -1165,6 +1165,7 @@ export class Router<
         Record<string, any>,
         any,
       ] = (() => {
+        // Validate the search params and stabilize them
         const parentSearch = parentMatch?.search ?? next.search
         const parentStrictSearch = parentMatch?._strictSearch ?? {}
 
@@ -1192,6 +1193,7 @@ export class Router<
           if (opts?.throwOnError) {
             throw searchParamError
           }
+
           return [parentSearch, {}, searchParamError]
         }
       })()

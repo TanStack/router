@@ -294,7 +294,7 @@ export function useMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-): UseMatchesResult<TRouter, TSelected> {
+): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   return useRouterState({
     select: (state: RouterState<TRouter['routeTree']>) => {
       const matches = state.matches
@@ -303,7 +303,7 @@ export function useMatches<
         : matches
     },
     structuralSharing: opts?.structuralSharing,
-  } as any) as UseMatchesResult<TRouter, TSelected>
+  } as any) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }
 
 export function useParentMatches<
@@ -313,7 +313,7 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-): UseMatchesResult<TRouter, TSelected> {
+): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const contextMatchId = Solid.useContext(matchContext)
 
   return useMatches({
@@ -335,7 +335,7 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-): UseMatchesResult<TRouter, TSelected> {
+): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const contextMatchId = Solid.useContext(matchContext)
 
   return useMatches({

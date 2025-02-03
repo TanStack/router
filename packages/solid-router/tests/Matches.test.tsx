@@ -30,16 +30,17 @@ const invoicesRoute = createRoute({
 
 const InvoicesIndex = () => {
   const matches = useMatches<DefaultRouter>()
+  console.log('Matchse', matches())
 
-  const loaderDataMatches = matches.filter((match) =>
+  const loaderDataMatches = matches().filter((match) =>
     isMatch(match, 'loaderData.0.id'),
   )
 
-  const contextMatches = matches.filter((match) =>
+  const contextMatches = matches().filter((match) =>
     isMatch(match, 'context.permissions'),
   )
 
-  const incorrectMatches = matches.filter((match) =>
+  const incorrectMatches = matches().filter((match) =>
     isMatch(match, 'loaderData.6.id'),
   )
 
