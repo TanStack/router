@@ -89,6 +89,7 @@ import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ToOptions } from './link'
+import { setupScrollRestoration } from './scroll-restoration'
 
 declare global {
   interface Window {
@@ -806,6 +807,8 @@ export class Router<
           }
         },
       })
+      
+      setupScrollRestoration(this)
     }
 
     if (
