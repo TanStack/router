@@ -57,7 +57,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@inquirer/type": "^3.0.2",
+    "@inquirer/type": "^3.0.4",
     "@types/cross-spawn": "^6.0.6",
     "@types/validate-npm-package-name": "^4.0.2",
     "unbuild": "^3.3.1"
