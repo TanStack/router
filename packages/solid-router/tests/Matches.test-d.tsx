@@ -183,7 +183,7 @@ test('when matching a route with params underneath a layout route', () => {
 })
 
 test('useMatches returns a union of all matches', () => {
-  expectTypeOf(useMatches<DefaultRouter>()).toEqualTypeOf<
+  expectTypeOf(useMatches<DefaultRouter>()()).toEqualTypeOf<
     Array<
       | RootMatch
       | IndexMatch
@@ -197,7 +197,7 @@ test('useMatches returns a union of all matches', () => {
 })
 
 test('when filtering useMatches by search', () => {
-  const matches = useMatches<DefaultRouter>()
+  const matches = useMatches<DefaultRouter>()()
 
   expectTypeOf(isMatch<(typeof matches)[number], ''>)
     .parameter(1)
@@ -212,7 +212,7 @@ test('when filtering useMatches by search', () => {
 })
 
 test('when filtering useMatches by loaderData with an array', () => {
-  const matches = useMatches<DefaultRouter>()
+  const matches = useMatches<DefaultRouter>()()
 
   expectTypeOf(isMatch<(typeof matches)[number], ''>)
     .parameter(1)
