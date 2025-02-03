@@ -173,5 +173,5 @@ const serializers = [
     (v) => v.toString(),
     // From
     (v) => BigInt(v),
-  )
+  ),
 ] as const
