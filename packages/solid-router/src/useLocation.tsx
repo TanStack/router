@@ -4,6 +4,7 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
+import { Accessor } from 'solid-js'
 
 export interface UseLocationBaseOptions<
   TRouter extends AnyRouter,
@@ -29,9 +30,9 @@ export function useLocation<
 >(
   opts?: UseLocationBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-): UseLocationResult<TRouter, TSelected> {
+): Accessor<UseLocationResult<TRouter, TSelected>> {
   return useRouterState({
     select: (state: any) =>
       opts?.select ? opts.select(state.location) : state.location,
-  } as any) as UseLocationResult<TRouter, TSelected>
+  } as any) as Accessor<UseLocationResult<TRouter, TSelected>>
 }
