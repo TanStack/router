@@ -20,11 +20,9 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import type { AnyRoute } from './route'
 
 export const Match = (props: { matchId: string }) => {
-  const e = new Error()
   const router = useRouter()
   const routeId = useRouterState({
     select: (s) => {
-      console.warn('Match matchId: ', e.stack)
       return s.matches.find((d) => d.id === props.matchId)?.routeId as string
     },
   })
@@ -130,11 +128,6 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   const route = () => router.routesById[matchState().routeId]!
 
-  // const out = Solid.useMemo(() => {
-  //   const Comp = route.options.component ?? router.options.defaultComponent
-  //   return Comp ? <Comp /> : <Outlet />
-  // }, [route.options.component, router.options.defaultComponent])
-
   // function useChangedDiff(value: any) {
   //   const ref = Solid.useRef(value)
   //   const changed = ref.current !== value
@@ -154,6 +147,14 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   // useChangedDiff(match)
   const match = () => matchState().match
+
+  const out = Solid.createMemo(() => {
+    const Comp = route().options.component ?? router.options.defaultComponent
+    if (Comp) {
+      return <Comp />
+    }
+    return <Outlet />
+  })
 
   return (
     <Solid.Switch>
@@ -222,6 +223,7 @@ export const MatchInner = (props: { matchId: string }): any => {
           throw router.getMatch(match().id)?.loadPromise
         }}
       </Solid.Match>
+      <Solid.Match when={match().status === 'success'}>{out()}</Solid.Match>
     </Solid.Switch>
   )
 }
@@ -252,7 +254,6 @@ export const Outlet = () => {
       const matches = s.matches
       const index = matches.findIndex((d) => d.id === matchId())
       const v = matches[index + 1]?.id
-      console.warn('childMatchId: ', v)
       return v
     },
   })

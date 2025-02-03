@@ -11,7 +11,7 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRoute, SolidNode } from './route'
+import type { AnyRoute } from './route'
 import type {
   ControlledPromise,
   DeepPartial,

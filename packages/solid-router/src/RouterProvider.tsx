@@ -64,7 +64,7 @@ export function RouterContextProvider<
   children,
   ...rest
 }: RouterProps<TRouter, TDehydrated> & {
-  children: Solid.JSXElement
+  children: () => Solid.JSXElement
 }) {
   // Allow the router to update options on the router instance
   router.update({
@@ -80,7 +80,7 @@ export function RouterContextProvider<
 
   const provider = (
     <routerContext.Provider value={router as AnyRouter}>
-      {children}
+      {children()}
     </routerContext.Provider>
   )
 
@@ -97,7 +97,7 @@ export function RouterProvider<
 >({ router, ...rest }: RouterProps<TRouter, TDehydrated>) {
   return (
     <RouterContextProvider router={router} {...rest}>
-      <Matches />
+      {() => <Matches />}
     </RouterContextProvider>
   )
 }

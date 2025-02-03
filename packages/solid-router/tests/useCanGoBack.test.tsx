@@ -28,7 +28,7 @@ describe('useCanGoBack', () => {
       const location = useLocation()
       const canGoBack = useCanGoBack()
 
-      expect(canGoBack).toBe(location.pathname === '/' ? false : true)
+      expect(canGoBack()).toBe(location.pathname === '/' ? false : true)
 
       return (
         <>

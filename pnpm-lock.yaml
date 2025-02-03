@@ -12182,8 +12182,9 @@ packages:
     peerDependencies:
       vite: 6.1.0
 
-  vite-plugin-solid@2.10.2:
-    resolution: {integrity: sha512-AOEtwMe2baBSXMXdo+BUwECC8IFHcKS6WQV/1NEd+Q7vHPap5fmIhLcAzr+DUJ04/KHx/1UBU0l1/GWP+rMAPQ==}
+  vite-plugin-solid@https://pkg.pr.new/vite-plugin-solid@182:
+    resolution: {tarball: https://pkg.pr.new/vite-plugin-solid@182}
+    version: 2.11.0
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
       solid-js: ^1.7.2

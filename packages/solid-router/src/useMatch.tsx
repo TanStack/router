@@ -91,7 +91,9 @@ export function useMatch<
     ThrowConstraint<TStrict, TThrow>,
     TStructuralSharing
   >,
-): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
+): Solid.Accessor<
+  ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+> {
   const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
@@ -99,8 +101,9 @@ export function useMatch<
   const matchSelection = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId,
+        opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
       )
+
       invariant(
         !((opts.shouldThrow ?? true) && !match),
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
