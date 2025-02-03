@@ -10,6 +10,7 @@ import {
   removeTrailingSlash,
   removeUnderscores,
   replaceBackslash,
+  resetRegex,
   routePathToVariable,
   trimPathLeft,
   writeIfDifferent,
@@ -40,7 +41,7 @@ type RouteSubNode = {
   lazy?: RouteNode
 }
 
-export async function generator(config: Config) {
+export async function generator(config: Config, root: string) {
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
@@ -78,9 +79,9 @@ export async function generator(config: Config) {
   let getRouteNodesResult: GetRouteNodesResult
 
   if (config.virtualRouteConfig) {
-    getRouteNodesResult = await virtualGetRouteNodes(config)
+    getRouteNodesResult = await virtualGetRouteNodes(config, root)
   } else {
-    getRouteNodesResult = await physicalGetRouteNodes(config)
+    getRouteNodesResult = await physicalGetRouteNodes(config, root)
   }
 
   const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult
@@ -158,6 +159,11 @@ export async function generator(config: Config) {
   await handleRootNode(rootRouteNode)
 
   const handleNode = async (node: RouteNode) => {
+    // Do not remove this as we need to set the lastIndex to 0 as it
+    // is necessary to reset the regex's index when using the global flag
+    // otherwise it might not match the next time it's used
+    resetRegex(routeGroupPatternRegex)
+
     let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
 
     // if the parent route is a virtual parent route, we need to find the real parent route

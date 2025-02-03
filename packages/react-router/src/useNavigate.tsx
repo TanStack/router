@@ -49,10 +49,10 @@ export function useNavigate<
 
 export function Navigate<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string = string,
-  TTo extends string | undefined = '.',
-  TMaskFrom extends string = TFrom,
-  TMaskTo extends string = '.',
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
 
@@ -60,7 +60,7 @@ export function Navigate<
     navigate({
       ...props,
     } as any)
-  }, [])
+  }, [navigate, props])
 
   return null
 }

@@ -41,9 +41,7 @@ test('when navigating to a route', () => {
   expectTypeOf(navigate<DefaultRouter, '/invoices'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<
-      '/' | '/invoices' | '/invoices/$invoiceId' | '.' | '..' | undefined
-    >()
+    .toEqualTypeOf<'/' | '/invoices' | '/invoices/$invoiceId' | '.' | '..'>()
 })
 
 test('when setting a default from', () => {

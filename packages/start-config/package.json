@@ -1,0 +1,72 @@
+{
+  "name": "@tanstack/start-config",
+  "version": "1.99.2",
+  "description": "Modern and scalable routing for React applications",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/start"
+  },
+  "homepage": "https://tanstack.com/start",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "build": "tsc",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
+    "test:unit": "exit 0;vitest",
+    "test:eslint": "eslint ./src",
+    "test:types": "exit 0; vitest"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-generator": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
+    "@tanstack/server-functions-plugin": "workspace:^",
+    "@tanstack/start-server-functions-handler": "workspace:^",
+    "@tanstack/start-plugin": "workspace:^",
+    "@vitejs/plugin-react": "^4.3.4",
+    "import-meta-resolve": "^4.1.0",
+    "ofetch": "^1.4.1",
+    "vite": "^6.0.11",
+    "vinxi": "0.5.1",
+    "zod": "^3.24.1",
+    "nitropack": "^2.10.4"
+  },
+  "devDependencies": {},
+  "peerDependencies": {
+    "react": ">=18.0.0 || >=19.0.0",
+    "react-dom": ">=18.0.0 || >=19.0.0"
+  }
+}

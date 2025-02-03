@@ -7,6 +7,7 @@ import {
 import { Meta, Scripts } from '@tanstack/start'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+import appCss from '~/styles.css?url'
 
 export interface Context {
   queryClient: QueryClient
@@ -14,6 +15,7 @@ export interface Context {
 
 export const Route = createRootRouteWithContext<Context>()({
   head: () => ({
+    links: [{ rel: 'stylesheet', href: appCss }],
     meta: [
       {
         charSet: 'utf-8',
@@ -46,7 +48,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body>
         {children}
-        <ScrollRestoration />
         <Scripts />
       </body>
     </html>

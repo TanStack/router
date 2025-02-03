@@ -1,5 +1,10 @@
-import * as React from 'react'
-import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  createRootRoute,
+  useCanGoBack,
+  useRouter,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 export const Route = createRootRoute({
@@ -15,9 +20,20 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const router = useRouter()
+  const canGoBack = useCanGoBack()
+
   return (
     <>
-      <div className="p-2 flex gap-2 text-lg border-b">
+      <div className="flex gap-2 p-2 text-lg border-b">
+        <button
+          data-testid="back-button"
+          disabled={!canGoBack}
+          onClick={() => router.history.back()}
+          className={!canGoBack ? 'line-through' : undefined}
+        >
+          Back
+        </button>{' '}
         <Link
           to="/"
           activeProps={{
@@ -92,6 +108,14 @@ function RootComponent() {
           }}
         >
           Lazy Inside Group
+        </Link>{' '}
+        <Link
+          to="/redirect"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          redirect
         </Link>{' '}
         <Link
           // @ts-expect-error

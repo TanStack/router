@@ -11,6 +11,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import './styles.css'
 
 const rootRoute = createRootRoute({
   component: RootComponent,
@@ -211,6 +212,7 @@ const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
+  scrollRestoration: true,
 })
 
 // Register things for typesafety

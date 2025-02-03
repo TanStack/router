@@ -5,7 +5,8 @@ import type {
 } from './structuralSharing'
 import type { AllParams, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { Expand, StrictOrFrom } from './utils'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
   TRouter extends AnyRouter,
@@ -63,7 +64,7 @@ export type UseParamsRoute<out TFrom> = <
 
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string | undefined = undefined,
+  const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,

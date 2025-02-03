@@ -5,7 +5,8 @@ import type {
 } from './structuralSharing'
 import type { FullSearchSchema, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { Expand, StrictOrFrom } from './utils'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseSearchBaseOptions<
   TRouter extends AnyRouter,
@@ -63,7 +64,7 @@ export type UseSearchRoute<out TFrom> = <
 
 export function useSearch<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string | undefined = undefined,
+  const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,

@@ -1,7 +1,7 @@
 import type { NavigateOptions } from './link'
 import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { PickAsRequired } from './utils'
+import type { PickAsRequired } from '@tanstack/router-core'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
@@ -12,10 +12,10 @@ export type Redirect<
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
 > = {
+  href?: string
   /**
    * @deprecated Use `statusCode` instead
    **/
-  href?: string
   code?: number
   statusCode?: number
   throw?: any
@@ -37,16 +37,24 @@ export type ResolvedRedirect<
 
 export function redirect<
   TRouter extends RegisteredRouter,
-  TTo extends string | undefined,
-  TFrom extends string = string,
-  TMaskFrom extends string = TFrom,
-  TMaskTo extends string = '',
+  const TTo extends string | undefined,
+  const TFrom extends string = string,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
 >(
   opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   ;(opts as any).isRedirect = true
   opts.statusCode = opts.statusCode || opts.code || 307
   opts.headers = opts.headers || {}
+  if (!opts.reloadDocument) {
+    opts.reloadDocument = false
+    try {
+      new URL(`${opts.href}`)
+      opts.reloadDocument = true
+    } catch {}
+  }
+
   if (opts.throw) {
     throw opts
   }

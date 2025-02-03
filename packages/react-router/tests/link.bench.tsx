@@ -38,7 +38,7 @@ const InterpolatePathLink = ({
   params,
   children,
 }: React.PropsWithChildren<LinkProps>) => {
-  const href = interpolatePath({ path: to, params })
+  const href = interpolatePath({ path: to, params }).interpolatedPath
   return <a href={href}>{children}</a>
 }
 
@@ -149,16 +149,20 @@ describe.each([
     'link to relative path',
     () => {
       const router = renderRouter(
-        Array.from({ length: numberOfLinks }).map((_, i) => (
-          <Link
-            key={i}
-            from="/"
-            to={`./params/$param${Math.min(i, matchedParamId)}`}
-            params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
-          >
-            {i}
-          </Link>
-        )),
+        Array.from({ length: numberOfLinks }).map((_, i) => {
+          const to = `./params/$param${Math.min(i, matchedParamId)}`
+
+          return (
+            <Link
+              key={i}
+              from="/"
+              to={to}
+              params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
+            >
+              {i}
+            </Link>
+          )
+        }),
       )
       render(<RouterProvider router={router} />)
     },

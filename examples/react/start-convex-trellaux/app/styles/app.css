@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    color-scheme: light dark;
+  }
+
+  * {
+    @apply border-gray-200 dark:border-gray-800;
+  }
+
   html,
   body {
     @apply text-gray-900 bg-gray-50 dark:bg-gray-950 dark:text-gray-200;
@@ -10,9 +18,5 @@
 
   .using-mouse * {
     outline: none !important;
-  }
-
-  #root {
-    @apply min-h-screen;
   }
 }

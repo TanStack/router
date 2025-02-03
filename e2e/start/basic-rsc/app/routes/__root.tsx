@@ -116,7 +116,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <hr />
         {/* <React.Suspense fallback={null}>{children}</React.Suspense> */}
         {children}
-        <ScrollRestoration />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>

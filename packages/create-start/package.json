@@ -1,0 +1,108 @@
+{
+  "name": "@tanstack/create-start",
+  "version": "1.99.2",
+  "description": "Modern and scalable routing for React applications",
+  "author": "Tim O'Connell",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/create-router"
+  },
+  "homepage": "https://tanstack.com/router",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "bin": {
+    "create-start": "index.js"
+  },
+  "scripts": {
+    "dev": "BUILD_ENV=development unbuild --stub --watch",
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint ./src",
+    "generate-templates": "node ./dist/generate-templates/index.mjs",
+    "build": "BUILD_ENV=production unbuild && node ./copyTemplates.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage"
+  },
+  "type": "module",
+  "files": [
+    "index.js",
+    "templates",
+    "dist"
+  ],
+  "engines": {
+    "node": "^18.0.0 || >=20.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "gradient-string": "^3.0.0",
+    "@commander-js/extra-typings": "^12.1.0",
+    "commander": "^12.1.0",
+    "@inquirer/prompts": "^5.5.0",
+    "cross-spawn": "^7.0.6",
+    "fast-glob": "^3.3.3",
+    "picocolors": "^1.1.1",
+    "rollup-plugin-copy": "^3.5.0",
+    "tempy": "^3.1.0",
+    "tiny-invariant": "^1.3.3",
+    "validate-npm-package-name": "^6.0.0",
+    "yocto-spinner": "^0.2.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@inquirer/type": "^3.0.4",
+    "@types/cross-spawn": "^6.0.6",
+    "@types/validate-npm-package-name": "^4.0.2",
+    "unbuild": "^3.3.1"
+  },
+  "peerDependencies": {
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-devtools": "workspace:^",
+    "@tanstack/start": "workspace:^",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vinxi": "0.5.1",
+    "vite": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-router": {
+      "optional": true
+    },
+    "@tanstack/router-devtools": {
+      "optional": true
+    },
+    "@tanstack/start": {
+      "optional": true
+    },
+    "@types/react": {
+      "optional": true
+    },
+    "@types/react-dom": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "vinxi": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  }
+}

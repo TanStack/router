@@ -5,7 +5,8 @@ import type {
 } from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { AllLoaderData, RouteById } from './routeInfo'
-import type { Expand, StrictOrFrom } from './utils'
+import type { StrictOrFrom } from './utils'
+import type { Expand } from '@tanstack/router-core'
 
 export interface UseLoaderDataBaseOptions<
   TRouter extends AnyRouter,
@@ -69,7 +70,7 @@ export type UseLoaderDataRoute<out TId> = <
 
 export function useLoaderData<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string | undefined = undefined,
+  const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/create-router",
-  "version": "1.85.5",
+  "version": "1.99.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -32,18 +32,21 @@
   "engines": {
     "node": "^18.0.0 || >=20.0.0"
   },
-  "devDependencies": {
+  "dependencies": {
+    "which": "^5.0.0",
     "@inquirer/prompts": "^5.5.0",
-    "@types/cross-spawn": "^6.0.6",
-    "@types/validate-npm-package-name": "^4.0.2",
-    "@types/which": "^3.0.4",
     "commander": "^12.1.0",
     "cross-spawn": "^7.0.6",
     "tinyglobby": "^0.2.10",
     "picocolors": "^1.1.1",
-    "unbuild": "^2.0.0",
-    "validate-npm-package-name": "^5.0.1",
-    "yocto-spinner": "^0.1.1"
+    "validate-npm-package-name": "^6.0.0",
+    "yocto-spinner": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
+    "@types/validate-npm-package-name": "^4.0.2",
+    "@types/which": "^3.0.4",
+    "unbuild": "^3.3.1"
   },
   "peerDependencies": {
     "@rsbuild/core": "^1.0.2",
@@ -52,15 +55,15 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.2",
     "html-webpack-plugin": "^5.6.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "swc-loader": "^0.2.6",
     "typescript": "^5.7.2",
-    "vite": "^5.4.8",
+    "vite": "^6.0.3",
     "webpack": "^5.94.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.1.0"
@@ -120,8 +123,5 @@
     "react-dom": {
       "optional": true
     }
-  },
-  "dependencies": {
-    "which": "^5.0.0"
   }
 }

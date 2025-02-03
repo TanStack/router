@@ -1,11 +1,5 @@
 import * as React from 'react'
-import {
-  Link,
-  Outlet,
-  ScrollRestoration,
-  createRootRoute,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import { Meta, Scripts } from '@tanstack/start'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
@@ -71,6 +65,16 @@ function RootComponent() {
   )
 }
 
+const RouterDevtools =
+  process.env.NODE_ENV === 'production'
+    ? () => null // Render nothing in production
+    : React.lazy(() =>
+        // Lazy load in development
+        import('@tanstack/router-devtools').then((res) => ({
+          default: res.TanStackRouterDevtools,
+        })),
+      )
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html>
@@ -113,12 +117,28 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Layout
           </Link>{' '}
           <Link
+            to="/scripts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Scripts
+          </Link>{' '}
+          <Link
             to="/deferred"
             activeProps={{
               className: 'font-bold',
             }}
           >
             Deferred
+          </Link>{' '}
+          <Link
+            to="/redirect"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            redirect
           </Link>{' '}
           <Link
             // @ts-expect-error
@@ -132,8 +152,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </div>
         <hr />
         {children}
-        <ScrollRestoration />
-        <TanStackRouterDevtools position="bottom-right" />
+        <RouterDevtools position="bottom-right" />
         <Scripts />
       </body>
     </html>

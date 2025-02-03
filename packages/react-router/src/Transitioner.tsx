@@ -1,8 +1,8 @@
 import * as React from 'react'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
-import { trimPathRight } from './path'
 
 export function Transitioner() {
   const router = useRouter()
@@ -11,7 +11,7 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
-  const [isTransitioning, startReactTransition_] = React.useTransition()
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
@@ -27,7 +27,13 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startReactTransition = startReactTransition_
+    router.startReactTransition = (fn: () => void) => {
+      setIsTransitioning(true)
+      React.startTransition(() => {
+        fn()
+        setIsTransitioning(false)
+      })
+    }
   }
 
   // Subscribe to location changes
@@ -59,7 +65,7 @@ export function Transitioner() {
   // Try to load the initial location
   useLayoutEffect(() => {
     if (
-      (typeof window !== 'undefined' && window.__TSR__?.dehydrated) ||
+      (typeof window !== 'undefined' && router.clientSsr) ||
       (mountLoadForRouter.current.router === router &&
         mountLoadForRouter.current.mounted)
     ) {
@@ -81,17 +87,9 @@ export function Transitioner() {
   useLayoutEffect(() => {
     // The router was loading and now it's not
     if (previousIsLoading && !isLoading) {
-      const toLocation = router.state.location
-      const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.pathname !== toLocation.pathname
-      const hrefChanged = fromLocation.href !== toLocation.href
-
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
-        fromLocation,
-        toLocation,
-        pathChanged,
-        hrefChanged,
+        ...getLocationChangeInfo(router.state),
       })
     }
   }, [previousIsLoading, router, isLoading])
@@ -99,17 +97,9 @@ export function Transitioner() {
   useLayoutEffect(() => {
     // emit onBeforeRouteMount
     if (previousIsPagePending && !isPagePending) {
-      const toLocation = router.state.location
-      const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.pathname !== toLocation.pathname
-      const hrefChanged = fromLocation.href !== toLocation.href
-
       router.emit({
         type: 'onBeforeRouteMount',
-        fromLocation,
-        toLocation,
-        pathChanged,
-        hrefChanged,
+        ...getLocationChangeInfo(router.state),
       })
     }
   }, [isPagePending, previousIsPagePending, router])
@@ -117,17 +107,9 @@ export function Transitioner() {
   useLayoutEffect(() => {
     // The router was pending and now it's not
     if (previousIsAnyPending && !isAnyPending) {
-      const toLocation = router.state.location
-      const fromLocation = router.state.resolvedLocation
-      const pathChanged = fromLocation.pathname !== toLocation.pathname
-      const hrefChanged = fromLocation.href !== toLocation.href
-
       router.emit({
         type: 'onResolved',
-        fromLocation,
-        toLocation,
-        pathChanged,
-        hrefChanged,
+        ...getLocationChangeInfo(router.state),
       })
 
       router.__store.setState((s) => ({
@@ -135,15 +117,6 @@ export function Transitioner() {
         status: 'idle',
         resolvedLocation: s.location,
       }))
-
-      if (typeof document !== 'undefined' && (document as any).querySelector) {
-        if (router.state.location.hash !== '') {
-          const el = document.getElementById(router.state.location.hash)
-          if (el) {
-            el.scrollIntoView()
-          }
-        }
-      }
     }
   }, [isAnyPending, previousIsAnyPending, router])
 

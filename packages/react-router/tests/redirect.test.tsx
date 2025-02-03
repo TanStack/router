@@ -209,7 +209,7 @@ describe('redirect', () => {
             })
           }
         },
-        component: () => {
+        component: function Component() {
           const router = useRouter()
           return (
             <button
@@ -294,6 +294,7 @@ describe('redirect', () => {
         }),
         to: '/about',
         headers: {},
+        reloadDocument: false,
         href: '/about',
         isRedirect: true,
         routeId: '/',
@@ -347,6 +348,7 @@ describe('redirect', () => {
         headers: {},
         href: '/about',
         isRedirect: true,
+        reloadDocument: false,
         routeId: '/',
         statusCode: 307,
       })

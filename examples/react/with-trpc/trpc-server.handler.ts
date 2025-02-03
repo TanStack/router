@@ -1,4 +1,4 @@
-import { defineEventHandler, toWebRequest } from 'vinxi/http'
+import { defineEventHandler, toWebRequest } from '@tanstack/start/server'
 import { initTRPC } from '@trpc/server'
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
 
@@ -23,7 +23,7 @@ const appRouter = t.router({
     await new Promise((resolve) => setTimeout(resolve, 1000))
     return INVOICES
   }),
-  post: t.procedure.validator(String).query(async (req) => {
+  post: t.procedure.input(String).query(async (req) => {
     await new Promise((resolve) => setTimeout(resolve, 500))
     return INVOICES.find((p) => p.id === req.input)
   }),

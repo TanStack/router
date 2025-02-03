@@ -1,13 +1,7 @@
-import { expect } from '@playwright/test'
-import { test } from './utils'
+import { expect, test } from '@playwright/test'
 
-test.afterEach(async ({ setupApp }) => {
-  await setupApp.killProcess()
-})
-
-test('Navigating to post', async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/')
+test('Navigating to post', async ({ page }) => {
+  await page.goto('/')
 
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
@@ -15,18 +9,16 @@ test('Navigating to post', async ({ page, setupApp }) => {
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
-test('Navigating to user', async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/')
+test('Navigating to user', async ({ page }) => {
+  await page.goto('/')
 
   await page.getByRole('link', { name: 'Users' }).click()
   await page.getByRole('link', { name: 'Leanne Graham' }).click()
   await expect(page.getByRole('heading')).toContainText('Leanne Graham')
 })
 
-test('Navigating nested layouts', async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/')
+test('Navigating nested layouts', async ({ page }) => {
+  await page.goto('/')
 
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
   await page.getByRole('link', { name: 'Layout A' }).click()
@@ -35,9 +27,8 @@ test('Navigating nested layouts', async ({ page, setupApp }) => {
   await expect(page.locator('body')).toContainText("I'm B!")
 })
 
-test('Navigating to a not-found route', async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/')
+test('Navigating to a not-found route', async ({ page }) => {
+  await page.goto('/')
 
   await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
   await page.getByRole('link', { name: 'Start Over' }).click()

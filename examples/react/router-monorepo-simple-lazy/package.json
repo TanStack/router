@@ -1,0 +1,30 @@
+{
+  "name": "router-mono-simple-lazy",
+  "version": "1.0.0",
+  "scripts": {
+    "post-feature": "pnpm --filter @router-mono-simple-lazy/post-feature",
+    "router": "pnpm --filter @router-mono-simple-lazy/router",
+    "app": "pnpm --filter @router-mono-simple-lazy/app",
+    "dev": "pnpm router build && pnpm post-feature build && pnpm app dev"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.99.0",
+    "@tanstack/router-devtools": "^1.99.0",
+    "@tanstack/router-plugin": "^1.99.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "redaxios": "^0.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.11",
+    "vite-plugin-dts": "^4.5.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext"
+  },
+  "moduleResolution": "Bundler",
+  "include": ["src", "tests", "build.config.ts"]
+}
