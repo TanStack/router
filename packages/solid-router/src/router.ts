@@ -62,6 +62,7 @@ import type {
   BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
+  MakeRemountDepsOptionsUnion,
   NotFoundRouteComponent,
   RootRoute,
   RouteComponent,
@@ -453,6 +454,8 @@ export interface RouterOptions<
     ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
   >
 
+  defaultRemountDeps?: (opts: MakeRemountDepsOptionsUnion<TRouteTree>) => any
+
   /**
    * If `true`, scroll restoration will be enabled
    *
@@ -546,6 +549,8 @@ function routeNeedsPreload(route: AnyRoute) {
 }
 
 function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
+
+  console.log("VS Input:", input)
   if (validateSearch == null) return {}
 
   if ('~standard' in validateSearch) {
@@ -559,17 +564,21 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
         cause: result,
       })
 
+    console.log("RETURN 0", result.value) // <--- Always
     return result.value
   }
 
   if ('parse' in validateSearch) {
+    console.log("RETURN 1")
     return validateSearch.parse(input)
   }
 
   if (typeof validateSearch === 'function') {
+    console.log("RETURN 2")
     return validateSearch(input)
   }
 
+  console.log("RETURN 3")
   return {}
 }
 
@@ -1144,7 +1153,9 @@ export class Router<
       return parentContext
     }
 
+    // console.log(matchedRoutes)
     matchedRoutes.forEach((route, index) => {
+      console.log("INDEX: ", index)
       // Take each matched route and resolve + validate its search params
       // This has to happen serially because each route's search params
       // can depend on the parent route's search params
@@ -1154,19 +1165,28 @@ export class Router<
 
       const parentMatch = matches[index - 1]
 
-      const [preMatchSearch, searchError]: [Record<string, any>, any] = (() => {
-        // Validate the search params and stabilize them
+      const [preMatchSearch, strictMatchSearch, searchError]: [
+        Record<string, any>,
+        Record<string, any>,
+        any,
+      ] = (() => {
+        
+        console.log("next:", next)
         const parentSearch = parentMatch?.search ?? next.search
+        const parentStrictSearch = parentMatch?._strictSearch ?? {}
 
         try {
-          const search =
-            validateSearch(route.options.validateSearch, parentSearch) ?? {}
 
+          const strictSearch =
+          validateSearch(route.options.validateSearch, { ...parentSearch }) ??
+          {}
+          
           return [
             {
               ...parentSearch,
-              ...search,
+              ...strictSearch,
             },
+            { ...parentStrictSearch, ...strictSearch },
             undefined,
           ]
         } catch (err: any) {
@@ -1180,8 +1200,9 @@ export class Router<
           if (opts?.throwOnError) {
             throw searchParamError
           }
+          console.log('parentSearch', parentSearch)
 
-          return [parentSearch, searchParamError]
+          return [parentSearch, {}, searchParamError]
         }
       })()
 
@@ -1190,6 +1211,9 @@ export class Router<
       // before we create the match so that we can pass the deps to the route's
       // potential key function which is used to uniquely identify the route match in state
 
+      console.log('loaderDeps begin')
+
+      console.log('route.options', JSON.stringify(route.options))
       const loaderDeps =
         route.options.loaderDeps?.({
           search: preMatchSearch,
@@ -1197,7 +1221,7 @@ export class Router<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const interpolatedPath = interpolatePath({
+      const { usedParams, interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
@@ -1234,9 +1258,11 @@ export class Router<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
+          _strictParams: usedParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
+          _strictSearch: strictMatchSearch,
         }
       } else {
         const status =
@@ -1254,14 +1280,16 @@ export class Router<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
+          _strictParams: usedParams,
           pathname: joinPaths([
             this.basepath,
-            interpolatedPath.interpolatedPath,
+            interpolatedPath,
           ]),
           updatedAt: Date.now(),
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : preMatchSearch,
+          _strictSearch: strictMatchSearch,
           searchError: undefined,
           status,
           isFetching: false,
@@ -2179,6 +2207,10 @@ export class Router<
           this._handleNotFound(matches, err, {
             updateMatch,
           })
+          this.serverSsr?.onMatchSettled({
+            router: this,
+            match: this.getMatch(match.id)!,
+          })
           throw err
         }
       }
@@ -2841,8 +2873,10 @@ export class Router<
           _fromLocation: next,
         })
       }
-      // Preload errors are not fatal, but we should still log them
-      console.error(err)
+      if (!isNotFound(err)) {
+        // Preload errors are not fatal, but we should still log them
+        console.error(err)
+      }
       return undefined
     }
   }

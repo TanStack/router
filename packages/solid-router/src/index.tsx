@@ -259,6 +259,8 @@ export type {
   BeforeLoadContextParameter,
   ResolveAllContext,
   ResolveAllParamsFromParent,
+  MakeRemountDepsOptionsUnion,
+  RemountDepsOptions,
 } from './route'
 
 export type {
