@@ -12,3 +12,6 @@ export const Route = createFileRoute('/_layout')({
 });
 export const SIDEBAR_WIDTH = '150px';
 export const SIDEBAR_MINI_WIDTH = '80px';
+export function TSRDummyComponent() {
+  return null;
+}

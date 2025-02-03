@@ -25,7 +25,7 @@ const decoder = new TextDecoder('utf-8')
 
 function Home() {
   const { promise, stream } = Route.useLoaderData()
-  const [streamData, setStreamData] = useState([])
+  const [streamData, setStreamData] = useState<Array<string>>([])
 
   useEffect(() => {
     async function fetchStream() {
@@ -33,8 +33,11 @@ function Home() {
       let chunk
 
       while (!(chunk = await reader.read()).done) {
-        const decoded = decoder.decode(chunk.value, { stream: !chunk.done })
-        setStreamData((prev) => [...prev, decoded])
+        let value = chunk.value
+        if (typeof value !== 'string') {
+          value = decoder.decode(value, { stream: !chunk.done })
+        }
+        setStreamData((prev) => [...prev, value])
       }
     }
 

@@ -2,7 +2,6 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools/production'
 import {
   Link,
   Outlet,
-  ScrollRestoration,
   createRootRouteWithContext,
   useRouterState,
 } from '@tanstack/react-router'
@@ -133,7 +132,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <Toaster />
           </div>
         </div>
-        <ScrollRestoration />
         <ReactQueryDevtools />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />

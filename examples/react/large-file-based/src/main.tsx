@@ -14,6 +14,7 @@ const router = createRouter({
   context: {
     queryClient,
   },
+  scrollRestoration: true,
 })
 
 // Register things for typesafety

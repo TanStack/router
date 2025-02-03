@@ -1,7 +1,6 @@
 import { notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
 import axios from 'redaxios'
-import { logMiddleware } from './loggingMiddleware'
 
 export type PostType = {
   id: string
@@ -10,7 +9,6 @@ export type PostType = {
 }
 
 export const fetchPost = createServerFn({ method: 'GET' })
-  .middleware([logMiddleware])
   .validator((d: string) => d)
   .handler(async ({ data }) => {
     console.info(`Fetching post with id ${data}...`)
@@ -28,11 +26,11 @@ export const fetchPost = createServerFn({ method: 'GET' })
     return post
   })
 
-export const fetchPosts = createServerFn({ method: 'GET' })
-  .middleware([logMiddleware])
-  .handler(async () => {
+export const fetchPosts = createServerFn({ method: 'GET' }).handler(
+  async () => {
     console.info('Fetching posts...')
     return axios
       .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
       .then((r) => r.data.slice(0, 10))
-  })
+  },
+)

@@ -1,5 +1,5 @@
 import importedComponent, { importedLoader } from '../shared/imported';
-const component = importedComponent;
-export { component };
-const loader = importedLoader;
-export { loader };
+const SplitComponent = importedComponent;
+export { SplitComponent as component };
+const SplitLoader = importedLoader;
+export { SplitLoader as loader };

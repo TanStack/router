@@ -5,7 +5,7 @@ import { sample } from '~/utils/utils';
 import { textColors } from "random-number.tsx";
 import { gradients } from "random-number.tsx";
 import { Route } from "random-number.tsx";
-const component = function Index() {
+const SplitComponent = function Index() {
   const {
     randomNumber
   } = Route.useLoaderData();
@@ -17,11 +17,11 @@ const component = function Index() {
       {textColor}
     </>;
 };
-export { component };
-const loader = () => {
+export { SplitComponent as component };
+const SplitLoader = () => {
   return {
     randomNumber: Math.random(),
     sponsorsPromise: defer(getSponsorsForSponsorPack())
   };
 };
-export { loader };
+export { SplitLoader as loader };

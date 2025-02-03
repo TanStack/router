@@ -14,6 +14,7 @@ import { routeTree } from './routeTree.gen'
 // Create a router instance
 const router = createRouter({
   routeTree,
+  scrollRestoration: true,
   defaultPreload: 'intent',
   defaultPendingComponent: () => (
     <div className={`p-2 text-2xl`}>

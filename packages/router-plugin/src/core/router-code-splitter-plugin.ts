@@ -1,7 +1,7 @@
 import { isAbsolute, join, normalize } from 'node:path'
 
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { logDiff } from '../logger'
+import { logDiff } from '@tanstack/router-utils'
 import { getConfig } from './config'
 import {
   compileCodeSplitReferenceRoute,

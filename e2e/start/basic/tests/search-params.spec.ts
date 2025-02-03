@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './fixture'
 
 test('Directly visiting the search-params route without search param set', async ({
   page,

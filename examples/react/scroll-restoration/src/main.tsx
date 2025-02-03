@@ -4,7 +4,6 @@ import {
   Link,
   Outlet,
   RouterProvider,
-  ScrollRestoration,
   createRootRoute,
   createRoute,
   createRouter,
@@ -36,7 +35,6 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
-      <ScrollRestoration />
       <TanStackRouterDevtools />
     </>
   )
@@ -193,7 +191,11 @@ const routeTree = rootRoute.addChildren([
   byElementRoute,
 ])
 
-const router = createRouter({ routeTree, defaultPreload: 'intent' })
+const router = createRouter({
+  routeTree,
+  defaultPreload: 'intent',
+  scrollRestoration: true,
+})
 
 declare module '@tanstack/react-router' {
   interface Register {
