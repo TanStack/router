@@ -807,7 +807,7 @@ export class Router<
           }
         },
       })
-      
+
       setupScrollRestoration(this)
     }
 
