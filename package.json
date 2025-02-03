@@ -28,7 +28,8 @@
     "prettier": "prettier --ignore-unknown '**/*'",
     "prettier:write": "pnpm run prettier --write",
     "cipublish": "node scripts/publish.js",
-    "gpt-generate": "node gpt/generate.js"
+    "gpt-generate": "node gpt/generate.js",
+    "labeler-generate": "node scripts/generateLabelerConfig.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.17.3",
