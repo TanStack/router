@@ -1,10 +1,9 @@
-'use client'
-
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
   createControlledPromise,
+  getLocationChangeInfo,
   pick,
   rootRouteId,
 } from '@tanstack/router-core'
@@ -18,6 +17,7 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import type { AnyRoute } from './route'
+import { ScrollRestoration } from './scroll-restoration'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -69,43 +69,84 @@ export const Match = (props: { matchId: string }) => {
     select: (s) => s.loadedAt,
   })
 
+  const parentRouteId = useRouterState({
+    select: (s) => {
+      const index = s.matches.findIndex((d) => d.id === props.matchId)
+      return s.matches[index - 1]?.routeId as string
+    },
+  })
+
   return (
-    <matchContext.Provider value={() => props.matchId}>
-      <Dynamic
-        component={ResolvedSuspenseBoundary()}
-        fallback={<Dynamic component={PendingComponent()} />}
-      >
+    <>
+      <matchContext.Provider value={() => props.matchId}>
         <Dynamic
-          component={ResolvedCatchBoundary()}
-          getResetKey={() => resetKey()}
-          errorComponent={routeErrorComponent() || ErrorComponent}
-          onCatch={(error: Error) => {
-            // Forward not found errors (we don't want to show the error component for these)
-            if (isNotFound(error)) throw error
-            warning(false, `Error in route match: ${props.matchId}`)
-            routeOnCatch()?.(error)
-          }}
+          component={ResolvedSuspenseBoundary()}
+          fallback={<Dynamic component={PendingComponent()} />}
         >
           <Dynamic
-            component={ResolvedNotFoundBoundary()}
-            fallback={(error: any) => {
-              // If the current not found handler doesn't exist or it has a
-              // route ID which doesn't match the current route, rethrow the error
-              if (
-                !routeNotFoundComponent() ||
-                (error.routeId && error.routeId !== routeId) ||
-                (!error.routeId && !route().isRoot)
-              )
-                throw error
-
-              return <Dynamic component={routeNotFoundComponent()} {...error} />
+            component={ResolvedCatchBoundary()}
+            getResetKey={() => resetKey()}
+            errorComponent={routeErrorComponent() || ErrorComponent}
+            onCatch={(error: Error) => {
+              // Forward not found errors (we don't want to show the error component for these)
+              if (isNotFound(error)) throw error
+              warning(false, `Error in route match: ${props.matchId}`)
+              routeOnCatch()?.(error)
             }}
           >
-            <MatchInner matchId={props.matchId} />
+            <Dynamic
+              component={ResolvedNotFoundBoundary()}
+              fallback={(error: any) => {
+                // If the current not found handler doesn't exist or it has a
+                // route ID which doesn't match the current route, rethrow the error
+                if (
+                  !routeNotFoundComponent() ||
+                  (error.routeId && error.routeId !== routeId) ||
+                  (!error.routeId && !route().isRoot)
+                )
+                  throw error
+
+                return (
+                  <Dynamic component={routeNotFoundComponent()} {...error} />
+                )
+              }}
+            >
+              <MatchInner matchId={props.matchId} />
+            </Dynamic>
           </Dynamic>
         </Dynamic>
-      </Dynamic>
-    </matchContext.Provider>
+      </matchContext.Provider>
+      {parentRouteId() === rootRouteId ? (
+        <>
+          <OnRendered />
+          <ScrollRestoration />
+        </>
+      ) : null}
+    </>
+  )
+}
+
+// On Rendered can't happen above the root layout because it actually
+// renders a dummy dom element to track the rendered state of the app.
+// We render a script tag with a key that changes based on the current
+// location state.key. Also, because it's below the root layout, it
+// allows us to fire onRendered events even after a hydration mismatch
+// error that occurred above the root layout (like bad head/link tags,
+// which is common).
+function OnRendered() {
+  const router = useRouter()
+
+  return (
+    <script
+      ref={(el) => {
+        if (el) {
+          router.emit({
+            type: 'onRendered',
+            ...getLocationChangeInfo(router.state),
+          })
+        }
+      }}
+    />
   )
 }
 
