@@ -1,10 +1,5 @@
 /// <reference types="vite/client" />
-import {
-  Link,
-  Outlet,
-  ScrollRestoration,
-  createRootRoute,
-} from '@tanstack/react-router'
+import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import {
   ClerkProvider,
   SignInButton,
