@@ -1446,10 +1446,10 @@ export class Router<
 
       const fromPath = fromMatch?.pathname || this.latestLocation.pathname
 
-      invariant(
-        dest.from == null || fromMatch != null,
-        'Could not find match for from: ' + dest.from,
-      )
+      // invariant(
+      //   dest.from == null || fromMatch != null,
+      //   'Could not find match for from: ' + dest.from,
+      // )
 
       const fromSearch = this.state.pendingMatches?.length
         ? last(this.state.pendingMatches)?.search
