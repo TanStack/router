@@ -199,7 +199,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
   useRouterState({
-    select: (s) => [s.location.href, s.resolvedLocation.href, s.status],
+    select: (s) => [s.location.href, s.resolvedLocation?.href, s.status],
     structuralSharing: true as any,
   })
 
