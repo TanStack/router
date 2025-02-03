@@ -189,9 +189,7 @@ export function transformStreamWithRouter(
           const headTag = headStartMatch[0]
           const remaining = chunkString.slice(index + headTag.length)
           finalPassThrough.write(
-            chunkString.slice(0, index) +
-            headTag +
-            getBufferedRouterStream()
+            chunkString.slice(0, index) + headTag + getBufferedRouterStream(),
           )
           // make sure to only write `remaining` until the next closing tag
           chunkString = remaining
