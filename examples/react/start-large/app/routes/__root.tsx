@@ -1,9 +1,5 @@
 // app/routes/__root.tsx
-import {
-  Outlet,
-  ScrollRestoration,
-  createRootRouteWithContext,
-} from '@tanstack/react-router'
+import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import { Meta, Scripts } from '@tanstack/start'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
