@@ -94,6 +94,12 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         config.virtualRouteConfig = virtualRouteConfig
       }
       break
+    case 'virtual-config-file-named-export':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-config-file-default-export':
+      config.virtualRouteConfig = './routes.ts'
+      break
     case 'types-disabled':
       config.disableTypes = true
       config.generatedRouteTree =
@@ -173,8 +179,8 @@ async function postprocess(folderName: string) {
       const routeFiles = await readDir(folderName, 'routes', '(test)')
       routeFiles
         .filter((r) => r.endsWith('.tsx'))
-        .forEach((routeFile) => {
-          expect(fooText).toMatchFileSnapshot(
+        .forEach(async (routeFile) => {
+          await expect(fooText).toMatchFileSnapshot(
             join('generator', folderName, 'snapshot', routeFile),
           )
         })
@@ -185,7 +191,9 @@ async function postprocess(folderName: string) {
       await traverseDirectory(startDir, async (filePath) => {
         const relativePath = relative(startDir, filePath)
         if (filePath.endsWith('.tsx')) {
-          expect(await fs.readFile(filePath, 'utf-8')).toMatchFileSnapshot(
+          await expect(
+            await fs.readFile(filePath, 'utf-8'),
+          ).toMatchFileSnapshot(
             join('generator', folderName, 'snapshot', relativePath),
           )
         }
@@ -207,6 +215,8 @@ describe('generator works', async () => {
   it.each(folderNames.map((folder) => [folder]))(
     'should wire-up the routes for a "%s" tree',
     async (folderName) => {
+      const folderRoot = makeFolderDir(folderName)
+
       const config = await setupConfig(folderName)
 
       rewriteConfigByFolderName(folderName, config)
@@ -214,13 +224,15 @@ describe('generator works', async () => {
       await preprocess(folderName)
       const error = shouldThrow(folderName)
       if (error) {
-        expect(() => generator(config)).rejects.toThrowError(error)
+        await expect(() => generator(config, folderRoot)).rejects.toThrowError(
+          error,
+        )
       } else {
-        await generator(config)
+        await generator(config, folderRoot)
 
         const generatedRouteTree = await getRouteTreeFileText(config)
 
-        expect(generatedRouteTree).toMatchFileSnapshot(
+        await expect(generatedRouteTree).toMatchFileSnapshot(
           join(
             'generator',
             folderName,

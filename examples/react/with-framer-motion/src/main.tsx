@@ -14,6 +14,7 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'redaxios'
+import './styles.css'
 
 type PostType = {
   id: string
@@ -188,6 +189,7 @@ const routeTree = rootRoute.addChildren([
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
+  scrollRestoration: true,
   context: {
     // loaderClient,
   },

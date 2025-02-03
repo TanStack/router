@@ -3,25 +3,28 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3001",
+    "dev": "vite --port 3000",
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.85.5",
-    "@tanstack/router-devtools": "^1.85.5",
-    "redaxios": "^0.5.1",
+    "@tanstack/react-router": "^1.99.0",
+    "@tanstack/router-devtools": "^1.99.0",
     "immer": "^10.1.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "zod": "^3.23.8"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "redaxios": "^0.5.1",
+    "postcss": "^8.5.1",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/react": "^18.2.47",
-    "@types/react-dom": "^18.2.18",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^5.4.11"
+    "vite": "^6.0.11"
   }
 }

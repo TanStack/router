@@ -1,14 +1,8 @@
-import { expect } from '@playwright/test'
-import { test } from './utils'
+import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-test.beforeEach(async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/')
-})
-
-test.afterEach(async ({ setupApp }) => {
-  await setupApp.killProcess()
+test.beforeEach(async ({ page }) => {
+  await page.goto('/')
 })
 
 test('Navigating to a post page', async ({ page }) => {
@@ -37,6 +31,154 @@ test('Navigating to a not-found route', async ({ page }) => {
   )
   await page.getByRole('link', { name: 'Start Over' }).click()
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
+})
+
+test("useBlocker doesn't block navigation if condition is not met", async ({
+  page,
+}) => {
+  await page.goto('/editing-a')
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await page.getByRole('button', { name: 'Go to next step' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+})
+
+test('useBlocker does block navigation if condition is met', async ({
+  page,
+}) => {
+  await page.goto('/editing-a')
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await page.getByLabel('Enter your name:').fill('foo')
+
+  await page.getByRole('button', { name: 'Go to next step' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await expect(page.getByRole('button', { name: 'Proceed' })).toBeVisible()
+})
+
+test('Proceeding through blocked navigation works', async ({ page }) => {
+  await page.goto('/editing-a')
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await page.getByLabel('Enter your name:').fill('foo')
+
+  await page.getByRole('button', { name: 'Go to next step' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+
+  await page.getByRole('button', { name: 'Proceed' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+})
+
+test("legacy useBlocker doesn't block navigation if condition is not met", async ({
+  page,
+}) => {
+  await page.goto('/editing-b')
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await page.getByRole('button', { name: 'Go back' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+})
+
+test('legacy useBlocker does block navigation if condition is met', async ({
+  page,
+}) => {
+  await page.goto('/editing-b')
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await page.getByLabel('Enter your name:').fill('foo')
+
+  await page.getByRole('button', { name: 'Go back' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await expect(page.getByRole('button', { name: 'Proceed' })).toBeVisible()
+})
+
+test('legacy Proceeding through blocked navigation works', async ({ page }) => {
+  await page.goto('/editing-b')
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await page.getByLabel('Enter your name:').fill('foo')
+
+  await page.getByRole('button', { name: 'Go back' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing B')
+
+  await page.getByRole('button', { name: 'Proceed' }).click()
+  await expect(page.getByRole('heading')).toContainText('Editing A')
+})
+
+test('useCanGoBack correctly disables back button', async ({ page }) => {
+  const getBackButtonDisabled = async () => {
+    const backButton = page.getByTestId('back-button')
+    const isDisabled = (await backButton.getAttribute('disabled')) !== null
+    return isDisabled
+  }
+
+  expect(await getBackButtonDisabled()).toBe(true)
+
+  await page.getByRole('link', { name: 'Posts' }).click()
+  await expect(page.getByTestId('posts-links')).toBeInViewport()
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await expect(page.getByTestId('post-title')).toBeInViewport()
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.reload()
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.goBack()
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.goForward()
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.goBack()
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.goBack()
+  expect(await getBackButtonDisabled()).toBe(true)
+
+  await page.reload()
+  expect(await getBackButtonDisabled()).toBe(true)
+})
+
+test('useCanGoBack correctly disables back button, using router.history and window.history', async ({
+  page,
+}) => {
+  const getBackButtonDisabled = async () => {
+    const backButton = page.getByTestId('back-button')
+    const isDisabled = (await backButton.getAttribute('disabled')) !== null
+    return isDisabled
+  }
+
+  await page.getByRole('link', { name: 'Posts' }).click()
+  await expect(page.getByTestId('posts-links')).toBeInViewport()
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await expect(page.getByTestId('post-title')).toBeInViewport()
+  await page.getByTestId('back-button').click()
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.reload()
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.getByTestId('back-button').click()
+  expect(await getBackButtonDisabled()).toBe(true)
+
+  await page.evaluate('window.history.forward()')
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.evaluate('window.history.forward()')
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.evaluate('window.history.back()')
+  expect(await getBackButtonDisabled()).toBe(false)
+
+  await page.evaluate('window.history.back()')
+  expect(await getBackButtonDisabled()).toBe(true)
+
+  await page.reload()
+  expect(await getBackButtonDisabled()).toBe(true)
 })
 
 const testCases = [
@@ -77,10 +219,9 @@ testCases.forEach(({ description, testId }) => {
   })
 })
 
-test('navigating to an unnested route', async ({ page, setupApp }) => {
-  const { ADDR } = setupApp
+test('navigating to an unnested route', async ({ page }) => {
   const postId = 'hello-world'
-  page.goto(ADDR + `/posts/${postId}/edit`)
+  page.goto(`/posts/${postId}/edit`)
   await expect(page.getByTestId('params-via-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-api')).toContainText(postId)
@@ -92,12 +233,8 @@ async function getRenderCount(page: Page) {
   )
   return renderCount
 }
-async function structuralSharingTest(
-  page: Page,
-  baseUrl: string,
-  enabled: boolean,
-) {
-  page.goto(baseUrl + `/structural-sharing/${enabled}/?foo=f1&bar=b1`)
+async function structuralSharingTest(page: Page, enabled: boolean) {
+  page.goto(`/structural-sharing/${enabled}/?foo=f1&bar=b1`)
   await expect(page.getByTestId('enabled')).toHaveText(JSON.stringify(enabled))
 
   async function checkSearch({ foo, bar }: { foo: string; bar: string }) {
@@ -117,13 +254,13 @@ async function structuralSharingTest(
   await checkSearch({ bar: 'b2', foo: 'f2' })
 }
 
-test('structural sharing disabled', async ({ page, setupApp }) => {
-  await structuralSharingTest(page, setupApp.ADDR, false)
+test('structural sharing disabled', async ({ page }) => {
+  await structuralSharingTest(page, false)
   expect(await getRenderCount(page)).toBeGreaterThan(2)
 })
 
-test('structural sharing enabled', async ({ page, setupApp }) => {
-  await structuralSharingTest(page, setupApp.ADDR, true)
+test('structural sharing enabled', async ({ page }) => {
+  await structuralSharingTest(page, true)
   expect(await getRenderCount(page)).toBe(2)
   await page.getByTestId('link').click()
   expect(await getRenderCount(page)).toBe(2)

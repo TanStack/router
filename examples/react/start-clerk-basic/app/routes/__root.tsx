@@ -16,16 +16,16 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Meta, Scripts, createServerFn } from '@tanstack/start'
 import * as React from 'react'
 import { getAuth } from '@clerk/tanstack-start/server'
-import { getWebRequest } from 'vinxi/http'
+import { getWebRequest } from '@tanstack/start/server'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
 const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const user = await getAuth(getWebRequest())
+  const { userId } = await getAuth(getWebRequest()!)
 
   return {
-    user,
+    userId,
   }
 })
 
@@ -64,10 +64,10 @@ export const Route = createRootRoute({
     ],
   }),
   beforeLoad: async () => {
-    const { user } = await fetchClerkAuth()
+    const { userId } = await fetchClerkAuth()
 
     return {
-      user,
+      userId,
     }
   },
   errorComponent: (props) => {
@@ -127,7 +127,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </div>
         <hr />
         {children}
-        <ScrollRestoration />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>

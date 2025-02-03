@@ -16,6 +16,7 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import axios from 'redaxios'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import './styles.css'
 
 type PhotoType = {
   id: string
@@ -318,6 +319,7 @@ const router = createRouter({
   routeTree,
   routeMasks: [photoModalToPhotoMask],
   defaultPreload: 'intent',
+  scrollRestoration: true,
 })
 
 // Register things for typesafety

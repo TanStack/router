@@ -11,9 +11,22 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRoute, ReactNode, StaticDataRouteOption } from './route'
+import type { AnyRoute, ReactNode } from './route'
+import type {
+  ControlledPromise,
+  DeepPartial,
+  NoInfer,
+  ResolveRelativePath,
+  StaticDataRouteOption,
+} from '@tanstack/router-core'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
-import type { ResolveRelativePath, ToOptions } from './link'
+import type {
+  MakeOptionalPathParams,
+  MakeOptionalSearchParams,
+  MaskOptions,
+  ResolveRoute,
+  ToSubOptionsProps,
+} from './link'
 import type {
   AllContext,
   AllLoaderData,
@@ -23,107 +36,7 @@ import type {
   RouteById,
   RouteByPath,
   RouteIds,
-  RoutePaths,
 } from './routeInfo'
-import type {
-  Constrain,
-  ControlledPromise,
-  DeepPartial,
-  NoInfer,
-} from './utils'
-
-export type AnyMatchAndValue = { match: any; value: any }
-
-export type FindValueByIndex<
-  TKey,
-  TValue extends ReadonlyArray<any>,
-> = TKey extends `${infer TIndex extends number}` ? TValue[TIndex] : never
-
-export type FindValueByKey<TKey, TValue> =
-  TValue extends ReadonlyArray<any>
-    ? FindValueByIndex<TKey, TValue>
-    : TValue[TKey & keyof TValue]
-
-export type CreateMatchAndValue<TMatch, TValue> = TValue extends any
-  ? {
-      match: TMatch
-      value: TValue
-    }
-  : never
-
-export type NextMatchAndValue<
-  TKey,
-  TMatchAndValue extends AnyMatchAndValue,
-> = TMatchAndValue extends any
-  ? CreateMatchAndValue<
-      TMatchAndValue['match'],
-      FindValueByKey<TKey, TMatchAndValue['value']>
-    >
-  : never
-
-export type IsMatchKeyOf<TValue> =
-  TValue extends ReadonlyArray<any>
-    ? number extends TValue['length']
-      ? `${number}`
-      : keyof TValue & `${number}`
-    : TValue extends object
-      ? keyof TValue & string
-      : never
-
-export type IsMatchPath<
-  TParentPath extends string,
-  TMatchAndValue extends AnyMatchAndValue,
-> = `${TParentPath}${IsMatchKeyOf<TMatchAndValue['value']>}`
-
-export type IsMatchResult<
-  TKey,
-  TMatchAndValue extends AnyMatchAndValue,
-> = TMatchAndValue extends any
-  ? TKey extends keyof TMatchAndValue['value']
-    ? TMatchAndValue['match']
-    : never
-  : never
-
-export type IsMatchParse<
-  TPath,
-  TMatchAndValue extends AnyMatchAndValue,
-  TParentPath extends string = '',
-> = TPath extends `${string}.${string}`
-  ? TPath extends `${infer TFirst}.${infer TRest}`
-    ? IsMatchParse<
-        TRest,
-        NextMatchAndValue<TFirst, TMatchAndValue>,
-        `${TParentPath}${TFirst}.`
-      >
-    : never
-  : {
-      path: IsMatchPath<TParentPath, TMatchAndValue>
-      result: IsMatchResult<TPath, TMatchAndValue>
-    }
-
-export type IsMatch<TMatch, TPath> = IsMatchParse<
-  TPath,
-  TMatch extends any ? { match: TMatch; value: TMatch } : never
->
-
-/**
- * Narrows matches based on a path
- * @experimental
- */
-export const isMatch = <TMatch, TPath extends string>(
-  match: TMatch,
-  path: Constrain<TPath, IsMatch<TMatch, TPath>['path']>,
-): match is IsMatch<TMatch, TPath>['result'] => {
-  const parts = (path as string).split('.')
-  let part
-  let value: any = match
-
-  while ((part = parts.shift()) != null && value != null) {
-    value = value[part]
-  }
-
-  return value != null
-}
 
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['id'],
@@ -150,6 +63,7 @@ export interface RouteMatch<
   index: number
   pathname: string
   params: TAllParams
+  _strictParams: TAllParams
   status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
   isFetching: false | 'beforeLoad' | 'loader'
   error: unknown
@@ -164,6 +78,7 @@ export interface RouteMatch<
   __beforeLoadContext: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
+  _strictSearch: TFullSearchSchema
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
@@ -213,7 +128,7 @@ export function Matches() {
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && window.__TSR__)
+    router.isServer || (typeof document !== 'undefined' && router.clientSsr)
       ? SafeFragment
       : React.Suspense
 
@@ -270,43 +185,33 @@ export interface MatchRouteOptions {
 
 export type UseMatchRouteOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = RoutePaths<
-    TRouter['routeTree']
-  >,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-  TOptions extends ToOptions<
-    TRouter,
-    TFrom,
-    TTo,
-    TMaskFrom,
-    TMaskTo
-  > = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  TRelaxedOptions = Omit<TOptions, 'search' | 'params'> &
-    DeepPartial<Pick<TOptions, 'search' | 'params'>>,
-> = TRelaxedOptions & MatchRouteOptions
+> = ToSubOptionsProps<TRouter, TFrom, TTo> &
+  DeepPartial<MakeOptionalSearchParams<TRouter, TFrom, TTo>> &
+  DeepPartial<MakeOptionalPathParams<TRouter, TFrom, TTo>> &
+  MaskOptions<TRouter, TMaskFrom, TMaskTo> &
+  MatchRouteOptions
 
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
   useRouterState({
-    select: (s) => [s.location.href, s.resolvedLocation.href, s.status],
+    select: (s) => [s.location.href, s.resolvedLocation?.href, s.status],
     structuralSharing: true as any,
   })
 
   return React.useCallback(
     <
-      TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-      TTo extends string = '',
-      TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-      TMaskTo extends string = '',
-      TResolved extends string = ResolveRelativePath<TFrom, NoInfer<TTo>>,
+      const TFrom extends string = string,
+      const TTo extends string | undefined = undefined,
+      const TMaskFrom extends string = TFrom,
+      const TMaskTo extends string = '',
     >(
       opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ):
-      | false
-      | RouteByPath<TRouter['routeTree'], TResolved>['types']['allParams'] => {
+    ): false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams'] => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return router.matchRoute(rest as any, {
@@ -322,11 +227,9 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
 export type MakeMatchRouteOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
-    TRouter['routeTree']
-  >,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
@@ -342,15 +245,13 @@ export type MakeMatchRouteOptions<
 
 export function MatchRoute<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
-    TRouter['routeTree']
-  >,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
-  TMaskTo extends string = '',
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const matchRoute = useMatchRoute()
-  const params = matchRoute(props as any)
+  const params = matchRoute(props as any) as boolean
 
   if (typeof props.children === 'function') {
     return (props.children as any)(params)

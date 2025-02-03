@@ -30,17 +30,14 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 ## Partners
 
-<div><a href="https://vercel.com?utm_source=tanstack">
-  <img alt="Vercel" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/vercel.svg" height="40"
+<div><a href="https://convex.dev?utm_source=tanstack">
+  <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
 </a></div><br />
 <div><a href="https://go.clerk.com/wOwHtuJ">
   <img alt="Clerk" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40"
 </a></div><br />
 <div><a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable">
   <img alt="AG Grid" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40"
-</a></div><br />
-<div><a href="https://convex.dev?utm_source=tanstack">
-  <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
 </a></div><br />
 <div><a href="https://sentry.io?utm_source=tanstack">
   <img alt="Sentry" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40"
@@ -81,4 +78,4 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 To run example React projects with Tanstack Router, see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
-<!-- Use the force, Luke!! -->
+<!-- Use the force, Luke!!!! -->

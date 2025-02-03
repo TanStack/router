@@ -9,16 +9,16 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.85.5",
-    "@tanstack/start": "^1.85.5",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "vinxi": "0.4.3"
+    "@tanstack/react-router": "^1.99.0",
+    "@tanstack/start": "^1.99.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vinxi": "0.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
-    "@types/react": "^18.2.65",
-    "@types/react-dom": "^18.2.21",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
     "typescript": "^5.7.2"
   }
 }

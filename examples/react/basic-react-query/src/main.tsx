@@ -20,6 +20,7 @@ import {
 } from '@tanstack/react-query'
 import { NotFoundError, postQueryOptions, postsQueryOptions } from './posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import './styles.css'
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -249,6 +250,7 @@ const router = createRouter({
   // Since we're using React Query, we don't want loader calls to ever be stale
   // This will ensure that the loader is always called when the route is preloaded or visited
   defaultPreloadStaleTime: 0,
+  scrollRestoration: true,
   context: {
     queryClient,
   },

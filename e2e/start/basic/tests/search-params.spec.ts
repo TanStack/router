@@ -1,16 +1,10 @@
 import { expect } from '@playwright/test'
-import { test } from './utils'
-
-test.afterEach(async ({ setupApp: setup }) => {
-  await setup.killProcess()
-})
+import { test } from './fixture'
 
 test('Directly visiting the search-params route without search param set', async ({
   page,
-  setupApp,
 }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/search-params')
+  await page.goto('/search-params')
 
   await new Promise((r) => setTimeout(r, 500))
   await expect(page.getByTestId('search-param')).toContainText('a')
@@ -19,10 +13,8 @@ test('Directly visiting the search-params route without search param set', async
 
 test('Directly visiting the search-params route with search param set', async ({
   page,
-  setupApp,
 }) => {
-  const { ADDR } = setupApp
-  await page.goto(ADDR + '/search-params?step=b')
+  await page.goto('/search-params?step=b')
 
   await new Promise((r) => setTimeout(r, 500))
   await expect(page.getByTestId('search-param')).toContainText('b')

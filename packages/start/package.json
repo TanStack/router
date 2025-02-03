@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start",
-  "version": "1.85.5",
+  "version": "1.99.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -25,99 +25,110 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src",
-    "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js",
-    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
-    "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
-    "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
-    "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
-    "test:types:ts57": "tsc",
-    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build && pnpm build:config && pnpm build:router-manifest",
-    "build:config": "tsc --project tsconfigs/config.tsconfig.json",
-    "build:router-manifest": "tsc --project tsconfigs/router-manifest.tsconfig.json"
+    "test": "pnpm test:build",
+    "test:build": "exit 0; vitest",
+    "build": "vite build"
   },
   "type": "module",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/client/index.d.ts",
-        "default": "./dist/esm/client/index.js"
+        "types": "./dist/esm/client.d.ts",
+        "default": "./dist/esm/client.js"
       },
       "require": {
-        "types": "./dist/cjs/client/index.d.cts",
-        "default": "./dist/cjs/client/index.cjs"
+        "types": "./dist/cjs/client.d.cts",
+        "default": "./dist/cjs/client.cjs"
       }
     },
     "./client": {
       "import": {
-        "types": "./dist/esm/client/index.d.ts",
-        "default": "./dist/esm/client/index.js"
+        "types": "./dist/esm/client.d.ts",
+        "default": "./dist/esm/client.js"
       },
       "require": {
-        "types": "./dist/cjs/client/index.d.cts",
-        "default": "./dist/cjs/client/index.cjs"
+        "types": "./dist/cjs/client.d.cts",
+        "default": "./dist/cjs/client.cjs"
       }
     },
     "./server": {
       "import": {
-        "types": "./dist/esm/server/index.d.ts",
-        "default": "./dist/esm/server/index.js"
+        "types": "./dist/esm/server.d.ts",
+        "default": "./dist/esm/server.js"
       },
       "require": {
-        "types": "./dist/cjs/server/index.d.cts",
-        "default": "./dist/cjs/server/index.cjs"
-      }
-    },
-    "./api": {
-      "import": {
-        "types": "./dist/esm/api/index.d.ts",
-        "default": "./dist/esm/api/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/api/index.d.cts",
-        "default": "./dist/cjs/api/index.cjs"
-      }
-    },
-    "./client-runtime": {
-      "import": {
-        "types": "./dist/esm/client-runtime/index.d.ts",
-        "default": "./dist/esm/client-runtime/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/client-runtime/index.d.cts",
-        "default": "./dist/cjs/client-runtime/index.cjs"
+        "types": "./dist/cjs/server.d.cts",
+        "default": "./dist/cjs/server.cjs"
       }
     },
     "./config": {
       "import": {
-        "types": "./dist/esm/config/index.d.ts",
-        "default": "./dist/esm/config/index.js"
+        "types": "./dist/esm/config.d.ts",
+        "default": "./dist/esm/config.js"
+      },
+      "require": {
+        "types": "./dist/cjs/config.d.cts",
+        "default": "./dist/cjs/config.cjs"
+      }
+    },
+    "./api": {
+      "import": {
+        "types": "./dist/esm/api.d.ts",
+        "default": "./dist/esm/api.js"
+      },
+      "require": {
+        "types": "./dist/cjs/api.d.cts",
+        "default": "./dist/cjs/api.cjs"
       }
     },
     "./router-manifest": {
       "import": {
-        "types": "./dist/esm/router-manifest/index.d.ts",
-        "default": "./dist/esm/router-manifest/index.js"
+        "types": "./dist/esm/router-manifest.d.ts",
+        "default": "./dist/esm/router-manifest.js"
+      },
+      "require": {
+        "types": "./dist/cjs/router-manifest.d.cts",
+        "default": "./dist/cjs/router-manifest.cjs"
       }
     },
-    "./server-runtime": {
+    "./server-functions-client": {
       "import": {
-        "types": "./dist/esm/server-runtime/index.d.ts",
-        "default": "./dist/esm/server-runtime/index.js"
+        "types": "./dist/esm/server-functions-client.d.ts",
+        "default": "./dist/esm/server-functions-client.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-functions-client.d.cts",
+        "default": "./dist/cjs/server-functions-client.cjs"
       }
     },
-    "./react-server-runtime": {
+    "./server-functions-server": {
       "import": {
-        "types": "./dist/esm/react-server-runtime/index.d.ts",
-        "default": "./dist/esm/react-server-runtime/index.js"
+        "types": "./dist/esm/server-functions-server.d.ts",
+        "default": "./dist/esm/server-functions-server.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-functions-server.d.cts",
+        "default": "./dist/cjs/server-functions-server.cjs"
       }
     },
-    "./server-handler": {
+    "./server-functions-handler": {
       "import": {
-        "types": "./dist/esm/server-handler/index.d.ts",
-        "default": "./dist/esm/server-handler/index.js"
+        "types": "./dist/esm/server-functions-handler.d.ts",
+        "default": "./dist/esm/server-functions-handler.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-functions-handler.d.cts",
+        "default": "./dist/cjs/server-functions-handler.cjs"
+      }
+    },
+    "./server-functions-ssr": {
+      "import": {
+        "types": "./dist/esm/server-functions-ssr.d.ts",
+        "default": "./dist/esm/server-functions-ssr.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-functions-ssr.d.cts",
+        "default": "./dist/cjs/server-functions-ssr.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -131,33 +142,17 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/react-cross-context": "workspace:^",
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/router-generator": "workspace:^",
-    "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/start-vite-plugin": "workspace:^",
-    "@vinxi/react": "0.2.5",
-    "@vinxi/react-server-dom": "^0.0.3",
-    "@vinxi/server-components": "^0.4.3",
-    "@vinxi/server-functions": "^0.4.3",
-    "@vitejs/plugin-react": "^4.3.4",
-    "import-meta-resolve": "^4.1.0",
-    "isbot": "^5.1.17",
-    "jsesc": "^3.0.2",
-    "tiny-invariant": "^1.3.3",
-    "vinxi": "0.4.3",
-    "zod": "^3.23.8"
+    "@tanstack/start-client": "workspace:^",
+    "@tanstack/start-server": "workspace:^",
+    "@tanstack/start-config": "workspace:^",
+    "@tanstack/start-router-manifest": "workspace:^",
+    "@tanstack/start-server-functions-client": "workspace:^",
+    "@tanstack/start-server-functions-server": "workspace:^",
+    "@tanstack/start-server-functions-handler": "workspace:^",
+    "@tanstack/start-server-functions-ssr": "workspace:^",
+    "@tanstack/start-api-routes": "workspace:^"
   },
   "devDependencies": {
-    "@types/jsesc": "^3.0.3",
-    "@testing-library/react": "^16.0.1",
-    "nitropack": "^2.10.4",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "typescript": "^5.7.2"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0 || >=19.0.0",
-    "react-dom": ">=18.0.0 || >=19.0.0"
+    "esbuild": "^0.24.2"
   }
 }

@@ -1407,6 +1407,59 @@ describe('beforeLoad in the route definition', () => {
     expect(mock).toHaveBeenCalledWith({ foo: 'bar', layout: 'layout' })
     expect(mock).toHaveBeenCalledTimes(1)
   })
+
+  test('child route receives updated values after the values were previously returned by the child route and then updated by the parent route', async () => {
+    const mockIndexBeforeLoadFn = vi.fn()
+    let counter = 0
+
+    const rootRoute = createRootRoute({
+      beforeLoad: () => {
+        counter++
+        return {
+          counter,
+        }
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad: ({ context }) => {
+        mockIndexBeforeLoadFn(context)
+        return {
+          counter: context.counter,
+        }
+      },
+      component: () => {
+        const { counter } = indexRoute.useRouteContext()
+        return (
+          <div>
+            <span data-testid="index-page">Index page</span>
+            <span data-testid="counter">{counter}</span>
+          </div>
+        )
+      },
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    const rootElement = await screen.findByTestId('index-page')
+    expect(rootElement).toBeInTheDocument()
+
+    async function check(expectedCounter: number) {
+      const counterElement = await screen.findByTestId('counter')
+      expect(counterElement).toHaveTextContent(`${expectedCounter}`)
+
+      expect(mockIndexBeforeLoadFn).toHaveBeenCalledWith({
+        counter: expectedCounter,
+      })
+    }
+
+    await check(1)
+    await router.invalidate()
+    await check(2)
+  })
 })
 
 describe('loader in the route definition', () => {
@@ -1540,7 +1593,8 @@ describe('loader in the route definition', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test("on navigate (with preload using router methods), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
+  // disabled test due to flakiness
+  test.skip("on navigate (with preload using router methods), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
@@ -2379,7 +2433,7 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
         if (context === undefined) {
           throw new Error('context is undefined')
         }

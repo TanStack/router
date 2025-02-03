@@ -14,16 +14,27 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as PostsImport } from './routes/posts'
+import { Route as EditingBImport } from './routes/editing-b'
+import { Route as EditingAImport } from './routes/editing-a'
+import { Route as AnchorImport } from './routes/anchor'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
+import { Route as RedirectIndexImport } from './routes/redirect/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
 import { Route as StructuralSharingEnabledImport } from './routes/structural-sharing.$enabled'
+import { Route as RedirectTargetImport } from './routes/redirect/$target'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as groupLazyinsideImport } from './routes/(group)/lazyinside'
 import { Route as groupInsideImport } from './routes/(group)/inside'
 import { Route as groupLayoutImport } from './routes/(group)/_layout'
 import { Route as anotherGroupOnlyrouteinsideImport } from './routes/(another-group)/onlyrouteinside'
+import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
+import { Route as RedirectPreloadThirdImport } from './routes/redirect/preload/third'
+import { Route as RedirectPreloadSecondImport } from './routes/redirect/preload/second'
+import { Route as RedirectPreloadFirstImport } from './routes/redirect/preload/first'
+import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
+import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdEditImport } from './routes/posts_.$postId.edit'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
@@ -47,6 +58,24 @@ const PostsRoute = PostsImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const EditingBRoute = EditingBImport.update({
+  id: '/editing-b',
+  path: '/editing-b',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const EditingARoute = EditingAImport.update({
+  id: '/editing-a',
+  path: '/editing-a',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AnchorRoute = AnchorImport.update({
+  id: '/anchor',
+  path: '/anchor',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const LayoutRoute = LayoutImport.update({
   id: '/_layout',
   getParentRoute: () => rootRoute,
@@ -55,6 +84,12 @@ const LayoutRoute = LayoutImport.update({
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RedirectIndexRoute = RedirectIndexImport.update({
+  id: '/redirect/',
+  path: '/redirect/',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -67,6 +102,12 @@ const PostsIndexRoute = PostsIndexImport.update({
 const StructuralSharingEnabledRoute = StructuralSharingEnabledImport.update({
   id: '/structural-sharing/$enabled',
   path: '/structural-sharing/$enabled',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RedirectTargetRoute = RedirectTargetImport.update({
+  id: '/redirect/$target',
+  path: '/redirect/$target',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -105,6 +146,43 @@ const anotherGroupOnlyrouteinsideRoute =
     id: '/(another-group)/onlyrouteinside',
     path: '/onlyrouteinside',
     getParentRoute: () => rootRoute,
+  } as any)
+
+const RedirectTargetIndexRoute = RedirectTargetIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RedirectTargetRoute,
+} as any)
+
+const RedirectPreloadThirdRoute = RedirectPreloadThirdImport.update({
+  id: '/redirect/preload/third',
+  path: '/redirect/preload/third',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RedirectPreloadSecondRoute = RedirectPreloadSecondImport.update({
+  id: '/redirect/preload/second',
+  path: '/redirect/preload/second',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RedirectPreloadFirstRoute = RedirectPreloadFirstImport.update({
+  id: '/redirect/preload/first',
+  path: '/redirect/preload/first',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderImport.update({
+  id: '/via-loader',
+  path: '/via-loader',
+  getParentRoute: () => RedirectTargetRoute,
+} as any)
+
+const RedirectTargetViaBeforeLoadRoute =
+  RedirectTargetViaBeforeLoadImport.update({
+    id: '/via-beforeLoad',
+    path: '/via-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
   } as any)
 
 const PostsPostIdEditRoute = PostsPostIdEditImport.update({
@@ -153,6 +231,27 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof LayoutImport
+      parentRoute: typeof rootRoute
+    }
+    '/anchor': {
+      id: '/anchor'
+      path: '/anchor'
+      fullPath: '/anchor'
+      preLoaderRoute: typeof AnchorImport
+      parentRoute: typeof rootRoute
+    }
+    '/editing-a': {
+      id: '/editing-a'
+      path: '/editing-a'
+      fullPath: '/editing-a'
+      preLoaderRoute: typeof EditingAImport
+      parentRoute: typeof rootRoute
+    }
+    '/editing-b': {
+      id: '/editing-b'
+      path: '/editing-b'
+      fullPath: '/editing-b'
+      preLoaderRoute: typeof EditingBImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
@@ -211,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdImport
       parentRoute: typeof PostsImport
     }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: typeof RedirectTargetImport
+      parentRoute: typeof rootRoute
+    }
     '/structural-sharing/$enabled': {
       id: '/structural-sharing/$enabled'
       path: '/structural-sharing/$enabled'
@@ -224,6 +330,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
       parentRoute: typeof PostsImport
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectIndexImport
+      parentRoute: typeof rootRoute
     }
     '/(group)/_layout/insidelayout': {
       id: '/(group)/_layout/insidelayout'
@@ -259,6 +372,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/posts/$postId/edit'
       preLoaderRoute: typeof PostsPostIdEditImport
       parentRoute: typeof rootRoute
+    }
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: typeof RedirectTargetViaLoaderImport
+      parentRoute: typeof RedirectTargetImport
+    }
+    '/redirect/preload/first': {
+      id: '/redirect/preload/first'
+      path: '/redirect/preload/first'
+      fullPath: '/redirect/preload/first'
+      preLoaderRoute: typeof RedirectPreloadFirstImport
+      parentRoute: typeof rootRoute
+    }
+    '/redirect/preload/second': {
+      id: '/redirect/preload/second'
+      path: '/redirect/preload/second'
+      fullPath: '/redirect/preload/second'
+      preLoaderRoute: typeof RedirectPreloadSecondImport
+      parentRoute: typeof rootRoute
+    }
+    '/redirect/preload/third': {
+      id: '/redirect/preload/third'
+      path: '/redirect/preload/third'
+      fullPath: '/redirect/preload/third'
+      preLoaderRoute: typeof RedirectPreloadThirdImport
+      parentRoute: typeof rootRoute
+    }
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
+      path: '/'
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: typeof RedirectTargetIndexImport
+      parentRoute: typeof RedirectTargetImport
     }
   }
 }
@@ -330,43 +485,83 @@ const groupRouteChildren: groupRouteChildren = {
 
 const groupRouteWithChildren = groupRoute._addFileChildren(groupRouteChildren)
 
+interface RedirectTargetRouteChildren {
+  RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
+  RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
+  RedirectTargetIndexRoute: typeof RedirectTargetIndexRoute
+}
+
+const RedirectTargetRouteChildren: RedirectTargetRouteChildren = {
+  RedirectTargetViaBeforeLoadRoute: RedirectTargetViaBeforeLoadRoute,
+  RedirectTargetViaLoaderRoute: RedirectTargetViaLoaderRoute,
+  RedirectTargetIndexRoute: RedirectTargetIndexRoute,
+}
+
+const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
+  RedirectTargetRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
+  '/anchor': typeof AnchorRoute
+  '/editing-a': typeof EditingARoute
+  '/editing-b': typeof EditingBRoute
   '/posts': typeof PostsRouteWithChildren
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts/': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
+  '/anchor': typeof AnchorRoute
+  '/editing-a': typeof EditingARoute
+  '/editing-b': typeof EditingBRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/redirect/$target': typeof RedirectTargetIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
+  '/anchor': typeof AnchorRoute
+  '/editing-a': typeof EditingARoute
+  '/editing-b': typeof EditingBRoute
   '/posts': typeof PostsRouteWithChildren
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)': typeof groupRouteWithChildren
@@ -375,13 +570,21 @@ export interface FileRoutesById {
   '/(group)/lazyinside': typeof groupLazyinsideRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts/': typeof PostsIndexRoute
+  '/redirect/': typeof RedirectIndexRoute
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -389,37 +592,61 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | ''
+    | '/anchor'
+    | '/editing-a'
+    | '/editing-b'
     | '/posts'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
     | '/posts/$postId'
+    | '/redirect/$target'
     | '/structural-sharing/$enabled'
     | '/posts/'
+    | '/redirect'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
     | '/posts/$postId/edit'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
+    | '/redirect/$target/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | ''
+    | '/anchor'
+    | '/editing-a'
+    | '/editing-b'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
     | '/posts/$postId'
     | '/structural-sharing/$enabled'
     | '/posts'
+    | '/redirect'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
     | '/posts/$postId/edit'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
+    | '/redirect/$target'
   id:
     | '__root__'
     | '/'
     | '/_layout'
+    | '/anchor'
+    | '/editing-a'
+    | '/editing-b'
     | '/posts'
     | '/(another-group)/onlyrouteinside'
     | '/(group)'
@@ -428,34 +655,58 @@ export interface FileRouteTypes {
     | '/(group)/lazyinside'
     | '/_layout/_layout-2'
     | '/posts/$postId'
+    | '/redirect/$target'
     | '/structural-sharing/$enabled'
     | '/posts/'
+    | '/redirect/'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
     | '/posts_/$postId/edit'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
+    | '/redirect/$target/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
+  AnchorRoute: typeof AnchorRoute
+  EditingARoute: typeof EditingARoute
+  EditingBRoute: typeof EditingBRoute
   PostsRoute: typeof PostsRouteWithChildren
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
+  RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
+  RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
+  RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
+  RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
+  RedirectPreloadThirdRoute: typeof RedirectPreloadThirdRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
+  AnchorRoute: AnchorRoute,
+  EditingARoute: EditingARoute,
+  EditingBRoute: EditingBRoute,
   PostsRoute: PostsRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
+  RedirectTargetRoute: RedirectTargetRouteWithChildren,
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
+  RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
+  RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
+  RedirectPreloadSecondRoute: RedirectPreloadSecondRoute,
+  RedirectPreloadThirdRoute: RedirectPreloadThirdRoute,
 }
 
 export const routeTree = rootRoute
@@ -470,11 +721,19 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/_layout",
+        "/anchor",
+        "/editing-a",
+        "/editing-b",
         "/posts",
         "/(another-group)/onlyrouteinside",
         "/(group)",
+        "/redirect/$target",
         "/structural-sharing/$enabled",
-        "/posts_/$postId/edit"
+        "/redirect/",
+        "/posts_/$postId/edit",
+        "/redirect/preload/first",
+        "/redirect/preload/second",
+        "/redirect/preload/third"
       ]
     },
     "/": {
@@ -485,6 +744,15 @@ export const routeTree = rootRoute
       "children": [
         "/_layout/_layout-2"
       ]
+    },
+    "/anchor": {
+      "filePath": "anchor.tsx"
+    },
+    "/editing-a": {
+      "filePath": "editing-a.tsx"
+    },
+    "/editing-b": {
+      "filePath": "editing-b.tsx"
     },
     "/posts": {
       "filePath": "posts.tsx",
@@ -532,12 +800,23 @@ export const routeTree = rootRoute
       "filePath": "posts.$postId.tsx",
       "parent": "/posts"
     },
+    "/redirect/$target": {
+      "filePath": "redirect/$target.tsx",
+      "children": [
+        "/redirect/$target/via-beforeLoad",
+        "/redirect/$target/via-loader",
+        "/redirect/$target/"
+      ]
+    },
     "/structural-sharing/$enabled": {
       "filePath": "structural-sharing.$enabled.tsx"
     },
     "/posts/": {
       "filePath": "posts.index.tsx",
       "parent": "/posts"
+    },
+    "/redirect/": {
+      "filePath": "redirect/index.tsx"
     },
     "/(group)/_layout/insidelayout": {
       "filePath": "(group)/_layout.insidelayout.tsx",
@@ -557,6 +836,27 @@ export const routeTree = rootRoute
     },
     "/posts_/$postId/edit": {
       "filePath": "posts_.$postId.edit.tsx"
+    },
+    "/redirect/$target/via-beforeLoad": {
+      "filePath": "redirect/$target/via-beforeLoad.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/via-loader": {
+      "filePath": "redirect/$target/via-loader.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/preload/first": {
+      "filePath": "redirect/preload/first.tsx"
+    },
+    "/redirect/preload/second": {
+      "filePath": "redirect/preload/second.tsx"
+    },
+    "/redirect/preload/third": {
+      "filePath": "redirect/preload/third.tsx"
+    },
+    "/redirect/$target/": {
+      "filePath": "redirect/$target/index.tsx",
+      "parent": "/redirect/$target"
     }
   }
 }

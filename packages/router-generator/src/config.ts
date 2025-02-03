@@ -19,7 +19,7 @@ const defaultTemplate = {
 }
 
 export const configSchema = z.object({
-  virtualRouteConfig: virtualRootRouteSchema.optional(),
+  virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
   routeFileIgnorePattern: z.string().optional(),
@@ -67,6 +67,14 @@ export const configSchema = z.object({
 
 export type Config = z.infer<typeof configSchema>
 
+type ResolveParams = {
+  configDirectory: string
+}
+
+export function resolveConfigPath({ configDirectory }: ResolveParams) {
+  return path.resolve(configDirectory, 'tsr.config.json')
+}
+
 export function getConfig(
   inlineConfig: Partial<Config> = {},
   configDirectory?: string,
@@ -74,7 +82,7 @@ export function getConfig(
   if (configDirectory === undefined) {
     configDirectory = process.cwd()
   }
-  const configFilePathJson = path.resolve(configDirectory, 'tsr.config.json')
+  const configFilePathJson = resolveConfigPath({ configDirectory })
   const exists = existsSync(configFilePathJson)
 
   let config: Config
