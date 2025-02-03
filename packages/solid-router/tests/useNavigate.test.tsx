@@ -1274,12 +1274,14 @@ test('when setting search params with 2 parallel navigate calls', async () => {
     }),
   })
 
+  // console.log(indexRoute.options.validateSearch)
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
   })
 
   render(() => <RouterProvider router={router} />)
 
+  // console.log(router.state.location)
   expect(router.state.location.search).toEqual({
     param1: 'param1-default',
     param2: 'param2-default',

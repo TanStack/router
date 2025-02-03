@@ -7,7 +7,7 @@ import {
   waitFor,
 } from '@solidjs/testing-library'
 import { z } from 'zod'
-import { onMount } from 'solid-js'
+import { createEffect, onMount } from 'solid-js'
 import {
   Link,
   Outlet,
@@ -23,6 +23,7 @@ import type { StandardSchemaValidator } from '@tanstack/router-core'
 import type {
   AnyRoute,
   AnyRouter,
+  MakeRemountDepsOptionsUnion,
   RouterOptions,
   ValidatorFn,
   ValidatorObj,
@@ -61,6 +62,18 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     },
   })
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' })
+  const usersRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/users',
+  })
+  const userRoute = createRoute({
+    getParentRoute: () => usersRoute,
+    path: '/$userId',
+  })
+  const userFilesRoute = createRoute({
+    getParentRoute: () => userRoute,
+    path: '/files/$fileId',
+  })
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/posts',
@@ -224,8 +237,21 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     },
   })
 
+  const nestedSearchRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    validateSearch: z.object({ foo: z.string() }),
+    path: 'nested-search',
+  })
+
+  const nestedSearchChildRoute = createRoute({
+    getParentRoute: () => nestedSearchRoute,
+    validateSearch: z.object({ bar: z.string() }),
+    path: 'child',
+  })
+
   const routeTree = rootRoute.addChildren([
     indexRoute,
+    usersRoute.addChildren([userRoute.addChildren([userFilesRoute])]),
     postsRoute.addChildren([postIdRoute]),
     pathSegmentEAccentRoute,
     pathSegmentRocketEmojiRoute,
@@ -252,6 +278,7 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       searchWithDefaultIndexRoute,
       searchWithDefaultCheckRoute,
     ]),
+    nestedSearchRoute.addChildren([nestedSearchChildRoute]),
   ])
 
   const router = createRouter({ routeTree, ...options })
@@ -677,8 +704,18 @@ describe('router emits events during rendering', () => {
 })
 
 describe('router rendering stability', () => {
-  it('should not remount the page component when navigating to the same route', async () => {
-    const callerMock = vi.fn()
+  type RemountDepsFn = (opts: MakeRemountDepsOptionsUnion) => any
+  async function setup(opts?: {
+    remountDeps: {
+      default?: RemountDepsFn
+      fooId?: RemountDepsFn
+      barId?: RemountDepsFn
+    }
+  }) {
+    const mountMocks = {
+      fooId: vi.fn(),
+      barId: vi.fn(),
+    }
 
     const rootRoute = createRootRoute({
       component: () => {
@@ -686,11 +723,33 @@ describe('router rendering stability', () => {
           <div>
             <p>Root</p>
             <div>
-              <Link to="/foo/$id" params={{ id: '1' }}>
+              <Link
+                data-testid="link-foo-1"
+                to="/foo/$fooId"
+                params={{ fooId: '1' }}
+              >
                 Foo1
               </Link>
-              <Link to="/foo/$id" params={{ id: '2' }}>
+              <Link
+                data-testid="link-foo-2"
+                to="/foo/$fooId"
+                params={{ fooId: '2' }}
+              >
                 Foo2
+              </Link>
+              <Link
+                data-testid="link-foo-3-bar-1"
+                to="/foo/$fooId/bar/$barId"
+                params={{ fooId: '3', barId: '1' }}
+              >
+                Foo3-Bar1
+              </Link>
+              <Link
+                data-testid="link-foo-3-bar-2"
+                to="/foo/$fooId/bar/$barId"
+                params={{ fooId: '3', barId: '2' }}
+              >
+                Foo3-Bar2
               </Link>
             </div>
             <Outlet />
@@ -707,43 +766,126 @@ describe('router rendering stability', () => {
     })
     const fooIdRoute = createRoute({
       getParentRoute: () => rootRoute,
-      path: '/foo/$id',
+      path: '/foo/$fooId',
       component: FooIdRouteComponent,
+      remountDeps: opts?.remountDeps.fooId,
     })
     function FooIdRouteComponent() {
-      const id = fooIdRoute.useParams({ select: (s) => s.id })
-
-      onMount(() => {
-        callerMock()
+      const fooId = fooIdRoute.useParams({ select: (s) => s.fooId })
+      createEffect(() => {
+        mountMocks.fooId()
       })
 
-      return <div>Foo page {id}</div>
+      return (
+        <div data-testid="fooId-page">
+          Foo page <span data-testid="fooId-value">{fooId}</span> <Outlet />
+        </div>
+      )
     }
 
-    const routeTree = rootRoute.addChildren([fooIdRoute, indexRoute])
-    const router = createRouter({ routeTree })
+    const barIdRoute = createRoute({
+      getParentRoute: () => fooIdRoute,
+      path: '/bar/$barId',
+      component: BarIdRouteComponent,
+      remountDeps: opts?.remountDeps.barId,
+    })
 
-    render(() => <RouterProvider router={router} />)
+    function BarIdRouteComponent() {
+      const barId = fooIdRoute.useParams({ select: (s) => s.barId })
 
-    const foo1Link = await screen.findByRole('link', { name: 'Foo1' })
-    const foo2Link = await screen.findByRole('link', { name: 'Foo2' })
+      createEffect(() => {
+        mountMocks.barId()
+      })
 
-    expect(foo1Link).toBeInTheDocument()
-    expect(foo2Link).toBeInTheDocument()
+      return (
+        <div data-testid="barId-page">
+          Bar page <span data-testid="barId-value">{barId}</span> <Outlet />
+        </div>
+      )
+    }
 
-    fireEvent.click(foo1Link)
+    const routeTree = rootRoute.addChildren([
+      fooIdRoute.addChildren([barIdRoute]),
+      indexRoute,
+    ])
+    const router = createRouter({
+      routeTree,
+      defaultRemountDeps: opts?.remountDeps.default,
+    })
 
-    const fooPage1 = await screen.findByText('Foo page 1')
-    expect(fooPage1).toBeInTheDocument()
+    await render(() => <RouterProvider router={router} />)
 
-    expect(callerMock).toBeCalledTimes(1)
+    const foo1 = await screen.findByTestId('link-foo-1')
+    const foo2 = await screen.findByTestId('link-foo-2')
 
-    fireEvent.click(foo2Link)
+    const foo3bar1 = await screen.findByTestId('link-foo-3-bar-1')
+    const foo3bar2 = await screen.findByTestId('link-foo-3-bar-2')
 
-    const fooPage2 = await screen.findByText('Foo page 2')
-    expect(fooPage2).toBeInTheDocument()
+    expect(foo1).toBeInTheDocument()
+    expect(foo2).toBeInTheDocument()
+    expect(foo3bar1).toBeInTheDocument()
+    expect(foo3bar2).toBeInTheDocument()
 
-    expect(callerMock).toBeCalledTimes(1)
+    return { router, mountMocks, links: { foo1, foo2, foo3bar1, foo3bar2 } }
+  }
+
+  async function check(
+    page: 'fooId' | 'barId',
+    expected: { value: string; mountCount: number },
+    mountMocks: Record<'fooId' | 'barId', () => void>,
+  ) {
+    const p = await screen.findByTestId(`${page}-page`)
+    expect(p).toBeInTheDocument()
+    const value = await screen.findByTestId(`${page}-value`)
+    expect(value).toBeInTheDocument()
+    expect(value).toHaveTextContent(expected.value)
+
+    expect(mountMocks[page]).toBeCalledTimes(expected.mountCount)
+  }
+
+  it('should not remount the page component when navigating to the same route but different path param if no remount deps are configured', async () => {
+    const { mountMocks, links } = await setup()
+
+    await fireEvent.click(links.foo1)
+    await check('fooId', { value: '1', mountCount: 1 }, mountMocks)
+    expect(mountMocks.barId).not.toHaveBeenCalled()
+
+    await fireEvent.click(links.foo2)
+    await check('fooId', { value: '2', mountCount: 1 }, mountMocks)
+    expect(mountMocks.barId).not.toHaveBeenCalled()
+
+    await fireEvent.click(links.foo3bar1)
+    await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
+    await check('barId', { value: '1', mountCount: 1 }, mountMocks),
+      await fireEvent.click(links.foo3bar2)
+    await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
+    await check('barId', { value: '2', mountCount: 1 }, mountMocks)
+  })
+
+  it('should remount the fooId and barId page component when navigating to the same route but different path param if defaultRemountDeps with params is used', async () => {
+    const defaultRemountDeps: RemountDepsFn = (opts) => {
+      return opts.params
+    }
+    const { mountMocks, links } = await setup({
+      remountDeps: { default: defaultRemountDeps },
+    })
+
+    await fireEvent.click(links.foo1)
+    await check('fooId', { value: '1', mountCount: 1 }, mountMocks)
+    expect(mountMocks.barId).not.toHaveBeenCalled()
+
+    await fireEvent.click(links.foo2)
+
+    await check('fooId', { value: '2', mountCount: 2 }, mountMocks)
+    expect(mountMocks.barId).not.toHaveBeenCalled()
+
+    await fireEvent.click(links.foo3bar1)
+    await check('fooId', { value: '3', mountCount: 3 }, mountMocks)
+    await check('barId', { value: '1', mountCount: 1 }, mountMocks)
+
+    await fireEvent.click(links.foo3bar2)
+    await check('fooId', { value: '3', mountCount: 3 }, mountMocks)
+    await check('barId', { value: '2', mountCount: 2 }, mountMocks)
   })
 })
 
@@ -788,18 +930,84 @@ describe('router matches URLs to route definitions', () => {
     ])
   })
 
-  it('layout splat route matches without splat', async () => {
+  it('nested path params', async () => {
     const { router } = createTestRouter({
-      history: createMemoryHistory({ initialEntries: ['/layout-splat'] }),
+      history: createMemoryHistory({
+        initialEntries: ['/users/5678/files/123'],
+      }),
     })
 
     await router.load()
 
     expect(router.state.matches.map((d) => d.routeId)).toEqual([
       '__root__',
-      '/layout-splat',
-      '/layout-splat/',
+      '/users',
+      '/users/$userId',
+      '/users/$userId/files/$fileId',
     ])
+  })
+})
+
+describe('matches', () => {
+  describe('params', () => {
+    it('/users/$userId/files/$fileId', async () => {
+      const { router } = createTestRouter({
+        history: createMemoryHistory({
+          initialEntries: ['/users/5678/files/123'],
+        }),
+      })
+
+      await router.load()
+
+      const expectedStrictParams: Record<string, unknown> = {
+        __root__: {},
+        '/users': {},
+        '/users/$userId': { userId: '5678' },
+        '/users/$userId/files/$fileId': { userId: '5678', fileId: '123' },
+      }
+
+      expect(router.state.matches.length).toEqual(
+        Object.entries(expectedStrictParams).length,
+      )
+      router.state.matches.forEach((match) => {
+        expect(match.params).toEqual(
+          expectedStrictParams['/users/$userId/files/$fileId'],
+        )
+      })
+      router.state.matches.forEach((match) => {
+        expect(match._strictParams).toEqual(expectedStrictParams[match.routeId])
+      })
+    })
+  })
+
+  describe('search', () => {
+    it('/nested-search/child?foo=hello&bar=world', async () => {
+      const { router } = createTestRouter({
+        history: createMemoryHistory({
+          initialEntries: ['/nested-search/child?foo=hello&bar=world'],
+        }),
+      })
+
+      await router.load()
+
+      const expectedStrictSearch: Record<string, unknown> = {
+        __root__: {},
+        '/nested-search': { foo: 'hello' },
+        '/nested-search/child': { foo: 'hello', bar: 'world' },
+      }
+
+      expect(router.state.matches.length).toEqual(
+        Object.entries(expectedStrictSearch).length,
+      )
+      router.state.matches.forEach((match) => {
+        expect(match.search).toEqual(
+          expectedStrictSearch['/nested-search/child'],
+        )
+      })
+      router.state.matches.forEach((match) => {
+        expect(match._strictSearch).toEqual(expectedStrictSearch[match.routeId])
+      })
+    })
   })
 })
 

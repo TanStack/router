@@ -112,18 +112,31 @@ export const Match = (props: { matchId: string }) => {
 export const MatchInner = (props: { matchId: string }): any => {
   const router = useRouter()
 
-  // { match, matchIndex, routeId } =
-  const matchState = useRouterState({
+  // { match, key, routeId } =
+  const matchState: Solid.Accessor<any> = useRouterState({
     select: (s) => {
       const matchIndex = s.matches.findIndex((d) => d.id === props.matchId)
       const match = s.matches[matchIndex]!
       const routeId = match.routeId as string
-      return {
+
+      const remountFn =
+        (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+        router.options.defaultRemountDeps
+      const remountDeps = remountFn?.({
         routeId,
-        matchIndex,
+        loaderDeps: match.loaderDeps,
+        params: match._strictParams,
+        search: match._strictSearch,
+      })
+      const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+
+      return {
+        key,
+        routeId,
         match: pick(match, ['id', 'status', 'error']),
       }
     },
+    structuralSharing: true as any,
   })
 
   const route = () => router.routesById[matchState().routeId]!
