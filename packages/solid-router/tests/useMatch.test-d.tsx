@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useMatch } from '../src'
 import type { MakeRouteMatch, MakeRouteMatchUnion } from '../src/Matches'
+import type * as Solid from 'solid-js'
 
 const rootRoute = createRootRoute()
 
@@ -36,7 +37,7 @@ describe('useMatch', () => {
         TRouteMatch
       >({ from, shouldThrow })
 
-      expectTypeOf(match).toEqualTypeOf<TRouteMatch>()
+      expectTypeOf(match).toEqualTypeOf<Solid.Accessor<TRouteMatch>>()
     })
 
     test('return type is `RouteMatch | undefined` when shouldThrow = false', () => {
@@ -49,7 +50,9 @@ describe('useMatch', () => {
         TRouteMatch
       >({ from, shouldThrow })
 
-      expectTypeOf(match).toEqualTypeOf<TRouteMatch | undefined>()
+      expectTypeOf(match).toEqualTypeOf<
+        Solid.Accessor<TRouteMatch | undefined>
+      >()
     })
   })
 
@@ -59,7 +62,9 @@ describe('useMatch', () => {
       strict,
     })
 
-    expectTypeOf(match).toEqualTypeOf<MakeRouteMatchUnion<DefaultRouter>>()
+    expectTypeOf(match).toEqualTypeOf<
+      Solid.Accessor<MakeRouteMatchUnion<DefaultRouter>>
+    >()
   })
 
   test('shouldThrow must be false when strict is false', () => {

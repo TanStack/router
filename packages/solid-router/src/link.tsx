@@ -570,8 +570,10 @@ export function useLinkProps<
   }
 
   const next = Solid.createMemo(() => {
-    currentSearch()
-    return Solid.untrack(() => router.buildLocation(options as any))
+    return {
+      pathname: '/',
+      href: '/',
+    }
   })
 
   const preload = Solid.createMemo(() => {
