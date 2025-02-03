@@ -895,7 +895,7 @@ describe('Link', () => {
     const indexLink = await screen.findByRole('link', { name: 'Index' })
     fireEvent.click(indexLink)
 
-    expect(screen.findByText('IndexError')).rejects.toThrow()
+    await expect(screen.findByText('IndexError')).rejects.toThrow()
     expect(indexOnError).not.toHaveBeenCalledOnce()
   })
 

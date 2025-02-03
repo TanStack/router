@@ -89,7 +89,9 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
             undefined,
             { timeout: 1500 },
           )
-          expect(screen.findByText('About route content')).rejects.toThrow()
+          await expect(
+            screen.findByText('About route content'),
+          ).rejects.toThrow()
           expect(errorComponent).toBeInTheDocument()
         },
       )
@@ -123,7 +125,9 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
             undefined,
             { timeout: 750 },
           )
-          expect(screen.findByText('Index route content')).rejects.toThrow()
+          await expect(
+            screen.findByText('Index route content'),
+          ).rejects.toThrow()
           expect(errorComponent).toBeInTheDocument()
         },
       )
