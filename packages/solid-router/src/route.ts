@@ -763,7 +763,6 @@ export class Route<
       !((options as any)?.id && (options as any)?.path),
       `Route cannot have both an 'id' and a 'path' option.`,
     )
-    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   types!: {

@@ -214,7 +214,6 @@ export class LazyRoute<TRoute extends AnyRoute> {
     } & LazyRouteOptions,
   ) {
     this.options = opts
-    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
