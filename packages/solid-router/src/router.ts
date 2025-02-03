@@ -549,7 +549,6 @@ function routeNeedsPreload(route: AnyRoute) {
 }
 
 function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
-
   if (validateSearch == null) return {}
 
   if ('~standard' in validateSearch) {
@@ -1163,16 +1162,14 @@ export class Router<
         Record<string, any>,
         any,
       ] = (() => {
-        
         const parentSearch = parentMatch?.search ?? next.search
         const parentStrictSearch = parentMatch?._strictSearch ?? {}
 
         try {
-
           const strictSearch =
-          validateSearch(route.options.validateSearch, { ...parentSearch }) ??
-          {}
-          
+            validateSearch(route.options.validateSearch, { ...parentSearch }) ??
+            {}
+
           return [
             {
               ...parentSearch,
@@ -1268,10 +1265,7 @@ export class Router<
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
           _strictParams: usedParams,
-          pathname: joinPaths([
-            this.basepath,
-            interpolatedPath,
-          ]),
+          pathname: joinPaths([this.basepath, interpolatedPath]),
           updatedAt: Date.now(),
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
