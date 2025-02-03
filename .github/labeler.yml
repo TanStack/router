@@ -26,6 +26,8 @@
   - 'packages/router-generator/**/*'
 'package: router-plugin':
   - 'packages/router-plugin/**/*'
+'package: router-utils':
+  - 'packages/router-utils/**/*'
 'package: router-vite-plugin':
   - 'packages/router-vite-plugin/**/*'
 'package: server-functions-plugin':
