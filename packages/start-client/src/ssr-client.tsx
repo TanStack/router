@@ -31,19 +31,19 @@ export interface StartSsrGlobal {
   initMatch: (match: SsrMatch) => void
   resolvePromise: (opts: {
     matchId: string
-    id: string
+    id: number
     promiseState: DeferredPromiseState<any>
   }) => void
-  injectChunk: (opts: { matchId: string; id: string; chunk: string }) => void
-  closeStream: (opts: { matchId: string; id: string }) => void
+  injectChunk: (opts: { matchId: string; id: number; chunk: string }) => void
+  closeStream: (opts: { matchId: string; id: number }) => void
 }
 
 export interface SsrMatch {
   id: string
-  __beforeLoadContext?: string
+  __beforeLoadContext: string
   loaderData?: string
   error?: string
-  extracted: Record<string, ClientExtractedEntry>
+  extracted?: Array<ClientExtractedEntry>
   updatedAt: MakeRouteMatch['updatedAt']
   status: MakeRouteMatch['status']
 }
@@ -160,7 +160,7 @@ export function hydrate(router: AnyRouter) {
       }
 
       // Handle extracted
-      Object.entries((match as any).extracted).forEach(([_, ex]: any) => {
+      ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
         deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
       })
     } else {

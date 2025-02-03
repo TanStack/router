@@ -6,7 +6,13 @@ export const Route = createFileRoute(
 )({
   component: () => {
     const { target } = Route.useParams()
-    const { reloadDocument } = Route.useSearch()
-    return <RedirectOnClick target={target} reloadDocument={reloadDocument} />
+    const { reloadDocument, externalHost } = Route.useSearch()
+    return (
+      <RedirectOnClick
+        target={target}
+        reloadDocument={reloadDocument}
+        externalHost={externalHost}
+      />
+    )
   },
 })

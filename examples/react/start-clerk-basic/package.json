@@ -9,10 +9,10 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.8.16",
-    "@tanstack/react-router": "^1.98.4",
-    "@tanstack/router-devtools": "^1.98.4",
-    "@tanstack/start": "^1.98.6",
+    "@clerk/tanstack-start": "0.9.2",
+    "@tanstack/react-router": "^1.99.0",
+    "@tanstack/router-devtools": "^1.99.0",
+    "@tanstack/start": "^1.99.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
