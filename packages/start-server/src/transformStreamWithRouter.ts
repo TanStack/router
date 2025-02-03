@@ -170,7 +170,7 @@ export function transformStreamWithRouter(
     onData: (chunk) => {
       const text = decodeChunk(chunk.value)
 
-      const chunkString = leftover + text
+      let chunkString = leftover + text
       const bodyEndMatch = chunkString.match(patternBodyEnd)
       const htmlEndMatch = chunkString.match(patternHtmlEnd)
 
@@ -190,11 +190,11 @@ export function transformStreamWithRouter(
           const remaining = chunkString.slice(index + headTag.length)
           finalPassThrough.write(
             chunkString.slice(0, index) +
-              headTag +
-              getBufferedRouterStream() +
-              remaining,
+            headTag +
+            getBufferedRouterStream()
           )
-          return
+          // make sure to only write `remaining` until the next closing tag
+          chunkString = remaining
         }
       }
 
@@ -222,7 +222,7 @@ export function transformStreamWithRouter(
         return
       }
 
-      let result
+      let result: RegExpExecArray | null
       let lastIndex = 0
       while ((result = patternClosingTag.exec(chunkString)) !== null) {
         lastIndex = result.index + result[0].length
