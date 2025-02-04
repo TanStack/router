@@ -315,6 +315,7 @@ export function compileCodeSplitReferenceRoute(
   return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
+    filename: opts.filename,
   })
 }
 
@@ -589,6 +590,7 @@ export function compileCodeSplitVirtualRoute(
   return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
+    filename: opts.filename,
   })
 }
 
