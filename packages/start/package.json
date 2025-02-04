@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start",
-  "version": "1.97.22",
+  "version": "1.99.5",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -151,6 +151,11 @@
     "@tanstack/start-server-functions-handler": "workspace:^",
     "@tanstack/start-server-functions-ssr": "workspace:^",
     "@tanstack/start-api-routes": "workspace:^"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0 || >=19.0.0",
+    "react-dom": ">=18.0.0 || >=19.0.0",
+    "vite": "^6.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.24.2"

@@ -1,10 +1,5 @@
 import * as React from 'react'
-import {
-  Link,
-  Outlet,
-  ScrollRestoration,
-  createRootRoute,
-} from '@tanstack/react-router'
+import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import { Meta, Scripts } from '@tanstack/start'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
@@ -157,7 +152,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </div>
         <hr />
         {children}
-        <ScrollRestoration />
         <RouterDevtools position="bottom-right" />
         <Scripts />
       </body>

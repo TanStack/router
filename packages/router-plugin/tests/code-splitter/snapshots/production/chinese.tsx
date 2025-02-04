@@ -7,3 +7,6 @@ export const Route = createFileRoute('/')({
 interface DemoProps {
   title: string;
 }
+export function TSRDummyComponent() {
+  return null;
+}

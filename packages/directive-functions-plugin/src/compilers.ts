@@ -1,16 +1,9 @@
 import * as babel from '@babel/core'
-import _generate from '@babel/generator'
-import { parse } from '@babel/parser'
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
-import type { ParseResult } from '@babel/parser'
-
-let generate = _generate
-
-if ('default' in generate) {
-  generate = generate.default as typeof generate
-}
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 export interface DirectiveFn {
   nodePath: SupportedFunctionPath
@@ -46,29 +39,14 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   // devSplitImporter: string
 }
 
-export type ParseAstOptions = {
-  code: string
-  filename: string
-  root: string
-}
-
-export function parseAst(opts: ParseAstOptions): ParseResult<babel.types.File> {
-  return parse(opts.code, {
-    plugins: ['jsx', 'typescript'],
-    sourceType: 'module',
-    ...{
-      root: opts.root,
-      filename: opts.filename,
-      sourceMaps: true,
-    },
-  })
-}
-
 function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
   return `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
-export function compileDirectives(opts: CompileDirectivesOpts) {
+export function compileDirectives(opts: CompileDirectivesOpts): {
+  compiledResult: GeneratorResult
+  directiveFnsById: Record<string, DirectiveFn>
+} {
   const directiveSplitParam = buildDirectiveSplitParam(opts)
   const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
 
@@ -123,9 +101,10 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
 
   deadCodeElimination(ast)
 
-  const compiledResult = generate(ast, {
+  const compiledResult = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
+    filename: opts.filename,
   })
 
   return {
@@ -248,7 +227,7 @@ export function findDirectives(
     replacer?: ReplacerFn
     directiveSplitParam: string
   },
-) {
+): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
   const functionNameSet: Set<string> = new Set()
 

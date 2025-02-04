@@ -259,6 +259,8 @@ export type {
   BeforeLoadContextParameter,
   ResolveAllContext,
   ResolveAllParamsFromParent,
+  MakeRemountDepsOptionsUnion,
+  RemountDepsOptions,
 } from './route'
 
 export type {
@@ -315,11 +317,9 @@ export type {
 } from './RouterProvider'
 
 export {
-  useScrollRestoration,
   useElementScrollRestoration,
   ScrollRestoration,
-} from './scroll-restoration'
-export type { ScrollRestorationOptions } from './scroll-restoration'
+} from './ScrollRestoration'
 
 export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'

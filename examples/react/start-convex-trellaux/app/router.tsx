@@ -50,6 +50,7 @@ export function createRouter() {
           {children}
         </ConvexProvider>
       ),
+      scrollRestoration: true,
     }),
     queryClient,
   )

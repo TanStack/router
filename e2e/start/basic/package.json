@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vinxi dev --port 3000",
     "dev:e2e": "vinxi dev",
-    "build": "vinxi build",
+    "build": "vinxi build && tsc --noEmit",
     "start": "vinxi start",
     "test:e2e": "playwright test --project=chromium"
   },
@@ -22,14 +22,16 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.0",
-    "@tailwindcss/vite": "^4.0.0",
+    "@playwright/test": "^1.50.1",
     "@types/node": "^22.10.2",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.21",
+    "@tanstack/router-e2e-utils": "workspace:^",
     "@vitejs/plugin-react": "^4.3.4",
     "combinate": "^1.1.11",
-    "tailwindcss": "^4.0.0",
+    "postcss": "^8.5.1",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
   }

@@ -150,3 +150,16 @@ export async function writeIfDifferent(
 
   return false
 }
+
+/**
+ * This function resets the regex index to 0 so that it can be reused
+ * without having to create a new regex object or worry about the last
+ * state when using the global flag.
+ *
+ * @param regex The regex object to reset
+ * @returns
+ */
+export function resetRegex(regex: RegExp) {
+  regex.lastIndex = 0
+  return
+}

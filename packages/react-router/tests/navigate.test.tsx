@@ -117,7 +117,7 @@ describe('router.navigate navigation using a single path param - object syntax f
 
     await router.load()
 
-    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
 
     await router.navigate({
       to: '/posts/$slug',
@@ -135,7 +135,7 @@ describe('router.navigate navigation using a single path param - object syntax f
 
     await router.load()
 
-    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
 
     await router.navigate({
       params: { slug: 'tkdodo' },
@@ -154,7 +154,7 @@ describe('router.navigate navigation using a single path param - function syntax
 
     await router.load()
 
-    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
 
     await router.navigate({
       to: '/posts/$slug',
@@ -172,7 +172,7 @@ describe('router.navigate navigation using a single path param - function syntax
 
     await router.load()
 
-    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
 
     await router.navigate({
       params: (p: any) => ({ ...p, slug: 'tkdodo' }),

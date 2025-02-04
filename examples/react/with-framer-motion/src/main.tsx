@@ -189,6 +189,7 @@ const routeTree = rootRoute.addChildren([
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
+  scrollRestoration: true,
   context: {
     // loaderClient,
   },

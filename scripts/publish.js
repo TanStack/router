@@ -132,6 +132,10 @@ await publish({
       name: '@tanstack/start-router-manifest',
       packageDir: 'packages/start-router-manifest',
     },
+    {
+      name: '@tanstack/router-utils',
+      packageDir: 'packages/router-utils',
+    },
   ],
   branchConfigs: {
     main: {

@@ -3,7 +3,7 @@ import { importedLoader } from '../shared/imported';
 function Component() {
   return <div>Component</div>;
 }
-const component = memo(Component);
-export { component };
-const loader = importedLoader;
-export { loader };
+const SplitComponent = memo(Component);
+export { SplitComponent as component };
+const SplitLoader = importedLoader;
+export { SplitLoader as loader };

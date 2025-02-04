@@ -330,7 +330,7 @@ describe('interpolatePath', () => {
         path: exp.path,
         params: exp.params,
         decodeCharMap: exp.decodeCharMap,
-      })
+      }).interpolatedPath
       expect(result).toBe(exp.result)
     })
   })

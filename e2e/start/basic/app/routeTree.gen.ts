@@ -23,13 +23,17 @@ import { Route as IsomorphicFnsImport } from './routes/isomorphic-fns'
 import { Route as EnvOnlyImport } from './routes/env-only'
 import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
+import { Route as NotFoundRouteImport } from './routes/not-found/route'
 import { Route as IndexImport } from './routes/index'
 import { Route as UsersIndexImport } from './routes/users.index'
 import { Route as RedirectIndexImport } from './routes/redirect/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as NotFoundIndexImport } from './routes/not-found/index'
 import { Route as UsersUserIdImport } from './routes/users.$userId'
 import { Route as RedirectTargetImport } from './routes/redirect/$target'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
+import { Route as NotFoundViaLoaderImport } from './routes/not-found/via-loader'
+import { Route as NotFoundViaBeforeLoadImport } from './routes/not-found/via-beforeLoad'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
 import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
@@ -115,6 +119,12 @@ const LayoutRoute = LayoutImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const NotFoundRouteRoute = NotFoundRouteImport.update({
+  id: '/not-found',
+  path: '/not-found',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
@@ -139,6 +149,12 @@ const PostsIndexRoute = PostsIndexImport.update({
   getParentRoute: () => PostsRoute,
 } as any)
 
+const NotFoundIndexRoute = NotFoundIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotFoundRouteRoute,
+} as any)
+
 const UsersUserIdRoute = UsersUserIdImport.update({
   id: '/$userId',
   path: '/$userId',
@@ -155,6 +171,18 @@ const PostsPostIdRoute = PostsPostIdImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
+} as any)
+
+const NotFoundViaLoaderRoute = NotFoundViaLoaderImport.update({
+  id: '/via-loader',
+  path: '/via-loader',
+  getParentRoute: () => NotFoundRouteRoute,
+} as any)
+
+const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadImport.update({
+  id: '/via-beforeLoad',
+  path: '/via-beforeLoad',
+  getParentRoute: () => NotFoundRouteRoute,
 } as any)
 
 const LayoutLayout2Route = LayoutLayout2Import.update({
@@ -236,6 +264,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/not-found': {
+      id: '/not-found'
+      path: '/not-found'
+      fullPath: '/not-found'
+      preLoaderRoute: typeof NotFoundRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
@@ -329,6 +364,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2Import
       parentRoute: typeof LayoutImport
     }
+    '/not-found/via-beforeLoad': {
+      id: '/not-found/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/not-found/via-beforeLoad'
+      preLoaderRoute: typeof NotFoundViaBeforeLoadImport
+      parentRoute: typeof NotFoundRouteImport
+    }
+    '/not-found/via-loader': {
+      id: '/not-found/via-loader'
+      path: '/via-loader'
+      fullPath: '/not-found/via-loader'
+      preLoaderRoute: typeof NotFoundViaLoaderImport
+      parentRoute: typeof NotFoundRouteImport
+    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
@@ -349,6 +398,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/users/$userId'
       preLoaderRoute: typeof UsersUserIdImport
       parentRoute: typeof UsersImport
+    }
+    '/not-found/': {
+      id: '/not-found/'
+      path: '/'
+      fullPath: '/not-found/'
+      preLoaderRoute: typeof NotFoundIndexImport
+      parentRoute: typeof NotFoundRouteImport
     }
     '/posts/': {
       id: '/posts/'
@@ -446,6 +502,22 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
+interface NotFoundRouteRouteChildren {
+  NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
+  NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
+  NotFoundIndexRoute: typeof NotFoundIndexRoute
+}
+
+const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
+  NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
+  NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
+  NotFoundIndexRoute: NotFoundIndexRoute,
+}
+
+const NotFoundRouteRouteWithChildren = NotFoundRouteRoute._addFileChildren(
+  NotFoundRouteRouteChildren,
+)
+
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
   LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
@@ -523,6 +595,7 @@ const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/not-found': typeof NotFoundRouteRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
   '/env-only': typeof EnvOnlyRoute
@@ -535,9 +608,12 @@ export interface FileRoutesByFullPath {
   '/status': typeof StatusRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
+  '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/users/$userId': typeof UsersUserIdRoute
+  '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -565,8 +641,11 @@ export interface FileRoutesByTo {
   '/server-fns': typeof ServerFnsRoute
   '/status': typeof StatusRoute
   '/stream': typeof StreamRoute
+  '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/not-found': typeof NotFoundIndexRoute
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/users': typeof UsersIndexRoute
@@ -585,6 +664,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/not-found': typeof NotFoundRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/env-only': typeof EnvOnlyRoute
@@ -598,9 +678,12 @@ export interface FileRoutesById {
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/users/$userId': typeof UsersUserIdRoute
+  '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -620,6 +703,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/not-found'
     | ''
     | '/deferred'
     | '/env-only'
@@ -632,9 +716,12 @@ export interface FileRouteTypes {
     | '/status'
     | '/stream'
     | '/users'
+    | '/not-found/via-beforeLoad'
+    | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/users/$userId'
+    | '/not-found/'
     | '/posts/'
     | '/redirect'
     | '/users/'
@@ -661,8 +748,11 @@ export interface FileRouteTypes {
     | '/server-fns'
     | '/status'
     | '/stream'
+    | '/not-found/via-beforeLoad'
+    | '/not-found/via-loader'
     | '/posts/$postId'
     | '/users/$userId'
+    | '/not-found'
     | '/posts'
     | '/redirect'
     | '/users'
@@ -679,6 +769,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/not-found'
     | '/_layout'
     | '/deferred'
     | '/env-only'
@@ -692,9 +783,12 @@ export interface FileRouteTypes {
     | '/stream'
     | '/users'
     | '/_layout/_layout-2'
+    | '/not-found/via-beforeLoad'
+    | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/users/$userId'
+    | '/not-found/'
     | '/posts/'
     | '/redirect/'
     | '/users/'
@@ -713,6 +807,7 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
@@ -732,6 +827,7 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
   EnvOnlyRoute: EnvOnlyRoute,
@@ -760,6 +856,7 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/not-found",
         "/_layout",
         "/deferred",
         "/env-only",
@@ -779,6 +876,14 @@ export const routeTree = rootRoute
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/not-found": {
+      "filePath": "not-found/route.tsx",
+      "children": [
+        "/not-found/via-beforeLoad",
+        "/not-found/via-loader",
+        "/not-found/"
+      ]
     },
     "/_layout": {
       "filePath": "_layout.tsx",
@@ -835,6 +940,14 @@ export const routeTree = rootRoute
         "/_layout/_layout-2/layout-b"
       ]
     },
+    "/not-found/via-beforeLoad": {
+      "filePath": "not-found/via-beforeLoad.tsx",
+      "parent": "/not-found"
+    },
+    "/not-found/via-loader": {
+      "filePath": "not-found/via-loader.tsx",
+      "parent": "/not-found"
+    },
     "/posts/$postId": {
       "filePath": "posts.$postId.tsx",
       "parent": "/posts"
@@ -854,6 +967,10 @@ export const routeTree = rootRoute
     "/users/$userId": {
       "filePath": "users.$userId.tsx",
       "parent": "/users"
+    },
+    "/not-found/": {
+      "filePath": "not-found/index.tsx",
+      "parent": "/not-found"
     },
     "/posts/": {
       "filePath": "posts.index.tsx",

@@ -31,19 +31,19 @@ export interface StartSsrGlobal {
   initMatch: (match: SsrMatch) => void
   resolvePromise: (opts: {
     matchId: string
-    id: string
+    id: number
     promiseState: DeferredPromiseState<any>
   }) => void
-  injectChunk: (opts: { matchId: string; id: string; chunk: string }) => void
-  closeStream: (opts: { matchId: string; id: string }) => void
+  injectChunk: (opts: { matchId: string; id: number; chunk: string }) => void
+  closeStream: (opts: { matchId: string; id: number }) => void
 }
 
 export interface SsrMatch {
   id: string
-  __beforeLoadContext?: string
+  __beforeLoadContext: string
   loaderData?: string
   error?: string
-  extracted: Record<string, ClientExtractedEntry>
+  extracted?: Array<ClientExtractedEntry>
   updatedAt: MakeRouteMatch['updatedAt']
   status: MakeRouteMatch['status']
 }
@@ -72,15 +72,6 @@ export interface ResolvePromiseState {
   id: number
   promiseState: DeferredPromiseState<any>
 }
-
-export interface DehydratedRouterState {
-  dehydratedMatches: Array<DehydratedRouteMatch>
-}
-
-export type DehydratedRouteMatch = Pick<
-  MakeRouteMatch,
-  'id' | 'status' | 'updatedAt' | 'loaderData'
->
 
 export interface DehydratedRouter {
   manifest: Manifest | undefined
@@ -121,9 +112,6 @@ export function hydrate(router: AnyRouter) {
       return streamedValue.parsed
     },
   }
-
-  // Allow the user to handle custom hydration data
-  router.options.hydrate?.(dehydratedData)
 
   // Hydrate the router state
   const matches = router.matchRoutes(router.state.location).map((match) => {
@@ -169,7 +157,7 @@ export function hydrate(router: AnyRouter) {
       }
 
       // Handle extracted
-      Object.entries((match as any).extracted).forEach(([_, ex]: any) => {
+      ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
         deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
       })
     } else {
@@ -201,6 +189,9 @@ export function hydrate(router: AnyRouter) {
       matches: matches,
     }
   })
+
+  // Allow the user to handle custom hydration data
+  router.options.hydrate?.(dehydratedData)
 }
 
 function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {

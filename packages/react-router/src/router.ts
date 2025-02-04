@@ -12,6 +12,7 @@ import {
   defaultParseSearch,
   defaultStringifySearch,
   functionalUpdate,
+  getLocationChangeInfo,
   interpolatePath,
   joinPaths,
   last,
@@ -27,6 +28,8 @@ import {
 } from '@tanstack/router-core'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
+
+import { setupScrollRestoration } from './scroll-restoration'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -61,6 +64,7 @@ import type {
   BeforeLoadContextOptions,
   ErrorRouteComponent,
   LoaderFnContext,
+  MakeRemountDepsOptionsUnion,
   NotFoundRouteComponent,
   RootRoute,
   RouteComponent,
@@ -451,6 +455,17 @@ export interface RouterOptions<
   pathParamsAllowedCharacters?: Array<
     ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
   >
+
+  defaultRemountDeps?: (opts: MakeRemountDepsOptionsUnion<TRouteTree>) => any
+
+  /**
+   * If `true`, scroll restoration will be enabled
+   *
+   * @default false
+   */
+  scrollRestoration?: boolean
+  getScrollRestorationKey?: (location: ParsedLocation) => string
+  scrollRestorationBehavior?: ScrollBehavior
 }
 
 export interface RouterErrorSerializer<TSerializedError> {
@@ -470,7 +485,7 @@ export interface RouterState<
   pendingMatches?: Array<TRouteMatch>
   cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
-  resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
+  resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   statusCode: number
   redirect?: ResolvedRedirect
 }
@@ -563,46 +578,37 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+type NavigationEventInfo = {
+  fromLocation?: ParsedLocation
+  toLocation: ParsedLocation
+  pathChanged: boolean
+  hrefChanged: boolean
+  hashChanged: boolean
+}
+
 export type RouterEvents = {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onBeforeLoad: {
     type: 'onBeforeLoad'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onLoad: {
     type: 'onLoad'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onResolved: {
     type: 'onResolved'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
-    fromLocation: ParsedLocation
-    toLocation: ParsedLocation
-    pathChanged: boolean
-    hrefChanged: boolean
-  }
+  } & NavigationEventInfo
   onInjectedHtml: {
     type: 'onInjectedHtml'
     promise: Promise<string>
   }
+  onRendered: {
+    type: 'onRendered'
+  } & NavigationEventInfo
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -664,6 +670,8 @@ export class Router<
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
+  isScrollRestoring = false
+  isScrollRestorationSetup = false
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -732,7 +740,7 @@ export class Router<
   ) => {
     if (newOptions.notFoundRoute) {
       console.warn(
-        'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/guide/not-found-errors#migrating-from-notfoundroute for more info.',
+        'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/framework/react/guide/not-found-errors#migrating-from-notfoundroute for more info.',
       )
     }
 
@@ -800,6 +808,8 @@ export class Router<
           }
         },
       })
+
+      setupScrollRestoration(this)
     }
 
     if (
@@ -1151,19 +1161,26 @@ export class Router<
 
       const parentMatch = matches[index - 1]
 
-      const [preMatchSearch, searchError]: [Record<string, any>, any] = (() => {
+      const [preMatchSearch, strictMatchSearch, searchError]: [
+        Record<string, any>,
+        Record<string, any>,
+        any,
+      ] = (() => {
         // Validate the search params and stabilize them
         const parentSearch = parentMatch?.search ?? next.search
+        const parentStrictSearch = parentMatch?._strictSearch ?? {}
 
         try {
-          const search =
-            validateSearch(route.options.validateSearch, parentSearch) ?? {}
+          const strictSearch =
+            validateSearch(route.options.validateSearch, { ...parentSearch }) ??
+            {}
 
           return [
             {
               ...parentSearch,
-              ...search,
+              ...strictSearch,
             },
+            { ...parentStrictSearch, ...strictSearch },
             undefined,
           ]
         } catch (err: any) {
@@ -1178,7 +1195,7 @@ export class Router<
             throw searchParamError
           }
 
-          return [parentSearch, searchParamError]
+          return [parentSearch, {}, searchParamError]
         }
       })()
 
@@ -1194,7 +1211,7 @@ export class Router<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const interpolatedPath = interpolatePath({
+      const { usedParams, interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
@@ -1206,7 +1223,7 @@ export class Router<
           params: routeParams,
           leaveWildcards: true,
           decodeCharMap: this.pathParamsDecodeCharMap,
-        }) + loaderDepsHash
+        }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -1231,9 +1248,11 @@ export class Router<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
+          _strictParams: usedParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
+          _strictSearch: strictMatchSearch,
         }
       } else {
         const status =
@@ -1251,11 +1270,13 @@ export class Router<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
+          _strictParams: usedParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
           updatedAt: Date.now(),
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : preMatchSearch,
+          _strictSearch: strictMatchSearch,
           searchError: undefined,
           status,
           isFetching: false,
@@ -1463,7 +1484,7 @@ export class Router<
                 path: route.fullPath,
                 params: matchedRoutesResult?.routeParams ?? {},
                 decodeCharMap: this.pathParamsDecodeCharMap,
-              })
+              }).interpolatedPath
               const pathname = joinPaths([this.basepath, interpolatedPath])
               return pathname === fromPath
             })?.id as keyof this['routesById']
@@ -1503,7 +1524,7 @@ export class Router<
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
-      })
+      }).interpolatedPath
 
       let search = fromSearch
       if (opts._includeValidateSearch && this.options.search?.strict) {
@@ -1867,8 +1888,6 @@ export class Router<
         try {
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
-          const hrefChanged = prevLocation.href !== next.href
-          const pathChanged = prevLocation.pathname !== next.pathname
 
           // Cancel any pending matches
           this.cancelMatches()
@@ -1900,19 +1919,19 @@ export class Router<
           if (!this.state.redirect) {
             this.emit({
               type: 'onBeforeNavigate',
-              fromLocation: prevLocation,
-              toLocation: next,
-              pathChanged,
-              hrefChanged,
+              ...getLocationChangeInfo({
+                resolvedLocation: prevLocation,
+                location: next,
+              }),
             })
           }
 
           this.emit({
             type: 'onBeforeLoad',
-            fromLocation: prevLocation,
-            toLocation: next,
-            pathChanged,
-            hrefChanged,
+            ...getLocationChangeInfo({
+              resolvedLocation: prevLocation,
+              location: next,
+            }),
           })
 
           await this.loadMatches({
@@ -2172,6 +2191,10 @@ export class Router<
         } else if (isNotFound(err)) {
           this._handleNotFound(matches, err, {
             updateMatch,
+          })
+          this.serverSsr?.onMatchSettled({
+            router: this,
+            match: this.getMatch(match.id)!,
           })
           throw err
         }
@@ -2637,6 +2660,7 @@ export class Router<
         if (isNotFound(err) && !allPreload) {
           await triggerOnReady()
         }
+
         throw err
       }
     }
@@ -2835,8 +2859,10 @@ export class Router<
           _fromLocation: next,
         })
       }
-      // Preload errors are not fatal, but we should still log them
-      console.error(err)
+      if (!isNotFound(err)) {
+        // Preload errors are not fatal, but we should still log them
+        console.error(err)
+      }
       return undefined
     }
   }
@@ -2882,7 +2908,7 @@ export class Router<
 
     const baseLocation = pending
       ? this.latestLocation
-      : this.state.resolvedLocation
+      : this.state.resolvedLocation || this.state.location
 
     const match = matchPathname(this.basepath, baseLocation.pathname, {
       ...opts,
@@ -3020,7 +3046,7 @@ export function getInitialRouterState(
     isLoading: false,
     isTransitioning: false,
     status: 'idle',
-    resolvedLocation: { ...location },
+    resolvedLocation: undefined,
     location,
     matches: [],
     pendingMatches: [],
