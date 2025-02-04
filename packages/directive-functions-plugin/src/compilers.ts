@@ -104,6 +104,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   const compiledResult = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
+    filename: opts.filename,
   })
 
   return {
