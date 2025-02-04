@@ -122,11 +122,15 @@
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2",
+    "@tanstack/react-router": "workspace:^",
     "vite": ">=5.0.0 || >=6.0.0",
     "webpack": ">=5.92.0"
   },
   "peerDependenciesMeta": {
     "@rsbuild/core": {
+      "optional": true
+    },
+    "@tanstack/react-router": {
       "optional": true
     },
     "vite": {

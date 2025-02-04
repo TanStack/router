@@ -4328,6 +4328,9 @@ importers:
       '@rsbuild/core':
         specifier: '>=1.0.2'
         version: 1.2.3
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
@@ -4473,6 +4476,15 @@ importers:
       '@tanstack/start-server-functions-ssr':
         specifier: workspace:*
         version: link:../start-server-functions-ssr
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      vite:
+        specifier: 6.0.11
+        version: 6.0.11(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
     devDependencies:
       esbuild:
         specifier: ^0.24.2
@@ -4492,6 +4504,9 @@ importers:
       vinxi:
         specifier: 0.5.1
         version: 0.5.1(@types/node@22.13.0)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      vite:
+        specifier: 6.0.11
+        version: 6.0.11(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
     devDependencies:
       react:
         specifier: ^19.0.0
@@ -4759,6 +4774,9 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
+      vite:
+        specifier: 6.0.11
+        version: 6.0.11(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
     devDependencies:
       react:
         specifier: ^19.0.0
@@ -4812,6 +4830,9 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
+      vite:
+        specifier: 6.0.11
+        version: 6.0.11(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
     devDependencies:
       react:
         specifier: ^19.0.0
