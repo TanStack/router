@@ -85,7 +85,7 @@ importers:
         specifier: ^25.0.1
         version: 25.0.1
       nx:
-        specifier: ^20.4.0
+        specifier: 20.4.0
         version: 20.4.0(@swc/core@1.10.12(@swc/helpers@0.5.15))
       prettier:
         specifier: ^3.4.2
