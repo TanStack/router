@@ -2042,6 +2042,13 @@ export class Router<
     ) {
       await this.latestLoadPromise
     }
+
+    if (this.hasNotFoundMatch()) {
+      this.__store.setState((s) => ({
+        ...s,
+        statusCode: 404,
+      }))
+    }
   }
 
   startViewTransition = (fn: () => Promise<void>) => {
