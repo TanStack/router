@@ -207,8 +207,8 @@ test('reproducer for #2053', async () => {
     getParentRoute: () => rootRoute,
     path: '/foo/$fooId',
     component: () => {
-      const { fooId } = fooRoute.useParams()
-      return <div>fooId: {fooId}</div>
+      const params = fooRoute.useParams()
+      return <div>fooId: {params().fooId}</div>
     },
   })
 
