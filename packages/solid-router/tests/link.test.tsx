@@ -1227,7 +1227,7 @@ describe('Link', () => {
 
     const PostComponent = () => {
       const params = useParams({ strict: false })
-      return <span>Params: {params.postId}</span>
+      return <span>Params: {params().postId}</span>
     }
 
     const postRoute = createRoute({
@@ -1311,7 +1311,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Link to="/">Index</Link>
         </>
       )
@@ -1409,7 +1409,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Link to="/">Index</Link>
         </>
       )
@@ -1506,7 +1506,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -1643,7 +1643,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -1780,7 +1780,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -1917,7 +1917,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -2044,7 +2044,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -2189,7 +2189,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -2323,7 +2323,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -2463,7 +2463,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -2595,7 +2595,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -2689,7 +2689,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -2774,7 +2774,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -2901,7 +2901,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -3001,7 +3001,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -3101,7 +3101,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -3200,7 +3200,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
+          <span>Params: {params().postId}</span>
           <Outlet />
         </>
       )
@@ -3438,7 +3438,7 @@ describe('Link', () => {
 
     const PostComponent = () => {
       const params = useParams({ strict: false })
-      return <div>Post: {params.postId}</div>
+      return <div>Post: {params().postId}</div>
     }
 
     const postRoute = createRoute({
@@ -3500,7 +3500,7 @@ describe('Link', () => {
 
     const PostComponent = () => {
       const params = useParams({ strict: false })
-      return <div>Post: {params.postId}</div>
+      return <div>Post: {params().postId}</div>
     }
 
     const postRoute = createRoute({
@@ -3581,7 +3581,7 @@ describe('Link', () => {
 
     const PostComponent = () => {
       const params = useParams({ strict: false })
-      return <div>Post: {params.postId}</div>
+      return <div>Post: {params().postId}</div>
     }
 
     const postRoute = createRoute({
@@ -3863,7 +3863,7 @@ describe('Link', () => {
         const params = useParams({ strict: false })
         return (
           <>
-            <span>Params: {params.postId}</span>
+            <span>Params: {params().postId}</span>
           </>
         )
       }
@@ -4391,7 +4391,7 @@ describe('search middleware', () => {
 
       const PostComponent = () => {
         const params = useParams({ strict: false })
-        return <span>Params: {params.postId}</span>
+        return <span>Params: {params().postId}</span>
       }
 
       const postRoute = createRoute({

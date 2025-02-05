@@ -151,7 +151,7 @@ describe('context function', () => {
           return (
             <div>
               <h1>Index page</h1>
-              <h2>search: {JSON.stringify(indexRoute.useSearch())}</h2>
+              <h2>search: {JSON.stringify(indexRoute.useSearch()())}</h2>
               <button
                 onClick={() => {
                   navigate({ search: (p: any) => ({ ...p, foo: 'foo-1' }) })
@@ -1419,11 +1419,11 @@ describe('beforeLoad in the route definition', () => {
         }
       },
       component: () => {
-        const { counter } = indexRoute.useRouteContext()
+        const context = indexRoute.useRouteContext()
         return (
           <div>
             <span data-testid="index-page">Index page</span>
-            <span data-testid="counter">{counter}</span>
+            <span data-testid="counter">{context().counter}</span>
           </div>
         )
       },
@@ -2357,7 +2357,7 @@ describe('useRouteContext in the component', () => {
     const rootRoute = createRootRoute({
       component: () => {
         const context = rootRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([])
@@ -2377,7 +2377,7 @@ describe('useRouteContext in the component', () => {
       },
       component: () => {
         const context = rootRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([])
@@ -2397,7 +2397,7 @@ describe('useRouteContext in the component', () => {
       },
       component: () => {
         const context = rootRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([])
@@ -2422,7 +2422,7 @@ describe('useRouteContext in the component', () => {
         if (context === undefined) {
           throw new Error('context is undefined')
         }
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
@@ -2445,7 +2445,7 @@ describe('useRouteContext in the component', () => {
       },
       component: () => {
         const context = indexRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
@@ -2468,7 +2468,7 @@ describe('useRouteContext in the component', () => {
       },
       component: () => {
         const context = indexRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
@@ -2493,7 +2493,7 @@ describe('useRouteContext in the component', () => {
       },
       component: () => {
         const context = rootRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
 
@@ -2523,7 +2523,7 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
@@ -2552,7 +2552,7 @@ describe('useRouteContext in the component', () => {
       path: '/about',
       component: () => {
         const context = aboutRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
@@ -2583,7 +2583,7 @@ describe('useRouteContext in the component', () => {
       path: '/about',
       component: () => {
         const context = aboutRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([aboutRoute, indexRoute])
@@ -2627,7 +2627,7 @@ describe('useRouteContext in the component', () => {
       path: '/person',
       component: () => {
         const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
@@ -2679,7 +2679,7 @@ describe('useRouteContext in the component', () => {
       path: '/person',
       component: () => {
         const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
@@ -2733,7 +2733,7 @@ describe('useRouteContext in the component', () => {
       path: '/about',
       component: () => {
         const context = aboutRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
@@ -2798,7 +2798,7 @@ describe('useRouteContext in the component', () => {
       path: '/person',
       component: () => {
         const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
@@ -2862,7 +2862,7 @@ describe('useRouteContext in the component', () => {
       path: '/person',
       component: () => {
         const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
@@ -2907,7 +2907,7 @@ describe('useRouteContext in the component', () => {
       path: '/',
       component: () => {
         const context = indexRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
@@ -2956,7 +2956,7 @@ describe('useRouteContext in the component', () => {
       path: '/about',
       component: () => {
         const context = aboutRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
@@ -3020,7 +3020,7 @@ describe('useRouteContext in the component', () => {
       path: '/person',
       component: () => {
         const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
@@ -3084,7 +3084,7 @@ describe('useRouteContext in the component', () => {
       path: '/person',
       component: () => {
         const context = personRoute.useRouteContext()
-        return <div>{JSON.stringify(context)}</div>
+        return <div>{JSON.stringify(context())}</div>
       },
     })
     const routeTree = rootRoute.addChildren([
