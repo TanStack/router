@@ -222,7 +222,11 @@ export const MatchInner = (props: { matchId: string }): any => {
       <Solid.Match when={match().status === 'redirected'}>
         {(_) => {
           invariant(isRedirect(match().error), 'Expected a redirect error')
-          throw router.getMatch(match().id)?.loadPromise
+
+          const [loaderResult] = Solid.createResource(
+            () => router.getMatch(match().id)?.loadPromise,
+          )
+          return <>{loaderResult()}</>
         }}
       </Solid.Match>
       <Solid.Match when={match().status === 'error'}>
@@ -274,7 +278,10 @@ export const MatchInner = (props: { matchId: string }): any => {
               }, pendingMinMs)
             }
           }
-          throw router.getMatch(match().id)?.loadPromise
+          const [loaderResult] = Solid.createResource(
+            () => router.getMatch(match().id)?.loadPromise,
+          )
+          return <>{loaderResult()}</>
         }}
       </Solid.Match>
       <Solid.Match when={match().status === 'success'}>{out()}</Solid.Match>
