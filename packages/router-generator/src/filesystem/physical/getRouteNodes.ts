@@ -137,12 +137,7 @@ export async function getRouteNodes(
           )
 
           const segments = routePath.split('/')
-          const lastRouteSegment = segments[segments.length - 1]
-          const isLayout =
-            (lastRouteSegment !== config.indexToken &&
-              lastRouteSegment !== config.routeToken &&
-              lastRouteSegment?.startsWith('_')) ||
-            false
+          const isLayout = determineIsLayout({ segments, config })
 
           ;(
             [
@@ -198,4 +193,36 @@ export async function getRouteNodes(
 
   const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   return { rootRouteNode, routeNodes }
+}
+
+function determineIsLayout({
+  segments,
+  config,
+}: {
+  segments: Array<string>
+  config: Config
+}) {
+  if (segments.length === 0) {
+    return false
+  }
+
+  const lastRouteSegment = segments[segments.length - 1]!
+  const secondToLastRouteSegment = segments[segments.length - 2]
+
+  if (lastRouteSegment === rootPathId) {
+    return false
+  }
+
+  if (
+    lastRouteSegment === config.routeToken &&
+    typeof secondToLastRouteSegment === 'string'
+  ) {
+    return secondToLastRouteSegment.startsWith('_')
+  }
+
+  return (
+    lastRouteSegment !== config.indexToken &&
+    lastRouteSegment !== config.routeToken &&
+    lastRouteSegment.startsWith('_')
+  )
 }
