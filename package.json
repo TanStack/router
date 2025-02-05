@@ -44,7 +44,7 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "jsdom": "^25.0.1",
-    "nx": "^20.4.0",
+    "nx": "20.4.0",
     "prettier": "^3.4.2",
     "publint": "^0.3.2",
     "react": "^19.0.0",

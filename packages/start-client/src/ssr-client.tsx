@@ -113,9 +113,6 @@ export function hydrate(router: AnyRouter) {
     },
   }
 
-  // Allow the user to handle custom hydration data
-  router.options.hydrate?.(dehydratedData)
-
   // Hydrate the router state
   const matches = router.matchRoutes(router.state.location).map((match) => {
     const route = router.looseRoutesById[match.routeId]!
@@ -192,6 +189,9 @@ export function hydrate(router: AnyRouter) {
       matches: matches,
     }
   })
+
+  // Allow the user to handle custom hydration data
+  router.options.hydrate?.(dehydratedData)
 }
 
 function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {

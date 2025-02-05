@@ -14,9 +14,7 @@ export type ParsePathParams<T extends string, TAcc = never> = T &
           : never
     : TAcc
 
-export type AddTrailingSlash<T> = T & `${string}/` extends never
-  ? `${T & string}/`
-  : T
+export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
 
 export type RemoveTrailingSlashes<T> = T & `${string}/` extends never
   ? T
