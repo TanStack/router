@@ -4171,11 +4171,11 @@ describe('search middleware', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => {
-        const { root } = indexRoute.useSearch()
+        const search = indexRoute.useSearch()
         return (
           <>
             <h1>Index</h1>
-            <div data-testid="search">{root ?? '$undefined'}</div>
+            <div data-testid="search">{search().root ?? '$undefined'}</div>
             <Link
               data-testid="update-search"
               to="/"
@@ -4286,11 +4286,11 @@ describe('search middleware', () => {
       },
 
       component: () => {
-        const { foo } = postsRoute.useSearch()
+        const search = postsRoute.useSearch()
         return (
           <>
             <h1>Posts</h1>
-            <div data-testid="posts-search">{foo}</div>
+            <div data-testid="posts-search">{search().foo}</div>
             <Link data-testid="posts-link-new" to="/posts/new">
               new
             </Link>

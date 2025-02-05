@@ -53,11 +53,11 @@ function setupTest(opts: {
   })
 
   const PostsComponent = () => {
-    const { value } = postsRoute.useSearch()
+    const search = postsRoute.useSearch()
     return (
       <>
         <h1 data-testid="posts-heading">Posts</h1>
-        <div data-testid="search">{value ?? '$undefined'}</div>
+        <div data-testid="search">{search().value ?? '$undefined'}</div>
       </>
     )
   }

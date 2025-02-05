@@ -1,8 +1,8 @@
 import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
-import { usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
+import { usePrevious } from './utils'
 
 export function Transitioner() {
   const router = useRouter()
@@ -18,23 +18,20 @@ export function Transitioner() {
     structuralSharing: true,
   })
 
-  const previousIsLoading = usePrevious(isLoading)
+  const previousIsLoading = () => usePrevious(isLoading())
 
   const isAnyPending = () =>
     isLoading() || isTransitioning() || hasPendingMatches()
+  const previousIsAnyPending = () => usePrevious(isAnyPending())
+
   const isPagePending = () => isLoading() || hasPendingMatches()
-
-  const previousIsAnyPending = usePrevious(isAnyPending)
-
-  const previousIsPagePending = usePrevious(isPagePending)
+  const previousIsPagePending = () => usePrevious(isPagePending())
 
   if (!router.isServer) {
     router.startSolidTransition = (fn: () => void) => {
       setIsTransitioning(true)
-      Solid.startTransition(() => {
-        fn()
-        setIsTransitioning(false)
-      })
+      fn()
+      setIsTransitioning(false)
     }
   }
 
@@ -87,8 +84,8 @@ export function Transitioner() {
 
   Solid.createRenderEffect(
     Solid.on(
-      () => isLoading(),
-      (isLoading, previousIsLoading) => {
+      () => [previousIsLoading(), isLoading()],
+      ([previousIsLoading, isLoading]) => {
         if (previousIsLoading && !isLoading) {
           router.emit({
             type: 'onLoad',
@@ -100,8 +97,8 @@ export function Transitioner() {
   )
   Solid.createRenderEffect(
     Solid.on(
-      () => isPagePending(),
-      (isPagePending, previousIsPagePending) => {
+      () => [isPagePending(), previousIsPagePending],
+      ([isPagePending, previousIsPagePending]) => {
         // emit onBeforeRouteMount
         if (previousIsPagePending && !isPagePending) {
           router.emit({
@@ -115,8 +112,8 @@ export function Transitioner() {
 
   Solid.createRenderEffect(
     Solid.on(
-      () => isAnyPending(),
-      (isAnyPending, previousIsAnyPending) => {
+      () => [isAnyPending(), previousIsAnyPending()],
+      ([isAnyPending, previousIsAnyPending]) => {
         // The router was pending and now it's not
         if (previousIsAnyPending && !isAnyPending) {
           router.emit({
