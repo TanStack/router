@@ -8,10 +8,10 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.99.6",
-    "@tanstack/router-devtools": "^1.99.6",
-    "@tanstack/router-plugin": "^1.99.6",
-    "@tanstack/start": "^1.99.6",
+    "@tanstack/react-router": "^1.99.7",
+    "@tanstack/router-devtools": "^1.99.7",
+    "@tanstack/router-plugin": "^1.99.7",
+    "@tanstack/start": "^1.99.7",
     "@trpc/client": "11.0.0-rc.730",
     "@trpc/server": "11.0.0-rc.730",
     "react": "^19.0.0",
