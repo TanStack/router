@@ -7784,6 +7784,21 @@ packages:
       webdriverio:
         optional: true
 
+  '@vitest/browser@3.0.5':
+    resolution: {integrity: sha512-5WAWJoucuWcGYU5t0HPBY03k9uogbUEIu4pDmZHoB4Dt+6pXqzDbzEmxGjejZSitSYA3k/udYfuotKNxETVA3A==}
+    peerDependencies:
+      playwright: '*'
+      safaridriver: '*'
+      vitest: 3.0.5
+      webdriverio: '*'
+    peerDependenciesMeta:
+      playwright:
+        optional: true
+      safaridriver:
+        optional: true
+      webdriverio:
+        optional: true
+
   '@vitest/expect@3.0.5':
     resolution: {integrity: sha512-nNIOqupgZ4v5jWuQx2DSlHLEs7Q4Oh/7AYwNyE+k0UQzG7tSmjPXShUikn1mpNGzYEN2jJbTvLejwShMitovBA==}
 
