@@ -894,6 +894,8 @@ describe('Link', () => {
 
     fireEvent.click(postsLink)
 
+    await sleep(WAIT_TIME)
+
     const postsErrorText = await screen.findByText('PostsError')
     expect(postsErrorText).toBeInTheDocument()
 
@@ -902,7 +904,7 @@ describe('Link', () => {
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
     fireEvent.click(indexLink)
-
+    await sleep(WAIT_TIME)
     await expect(screen.findByText('IndexError')).rejects.toThrow()
     expect(indexOnError).not.toHaveBeenCalledOnce()
   })
@@ -3160,6 +3162,8 @@ describe('Link', () => {
     await waitFor(() => expect(search).toHaveBeenCalledWith({ postPage: 0 }))
 
     fireEvent.click(postLink)
+
+    await sleep(WAIT_TIME)
 
     const loginText = await screen.findByText('Login!')
     expect(loginText).toBeInTheDocument()
