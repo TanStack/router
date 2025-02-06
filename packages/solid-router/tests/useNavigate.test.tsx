@@ -1126,10 +1126,7 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
     routeMasks: [routeMask],
   })
 
-  const { debug } = render(() => <RouterProvider router={router} />)
-
-  console.log('Debug 1')
-  debug()
+  render(() => <RouterProvider router={router} />)
 
   const postButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -1139,8 +1136,6 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
 
   await new Promise((r) => setTimeout(r, 0))
 
-  console.log('Debug 2')
-  debug()
   expect(await screen.findByText('Params: id1'))
 })
 
