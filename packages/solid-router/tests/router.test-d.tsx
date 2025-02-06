@@ -14,17 +14,17 @@ test('when creating a router without context', () => {
 
   type RouteTree = typeof rootRoute
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{} | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .not.toMatchTypeOf<{
       context: {}
@@ -105,17 +105,17 @@ test('when creating a router with context', () => {
 
   type RouteTree = typeof rootRoute
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{ userId: string }>()
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .toMatchTypeOf<{
       context: { userId: string }
@@ -135,17 +135,17 @@ test('when creating a router with context and children', () => {
 
   type RouteTree = typeof routeTree
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .toHaveProperty('routeTree')
     .toEqualTypeOf<RouteTree | undefined>()
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .toHaveProperty('context')
     .toEqualTypeOf<{ userId: string }>()
 
-  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+  expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
     .toMatchTypeOf<{
       context: { userId: string }
