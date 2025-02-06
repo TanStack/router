@@ -135,9 +135,7 @@ export async function getRouteNodes(
           const isAPIRoute = routePath.startsWith(
             `${removeTrailingSlash(config.apiBase)}/`,
           )
-
-          const segments = routePath.split('/')
-          const isLayout = determineIsLayout({ segments, config })
+          const isLayout = determineRouteIsLayout(routePath, config)
 
           ;(
             [
@@ -195,13 +193,15 @@ export async function getRouteNodes(
   return { rootRouteNode, routeNodes }
 }
 
-function determineIsLayout({
-  segments,
-  config,
-}: {
-  segments: Array<string>
-  config: Config
-}) {
+/**
+ * Used to determine if a route is a layout route
+ * @param normalizedRoutePath Normalized route path, i.e `/foo/_layout/route.tsx` and `/foo._layout.route.tsx` to `/foo/_layout/route`
+ * @param config The `router-generator` configuration object
+ * @returns Boolean indicating if the route is a layout route
+ */
+function determineRouteIsLayout(normalizedRoutePath: string, config: Config) {
+  const segments = normalizedRoutePath.split('/').filter(Boolean)
+
   if (segments.length === 0) {
     return false
   }
@@ -209,10 +209,14 @@ function determineIsLayout({
   const lastRouteSegment = segments[segments.length - 1]!
   const secondToLastRouteSegment = segments[segments.length - 2]
 
+  // If segment === __root, then exit as false
   if (lastRouteSegment === rootPathId) {
     return false
   }
 
+  // If segment === config.routeToken and secondToLastSegment is a string that starts with _, then exit as true
+  // Since the route is actually a configuration route for a layout/pathless route
+  // i.e. /foo/_layout/route.tsx === /foo/_layout.tsx
   if (
     lastRouteSegment === config.routeToken &&
     typeof secondToLastRouteSegment === 'string'
@@ -220,6 +224,7 @@ function determineIsLayout({
     return secondToLastRouteSegment.startsWith('_')
   }
 
+  // Segment starts with _
   return (
     lastRouteSegment !== config.indexToken &&
     lastRouteSegment !== config.routeToken &&
