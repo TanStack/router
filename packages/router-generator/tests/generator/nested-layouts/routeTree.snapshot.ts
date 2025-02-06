@@ -123,7 +123,7 @@ const folderInFolderRoute = folderInFolderImport.update({
 } as any)
 
 const FooLayoutB5RouteRoute = FooLayoutB5RouteImport.update({
-  id: '/foo/_layout-b5',
+  id: '/_layout-b5',
   getParentRoute: () => FooRoute,
 } as any)
 

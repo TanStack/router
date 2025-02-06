@@ -1855,7 +1855,7 @@ export class Router<
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = location.href
+        href = this.history.createHref(location.href)
       }
       if (rest.replace) {
         window.location.replace(href)
@@ -2041,6 +2041,13 @@ export class Router<
       loadPromise !== this.latestLoadPromise
     ) {
       await this.latestLoadPromise
+    }
+
+    if (this.hasNotFoundMatch()) {
+      this.__store.setState((s) => ({
+        ...s,
+        statusCode: 404,
+      }))
     }
   }
 

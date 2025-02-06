@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-generator",
-  "version": "1.99.6",
+  "version": "1.99.8",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -35,6 +35,7 @@
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts57": "tsc -p tsconfig.legacy.json",
     "test:unit": "vitest --typecheck",
+    "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },

@@ -92,6 +92,9 @@ So, if we were to turn the previous object into a search string using this confi
 ?page=1&sort=asc&filters=eyJhdXRob3IiOiJ0YW5uZXIiLCJtaW5fd29yZHMiOjgwMH0%3D
 ```
 
+> [!WARNING]
+> If you are serializing user input into Base64, you run the risk of causing a collision with the URL deserialization. This can lead to unexpected behavior, such as the URL not being parsed correctly or being interpreted as a different value. To avoid this, you should encode the search params using a safe binary encoding/decoding method (see below).
+
 ## Using the query-string library
 
 The [query-string](https://github.com/sindresorhus/query-string) library is a popular for being able to reliably parse and stringify query strings. You can use it to customize the serialization format of your search params. This can be done with the following code:
