@@ -5,6 +5,7 @@ import {
   createRouter,
   useLoaderData,
 } from '../src'
+import { Accessor } from 'solid-js'
 
 test('when there is no loaders', () => {
   const rootRoute = createRootRoute()
@@ -59,13 +60,15 @@ test('when there is no loaders', () => {
     .toHaveProperty('select')
     .returns.toEqualTypeOf<unknown>()
 
-  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{}>
+  >()
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/', false>({
       strict: false,
     }),
-  ).toEqualTypeOf<{}>
+  ).toEqualTypeOf<Accessor<{}>>
 })
 
 test('when there is one loader', () => {
@@ -105,13 +108,13 @@ test('when there is one loader', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useLoaderData<DefaultRouter, '/invoices'>,
-  ).returns.toEqualTypeOf<{ data: Array<string> }>()
+  expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
+    Accessor<{ data: Array<string> }>
+  >()
 
-  expectTypeOf(
-    useLoaderData<DefaultRouter, '/invoices'>,
-  ).returns.toEqualTypeOf<{ data: Array<string> }>()
+  expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
+    Accessor<{ data: Array<string> }>
+  >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>)
     .parameter(0)
@@ -120,7 +123,7 @@ test('when there is one loader', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
+  ).returns.toEqualTypeOf<Accessor<{ data?: Array<string> }>>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -129,7 +132,7 @@ test('when there is one loader', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false, number>,
-  ).returns.toEqualTypeOf<number>()
+  ).returns.toEqualTypeOf<Accessor<number>>()
 })
 
 test('when there is one loader that is async', () => {
@@ -169,13 +172,13 @@ test('when there is one loader that is async', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(
-    useLoaderData<DefaultRouter, '/invoices'>,
-  ).returns.toEqualTypeOf<{ data: Array<string> }>()
+  expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
+    Accessor<{ data: Array<string> }>
+  >()
 
-  expectTypeOf(
-    useLoaderData<DefaultRouter, '/invoices'>,
-  ).returns.toEqualTypeOf<{ data: Array<string> }>()
+  expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
+    Accessor<{ data: Array<string> }>
+  >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>)
     .parameter(0)
@@ -184,7 +187,7 @@ test('when there is one loader that is async', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
+  ).returns.toEqualTypeOf<Accessor<{ data?: Array<string> }>>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -193,7 +196,7 @@ test('when there is one loader that is async', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false, number>,
-  ).returns.toEqualTypeOf<number>()
+  ).returns.toEqualTypeOf<Accessor<number>>()
 })
 
 test('when there are multiple loaders', () => {
@@ -234,13 +237,15 @@ test('when there are multiple loaders', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{}>
+  >()
 
-  expectTypeOf(
-    useLoaderData<DefaultRouter, '/invoices'>,
-  ).returns.toEqualTypeOf<{
-    readonly data: readonly ['invoice1', 'invoice2']
-  }>()
+  expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
+    Accessor<{
+      readonly data: readonly ['invoice1', 'invoice2']
+    }>
+  >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>)
     .parameter(0)
@@ -249,12 +254,14 @@ test('when there are multiple loaders', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{
-    data?:
-      | readonly ['invoice1', 'invoice2']
-      | readonly ['post1', 'post2']
-      | undefined
-  }>()
+  ).returns.toEqualTypeOf<
+    Accessor<{
+      data?:
+        | readonly ['invoice1', 'invoice2']
+        | readonly ['post1', 'post2']
+        | undefined
+    }>
+  >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -321,10 +328,12 @@ test('when there are multiple loaders of objects and primtives', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{}>
+  >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
-    readonly ['invoice1', 'invoice2']
+    Accessor<readonly ['invoice1', 'invoice2']>
   >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>)
@@ -341,15 +350,17 @@ test('when there are multiple loaders of objects and primtives', () => {
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<
-    | readonly ['invoice1', 'invoice2']
-    | readonly ['post1', 'post2']
-    | {
-        invoice?:
-          | {
-              readonly id: 1
-            }
-          | undefined
-      }
+    Accessor<
+      | readonly ['invoice1', 'invoice2']
+      | readonly ['post1', 'post2']
+      | {
+          invoice?:
+            | {
+                readonly id: 1
+              }
+            | undefined
+        }
+    >
   >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)

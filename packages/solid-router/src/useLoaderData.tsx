@@ -44,7 +44,7 @@ export type UseLoaderDataRoute<out TId> = <
   TSelected = unknown,
 >(
   opts?: UseLoaderDataBaseOptions<TRouter, TId, true, TSelected>,
-) => UseLoaderDataResult<TRouter, TId, true, TSelected>
+) => Accessor<UseLoaderDataResult<TRouter, TId, true, TSelected>>
 
 export function useLoaderData<
   TRouter extends AnyRouter = RegisteredRouter,

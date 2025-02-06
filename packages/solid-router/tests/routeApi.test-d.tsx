@@ -78,9 +78,11 @@ describe('getRouteApi', () => {
     >()
   })
   test('useLoaderData', () => {
-    expectTypeOf(invoiceRouteApi.useLoaderData<DefaultRouter>()).toEqualTypeOf<{
-      data: number
-    }>()
+    expectTypeOf(invoiceRouteApi.useLoaderData<DefaultRouter>()).toEqualTypeOf<
+      Accessor<{
+        data: number
+      }>
+    >()
   })
   test('useLoaderDeps', () => {
     expectTypeOf(invoiceRouteApi.useLoaderDeps<DefaultRouter>()).toEqualTypeOf<{
