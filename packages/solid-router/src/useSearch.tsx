@@ -53,12 +53,12 @@ export function useSearch<
   TSelected = unknown,
 >(
   opts: UseSearchOptions<TRouter, TFrom, TStrict, TSelected>,
-): UseSearchResult<TRouter, TFrom, TStrict, TSelected> {
+): Accessor<UseSearchResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     select: (match: any) => {
       return opts.select ? opts.select(match.search) : match.search
     },
-  }) as UseSearchResult<TRouter, TFrom, TStrict, TSelected>
+  }) as any
 }
