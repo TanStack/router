@@ -494,6 +494,8 @@ export function useLinkProps<
       'onFocus',
       'onMouseEnter',
       'onMouseLeave',
+      'onMouseOver',
+      'onMouseOut',
       'onTouchStart',
       'ignoreBlocker',
     ],
@@ -641,7 +643,7 @@ export function useLinkProps<
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!local.disabled || !(local.preload === 'viewport') },
+    { disabled: !!local.disabled || !(preload() === 'viewport') },
   )
 
   Solid.createEffect(() => {
@@ -676,6 +678,8 @@ export function useLinkProps<
         'onFocus',
         'onMouseEnter',
         'onMouseLeave',
+        'onMouseOut',
+        'onMouseOver',
         'onTouchStart',
       ])[0],
     ) as any
@@ -815,7 +819,9 @@ export function useLinkProps<
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
         onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
+        onMouseOver: composeEventHandlers([local.onMouseOver, handleEnter]),
         onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
+        onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
         onTouchStart: composeEventHandlers([
           local.onTouchStart,
           handleTouchStart,
