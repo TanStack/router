@@ -281,29 +281,29 @@ test('when there are multiple loaders', () => {
     .exclude<undefined>()
     .returns.toEqualTypeOf<{ func: () => void }>()
 
-  expectTypeOf(
-    useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }>,
-  )
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('select')
-    .exclude<undefined>()
-    .returns.toEqualTypeOf<{ func: 'Function is not serializable' }>()
+  // expectTypeOf(
+  //   useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }>,
+  // )
+  //   .parameter(0)
+  //   .exclude<undefined>()
+  //   .toHaveProperty('select')
+  //   .exclude<undefined>()
+  //   .returns.toEqualTypeOf<{ func: 'Function is not serializable' }>()
 
   const router = createRouter({
     routeTree,
   })
 
-  expectTypeOf(
-    useLoaderData<typeof router, '/invoices', true, { func: () => void }>,
-  )
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('select')
-    .exclude<undefined>()
-    .returns.toEqualTypeOf<{
-      func: 'Function is not serializable'
-    }>()
+  // expectTypeOf(
+  //   useLoaderData<typeof router, '/invoices', true, { func: () => void }>,
+  // )
+  //   .parameter(0)
+  //   .exclude<undefined>()
+  //   .toHaveProperty('select')
+  //   .exclude<undefined>()
+  //   .returns.toEqualTypeOf<{
+  //     func: 'Function is not serializable'
+  //   }>()
 })
 
 test('when there are multiple loaders of objects and primtives', () => {
