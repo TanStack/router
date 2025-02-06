@@ -559,7 +559,7 @@ export function useLinkProps<
   // Use it as the default `from` location
   options = {
     get from() {
-      return parentRouteId
+      return parentRouteId()
     },
     ...options,
   }
