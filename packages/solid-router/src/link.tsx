@@ -552,11 +552,6 @@ export function useLinkProps<
     return 'internal'
   }
 
-  // subscribe to search params to re-build location if it changes
-  const currentSearch = useRouterState({
-    select: (s) => s.location.search,
-  })
-
   // In the rare event that the user bypasses type-safety and doesn't supply a `from`
   // we'll use the current route as the `from` location so relative routing works as expected
   const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })

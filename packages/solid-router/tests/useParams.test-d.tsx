@@ -210,14 +210,6 @@ test('when there are multiple params', () => {
   )
     .parameter(0)
     .exclude<undefined>()
-    .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<false | undefined>()
-
-  expectTypeOf(
-    useParams<DefaultRouter, '/invoices', true, { func: () => void }, true>,
-  )
-    .parameter(0)
-    .exclude<undefined>()
     .toHaveProperty('select')
     .toEqualTypeOf<
       | ((search: {}) => {
@@ -226,27 +218,12 @@ test('when there are multiple params', () => {
       | undefined
     >()
 
-  expectTypeOf(
-    useParams<DefaultRouter, '/invoices', true, { func: () => void }, true>,
-  )
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<false | undefined>()
-
-  const routerWithStructuralSharing = createRouter({
+  const router = createRouter({
     routeTree,
-    defaultStructuralSharing: true,
   })
 
   expectTypeOf(
-    useParams<
-      typeof routerWithStructuralSharing,
-      '/invoices',
-      true,
-      { func: () => void },
-      true
-    >,
+    useParams<typeof router, '/invoices', true, { func: () => void }>,
   )
     .parameter(0)
     .exclude<undefined>()
@@ -257,18 +234,4 @@ test('when there are multiple params', () => {
         })
       | undefined
     >()
-
-  expectTypeOf(
-    useParams<
-      typeof routerWithStructuralSharing,
-      '/invoices',
-      true,
-      { func: () => void },
-      true
-    >,
-  )
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<false>()
 })

@@ -63,12 +63,6 @@ test('can select router state', () => {
       | undefined
     >()
 
-  expectTypeOf(useRouterState<DefaultRouter, { func: () => void }>)
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<false | undefined>()
-
   expectTypeOf(useRouterState<DefaultRouter, { func: () => void }, true>)
     .parameter(0)
     .exclude<undefined>()
@@ -80,20 +74,11 @@ test('can select router state', () => {
       | undefined
     >()
 
-  expectTypeOf(useRouterState<DefaultRouter, { func: () => void }, true>)
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<false | undefined>()
-
-  const routerWithStructuralSharing = createRouter({
+  const router = createRouter({
     routeTree,
-    defaultStructuralSharing: true,
   })
 
-  expectTypeOf(
-    useRouterState<typeof routerWithStructuralSharing, { func: () => void }>,
-  )
+  expectTypeOf(useRouterState<typeof router, { func: () => void }>)
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('select')
@@ -103,12 +88,4 @@ test('can select router state', () => {
         })
       | undefined
     >()
-
-  expectTypeOf(
-    useRouterState<typeof routerWithStructuralSharing, { func: () => void }>,
-  )
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('structuralSharing')
-    .toEqualTypeOf<false>()
 })

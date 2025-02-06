@@ -1,19 +1,12 @@
 import { useRouterState } from './useRouterState'
-import type {
-  StructuralSharingOption,
-  ValidateSelected,
-} from './structuralSharing'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 import { Accessor } from 'solid-js'
+import { ValidateJSON } from '@tanstack/router-core'
 
-export interface UseLocationBaseOptions<
-  TRouter extends AnyRouter,
-  TSelected,
-  TStructuralSharing extends boolean = boolean,
-> {
+export interface UseLocationBaseOptions<TRouter extends AnyRouter, TSelected> {
   select?: (
     state: RouterState<TRouter['routeTree']>['location'],
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+  ) => ValidateJSON<TSelected>
 }
 
 export type UseLocationResult<
@@ -26,10 +19,8 @@ export type UseLocationResult<
 export function useLocation<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseLocationBaseOptions<TRouter, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+  opts?: UseLocationBaseOptions<TRouter, TSelected>,
 ): Accessor<UseLocationResult<TRouter, TSelected>> {
   return useRouterState({
     select: (state: any) =>
