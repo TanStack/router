@@ -10,9 +10,7 @@ export interface UseSearchBaseOptions<
   TStrict extends boolean,
   TSelected,
 > {
-  select?: (
-    state: ResolveSearch<TRouter, TFrom, TStrict>,
-  ) => ValidateJSON<TSelected>
+  select?: (state: ResolveSearch<TRouter, TFrom, TStrict>) => TSelected
 }
 
 export type UseSearchOptions<

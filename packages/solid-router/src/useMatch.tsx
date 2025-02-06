@@ -16,7 +16,7 @@ export interface UseMatchBaseOptions<
 > {
   select?: (
     match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
-  ) => ValidateJSON<TSelected>
+  ) => TSelected
   shouldThrow?: TThrow
 }
 

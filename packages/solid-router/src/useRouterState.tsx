@@ -2,11 +2,10 @@ import { useStore } from '@tanstack/solid-store'
 import { useRouter } from './useRouter'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 import type { Accessor } from 'solid-js'
-import { ValidateJSON } from '@tanstack/router-core'
 
 export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
   router?: TRouter
-  select?: (state: RouterState<TRouter['routeTree']>) => ValidateJSON<TSelected>
+  select?: (state: RouterState<TRouter['routeTree']>) => TSelected
 }
 
 export type UseRouterStateResult<

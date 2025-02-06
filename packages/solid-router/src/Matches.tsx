@@ -269,9 +269,7 @@ export type MakeRouteMatchUnion<
   : never
 
 export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
-  select?: (
-    matches: Array<MakeRouteMatchUnion<TRouter>>,
-  ) => ValidateJSON<TSelected>
+  select?: (matches: Array<MakeRouteMatchUnion<TRouter>>) => TSelected
 }
 
 export type UseMatchesResult<
