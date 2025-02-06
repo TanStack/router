@@ -13,7 +13,6 @@ import {
   Link,
   Outlet,
   RouterProvider,
-  createBrowserHistory,
   createLink,
   createMemoryHistory,
   createRootRoute,
@@ -36,26 +35,19 @@ import {
   sleep,
 } from './utils'
 
-import type { RouterHistory } from '../src'
-
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
 
-let history: RouterHistory
-
 beforeEach(() => {
-  history = createBrowserHistory()
   const io = getIntersectionObserverMock({
     observe: ioObserveMock,
     disconnect: ioDisconnectMock,
   })
   vi.stubGlobal('IntersectionObserver', io)
   window.history.replaceState(null, 'root', '/')
-  expect(window.location.pathname).toBe('/')
 })
 
 afterEach(() => {
-  history.destroy()
   vi.resetAllMocks()
   cleanup()
 })
