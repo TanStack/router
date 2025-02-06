@@ -63,7 +63,7 @@ test('can select router state', () => {
       | undefined
     >()
 
-  expectTypeOf(useRouterState<DefaultRouter, { func: () => void }, true>)
+  expectTypeOf(useRouterState<DefaultRouter, { func: () => void }>)
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('select')
