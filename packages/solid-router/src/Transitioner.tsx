@@ -83,7 +83,7 @@ export function Transitioner() {
 
   Solid.createRenderEffect(
     Solid.on(
-      () => [previousIsLoading(), isLoading()],
+      [previousIsLoading, isLoading],
       ([previousIsLoading, isLoading]) => {
         if (previousIsLoading && !isLoading) {
           router.emit({
@@ -96,7 +96,7 @@ export function Transitioner() {
   )
   Solid.createRenderEffect(
     Solid.on(
-      () => [isPagePending(), previousIsPagePending],
+      [isPagePending, previousIsPagePending],
       ([isPagePending, previousIsPagePending]) => {
         // emit onBeforeRouteMount
         if (previousIsPagePending && !isPagePending) {
@@ -111,7 +111,7 @@ export function Transitioner() {
 
   Solid.createRenderEffect(
     Solid.on(
-      () => [isAnyPending(), previousIsAnyPending()],
+      [isAnyPending, previousIsAnyPending],
       ([isAnyPending, previousIsAnyPending]) => {
         // The router was pending and now it's not
         if (previousIsAnyPending && !isAnyPending) {
