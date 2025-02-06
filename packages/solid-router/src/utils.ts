@@ -20,30 +20,24 @@ export type StrictOrFrom<
 export const useLayoutEffect =
   typeof window !== 'undefined' ? Solid.createRenderEffect : Solid.createEffect
 
-/**
- * Taken from https://www.developerway.com/posts/implementing-advanced-use-previous-hook#part3
- */
-export function usePrevious<T>(value: T): T | null {
-  // initialise the ref with previous and current values
-  let ref: { value: T; prev: T | null } = {
-    value: value,
-    prev: null,
-  }
+export const usePrevious = (fn: () => boolean) => {
+  return Solid.createMemo(
+    (
+      prev: { current: boolean | null; previous: boolean | null } = {
+        current: null,
+        previous: null,
+      },
+    ) => {
+      const current = fn()
 
-  const current = ref.value
+      if (prev.current !== current) {
+        prev.previous = prev.current
+        prev.current = current
+      }
 
-  // if the value passed into hook doesn't match what we store as "current"
-  // move the "current" to the "previous"
-  // and store the passed value as "current"
-  if (value !== current) {
-    ref = {
-      value: value,
-      prev: current,
-    }
-  }
-
-  // return the previous value only
-  return ref.prev
+      return prev
+    },
+  )
 }
 
 /**
