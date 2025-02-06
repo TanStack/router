@@ -1,5 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useParams } from '../src'
+import { Accessor } from 'solid-js'
 
 test('when there are no params', () => {
   const rootRoute = createRootRoute()
@@ -52,13 +53,15 @@ test('when there are no params', () => {
     .toHaveProperty('select')
     .returns.toEqualTypeOf<unknown>()
 
-  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{}>
+  >()
 
   expectTypeOf(
     useParams<DefaultRouter, '/', false>({
       strict: false,
     }),
-  ).toEqualTypeOf<{}>()
+  ).toEqualTypeOf<Accessor<{}>>()
 })
 
 test('when there is one param', () => {
@@ -96,11 +99,13 @@ test('when there is one param', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{}>
+  >()
 
   expectTypeOf(
     useParams<DefaultRouter, '/invoices/$invoiceId'>,
-  ).returns.toEqualTypeOf<{ invoiceId: string }>()
+  ).returns.toEqualTypeOf<Accessor<{ invoiceId: string }>>()
 
   expectTypeOf(useParams<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
@@ -109,7 +114,7 @@ test('when there is one param', () => {
 
   expectTypeOf(
     useParams<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{ invoiceId?: string }>()
+  ).returns.toEqualTypeOf<Accessor<{ invoiceId?: string }>>()
 
   expectTypeOf(useParams<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -118,7 +123,7 @@ test('when there is one param', () => {
 
   expectTypeOf(
     useParams<DefaultRouter, '/invoices', false, number>,
-  ).returns.toEqualTypeOf<number>()
+  ).returns.toEqualTypeOf<Accessor<number>>()
 })
 
 test('when there are multiple params', () => {
@@ -170,11 +175,13 @@ test('when there are multiple params', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{}>
+  >()
 
   expectTypeOf(
     useParams<DefaultRouter, '/invoices/$invoiceId'>,
-  ).returns.toEqualTypeOf<{ invoiceId: string }>()
+  ).returns.toEqualTypeOf<Accessor<{ invoiceId: string }>>()
 
   expectTypeOf(useParams<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
@@ -183,7 +190,7 @@ test('when there are multiple params', () => {
 
   expectTypeOf(
     useParams<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{ invoiceId?: string; postId?: string }>()
+  ).returns.toEqualTypeOf<Accessor<{ invoiceId?: string; postId?: string }>>()
 
   expectTypeOf(useParams<DefaultRouter, '/invoices', false>)
     .parameter(0)
