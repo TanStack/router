@@ -61,7 +61,7 @@ export function Transitioner() {
   })
 
   // Try to load the initial location
-  Solid.createEffect(() => {
+  Solid.createRenderEffect(() => {
     Solid.untrack(() => {
       if (
         (typeof window !== 'undefined' && router.clientSsr) ||
