@@ -6,6 +6,7 @@ import {
   createRouter,
   useRouteContext,
 } from '../src'
+import { Accessor } from 'solid-js'
 
 test('when there is no context', () => {
   const rootRoute = createRootRoute()
@@ -58,13 +59,15 @@ test('when there is no context', () => {
     .toHaveProperty('select')
     .returns.toEqualTypeOf<unknown>()
 
-  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{}>
+  >()
 
   expectTypeOf(
     useRouteContext<DefaultRouter, '/', false>({
       strict: false,
     }),
-  ).toEqualTypeOf<{}>()
+  ).toEqualTypeOf<Accessor<{}>>()
 })
 
 test('when there is the root context', () => {
@@ -107,13 +110,15 @@ test('when there is the root context', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<{
-    userId: string
-  }>()
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{
+      userId: string
+    }>
+  >()
 
   expectTypeOf(
     useRouteContext<DefaultRouter, '/invoices/$invoiceId'>,
-  ).returns.toEqualTypeOf<{ userId: string }>()
+  ).returns.toEqualTypeOf<Accessor<{ userId: string }>>()
 
   expectTypeOf(useRouteContext<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
@@ -122,7 +127,7 @@ test('when there is the root context', () => {
 
   expectTypeOf(
     useRouteContext<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{ userId?: string }>()
+  ).returns.toEqualTypeOf<Accessor<{ userId?: string }>>()
 
   expectTypeOf(useRouteContext<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -131,7 +136,7 @@ test('when there is the root context', () => {
 
   expectTypeOf(
     useRouteContext<DefaultRouter, '/invoices', false, number>,
-  ).returns.toEqualTypeOf<number>()
+  ).returns.toEqualTypeOf<Accessor<number>>()
 })
 
 test('when there are multiple contexts', () => {
@@ -189,13 +194,15 @@ test('when there are multiple contexts', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<{
-    userId: string
-  }>()
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{
+      userId: string
+    }>
+  >()
 
   expectTypeOf(
     useRouteContext<DefaultRouter, '/invoices/$invoiceId'>,
-  ).returns.toEqualTypeOf<{ userId: string }>()
+  ).returns.toEqualTypeOf<Accessor<{ userId: string }>>()
 
   expectTypeOf(useRouteContext<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
@@ -204,7 +211,7 @@ test('when there are multiple contexts', () => {
 
   expectTypeOf(
     useRouteContext<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{ userId?: string; username?: string }>()
+  ).returns.toEqualTypeOf<Accessor<{ userId?: string; username?: string }>>()
 
   expectTypeOf(useRouteContext<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -271,16 +278,20 @@ test('when there are overlapping contexts', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<{
-    userId: string
-  }>
+  expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
+    Accessor<{
+      userId: string
+    }>
+  >
 
   expectTypeOf(
     useRouteContext<DefaultRouter, '/invoices/$invoiceId'>,
-  ).returns.toEqualTypeOf<{
-    userId: string
-    readonly username: 'username2'
-  }>()
+  ).returns.toEqualTypeOf<
+    Accessor<{
+      userId: string
+      readonly username: 'username2'
+    }>
+  >()
 
   expectTypeOf(useRouteContext<DefaultRouter, '/invoices/$invoiceId'>)
     .parameter(0)
@@ -295,10 +306,12 @@ test('when there are overlapping contexts', () => {
 
   expectTypeOf(
     useRouteContext<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{
-    userId?: string
-    username?: 'username1' | 'username2'
-  }>()
+  ).returns.toEqualTypeOf<
+    Accessor<{
+      userId?: string
+      username?: 'username1' | 'username2'
+    }>
+  >()
 
   expectTypeOf(useRouteContext<DefaultRouter, '/invoices', false>)
     .parameter(0)
