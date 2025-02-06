@@ -55,7 +55,7 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       const search = rootRoute.useSearch()
       return (
         <>
-          <div data-testid="search-root">{search.root ?? '$undefined'}</div>
+          <div data-testid="search-root">{search().root ?? '$undefined'}</div>
           <Outlet />
         </>
       )
@@ -168,7 +168,9 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       const search = searchRoute.useSearch()
       return (
         <>
-          <div data-testid="search-search">{search.search ?? '$undefined'}</div>
+          <div data-testid="search-search">
+            {search().search ?? '$undefined'}
+          </div>
         </>
       )
     },
@@ -228,9 +230,9 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       const search = searchWithDefaultCheckRoute.useSearch()
       return (
         <>
-          <div data-testid="search-default">{search.default}</div>
+          <div data-testid="search-default">{search().default}</div>
           <div data-testid="search-optional">
-            {search.optional ?? '$undefined'}
+            {search().optional ?? '$undefined'}
           </div>
         </>
       )
