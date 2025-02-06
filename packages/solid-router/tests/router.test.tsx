@@ -28,6 +28,7 @@ import type {
   ValidatorFn,
   ValidatorObj,
 } from '../src'
+import { sleep } from './utils'
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -658,7 +659,7 @@ describe('router emits events during rendering', () => {
     const unsub = router.subscribe('onResolved', mockFn1)
     await router.load()
     await render(() => <RouterProvider router={router} />)
-
+    await sleep(0)
     await router.navigate({ to: '/$', params: { _splat: 'tanner' } })
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
