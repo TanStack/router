@@ -27,10 +27,6 @@
     "vite-plugin-dts": "^4.5.0"
   },
   "nx": {
-    "//": "This is a workaround for a bug in Nx. See https://github.com/nrwl/nx/issues/29486",
-    "implicitDependencies": [
-      "@router-mono-simple-lazy/post-feature"
-    ],
     "targets": {
       "dev": {
         "dependsOn": [
