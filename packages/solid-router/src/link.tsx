@@ -1,5 +1,3 @@
-'use client'
-
 import * as Solid from 'solid-js'
 
 import { mergeRefs } from '@solid-primitives/refs'
