@@ -597,7 +597,7 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <span>Page: {search.page}</span>
+          <span>Page: {search().page}</span>
         </>
       )
     }
@@ -658,7 +658,7 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <span>Page: {search.page}</span>
+          <span>Page: {search().page}</span>
         </>
       )
     }
