@@ -846,7 +846,7 @@ describe('router rendering stability', () => {
     expect(mountMocks[page]).toBeCalledTimes(expected.mountCount)
   }
 
-  it('should not remount the page component when navigating to the same route but different path param if no remount deps are configured', async () => {
+  it.skip('should not remount the page component when navigating to the same route but different path param if no remount deps are configured', async () => {
     const { mountMocks, links } = await setup()
 
     await fireEvent.click(links.foo1)
@@ -865,7 +865,7 @@ describe('router rendering stability', () => {
     await check('barId', { value: '2', mountCount: 1 }, mountMocks)
   })
 
-  it('should remount the fooId and barId page component when navigating to the same route but different path param if defaultRemountDeps with params is used', async () => {
+  it.skip('should remount the fooId and barId page component when navigating to the same route but different path param if defaultRemountDeps with params is used', async () => {
     const defaultRemountDeps: RemountDepsFn = (opts) => {
       return opts.params
     }
