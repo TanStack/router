@@ -983,8 +983,8 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <span>UserId: {context.userId}</span>
-          <span>Username: {context.username}</span>
+          <span>UserId: {context().userId}</span>
+          <span>Username: {context().username}</span>
         </>
       )
     }
