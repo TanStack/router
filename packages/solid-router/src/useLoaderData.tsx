@@ -3,6 +3,7 @@ import type { AnyRouter, RegisteredRouter } from './router'
 import type { AllLoaderData, RouteById } from './routeInfo'
 import type { StrictOrFrom } from './utils'
 import type { Expand, ValidateJSON } from '@tanstack/router-core'
+import { Accessor } from 'solid-js'
 
 export interface UseLoaderDataBaseOptions<
   TRouter extends AnyRouter,
@@ -52,12 +53,12 @@ export function useLoaderData<
   TSelected = unknown,
 >(
   opts: UseLoaderDataOptions<TRouter, TFrom, TStrict, TSelected>,
-): UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected> {
+): Accessor<UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     select: (s: any) => {
       return opts.select ? opts.select(s.loaderData) : s.loaderData
     },
-  } as any) as UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
+  } as any) as any
 }

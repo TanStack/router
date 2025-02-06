@@ -729,7 +729,7 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <span>Page: {data.pageDoubled}</span>
+          <span>Page: {data().pageDoubled}</span>
         </>
       )
     }
@@ -792,7 +792,7 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <span>Page: {loader.pageDoubled}</span>
+          <span>Page: {loader().pageDoubled}</span>
         </>
       )
     }
