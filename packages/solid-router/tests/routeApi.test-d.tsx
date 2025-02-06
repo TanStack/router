@@ -91,7 +91,7 @@ describe('getRouteApi', () => {
   })
   test('useMatch', () => {
     expectTypeOf(invoiceRouteApi.useMatch<DefaultRouter>()).toEqualTypeOf<
-      MakeRouteMatch<typeof routeTree, '/invoices/$invoiceId'>
+      Accessor<MakeRouteMatch<typeof routeTree, '/invoices/$invoiceId'>>
     >()
   })
 })

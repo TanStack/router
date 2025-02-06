@@ -25,7 +25,7 @@ export type UseMatchRoute<out TFrom> = <
   TSelected = unknown,
 >(
   opts?: UseMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
-) => UseMatchResult<TRouter, TFrom, true, TSelected>
+) => Solid.Accessor<UseMatchResult<TRouter, TFrom, true, TSelected>>
 
 export type UseMatchOptions<
   TRouter extends AnyRouter,
