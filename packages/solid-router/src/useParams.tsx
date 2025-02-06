@@ -43,7 +43,7 @@ export type UseParamsRoute<out TFrom> = <
   TSelected = unknown,
 >(
   opts?: UseParamsBaseOptions<TRouter, TFrom, true, TSelected>,
-) => UseParamsResult<TRouter, TFrom, true, TSelected>
+) => Accessor<UseParamsResult<TRouter, TFrom, true, TSelected>>
 
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,

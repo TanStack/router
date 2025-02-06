@@ -2527,7 +2527,7 @@ describe('Link', () => {
 
     const InvoiceComponent = () => {
       const params = useParams({ strict: false })
-      return <span>invoiceId: {params.invoiceId}</span>
+      return <span>invoiceId: {params().invoiceId}</span>
     }
 
     const invoiceRoute = createRoute({

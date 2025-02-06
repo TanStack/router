@@ -563,9 +563,11 @@ test('when creating a child route with params from the root route', () => {
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
-  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{
-    invoiceId: string
-  }>()
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      invoiceId: string
+    }>
+  >()
 
   expectTypeOf(invoicesRoute.useParams<typeof router, number>)
     .parameter(0)
@@ -587,9 +589,11 @@ test('when creating a child route with a splat param from the root route', () =>
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
-  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{
-    _splat?: string
-  }>()
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      _splat?: string
+    }>
+  >()
 
   expectTypeOf(invoicesRoute.useParams<typeof router, number>)
     .parameter(0)
@@ -610,10 +614,12 @@ test('when creating a child route with a param and splat param from the root rou
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
-  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{
-    invoiceId: string
-    _splat?: string
-  }>()
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      invoiceId: string
+      _splat?: string
+    }>
+  >()
 
   expectTypeOf(invoicesRoute.useParams<typeof router, number>)
     .parameter(0)
@@ -820,10 +826,12 @@ test('when creating a child route with params from a parent with params', () => 
     ]),
   })
 
-  expectTypeOf(detailsRoute.useParams<typeof router>()).toEqualTypeOf<{
-    invoiceId: string
-    detailId: string
-  }>()
+  expectTypeOf(detailsRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      invoiceId: string
+      detailId: string
+    }>
+  >()
 
   expectTypeOf(detailsRoute.useParams<typeof router, number>)
     .parameter(0)
@@ -1304,7 +1312,9 @@ test('when creating a child route with parseParams and stringify params without 
 
   const router = createRouter({ routeTree })
 
-  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{}>()
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{}>
+  >()
 })
 
 test('when creating a child route with params.parse and params.stringify without params in path', () => {
@@ -1335,7 +1345,9 @@ test('when creating a child route with params.parse and params.stringify without
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
-  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{}>()
+  expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{}>
+  >()
 })
 
 test('when creating a child route with parseParams and stringifyParams with params in path', () => {
@@ -1373,9 +1385,11 @@ test('when creating a child route with parseParams and stringifyParams with para
     routeTree: rootRoute.addChildren([invoiceRoute]),
   })
 
-  expectTypeOf(invoiceRoute.useParams<typeof router>()).toEqualTypeOf<{
-    invoiceId: number
-  }>()
+  expectTypeOf(invoiceRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      invoiceId: number
+    }>
+  >()
 })
 
 test('when creating a child route with params.parse and params.stringify with params in path', () => {
@@ -1415,9 +1429,11 @@ test('when creating a child route with params.parse and params.stringify with pa
     routeTree: invoicesRoute.addChildren([invoiceRoute]),
   })
 
-  expectTypeOf(invoiceRoute.useParams<typeof router>()).toEqualTypeOf<{
-    invoiceId: number
-  }>()
+  expectTypeOf(invoiceRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      invoiceId: number
+    }>
+  >()
 })
 
 test('when creating a child route with parseParams and stringifyParams with merged params from parent', () => {
@@ -1483,10 +1499,12 @@ test('when creating a child route with parseParams and stringifyParams with merg
     ]),
   })
 
-  expectTypeOf(detailRoute.useParams<typeof router>()).toEqualTypeOf<{
-    detailId: number
-    invoiceId: number
-  }>()
+  expectTypeOf(detailRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      detailId: number
+      invoiceId: number
+    }>
+  >()
 })
 
 test('when creating a child route with params.parse and params.stringify with merged params from parent', () => {
@@ -1555,10 +1573,12 @@ test('when creating a child route with params.parse and params.stringify with me
     ]),
   })
 
-  expectTypeOf(detailRoute.useParams<typeof router>()).toEqualTypeOf<{
-    detailId: number
-    invoiceId: number
-  }>()
+  expectTypeOf(detailRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      detailId: number
+      invoiceId: number
+    }>
+  >()
 })
 
 test('when routeContext throws', () => {

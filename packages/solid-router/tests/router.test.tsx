@@ -780,7 +780,7 @@ describe('router rendering stability', () => {
 
       return (
         <div data-testid="fooId-page">
-          Foo page <span data-testid="fooId-value">{fooId}</span> <Outlet />
+          Foo page <span data-testid="fooId-value">{fooId()}</span> <Outlet />
         </div>
       )
     }
@@ -801,7 +801,7 @@ describe('router rendering stability', () => {
 
       return (
         <div data-testid="barId-page">
-          Bar page <span data-testid="barId-value">{barId}</span> <Outlet />
+          Bar page <span data-testid="barId-value">{barId()}</span> <Outlet />
         </div>
       )
     }

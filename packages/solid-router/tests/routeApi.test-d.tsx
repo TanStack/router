@@ -57,9 +57,11 @@ describe('getRouteApi', () => {
     })
   })
   test('useParams', () => {
-    expectTypeOf(invoiceRouteApi.useParams<DefaultRouter>()).toEqualTypeOf<{
-      invoiceId: string
-    }>()
+    expectTypeOf(invoiceRouteApi.useParams<DefaultRouter>()).toEqualTypeOf<
+      Accessor<{
+        invoiceId: string
+      }>
+    >()
   })
   test('useContext', () => {
     expectTypeOf(
