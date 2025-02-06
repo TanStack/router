@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, getRouteApi } from '../src'
 import type { MakeRouteMatch, UseNavigateResult } from '../src'
+import { Accessor } from 'solid-js'
 
 const rootRoute = createRootRoute()
 
@@ -68,9 +69,11 @@ describe('getRouteApi', () => {
     }>()
   })
   test('useSearch', () => {
-    expectTypeOf(invoiceRouteApi.useSearch<DefaultRouter>()).toEqualTypeOf<{
-      page: number
-    }>()
+    expectTypeOf(invoiceRouteApi.useSearch<DefaultRouter>()).toEqualTypeOf<
+      Accessor<{
+        page: number
+      }>
+    >()
   })
   test('useLoaderData', () => {
     expectTypeOf(invoiceRouteApi.useLoaderData<DefaultRouter>()).toEqualTypeOf<{

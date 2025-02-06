@@ -54,7 +54,7 @@ export function Navigate<
   Solid.onMount(() => {
     navigate({
       ...props,
-    } as any)
+    })
   })
 
   return null

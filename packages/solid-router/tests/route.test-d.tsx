@@ -20,6 +20,7 @@ import type {
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
 } from '../src/Matches'
+import { Accessor } from 'solid-js'
 
 test('when creating the root', () => {
   const rootRoute = createRootRoute()
@@ -508,9 +509,11 @@ test('when creating a child route with search params from the root route', () =>
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
-  expectTypeOf(invoicesRoute.useSearch<typeof router>()).toEqualTypeOf<{
-    page: number
-  }>()
+  expectTypeOf(invoicesRoute.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      page: number
+    }>
+  >()
 
   expectTypeOf(invoicesRoute.useSearch<typeof router, number>)
     .parameter(0)
@@ -533,9 +536,11 @@ test('when creating a child route with optional search params from the root rout
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
-  expectTypeOf(invoicesRoute.useSearch<typeof router>()).toEqualTypeOf<{
-    page?: number
-  }>()
+  expectTypeOf(invoicesRoute.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      page?: number
+    }>
+  >()
 
   expectTypeOf(invoicesRoute.useSearch<typeof router, number>)
     .parameter(0)
@@ -851,10 +856,12 @@ test('when creating a child route with search from a parent with search', () => 
     ]),
   })
 
-  expectTypeOf(detailsRoute.useSearch<typeof router>()).toEqualTypeOf<{
-    invoicePage: number
-    detailPage: number
-  }>()
+  expectTypeOf(detailsRoute.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      invoicePage: number
+      detailPage: number
+    }>
+  >()
 
   expectTypeOf(detailsRoute.useSearch<typeof router, number>)
     .parameter(0)
@@ -1626,17 +1633,23 @@ test('when creating a child route with no explicit search input', () => {
 
   const router = createRouter({ routeTree })
 
-  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
-    page: number
-  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      page: number
+    }>
+  >()
 
-  expectTypeOf(indexRoute.useSearch<typeof router>()).toEqualTypeOf<{
-    page: number
-  }>()
+  expectTypeOf(indexRoute.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      page: number
+    }>
+  >()
 
-  expectTypeOf(rootRouteWithContext.useSearch<typeof router>()).toEqualTypeOf<{
-    page: number
-  }>()
+  expectTypeOf(rootRouteWithContext.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      page: number
+    }>
+  >()
 
   const navigate = indexRoute.useNavigate()
 
@@ -1689,17 +1702,23 @@ test('when creating a child route with an explicit search input', () => {
 
   const router = createRouter({ routeTree })
 
-  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
-    page: string
-  }>()
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      page: string
+    }>
+  >()
 
-  expectTypeOf(indexRoute.useSearch<typeof router>()).toEqualTypeOf<{
-    page: string
-  }>()
+  expectTypeOf(indexRoute.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      page: string
+    }>
+  >()
 
-  expectTypeOf(rootRouteWithContext.useSearch<typeof router>()).toEqualTypeOf<{
-    page: string
-  }>()
+  expectTypeOf(rootRouteWithContext.useSearch<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      page: string
+    }>
+  >()
 
   const navigate = indexRoute.useNavigate()
 

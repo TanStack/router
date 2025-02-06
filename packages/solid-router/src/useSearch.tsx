@@ -3,6 +3,7 @@ import type { FullSearchSchema, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { StrictOrFrom } from './utils'
 import type { Expand, ValidateJSON } from '@tanstack/router-core'
+import { Accessor } from 'solid-js'
 
 export interface UseSearchBaseOptions<
   TRouter extends AnyRouter,
@@ -43,7 +44,7 @@ export type UseSearchRoute<out TFrom> = <
   TSelected = unknown,
 >(
   opts?: UseSearchBaseOptions<TRouter, TFrom, true, TSelected>,
-) => UseSearchResult<TRouter, TFrom, true, TSelected>
+) => Accessor<UseSearchResult<TRouter, TFrom, true, TSelected>>
 
 export function useSearch<
   TRouter extends AnyRouter = RegisteredRouter,
