@@ -3,6 +3,7 @@ import type { AllParams, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { StrictOrFrom } from './utils'
 import type { Expand, ValidateJSON } from '@tanstack/router-core'
+import { Accessor } from 'solid-js'
 
 export interface UseParamsBaseOptions<
   TRouter extends AnyRouter,
@@ -51,12 +52,12 @@ export function useParams<
   TSelected = unknown,
 >(
   opts: UseParamsOptions<TRouter, TFrom, TStrict, TSelected>,
-): UseParamsResult<TRouter, TFrom, TStrict, TSelected> {
+): Accessor<UseParamsResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     select: (match: any) => {
       return opts.select ? opts.select(match.params) : match.params
     },
-  } as any) as UseParamsResult<TRouter, TFrom, TStrict, TSelected>
+  } as any) as any
 }
