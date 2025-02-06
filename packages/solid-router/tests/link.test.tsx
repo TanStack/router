@@ -4154,7 +4154,7 @@ describe('search middleware', () => {
     expect(search.get('foo')).toBe('foo')
   })
 
-  test.only('search middlewares work', async () => {
+  test('search middlewares work', async () => {
     const rootRoute = createRootRoute({
       validateSearch: (input) => {
         return {
