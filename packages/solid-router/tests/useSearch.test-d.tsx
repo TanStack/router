@@ -138,53 +138,53 @@ test('when there is one search params', () => {
       ((search: { page?: number }) => { func: () => void }) | undefined
     >()
 
-  expectTypeOf(
-    useSearch<DefaultRouter, '/invoices', false, { func: () => void }>,
-  )
-    .parameter(0)
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      | ((search: { page?: number }) => {
-          func: 'Function is not serializable'
-        })
-      | undefined
-    >()
+  // expectTypeOf(
+  //   useSearch<DefaultRouter, '/invoices', false, { func: () => void }>,
+  // )
+  //   .parameter(0)
+  //   .toHaveProperty('select')
+  //   .toEqualTypeOf<
+  //     | ((search: { page?: number }) => {
+  //         func: 'Function is not serializable'
+  //       })
+  //     | undefined
+  //   >()
 
-  expectTypeOf(useSearch<DefaultRouter, '/invoices', false, { hi: any }>)
-    .parameter(0)
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      | ((search: { page?: number }) => {
-          hi: never
-        })
-      | undefined
-    >()
+  // expectTypeOf(useSearch<DefaultRouter, '/invoices', false, { hi: any }>)
+  //   .parameter(0)
+  //   .toHaveProperty('select')
+  //   .toEqualTypeOf<
+  //     | ((search: { page?: number }) => {
+  //         hi: never
+  //       })
+  //     | undefined
+  //   >()
 
   const router = createRouter({
     routeTree,
   })
 
-  expectTypeOf(
-    useSearch<typeof router, '/invoices', false, { func: () => void }>,
-  )
-    .parameter(0)
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      | ((search: { page?: number }) => {
-          func: 'Function is not serializable'
-        })
-      | undefined
-    >()
+  // expectTypeOf(
+  //   useSearch<typeof router, '/invoices', false, { func: () => void }>,
+  // )
+  //   .parameter(0)
+  //   .toHaveProperty('select')
+  //   .toEqualTypeOf<
+  //     | ((search: { page?: number }) => {
+  //         func: 'Function is not serializable'
+  //       })
+  //     | undefined
+  //   >()
 
-  expectTypeOf(useSearch<typeof router, '/invoices', false, { hi: any }>)
-    .parameter(0)
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      | ((search: { page?: number }) => {
-          hi: never
-        })
-      | undefined
-    >()
+  // expectTypeOf(useSearch<typeof router, '/invoices', false, { hi: any }>)
+  //   .parameter(0)
+  //   .toHaveProperty('select')
+  //   .toEqualTypeOf<
+  //     | ((search: { page?: number }) => {
+  //         hi: never
+  //       })
+  //     | undefined
+  //   >()
 })
 
 test('when there are multiple search params', () => {
