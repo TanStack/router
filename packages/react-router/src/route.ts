@@ -721,8 +721,8 @@ export class Route<
   >
 
   // The following properties are set up in this.init()
-  parentRoute!: TParentRoute
   router!: AnyRouter
+  parentRoute!: TParentRoute
   private _id!: TId
   private _path!: TPath
   private _fullPath!: TFullPath
@@ -836,13 +836,13 @@ export class Route<
   }
 
   init = (opts: {
+    router: AnyRouter
     originalIndex: number
     defaultSsr?: boolean
-    router: AnyRouter
   }): void => {
-    this.originalIndex = opts.originalIndex
-
     this.router = opts.router
+
+    this.originalIndex = opts.originalIndex
 
     const options = this.options as
       | (RouteOptions<
