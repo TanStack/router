@@ -17,14 +17,14 @@ export function Transitioner() {
     select: (s) => s.matches.some((d) => d.status === 'pending'),
   })
 
-  const previousIsLoading = () => usePrevious(isLoading())
+  const previousIsLoading = usePrevious(isLoading)
 
   const isAnyPending = () =>
     isLoading() || isTransitioning() || hasPendingMatches()
-  const previousIsAnyPending = () => usePrevious(isAnyPending())
+  const previousIsAnyPending = usePrevious(isAnyPending)
 
   const isPagePending = () => isLoading() || hasPendingMatches()
-  const previousIsPagePending = () => usePrevious(isPagePending())
+  const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
     router.startSolidTransition = (fn: () => void) => {
@@ -85,7 +85,7 @@ export function Transitioner() {
     Solid.on(
       [previousIsLoading, isLoading],
       ([previousIsLoading, isLoading]) => {
-        if (previousIsLoading && !isLoading) {
+        if (previousIsLoading.previous && !isLoading) {
           router.emit({
             type: 'onLoad',
             ...getLocationChangeInfo(router.state),
@@ -99,7 +99,7 @@ export function Transitioner() {
       [isPagePending, previousIsPagePending],
       ([isPagePending, previousIsPagePending]) => {
         // emit onBeforeRouteMount
-        if (previousIsPagePending && !isPagePending) {
+        if (previousIsPagePending.previous && !isPagePending) {
           router.emit({
             type: 'onBeforeRouteMount',
             ...getLocationChangeInfo(router.state),
@@ -114,7 +114,7 @@ export function Transitioner() {
       [isAnyPending, previousIsAnyPending],
       ([isAnyPending, previousIsAnyPending]) => {
         // The router was pending and now it's not
-        if (previousIsAnyPending && !isAnyPending) {
+        if (previousIsAnyPending.previous && !isAnyPending) {
           router.emit({
             type: 'onResolved',
             ...getLocationChangeInfo(router.state),
