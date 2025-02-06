@@ -16,11 +16,7 @@ export function CatchBoundary(
         props.onCatch?.(error)
 
         Solid.createEffect(
-          Solid.on(
-            () => props.getResetKey,
-            () => reset(),
-            { defer: true },
-          ),
+          Solid.on([props.getResetKey], () => reset(), { defer: true }),
         )
 
         return (
