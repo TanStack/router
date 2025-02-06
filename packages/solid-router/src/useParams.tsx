@@ -10,9 +10,7 @@ export interface UseParamsBaseOptions<
   TStrict extends boolean,
   TSelected,
 > {
-  select?: (
-    params: ResolveParams<TRouter, TFrom, TStrict>,
-  ) => ValidateJSON<TSelected>
+  select?: (params: ResolveParams<TRouter, TFrom, TStrict>) => TSelected
 }
 
 export type UseParamsOptions<

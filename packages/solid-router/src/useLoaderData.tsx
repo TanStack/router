@@ -10,9 +10,7 @@ export interface UseLoaderDataBaseOptions<
   TStrict extends boolean,
   TSelected,
 > {
-  select?: (
-    match: ResolveLoaderData<TRouter, TFrom, TStrict>,
-  ) => ValidateJSON<TSelected>
+  select?: (match: ResolveLoaderData<TRouter, TFrom, TStrict>) => TSelected
 }
 
 export type UseLoaderDataOptions<

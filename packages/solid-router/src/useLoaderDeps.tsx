@@ -9,7 +9,7 @@ export interface UseLoaderDepsBaseOptions<
   TFrom,
   TSelected,
 > {
-  select?: (deps: ResolveLoaderDeps<TRouter, TFrom>) => ValidateJSON<TSelected>
+  select?: (deps: ResolveLoaderDeps<TRouter, TFrom>) => TSelected
 }
 
 export type UseLoaderDepsOptions<
