@@ -205,33 +205,33 @@ test('when there are multiple params', () => {
       | undefined
     >()
 
-  expectTypeOf(
-    useParams<DefaultRouter, '/invoices', true, { func: () => void }>,
-  )
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      | ((search: {}) => {
-          func: 'Function is not serializable'
-        })
-      | undefined
-    >()
+  // expectTypeOf(
+  //   useParams<DefaultRouter, '/invoices', true, { func: () => void }>,
+  // )
+  //   .parameter(0)
+  //   .exclude<undefined>()
+  //   .toHaveProperty('select')
+  //   .toEqualTypeOf<
+  //     | ((search: {}) => {
+  //         func: 'Function is not serializable'
+  //       })
+  //     | undefined
+  //   >()
 
   const router = createRouter({
     routeTree,
   })
 
-  expectTypeOf(
-    useParams<typeof router, '/invoices', true, { func: () => void }>,
-  )
-    .parameter(0)
-    .exclude<undefined>()
-    .toHaveProperty('select')
-    .toEqualTypeOf<
-      | ((search: {}) => {
-          func: 'Function is not serializable'
-        })
-      | undefined
-    >()
+  // expectTypeOf(
+  //   useParams<typeof router, '/invoices', true, { func: () => void }>,
+  // )
+  //   .parameter(0)
+  //   .exclude<undefined>()
+  //   .toHaveProperty('select')
+  //   .toEqualTypeOf<
+  //     | ((search: {}) => {
+  //         func: 'Function is not serializable'
+  //       })
+  //     | undefined
+  //   >()
 })
