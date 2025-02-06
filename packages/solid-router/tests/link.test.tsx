@@ -2423,7 +2423,9 @@ describe('Link', () => {
   })
 
   test('when navigating from /invoices to ./invoiceId and the current route is /posts/$postId/details', async () => {
-    const rootRoute = createRootRoute()
+    const rootRoute = createRootRoute({
+      errorComponent: (err) => <div>{err.error.message}</div>,
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,

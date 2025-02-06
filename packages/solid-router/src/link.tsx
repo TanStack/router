@@ -594,11 +594,11 @@ export function useLinkProps<
           router.basepath,
         ).split('/')
         const nextPathSplit = removeTrailingSlash(
-          next().pathname,
+          next()?.pathname,
           router.basepath,
-        ).split('/')
+        )?.split('/')
 
-        const pathIsFuzzyEqual = nextPathSplit.every(
+        const pathIsFuzzyEqual = nextPathSplit?.every(
           (d, i) => d === currentPathSplit[i],
         )
         if (!pathIsFuzzyEqual) {
@@ -808,13 +808,13 @@ export function useLinkProps<
     resolvedActiveProps,
     resolvedInactiveProps,
     () => {
-      const maskedLocation = next().maskedLocation
+      const maskedLocation = next()?.maskedLocation
       return {
         href: local.disabled
           ? undefined
           : maskedLocation
             ? router.history.createHref(maskedLocation.href)
-            : router.history.createHref(next().href),
+            : router.history.createHref(next()?.href),
         ref: mergeRefs(setRef, options.ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
