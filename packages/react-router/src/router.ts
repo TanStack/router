@@ -835,7 +835,6 @@ export class Router<
     const notFoundRoute = this.options.notFoundRoute
     if (notFoundRoute) {
       notFoundRoute.init({
-        router: this,
         originalIndex: 99999999999,
         defaultSsr: this.options.defaultSsr,
       })
@@ -845,7 +844,6 @@ export class Router<
     const recurseRoutes = (childRoutes: Array<AnyRoute>) => {
       childRoutes.forEach((childRoute, i) => {
         childRoute.init({
-          router: this,
           originalIndex: i,
           defaultSsr: this.options.defaultSsr,
         })
