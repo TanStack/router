@@ -86,7 +86,7 @@ describe('context function', () => {
           const navigate = detailRoute.useNavigate()
           return (
             <div>
-              <h1>Detail page: {id}</h1>
+              <h1>Detail page: {id()}</h1>
               <button
                 onClick={() =>
                   navigate({
