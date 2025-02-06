@@ -1,10 +1,11 @@
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import {
   Link,
   RouterProvider,
+  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -15,7 +16,17 @@ import {
 
 import { sleep } from './utils'
 
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
+
 afterEach(() => {
+  history.destroy()
   vi.clearAllMocks()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
