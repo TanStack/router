@@ -835,7 +835,11 @@ export class Route<
     loaderDeps: TLoaderDeps
   }
 
-  init = (opts: { originalIndex: number; defaultSsr?: boolean; router: AnyRouter }): void => {
+  init = (opts: {
+    originalIndex: number
+    defaultSsr?: boolean
+    router: AnyRouter
+  }): void => {
     this.originalIndex = opts.originalIndex
 
     this.router = opts.router
