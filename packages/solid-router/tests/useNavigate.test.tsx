@@ -140,7 +140,7 @@ test('when navigating from /posts to ./$postId', async () => {
     const navigate = useNavigate()
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
       </>
     )
@@ -250,7 +250,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
     const params = useParams({ strict: false })
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
       </>
     )
@@ -347,7 +347,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
     const params = useParams({ strict: false })
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <Outlet />
       </>
     )
@@ -492,7 +492,7 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
     const params = useParams({ strict: false })
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <Outlet />
       </>
     )
@@ -635,7 +635,7 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
     const params = useParams({ strict: false })
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <Outlet />
       </>
     )
@@ -776,7 +776,7 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
     const params = useParams({ strict: false })
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <Outlet />
       </>
     )
@@ -927,7 +927,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
     const params = useParams({ strict: false })
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <Outlet />
       </>
     )
@@ -1000,7 +1000,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
     const params = useParams({ strict: false })
     return (
       <>
-        <span>invoiceId: {params.invoiceId}</span>
+        <span>invoiceId: {params().invoiceId}</span>
       </>
     )
   }
@@ -1084,7 +1084,7 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
     const params = useParams({ strict: false })
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <Outlet />
       </>
     )
@@ -1126,7 +1126,10 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
     routeMasks: [routeMask],
   })
 
-  render(() => <RouterProvider router={router} />)
+  const { debug } = render(() => <RouterProvider router={router} />)
+
+  console.log('Debug 1')
+  debug()
 
   const postButton = await screen.findByRole('button', {
     name: 'To first post',
@@ -1134,6 +1137,10 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
 
   fireEvent.click(postButton)
 
+  await new Promise((r) => setTimeout(r, 0))
+
+  console.log('Debug 2')
+  debug()
   expect(await screen.findByText('Params: id1'))
 })
 
@@ -1185,7 +1192,7 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
     const params = useParams({ strict: false })
     return (
       <>
-        <span>Params: {params.postId}</span>
+        <span>Params: {params().postId}</span>
         <Outlet />
       </>
     )
