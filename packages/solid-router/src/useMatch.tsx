@@ -2,14 +2,10 @@ import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
 import { dummyMatchContext, matchContext } from './matchContext'
-import type {
-  StructuralSharingOption,
-  ValidateSelected,
-} from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { MakeRouteMatch, MakeRouteMatchUnion } from './Matches'
 import type { StrictOrFrom } from './utils'
-import type { ThrowOrOptional } from '@tanstack/router-core'
+import type { ThrowOrOptional, ValidateJSON } from '@tanstack/router-core'
 
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,
@@ -17,28 +13,18 @@ export interface UseMatchBaseOptions<
   TStrict extends boolean,
   TThrow,
   TSelected,
-  TStructuralSharing extends boolean,
 > {
   select?: (
     match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+  ) => ValidateJSON<TSelected>
   shouldThrow?: TThrow
 }
 
 export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchBaseOptions<
-    TRouter,
-    TFrom,
-    true,
-    true,
-    TSelected,
-    TStructuralSharing
-  > &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+  opts?: UseMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
 ) => UseMatchResult<TRouter, TFrom, true, TSelected>
 
 export type UseMatchOptions<
@@ -47,18 +33,8 @@ export type UseMatchOptions<
   TStrict extends boolean,
   TSelected,
   TThrow extends boolean,
-  TStructuralSharing extends boolean,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseMatchBaseOptions<
-    TRouter,
-    TFrom,
-    TStrict,
-    TThrow,
-    TSelected,
-    TStructuralSharing
-  > &
-  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
-
+  UseMatchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
 export type UseMatchResult<
   TRouter extends AnyRouter,
   TFrom,
@@ -81,15 +57,13 @@ export function useMatch<
   TStrict extends boolean = true,
   TThrow extends boolean = true,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
   opts: UseMatchOptions<
     TRouter,
     TFrom,
     TStrict,
     TSelected,
-    ThrowConstraint<TStrict, TThrow>,
-    TStructuralSharing
+    ThrowConstraint<TStrict, TThrow>
   >,
 ): Solid.Accessor<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
@@ -115,7 +89,6 @@ export function useMatch<
 
       return opts.select ? opts.select(match) : match
     },
-    structuralSharing: opts.structuralSharing,
   } as any)
 
   return matchSelection as any

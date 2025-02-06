@@ -1,23 +1,18 @@
 import { useMatch } from './useMatch'
-import type {
-  StructuralSharingOption,
-  ValidateSelected,
-} from './structuralSharing'
 import type { AllParams, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { StrictOrFrom } from './utils'
-import type { Expand } from '@tanstack/router-core'
+import type { Expand, ValidateJSON } from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
   TSelected,
-  TStructuralSharing,
 > {
   select?: (
     params: ResolveParams<TRouter, TFrom, TStrict>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+  ) => ValidateJSON<TSelected>
 }
 
 export type UseParamsOptions<
@@ -25,11 +20,8 @@ export type UseParamsOptions<
   TFrom extends string | undefined,
   TStrict extends boolean,
   TSelected,
-  TStructuralSharing,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseParamsBaseOptions<TRouter, TFrom, TStrict, TSelected, TStructuralSharing> &
-  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
-
+  UseParamsBaseOptions<TRouter, TFrom, TStrict, TSelected>
 export type ResolveParams<
   TRouter extends AnyRouter,
   TFrom,
@@ -50,16 +42,8 @@ export type UseParamsResult<
 export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseParamsBaseOptions<
-    TRouter,
-    TFrom,
-    true,
-    TSelected,
-    TStructuralSharing
-  > &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+  opts?: UseParamsBaseOptions<TRouter, TFrom, true, TSelected>,
 ) => UseParamsResult<TRouter, TFrom, true, TSelected>
 
 export function useParams<
@@ -67,20 +51,12 @@ export function useParams<
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts: UseParamsOptions<
-    TRouter,
-    TFrom,
-    TStrict,
-    TSelected,
-    TStructuralSharing
-  >,
+  opts: UseParamsOptions<TRouter, TFrom, TStrict, TSelected>,
 ): UseParamsResult<TRouter, TFrom, TStrict, TSelected> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
-    structuralSharing: opts.structuralSharing,
     select: (match: any) => {
       return opts.select ? opts.select(match.params) : match.params
     },

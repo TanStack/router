@@ -1,23 +1,18 @@
 import { useMatch } from './useMatch'
-import type {
-  StructuralSharingOption,
-  ValidateSelected,
-} from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { AllLoaderData, RouteById } from './routeInfo'
 import type { StrictOrFrom } from './utils'
-import type { Expand } from '@tanstack/router-core'
+import type { Expand, ValidateJSON } from '@tanstack/router-core'
 
 export interface UseLoaderDataBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
   TSelected,
-  TStructuralSharing,
 > {
   select?: (
     match: ResolveLoaderData<TRouter, TFrom, TStrict>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+  ) => ValidateJSON<TSelected>
 }
 
 export type UseLoaderDataOptions<
@@ -25,16 +20,8 @@ export type UseLoaderDataOptions<
   TFrom extends string | undefined,
   TStrict extends boolean,
   TSelected,
-  TStructuralSharing,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseLoaderDataBaseOptions<
-    TRouter,
-    TFrom,
-    TStrict,
-    TSelected,
-    TStructuralSharing
-  > &
-  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+  UseLoaderDataBaseOptions<TRouter, TFrom, TStrict, TSelected>
 
 export type ResolveLoaderData<
   TRouter extends AnyRouter,
@@ -56,16 +43,8 @@ export type UseLoaderDataResult<
 export type UseLoaderDataRoute<out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseLoaderDataBaseOptions<
-    TRouter,
-    TId,
-    true,
-    TSelected,
-    TStructuralSharing
-  > &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+  opts?: UseLoaderDataBaseOptions<TRouter, TId, true, TSelected>,
 ) => UseLoaderDataResult<TRouter, TId, true, TSelected>
 
 export function useLoaderData<
@@ -73,20 +52,12 @@ export function useLoaderData<
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
 >(
-  opts: UseLoaderDataOptions<
-    TRouter,
-    TFrom,
-    TStrict,
-    TSelected,
-    TStructuralSharing
-  >,
+  opts: UseLoaderDataOptions<TRouter, TFrom, TStrict, TSelected>,
 ): UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
-    structuralSharing: opts.structuralSharing,
     select: (s: any) => {
       return opts.select ? opts.select(s.loaderData) : s.loaderData
     },
