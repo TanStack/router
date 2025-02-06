@@ -3978,31 +3978,6 @@ test('when passing a component with props to createLink and navigating to the ro
     .returns.toHaveProperty('additionalProps')
     .toEqualTypeOf<number | undefined>()
 
-  // expectTypeOf(DefaultRouterLink)
-  //   .parameter(0)
-  //   .toHaveProperty('activeProps')
-  //   .exclude<(...args: Array<any>) => any>()
-  //   .toEqualTypeOf<
-  //     | {
-  //       [x: `data-${string}`]: unknown
-  //       ref?: Solid.Ref<never> | undefined
-  //       additionalProps?: number | undefined
-  //       key?: string | number | bigint | null | undefined
-  //     }
-  //     | undefined
-  //   >()
-
-  // expectTypeOf(DefaultRouterLink)
-  //   .parameter(0)
-  //   .toHaveProperty('activeProps')
-  //   .extract<(...args: Array<any>) => any>()
-  //   .returns.toEqualTypeOf<{
-  //     [x: `data-${string}`]: unknown
-  //     ref?: Solid.Ref<never> | undefined
-  //     additionalProps?: number | undefined
-  //     key?: string | number | bigint | null | undefined
-  //   }>()
-
   createLink((props) => expectTypeOf(props).toEqualTypeOf<CreateLinkProps>())
 })
 

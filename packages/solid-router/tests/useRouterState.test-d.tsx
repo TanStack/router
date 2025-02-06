@@ -62,30 +62,4 @@ test('can select router state', () => {
         })
       | undefined
     >()
-
-  // expectTypeOf(useRouterState<DefaultRouter, { func: () => void }>)
-  //   .parameter(0)
-  //   .exclude<undefined>()
-  //   .toHaveProperty('select')
-  //   .toEqualTypeOf<
-  //     | ((search: RouterState<DefaultRouter['routeTree']>) => {
-  //         func: 'Function is not serializable'
-  //       })
-  //     | undefined
-  //   >()
-
-  const router = createRouter({
-    routeTree,
-  })
-
-  // expectTypeOf(useRouterState<typeof router, { func: () => void }>)
-  //   .parameter(0)
-  //   .exclude<undefined>()
-  //   .toHaveProperty('select')
-  //   .toEqualTypeOf<
-  //     | ((search: RouterState<DefaultRouter['routeTree']>) => {
-  //         func: 'Function is not serializable'
-  //       })
-  //     | undefined
-  //   >()
 })
