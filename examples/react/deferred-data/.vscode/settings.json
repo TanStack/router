@@ -1,0 +1,5 @@
+{
+  "files.watcherExclude": {
+    "**/routeTree.gen.ts": true
+  }
+}
