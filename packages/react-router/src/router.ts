@@ -837,6 +837,7 @@ export class Router<
       notFoundRoute.init({
         originalIndex: 99999999999,
         defaultSsr: this.options.defaultSsr,
+        router: this,
       })
       ;(this.routesById as any)[notFoundRoute.id] = notFoundRoute
     }
@@ -846,6 +847,7 @@ export class Router<
         childRoute.init({
           originalIndex: i,
           defaultSsr: this.options.defaultSsr,
+          router: this,
         })
 
         const existingRoute = (this.routesById as any)[childRoute.id]

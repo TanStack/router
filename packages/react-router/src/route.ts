@@ -722,6 +722,7 @@ export class Route<
 
   // The following properties are set up in this.init()
   parentRoute!: TParentRoute
+  router!: AnyRouter
   private _id!: TId
   private _path!: TPath
   private _fullPath!: TFullPath
@@ -768,7 +769,6 @@ export class Route<
   // Optional
   children?: TChildren
   originalIndex?: number
-  router?: AnyRouter
   rank!: number
   lazyFn?: () => Promise<LazyRoute<any>>
   _lazyPromise?: Promise<void>
@@ -835,8 +835,10 @@ export class Route<
     loaderDeps: TLoaderDeps
   }
 
-  init = (opts: { originalIndex: number; defaultSsr?: boolean }): void => {
+  init = (opts: { originalIndex: number; defaultSsr?: boolean; router: AnyRouter }): void => {
     this.originalIndex = opts.originalIndex
+
+    this.router = opts.router
 
     const options = this.options as
       | (RouteOptions<
