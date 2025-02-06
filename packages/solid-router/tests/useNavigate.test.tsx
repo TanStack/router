@@ -1291,6 +1291,8 @@ test('when setting search params with 2 parallel navigate calls', async () => {
 
   fireEvent.click(postsButton)
 
+  await new Promise((r) => setTimeout(r, 0))
+
   expect(await screen.findByTestId('param1')).toHaveTextContent('foo')
   expect(await screen.findByTestId('param2')).toHaveTextContent('bar')
   expect(router.state.location.search).toEqual({ param1: 'foo', param2: 'bar' })
