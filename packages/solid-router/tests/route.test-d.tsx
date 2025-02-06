@@ -435,7 +435,9 @@ test('when creating a child route with a loader from the root route', () => {
     >()
 
   expectTypeOf(invoicesRoute.useLoaderData<typeof router>()).toEqualTypeOf<
-    readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
+    Accessor<
+      readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
+    >
   >()
 })
 
@@ -487,11 +489,15 @@ test('when creating a child route with a loader from the root route with context
     >()
 
   expectTypeOf(invoicesRoute.useLoaderData<typeof router>()).toEqualTypeOf<
-    readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
+    Accessor<
+      readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
+    >
   >()
 
   expectTypeOf(invoicesRoute.useLoaderData<typeof router>()).toEqualTypeOf<
-    readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
+    Accessor<
+      readonly [{ readonly id: 'invoice1' }, { readonly id: 'invoice2' }]
+    >
   >()
 })
 
