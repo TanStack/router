@@ -3710,10 +3710,7 @@ describe('Link', () => {
     expect(indexLink).toBeInTheDocument()
 
     expect(ioObserveMock).toBeCalled()
-    expect(ioObserveMock).toBeCalledTimes(2) // since Solid.StrictMode is enabled it double renders
-
-    expect(ioDisconnectMock).toBeCalled()
-    expect(ioDisconnectMock).toBeCalledTimes(1) // since Solid.StrictMode is enabled it should have disconnected
+    expect(ioObserveMock).toBeCalledTimes(1)
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {
