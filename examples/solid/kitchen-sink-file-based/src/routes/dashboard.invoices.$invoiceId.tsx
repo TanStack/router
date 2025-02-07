@@ -1,4 +1,4 @@
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 import {
   Link,
   createFileRoute,
@@ -37,9 +37,9 @@ function InvoiceComponent() {
     fn: patchInvoice,
     onSuccess: () => router.invalidate(),
   })
-  const [notes, setNotes] = React.createSignal(search().notes ?? '')
+  const [notes, setNotes] = Solid.createSignal(search().notes ?? '')
 
-  React.createEffect(() => {
+  Solid.createEffect(() => {
     navigate({
       search: (old) => ({
         ...old,

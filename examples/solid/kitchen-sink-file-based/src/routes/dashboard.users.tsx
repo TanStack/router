@@ -1,4 +1,4 @@
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 import {
   Link,
   MatchRoute,
@@ -45,9 +45,9 @@ function UsersComponent() {
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
 
-  const [filterDraft, setFilterDraft] = React.createSignal(filterBy ?? '')
+  const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy ?? '')
 
-  React.useEffect(() => {
+  Solid.useEffect(() => {
     setFilterDraft(filterBy ?? '')
   }, [filterBy])
 
@@ -65,7 +65,7 @@ function UsersComponent() {
       replace: true,
     })
 
-  React.useEffect(() => {
+  Solid.useEffect(() => {
     navigate({
       search: (old) => {
         return {

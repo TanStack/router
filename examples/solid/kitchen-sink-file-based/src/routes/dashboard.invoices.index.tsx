@@ -1,4 +1,4 @@
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 import { createFileRoute, useRouter } from '@tanstack/solid-router'
 import { InvoiceFields } from '../components/InvoiceFields'
 import { Spinner } from '../components/Spinner'

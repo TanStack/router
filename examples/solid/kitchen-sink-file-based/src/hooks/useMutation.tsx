@@ -1,14 +1,14 @@
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 
 export function useMutation<TVariables, TData, TError = Error>(opts: {
   fn: (variables: TVariables) => Promise<TData>
   onSuccess?: (ctx: { data: TData }) => void | Promise<void>
 }) {
-  const [submittedAt, setSubmittedAt] = React.createSignal<number | undefined>()
-  const [variables, setVariables] = React.createSignal<TVariables | undefined>()
-  const [error, setError] = React.createSignal<TError | undefined>()
-  const [data, setData] = React.createSignal<TData | undefined>()
-  const [status, setStatus] = React.createSignal<
+  const [submittedAt, setSubmittedAt] = Solid.createSignal<number | undefined>()
+  const [variables, setVariables] = Solid.createSignal<TVariables | undefined>()
+  const [error, setError] = Solid.createSignal<TError | undefined>()
+  const [data, setData] = Solid.createSignal<TData | undefined>()
+  const [status, setStatus] = Solid.createSignal<
     'idle' | 'pending' | 'success' | 'error'
   >('idle')
 

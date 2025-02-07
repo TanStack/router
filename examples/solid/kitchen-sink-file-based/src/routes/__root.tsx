@@ -1,11 +1,11 @@
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 import {
   Link,
   Outlet,
   createRootRouteWithContext,
   useRouterState,
 } from '@tanstack/solid-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Spinner } from '../components/Spinner'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import type { Auth } from '../utils/auth'
