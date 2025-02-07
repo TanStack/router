@@ -1,14 +1,21 @@
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 
-export function useSessionStorage(key: string, initialValue: any) {
-  const [state, setState] = React.createSignal(() => {
-    const stored = sessionStorage.getItem(key)
-    return stored ? JSON.parse(stored) : initialValue
-  })
+export function useSessionStorage<T>(key: string, initialValue: any) {
+  const [state, setState] = Solid.createSignal<T>(
+    (() => {
+      const stored = sessionStorage.getItem(key)
+      console.log('stored', key, stored, initialValue, typeof stored)
+      const reutrnval =
+        stored && stored !== 'undefined' ? JSON.parse(stored) : initialValue
+      console.log('returning', reutrnval)
+      return reutrnval
+    })(),
+  )
 
-  React.createEffect(() => {
+  Solid.createEffect(() => {
+    console.log('setting', JSON.stringify(state()))
     sessionStorage.setItem(key, JSON.stringify(state()))
   })
 
-  return state
+  return [state, setState]
 }

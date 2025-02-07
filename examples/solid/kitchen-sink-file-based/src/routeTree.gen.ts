@@ -8,7 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/solid-router'
 
 // Import Routes
 
@@ -143,7 +143,7 @@ const DashboardInvoicesInvoiceIdRoute = DashboardInvoicesInvoiceIdImport.update(
 
 // Populate the FileRoutesByPath interface
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
     '/': {
       id: '/'
@@ -471,103 +471,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/_auth",
-        "/_layout",
-        "/dashboard",
-        "/login",
-        "/(this-folder-is-not-in-the-url)/route-group",
-        "/expensive/"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/_auth": {
-      "filePath": "_auth.tsx",
-      "children": [
-        "/_auth/profile"
-      ]
-    },
-    "/_layout": {
-      "filePath": "_layout.tsx",
-      "children": [
-        "/_layout/layout-a",
-        "/_layout/layout-b"
-      ]
-    },
-    "/dashboard": {
-      "filePath": "dashboard.tsx",
-      "children": [
-        "/dashboard/invoices",
-        "/dashboard/users",
-        "/dashboard/"
-      ]
-    },
-    "/login": {
-      "filePath": "login.tsx"
-    },
-    "/(this-folder-is-not-in-the-url)/route-group": {
-      "filePath": "(this-folder-is-not-in-the-url)/route-group.tsx"
-    },
-    "/_auth/profile": {
-      "filePath": "_auth.profile.tsx",
-      "parent": "/_auth"
-    },
-    "/_layout/layout-a": {
-      "filePath": "_layout.layout-a.tsx",
-      "parent": "/_layout"
-    },
-    "/_layout/layout-b": {
-      "filePath": "_layout.layout-b.tsx",
-      "parent": "/_layout"
-    },
-    "/dashboard/invoices": {
-      "filePath": "dashboard.invoices.tsx",
-      "parent": "/dashboard",
-      "children": [
-        "/dashboard/invoices/$invoiceId",
-        "/dashboard/invoices/"
-      ]
-    },
-    "/dashboard/users": {
-      "filePath": "dashboard.users.tsx",
-      "parent": "/dashboard",
-      "children": [
-        "/dashboard/users/user",
-        "/dashboard/users/"
-      ]
-    },
-    "/dashboard/": {
-      "filePath": "dashboard.index.tsx",
-      "parent": "/dashboard"
-    },
-    "/expensive/": {
-      "filePath": "expensive/index.lazy.tsx"
-    },
-    "/dashboard/invoices/$invoiceId": {
-      "filePath": "dashboard.invoices.$invoiceId.tsx",
-      "parent": "/dashboard/invoices"
-    },
-    "/dashboard/users/user": {
-      "filePath": "dashboard.users.user.tsx",
-      "parent": "/dashboard/users"
-    },
-    "/dashboard/invoices/": {
-      "filePath": "dashboard.invoices.index.tsx",
-      "parent": "/dashboard/invoices"
-    },
-    "/dashboard/users/": {
-      "filePath": "dashboard.users.index.tsx",
-      "parent": "/dashboard/users"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

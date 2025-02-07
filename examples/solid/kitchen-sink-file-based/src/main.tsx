@@ -36,9 +36,15 @@ declare module '@tanstack/solid-router' {
 
 function App() {
   // This stuff is just to tweak our sandbox setup in real-time
-  const [loaderDelay, setLoaderDelay] = useSessionStorage('loaderDelay', 500)
-  const [pendingMs, setPendingMs] = useSessionStorage('pendingMs', 1000)
-  const [pendingMinMs, setPendingMinMs] = useSessionStorage('pendingMinMs', 500)
+  const [loaderDelay, setLoaderDelay] = useSessionStorage<number>(
+    'loaderDelay',
+    500,
+  )
+  const [pendingMs, setPendingMs] = useSessionStorage<number>('pendingMs', 1000)
+  const [pendingMinMs, setPendingMinMs] = useSessionStorage<number>(
+    'pendingMinMs',
+    500,
+  )
 
   return (
     <>
@@ -71,13 +77,13 @@ function App() {
             </button>
           </div>
           <div>
-            <div>Loader Delay: {loaderDelay}ms</div>
+            <div>Loader Delay: {loaderDelay()}ms</div>
             <input
               type="range"
               min="0"
               max="5000"
               step="100"
-              value={loaderDelay}
+              value={loaderDelay()}
               onChange={(e) => setLoaderDelay(e.target.valueAsNumber)}
               class="w-full"
             />
@@ -96,25 +102,25 @@ function App() {
             </button>
           </div>
           <div>
-            <div>defaultPendingMs: {pendingMs}ms</div>
+            <div>defaultPendingMs: {pendingMs()}ms</div>
             <input
               type="range"
               min="0"
               max="5000"
               step="100"
-              value={pendingMs}
+              value={pendingMs()}
               onChange={(e) => setPendingMs(e.target.valueAsNumber)}
               class="w-full"
             />
           </div>
           <div>
-            <div>defaultPendingMinMs: {pendingMinMs}ms</div>
+            <div>defaultPendingMinMs: {pendingMinMs()}ms</div>
             <input
               type="range"
               min="0"
               max="5000"
               step="100"
-              value={pendingMinMs}
+              value={pendingMinMs()}
               onChange={(e) => setPendingMinMs(e.target.valueAsNumber)}
               class="w-full"
             />
@@ -124,8 +130,8 @@ function App() {
       <RouterProvider
         router={router}
         defaultPreload="intent"
-        defaultPendingMs={pendingMs}
-        defaultPendingMinMs={pendingMinMs}
+        defaultPendingMs={pendingMs()}
+        defaultPendingMinMs={pendingMinMs()}
         context={{
           auth,
         }}
