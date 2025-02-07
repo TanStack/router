@@ -1,6 +1,6 @@
-const $$splitComponentImporter = () => import('arrow-function.tsx?tsr-split');
+const $$splitComponentImporter = () => import('arrow-function.tsx?tsr-split-component');
 import { lazyRouteComponent } from '@tanstack/react-router';
-const $$splitLoaderImporter = () => import('arrow-function.tsx?tsr-split');
+const $$splitLoaderImporter = () => import('arrow-function.tsx?tsr-split-loader');
 import { lazyFn } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/posts')({

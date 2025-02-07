@@ -1,6 +1,6 @@
-const $$splitComponentImporter = () => import('random-number.tsx?tsr-split');
+const $$splitComponentImporter = () => import('random-number.tsx?tsr-split-component');
 import { lazyRouteComponent } from '@tanstack/react-router';
-const $$splitLoaderImporter = () => import('random-number.tsx?tsr-split');
+const $$splitLoaderImporter = () => import('random-number.tsx?tsr-split-loader');
 import { lazyFn } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const textColors = [`text-rose-500`, `text-yellow-500`, `text-teal-500`, `text-blue-500`];
