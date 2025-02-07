@@ -4151,6 +4151,7 @@ describe('search middleware', () => {
 
   test('search middlewares work', async () => {
     const rootRoute = createRootRoute({
+      errorComponent: (error) => <div>{error.error.stack}</div>,
       validateSearch: (input) => {
         return {
           root: input.root as string | undefined,
@@ -4239,6 +4240,7 @@ describe('search middleware', () => {
 
     const updateSearchLink = await screen.findByTestId('update-search')
     fireEvent.click(updateSearchLink)
+    await sleep(0)
     await checkSearchValue('newValue')
     await checkPostsLink('newValue')
     expect(router.state.location.search).toEqual({ root: 'newValue' })
