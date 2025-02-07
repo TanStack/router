@@ -61,7 +61,7 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     },
   ],
 ])
-const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NODES_CONFIG.keys()] as const
+const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
 
 function addSplitSearchParamToFilename(
   filename: string,
@@ -357,7 +357,7 @@ export function compileCodeSplitVirtualRoute(
           loader: undefined,
         }
 
-        // Find the node
+        // Find and track all the known splittable nodes
         programPath.traverse(
           {
             CallExpression: (path) => {
@@ -384,8 +384,9 @@ export function compileCodeSplitVirtualRoute(
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
                       // do not use `intendedSplitNodes` here
-                      // since we want to correctly find the nodes in this run through
-                      SPLIT_ROUTE_IDENT_NODES.forEach((splitType) => {
+                      // since we have special considerations that need
+                      // to be accounted for like (not splitting exported identifiers)
+                      KNOWN_SPLIT_ROUTE_IDENTS.forEach((splitType) => {
                         if (
                           !t.isIdentifier(prop.key) ||
                           prop.key.name !== splitType
@@ -427,6 +428,7 @@ export function compileCodeSplitVirtualRoute(
           state,
         )
 
+        // Start the transformation to only exported the intended split nodes
         intendedSplitNodes.forEach((SPLIT_TYPE) => {
           const splitKey = trackedNodesToSplitByType[SPLIT_TYPE]
 
