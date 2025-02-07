@@ -1,6 +1,6 @@
-const $$splitLoaderImporter = () => import('conditional-properties.tsx?tsr-split');
+const $$splitLoaderImporter = () => import('conditional-properties.tsx?tsr-split-loader');
 import { lazyFn } from '@tanstack/react-router';
-const $$splitComponentImporter = () => import('conditional-properties.tsx?tsr-split');
+const $$splitComponentImporter = () => import('conditional-properties.tsx?tsr-split-component');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/posts')({
