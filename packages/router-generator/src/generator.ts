@@ -18,6 +18,11 @@ import {
 import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
+import {
+  defaultAPIRouteTemplate,
+  fillTemplate,
+  getTargetTemplate,
+} from './template'
 import type { GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
@@ -42,6 +47,7 @@ type RouteSubNode = {
 }
 
 export async function generator(config: Config, root: string) {
+  const ROUTE_TEMPLATE = getTargetTemplate(config.target)
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
@@ -131,22 +137,13 @@ export async function generator(config: Config, root: string) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const replaced = fillTemplate(
-        [
-          'import * as React from "react"\n',
-          '%%tsrImports%%',
-          '\n\n',
-          '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
-          'function RootComponent() { return (<React.Fragment><div>Hello "%%tsrPath%%"!</div><Outlet /></React.Fragment>) };\n',
-        ].join(''),
-        {
-          tsrImports:
-            "import { Outlet, createRootRoute } from '@tanstack/react-router';",
-          tsrPath: rootPathId,
-          tsrExportStart: `export const Route = createRootRoute(`,
-          tsrExportEnd: ');',
-        },
-      )
+      const _rootTemplate = ROUTE_TEMPLATE.rootRoute
+      const replaced = fillTemplate(_rootTemplate.template(), {
+        tsrImports: _rootTemplate.imports.tsrImports(),
+        tsrPath: rootPathId,
+        tsrExportStart: _rootTemplate.imports.tsrExportStart(),
+        tsrExportEnd: _rootTemplate.imports.tsrExportEnd(),
+      })
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
@@ -204,15 +201,25 @@ export async function generator(config: Config, root: string) {
 
       let replaced = routeCode
 
+      const tRouteTemplate = ROUTE_TEMPLATE.route
+      const tLazyRouteTemplate = ROUTE_TEMPLATE.lazyRoute
+
       if (!routeCode) {
         if (node.isLazy) {
-          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
-            tsrImports:
-              "import { createLazyFileRoute } from '@tanstack/react-router';",
-            tsrPath: escapedRoutePath,
-            tsrExportStart: `export const Route = createLazyFileRoute('${escapedRoutePath}')(`,
-            tsrExportEnd: ');',
-          })
+          // Check by default check if the user has a specific lazy route template
+          // If not, check if the user has a route template and use that instead
+          replaced = fillTemplate(
+            (config.customScaffolding?.lazyRouteTemplate ||
+              config.customScaffolding?.routeTemplate) ??
+              tLazyRouteTemplate.template(),
+            {
+              tsrImports: tLazyRouteTemplate.imports.tsrImports(),
+              tsrPath: escapedRoutePath,
+              tsrExportStart:
+                tLazyRouteTemplate.imports.tsrExportStart(escapedRoutePath),
+              tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
+            },
+          )
         } else if (
           node.isRoute ||
           (!node.isComponent &&
@@ -220,13 +227,17 @@ export async function generator(config: Config, root: string) {
             !node.isPendingComponent &&
             !node.isLoader)
         ) {
-          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
-            tsrImports:
-              "import { createFileRoute } from '@tanstack/react-router';",
-            tsrPath: escapedRoutePath,
-            tsrExportStart: `export const Route = createFileRoute('${escapedRoutePath}')(`,
-            tsrExportEnd: ');',
-          })
+          replaced = fillTemplate(
+            config.customScaffolding?.routeTemplate ??
+              tRouteTemplate.template(),
+            {
+              tsrImports: tRouteTemplate.imports.tsrImports(),
+              tsrPath: escapedRoutePath,
+              tsrExportStart:
+                tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
+              tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
+            },
+          )
         }
       } else {
         replaced = routeCode
@@ -235,7 +246,10 @@ export async function generator(config: Config, root: string) {
             (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
           )
           .replace(
-            /(import\s*\{.*)(create(Lazy)?FileRoute)(.*\}\s*from\s*['"]@tanstack\/react-router['"])/gs,
+            new RegExp(
+              `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*['"]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"])`,
+              'gs',
+            ),
             (_, p1, __, ___, p4) =>
               `${p1}${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
@@ -376,12 +390,16 @@ export async function generator(config: Config, root: string) {
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
-      const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
-        tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
-        tsrPath: escapedRoutePath,
-        tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
-        tsrExportEnd: ');',
-      })
+      const replaced = fillTemplate(
+        config.customScaffolding?.apiTemplate ?? defaultAPIRouteTemplate,
+        {
+          tsrImports:
+            "import { createAPIFileRoute } from '@tanstack/start/api';",
+          tsrPath: escapedRoutePath,
+          tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
+          tsrExportEnd: ');',
+        },
+      )
 
       logger.log(`🟡 Creating ${node.fullPath}`)
       fs.writeFileSync(
@@ -494,7 +512,7 @@ export async function generator(config: Config, root: string) {
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
     imports.length
-      ? `import { ${imports.join(', ')} } from '@tanstack/react-router'\n`
+      ? `import { ${imports.join(', ')} } from '${ROUTE_TEMPLATE.fullPkg}'\n`
       : '',
     '// Import Routes',
     [
@@ -594,7 +612,7 @@ export async function generator(config: Config, root: string) {
       ? []
       : [
           '// Populate the FileRoutesByPath interface',
-          `declare module '@tanstack/react-router' {
+          `declare module '${ROUTE_TEMPLATE.fullPkg}' {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
@@ -693,15 +711,18 @@ export async function generator(config: Config, root: string) {
     )
   }
 
-  const routeConfigFileContent = config.disableManifestGeneration
-    ? routeImports
-    : [
-        routeImports,
-        '\n',
-        '/* ROUTE_MANIFEST_START',
-        createRouteManifest(),
-        'ROUTE_MANIFEST_END */',
-      ].join('\n')
+  const routeConfigFileContent =
+    // TODO: Remove this disabled eslint rule when more target types are added.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    config.disableManifestGeneration || config.target !== 'react'
+      ? routeImports
+      : [
+          routeImports,
+          '\n',
+          '/* ROUTE_MANIFEST_START',
+          createRouteManifest(),
+          'ROUTE_MANIFEST_END */',
+        ].join('\n')
 
   if (!checkLatest()) return
 
@@ -1021,13 +1042,4 @@ export function startAPIRouteSegmentsFromTSRFilePath(
   })
 
   return segments
-}
-
-type TemplateTag = 'tsrImports' | 'tsrPath' | 'tsrExportStart' | 'tsrExportEnd'
-
-function fillTemplate(template: string, values: Record<TemplateTag, string>) {
-  return template.replace(
-    /%%(\w+)%%/g,
-    (_, key) => values[key as TemplateTag] || '',
-  )
 }
