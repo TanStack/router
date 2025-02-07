@@ -77,6 +77,27 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
   const isProduction = process.env.NODE_ENV === 'production'
 
+  const handleCompilingFile = (
+    code: string,
+    id: string,
+  ): UnpluginTransformResult => {
+    if (debug) console.info('Compiling Route: ', id)
+
+    const compiledReferenceRoute = compileCodeSplitReferenceRoute({
+      code,
+      root: ROOT,
+      filename: id,
+      isProduction,
+    })
+
+    if (debug) {
+      logDiff(code, compiledReferenceRoute.code)
+      console.log('Output:\n', compiledReferenceRoute.code + '\n\n')
+    }
+
+    return compiledReferenceRoute
+  }
+
   const handleSplittingFile = (
     code: string,
     id: string,
@@ -107,27 +128,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     }
 
     return result
-  }
-
-  const handleCompilingFile = (
-    code: string,
-    id: string,
-  ): UnpluginTransformResult => {
-    if (debug) console.info('Compiling Route: ', id)
-
-    const compiledReferenceRoute = compileCodeSplitReferenceRoute({
-      code,
-      root: ROOT,
-      filename: id,
-      isProduction,
-    })
-
-    if (debug) {
-      logDiff(code, compiledReferenceRoute.code)
-      console.log('Output:\n', compiledReferenceRoute.code + '\n\n')
-    }
-
-    return compiledReferenceRoute
   }
 
   return {
