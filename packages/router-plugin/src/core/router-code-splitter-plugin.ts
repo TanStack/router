@@ -7,10 +7,14 @@ import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
 } from './code-splitter/compilers'
-import { splitPrefix } from './constants'
+import { splitPrefixes } from './constants'
 
 import type { Config } from './config'
-import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin'
+import type {
+  UnpluginContextMeta,
+  UnpluginFactory,
+  TransformResult as UnpluginTransformResult,
+} from 'unplugin'
 
 const debug =
   process.env.TSR_VITE_DEBUG &&
@@ -63,30 +67,52 @@ plugins: [
 
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
+const splitPrefixesArray = Object.values(splitPrefixes)
+
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}, { framework }) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config
 
-  const handleSplittingFile = (code: string, id: string) => {
+  const _isProduction = process.env.NODE_ENV === 'production'
+
+  const handleSplittingFile = (
+    code: string,
+    id: string,
+  ): UnpluginTransformResult => {
     if (debug) console.info('Splitting Route: ', id)
 
-    const compiledVirtualRoute = compileCodeSplitVirtualRoute({
-      code,
-      root: ROOT,
-      filename: id,
-    })
+    let result: UnpluginTransformResult = { code: 'empty' }
 
-    if (debug) {
-      logDiff(code, compiledVirtualRoute.code)
-      console.log('Output:\n', compiledVirtualRoute.code)
+    if (id.includes(splitPrefixes.ROUTE_COMPONENT)) {
+      result = compileCodeSplitVirtualRoute({
+        code,
+        root: ROOT,
+        filename: id,
+        splitTargets: ['component'],
+      })
+    } else if (id.includes(splitPrefixes.ROUTE_LOADER)) {
+      result = compileCodeSplitVirtualRoute({
+        code,
+        root: ROOT,
+        filename: id,
+        splitTargets: ['loader'],
+      })
     }
 
-    return compiledVirtualRoute
+    if (debug) {
+      logDiff(code, result.code)
+      console.log('Output:\n', result.code + '\n\n')
+    }
+
+    return result
   }
 
-  const handleCompilingFile = (code: string, id: string) => {
+  const handleCompilingFile = (
+    code: string,
+    id: string,
+  ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
@@ -116,7 +142,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (id.includes(splitPrefix)) {
+      if (splitPrefixesArray.some((prefix) => id.includes(prefix))) {
         return handleSplittingFile(code, id)
       } else if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
@@ -145,7 +171,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
-        id.includes(splitPrefix)
+        splitPrefixesArray.some((prefix) => id.includes(prefix))
       ) {
         return true
       }
@@ -160,7 +186,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       },
     },
 
-    rspack(compiler) {
+    rspack(_compiler) {
       ROOT = process.cwd()
       userConfig = getConfig(options, ROOT)
     },

@@ -3,9 +3,11 @@ import babel from '@babel/core'
 import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
-import { splitPrefix } from '../constants'
+import { splitPrefixes } from '../constants'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
+import type { SplitPrefix } from '../constants'
 
+// eslint-disable-next-line unused-imports/no-unused-vars
 const debug = process.env.TSR_VITE_DEBUG
 
 type SplitModulesById = Record<
@@ -26,18 +28,9 @@ interface State {
   splitModulesById: SplitModulesById
 }
 
-function addSplitSearchParamToFilename(filename: string) {
-  const [bareFilename] = filename.split('?')
-  return `${bareFilename}?${splitPrefix}`
-}
-
-function removeSplitSearchParamFromFilename(filename: string) {
-  const [bareFilename] = filename.split('?')
-  return bareFilename!
-}
-
 type SplitRouteIdentNodes = 'component' | 'loader'
 type SplitNodeMeta = {
+  codesplitPrefix: SplitPrefix
   routeIdent: SplitRouteIdentNodes
   splitStrategy: 'normal' | 'react-component'
   localImporterIdent: string
@@ -48,6 +41,7 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
     'component',
     {
+      codesplitPrefix: splitPrefixes.ROUTE_COMPONENT,
       routeIdent: 'component',
       localImporterIdent: '$$splitComponentImporter', // const $$splitComponentImporter = () => import('...')
       splitStrategy: 'react-component',
@@ -58,6 +52,7 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
     'loader',
     {
+      codesplitPrefix: splitPrefixes.ROUTE_LOADER,
       routeIdent: 'loader',
       localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
       splitStrategy: 'normal',
@@ -68,6 +63,19 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
 ])
 const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NOES_CONFIG.keys()] as const
 
+function addSplitSearchParamToFilename(
+  filename: string,
+  splitNode: SplitNodeMeta,
+) {
+  const [bareFilename] = filename.split('?')
+  return `${bareFilename}?${splitNode.codesplitPrefix}`
+}
+
+function removeSplitSearchParamFromFilename(filename: string) {
+  const [bareFilename] = filename.split('?')
+  return bareFilename!
+}
+
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions,
 ): GeneratorResult {
@@ -77,10 +85,6 @@ export function compileCodeSplitReferenceRoute(
     Program: {
       enter(programPath, programState) {
         const state = programState as unknown as State
-
-        // We need to extract the existing search params from the filename, if any
-        // and add the splitPrefix to them, then write them back to the filename
-        const splitUrl = addSplitSearchParamToFilename(opts.filename)
 
         /**
          * If the component for the route is being imported from
@@ -135,6 +139,13 @@ export function compileCodeSplitReferenceRoute(
                         }
 
                         const splitNodeMeta = SPLIT_NOES_CONFIG.get(key as any)!
+
+                        // We need to extract the existing search params from the filename, if any
+                        // and add the relevant codesplitPrefix to them, then write them back to the filename
+                        const splitUrl = addSplitSearchParamToFilename(
+                          opts.filename,
+                          splitNodeMeta,
+                        )
 
                         if (splitNodeMeta.splitStrategy === 'react-component') {
                           const value = prop.value
@@ -320,9 +331,13 @@ export function compileCodeSplitReferenceRoute(
 }
 
 export function compileCodeSplitVirtualRoute(
-  opts: ParseAstOptions,
+  opts: ParseAstOptions & {
+    splitTargets: Array<SplitRouteIdentNodes>
+  },
 ): GeneratorResult {
   const ast = parseAst(opts)
+
+  const intendedSplitNodes = new Set(opts.splitTargets)
 
   const knownExportedIdents = new Set<string>()
 
@@ -407,7 +422,7 @@ export function compileCodeSplitVirtualRoute(
           state,
         )
 
-        SPLIT_ROUTE_IDENT_NODES.forEach((SPLIT_TYPE) => {
+        intendedSplitNodes.forEach((SPLIT_TYPE) => {
           const splitKey = trackedNodesToSplitByType[SPLIT_TYPE]
 
           if (!splitKey) {
@@ -575,7 +590,7 @@ export function compileCodeSplitVirtualRoute(
       return str
     }, '')
 
-    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
+    const warningMessage = `These exports from "${opts.filename}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
     console.warn(warningMessage)
 
     // append this warning to the file using a template
