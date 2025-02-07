@@ -39,7 +39,6 @@ type TargetTemplate = {
       tsrExportEnd: () => string
     }
   }
-  routeTree: {}
 }
 
 export function getTargetTemplate(target: Config['target']): TargetTemplate {
@@ -98,7 +97,6 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             tsrExportEnd: () => ');',
           },
         },
-        routeTree: {},
       }
     default:
       throw new Error(`router-generator: Unknown target type: ${target}`)
