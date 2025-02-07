@@ -5,7 +5,7 @@ import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { splitPrefixes } from '../constants'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
-import type { SplitPrefix } from '../constants'
+import type { SplitPrefix, SplitRouteIdentNodes } from '../constants'
 
 // eslint-disable-next-line unused-imports/no-unused-vars
 const debug = process.env.TSR_VITE_DEBUG
@@ -28,7 +28,6 @@ interface State {
   splitModulesById: SplitModulesById
 }
 
-type SplitRouteIdentNodes = 'component' | 'loader'
 type SplitNodeMeta = {
   codesplitPrefix: SplitPrefix
   routeIdent: SplitRouteIdentNodes
