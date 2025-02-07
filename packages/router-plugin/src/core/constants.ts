@@ -13,3 +13,6 @@ export const splitRouteIdentNodes = [
   ...Object.values(splitRouteIdentNodeMap),
 ] as const
 export type SplitRouteIdentNodes = (typeof splitRouteIdentNodes)[number]
+export type SplitGroupings = Array<Array<SplitRouteIdentNodes>>
+
+const _defaultCodeSplitGroupings: SplitGroupings = [['component']]

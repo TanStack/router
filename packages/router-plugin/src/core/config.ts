@@ -3,18 +3,14 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
-import type { SplitRouteIdentNodes } from './constants'
-
-type SplitBehaviour = Array<Array<SplitRouteIdentNodes>>
-
-const _defaultCodeSplitBehaviour: SplitBehaviour = [['component']]
+import type { SplitGroupings } from './constants'
 
 export type CodeSplittingOptions = {
   /**
    *
    * @default [["component"]]
    */
-  defaultBehaviour?: SplitBehaviour
+  defaultBehaviour?: SplitGroupings
 }
 
 const codeSplittingOptionsSchema = z.object({
