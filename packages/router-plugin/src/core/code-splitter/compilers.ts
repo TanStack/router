@@ -37,7 +37,7 @@ type SplitNodeMeta = {
   exporterIdent: string
   localExporterIdent: string
 }
-const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
+const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
     'component',
     {
@@ -61,7 +61,7 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     },
   ],
 ])
-const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NOES_CONFIG.keys()] as const
+const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NODES_CONFIG.keys()] as const
 
 function addSplitSearchParamToFilename(
   filename: string,
@@ -130,7 +130,7 @@ export function compileCodeSplitReferenceRoute(
                       if (t.isIdentifier(prop.key)) {
                         const key = prop.key.name
                         // find key in nodeSplitConfig
-                        const isNodeConfigAvailable = SPLIT_NOES_CONFIG.has(
+                        const isNodeConfigAvailable = SPLIT_NODES_CONFIG.has(
                           key as any,
                         )
 
@@ -138,7 +138,9 @@ export function compileCodeSplitReferenceRoute(
                           return
                         }
 
-                        const splitNodeMeta = SPLIT_NOES_CONFIG.get(key as any)!
+                        const splitNodeMeta = SPLIT_NODES_CONFIG.get(
+                          key as any,
+                        )!
 
                         // We need to extract the existing search params from the filename, if any
                         // and add the relevant codesplitPrefix to them, then write them back to the filename
@@ -406,7 +408,7 @@ export function compileCodeSplitVirtualRoute(
                         if (isExported && t.isIdentifier(value)) {
                           removeExports(ast, value)
                         } else {
-                          const meta = SPLIT_NOES_CONFIG.get(splitType)!
+                          const meta = SPLIT_NODES_CONFIG.get(splitType)!
                           trackedNodesToSplitByType[splitType] = {
                             node: prop.value,
                             meta,
