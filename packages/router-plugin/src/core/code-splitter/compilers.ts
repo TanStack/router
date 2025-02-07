@@ -69,7 +69,7 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
 const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NOES_CONFIG.keys()] as const
 
 export function compileCodeSplitReferenceRoute(
-  opts: ParseAstOptions,
+  opts: ParseAstOptions & { isProduction: boolean },
 ): GeneratorResult {
   const ast = parseAst(opts)
 
@@ -206,6 +206,7 @@ export function compileCodeSplitReferenceRoute(
 
                           // If the TSRDummyComponent is not defined, define it
                           if (
+                            !opts.isProduction && // only in development
                             !hasImportedOrDefinedIdentifier('TSRDummyComponent')
                           ) {
                             programPath.pushContainer('body', [
@@ -510,6 +511,16 @@ export function compileCodeSplitVirtualRoute(
                   `Unexpected expression type encounter for "${SPLIT_TYPE}" in the node type "${splitNode.type}"`,
                 )
               }
+            } else if (t.isConditionalExpression(splitNode)) {
+              programPath.pushContainer(
+                'body',
+                t.variableDeclaration('const', [
+                  t.variableDeclarator(
+                    t.identifier(splitMeta.localExporterIdent),
+                    splitNode,
+                  ),
+                ]),
+              )
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)

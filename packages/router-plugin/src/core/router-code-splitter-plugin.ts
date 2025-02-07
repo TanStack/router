@@ -69,6 +69,8 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   let ROOT: string = process.cwd()
   let userConfig = options as Config
 
+  const isProduction = process.env.NODE_ENV === 'production'
+
   const handleSplittingFile = (code: string, id: string) => {
     if (debug) console.info('Splitting Route: ', id)
 
@@ -93,6 +95,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       code,
       root: ROOT,
       filename: id,
+      isProduction,
     })
 
     if (debug) {

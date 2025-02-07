@@ -55,7 +55,6 @@ ts-perf
 .netlify
 
 nx-cloud.env
-.vscode
 .nx/cache
 .nx/workspace-data
 
@@ -74,3 +73,7 @@ app.config.js.timestamp_*
 app.config.ts.timestamp_*
 .idea
 *.vitest-temp.json
+
+# Handling VSCode settings
+/.vscode/
+!/examples/react/**/.vscode/settings.json

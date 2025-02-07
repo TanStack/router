@@ -768,7 +768,6 @@ export class Route<
   // Optional
   children?: TChildren
   originalIndex?: number
-  router?: AnyRouter
   rank!: number
   lazyFn?: () => Promise<LazyRoute<any>>
   _lazyPromise?: Promise<void>

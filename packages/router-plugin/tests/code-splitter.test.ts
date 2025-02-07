@@ -1,5 +1,5 @@
-import { readFile, readdir } from 'fs/promises'
-import path from 'path'
+import { readFile, readdir } from 'node:fs/promises'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -30,6 +30,7 @@ describe.each(['development', 'production'])(
           code,
           root: './code-splitter/test-files',
           filename,
+          isProduction: NODE_ENV === 'production',
         })
 
         await expect(compileResult.code).toMatchFileSnapshot(
