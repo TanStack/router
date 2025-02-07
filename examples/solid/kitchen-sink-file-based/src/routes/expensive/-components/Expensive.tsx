@@ -1,4 +1,4 @@
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 
 export default function Expensive() {
   return (

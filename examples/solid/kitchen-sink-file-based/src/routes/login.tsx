@@ -1,4 +1,4 @@
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 import { createFileRoute, useRouter } from '@tanstack/solid-router'
 import { z } from 'zod'
 
@@ -16,16 +16,16 @@ function LoginComponent() {
     select: ({ auth }) => ({ auth, status: auth.status }),
   })
   const search = Route.useSearch()
-  const [username, setUsername] = React.createSignal('')
+  const [username, setUsername] = Solid.createSignal('')
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = (e: Solid.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     auth.login(username)
     router.invalidate()
   }
 
   // Ah, the subtle nuances of client side auth. 🙄
-  React.useLayoutEffect(() => {
+  Solid.useLayoutEffect(() => {
     if (status === 'loggedIn' && search.redirect) {
       router.history.push(search.redirect)
     }

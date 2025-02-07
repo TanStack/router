@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-import * as React from 'solid-js'
+import * as Solid from 'solid-js'
 import type { Invoice } from '../utils/mockTodos'
 
 export function InvoiceFields({
