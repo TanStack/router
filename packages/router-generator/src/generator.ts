@@ -1,9 +1,9 @@
 import path from 'node:path'
 import * as fs from 'node:fs'
 import * as fsp from 'node:fs/promises'
-import * as prettier from 'prettier'
 import {
   determineInitialRoutePath,
+  format,
   logging,
   multiSortBy,
   removeExt,
@@ -76,12 +76,6 @@ export async function generator(config: Config, root: string) {
 
   const TYPES_DISABLED = config.disableTypes
 
-  const prettierOptions: prettier.Options = {
-    semi: config.semicolons,
-    singleQuote: config.quoteStyle === 'single',
-    parser: 'typescript',
-  }
-
   let getRouteNodesResult: GetRouteNodesResult
 
   if (config.virtualRouteConfig) {
@@ -138,17 +132,22 @@ export async function generator(config: Config, root: string) {
 
     if (!routeCode) {
       const _rootTemplate = ROUTE_TEMPLATE.rootRoute
-      const replaced = fillTemplate(_rootTemplate.template(), {
+      const replaced = await fillTemplate(config, _rootTemplate.template(), {
         tsrImports: _rootTemplate.imports.tsrImports(),
         tsrPath: rootPathId,
         tsrExportStart: _rootTemplate.imports.tsrExportStart(),
         tsrExportEnd: _rootTemplate.imports.tsrExportEnd(),
       })
 
-      logger.log(`🟡 Creating ${node.fullPath}`)
-      fs.writeFileSync(
+      await writeIfDifferent(
         node.fullPath,
-        await prettier.format(replaced, prettierOptions),
+        '', // Empty string because the file doesn't exist yet
+        replaced,
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Creating ${node.fullPath}`)
+          },
+        },
       )
     }
   }
@@ -208,7 +207,8 @@ export async function generator(config: Config, root: string) {
         if (node.isLazy) {
           // Check by default check if the user has a specific lazy route template
           // If not, check if the user has a route template and use that instead
-          replaced = fillTemplate(
+          replaced = await fillTemplate(
+            config,
             (config.customScaffolding?.lazyRouteTemplate ||
               config.customScaffolding?.routeTemplate) ??
               tLazyRouteTemplate.template(),
@@ -227,7 +227,8 @@ export async function generator(config: Config, root: string) {
             !node.isPendingComponent &&
             !node.isLoader)
         ) {
-          replaced = fillTemplate(
+          replaced = await fillTemplate(
+            config,
             config.customScaffolding?.routeTemplate ??
               tRouteTemplate.template(),
             {
@@ -260,17 +261,11 @@ export async function generator(config: Config, root: string) {
           )
       }
 
-      await writeIfDifferent(
-        node.fullPath,
-        prettierOptions,
-        routeCode,
-        replaced,
-        {
-          beforeWrite: () => {
-            logger.log(`🟡 Updating ${node.fullPath}`)
-          },
+      await writeIfDifferent(node.fullPath, routeCode, replaced, {
+        beforeWrite: () => {
+          logger.log(`🟡 Updating ${node.fullPath}`)
         },
-      )
+      })
     }
 
     if (
@@ -390,7 +385,8 @@ export async function generator(config: Config, root: string) {
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
-      const replaced = fillTemplate(
+      const replaced = await fillTemplate(
+        config,
         config.customScaffolding?.apiTemplate ?? defaultAPIRouteTemplate,
         {
           tsrImports:
@@ -401,15 +397,19 @@ export async function generator(config: Config, root: string) {
         },
       )
 
-      logger.log(`🟡 Creating ${node.fullPath}`)
-      fs.writeFileSync(
+      await writeIfDifferent(
         node.fullPath,
-        await prettier.format(replaced, prettierOptions),
+        '', // Empty string because the file doesn't exist yet
+        replaced,
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Creating ${node.fullPath}`)
+          },
+        },
       )
     } else {
       await writeIfDifferent(
         node.fullPath,
-        prettierOptions,
         routeCode,
         routeCode.replace(
           /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
@@ -748,9 +748,8 @@ export async function generator(config: Config, root: string) {
   // Write the route tree file, if it has changed
   const routeTreeWriteResult = await writeIfDifferent(
     path.resolve(config.generatedRouteTree),
-    prettierOptions,
-    existingRouteTreeContent,
-    routeConfigFileContent,
+    await format(existingRouteTreeContent, config),
+    await format(routeConfigFileContent, config),
     {
       beforeWrite: () => {
         logger.log(`🟡 Updating ${config.generatedRouteTree}`)
