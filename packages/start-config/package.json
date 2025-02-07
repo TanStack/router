@@ -32,6 +32,7 @@
     "test:types": "exit 0; vitest"
   },
   "type": "module",
+  "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
       "import": {

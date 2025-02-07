@@ -39,6 +39,7 @@
     "build": "tsc"
   },
   "type": "module",
+  "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
       "import": {

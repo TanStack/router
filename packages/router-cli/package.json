@@ -37,6 +37,7 @@
     "build": "vite build"
   },
   "type": "module",
+  "types": "dist/esm/index.d.ts",
   "main": "dist/cjs/index.cjs",
   "module": "dist/esm/index.js",
   "exports": {
