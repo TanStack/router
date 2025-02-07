@@ -1832,7 +1832,7 @@ export class Router<
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = location.href
+        href = this.history.createHref(location.href)
       }
       if (rest.replace) {
         window.location.replace(href)
