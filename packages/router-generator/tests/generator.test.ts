@@ -118,6 +118,12 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
           '%%tsrImports%%\n\n',
           '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message: "Hello /api/test" }) }}%%tsrExportEnd%%\n',
         ].join(''),
+        lazyRouteTemplate: [
+          'import React, { useState } from "react";\n',
+          '%%tsrImports%%\n\n',
+          '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+          'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
+        ].join(''),
       }
       break
     default:
