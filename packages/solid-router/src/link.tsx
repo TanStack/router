@@ -564,9 +564,9 @@ export function useLinkProps<
     ...options,
   }
 
-  const next = Solid.createMemo(() => {
+  const next = () => {
     return router.buildLocation(options as any)
-  })
+  }
 
   const preload = Solid.createMemo(() => {
     if (options.reloadDocument) {
@@ -803,18 +803,37 @@ export function useLinkProps<
     ...resolvedInactiveProps().style,
   })
 
+  const [updateHrefOnResolved, setUpdateHrefOnResolved] = Solid.createSignal({})
+
+  const href = Solid.createMemo(() => {
+    // Add forceUpdate as a dependency to trigger recomputation
+    updateHrefOnResolved()
+
+    const nextLocation = next()
+    const maskedLocation = nextLocation?.maskedLocation
+
+    return options.disabled
+      ? undefined
+      : maskedLocation
+        ? router.history.createHref(maskedLocation.href)
+        : router.history.createHref(nextLocation?.href)
+  })
+
+  Solid.createEffect(() => {
+    const unsub = useRouter().subscribe('onResolved', () => {
+      setUpdateHrefOnResolved({})
+    })
+
+    Solid.onCleanup(() => unsub())
+  })
+
   return Solid.mergeProps(
     propsSafeToSpread,
     resolvedActiveProps,
     resolvedInactiveProps,
     () => {
-      const maskedLocation = next()?.maskedLocation
       return {
-        href: local.disabled
-          ? undefined
-          : maskedLocation
-            ? router.history.createHref(maskedLocation.href)
-            : router.history.createHref(next()?.href),
+        href: href(),
         ref: mergeRefs(setRef, options.ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
