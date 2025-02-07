@@ -243,3 +243,17 @@ test('Server function can correctly send and receive FormData', async ({
     page.getByTestId('serialize-formdata-form-response'),
   ).toContainText(expected)
 })
+
+test("server function's dead code is preserved if already there", async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+  await page.getByTestId('test-dead-code-fn-call-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('dead-code-fn-call-response')).toContainText(
+    '1',
+  )
+})
