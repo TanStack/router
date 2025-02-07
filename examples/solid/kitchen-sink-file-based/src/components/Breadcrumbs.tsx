@@ -3,9 +3,9 @@ import { isMatch, Link, useMatches } from '@tanstack/solid-router'
 export const Breadcrumbs = () => {
   const matches = useMatches()
 
-  if (matches.some((match) => match.status === 'pending')) return null
+  if (matches().some((match) => match.status === 'pending')) return null
 
-  const matchesWithCrumbs = matches.filter((match) =>
+  const matchesWithCrumbs = matches().filter((match) =>
     isMatch(match, 'loaderData.crumb'),
   )
 

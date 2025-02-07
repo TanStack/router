@@ -39,12 +39,7 @@ function DashboardComponent() {
       <div class="flex flex-wrap divide-x">
         {options.map((option) => {
           return (
-            <Link
-              key={option.to}
-              {...option}
-              activeProps={{ class: `font-bold` }}
-              class="p-2"
-            >
+            <Link {...option} activeProps={{ class: `font-bold` }} class="p-2">
               {option.label}
             </Link>
           )

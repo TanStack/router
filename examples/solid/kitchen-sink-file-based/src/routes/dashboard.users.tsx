@@ -10,6 +10,7 @@ import {
 import { z } from 'zod'
 import { Spinner } from '../components/Spinner'
 import { fetchUsers } from '../utils/mockTodos'
+import { createMemo } from 'solid-js'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
@@ -40,16 +41,17 @@ export const Route = createFileRoute('/dashboard/users')({
 
 function UsersComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
-  const { usersView } = Route.useSearch()
-  const { users } = Route.useLoaderData()
-  const sortBy = usersView?.sortBy ?? 'name'
-  const filterBy = usersView?.filterBy
+  const search = Route.useSearch()
+  const loaderData = Route.useLoaderData()
+  const users = createMemo(() => loaderData().users)
+  const sortBy = createMemo(() => search().usersView?.sortBy ?? 'name')
+  const filterBy = createMemo(() => search().usersView?.filterBy)
 
-  const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy ?? '')
+  const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy() ?? '')
 
-  Solid.useEffect(() => {
-    setFilterDraft(filterBy ?? '')
-  }, [filterBy])
+  Solid.createEffect(() => {
+    setFilterDraft(filterBy() ?? '')
+  })
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
@@ -65,20 +67,20 @@ function UsersComponent() {
       replace: true,
     })
 
-  Solid.useEffect(() => {
+  Solid.createEffect(() => {
     navigate({
       search: (old) => {
         return {
           ...old,
           usersView: {
             ...old.usersView,
-            filterBy: filterDraft || undefined,
+            filterBy: filterDraft() || undefined,
           },
         }
       },
       replace: true,
     })
-  }, [filterDraft])
+  })
 
   return (
     <div class="flex-1 flex">
@@ -86,27 +88,27 @@ function UsersComponent() {
         <div class="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Sort By:</div>
           <select
-            value={sortBy}
+            value={sortBy()}
             onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
             class="flex-1 border p-1 px-2 rounded"
           >
             {['name', 'id', 'email'].map((d) => {
-              return <option key={d} value={d} children={d} />
+              return <option value={d} children={d} />
             })}
           </select>
         </div>
         <div class="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Filter By:</div>
           <input
-            value={filterDraft}
+            value={filterDraft()}
             onChange={(e) => setFilterDraft(e.target.value)}
             placeholder="Search Names..."
             class="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {users.map((user) => {
+        {users().map((user) => {
           return (
-            <div key={user.id}>
+            <div>
               <Link
                 to="/dashboard/users/user"
                 search={{

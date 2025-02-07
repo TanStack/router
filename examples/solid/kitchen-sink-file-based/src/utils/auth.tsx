@@ -2,6 +2,7 @@ export const auth: Auth = {
   status: 'loggedOut',
   username: undefined,
   login: (username: string) => {
+    console.log('login', username)
     auth.status = 'loggedIn'
     auth.username = username
   },

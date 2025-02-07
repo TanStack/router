@@ -5,4 +5,5 @@ import solidPlugin from 'vite-plugin-solid'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [TanStackRouterVite({ target: 'solid' }), solidPlugin()],
+  // plugins: [solidPlugin()],
 })
