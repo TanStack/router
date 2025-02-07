@@ -77,7 +77,7 @@ function removeSplitSearchParamFromFilename(filename: string) {
 }
 
 export function compileCodeSplitReferenceRoute(
-  opts: ParseAstOptions,
+  opts: ParseAstOptions & { isProduction: boolean },
 ): GeneratorResult {
   const ast = parseAst(opts)
 
@@ -217,6 +217,7 @@ export function compileCodeSplitReferenceRoute(
 
                           // If the TSRDummyComponent is not defined, define it
                           if (
+                            !opts.isProduction && // only in development
                             !hasImportedOrDefinedIdentifier('TSRDummyComponent')
                           ) {
                             programPath.pushContainer('body', [

@@ -30,6 +30,7 @@ describe.each(['development', 'production'])(
           code,
           root: './code-splitter/test-files',
           filename,
+          isProduction: NODE_ENV === 'production',
         })
 
         await expect(compileResult.code).toMatchFileSnapshot(

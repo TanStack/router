@@ -9,6 +9,3 @@ export const Route = createFileRoute('/')({
   loader: lazyFn($$splitLoaderImporter, 'loader'),
   component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
 });
-export function TSRDummyComponent() {
-  return null;
-}
