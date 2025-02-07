@@ -42,10 +42,8 @@ type TargetTemplate = {
   routeTree: {}
 }
 
-export function getTargetTemplate(
-  targetType: Config['targetType'],
-): TargetTemplate {
-  switch (targetType) {
+export function getTargetTemplate(target: Config['target']): TargetTemplate {
+  switch (target) {
     // TODO: Remove this disabled eslint rule when more target types are added.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     case 'react':
@@ -103,7 +101,7 @@ export function getTargetTemplate(
         routeTree: {},
       }
     default:
-      throw new Error(`Unknown target type: ${targetType}`)
+      throw new Error(`router-generator: Unknown target type: ${target}`)
   }
 }
 

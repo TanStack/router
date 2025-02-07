@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
 export const configSchema = z.object({
-  targetType: z.enum(['react']).optional().default('react'),
+  target: z.enum(['react']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),

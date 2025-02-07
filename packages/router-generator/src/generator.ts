@@ -47,8 +47,7 @@ type RouteSubNode = {
 }
 
 export async function generator(config: Config, root: string) {
-  const targetType = config.targetType
-  const targetTemplate = getTargetTemplate(targetType)
+  const ROUTE_TEMPLATE = getTargetTemplate(config.target)
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
@@ -138,7 +137,7 @@ export async function generator(config: Config, root: string) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const _rootTemplate = targetTemplate.rootRoute
+      const _rootTemplate = ROUTE_TEMPLATE.rootRoute
       const replaced = fillTemplate(_rootTemplate.template(), {
         tsrImports: _rootTemplate.imports.tsrImports(),
         tsrPath: rootPathId,
@@ -202,8 +201,8 @@ export async function generator(config: Config, root: string) {
 
       let replaced = routeCode
 
-      const tRouteTemplate = targetTemplate.route
-      const tLazyRouteTemplate = targetTemplate.lazyRoute
+      const tRouteTemplate = ROUTE_TEMPLATE.route
+      const tLazyRouteTemplate = ROUTE_TEMPLATE.lazyRoute
 
       if (!routeCode) {
         if (node.isLazy) {
@@ -245,7 +244,7 @@ export async function generator(config: Config, root: string) {
           )
           .replace(
             new RegExp(
-              `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*['"]@tanstack\\/${targetTemplate.subPkg}['"])`,
+              `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*['"]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"])`,
               'gs',
             ),
             (_, p1, __, ___, p4) =>
@@ -510,7 +509,7 @@ export async function generator(config: Config, root: string) {
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
     imports.length
-      ? `import { ${imports.join(', ')} } from '${targetTemplate.fullPkg}'\n`
+      ? `import { ${imports.join(', ')} } from '${ROUTE_TEMPLATE.fullPkg}'\n`
       : '',
     '// Import Routes',
     [
@@ -610,7 +609,7 @@ export async function generator(config: Config, root: string) {
       ? []
       : [
           '// Populate the FileRoutesByPath interface',
-          `declare module '${targetTemplate.fullPkg}' {
+          `declare module '${ROUTE_TEMPLATE.fullPkg}' {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
@@ -712,7 +711,7 @@ export async function generator(config: Config, root: string) {
   const routeConfigFileContent =
     // TODO: Remove this disabled eslint rule when more target types are added.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    config.disableManifestGeneration || targetType !== 'react'
+    config.disableManifestGeneration || config.target !== 'react'
       ? routeImports
       : [
           routeImports,
