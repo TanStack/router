@@ -75,9 +75,9 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createLazyFileRoute } from '@tanstack/react-router';",
+              "import { createFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createLazyFileRoute('${routePath}')(`,
+              `export const Route = createFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -91,9 +91,9 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/react-router';",
+              "import { createLazyFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+              `export const Route = createLazyFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },

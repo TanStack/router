@@ -206,8 +206,11 @@ export async function generator(config: Config, root: string) {
 
       if (!routeCode) {
         if (node.isLazy) {
+          // Check by default check if the user has a specific lazy route template
+          // If not, check if the user has a route template and use that instead
           replaced = fillTemplate(
-            config.customScaffolding?.lazyRouteTemplate ??
+            (config.customScaffolding?.lazyRouteTemplate ||
+              config.customScaffolding?.routeTemplate) ??
               tLazyRouteTemplate.template(),
             {
               tsrImports: tLazyRouteTemplate.imports.tsrImports(),
