@@ -38,6 +38,10 @@
               "to": "framework/react/server-functions"
             },
             {
+              "label": "Static Server Functions",
+              "to": "framework/react/static-server-functions"
+            },
+            {
               "label": "Middleware",
               "to": "framework/react/middleware"
             },
