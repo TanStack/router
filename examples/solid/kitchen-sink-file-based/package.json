@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/router-devtools": "^1.99.6",
-    "@tanstack/router-plugin": "^1.99.6",
+    "@tanstack/router-plugin": "workspace:*",
     "immer": "^10.1.1",
     "solid-js": "^1.9.4",
     "redaxios": "^0.5.1",
