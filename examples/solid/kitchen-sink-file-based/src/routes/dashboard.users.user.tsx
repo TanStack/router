@@ -23,9 +23,9 @@ function UserComponent() {
 
   return (
     <>
-      <h4 class="p-2 font-bold">{data.user?.name}</h4>
+      <h4 class="p-2 font-bold">{data().user?.name}</h4>
       <pre class="text-sm whitespace-pre-wrap">
-        {JSON.stringify(data.user, null, 2)}
+        {JSON.stringify(data().user, null, 2)}
       </pre>
     </>
   )

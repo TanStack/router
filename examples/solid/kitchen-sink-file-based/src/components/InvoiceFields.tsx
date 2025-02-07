@@ -14,7 +14,7 @@ export function InvoiceFields({
       <h2 class="font-bold text-lg">
         <input
           name="title"
-          defaultValue={invoice?.title}
+          value={invoice?.title}
           placeholder="Invoice Title"
           class="border border-opacity-50 rounded p-2 w-full"
           disabled={disabled}
@@ -23,7 +23,7 @@ export function InvoiceFields({
       <div>
         <textarea
           name="body"
-          defaultValue={invoice?.body}
+          value={invoice?.body}
           rows={6}
           placeholder="Invoice Body..."
           class="border border-opacity-50 p-2 rounded w-full"

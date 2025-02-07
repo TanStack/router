@@ -54,7 +54,7 @@ function App() {
             <button
               class="bg-blue-500 text-white rounded p-1 px-2"
               onClick={() => {
-                setLoaderDelay(150)
+                setLoaderDelay(() => 150)
               }}
             >
               Fast
@@ -62,7 +62,7 @@ function App() {
             <button
               class="bg-blue-500 text-white rounded p-1 px-2"
               onClick={() => {
-                setLoaderDelay(500)
+                setLoaderDelay(() => 500)
               }}
             >
               Fast 3G
@@ -70,7 +70,7 @@ function App() {
             <button
               class="bg-blue-500 text-white rounded p-1 px-2"
               onClick={() => {
-                setLoaderDelay(2000)
+                setLoaderDelay(() => 2000)
               }}
             >
               Slow 3G
@@ -94,8 +94,8 @@ function App() {
             <button
               class="bg-blue-500 text-white rounded p-1 px-2"
               onClick={() => {
-                setPendingMs(1000)
-                setPendingMinMs(500)
+                setPendingMs(() => 1000)
+                setPendingMinMs(() => 500)
               }}
             >
               Reset to Default

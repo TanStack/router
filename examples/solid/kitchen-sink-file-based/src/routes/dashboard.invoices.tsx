@@ -19,9 +19,9 @@ function InvoicesComponent() {
   return (
     <div class="flex-1 flex">
       <div class="divide-y w-48">
-        {invoices.map((invoice) => {
+        {invoices().map((invoice) => {
           return (
-            <div key={invoice.id}>
+            <div>
               <Link
                 to="/dashboard/invoices/$invoiceId"
                 params={{

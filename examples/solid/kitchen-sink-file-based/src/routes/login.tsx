@@ -12,32 +12,35 @@ export const Route = createFileRoute('/login')({
 
 function LoginComponent() {
   const router = useRouter()
-  const { auth, status } = Route.useRouteContext({
+
+  const context = Route.useRouteContext({
     select: ({ auth }) => ({ auth, status: auth.status }),
   })
+
+  console.log(context().auth, context().status)
   const search = Route.useSearch()
   const [username, setUsername] = Solid.createSignal('')
 
-  const onSubmit = (e: Solid.FormEvent<HTMLFormElement>) => {
+  const onSubmit = (e: any) => {
     e.preventDefault()
-    auth.login(username)
+    context().auth.login(username())
     router.invalidate()
   }
 
   // Ah, the subtle nuances of client side auth. 🙄
-  Solid.useLayoutEffect(() => {
-    if (status === 'loggedIn' && search.redirect) {
-      router.history.push(search.redirect)
+  Solid.createEffect(() => {
+    if (status === 'loggedIn' && search().redirect) {
+      router.history.push(search().redirect!)
     }
-  }, [status, search.redirect])
+  }, [status, search().redirect])
 
-  return status === 'loggedIn' ? (
+  return context().status === 'loggedIn' ? (
     <div>
-      Logged in as <strong>{auth.username}</strong>
+      Logged in as <strong>{context().auth.username}</strong>
       <div class="h-2" />
       <button
         onClick={() => {
-          auth.logout()
+          context().auth.logout()
           router.invalidate()
         }}
         class="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
@@ -52,7 +55,7 @@ function LoginComponent() {
       <div class="h-2" />
       <form onSubmit={onSubmit} class="flex gap-2">
         <input
-          value={username}
+          value={username()}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
           class="border p-1 px-2 rounded"

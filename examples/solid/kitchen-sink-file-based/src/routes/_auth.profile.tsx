@@ -6,12 +6,12 @@ export const Route = createFileRoute('/_auth/profile')({
 })
 
 function ProfileComponent() {
-  const { username } = Route.useRouteContext()
+  const context = Route.useRouteContext()
 
   return (
     <div class="p-2 space-y-2">
       <div>
-        Username:<strong>{username}</strong>
+        Username:<strong>{context().username}</strong>
       </div>
     </div>
   )
