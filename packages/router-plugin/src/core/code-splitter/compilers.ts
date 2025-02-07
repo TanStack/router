@@ -381,6 +381,8 @@ export function compileCodeSplitVirtualRoute(
                 if (t.isObjectExpression(options)) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
+                      // do not use `intendedSplitNodes` here
+                      // since we want to correctly find the nodes in this run through
                       SPLIT_ROUTE_IDENT_NODES.forEach((splitType) => {
                         if (
                           !t.isIdentifier(prop.key) ||
