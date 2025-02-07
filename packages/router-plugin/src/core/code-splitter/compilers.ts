@@ -511,6 +511,16 @@ export function compileCodeSplitVirtualRoute(
                   `Unexpected expression type encounter for "${SPLIT_TYPE}" in the node type "${splitNode.type}"`,
                 )
               }
+            } else if (t.isConditionalExpression(splitNode)) {
+              programPath.pushContainer(
+                'body',
+                t.variableDeclaration('const', [
+                  t.variableDeclarator(
+                    t.identifier(splitMeta.localExporterIdent),
+                    splitNode,
+                  ),
+                ]),
+              )
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
