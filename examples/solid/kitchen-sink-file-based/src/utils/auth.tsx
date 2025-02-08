@@ -1,16 +1,21 @@
-export const auth: Auth = {
+import { createStore } from 'solid-js/store'
+
+export const [auth, setAuth] = createStore<Auth>({
   status: 'loggedOut',
   username: undefined,
   login: (username: string) => {
-    console.log('login', username)
-    auth.status = 'loggedIn'
-    auth.username = username
+    setAuth({
+      status: 'loggedIn',
+      username,
+    })
   },
   logout: () => {
-    auth.status = 'loggedOut'
-    auth.username = undefined
+    setAuth({
+      status: 'loggedOut',
+      username: undefined,
+    })
   },
-}
+})
 
 export type Auth = {
   login: (username: string) => void
