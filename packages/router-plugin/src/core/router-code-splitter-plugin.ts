@@ -6,6 +6,7 @@ import { getConfig } from './config'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
+  detectCodeSplitGroupingsFromRoute,
 } from './code-splitter/compilers'
 import {
   defaultCodeSplitGroupings,
@@ -94,7 +95,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
 
-    const splitGroupings: CodeSplitGroupings = getGlobalCodeSplitGroupings()
+    const groupingFromCode = detectCodeSplitGroupingsFromRoute({
+      code,
+      root: ROOT,
+      filename: id,
+    })
+
+    const splitGroupings: CodeSplitGroupings =
+      groupingFromCode || getGlobalCodeSplitGroupings()
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,

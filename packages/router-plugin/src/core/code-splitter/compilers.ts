@@ -691,12 +691,84 @@ export function compileCodeSplitVirtualRoute(
   })
 }
 
+/**
+ * This function should read get the options from by searching for the key `codeSplitGroupings`
+ * on createFileRoute and return it's values if it exists, else return undefined
+ */
 export function detectCodeSplitGroupingsFromRoute(
   opts: ParseAstOptions,
-): Array<SplitRouteIdentNodes> | undefined {
+): CodeSplitGroupings | undefined {
   const ast = parseAst(opts)
 
-  return undefined
+  let codeSplitGroupings: CodeSplitGroupings | undefined = undefined
+
+  babel.traverse(ast, {
+    Program: {
+      enter(programPath) {
+        programPath.traverse({
+          CallExpression(path) {
+            if (!t.isIdentifier(path.node.callee)) {
+              return
+            }
+
+            if (
+              !(
+                path.node.callee.name === 'createRoute' ||
+                path.node.callee.name === 'createFileRoute'
+              )
+            ) {
+              return
+            }
+
+            if (t.isCallExpression(path.parentPath.node)) {
+              const options = resolveIdentifier(
+                path,
+                path.parentPath.node.arguments[0],
+              )
+
+              if (t.isObjectExpression(options)) {
+                options.properties.forEach((prop) => {
+                  if (t.isObjectProperty(prop)) {
+                    if (t.isIdentifier(prop.key)) {
+                      if (prop.key.name === 'codeSplitGroupings') {
+                        const value = prop.value
+
+                        if (t.isArrayExpression(value)) {
+                          codeSplitGroupings = value.elements.map((group) => {
+                            if (t.isArrayExpression(group)) {
+                              return group.elements.map((node) => {
+                                if (!t.isStringLiteral(node)) {
+                                  throw new Error(
+                                    'You must provide a string literal for the codeSplitGroupings',
+                                  )
+                                }
+
+                                return node.value
+                              }) as Array<SplitRouteIdentNodes>
+                            }
+
+                            throw new Error(
+                              'You must provide arrays with codeSplitGroupings options.',
+                            )
+                          })
+                        } else {
+                          throw new Error(
+                            'You must provide an array of arrays for the codeSplitGroupings.',
+                          )
+                        }
+                      }
+                    }
+                  }
+                })
+              }
+            }
+          },
+        })
+      },
+    },
+  })
+
+  return codeSplitGroupings
 }
 
 function getImportSpecifierAndPathFromLocalName(
