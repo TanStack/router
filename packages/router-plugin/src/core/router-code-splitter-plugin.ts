@@ -118,14 +118,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   ): UnpluginTransformResult => {
     if (debug) console.info('Splitting Route: ', id)
 
-    const [_, ...pathnameParts] = id
-      // replace backslashes with forward slashes
-      .replace(/\\/g, '/')
-      .split('/')
-      [
-        // Only the last part of the pathname is used to determine the split value
-        -1
-      ]!.split('?')
+    const [_, ...pathnameParts] = id.split('?')
 
     const searchParams = new URLSearchParams(pathnameParts.join('?'))
     const splitValue = searchParams.get(tsrSplit)
