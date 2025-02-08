@@ -43,7 +43,8 @@ function UsersComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
   const search = Route.useSearch()
   const loaderData = Route.useLoaderData()
-  const users = createMemo(() => loaderData().users)
+
+  const users = createMemo(() => loaderData()?.users)
   const sortBy = createMemo(() => search().usersView?.sortBy ?? 'name')
   const filterBy = createMemo(() => search().usersView?.filterBy)
 
@@ -106,7 +107,7 @@ function UsersComponent() {
             class="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {users().map((user) => {
+        {users()?.map((user) => {
           return (
             <div>
               <Link

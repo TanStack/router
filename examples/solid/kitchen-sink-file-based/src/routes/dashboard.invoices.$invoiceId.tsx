@@ -57,7 +57,7 @@ function InvoiceComponent() {
         event.stopPropagation()
         const formData = new FormData(event.target as HTMLFormElement)
         updateInvoiceMutation.mutate({
-          id: invoice().id,
+          id: invoice()?.id,
           title: formData.get('title') as string,
           body: formData.get('body') as string,
         })
@@ -108,7 +108,7 @@ function InvoiceComponent() {
           Save
         </button>
       </div>
-      {updateInvoiceMutation.variables()?.id === invoice().id ? (
+      {updateInvoiceMutation.variables()?.id === invoice()?.id ? (
         <div>
           {updateInvoiceMutation.status() === 'success' ? (
             <div class="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
