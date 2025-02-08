@@ -5,6 +5,8 @@ import { fetchPosts } from '../posts'
 export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
   component: PostsComponent,
+  // @ts-expect-error
+  codeSplitGroupings: [['component']],
 })
 
 function PostsComponent() {
