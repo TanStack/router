@@ -729,10 +729,11 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
                 const callee = path.parentPath.node.callee
                 if (t.isStringLiteral(callee.arguments[0])) {
                   routeId = callee.arguments[0].value
+                  return
                 }
               }
 
-              // Continue with extracting the codeSplitGroupings
+              // Extracting the codeSplitGroupings
               const options = resolveIdentifier(
                 path,
                 path.parentPath.node.arguments[0],

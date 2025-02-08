@@ -4,7 +4,6 @@ import {
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
 import { splitRouteIdentNodes } from './constants'
-import type { RegisteredRouter, RouteIds } from '@tanstack/react-router'
 import type { CodeSplitGroupings } from './constants'
 
 export const splitGroupingsSchema = z
@@ -31,11 +30,14 @@ export type CodeSplittingOptions = {
   /**
    * Use this function to programmatically control the code splitting behaviour
    * based on the `routeId` for each route.
+   *
+   * If you just need to change the default behaviour, you can use the `defaultBehaviour` option.
    * @param params
    */
   shouldSplit?: (params: {
-    routeId: RouteIds<RegisteredRouter['routeTree']>
+    routeId: string
   }) => CodeSplitGroupings | undefined | void
+
   /**
    * The default/global configuration to control your code splitting behaviour per route.
    * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
