@@ -595,6 +595,18 @@ export function compileCodeSplitVirtualRoute(
                   ),
                 ]),
               )
+            } else if (t.isTSAsExpression(splitNode)) {
+              // remove the type assertion
+              splitNode = splitNode.expression
+              programPath.pushContainer(
+                'body',
+                t.variableDeclaration('const', [
+                  t.variableDeclarator(
+                    t.identifier(splitMeta.localExporterIdent),
+                    splitNode,
+                  ),
+                ]),
+              )
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
@@ -677,6 +689,14 @@ export function compileCodeSplitVirtualRoute(
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
+}
+
+export function detectCodeSplitGroupingsFromRoute(
+  opts: ParseAstOptions,
+): Array<SplitRouteIdentNodes> | undefined {
+  const ast = parseAst(opts)
+
+  return undefined
 }
 
 function getImportSpecifierAndPathFromLocalName(
