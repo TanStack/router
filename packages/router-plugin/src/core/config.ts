@@ -34,7 +34,7 @@ export type CodeSplittingOptions = {
    * If you just need to change the default behaviour, you can use the `defaultBehaviour` option.
    * @param params
    */
-  shouldSplit?: (params: {
+  splitBehaviour?: (params: {
     routeId: string
   }) => CodeSplitGroupings | undefined | void
 
@@ -46,7 +46,7 @@ export type CodeSplittingOptions = {
 }
 
 const codeSplittingOptionsSchema = z.object({
-  shouldSplit: z.function().optional(),
+  splitBehaviour: z.function().optional(),
   defaultGroupings: splitGroupingsSchema.optional(),
 })
 

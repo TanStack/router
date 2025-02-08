@@ -727,9 +727,12 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
               // Extract out the routeId
               if (t.isCallExpression(path.parentPath.node.callee)) {
                 const callee = path.parentPath.node.callee
-                if (t.isStringLiteral(callee.arguments[0])) {
-                  routeId = callee.arguments[0].value
-                  return
+
+                if (t.isIdentifier(callee.callee)) {
+                  const firstArg = callee.arguments[0]
+                  if (t.isStringLiteral(firstArg)) {
+                    routeId = firstArg.value
+                  }
                 }
               }
 
