@@ -107,33 +107,35 @@ function UsersComponent() {
             class="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {users()?.map((user) => {
-          return (
-            <div>
-              <Link
-                to="/dashboard/users/user"
-                search={{
-                  userId: user.id,
-                }}
-                class="block py-2 px-3 text-blue-700"
-                activeProps={{ class: `font-bold` }}
-              >
-                <pre class="text-sm">
-                  {user.name}{' '}
-                  <MatchRoute
-                    to="/dashboard/users/user"
-                    search={{
-                      userId: user.id,
-                    }}
-                    pending
-                  >
-                    {(match) => <Spinner show={!!match} wait="delay-50" />}
-                  </MatchRoute>
-                </pre>
-              </Link>
-            </div>
-          )
-        })}
+        <Solid.For each={users()}>
+          {user => {
+            return (
+              <div>
+                <Link
+                  to="/dashboard/users/user"
+                  search={{
+                    userId: user.id,
+                  }}
+                  class="block py-2 px-3 text-blue-700"
+                  activeProps={{ class: `font-bold` }}
+                >
+                  <pre class="text-sm">
+                    {user.name}{' '}
+                    <MatchRoute
+                      to="/dashboard/users/user"
+                      search={{
+                        userId: user.id,
+                      }}
+                      pending
+                    >
+                      {(match) => <Spinner show={!!match} wait="delay-50" />}
+                    </MatchRoute>
+                  </pre>
+                </Link>
+              </div>
+            )
+          }}
+        </Solid.For>
       </div>
       <div class="flex-initial border-l">
         <Outlet />
