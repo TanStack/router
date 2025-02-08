@@ -3,7 +3,28 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
+import { splitRouteIdentNodes } from './constants'
 import type { SplitGroupings } from './constants'
+
+const splitBehaviourSchema = z
+  .array(z.array(z.enum(splitRouteIdentNodes)), {
+    message:
+      "Must be an Array of Arrays containing the split groupings. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",
+  })
+  .superRefine((val, ctx) => {
+    const flattened = val.flat()
+    const unique = [...new Set(flattened)]
+
+    // Elements must be unique,
+    // ie. this shouldn't be allows [['component'], ['component', 'loader']]
+    if (unique.length !== flattened.length) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          "Split behaviour groupings must be unique and not repeated. i.e. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",
+      })
+    }
+  })
 
 export type CodeSplittingOptions = {
   /**
@@ -14,7 +35,7 @@ export type CodeSplittingOptions = {
 }
 
 const codeSplittingOptionsSchema = z.object({
-  defaultBehaviour: z.array(z.string()).optional(),
+  defaultBehaviour: splitBehaviourSchema.optional(),
 })
 
 export const configSchema = generatorConfigSchema.extend({

@@ -5,13 +5,7 @@ export const splitPrefixes = {
 
 export type SplitPrefix = (typeof splitPrefixes)[keyof typeof splitPrefixes]
 
-export const splitRouteIdentNodeMap = {
-  component: 'component',
-  loader: 'loader',
-} as const
-export const splitRouteIdentNodes = [
-  ...Object.values(splitRouteIdentNodeMap),
-] as const
+export const splitRouteIdentNodes = ['component', 'loader'] as const
 export type SplitRouteIdentNodes = (typeof splitRouteIdentNodes)[number]
 export type SplitGroupings = Array<Array<SplitRouteIdentNodes>>
 
