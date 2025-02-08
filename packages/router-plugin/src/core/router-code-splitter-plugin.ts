@@ -7,9 +7,13 @@ import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
 } from './code-splitter/compilers'
-import { defaultCodeSplitGroupings, tsrSplit } from './constants'
+import {
+  defaultCodeSplitGroupings,
+  splitRouteIdentNodes,
+  tsrSplit,
+} from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
-import type { CodeSplitGroupings } from './constants'
+import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 
 import type { Config } from './config'
 import type {
@@ -132,14 +136,16 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       )
     }
 
-    const grouping = decodeIdentifier(splitValue)
+    const rawGrouping = decodeIdentifier(splitValue)
+    const grouping = [...new Set(rawGrouping)].filter((p) =>
+      splitRouteIdentNodes.includes(p as any),
+    ) as Array<SplitRouteIdentNodes>
 
     const result = compileCodeSplitVirtualRoute({
       code,
       root: ROOT,
       filename: id,
-      // TODO: Solve this typing issue
-      splitTargets: grouping as any,
+      splitTargets: grouping,
     })
 
     if (debug) {
