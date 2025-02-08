@@ -3,9 +3,10 @@ import babel from '@babel/core'
 import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
-import { splitPrefixes } from '../constants'
+import { tsrSplit } from '../constants'
+import { createIdentifier } from './path-ids'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
-import type { SplitPrefix, SplitRouteIdentNodes } from '../constants'
+import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 
 // eslint-disable-next-line unused-imports/no-unused-vars
 const debug = process.env.TSR_VITE_DEBUG
@@ -29,7 +30,6 @@ interface State {
 }
 
 type SplitNodeMeta = {
-  codesplitPrefix: SplitPrefix
   routeIdent: SplitRouteIdentNodes
   splitStrategy: 'normal' | 'react-component'
   localImporterIdent: string
@@ -40,7 +40,6 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
     'component',
     {
-      codesplitPrefix: splitPrefixes.ROUTE_COMPONENT,
       routeIdent: 'component',
       localImporterIdent: '$$splitComponentImporter', // const $$splitComponentImporter = () => import('...')
       splitStrategy: 'react-component',
@@ -51,7 +50,6 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
     'loader',
     {
-      codesplitPrefix: splitPrefixes.ROUTE_LOADER,
       routeIdent: 'loader',
       localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
       splitStrategy: 'normal',
@@ -64,10 +62,14 @@ const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
 
 function addSplitSearchParamToFilename(
   filename: string,
-  splitNode: SplitNodeMeta,
+  grouping: Array<string>,
 ) {
   const [bareFilename] = filename.split('?')
-  return `${bareFilename}?${splitNode.codesplitPrefix}`
+
+  const params = new URLSearchParams()
+  params.append(tsrSplit, createIdentifier(grouping))
+
+  return `${bareFilename}?${params.toString()}`
 }
 
 function removeSplitSearchParamFromFilename(filename: string) {
@@ -76,9 +78,18 @@ function removeSplitSearchParamFromFilename(filename: string) {
 }
 
 export function compileCodeSplitReferenceRoute(
-  opts: ParseAstOptions & { isProduction: boolean },
+  opts: ParseAstOptions & {
+    runtimeEnv: 'dev' | 'prod'
+    codeSplitGroupings: CodeSplitGroupings
+  },
 ): GeneratorResult {
   const ast = parseAst(opts)
+
+  function findIndexForSplitNode(str: string) {
+    return opts.codeSplitGroupings.findIndex((group) =>
+      group.includes(str as any),
+    )
+  }
 
   babel.traverse(ast, {
     Program: {
@@ -94,8 +105,7 @@ export function compileCodeSplitReferenceRoute(
          *
          * `import '../shared/imported'`
          */
-        let existingCompImportPath: string | null = null
-        let existingLoaderImportPath: string | null = null
+        const removableImportPaths = new Set<string>([])
 
         programPath.traverse(
           {
@@ -127,6 +137,17 @@ export function compileCodeSplitReferenceRoute(
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
                       if (t.isIdentifier(prop.key)) {
+                        // If the user has not specified a split grouping for this key
+                        // then we should not split it
+                        const codeSplitGroupingByKey = findIndexForSplitNode(
+                          prop.key.name,
+                        )
+                        if (codeSplitGroupingByKey === -1) {
+                          return
+                        }
+                        const codeSplitGroup =
+                          opts.codeSplitGroupings[codeSplitGroupingByKey]!
+
                         const key = prop.key.name
                         // find key in nodeSplitConfig
                         const isNodeConfigAvailable = SPLIT_NODES_CONFIG.has(
@@ -145,7 +166,7 @@ export function compileCodeSplitReferenceRoute(
                         // and add the relevant codesplitPrefix to them, then write them back to the filename
                         const splitUrl = addSplitSearchParamToFilename(
                           opts.filename,
-                          splitNodeMeta,
+                          codeSplitGroup,
                         )
 
                         if (splitNodeMeta.splitStrategy === 'react-component') {
@@ -154,11 +175,14 @@ export function compileCodeSplitReferenceRoute(
                           let shouldSplit = true
 
                           if (t.isIdentifier(value)) {
-                            existingCompImportPath =
+                            const existingImportPath =
                               getImportSpecifierAndPathFromLocalName(
                                 programPath,
                                 value.name,
                               ).path
+                            if (existingImportPath) {
+                              removableImportPaths.add(existingImportPath)
+                            }
 
                             // exported identifiers should not be split
                             // since they are already being imported
@@ -218,7 +242,7 @@ export function compileCodeSplitReferenceRoute(
 
                           // If the TSRDummyComponent is not defined, define it
                           if (
-                            !opts.isProduction && // only in development
+                            opts.runtimeEnv !== 'prod' && // only in development
                             !hasImportedOrDefinedIdentifier('TSRDummyComponent')
                           ) {
                             programPath.pushContainer('body', [
@@ -235,11 +259,14 @@ export function compileCodeSplitReferenceRoute(
                           let shouldSplit = true
 
                           if (t.isIdentifier(value)) {
-                            existingLoaderImportPath =
+                            const existingImportPath =
                               getImportSpecifierAndPathFromLocalName(
                                 programPath,
                                 value.name,
                               ).path
+                            if (existingImportPath) {
+                              removableImportPaths.add(existingImportPath)
+                            }
 
                             // exported identifiers should not be split
                             // since they are already being imported
@@ -303,17 +330,11 @@ export function compileCodeSplitReferenceRoute(
          * from the program, by checking that the import has no
          * specifiers
          */
-        if (
-          (existingCompImportPath as string | null) ||
-          (existingLoaderImportPath as string | null)
-        ) {
+        if (removableImportPaths.size > 0) {
           programPath.traverse({
             ImportDeclaration(path) {
               if (path.node.specifiers.length > 0) return
-              if (
-                path.node.source.value === existingCompImportPath ||
-                path.node.source.value === existingLoaderImportPath
-              ) {
+              if (removableImportPaths.has(path.node.source.value)) {
                 path.remove()
               }
             },

@@ -7,7 +7,8 @@ import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
 } from './code-splitter/compilers'
-import { splitPrefixes } from './constants'
+import { defaultCodeSplitGroupings, tsrSplit } from './constants'
+import type { CodeSplitGroupings } from './constants'
 
 import type { Config } from './config'
 import type {
@@ -15,6 +16,7 @@ import type {
   UnpluginFactory,
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
+import { decodeIdentifier } from './code-splitter/path-ids'
 
 const debug =
   process.env.TSR_VITE_DEBUG &&
@@ -67,8 +69,6 @@ plugins: [
 
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
-const splitPrefixesArray = Object.values(splitPrefixes)
-
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}, { framework }) => {
@@ -77,17 +77,27 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
   const isProduction = process.env.NODE_ENV === 'production'
 
-  const handleCompilingFile = (
+  const getGlobalCodeSplitGroupings = () => {
+    return (
+      userConfig.codeSplittingOptions?.defaultBehaviour ||
+      defaultCodeSplitGroupings
+    )
+  }
+
+  const handleCompilingReferenceFile = (
     code: string,
     id: string,
   ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
 
+    const splitGroupings: CodeSplitGroupings = getGlobalCodeSplitGroupings()
+
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
       root: ROOT,
       filename: id,
-      isProduction,
+      runtimeEnv: isProduction ? 'prod' : 'dev',
+      codeSplitGroupings: splitGroupings,
     })
 
     if (debug) {
@@ -98,29 +108,47 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     return compiledReferenceRoute
   }
 
-  const handleSplittingFile = (
+  const handleCompilingVirtualFile = (
     code: string,
     id: string,
   ): UnpluginTransformResult => {
     if (debug) console.info('Splitting Route: ', id)
 
-    let result: UnpluginTransformResult = { code: 'empty' }
+    const [_, ...urlParts] = id.split('?')
+    const searchParams = new URLSearchParams(urlParts.join('?'))
+    const splitValue = searchParams.get(tsrSplit)
 
-    if (id.includes(splitPrefixes.ROUTE_COMPONENT)) {
-      result = compileCodeSplitVirtualRoute({
-        code,
-        root: ROOT,
-        filename: id,
-        splitTargets: ['component'],
-      })
-    } else if (id.includes(splitPrefixes.ROUTE_LOADER)) {
-      result = compileCodeSplitVirtualRoute({
-        code,
-        root: ROOT,
-        filename: id,
-        splitTargets: ['loader'],
-      })
+    if (!splitValue) {
+      throw new Error(
+        `The split value for the virtual route "${id}" was not found.`,
+      )
     }
+
+    const grouping = decodeIdentifier(splitValue)
+
+    const result = compileCodeSplitVirtualRoute({
+      code,
+      root: ROOT,
+      filename: id,
+      // TODO: Solve this typing issue
+      splitTargets: grouping as any,
+    })
+
+    // if (id.includes(splitPrefixes.ROUTE_COMPONENT)) {
+    //   result = compileCodeSplitVirtualRoute({
+    //     code,
+    //     root: ROOT,
+    //     filename: id,
+    //     splitTargets: ['component'],
+    //   })
+    // } else if (id.includes(splitPrefixes.ROUTE_LOADER)) {
+    //   result = compileCodeSplitVirtualRoute({
+    //     code,
+    //     root: ROOT,
+    //     filename: id,
+    //     splitTargets: ['loader'],
+    //   })
+    // }
 
     if (debug) {
       logDiff(code, result.code)
@@ -143,8 +171,8 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (splitPrefixesArray.some((prefix) => id.includes(prefix))) {
-        return handleSplittingFile(code, id)
+      if (id.includes(tsrSplit)) {
+        return handleCompilingVirtualFile(code, id)
       } else if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
         (code.includes('createRoute(') || code.includes('createFileRoute('))
@@ -159,7 +187,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           }
         }
 
-        return handleCompilingFile(code, id)
+        return handleCompilingReferenceFile(code, id)
       }
 
       return null
@@ -172,7 +200,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
-        splitPrefixesArray.some((prefix) => id.includes(prefix))
+        id.includes(tsrSplit)
       ) {
         return true
       }
