@@ -128,9 +128,11 @@ test('when creating the root route with context and routeContext', () => {
     context: { userId: '123' },
   })
 
-  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
-    userId: string
-  }>()
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+    }>
+  >()
 
   expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
@@ -169,9 +171,11 @@ test('when creating the root route with context and beforeLoad', () => {
     context: { userId: '123' },
   })
 
-  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
-    userId: string
-  }>()
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+    }>
+  >()
 
   expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
@@ -210,9 +214,11 @@ test('when creating the root route with context and a loader', () => {
     context: { userId: '123' },
   })
 
-  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
-    userId: string
-  }>()
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+    }>
+  >()
 
   expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
@@ -284,11 +290,13 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
     context: { userId: '123' },
   })
 
-  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
-    userId: string
-    permission: 'view'
-    env: 'env1'
-  }>()
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+      permission: 'view'
+      env: 'env1'
+    }>
+  >()
 
   expectTypeOf(rootRoute.useRouteContext<typeof router, string>)
     .parameter(0)
@@ -331,9 +339,11 @@ test('when creating a child route from the root route with context', () => {
     context: { userId: '123' },
   })
 
-  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
-    userId: string
-  }>()
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+    }>
+  >()
 
   expectTypeOf(rootRoute.useRouteContext<typeof router>)
     .parameter(0)
@@ -940,11 +950,13 @@ test('when creating a child route with routeContext from a parent with routeCont
     context: { userId: '123' },
   })
 
-  expectTypeOf(detailsRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
-    userId: string
-    invoiceId: string
-    detailId: string
-  }>()
+  expectTypeOf(detailsRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+      invoiceId: string
+      detailId: string
+    }>
+  >()
 
   expectTypeOf(detailsRoute.useRouteContext<typeof router, number>)
     .parameter(0)
@@ -1011,11 +1023,13 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
     context: { userId: '123' },
   })
 
-  expectTypeOf(detailsRoute.useRouteContext<typeof router>()).toEqualTypeOf<{
-    userId: string
-    invoiceId: string
-    detailId: string
-  }>()
+  expectTypeOf(detailsRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+      invoiceId: string
+      detailId: string
+    }>
+  >()
 
   expectTypeOf(detailsRoute.useRouteContext<typeof router, number>)
     .parameter(0)
@@ -1601,9 +1615,9 @@ test('when routeContext throws', () => {
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
-  expectTypeOf(
-    invoicesRoute.useRouteContext<typeof router>(),
-  ).toEqualTypeOf<{}>()
+  expectTypeOf(invoicesRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{}>
+  >()
 })
 
 test('when beforeLoad throws', () => {
@@ -1620,9 +1634,9 @@ test('when beforeLoad throws', () => {
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
-  expectTypeOf(
-    invoicesRoute.useRouteContext<typeof router>(),
-  ).toEqualTypeOf<{}>()
+  expectTypeOf(invoicesRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{}>
+  >()
 })
 
 test('when creating a child route with no explicit search input', () => {
