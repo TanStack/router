@@ -1,7 +1,18 @@
 export const tsrSplit = 'tsr-split'
 
-export const splitRouteIdentNodes = ['component', 'loader'] as const
+export const splitRouteIdentNodes = [
+  'loader',
+  'component',
+  'pendingComponent',
+  'errorComponent',
+  'notFoundComponent',
+] as const
 export type SplitRouteIdentNodes = (typeof splitRouteIdentNodes)[number]
 export type CodeSplitGroupings = Array<Array<SplitRouteIdentNodes>>
 
-export const defaultCodeSplitGroupings: CodeSplitGroupings = [['component']]
+export const defaultCodeSplitGroupings: CodeSplitGroupings = [
+  ['component'],
+  ['pendingComponent'],
+  ['errorComponent'],
+  ['notFoundComponent'],
+]

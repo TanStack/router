@@ -8,6 +8,7 @@ import {
   compileCodeSplitVirtualRoute,
 } from './code-splitter/compilers'
 import { defaultCodeSplitGroupings, tsrSplit } from './constants'
+import { decodeIdentifier } from './code-splitter/path-ids'
 import type { CodeSplitGroupings } from './constants'
 
 import type { Config } from './config'
@@ -16,7 +17,6 @@ import type {
   UnpluginFactory,
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
-import { decodeIdentifier } from './code-splitter/path-ids'
 
 const debug =
   process.env.TSR_VITE_DEBUG &&
@@ -114,8 +114,16 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   ): UnpluginTransformResult => {
     if (debug) console.info('Splitting Route: ', id)
 
-    const [_, ...urlParts] = id.split('?')
-    const searchParams = new URLSearchParams(urlParts.join('?'))
+    const [_, ...pathnameParts] = id
+      // replace backslashes with forward slashes
+      .replace(/\\/g, '/')
+      .split('/')
+      [
+        // Only the last part of the pathname is used to determine the split value
+        -1
+      ]!.split('?')
+
+    const searchParams = new URLSearchParams(pathnameParts.join('?'))
     const splitValue = searchParams.get(tsrSplit)
 
     if (!splitValue) {
@@ -133,22 +141,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       // TODO: Solve this typing issue
       splitTargets: grouping as any,
     })
-
-    // if (id.includes(splitPrefixes.ROUTE_COMPONENT)) {
-    //   result = compileCodeSplitVirtualRoute({
-    //     code,
-    //     root: ROOT,
-    //     filename: id,
-    //     splitTargets: ['component'],
-    //   })
-    // } else if (id.includes(splitPrefixes.ROUTE_LOADER)) {
-    //   result = compileCodeSplitVirtualRoute({
-    //     code,
-    //     root: ROOT,
-    //     filename: id,
-    //     splitTargets: ['loader'],
-    //   })
-    // }
 
     if (debug) {
       logDiff(code, result.code)

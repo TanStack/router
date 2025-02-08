@@ -38,6 +38,16 @@ type SplitNodeMeta = {
 }
 const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
+    'loader',
+    {
+      routeIdent: 'loader',
+      localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
+      splitStrategy: 'normal',
+      localExporterIdent: 'SplitLoader', // const SplitLoader = ...
+      exporterIdent: 'loader', // export { SplitLoader as loader }
+    },
+  ],
+  [
     'component',
     {
       routeIdent: 'component',
@@ -48,13 +58,33 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     },
   ],
   [
-    'loader',
+    'pendingComponent',
     {
-      routeIdent: 'loader',
-      localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
-      splitStrategy: 'normal',
-      localExporterIdent: 'SplitLoader', // const SplitLoader = ...
-      exporterIdent: 'loader', // export { SplitLoader as loader }
+      routeIdent: 'pendingComponent',
+      localImporterIdent: '$$splitPendingComponentImporter', // const $$splitPendingComponentImporter = () => import('...')
+      splitStrategy: 'react-component',
+      localExporterIdent: 'SplitPendingComponent', // const SplitPendingComponent = ...
+      exporterIdent: 'pendingComponent', // export { SplitPendingComponent as pendingComponent }
+    },
+  ],
+  [
+    'errorComponent',
+    {
+      routeIdent: 'errorComponent',
+      localImporterIdent: '$$splitErrorComponentImporter', // const $$splitErrorComponentImporter = () => import('...')
+      splitStrategy: 'react-component',
+      localExporterIdent: 'SplitErrorComponent', // const SplitErrorComponent = ...
+      exporterIdent: 'errorComponent', // export { SplitErrorComponent as errorComponent }
+    },
+  ],
+  [
+    'notFoundComponent',
+    {
+      routeIdent: 'notFoundComponent',
+      localImporterIdent: '$$splitNotFoundComponentImporter', // const $$splitNotFoundComponentImporter = () => import('...')
+      splitStrategy: 'react-component',
+      localExporterIdent: 'SplitNotFoundComponent', // const SplitNotFoundComponent = ...
+      exporterIdent: 'notFoundComponent', // export { SplitNotFoundComponent as notFoundComponent }
     },
   ],
 ])
@@ -375,9 +405,12 @@ export function compileCodeSplitVirtualRoute(
         > = {
           component: undefined,
           loader: undefined,
+          pendingComponent: undefined,
+          errorComponent: undefined,
+          notFoundComponent: undefined,
         }
 
-        // Find and track all the known splittable nodes
+        // Find and track all the known split-able nodes
         programPath.traverse(
           {
             CallExpression: (path) => {
