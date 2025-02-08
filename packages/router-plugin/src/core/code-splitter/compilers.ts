@@ -175,8 +175,11 @@ export function compileCodeSplitReferenceRoute(
                         if (codeSplitGroupingByKey === -1) {
                           return
                         }
-                        const codeSplitGroup =
-                          opts.codeSplitGroupings[codeSplitGroupingByKey]!
+                        const codeSplitGroup = [
+                          ...new Set(
+                            opts.codeSplitGroupings[codeSplitGroupingByKey],
+                          ),
+                        ]
 
                         const key = prop.key.name
                         // find key in nodeSplitConfig
