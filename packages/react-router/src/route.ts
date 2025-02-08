@@ -648,19 +648,21 @@ export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.id,
-    } as any)
+    } as any) as any
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.id,
-    } as any)
+    } as any) as any
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
@@ -1056,19 +1058,21 @@ export class Route<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.id,
-    } as any)
+    } as any) as any
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.id,
-    } as any)
+    } as any) as any
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
