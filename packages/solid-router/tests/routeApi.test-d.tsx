@@ -66,9 +66,11 @@ describe('getRouteApi', () => {
   test('useContext', () => {
     expectTypeOf(
       invoiceRouteApi.useRouteContext<DefaultRouter>(),
-    ).toEqualTypeOf<{
-      beforeLoadContext: number
-    }>()
+    ).toEqualTypeOf<
+      Accessor<{
+        beforeLoadContext: number
+      }>
+    >()
   })
   test('useSearch', () => {
     expectTypeOf(invoiceRouteApi.useSearch<DefaultRouter>()).toEqualTypeOf<
