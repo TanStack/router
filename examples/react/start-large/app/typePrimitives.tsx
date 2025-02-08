@@ -67,7 +67,7 @@ export const useCustomId = <TId extends string>(id: ValidateId<TId>) => {
 export const useCustomSearch = <TOptions,>(
   options: ValidateUseSearchOptions<TOptions>,
 ): ValidateUseSearchResult<TOptions> => {
-  return useSearch(options as never)
+  return useSearch(options as never) as any
 }
 
 export const useCustomParams = <TOptions,>(
