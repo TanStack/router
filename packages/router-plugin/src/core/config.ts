@@ -29,7 +29,7 @@ const splitGroupingsSchema = z
 export type CodeSplittingOptions = {
   /**
    *
-   * @default [["component"]]
+   * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
    */
   defaultBehaviour?: CodeSplitGroupings
 }
