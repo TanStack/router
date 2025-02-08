@@ -8,7 +8,7 @@ export interface NavigateOptions {
 
 type SubscriberHistoryAction =
   | {
-      type: HistoryAction
+      type: Exclude<HistoryAction, 'GO'>
     }
   | {
       type: 'GO'
