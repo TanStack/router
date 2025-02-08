@@ -118,7 +118,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const pluginSplitBehavior = userShouldSplitFn?.({
       routeId: fromCode.routeId,
-    })
+    }) as CodeSplitGroupings | undefined
 
     if (pluginSplitBehavior) {
       const res = splitGroupingsSchema.safeParse(pluginSplitBehavior)
