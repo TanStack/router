@@ -44,7 +44,7 @@ export type UseRouteContextRoute<out TFrom> = <
   TSelected = unknown,
 >(
   opts?: UseRouteContextBaseOptions<TRouter, TFrom, true, TSelected>,
-) => UseRouteContextResult<TRouter, TFrom, true, TSelected>
+) => Accessor<UseRouteContextResult<TRouter, TFrom, true, TSelected>>
 
 export function useRouteContext<
   TRouter extends AnyRouter = RegisteredRouter,
