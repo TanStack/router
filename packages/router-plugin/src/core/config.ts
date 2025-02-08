@@ -6,7 +6,7 @@ import {
 import { splitRouteIdentNodes } from './constants'
 import type { CodeSplitGroupings } from './constants'
 
-const splitGroupingsSchema = z
+export const splitGroupingsSchema = z
   .array(z.array(z.enum(splitRouteIdentNodes)), {
     message:
       "Must be an Array of Arrays containing the split groupings. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",

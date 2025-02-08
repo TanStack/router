@@ -2,7 +2,7 @@ import { isAbsolute, join, normalize } from 'node:path'
 
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
-import { getConfig } from './config'
+import { getConfig, splitGroupingsSchema } from './config'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
@@ -100,6 +100,10 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       root: ROOT,
       filename: id,
     })
+
+    if (groupingFromCode) {
+      splitGroupingsSchema.parse(groupingFromCode)
+    }
 
     const splitGroupings: CodeSplitGroupings =
       groupingFromCode || getGlobalCodeSplitGroupings()
