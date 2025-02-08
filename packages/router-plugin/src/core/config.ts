@@ -9,7 +9,7 @@ import type { CodeSplitGroupings } from './constants'
 export const splitGroupingsSchema = z
   .array(z.array(z.enum(splitRouteIdentNodes)), {
     message:
-      "Must be an Array of Arrays containing the split groupings. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",
+      "  Must be an Array of Arrays containing the split groupings. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",
   })
   .superRefine((val, ctx) => {
     const flattened = val.flat()
@@ -21,7 +21,8 @@ export const splitGroupingsSchema = z
       ctx.addIssue({
         code: 'custom',
         message:
-          "Split groupings must be unique and not repeated. i.e. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",
+          "  Split groupings must be unique and not repeated. i.e. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]." +
+          `\n  You input was: ${JSON.stringify(val)}.`,
       })
     }
   })

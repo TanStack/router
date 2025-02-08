@@ -105,7 +105,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     })
 
     if (fromCode.groupings) {
-      splitGroupingsSchema.parse(fromCode.groupings)
+      const res = splitGroupingsSchema.safeParse(fromCode.groupings)
+      if (!res.success) {
+        const message = res.error.errors.map((e) => e.message).join('. ')
+        throw new Error(
+          `The groupings for the route "${id}" are invalid.\n${message}`,
+        )
+      }
     }
 
     const userShouldSplitFn = getShouldSplitFn()
@@ -115,7 +121,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     })
 
     if (pluginSplitBehaviour) {
-      splitGroupingsSchema.parse(pluginSplitBehaviour)
+      const res = splitGroupingsSchema.safeParse(pluginSplitBehaviour)
+      if (!res.success) {
+        const message = res.error.errors.map((e) => e.message).join('. ')
+        throw new Error(
+          `The groupings returned when using \`splitBehaviour\` for the route "${id}" are invalid.\n${message}`,
+        )
+      }
     }
 
     const splitGroupings: CodeSplitGroupings =
