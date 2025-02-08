@@ -5,14 +5,15 @@ import type { CodeSplitGroupings } from '../src/core/constants'
 
 const successCases: Array<{
   name: string
-  expected: CodeSplitGroupings | undefined
   code: string
+  expectedGrouping: CodeSplitGroupings | undefined
+  expectedRouteId: string
 }> = [
   {
     name: 'defaults',
     code: `
 import {createFileRoute} from '@tanstack/react-router'
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute('/posts')({
 codeSplitGroupings: [
   ['component'],
   ['pendingComponent'],
@@ -21,61 +22,66 @@ codeSplitGroupings: [
 ]
 })
 `,
-    expected: defaultCodeSplitGroupings,
+    expectedGrouping: defaultCodeSplitGroupings,
+    expectedRouteId: '/posts',
   },
   {
     name: 'loader-separate-components-combined',
     code: `
 import {createFileRoute} from '@tanstack/react-router'
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute('/posts')({
 codeSplitGroupings: [
   ['loader'],
   ['component', 'pendingComponent', 'errorComponent', 'notFoundComponent']
 ]
 })
 `,
-    expected: [
+    expectedGrouping: [
       ['loader'],
       ['component', 'pendingComponent', 'errorComponent', 'notFoundComponent'],
     ],
+    expectedRouteId: '/posts',
   },
   {
     name: 'limited-loader-and-component',
     code: `
 import {createFileRoute} from '@tanstack/react-router'
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute('/posts')({
 codeSplitGroupings: [
   ['loader', 'component'],
   ['pendingComponent', 'errorComponent', 'notFoundComponent']
 ]
 })
 `,
-    expected: [
+    expectedGrouping: [
       ['loader', 'component'],
       ['pendingComponent', 'errorComponent', 'notFoundComponent'],
     ],
+    expectedRouteId: '/posts',
   },
   {
     name: 'empty',
     code: `
 import {createFileRoute} from '@tanstack/react-router'
-export const Route = createFileRoute('/')({})
+export const Route = createFileRoute('/posts')({})
 `,
-    expected: undefined,
+    expectedGrouping: undefined,
+    expectedRouteId: '/posts',
   },
 ]
 
 describe('detectCodeSplitGroupingsFromRoute - success', () => {
   it.each(successCases)(
     'should detect code split groupings for $name',
-    ({ code, expected }) => {
+    ({ code, expectedGrouping, expectedRouteId }) => {
       const result = detectCodeSplitGroupingsFromRoute({
         code: code,
         filename: 'test.ts',
         root: '/src',
       })
 
-      expect(result).toEqual(expected)
+      expect(result.groupings).toEqual(expectedGrouping)
+      expect(result.routeId).toEqual(expectedRouteId)
     },
   )
 })
@@ -109,3 +115,15 @@ codeSplitGroupings: groupings
 `,
   },
 ]
+
+describe('detectCodeSplitGroupingsFromRoute - fail', () => {
+  it.each(failCases)('should throw error for $name', ({ code }) => {
+    expect(() =>
+      detectCodeSplitGroupingsFromRoute({
+        code: code,
+        filename: 'test.ts',
+        root: '/src',
+      }),
+    ).toThrowError()
+  })
+})

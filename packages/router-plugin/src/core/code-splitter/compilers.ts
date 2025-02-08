@@ -695,10 +695,13 @@ export function compileCodeSplitVirtualRoute(
  * This function should read get the options from by searching for the key `codeSplitGroupings`
  * on createFileRoute and return it's values if it exists, else return undefined
  */
-export function detectCodeSplitGroupingsFromRoute(
-  opts: ParseAstOptions,
-): CodeSplitGroupings | undefined {
+export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
+  groupings: CodeSplitGroupings | undefined
+  routeId: string
+} {
   const ast = parseAst(opts)
+
+  let routeId = ''
 
   let codeSplitGroupings: CodeSplitGroupings | undefined = undefined
 
@@ -721,11 +724,19 @@ export function detectCodeSplitGroupingsFromRoute(
             }
 
             if (t.isCallExpression(path.parentPath.node)) {
+              // Extract out the routeId
+              if (t.isCallExpression(path.parentPath.node.callee)) {
+                const callee = path.parentPath.node.callee
+                if (t.isStringLiteral(callee.arguments[0])) {
+                  routeId = callee.arguments[0].value
+                }
+              }
+
+              // Continue with extracting the codeSplitGroupings
               const options = resolveIdentifier(
                 path,
                 path.parentPath.node.arguments[0],
               )
-
               if (t.isObjectExpression(options)) {
                 options.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
@@ -768,7 +779,7 @@ export function detectCodeSplitGroupingsFromRoute(
     },
   })
 
-  return codeSplitGroupings
+  return { groupings: codeSplitGroupings, routeId }
 }
 
 function getImportSpecifierAndPathFromLocalName(

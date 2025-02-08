@@ -95,18 +95,18 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
 
-    const groupingFromCode = detectCodeSplitGroupingsFromRoute({
+    const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
       root: ROOT,
       filename: id,
     })
 
-    if (groupingFromCode) {
-      splitGroupingsSchema.parse(groupingFromCode)
+    if (fromCode.groupings) {
+      splitGroupingsSchema.parse(fromCode)
     }
 
     const splitGroupings: CodeSplitGroupings =
-      groupingFromCode || getGlobalCodeSplitGroupings()
+      fromCode.groupings || getGlobalCodeSplitGroupings()
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
