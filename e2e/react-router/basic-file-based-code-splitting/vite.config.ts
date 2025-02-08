@@ -8,8 +8,8 @@ export default defineConfig({
     TanStackRouterVite({
       autoCodeSplitting: true,
       codeSplittingOptions: {
-        shouldSplit: ({ routeId }) => {
-          if (routeId === '/posts/$postId') {
+        splitBehaviour: ({ routeId }) => {
+          if (routeId === '/posts') {
             return [
               ['loader'],
               ['component'],
