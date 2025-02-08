@@ -20,12 +20,18 @@ const testGroups = [
     groupings: defaultCodeSplitGroupings,
   },
   {
-    name: '2-separated',
-    groupings: [['loader'], ['component']],
+    name: '2-components-combined-loader-separate',
+    groupings: [
+      ['loader'],
+      ['component', 'pendingComponent', 'errorComponent', 'notFoundComponent'],
+    ],
   },
   {
-    name: '3-mixed',
-    groupings: [['loader', 'component']],
+    name: '3-all-combined-errorComponent-separate',
+    groupings: [
+      ['loader', 'component', 'pendingComponent', 'notFoundComponent'],
+      ['errorComponent'],
+    ],
   },
 ] as Array<{ name: string; groupings: CodeSplitGroupings }>
 
