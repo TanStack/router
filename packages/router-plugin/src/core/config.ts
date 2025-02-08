@@ -19,9 +19,9 @@ const codeSplittingOptionsSchema = z.object({
 
 export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),
-  codeSplittingOptions: z.custom<CodeSplittingOptions>(
-    codeSplittingOptionsSchema.parse,
-  ),
+  codeSplittingOptions: z
+    .custom<CodeSplittingOptions>(codeSplittingOptionsSchema.parse)
+    .optional(),
 })
 
 export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
