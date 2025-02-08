@@ -84,12 +84,12 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
   const getGlobalCodeSplitGroupings = () => {
     return (
-      userConfig.codeSplittingOptions?.defaultBehaviour ||
+      userConfig.codeSplittingOptions?.defaultBehavior ||
       defaultCodeSplitGroupings
     )
   }
   const getShouldSplitFn = () => {
-    return userConfig.codeSplittingOptions?.splitBehaviour
+    return userConfig.codeSplittingOptions?.splitBehavior
   }
 
   const handleCompilingReferenceFile = (
@@ -116,23 +116,23 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const userShouldSplitFn = getShouldSplitFn()
 
-    const pluginSplitBehaviour = userShouldSplitFn?.({
+    const pluginSplitBehavior = userShouldSplitFn?.({
       routeId: fromCode.routeId,
     })
 
-    if (pluginSplitBehaviour) {
-      const res = splitGroupingsSchema.safeParse(pluginSplitBehaviour)
+    if (pluginSplitBehavior) {
+      const res = splitGroupingsSchema.safeParse(pluginSplitBehavior)
       if (!res.success) {
         const message = res.error.errors.map((e) => e.message).join('. ')
         throw new Error(
-          `The groupings returned when using \`splitBehaviour\` for the route "${id}" are invalid.\n${message}`,
+          `The groupings returned when using \`splitBehavior\` for the route "${id}" are invalid.\n${message}`,
         )
       }
     }
 
     const splitGroupings: CodeSplitGroupings =
       fromCode.groupings ||
-      pluginSplitBehaviour ||
+      pluginSplitBehavior ||
       getGlobalCodeSplitGroupings()
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({

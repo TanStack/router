@@ -29,25 +29,25 @@ export const splitGroupingsSchema = z
 
 export type CodeSplittingOptions = {
   /**
-   * Use this function to programmatically control the code splitting behaviour
+   * Use this function to programmatically control the code splitting behavior
    * based on the `routeId` for each route.
    *
-   * If you just need to change the default behaviour, you can use the `defaultBehaviour` option.
+   * If you just need to change the default behavior, you can use the `defaultBehavior` option.
    * @param params
    */
-  splitBehaviour?: (params: {
+  splitBehavior?: (params: {
     routeId: string
   }) => CodeSplitGroupings | undefined | void
 
   /**
-   * The default/global configuration to control your code splitting behaviour per route.
+   * The default/global configuration to control your code splitting behavior per route.
    * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
    */
-  defaultBehaviour?: CodeSplitGroupings
+  defaultBehavior?: CodeSplitGroupings
 }
 
 const codeSplittingOptionsSchema = z.object({
-  splitBehaviour: z.function().optional(),
+  splitBehavior: z.function().optional(),
   defaultGroupings: splitGroupingsSchema.optional(),
 })
 
