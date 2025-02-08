@@ -131,9 +131,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     }
 
     const splitGroupings: CodeSplitGroupings =
-      fromCode.groupings ||
-      pluginSplitBehavior ||
-      getGlobalCodeSplitGroupings()
+      fromCode.groupings || pluginSplitBehavior || getGlobalCodeSplitGroupings()
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,

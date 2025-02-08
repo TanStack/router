@@ -3,10 +3,7 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
-import type {
-  RegisteredRouter,
-  RouteIds,
-} from '@tanstack/react-router'
+import type { RegisteredRouter, RouteIds } from '@tanstack/react-router'
 import type { CodeSplitGroupings } from './constants'
 
 export const splitGroupingsSchema = z
@@ -41,25 +38,24 @@ export const splitGroupingsSchema = z
     }
   })
 
-export type CodeSplittingOptions =
-  {
-    /**
-     * Use this function to programmatically control the code splitting behavior
-     * based on the `routeId` for each route.
-     *
-     * If you just need to change the default behavior, you can use the `defaultBehavior` option.
-     * @param params
-     */
-    splitBehavior?: (params: {
-      routeId: RouteIds<RegisteredRouter['routeTree']>
-    }) => CodeSplitGroupings | undefined | void
+export type CodeSplittingOptions = {
+  /**
+   * Use this function to programmatically control the code splitting behavior
+   * based on the `routeId` for each route.
+   *
+   * If you just need to change the default behavior, you can use the `defaultBehavior` option.
+   * @param params
+   */
+  splitBehavior?: (params: {
+    routeId: RouteIds<RegisteredRouter['routeTree']>
+  }) => CodeSplitGroupings | undefined | void
 
-    /**
-     * The default/global configuration to control your code splitting behavior per route.
-     * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
-     */
-    defaultBehavior?: CodeSplitGroupings
-  }
+  /**
+   * The default/global configuration to control your code splitting behavior per route.
+   * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
+   */
+  defaultBehavior?: CodeSplitGroupings
+}
 
 const codeSplittingOptionsSchema = z.object({
   splitBehavior: z.function().optional(),
