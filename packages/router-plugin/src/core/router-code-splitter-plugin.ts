@@ -88,6 +88,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       defaultCodeSplitGroupings
     )
   }
+  const getShouldSplitFn = () => {
+    return userConfig.codeSplittingOptions?.shouldSplit
+  }
 
   const handleCompilingReferenceFile = (
     code: string,
@@ -105,8 +108,20 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       splitGroupingsSchema.parse(fromCode)
     }
 
+    const userShouldSplitFn = getShouldSplitFn()
+
+    const pluginSplitBehaviour = userShouldSplitFn?.({
+      routeId: fromCode.routeId,
+    })
+
+    if (pluginSplitBehaviour) {
+      splitGroupingsSchema.parse(pluginSplitBehaviour)
+    }
+
     const splitGroupings: CodeSplitGroupings =
-      fromCode.groupings || getGlobalCodeSplitGroupings()
+      fromCode.groupings ||
+      pluginSplitBehaviour ||
+      getGlobalCodeSplitGroupings()
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
