@@ -209,11 +209,6 @@ export const MatchInner = (props: { matchId: string }): any => {
     return <Outlet />
   })
 
-  const [loaderResult] = Solid.createResource(async () => {
-    await new Promise((r) => setTimeout(r, 0))
-    return router.getMatch(match().id)?.loadPromise
-  })
-
   return (
     <Solid.Switch>
       <Solid.Match when={match().status === 'notFound'}>
@@ -226,6 +221,12 @@ export const MatchInner = (props: { matchId: string }): any => {
       <Solid.Match when={match().status === 'redirected'}>
         {(_) => {
           invariant(isRedirect(match().error), 'Expected a redirect error')
+
+          const [loaderResult] = Solid.createResource(async () => {
+            await new Promise((r) => setTimeout(r, 0))
+            return router.getMatch(match().id)?.loadPromise
+          })
+
           return <>{loaderResult()}</>
         }}
       </Solid.Match>
@@ -278,6 +279,11 @@ export const MatchInner = (props: { matchId: string }): any => {
               }, pendingMinMs)
             }
           }
+
+          const [loaderResult] = Solid.createResource(async () => {
+            await new Promise((r) => setTimeout(r, 0))
+            return router.getMatch(match().id)?.loadPromise
+          })
 
           return <>{loaderResult()}</>
         }}
