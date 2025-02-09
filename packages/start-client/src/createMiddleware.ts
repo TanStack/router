@@ -24,26 +24,18 @@ export type AssignAllMiddleware<
     >
   : TAcc
 
-export type AssignAllClientAfterContext<
-  TMiddlewares,
-  TClientContext = undefined,
-  TClientSendContext = undefined,
-> = unknown extends TClientContext
-  ? TClientContext
-  : Assign<
-      AssignAllMiddleware<TMiddlewares, 'allClientAfterContext'>,
-      Assign<TClientContext, TClientSendContext>
-    >
-
 /**
  * Recursively resolve the client context type produced by a sequence of middleware
  */
-export type AssignAllClientContext<
+export type AssignAllClientContextBeforeNext<
   TMiddlewares,
-  TContext = undefined,
-> = unknown extends TContext
-  ? TContext
-  : Assign<AssignAllMiddleware<TMiddlewares, 'allClientContext'>, TContext>
+  TClientContext = undefined,
+> = unknown extends TClientContext
+  ? TClientContext
+  : Assign<
+      AssignAllMiddleware<TMiddlewares, 'allClientContextBeforeNext'>,
+      TClientContext
+    >
 
 export type AssignAllClientSendContext<
   TMiddlewares,
@@ -55,18 +47,41 @@ export type AssignAllClientSendContext<
       TSendContext
     >
 
+export type AssignAllClientContextAfterNext<
+  TMiddlewares,
+  TClientContext = undefined,
+  TSendContext = undefined,
+> = unknown extends TClientContext
+  ? Assign<TClientContext, TSendContext>
+  : Assign<
+      AssignAllMiddleware<TMiddlewares, 'allClientContextAfterNext'>,
+      Assign<TClientContext, TSendContext>
+    >
+
+export type AssignAllClientContextAfterServer<
+  TMiddlewares,
+  TClientContext = undefined,
+  TClientSendContext = undefined,
+  TClientAfterContext = undefined,
+> = unknown extends TClientContext
+  ? Assign<Assign<TClientContext, TClientSendContext>, TClientAfterContext>
+  : Assign<
+      AssignAllMiddleware<TMiddlewares, 'allClientContextAfterServer'>,
+      Assign<Assign<TClientContext, TClientSendContext>, TClientAfterContext>
+    >
+
 /**
  * Recursively resolve the server context type produced by a sequence of middleware
  */
 export type AssignAllServerContext<
   TMiddlewares,
-  TContext = undefined,
   TSendContext = undefined,
-> = unknown extends TContext
-  ? Assign<TSendContext, TContext>
+  TServerContext = undefined,
+> = unknown extends TSendContext
+  ? Assign<TSendContext, TServerContext>
   : Assign<
       AssignAllMiddleware<TMiddlewares, 'allServerContext'>,
-      Assign<TSendContext, TContext>
+      Assign<TSendContext, TServerContext>
     >
 
 export type AssignAllServerSendContext<
@@ -150,24 +165,29 @@ export interface MiddlewareOptions<
   >
 }
 
-export type MiddlewareServerNextFn<TMiddlewares> = <
+export type MiddlewareServerNextFn<TMiddlewares, TServerSendContext> = <
   TNewServerContext = undefined,
   TSendContext = undefined,
 >(ctx?: {
   context?: TNewServerContext
   sendContext?: SerializerStringify<TSendContext>
 }) => Promise<
-  ServerResultWithContext<TMiddlewares, TNewServerContext, TSendContext>
+  ServerResultWithContext<
+    TMiddlewares,
+    TServerSendContext,
+    TNewServerContext,
+    TSendContext
+  >
 >
 
 export interface MiddlewareServerFnOptions<
   in out TMiddlewares,
   in out TValidator,
-  in out TServerContext,
+  in out TServerSendContext,
 > {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
-  context: Expand<AssignAllServerContext<TMiddlewares, TServerContext>>
-  next: MiddlewareServerNextFn<TMiddlewares>
+  context: Expand<AssignAllServerContext<TMiddlewares, TServerSendContext>>
+  next: MiddlewareServerNextFn<TMiddlewares, TServerSendContext>
   method: Method
   filename: string
   functionId: string
@@ -176,20 +196,42 @@ export interface MiddlewareServerFnOptions<
 export type MiddlewareServerFn<
   TMiddlewares,
   TValidator,
-  TServerContext,
+  TServerSendContext,
   TNewServerContext,
   TSendContext,
 > = (
-  options: MiddlewareServerFnOptions<TMiddlewares, TValidator, TServerContext>,
-) => MiddlewareServerFnResult<TMiddlewares, TNewServerContext, TSendContext>
+  options: MiddlewareServerFnOptions<
+    TMiddlewares,
+    TValidator,
+    TServerSendContext
+  >,
+) => MiddlewareServerFnResult<
+  TMiddlewares,
+  TServerSendContext,
+  TNewServerContext,
+  TSendContext
+>
 
 export type MiddlewareServerFnResult<
   TMiddlewares,
+  TServerSendContext,
   TServerContext,
   TSendContext,
 > =
-  | Promise<ServerResultWithContext<TMiddlewares, TServerContext, TSendContext>>
-  | ServerResultWithContext<TMiddlewares, TServerContext, TSendContext>
+  | Promise<
+      ServerResultWithContext<
+        TMiddlewares,
+        TServerSendContext,
+        TServerContext,
+        TSendContext
+      >
+    >
+  | ServerResultWithContext<
+      TMiddlewares,
+      TServerSendContext,
+      TServerContext,
+      TSendContext
+    >
 
 export type MiddlewareClientNextFn<TMiddlewares> = <
   TSendContext = undefined,
@@ -207,7 +249,7 @@ export interface MiddlewareClientFnOptions<
   in out TValidator,
 > {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
-  context: Expand<AssignAllClientContext<TMiddlewares>>
+  context: Expand<AssignAllClientContextBeforeNext<TMiddlewares>>
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares>>
   method: Method
   next: MiddlewareClientNextFn<TMiddlewares>
@@ -232,14 +274,21 @@ export type MiddlewareClientFnResult<
   | Promise<ClientResultWithContext<TMiddlewares, TSendContext, TClientContext>>
   | ClientResultWithContext<TMiddlewares, TSendContext, TClientContext>
 
-export type MiddlewareClientAfterNextFn<TMiddlewares> = <
-  TNewClientAfterContext = undefined,
->(ctx?: {
+export type MiddlewareClientAfterNextFn<
+  TMiddlewares,
+  TClientContext,
+  TClientSendContext,
+> = <TNewClientAfterContext = undefined>(ctx?: {
   context?: TNewClientAfterContext
   sendContext?: never
   headers?: HeadersInit
 }) => Promise<
-  ClientAfterResultWithContext<TMiddlewares, TNewClientAfterContext>
+  ClientAfterResultWithContext<
+    TMiddlewares,
+    TClientContext,
+    TClientSendContext,
+    TNewClientAfterContext
+  >
 >
 
 export interface MiddlewareClientAfterFnOptions<
@@ -250,14 +299,18 @@ export interface MiddlewareClientAfterFnOptions<
 > {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
   context: Expand<
-    AssignAllClientAfterContext<
+    AssignAllClientContextAfterServer<
       TMiddlewares,
       TClientContext,
       TClientSendContext
     >
   >
   method: Method
-  next: MiddlewareClientAfterNextFn<TMiddlewares>
+  next: MiddlewareClientAfterNextFn<
+    TMiddlewares,
+    TClientContext,
+    TClientSendContext
+  >
 }
 
 export type MiddlewareClientAfterFn<
@@ -273,24 +326,62 @@ export type MiddlewareClientAfterFn<
     TClientContext,
     TClientSendContext
   >,
-) => MiddlewareClientAfterFnResult<TMiddlewares, TNewClientAfterContext>
+) => MiddlewareClientAfterFnResult<
+  TMiddlewares,
+  TClientContext,
+  TClientSendContext,
+  TNewClientAfterContext
+>
 
 export type MiddlewareClientAfterFnResult<
   TMiddlewares,
+  TClientContext,
+  TClientSendContext,
   TNewClientAfterContext,
 > =
-  | Promise<ClientAfterResultWithContext<TMiddlewares, TNewClientAfterContext>>
-  | ClientAfterResultWithContext<TMiddlewares, TNewClientAfterContext>
+  | Promise<
+      ClientAfterResultWithContext<
+        TMiddlewares,
+        TClientContext,
+        TClientSendContext,
+        TNewClientAfterContext
+      >
+    >
+  | ClientAfterResultWithContext<
+      TMiddlewares,
+      TClientContext,
+      TClientSendContext,
+      TNewClientAfterContext
+    >
 
-export type ServerResultWithContext<TMiddlewares, TContext, TSendContext> = {
+export type ServerResultWithContext<
+  TMiddlewares,
+  TServerSendContext,
+  TServerContext,
+  TSendContext,
+> = {
   'use functions must return the result of next()': true
-  context: Expand<AssignAllServerContext<TMiddlewares, TContext>>
+  context: Expand<
+    AssignAllServerContext<TMiddlewares, TServerSendContext, TServerContext>
+  >
   sendContext: Expand<AssignAllClientSendContext<TMiddlewares, TSendContext>>
 }
 
-export type ClientAfterResultWithContext<TMiddlewares, TClientContext> = {
+export type ClientAfterResultWithContext<
+  TMiddlewares,
+  TClientContext,
+  TClientSendContext,
+  TClientAfterContext,
+> = {
   'use functions must return the result of next()': true
-  context: Expand<AssignAllClientAfterContext<TMiddlewares, TClientContext>>
+  context: Expand<
+    AssignAllClientContextAfterServer<
+      TMiddlewares,
+      TClientContext,
+      TClientSendContext,
+      TClientAfterContext
+    >
+  >
   headers: HeadersInit
 }
 
@@ -300,7 +391,7 @@ export type ClientResultWithContext<
   TClientContext,
 > = {
   'use functions must return the result of next()': true
-  context: Expand<AssignAllClientContext<TMiddlewares, TClientContext>>
+  context: Expand<AssignAllClientContextAfterNext<TMiddlewares, TClientContext>>
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares, TSendContext>>
   headers: HeadersInit
 }
@@ -323,17 +414,25 @@ export interface MiddlewareTypes<
     output: ResolveValidatorOutput<TValidator>
     allOutput: IntersectAllValidatorOutputs<TMiddlewares, TValidator>
     clientContext: TClientContext
-    allClientContext: AssignAllClientContext<TMiddlewares, TClientContext>
+    allClientContextBeforeNext: AssignAllClientContextBeforeNext<
+      TMiddlewares,
+      TClientContext
+    >
+    allClientContextAfterNext: AssignAllClientContextAfterNext<
+      TMiddlewares,
+      TClientContext,
+      TClientSendContext
+    >
     serverContext: TServerContext
     serverSendContext: TServerSendContext
-    allServerContext: AssignAllServerContext<
-      TMiddlewares,
-      TServerContext,
-      TServerSendContext
-    >
     allServerSendContext: AssignAllServerSendContext<
       TMiddlewares,
       TServerSendContext
+    >
+    allServerContext: AssignAllServerContext<
+      TMiddlewares,
+      TServerSendContext,
+      TServerContext
     >
     clientSendContext: TClientSendContext
     allClientSendContext: AssignAllClientSendContext<
@@ -341,9 +440,10 @@ export interface MiddlewareTypes<
       TClientSendContext
     >
     clientAfterContext: TClientAfterContext
-    allClientAfterContext: AssignAllClientAfterContext<
+    allClientContextAfterServer: AssignAllClientContextAfterServer<
       TMiddlewares,
       TClientContext,
+      TClientSendContext,
       TClientAfterContext
     >
     validator: TValidator

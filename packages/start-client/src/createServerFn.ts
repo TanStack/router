@@ -525,7 +525,7 @@ function serverFnBaseToMiddleware(
         return next({
           ...ctx,
           result,
-        } as any) as unknown as MiddlewareServerFnResult<any, any, any>
+        } as any) as unknown as MiddlewareServerFnResult<any, any, any, any>
       },
     },
   }
