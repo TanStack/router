@@ -22,7 +22,7 @@ bun create @tanstack/router
 deno init --npm @tanstack/router
 ```
 
-Follow the prompts to setup the a fully setup TanStack Router project.
+Follow the prompts to scaffold a full TanStack Router project.
 
 ### Manual Setup
 
@@ -65,7 +65,7 @@ export default defineConfig({
 ```
 
 > [!TIP]
-> If you are not using Vite, or any supported bundler, you can check out the [TanStack Router CLI](./guide/file-based-routing.md#configuration-with-the-tanstack-router-cli) guide for more info.
+> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](./guide/file-based-routing.md#configuration-with-the-tanstack-router-cli) guide for more info.
 
 Create the following files:
 

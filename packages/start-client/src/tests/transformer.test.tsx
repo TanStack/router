@@ -54,6 +54,19 @@ describe('transformer.stringify', () => {
       `"{"$formData":{"foo":["bar","baz"]}}"`,
     )
   })
+
+  it('should stringify bigint', () => {
+    const bigint = BigInt('9007199254740992')
+    expect(tf.stringify(bigint)).toMatchInlineSnapshot(
+      `"{"$bigint":"9007199254740992"}"`,
+    )
+  })
+  it('should stringify object foo=bigint', () => {
+    const bigint = BigInt('9007199254740992')
+    expect(tf.stringify({ foo: bigint })).toMatchInlineSnapshot(
+      `"{"foo":{"$bigint":"9007199254740992"}}"`,
+    )
+  })
 })
 
 describe('transformer.parse', () => {
@@ -118,5 +131,17 @@ describe('transformer.parse', () => {
       ['foo', 'bar'],
       ['foo', 'baz'],
     ])
+  })
+
+  it('should parse bigint', () => {
+    const bigint = BigInt('9007199254740992')
+    const str = tf.stringify(bigint)
+    expect(tf.parse(str)).toEqual(bigint)
+  })
+  it('should parse object foo=bigint', () => {
+    const bigint = BigInt('9007199254740992')
+    const obj = { foo: bigint }
+    const str = tf.stringify(obj)
+    expect(tf.parse(str)).toEqual(obj)
   })
 })
