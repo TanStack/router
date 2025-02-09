@@ -128,8 +128,8 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
     any,
     any
   >
-  ? TRouterContext
-  : AnyContext
+    ? TRouterContext
+    : AnyContext
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -138,12 +138,12 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends InferRouterContext<TRouteTree>
-  ? {
-    context?: InferRouterContext<TRouteTree>
-  }
-  : {
-    context: InferRouterContext<TRouteTree>
-  }
+    ? {
+        context?: InferRouterContext<TRouteTree>
+      }
+    : {
+        context: InferRouterContext<TRouteTree>
+      }
 
 export type InjectedHtmlEntry = Promise<string>
 
@@ -612,11 +612,11 @@ export function createRouter<
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
     : RouterConstructorOptions<
-      TRouteTree,
-      TTrailingSlashOption,
-      TRouterHistory,
-      TDehydrated
-    >,
+        TRouteTree,
+        TTrailingSlashOption,
+        TRouterHistory,
+        TDehydrated
+      >,
 ) {
   return new Router<
     TRouteTree,
@@ -698,7 +698,7 @@ export class Router<
     })
 
     if (typeof document !== 'undefined') {
-      ; (window as any).__TSR_ROUTER__ = this
+      ;(window as any).__TSR_ROUTER__ = this
     }
   }
 
@@ -731,11 +731,11 @@ export class Router<
 
     this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
       ? new Map(
-        this.options.pathParamsAllowedCharacters.map((char) => [
-          encodeURIComponent(char),
-          char,
-        ]),
-      )
+          this.options.pathParamsAllowedCharacters.map((char) => [
+            encodeURIComponent(char),
+            char,
+          ]),
+        )
       : undefined
 
     if (
@@ -762,8 +762,8 @@ export class Router<
         this.options.history ??
         ((this.isServer
           ? createMemoryHistory({
-            initialEntries: [this.basepath || '/'],
-          })
+              initialEntries: [this.basepath || '/'],
+            })
           : createBrowserHistory()) as TRouterHistory)
       this.latestLocation = this.parseLocation()
     }
@@ -815,7 +815,7 @@ export class Router<
         originalIndex: 99999999999,
         defaultSsr: this.options.defaultSsr,
       })
-        ; (this.routesById as any)[notFoundRoute.id] = notFoundRoute
+      ;(this.routesById as any)[notFoundRoute.id] = notFoundRoute
     }
 
     const recurseRoutes = (childRoutes: Array<AnyRoute>) => {
@@ -831,7 +831,7 @@ export class Router<
           !existingRoute,
           `Duplicate routes found with id: ${String(childRoute.id)}`,
         )
-          ; (this.routesById as any)[childRoute.id] = childRoute
+        ;(this.routesById as any)[childRoute.id] = childRoute
 
         if (!childRoute.isRoot && childRoute.path) {
           const trimmedFullPath = trimPathRight(childRoute.fullPath)
@@ -839,7 +839,7 @@ export class Router<
             !(this.routesByPath as any)[trimmedFullPath] ||
             childRoute.fullPath.endsWith('/')
           ) {
-            ; (this.routesByPath as any)[trimmedFullPath] = childRoute
+            ;(this.routesByPath as any)[trimmedFullPath] = childRoute
           }
         }
 
@@ -1061,7 +1061,7 @@ export class Router<
       foundRoute
         ? foundRoute.path !== '/' && routeParams['**']
         : // Or if we didn't find a route and we have left over path
-        trimPathRight(next.pathname)
+          trimPathRight(next.pathname)
     ) {
       // If the user has defined an (old) 404 route, use it
       if (this.options.notFoundRoute) {
@@ -1234,9 +1234,9 @@ export class Router<
       } else {
         const status =
           route.options.loader ||
-            route.options.beforeLoad ||
-            route.lazyFn ||
-            routeNeedsPreload(route)
+          route.options.beforeLoad ||
+          route.lazyFn ||
+          routeNeedsPreload(route)
             ? 'pending'
             : 'success'
 
@@ -1428,12 +1428,12 @@ export class Router<
       const fromMatch =
         dest.from != null
           ? fromMatches.find((d) =>
-            matchPathname(this.basepath, trimPathRight(d.pathname), {
-              to: dest.from,
-              caseSensitive: false,
-              fuzzy: false,
-            }),
-          )
+              matchPathname(this.basepath, trimPathRight(d.pathname), {
+                to: dest.from,
+                caseSensitive: false,
+                fuzzy: false,
+              }),
+            )
           : undefined
 
       const fromPath = fromMatch?.pathname || this.latestLocation.pathname
@@ -1456,15 +1456,15 @@ export class Router<
       } else {
         const fromRouteByFromPathRouteId =
           this.routesById[
-          stayingMatches?.find((route) => {
-            const interpolatedPath = interpolatePath({
-              path: route.fullPath,
-              params: matchedRoutesResult?.routeParams ?? {},
-              decodeCharMap: this.pathParamsDecodeCharMap,
-            }).interpolatedPath
-            const pathname = joinPaths([this.basepath, interpolatedPath])
-            return pathname === fromPath
-          })?.id as keyof this['routesById']
+            stayingMatches?.find((route) => {
+              const interpolatedPath = interpolatePath({
+                path: route.fullPath,
+                params: matchedRoutesResult?.routeParams ?? {},
+                decodeCharMap: this.pathParamsDecodeCharMap,
+              }).interpolatedPath
+              const pathname = joinPaths([this.basepath, interpolatedPath])
+              return pathname === fromPath
+            })?.id as keyof this['routesById']
           ]
         pathname = this.resolvePathWithBase(
           fromPath,
@@ -1478,9 +1478,9 @@ export class Router<
         (dest.params ?? true) === true
           ? prevParams
           : {
-            ...prevParams,
-            ...functionalUpdate(dest.params as any, prevParams),
-          }
+              ...prevParams,
+              ...functionalUpdate(dest.params as any, prevParams),
+            }
 
       if (Object.keys(nextParams).length > 0) {
         matchedRoutesResult?.matchedRoutes
@@ -1958,18 +1958,18 @@ export class Router<
                   this.clearExpiredCache()
                 })
 
-                  //
-                  ; (
-                    [
-                      [exitingMatches, 'onLeave'],
-                      [enteringMatches, 'onEnter'],
-                      [stayingMatches, 'onStay'],
-                    ] as const
-                  ).forEach(([matches, hook]) => {
-                    matches.forEach((match) => {
-                      this.looseRoutesById[match.routeId]!.options[hook]?.(match)
-                    })
+                //
+                ;(
+                  [
+                    [exitingMatches, 'onLeave'],
+                    [enteringMatches, 'onEnter'],
+                    [stayingMatches, 'onStay'],
+                  ] as const
+                ).forEach(([matches, hook]) => {
+                  matches.forEach((match) => {
+                    this.looseRoutesById[match.routeId]!.options[hook]?.(match)
                   })
+                })
               })
             },
           })
@@ -2154,7 +2154,7 @@ export class Router<
         }))
 
         if (!(err as any).routeId) {
-          ; (err as any).routeId = match.routeId
+          ;(err as any).routeId = match.routeId
         }
 
         match.beforeLoadPromise?.resolve()
@@ -2180,7 +2180,7 @@ export class Router<
 
     try {
       await new Promise<void>((resolveAll, rejectAll) => {
-        ; (async () => {
+        ;(async () => {
           try {
             const handleSerialError = (
               index: number,
@@ -2257,7 +2257,7 @@ export class Router<
                       // Update the match and prematurely resolve the loadMatches promise so that
                       // the pending component can start rendering
                       triggerOnReady()
-                    } catch { }
+                    } catch {}
                   }, pendingMs)
                 }
 
@@ -2288,7 +2288,7 @@ export class Router<
                         // Update the match and prematurely resolve the loadMatches promise so that
                         // the pending component can start rendering
                         triggerOnReady()
-                      } catch { }
+                      } catch {}
                     }, pendingMs)
                   }
 
@@ -2579,23 +2579,23 @@ export class Router<
                       // Do nothing
                     } else if (loaderShouldRunAsync && !sync) {
                       loaderIsRunningAsync = true
-                        ; (async () => {
-                          try {
-                            await runLoader()
-                            const { loaderPromise, loadPromise } =
-                              this.getMatch(matchId)!
-                            loaderPromise?.resolve()
-                            loadPromise?.resolve()
-                            updateMatch(matchId, (prev) => ({
-                              ...prev,
-                              loaderPromise: undefined,
-                            }))
-                          } catch (err) {
-                            if (isResolvedRedirect(err)) {
-                              await this.navigate(err)
-                            }
+                      ;(async () => {
+                        try {
+                          await runLoader()
+                          const { loaderPromise, loadPromise } =
+                            this.getMatch(matchId)!
+                          loaderPromise?.resolve()
+                          loadPromise?.resolve()
+                          updateMatch(matchId, (prev) => ({
+                            ...prev,
+                            loaderPromise: undefined,
+                          }))
+                        } catch (err) {
+                          if (isResolvedRedirect(err)) {
+                            await this.navigate(err)
                           }
-                        })()
+                        }
+                      })()
                     } else if (
                       status !== 'success' ||
                       (loaderShouldRunAsync && sync)
@@ -2864,9 +2864,9 @@ export class Router<
       ...location,
       to: location.to
         ? this.resolvePathWithBase(
-          (location.from || '') as string,
-          location.to as string,
-        )
+            (location.from || '') as string,
+            location.to as string,
+          )
         : undefined,
       params: location.params || {},
       leaveParams: true,
@@ -3008,9 +3008,9 @@ export function lazyFn<
   }
 }
 
-export class SearchParamError extends Error { }
+export class SearchParamError extends Error {}
 
-export class PathParamError extends Error { }
+export class PathParamError extends Error {}
 
 export function getInitialRouterState(
   location: ParsedLocation,

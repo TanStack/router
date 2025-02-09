@@ -243,14 +243,24 @@ export function MatchRoute<
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
-  const matchRoute = useMatchRoute()
-  const params = matchRoute(props as any) as boolean
+  const status = useRouterState({
+    select: (s) => s.status,
+  })
 
-  if (typeof props.children === 'function') {
-    return (props.children as any)(params)
-  }
+  return (
+    <Solid.Show when={status()} keyed>
+      {(_) => {
+        const matchRoute = useMatchRoute()
+        const params = matchRoute(props as any) as boolean
 
-  return params ? props.children : null
+        if (typeof props.children === 'function') {
+          return (props.children as any)(params)
+        }
+
+        return params ? props.children : null
+      }}
+    </Solid.Show>
+  )
 }
 
 export type MakeRouteMatchUnion<
