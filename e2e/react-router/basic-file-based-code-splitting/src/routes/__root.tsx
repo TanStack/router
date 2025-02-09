@@ -62,6 +62,16 @@ function RootComponent() {
         </Link>
       </div>
       <hr />
+      <div style={{ height: '200vh' }} />
+      <Link
+        preload="viewport"
+        to="/viewport-test"
+        activeProps={{
+          className: 'font-bold',
+        }}
+      >
+        viewport-test
+      </Link>
       <Outlet />
       {/* Start rendering router matches */}
       <TanStackRouterDevtools position="bottom-right" />
