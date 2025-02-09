@@ -15,6 +15,13 @@ The `useSearch` hook accepts an `options` object.
 - Required
 - The RouteID to match the search query parameters from.
 
+### `opts.shouldThrow` option
+
+- Type: `boolean`
+- Optional
+- `default: true`
+- If `false`,`useSearch` will not throw an invariant exception in case a match was not found in the currently rendered matches; in this case, it will return `undefined`.
+
 ### `opts.select` option
 
 - Type: `(search: SelectedSearchSchema) => TSelected`

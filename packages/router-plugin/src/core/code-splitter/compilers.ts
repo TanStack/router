@@ -3,9 +3,12 @@ import babel from '@babel/core'
 import * as template from '@babel/template'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
-import { splitPrefix } from '../constants'
+import { tsrSplit } from '../constants'
+import { createIdentifier } from './path-ids'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
+import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 
+// eslint-disable-next-line unused-imports/no-unused-vars
 const debug = process.env.TSR_VITE_DEBUG
 
 type SplitModulesById = Record<
@@ -26,17 +29,6 @@ interface State {
   splitModulesById: SplitModulesById
 }
 
-function addSplitSearchParamToFilename(filename: string) {
-  const [bareFilename] = filename.split('?')
-  return `${bareFilename}?${splitPrefix}`
-}
-
-function removeSplitSearchParamFromFilename(filename: string) {
-  const [bareFilename] = filename.split('?')
-  return bareFilename!
-}
-
-type SplitRouteIdentNodes = 'component' | 'loader'
 type SplitNodeMeta = {
   routeIdent: SplitRouteIdentNodes
   splitStrategy: 'normal' | 'react-component'
@@ -44,7 +36,17 @@ type SplitNodeMeta = {
   exporterIdent: string
   localExporterIdent: string
 }
-const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
+const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
+  [
+    'loader',
+    {
+      routeIdent: 'loader',
+      localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
+      splitStrategy: 'normal',
+      localExporterIdent: 'SplitLoader', // const SplitLoader = ...
+      exporterIdent: 'loader', // export { SplitLoader as loader }
+    },
+  ],
   [
     'component',
     {
@@ -56,31 +58,73 @@ const SPLIT_NOES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     },
   ],
   [
-    'loader',
+    'pendingComponent',
     {
-      routeIdent: 'loader',
-      localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
-      splitStrategy: 'normal',
-      localExporterIdent: 'SplitLoader', // const SplitLoader = ...
-      exporterIdent: 'loader', // export { SplitLoader as loader }
+      routeIdent: 'pendingComponent',
+      localImporterIdent: '$$splitPendingComponentImporter', // const $$splitPendingComponentImporter = () => import('...')
+      splitStrategy: 'react-component',
+      localExporterIdent: 'SplitPendingComponent', // const SplitPendingComponent = ...
+      exporterIdent: 'pendingComponent', // export { SplitPendingComponent as pendingComponent }
+    },
+  ],
+  [
+    'errorComponent',
+    {
+      routeIdent: 'errorComponent',
+      localImporterIdent: '$$splitErrorComponentImporter', // const $$splitErrorComponentImporter = () => import('...')
+      splitStrategy: 'react-component',
+      localExporterIdent: 'SplitErrorComponent', // const SplitErrorComponent = ...
+      exporterIdent: 'errorComponent', // export { SplitErrorComponent as errorComponent }
+    },
+  ],
+  [
+    'notFoundComponent',
+    {
+      routeIdent: 'notFoundComponent',
+      localImporterIdent: '$$splitNotFoundComponentImporter', // const $$splitNotFoundComponentImporter = () => import('...')
+      splitStrategy: 'react-component',
+      localExporterIdent: 'SplitNotFoundComponent', // const SplitNotFoundComponent = ...
+      exporterIdent: 'notFoundComponent', // export { SplitNotFoundComponent as notFoundComponent }
     },
   ],
 ])
-const SPLIT_ROUTE_IDENT_NODES = [...SPLIT_NOES_CONFIG.keys()] as const
+const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
+
+function addSplitSearchParamToFilename(
+  filename: string,
+  grouping: Array<string>,
+) {
+  const [bareFilename] = filename.split('?')
+
+  const params = new URLSearchParams()
+  params.append(tsrSplit, createIdentifier(grouping))
+
+  return `${bareFilename}?${params.toString()}`
+}
+
+function removeSplitSearchParamFromFilename(filename: string) {
+  const [bareFilename] = filename.split('?')
+  return bareFilename!
+}
 
 export function compileCodeSplitReferenceRoute(
-  opts: ParseAstOptions & { isProduction: boolean },
+  opts: ParseAstOptions & {
+    runtimeEnv: 'dev' | 'prod'
+    codeSplitGroupings: CodeSplitGroupings
+  },
 ): GeneratorResult {
   const ast = parseAst(opts)
+
+  function findIndexForSplitNode(str: string) {
+    return opts.codeSplitGroupings.findIndex((group) =>
+      group.includes(str as any),
+    )
+  }
 
   babel.traverse(ast, {
     Program: {
       enter(programPath, programState) {
         const state = programState as unknown as State
-
-        // We need to extract the existing search params from the filename, if any
-        // and add the splitPrefix to them, then write them back to the filename
-        const splitUrl = addSplitSearchParamToFilename(opts.filename)
 
         /**
          * If the component for the route is being imported from
@@ -91,8 +135,7 @@ export function compileCodeSplitReferenceRoute(
          *
          * `import '../shared/imported'`
          */
-        let existingCompImportPath: string | null = null
-        let existingLoaderImportPath: string | null = null
+        const removableImportPaths = new Set<string>([])
 
         programPath.traverse(
           {
@@ -124,9 +167,23 @@ export function compileCodeSplitReferenceRoute(
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
                       if (t.isIdentifier(prop.key)) {
+                        // If the user has not specified a split grouping for this key
+                        // then we should not split it
+                        const codeSplitGroupingByKey = findIndexForSplitNode(
+                          prop.key.name,
+                        )
+                        if (codeSplitGroupingByKey === -1) {
+                          return
+                        }
+                        const codeSplitGroup = [
+                          ...new Set(
+                            opts.codeSplitGroupings[codeSplitGroupingByKey],
+                          ),
+                        ]
+
                         const key = prop.key.name
                         // find key in nodeSplitConfig
-                        const isNodeConfigAvailable = SPLIT_NOES_CONFIG.has(
+                        const isNodeConfigAvailable = SPLIT_NODES_CONFIG.has(
                           key as any,
                         )
 
@@ -134,7 +191,16 @@ export function compileCodeSplitReferenceRoute(
                           return
                         }
 
-                        const splitNodeMeta = SPLIT_NOES_CONFIG.get(key as any)!
+                        const splitNodeMeta = SPLIT_NODES_CONFIG.get(
+                          key as any,
+                        )!
+
+                        // We need to extract the existing search params from the filename, if any
+                        // and add the relevant codesplitPrefix to them, then write them back to the filename
+                        const splitUrl = addSplitSearchParamToFilename(
+                          opts.filename,
+                          codeSplitGroup,
+                        )
 
                         if (splitNodeMeta.splitStrategy === 'react-component') {
                           const value = prop.value
@@ -142,11 +208,14 @@ export function compileCodeSplitReferenceRoute(
                           let shouldSplit = true
 
                           if (t.isIdentifier(value)) {
-                            existingCompImportPath =
+                            const existingImportPath =
                               getImportSpecifierAndPathFromLocalName(
                                 programPath,
                                 value.name,
                               ).path
+                            if (existingImportPath) {
+                              removableImportPaths.add(existingImportPath)
+                            }
 
                             // exported identifiers should not be split
                             // since they are already being imported
@@ -206,7 +275,7 @@ export function compileCodeSplitReferenceRoute(
 
                           // If the TSRDummyComponent is not defined, define it
                           if (
-                            !opts.isProduction && // only in development
+                            opts.runtimeEnv !== 'prod' && // only in development
                             !hasImportedOrDefinedIdentifier('TSRDummyComponent')
                           ) {
                             programPath.pushContainer('body', [
@@ -223,11 +292,14 @@ export function compileCodeSplitReferenceRoute(
                           let shouldSplit = true
 
                           if (t.isIdentifier(value)) {
-                            existingLoaderImportPath =
+                            const existingImportPath =
                               getImportSpecifierAndPathFromLocalName(
                                 programPath,
                                 value.name,
                               ).path
+                            if (existingImportPath) {
+                              removableImportPaths.add(existingImportPath)
+                            }
 
                             // exported identifiers should not be split
                             // since they are already being imported
@@ -291,17 +363,11 @@ export function compileCodeSplitReferenceRoute(
          * from the program, by checking that the import has no
          * specifiers
          */
-        if (
-          (existingCompImportPath as string | null) ||
-          (existingLoaderImportPath as string | null)
-        ) {
+        if (removableImportPaths.size > 0) {
           programPath.traverse({
             ImportDeclaration(path) {
               if (path.node.specifiers.length > 0) return
-              if (
-                path.node.source.value === existingCompImportPath ||
-                path.node.source.value === existingLoaderImportPath
-              ) {
+              if (removableImportPaths.has(path.node.source.value)) {
                 path.remove()
               }
             },
@@ -321,9 +387,13 @@ export function compileCodeSplitReferenceRoute(
 }
 
 export function compileCodeSplitVirtualRoute(
-  opts: ParseAstOptions,
+  opts: ParseAstOptions & {
+    splitTargets: Array<SplitRouteIdentNodes>
+  },
 ): GeneratorResult {
   const ast = parseAst(opts)
+
+  const intendedSplitNodes = new Set(opts.splitTargets)
 
   const knownExportedIdents = new Set<string>()
 
@@ -338,9 +408,12 @@ export function compileCodeSplitVirtualRoute(
         > = {
           component: undefined,
           loader: undefined,
+          pendingComponent: undefined,
+          errorComponent: undefined,
+          notFoundComponent: undefined,
         }
 
-        // Find the node
+        // Find and track all the known split-able nodes
         programPath.traverse(
           {
             CallExpression: (path) => {
@@ -366,7 +439,10 @@ export function compileCodeSplitVirtualRoute(
                 if (t.isObjectExpression(options)) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
-                      SPLIT_ROUTE_IDENT_NODES.forEach((splitType) => {
+                      // do not use `intendedSplitNodes` here
+                      // since we have special considerations that need
+                      // to be accounted for like (not splitting exported identifiers)
+                      KNOWN_SPLIT_ROUTE_IDENTS.forEach((splitType) => {
                         if (
                           !t.isIdentifier(prop.key) ||
                           prop.key.name !== splitType
@@ -389,7 +465,7 @@ export function compileCodeSplitVirtualRoute(
                         if (isExported && t.isIdentifier(value)) {
                           removeExports(ast, value)
                         } else {
-                          const meta = SPLIT_NOES_CONFIG.get(splitType)!
+                          const meta = SPLIT_NODES_CONFIG.get(splitType)!
                           trackedNodesToSplitByType[splitType] = {
                             node: prop.value,
                             meta,
@@ -408,7 +484,8 @@ export function compileCodeSplitVirtualRoute(
           state,
         )
 
-        SPLIT_ROUTE_IDENT_NODES.forEach((SPLIT_TYPE) => {
+        // Start the transformation to only exported the intended split nodes
+        intendedSplitNodes.forEach((SPLIT_TYPE) => {
           const splitKey = trackedNodesToSplitByType[SPLIT_TYPE]
 
           if (!splitKey) {
@@ -521,6 +598,18 @@ export function compileCodeSplitVirtualRoute(
                   ),
                 ]),
               )
+            } else if (t.isTSAsExpression(splitNode)) {
+              // remove the type assertion
+              splitNode = splitNode.expression
+              programPath.pushContainer(
+                'body',
+                t.variableDeclaration('const', [
+                  t.variableDeclarator(
+                    t.identifier(splitMeta.localExporterIdent),
+                    splitNode,
+                  ),
+                ]),
+              )
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
@@ -586,7 +675,7 @@ export function compileCodeSplitVirtualRoute(
       return str
     }, '')
 
-    const warningMessage = `These exports from "${opts.filename.replace('?' + splitPrefix, '')}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
+    const warningMessage = `These exports from "${opts.filename}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
     console.warn(warningMessage)
 
     // append this warning to the file using a template
@@ -603,6 +692,101 @@ export function compileCodeSplitVirtualRoute(
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
+}
+
+/**
+ * This function should read get the options from by searching for the key `codeSplitGroupings`
+ * on createFileRoute and return it's values if it exists, else return undefined
+ */
+export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
+  groupings: CodeSplitGroupings | undefined
+  routeId: string
+} {
+  const ast = parseAst(opts)
+
+  let routeId = ''
+
+  let codeSplitGroupings: CodeSplitGroupings | undefined = undefined
+
+  babel.traverse(ast, {
+    Program: {
+      enter(programPath) {
+        programPath.traverse({
+          CallExpression(path) {
+            if (!t.isIdentifier(path.node.callee)) {
+              return
+            }
+
+            if (
+              !(
+                path.node.callee.name === 'createRoute' ||
+                path.node.callee.name === 'createFileRoute'
+              )
+            ) {
+              return
+            }
+
+            if (t.isCallExpression(path.parentPath.node)) {
+              // Extract out the routeId
+              if (t.isCallExpression(path.parentPath.node.callee)) {
+                const callee = path.parentPath.node.callee
+
+                if (t.isIdentifier(callee.callee)) {
+                  const firstArg = callee.arguments[0]
+                  if (t.isStringLiteral(firstArg)) {
+                    routeId = firstArg.value
+                  }
+                }
+              }
+
+              // Extracting the codeSplitGroupings
+              const options = resolveIdentifier(
+                path,
+                path.parentPath.node.arguments[0],
+              )
+              if (t.isObjectExpression(options)) {
+                options.properties.forEach((prop) => {
+                  if (t.isObjectProperty(prop)) {
+                    if (t.isIdentifier(prop.key)) {
+                      if (prop.key.name === 'codeSplitGroupings') {
+                        const value = prop.value
+
+                        if (t.isArrayExpression(value)) {
+                          codeSplitGroupings = value.elements.map((group) => {
+                            if (t.isArrayExpression(group)) {
+                              return group.elements.map((node) => {
+                                if (!t.isStringLiteral(node)) {
+                                  throw new Error(
+                                    'You must provide a string literal for the codeSplitGroupings',
+                                  )
+                                }
+
+                                return node.value
+                              }) as Array<SplitRouteIdentNodes>
+                            }
+
+                            throw new Error(
+                              'You must provide arrays with codeSplitGroupings options.',
+                            )
+                          })
+                        } else {
+                          throw new Error(
+                            'You must provide an array of arrays for the codeSplitGroupings.',
+                          )
+                        }
+                      }
+                    }
+                  }
+                })
+              }
+            }
+          },
+        })
+      },
+    },
+  })
+
+  return { groupings: codeSplitGroupings, routeId }
 }
 
 function getImportSpecifierAndPathFromLocalName(

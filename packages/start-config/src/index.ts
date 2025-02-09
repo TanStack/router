@@ -272,6 +272,7 @@ export function defineConfig(
             }),
             ...(getUserViteConfig(opts.vite).plugins || []),
             ...(getUserViteConfig(opts.routers?.ssr?.vite).plugins || []),
+            viteReact(opts.react),
           ]
         },
       },
