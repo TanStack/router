@@ -1,5 +1,9 @@
-import { isAbsolute, join, normalize } from 'node:path'
+/**
+ * It is important to familiarize yourself with how the code-splitting works in this plugin.
+ * https://github.com/TanStack/router/pull/3355
+ */
 
+import { isAbsolute, join, normalize } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
