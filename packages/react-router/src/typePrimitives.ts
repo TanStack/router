@@ -128,6 +128,15 @@ export type InferStrict<TOptions> = TOptions extends {
 /**
  * @internal
  */
+export type InferShouldThrow<TOptions> = TOptions extends {
+  shouldThrow: infer TShouldThrow extends boolean
+}
+  ? TShouldThrow
+  : true
+
+/**
+ * @internal
+ */
 export type InferSelected<TOptions> = TOptions extends {
   select: (...args: Array<any>) => infer TSelected
 }
@@ -152,6 +161,7 @@ export type ValidateUseSearchOptions<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
+    InferShouldThrow<TOptions>,
     InferSelected<TOptions>,
     InferStructuralSharing<TOptions>
   >
@@ -176,6 +186,7 @@ export type ValidateUseParamsOptions<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
+    InferShouldThrow<TOptions>,
     InferSelected<TOptions>,
     InferSelected<TOptions>
   >

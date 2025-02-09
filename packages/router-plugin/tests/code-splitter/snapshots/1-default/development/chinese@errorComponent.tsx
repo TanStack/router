@@ -1,0 +1,3 @@
+interface DemoProps {
+  title: string;
+}

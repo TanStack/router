@@ -233,19 +233,21 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.options.id,
-    } as any)
+    } as any) as any
   }
 
   useParams: UseParamsRoute<TRoute['id']> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.options.id,
-    } as any)
+    } as any) as any
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {
