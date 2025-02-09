@@ -40,7 +40,7 @@ test('createMiddleware merges server context', () => {
     expectTypeOf(await next({ context: { a: true } })).toEqualTypeOf<{
       'use functions must return the result of next()': true
       context: { a: boolean }
-      clientAfterContext: undefined
+      sendContext: undefined
     }>()
     return await next({ context: { a: true } })
   })
@@ -75,7 +75,7 @@ test('createMiddleware merges client context and sends to the server', () => {
     expectTypeOf(await next({ context: { a: true } })).toEqualTypeOf<{
       'use functions must return the result of next()': true
       context: { a: boolean }
-      serverContext: undefined
+      sendContext: undefined
       headers: HeadersInit
     }>()
     return await next({ context: { a: true } })
