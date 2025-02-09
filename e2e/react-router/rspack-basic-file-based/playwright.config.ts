@@ -19,7 +19,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `PUBLIC_SERVER_PORT=${PORT} pnpm build && PUBLIC_SERVER_PORT=${PORT} pnpm start --port ${PORT}`,
+    command: `PUBLIC_SERVER_PORT=${PORT} pnpm build && PUBLIC_SERVER_PORT=${PORT} pnpm preview --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

@@ -17,7 +17,11 @@ test('hovering a link with preload=intent to a route without a loader should pre
 
   await page.getByRole('link', { name: 'without-loader' }).hover()
   const url = await requestPromise
-  expect(url).toContain('without-loader.tsx?tsr-split')
+  const expectedString =
+    process.env.NODE_ENV === 'development'
+      ? 'without-loader.tsx?tsr-split'
+      : '/assets/without-loader'
+  expect(url).toContain(expectedString)
 })
 
 test('scrolling into viewport a link with preload=viewport to a route should preload route', async ({
@@ -30,7 +34,9 @@ test('scrolling into viewport a link with preload=viewport to a route should pre
     page.getByRole('link', { name: 'viewport-test' }).scrollIntoViewIfNeeded(),
   ])
 
-  expect(request.url()).toEqual(
-    expect.stringContaining('viewport-test.tsx?tsr-split'),
-  )
+  const expectedString =
+    process.env.NODE_ENV === 'development'
+      ? 'viewport-test.tsx?tsr-split'
+      : '/assets/viewport-test'
+  expect(request.url()).toEqual(expect.stringContaining(expectedString))
 })
