@@ -6,6 +6,7 @@ import {
   createFileRoute,
   retainSearchParams,
   useNavigate,
+  useRouterState,
 } from '@tanstack/solid-router'
 import { z } from 'zod'
 import { Spinner } from '../components/Spinner'
@@ -47,6 +48,10 @@ function UsersComponent() {
   const users = createMemo(() => loaderData()?.users)
   const sortBy = createMemo(() => search().usersView?.sortBy ?? 'name')
   const filterBy = createMemo(() => search().usersView?.filterBy)
+
+  const status = useRouterState({
+    select: (s) => s.status
+  })
 
   const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy() ?? '')
 
@@ -121,15 +126,17 @@ function UsersComponent() {
                 >
                   <pre class="text-sm">
                     {user.name}{' '}
-                    <MatchRoute
-                      to="/dashboard/users/user"
-                      search={{
-                        userId: user.id,
-                      }}
-                      pending
-                    >
-                      {(match) => <Spinner show={!!match} wait="delay-50" />}
-                    </MatchRoute>
+                    <Solid.Show when={status()} keyed>
+                      <MatchRoute
+                        to="/dashboard/users/user"
+                        search={{
+                          userId: user.id,
+                        }}
+                        pending
+                      >
+                        {(match) => <Spinner show={!!match} wait="delay-50" />}
+                      </MatchRoute>
+                    </Solid.Show>
                   </pre>
                 </Link>
               </div>
