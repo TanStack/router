@@ -1749,8 +1749,8 @@ export class Router<
       // the comparison
       const ignoredProps = [
         'key',
-       '__TSR_index',
-       '__hashScrollIntoViewOptions',
+        '__TSR_index',
+        '__hashScrollIntoViewOptions',
       ] as const
       ignoredProps.forEach((prop) => {
         ;(next.state as any)[prop] = this.latestLocation.state[prop]
