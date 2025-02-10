@@ -355,10 +355,10 @@ export type MiddlewareClientAfterFnResult<
     >
 
 export type ServerResultWithContext<
-  TMiddlewares,
-  TServerSendContext,
-  TServerContext,
-  TSendContext,
+  in out TMiddlewares,
+  in out TServerSendContext,
+  in out TServerContext,
+  in out TSendContext,
 > = {
   'use functions must return the result of next()': true
   context: Expand<
@@ -368,10 +368,10 @@ export type ServerResultWithContext<
 }
 
 export type ClientAfterResultWithContext<
-  TMiddlewares,
-  TClientContext,
-  TClientSendContext,
-  TClientAfterContext,
+  in out TMiddlewares,
+  in out TClientContext,
+  in out TClientSendContext,
+  in out TClientAfterContext,
 > = {
   'use functions must return the result of next()': true
   context: Expand<
@@ -386,9 +386,9 @@ export type ClientAfterResultWithContext<
 }
 
 export type ClientResultWithContext<
-  TMiddlewares,
-  TSendContext,
-  TClientContext,
+  in out TMiddlewares,
+  in out TSendContext,
+  in out TClientContext,
 > = {
   'use functions must return the result of next()': true
   context: Expand<AssignAllClientContextAfterNext<TMiddlewares, TClientContext>>
