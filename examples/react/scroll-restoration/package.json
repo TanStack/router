@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.102.1",
-    "@tanstack/react-virtual": "^3.11.3",
+    "@tanstack/react-virtual": "^3.13.0",
     "@tanstack/router-devtools": "^1.102.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -23,6 +23,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.0.11"
+    "vite": "^6.1.0"
   }
 }

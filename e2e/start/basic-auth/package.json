@@ -21,7 +21,7 @@
     "react-dom": "^18.3.1",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.1"
+    "vinxi": "0.5.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
