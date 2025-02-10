@@ -31,7 +31,10 @@ By default, the static server function cache implementation stores and retrieves
 This interface can be customized by importing and calling the `createServerFnStaticCache` function to create a custom cache implementation and then calling `setServerFnStaticCache` to set it:
 
 ```tsx
-import { createServerFnStaticCache, setServerFnStaticCache } from 'vinxi/server'
+import {
+  createServerFnStaticCache,
+  setServerFnStaticCache,
+} from '@tanstack/start/client'
 
 const myCustomStaticCache = createServerFnStaticCache({
   setItem: async (ctx, data) => {
