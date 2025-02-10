@@ -512,7 +512,11 @@ function serverFnBaseToMiddleware(
           context: sendContext,
         })
 
-        return next(serverCtx) as unknown as MiddlewareClientFnResult<any, any>
+        return next(serverCtx) as unknown as MiddlewareClientFnResult<
+          any,
+          any,
+          any
+        >
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function
@@ -521,7 +525,7 @@ function serverFnBaseToMiddleware(
         return next({
           ...ctx,
           result,
-        } as any) as unknown as MiddlewareServerFnResult<any, any>
+        } as any) as unknown as MiddlewareServerFnResult<any, any, any, any>
       },
     },
   }
