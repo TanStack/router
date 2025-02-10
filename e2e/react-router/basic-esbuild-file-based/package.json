@@ -24,6 +24,6 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
-    "esbuild": "^0.24.2"
+    "esbuild": "^0.25.0"
   }
 }

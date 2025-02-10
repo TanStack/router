@@ -164,4 +164,14 @@ const serializers = [
       return formData
     },
   ),
+  createSerializer(
+    // Key
+    'bigint',
+    // Check
+    (v): v is bigint => typeof v === 'bigint',
+    // To
+    (v) => v.toString(),
+    // From
+    (v) => BigInt(v),
+  ),
 ] as const

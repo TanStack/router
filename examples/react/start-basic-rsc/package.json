@@ -10,14 +10,14 @@
   },
   "dependencies": {
     "@babel/plugin-syntax-typescript": "^7.25.9",
-    "@tanstack/react-router": "^1.99.13",
-    "@tanstack/router-devtools": "^1.99.13",
-    "@tanstack/start": "^1.99.14",
+    "@tanstack/react-router": "^1.102.1",
+    "@tanstack/router-devtools": "^1.102.1",
+    "@tanstack/start": "^1.102.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.1"
+    "vinxi": "0.5.3"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",

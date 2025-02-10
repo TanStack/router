@@ -358,15 +358,26 @@ Here are some resources to help you ignore the generated route tree file:
 - ESLint - [https://eslint.org/docs/latest/use/configure/ignore#ignoring-files](https://eslint.org/docs/latest/use/configure/ignore#ignoring-files)
 - Biome - [https://biomejs.dev/reference/configuration/#filesignore](https://biomejs.dev/reference/configuration/#filesignore)
 
-If you are using VSCode, you can also add the following to your `.vscode/settings.json` file to exclude the generated route tree file from the editor's file watcher:
+> [!WARNING]
+> If you are using VSCode, you may experience the route tree file unexpectedly open (with errors) after renaming a route.
+
+You can prevent that from the VSCode settings by marking the file as readonly. Our recommendation is to also exclude it from search results and file watcher with the following settings:
 
 ```json
 {
+  "files.readonlyInclude": {
+    "**/routeTree.gen.ts": true
+  },
   "files.watcherExclude": {
+    "**/routeTree.gen.ts": true
+  },
+  "search.exclude": {
     "**/routeTree.gen.ts": true
   }
 }
 ```
+
+You can use those settings either at a user level or only for a single workspace by creating the file `.vscode/settings.json` at the root of your project.
 
 ## Configuration
 

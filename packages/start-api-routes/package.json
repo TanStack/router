@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-api-routes",
-  "version": "1.99.13",
+  "version": "1.102.1",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -65,7 +65,7 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/start-server": "workspace:^",
     "@vitejs/plugin-react": "^4.3.4",
-    "vinxi": "0.5.1"
+    "vinxi": "0.5.3"
   },
   "devDependencies": {
     "react": "^19.0.0",

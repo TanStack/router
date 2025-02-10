@@ -12,15 +12,15 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",
-    "@tanstack/react-router": "^1.99.13",
-    "@tanstack/router-devtools": "^1.99.13",
-    "@tanstack/start": "^1.99.14",
+    "@tanstack/react-router": "^1.102.1",
+    "@tanstack/router-devtools": "^1.102.1",
+    "@tanstack/start": "^1.102.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "valibot": "^1.0.0-beta.14",
-    "vinxi": "0.5.1"
+    "valibot": "^1.0.0-beta.15",
+    "vinxi": "0.5.3"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
@@ -30,7 +30,7 @@
     "autoprefixer": "^10.4.20",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
-    "vite": "6.0.11",
+    "vite": "6.1.0",
     "vite-tsconfig-paths": "^5.1.4"
   },
   "keywords": [],

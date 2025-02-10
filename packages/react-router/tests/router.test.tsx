@@ -249,6 +249,21 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     path: 'child',
   })
 
+  const linksToItselfRoute = createRoute({
+    validateSearch: z.object({ search: z.string().optional() }),
+    getParentRoute: () => rootRoute,
+    path: 'linksToItself',
+    component: () => {
+      return (
+        <>
+          <Link to="/linksToItself" data-testid="link">
+            Click me
+          </Link>
+        </>
+      )
+    },
+  })
+
   const routeTree = rootRoute.addChildren([
     indexRoute,
     usersRoute.addChildren([userRoute.addChildren([userFilesRoute])]),
@@ -279,6 +294,7 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
       searchWithDefaultCheckRoute,
     ]),
     nestedSearchRoute.addChildren([nestedSearchChildRoute]),
+    linksToItselfRoute,
   ])
 
   const router = createRouter({ routeTree, ...options })
@@ -1540,4 +1556,18 @@ describe('history: History gives correct notifcations and state', () => {
 
     unsub()
   })
+})
+
+it('does not push to history if url and state are the same', async () => {
+  const history = createMemoryHistory({ initialEntries: ['/linksToItself'] })
+  const { router } = createTestRouter({
+    history,
+  })
+
+  await act(() => render(<RouterProvider router={router} />))
+
+  const link = await screen.findByTestId('link')
+  await act(() => fireEvent.click(link))
+
+  expect(history.length).toBe(1)
 })

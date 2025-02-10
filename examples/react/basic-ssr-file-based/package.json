@@ -11,18 +11,18 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.99.13",
-    "@tanstack/router-devtools": "^1.99.13",
-    "@tanstack/router-plugin": "^1.99.14",
-    "@tanstack/start": "^1.99.14",
+    "@tanstack/react-router": "^1.102.1",
+    "@tanstack/router-devtools": "^1.102.1",
+    "@tanstack/router-plugin": "^1.102.1",
+    "@tanstack/start": "^1.102.1",
     "get-port": "^7.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.26.7",
-    "@babel/generator": "^7.26.5",
+    "@babel/core": "^7.26.8",
+    "@babel/generator": "^7.26.8",
     "@rollup/plugin-babel": "^6.0.4",
     "@types/express": "^4.17.21",
     "@vitejs/plugin-react": "^4.3.4",
@@ -32,7 +32,7 @@
     "isbot": "^5.1.22",
     "node-fetch": "^3.3.2",
     "serve-static": "^1.16.2",
-    "vite": "^6.0.11",
+    "vite": "^6.1.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.1"
   }

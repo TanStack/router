@@ -15,6 +15,13 @@ The `useParams` hook accepts an optional `options` object.
 - Optional - `default: true`
 - If `false`, the `opts.from` option will be ignored and types will be loosened to `Partial<AllParams>` to reflect the shared types of all params.
 
+### `opts.shouldThrow` option
+
+- Type: `boolean`
+- Optional
+- `default: true`
+- If `false`,`useParams` will not throw an invariant exception in case a match was not found in the currently rendered matches; in this case, it will return `undefined`.
+
 ### `opts.select` option
 
 - Optional

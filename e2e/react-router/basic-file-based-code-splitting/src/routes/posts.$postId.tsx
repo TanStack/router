@@ -10,6 +10,10 @@ export const Route = createFileRoute('/posts/$postId')({
     return <p>Post not found</p>
   },
   component: PostComponent,
+  codeSplitGroupings: [
+    ['component'],
+    ['pendingComponent', 'errorComponent', 'notFoundComponent'],
+  ],
 })
 
 export function PostErrorComponent({ error }: ErrorComponentProps) {
