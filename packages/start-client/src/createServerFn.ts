@@ -56,13 +56,11 @@ export interface FetcherBase {
 export interface OptionalFetcher<TMiddlewares, TValidator, TResponse>
   extends FetcherBase {
   <TFullResponse extends boolean = false>(
-    ...args: [
-      options?: OptionalFetcherDataOptions<
-        TMiddlewares,
-        TValidator,
-        TFullResponse
-      >,
-    ]
+    options?: OptionalFetcherDataOptions<
+      TMiddlewares,
+      TValidator,
+      TFullResponse
+    >,
   ): TFullResponse extends true
     ? Promise<FullFetcherData<TMiddlewares, TResponse>>
     : Promise<FetcherData<TResponse>>
