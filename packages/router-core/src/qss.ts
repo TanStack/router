@@ -48,7 +48,7 @@ export function encode(obj: any, pfx?: string) {
  */
 function toValue(mix: any) {
   if (!mix) return ''
-  const str = decodeURIComponent(mix)
+  const str = decodeURIComponent(encodeURIComponent(mix))
   if (str === 'false') return false
   if (str === 'true') return true
   return +str * 0 === 0 && +str + '' === str ? +str : str
