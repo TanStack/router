@@ -9,7 +9,7 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@clerk/tanstack-start": "0.9.2",
+    "@clerk/tanstack-start": "0.9.4",
     "@tanstack/react-router": "^1.102.1",
     "@tanstack/router-devtools": "^1.102.1",
     "@tanstack/start": "^1.102.1",
@@ -17,7 +17,7 @@
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.1"
+    "vinxi": "0.5.3"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",

@@ -13,7 +13,7 @@
     "@tanstack/start": "^1.102.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.1"
+    "vinxi": "0.5.3"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
