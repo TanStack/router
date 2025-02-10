@@ -25,6 +25,7 @@ describe('createMiddleware compiles correctly', async () => {
           code,
           root: './test-files',
           filename,
+          dce: false,
         })
 
         await expect(compiledResult.code).toMatchFileSnapshot(
