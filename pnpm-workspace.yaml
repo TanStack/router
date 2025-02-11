@@ -8,4 +8,5 @@ packages:
   - 'examples/react/router-monorepo-simple-lazy/packages/*'
   - 'e2e/e2e-utils'
   - 'e2e/react-router/*'
+  - 'e2e/solid-router/*'
   - 'e2e/start/*'
