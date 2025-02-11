@@ -4069,11 +4069,11 @@ importers:
         specifier: ^5.7.2
         version: 5.7.3
       vite:
-        specifier: 6.0.11
-        version: 6.0.11(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.1
-        version: 2.11.1(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.0.11(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.1(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/arktype-adapter:
     devDependencies:
@@ -7811,21 +7811,6 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       vite: 6.1.0
-
-  '@vitest/browser@3.0.5':
-    resolution: {integrity: sha512-5WAWJoucuWcGYU5t0HPBY03k9uogbUEIu4pDmZHoB4Dt+6pXqzDbzEmxGjejZSitSYA3k/udYfuotKNxETVA3A==}
-    peerDependencies:
-      playwright: '*'
-      safaridriver: '*'
-      vitest: 3.0.5
-      webdriverio: '*'
-    peerDependenciesMeta:
-      playwright:
-        optional: true
-      safaridriver:
-        optional: true
-      webdriverio:
-        optional: true
 
   '@vitest/browser@3.0.5':
     resolution: {integrity: sha512-5WAWJoucuWcGYU5t0HPBY03k9uogbUEIu4pDmZHoB4Dt+6pXqzDbzEmxGjejZSitSYA3k/udYfuotKNxETVA3A==}
@@ -12295,8 +12280,8 @@ packages:
       yaml:
         optional: true
 
-  vitefu@0.2.5:
-    resolution: {integrity: sha512-SgHtMLoqaeeGnd2evZ849ZbACbnwQCIwRH57t18FxcXoZop0uQu0uzlIhJBlF/eWVzuce0sHeqPcDo+evVcg8Q==}
+  vitefu@1.0.5:
+    resolution: {integrity: sha512-h4Vflt9gxODPFNGPwp4zAMZRpZR7eslzwH2c5hn5kNZ5rhnKyRJ50U+yGCdc2IRaBs8O4haIgLNGrV5CrpMsCA==}
     peerDependencies:
       vite: 6.1.0
     peerDependenciesMeta:
