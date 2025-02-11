@@ -9,7 +9,7 @@ import {
   useElementScrollRestoration,
 } from '@tanstack/solid-router'
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { createVirtualizer } from '@tanstack/solid-virtual'
 import './styles.css'
 import { createRenderEffect } from 'solid-js'
 
@@ -113,7 +113,7 @@ function ByElementComponent() {
 
   // Let's use TanStack Virtual to virtualize some content!
   let virtualizerParentRef: any = null
-  const virtualizer = useVirtualizer({
+  const virtualizer = createVirtualizer({
     count: 10000,
     getScrollElement: () => virtualizerParentRef.current,
     estimateSize: () => 100,

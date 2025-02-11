@@ -98,7 +98,7 @@ const aRoute = aImport.update({
 
 // Populate the FileRoutesByPath interface
 
-declare module '@tanstack/solid-router' {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
       id: '/'
