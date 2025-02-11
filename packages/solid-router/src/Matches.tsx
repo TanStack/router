@@ -195,8 +195,8 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  useRouterState({
-    select: (s) => [s.location.href, s.resolvedLocation?.href, s.status],
+  const status = useRouterState({
+    select: (s) => s.status,
   })
 
   return <
@@ -206,15 +206,22 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     const TMaskTo extends string = '',
   >(
     opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  ): false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams'] => {
+  ): Solid.Accessor<
+    false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+  > => {
     const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-    return router.matchRoute(rest as any, {
-      pending,
-      caseSensitive,
-      fuzzy,
-      includeSearch,
+    const matchRoute = Solid.createMemo(() => {
+      status()
+      return router.matchRoute(rest as any, {
+        pending,
+        caseSensitive,
+        fuzzy,
+        includeSearch,
+      })
     })
+
+    return matchRoute
   }
 }
 
@@ -251,7 +258,7 @@ export function MatchRoute<
     <Solid.Show when={status()} keyed>
       {(_) => {
         const matchRoute = useMatchRoute()
-        const params = matchRoute(props as any) as boolean
+        const params = matchRoute(props as any)() as boolean
 
         if (typeof props.children === 'function') {
           return (props.children as any)(params)

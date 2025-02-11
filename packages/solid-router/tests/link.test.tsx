@@ -3270,17 +3270,17 @@ describe('Link', () => {
     const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
     const RootComponent = () => {
       const matchRoute = useMatchRoute()
-      const matchPosts = Boolean(matchRoute({ to: '/posts' }))
-      const matchInvoices = Boolean(matchRoute({ to: '/invoices' }))
+      const matchPosts = matchRoute({ to: '/posts' })
+      const matchInvoices = matchRoute({ to: '/invoices' })
 
       return (
         <>
-          {matchPosts && (
+          {Boolean(matchPosts()) && (
             <Link from="/posts" to="/posts">
               From posts
             </Link>
           )}
-          {matchInvoices && (
+          {Boolean(matchInvoices()) && (
             <Link from="/invoices" to="/invoices">
               From invoices
             </Link>
