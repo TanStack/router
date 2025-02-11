@@ -34,7 +34,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 {
   "compilerOptions": {
     "jsx": "react-jsx",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "bundler",
     "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
