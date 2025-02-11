@@ -115,7 +115,7 @@ function ByElementComponent() {
   let virtualizerParentRef: any = null
   const virtualizer = createVirtualizer({
     count: 10000,
-    getScrollElement: () => virtualizerParentRef.current,
+    getScrollElement: () => virtualizerParentRef?.current,
     estimateSize: () => 100,
     // We pass the scrollY from the scroll restoration entry to the virtualizer
     // as the initial offset
