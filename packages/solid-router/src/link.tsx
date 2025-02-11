@@ -552,6 +552,10 @@ export function useLinkProps<
     return 'internal'
   }
 
+  const currentSearch = useRouterState({
+    select: (s) => s.location.searchStr,
+  })
+
   // In the rare event that the user bypasses type-safety and doesn't supply a `from`
   // we'll use the current route as the `from` location so relative routing works as expected
   const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
@@ -562,9 +566,10 @@ export function useLinkProps<
     ...options,
   }
 
-  const next = () => {
+  const next = Solid.createMemo(() => {
+    currentSearch()
     return router.buildLocation(options as any)
-  }
+  })
 
   const preload = Solid.createMemo(() => {
     if (options.reloadDocument) {
