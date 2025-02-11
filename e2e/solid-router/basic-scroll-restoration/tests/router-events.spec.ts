@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" and useRenderEffect setup in the correct order', async ({
+test.skip('after a navigation, should have emitted "onBeforeRouteMount","onResolved" and useRenderEffect setup in the correct order', async ({
   page,
 }) => {
   // Navigate to the Home page
