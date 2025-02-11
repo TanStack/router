@@ -464,8 +464,24 @@ export interface RouterOptions<
    * @default false
    */
   scrollRestoration?: boolean
+  /**
+   * A function that will be called to get the key for the scroll restoration cache.
+   *
+   * @default (location) => location.href
+   */
   getScrollRestorationKey?: (location: ParsedLocation) => string
+  /**
+   * The default behavior for scroll restoration.
+   *
+   * @default 'auto'
+   */
   scrollRestorationBehavior?: ScrollBehavior
+  /**
+   * An array of selectors that will be used to scroll to the top of the page in addition to `window`
+   *
+   * @default ['window']
+   */
+  scrollToTopSelectors?: Array<string>
 }
 
 export interface RouterErrorSerializer<TSerializedError> {

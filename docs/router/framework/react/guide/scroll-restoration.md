@@ -7,6 +7,18 @@ title: Scroll Restoration
 
 Out of the box, TanStack Router supports both **hash scrolling** and **top-of-page scrolling** without any additional configuration.
 
+## Scroll-to-top & Nested Scrollable Areas
+
+By default, scroll-top-top mimics the behavior of the browser, which means only the `window` itself is scrolled to the top after successful navigation. For many apps however, it's common for the main scrollable area to be a nested div or similar because of advanced layouts. If you would like TanStack Router to also scroll these main scrollable areas for you, you can add selectors to target them using the `routerOptions.scrollToTopSelectors`:
+
+```tsx
+const router = createRouter({
+  scrollToTopSelectors: ['#main-scrollable-area'],
+})
+```
+
+These selectors are handled **in addition to `window`** which cannot be disabled currently.
+
 ## Scroll Restoration
 
 Scroll restoration is the process of restoring the scroll position of a page when the user navigates back to it. This is normally a built-in feature for standard HTML based websites, but can be difficult to replicate for SPA applications because:
