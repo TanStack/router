@@ -5,5 +5,8 @@ import { routes } from './routes'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [TanStackRouterVite({ virtualRouteConfig: routes }), solid()],
+  plugins: [
+    TanStackRouterVite({ target: 'solid', virtualRouteConfig: routes }),
+    solid(),
+  ],
 })

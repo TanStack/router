@@ -109,15 +109,6 @@ function PostsIndexRouteComponent() {
   return <div>Select a post.</div>
 }
 
-const postRoute = createRoute({
-  getParentRoute: () => postsRoute,
-  path: '$postId',
-  errorComponent: PostErrorComponent,
-  loader: ({ context: { queryClient }, params: { postId } }) =>
-    queryClient.ensureQueryData(postQueryOptions(postId)),
-  component: PostRouteComponent,
-})
-
 function PostErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter()
   if (error instanceof NotFoundError) {
@@ -142,6 +133,15 @@ function PostErrorComponent({ error, reset }: ErrorComponentProps) {
     </div>
   )
 }
+
+const postRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '$postId',
+  errorComponent: PostErrorComponent,
+  loader: ({ context: { queryClient }, params: { postId } }) =>
+    queryClient.ensureQueryData(postQueryOptions(postId)),
+  component: PostRouteComponent,
+})
 
 function PostRouteComponent() {
   const params = postRoute.useParams()

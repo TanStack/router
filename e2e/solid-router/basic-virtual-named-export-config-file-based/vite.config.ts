@@ -4,5 +4,8 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [TanStackRouterVite({ virtualRouteConfig: './routes.ts' }), solid()],
+  plugins: [
+    TanStackRouterVite({ target: 'solid', virtualRouteConfig: './routes.ts' }),
+    solid(),
+  ],
 })
