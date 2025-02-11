@@ -806,12 +806,7 @@ export function useLinkProps<
     ...resolvedInactiveProps().style,
   })
 
-  const [updateHrefOnResolved, setUpdateHrefOnResolved] = Solid.createSignal({})
-
   const href = Solid.createMemo(() => {
-    // Add forceUpdate as a dependency to trigger recomputation
-    updateHrefOnResolved()
-
     const nextLocation = next()
     const maskedLocation = nextLocation?.maskedLocation
 
@@ -820,14 +815,6 @@ export function useLinkProps<
       : maskedLocation
         ? router.history.createHref(maskedLocation.href)
         : router.history.createHref(nextLocation?.href)
-  })
-
-  Solid.createEffect(() => {
-    const unsub = useRouter().subscribe('onResolved', () => {
-      setUpdateHrefOnResolved({})
-    })
-
-    Solid.onCleanup(() => unsub())
   })
 
   return Solid.mergeProps(
