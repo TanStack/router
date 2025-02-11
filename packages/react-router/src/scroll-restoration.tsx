@@ -89,6 +89,7 @@ export function restoreScroll(
   key?: string,
   behavior?: ScrollToOptions['behavior'],
   shouldScrollRestoration?: boolean,
+  scrollToTopSelectors?: Array<string>,
 ) {
   let byKey: ScrollRestorationByKey
 
@@ -151,11 +152,20 @@ export function restoreScroll(
     }
 
     // If there is no cached entry for the hash and there is no hash in the URL,
-    // we need to scroll to the top of the page.
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior,
+    // we need to scroll to the top of the page for every scrollToTop element
+    ;[
+      'window',
+      ...(scrollToTopSelectors?.filter((d) => d !== 'window') ?? []),
+    ].forEach((selector) => {
+      const element =
+        selector === 'window' ? window : document.querySelector(selector)
+      if (element) {
+        element.scrollTo({
+          top: 0,
+          left: 0,
+          behavior,
+        })
+      }
     })
   })()
 
@@ -291,6 +301,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       cacheKey,
       router.options.scrollRestorationBehavior,
       router.isScrollRestoring,
+      router.options.scrollToTopSelectors,
     )
 
     if (router.isScrollRestoring) {
