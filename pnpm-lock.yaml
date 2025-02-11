@@ -967,12 +967,12 @@ importers:
 
   e2e/solid-router/basic-scroll-restoration:
     dependencies:
-      '@tanstack/react-virtual':
-        specifier: ^3.13.0
-        version: 3.13.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-virtual':
+        specifier: ^3.13.0
+        version: 3.13.0(solid-js@1.9.4)
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -8046,6 +8046,11 @@ packages:
     resolution: {integrity: sha512-uDQYkUuH3MppitiduZLTEcItkTr8vEJ33jzp2rH2VvlNRMGbuU54GQcqf3dLIlTbZ1/Z2TtIBtBjjl+N/OhwRg==}
     peerDependencies:
       solid-js: ^1.6.0
+
+  '@tanstack/solid-virtual@3.13.0':
+    resolution: {integrity: sha512-F9DCB+wqshQWYInhg778086ozsnhkOasW7r3KNxLZoCiD+eEshQ2rakO/J6lleUuxNDU9/sQJRBwADWaB4GyzQ==}
+    peerDependencies:
+      solid-js: ^1.3.0
 
   '@tanstack/store@0.7.0':
     resolution: {integrity: sha512-CNIhdoUsmD2NolYuaIs8VfWM467RK6oIBAW4nPEKZhg1smZ+/CwtCdpURgp7nxSqOaV9oKkzdWD80+bC66F/Jg==}
@@ -15528,6 +15533,11 @@ snapshots:
   '@tanstack/solid-store@0.7.0(solid-js@1.9.4)':
     dependencies:
       '@tanstack/store': 0.7.0
+      solid-js: 1.9.4
+
+  '@tanstack/solid-virtual@3.13.0(solid-js@1.9.4)':
+    dependencies:
+      '@tanstack/virtual-core': 3.13.0
       solid-js: 1.9.4
 
   '@tanstack/store@0.7.0': {}

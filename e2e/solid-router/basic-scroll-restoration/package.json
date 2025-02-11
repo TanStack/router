@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
-    "@tanstack/react-virtual": "^3.13.0",
+    "@tanstack/solid-virtual": "^3.13.0",
     "solid-js": "^1.9.4",
     "redaxios": "^0.5.1",
     "postcss": "^8.5.1",
