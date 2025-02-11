@@ -1,7 +1,8 @@
 {
   "composite": true,
   "extends": "../../../tsconfig.base.json",
-
+  "jsx": "preserve",
+  "jsxImportSource": "solid-js",
   "files": ["src/main.tsx"],
   "include": [
     "src"
