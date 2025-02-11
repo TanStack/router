@@ -4524,6 +4524,43 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  examples/solid/basic-solid-query:
+    dependencies:
+      '@tanstack/solid-query':
+        specifier: ^5.66.0
+        version: 5.66.0(solid-js@1.9.4)
+      '@tanstack/solid-query-devtools':
+        specifier: ^5.66.0
+        version: 5.66.0(@tanstack/solid-query@5.66.0(solid-js@1.9.4))(solid-js@1.9.4)
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.4
+        version: 1.9.4
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vite-plugin-solid:
+        specifier: ^2.11.1
+        version: 2.11.1(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.0)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   examples/solid/kitchen-sink-file-based:
     dependencies:
       '@tanstack/router-devtools':
