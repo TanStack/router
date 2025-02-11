@@ -7,7 +7,7 @@ import { createQuery } from '@tanstack/solid-query'
 import { PostNotFoundError } from '../posts'
 import { postQueryOptions } from '../postQueryOptions'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
-import { createEffect } from 'solid-js'
+import { createEffect, createMemo } from 'solid-js'
 import { queryClient } from '../main'
 
 export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
@@ -45,12 +45,14 @@ export const Route = createFileRoute('/posts/$postId')({
 
 function PostComponent() {
   const params = Route.useParams()
-  const { data: post } = createQuery(() => postQueryOptions(params().postId))
+  const post = createMemo(() =>
+    createQuery(() => postQueryOptions(params().postId)),
+  )
 
   return (
     <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{post!.title}</h4>
-      <div class="text-sm">{post!.body}</div>
+      <h4 class="text-xl font-bold underline">{post()?.data?.title}</h4>
+      <div class="text-sm">{post()?.data?.body}</div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import { createQuery } from '@tanstack/solid-query'
 import { postsQueryOptions } from '../postsQueryOptions'
+import { createMemo } from 'solid-js'
 
 export const Route = createFileRoute('/posts')({
   loader: ({ context: { queryClient } }) =>
@@ -10,12 +11,18 @@ export const Route = createFileRoute('/posts')({
 
 function PostsComponent() {
   const postsQuery = createQuery(() => postsQueryOptions)
-  const posts = postsQuery.data
+  const posts = createMemo(() => {
+    if (postsQuery.data) {
+      return postsQuery.data
+    } else {
+      return []
+    }
+  })
 
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        {[...posts!, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
+        {[...posts(), { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
           (post) => {
             return (
               <li class="whitespace-nowrap">
