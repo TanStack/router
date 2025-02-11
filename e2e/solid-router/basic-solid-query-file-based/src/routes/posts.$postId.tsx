@@ -12,14 +12,6 @@ import { postQueryOptions } from '../postQueryOptions'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 import { createEffect } from 'solid-js'
 
-export const Route = createFileRoute('/posts/$postId')({
-  loader: ({ context: { queryClient }, params: { postId } }) => {
-    return queryClient.ensureQueryData(postQueryOptions(postId))
-  },
-  errorComponent: PostErrorComponent,
-  component: PostComponent,
-})
-
 export function PostErrorComponent({ error }: ErrorComponentProps) {
   const router = useRouter()
   if (error instanceof PostNotFoundError) {
@@ -44,6 +36,14 @@ export function PostErrorComponent({ error }: ErrorComponentProps) {
     </div>
   )
 }
+
+export const Route = createFileRoute('/posts/$postId')({
+  loader: ({ context: { queryClient }, params: { postId } }) => {
+    return queryClient.ensureQueryData(postQueryOptions(postId))
+  },
+  errorComponent: PostErrorComponent,
+  component: PostComponent,
+})
 
 function PostComponent() {
   const params = Route.useParams()

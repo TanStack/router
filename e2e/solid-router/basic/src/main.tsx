@@ -105,14 +105,6 @@ function PostsIndexComponent() {
   return <div>Select a post.</div>
 }
 
-const postRoute = createRoute({
-  getParentRoute: () => postsRoute,
-  path: '$postId',
-  errorComponent: PostErrorComponent,
-  loader: ({ params }) => fetchPost(params.postId),
-  component: PostComponent,
-})
-
 function PostErrorComponent({ error }: ErrorComponentProps) {
   if (error instanceof NotFoundError) {
     return <div>{error.message}</div>
@@ -120,6 +112,14 @@ function PostErrorComponent({ error }: ErrorComponentProps) {
 
   return <ErrorComponent error={error} />
 }
+
+const postRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '$postId',
+  errorComponent: PostErrorComponent,
+  loader: ({ params }) => fetchPost(params.postId),
+  component: PostComponent,
+})
 
 function PostComponent() {
   const post = postRoute.useLoaderData()

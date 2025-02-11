@@ -98,7 +98,7 @@ const aRoute = aImport.update({
 
 // Populate the FileRoutesByPath interface
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
     '/': {
       id: '/'
@@ -343,79 +343,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "root.tsx",
-      "children": [
-        "/",
-        "/_first",
-        "/posts",
-        "/classic/hello"
-      ]
-    },
-    "/": {
-      "filePath": "home.tsx"
-    },
-    "/_first": {
-      "filePath": "layout/first-layout.tsx",
-      "children": [
-        "/_first/_second"
-      ]
-    },
-    "/posts": {
-      "filePath": "posts/posts.tsx",
-      "children": [
-        "/posts/",
-        "/posts/$postId"
-      ]
-    },
-    "/classic/hello": {
-      "filePath": "file-based-subtree/hello/route.tsx",
-      "children": [
-        "/classic/hello/universe",
-        "/classic/hello/world",
-        "/classic/hello/"
-      ]
-    },
-    "/posts/": {
-      "filePath": "posts/posts-home.tsx",
-      "parent": "/posts"
-    },
-    "/_first/_second": {
-      "filePath": "layout/second-layout.tsx",
-      "parent": "/_first",
-      "children": [
-        "/_first/_second/layout-a",
-        "/_first/_second/layout-b"
-      ]
-    },
-    "/posts/$postId": {
-      "filePath": "posts/posts-detail.tsx",
-      "parent": "/posts"
-    },
-    "/_first/_second/layout-a": {
-      "filePath": "a.tsx",
-      "parent": "/_first/_second"
-    },
-    "/_first/_second/layout-b": {
-      "filePath": "b.tsx",
-      "parent": "/_first/_second"
-    },
-    "/classic/hello/universe": {
-      "filePath": "file-based-subtree/hello/universe.tsx",
-      "parent": "/classic/hello"
-    },
-    "/classic/hello/world": {
-      "filePath": "file-based-subtree/hello/world.tsx",
-      "parent": "/classic/hello"
-    },
-    "/classic/hello/": {
-      "filePath": "file-based-subtree/hello/index.tsx",
-      "parent": "/classic/hello"
-    }
-  }
-}
-ROUTE_MANIFEST_END */
