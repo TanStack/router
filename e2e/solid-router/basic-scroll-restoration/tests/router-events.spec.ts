@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" and usRenderEffect setup in the correct order', async ({
+test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" and useRenderEffect setup in the correct order', async ({
   page,
 }) => {
   // Navigate to the Home page
@@ -10,7 +10,7 @@ test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" 
   let orders = await page.evaluate(() => window.invokeOrders)
 
   expectItemOrder(orders, 'onBeforeRouteMount', 'onResolved')
-  expectItemOrder(orders, 'onBeforeRouteMount', 'index-usRenderEffect')
+  expectItemOrder(orders, 'onBeforeRouteMount', 'index-useRenderEffect')
 
   // Clear the invokeOrders array
   orders = await page.evaluate(() => {
@@ -25,7 +25,7 @@ test('after a navigation, should have emitted "onBeforeRouteMount","onResolved" 
   orders = await page.evaluate(() => window.invokeOrders)
 
   expectItemOrder(orders, 'onBeforeRouteMount', 'onResolved')
-  expectItemOrder(orders, 'onBeforeRouteMount', 'about-usRenderEffect')
+  expectItemOrder(orders, 'onBeforeRouteMount', 'about-useRenderEffect')
 })
 
 function expectItemOrder<TItem>(

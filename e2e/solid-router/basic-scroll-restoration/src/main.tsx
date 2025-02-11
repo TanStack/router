@@ -171,8 +171,8 @@ function ByElementComponent() {
                   <div
                     class="absolute p-2 pb-0 w-full"
                     style={{
-                      height: item.size,
-                      top: item.start,
+                      height: item.size as any,
+                      top: item.start as any,
                     }}
                   >
                     <div class="p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border h-full">
