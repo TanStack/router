@@ -3,24 +3,22 @@ import {
   createFileRoute,
   useRouter,
 } from '@tanstack/solid-router'
-import {
-  useQueryErrorResetBoundary,
-  useSuspenseQuery,
-} from '@tanstack/solid-query'
+import { createQuery } from '@tanstack/solid-query'
 import { PostNotFoundError } from '../posts'
 import { postQueryOptions } from '../postQueryOptions'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 import { createEffect } from 'solid-js'
+import { queryClient } from '../main'
 
-export function PostErrorComponent({ error }: ErrorComponentProps) {
+export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter()
   if (error instanceof PostNotFoundError) {
     return <div>{error.message}</div>
   }
-  const queryErrorResetBoundary = useQueryErrorResetBoundary()
 
   createEffect(() => {
-    queryErrorResetBoundary.reset()
+    reset()
+    queryClient.resetQueries()
   })
 
   return (
@@ -47,12 +45,12 @@ export const Route = createFileRoute('/posts/$postId')({
 
 function PostComponent() {
   const params = Route.useParams()
-  const { data: post } = useSuspenseQuery(postQueryOptions(params().postId))
+  const { data: post } = createQuery(() => postQueryOptions(params().postId))
 
   return (
     <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{post.title}</h4>
-      <div class="text-sm">{post.body}</div>
+      <h4 class="text-xl font-bold underline">{post!.title}</h4>
+      <div class="text-sm">{post!.body}</div>
     </div>
   )
 }

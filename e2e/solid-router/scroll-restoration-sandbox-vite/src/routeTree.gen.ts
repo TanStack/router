@@ -197,39 +197,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/(tests)/lazy-page",
-        "/(tests)/lazy-with-loader-page",
-        "/(tests)/normal-page",
-        "/(tests)/page-with-search",
-        "/(tests)/virtual-page"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/(tests)/lazy-page": {
-      "filePath": "(tests)/lazy-page.tsx"
-    },
-    "/(tests)/lazy-with-loader-page": {
-      "filePath": "(tests)/lazy-with-loader-page.tsx"
-    },
-    "/(tests)/normal-page": {
-      "filePath": "(tests)/normal-page.tsx"
-    },
-    "/(tests)/page-with-search": {
-      "filePath": "(tests)/page-with-search.tsx"
-    },
-    "/(tests)/virtual-page": {
-      "filePath": "(tests)/virtual-page.lazy.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */
