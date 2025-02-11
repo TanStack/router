@@ -82,6 +82,7 @@
     "@vitest/browser": "^3.0.0",
     "@vitest/ui": "^3.0.0",
     "combinate": "^1.1.11",
+    "eslint-plugin-solid": "^0.14.5",
     "solid-js": "^1",
     "vite-plugin-solid": "^2.11.1",
     "zod": "^3.23.8"

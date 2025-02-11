@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, getRouteApi } from '../src'
+import type { Accessor } from 'solid-js'
 import type { MakeRouteMatch, UseNavigateResult } from '../src'
-import { Accessor } from 'solid-js'
 
 const rootRoute = createRootRoute()
 

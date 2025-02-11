@@ -1,6 +1,6 @@
 import { useRouterState } from './useRouterState'
+import type { Accessor } from 'solid-js'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
-import { Accessor } from 'solid-js'
 
 export interface UseLocationBaseOptions<TRouter extends AnyRouter, TSelected> {
   select?: (state: RouterState<TRouter['routeTree']>['location']) => TSelected

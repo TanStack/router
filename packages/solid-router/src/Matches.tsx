@@ -14,7 +14,6 @@ import type {
   NoInfer,
   ResolveRelativePath,
   StaticDataRouteOption,
-  ValidateJSON,
 } from '@tanstack/router-core'
 import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 import type {

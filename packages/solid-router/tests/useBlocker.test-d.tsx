@@ -24,7 +24,7 @@ test('blocker without resolver', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -57,7 +57,7 @@ test('blocker with resolver', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -90,7 +90,7 @@ test('shouldBlockFn has corrent action', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })

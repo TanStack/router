@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useParams } from '../src'
-import { Accessor } from 'solid-js'
+import type { Accessor } from 'solid-js'
 
 test('when there are no params', () => {
   const rootRoute = createRootRoute()
@@ -25,7 +25,7 @@ test('when there are no params', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -92,7 +92,7 @@ test('when there is one param', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -168,7 +168,7 @@ test('when there are multiple params', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })

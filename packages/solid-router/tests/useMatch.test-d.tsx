@@ -17,7 +17,7 @@ const invoicesRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-// eslint-disable-next-line unused-imports/no-unused-vars
+ 
 const defaultRouter = createRouter({ routeTree })
 
 type DefaultRouter = typeof defaultRouter

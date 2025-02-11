@@ -1,4 +1,3 @@
-import * as Solid from 'solid-js'
 import { afterEach, describe, expect, it, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@solidjs/testing-library'
 

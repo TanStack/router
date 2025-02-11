@@ -5,7 +5,7 @@ import { dummyMatchContext, matchContext } from './matchContext'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { MakeRouteMatch, MakeRouteMatchUnion } from './Matches'
 import type { StrictOrFrom } from './utils'
-import type { ThrowOrOptional, ValidateJSON } from '@tanstack/router-core'
+import type { ThrowOrOptional } from '@tanstack/router-core'
 
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,

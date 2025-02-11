@@ -853,7 +853,7 @@ export class Route<
 
     const isRoot = !options?.path && !options?.id
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+     
     this.parentRoute = this.options.getParentRoute?.()
 
     if (isRoot) {

@@ -1,7 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useSearch } from '../src'
+import type { Accessor } from 'solid-js'
 import type { SearchSchemaInput } from '../src'
-import { Accessor } from 'solid-js'
 
 test('when there are no search params', () => {
   const rootRoute = createRootRoute()
@@ -31,7 +31,7 @@ test('when there are no search params', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -101,7 +101,7 @@ test('when there is one search params', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -176,7 +176,7 @@ test('when there are multiple search params', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -304,7 +304,7 @@ test('when the root has no search params but the index route does', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -370,7 +370,7 @@ test('when the root has search params but the index route does not', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -441,7 +441,7 @@ test('when the root has search params but the index does', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -497,7 +497,7 @@ test('when a route has search params using SearchSchemaInput', () => {
   })
 
   const routeTree = rootRoute.addChildren([indexRoute])
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const router = createRouter({ routeTree })
   expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
     Accessor<{
@@ -528,7 +528,7 @@ test('when route has a union of search params', () => {
   const routeTree = rootRoute.addChildren([
     indexRoute.addChildren([indexRoute]),
   ])
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const router = createRouter({ routeTree })
   expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
     Accessor<

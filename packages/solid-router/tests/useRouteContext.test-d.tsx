@@ -6,7 +6,7 @@ import {
   createRouter,
   useRouteContext,
 } from '../src'
-import { Accessor } from 'solid-js'
+import type { Accessor } from 'solid-js'
 
 test('when there is no context', () => {
   const rootRoute = createRootRoute()
@@ -31,7 +31,7 @@ test('when there is no context', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -102,7 +102,7 @@ test('when there is the root context', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -186,7 +186,7 @@ test('when there are multiple contexts', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -270,7 +270,7 @@ test('when there are overlapping contexts', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
