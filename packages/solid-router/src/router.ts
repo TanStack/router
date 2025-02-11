@@ -754,7 +754,6 @@ export class Router<
     }
 
     if (
-       
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -773,7 +772,6 @@ export class Router<
       this.buildRouteTree()
     }
 
-     
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -792,7 +790,6 @@ export class Router<
     if (
       typeof window !== 'undefined' &&
       'CSS' in window &&
-       
       typeof window.CSS?.supports === 'function'
     ) {
       this.isViewTransitionTypesSupported = window.CSS.supports(

@@ -25,7 +25,6 @@ test('when there are no params', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -92,7 +91,6 @@ test('when there is one param', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -168,7 +166,6 @@ test('when there are multiple params', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })

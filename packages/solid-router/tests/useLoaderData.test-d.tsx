@@ -30,7 +30,6 @@ test('when there is no loaders', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -100,7 +99,6 @@ test('when there is one loader', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -164,7 +162,6 @@ test('when there is one loader that is async', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -230,7 +227,6 @@ test('when there are multiple loaders', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -321,7 +317,6 @@ test('when there are multiple loaders of objects and primtives', () => {
     postsRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
