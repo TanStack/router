@@ -24,7 +24,6 @@ test('blocker without resolver', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -57,7 +56,6 @@ test('blocker with resolver', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -90,7 +88,6 @@ test('shouldBlockFn has corrent action', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })

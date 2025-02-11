@@ -853,7 +853,6 @@ export class Route<
 
     const isRoot = !options?.path && !options?.id
 
-     
     this.parentRoute = this.options.getParentRoute?.()
 
     if (isRoot) {

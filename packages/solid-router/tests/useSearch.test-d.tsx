@@ -31,7 +31,6 @@ test('when there are no search params', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -101,7 +100,6 @@ test('when there is one search params', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -176,7 +174,6 @@ test('when there are multiple search params', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -304,7 +301,6 @@ test('when the root has no search params but the index route does', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -370,7 +366,6 @@ test('when the root has search params but the index route does not', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -441,7 +436,6 @@ test('when the root has search params but the index does', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -497,7 +491,7 @@ test('when a route has search params using SearchSchemaInput', () => {
   })
 
   const routeTree = rootRoute.addChildren([indexRoute])
-   
+
   const router = createRouter({ routeTree })
   expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
     Accessor<{
@@ -528,7 +522,7 @@ test('when route has a union of search params', () => {
   const routeTree = rootRoute.addChildren([
     indexRoute.addChildren([indexRoute]),
   ])
-   
+
   const router = createRouter({ routeTree })
   expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
     Accessor<

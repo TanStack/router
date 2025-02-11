@@ -122,7 +122,6 @@ test('when creating the root route with context and routeContext', () => {
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-   
   const router = createRouter({
     routeTree: rootRoute,
     context: { userId: '123' },
@@ -165,7 +164,6 @@ test('when creating the root route with context and beforeLoad', () => {
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-   
   const router = createRouter({
     routeTree: rootRoute,
     context: { userId: '123' },
@@ -208,7 +206,6 @@ test('when creating the root route with context and a loader', () => {
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-   
   const router = createRouter({
     routeTree: rootRoute,
     context: { userId: '123' },
@@ -284,7 +281,6 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
   expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 
-   
   const router = createRouter({
     routeTree: rootRoute,
     context: { userId: '123' },
@@ -333,7 +329,6 @@ test('when creating a child route from the root route with context', () => {
     getParentRoute: () => rootRoute,
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([invoicesRoute]),
     context: { userId: '123' },
@@ -425,7 +420,6 @@ test('when creating a child route with a loader from the root route', () => {
     },
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
@@ -478,7 +472,6 @@ test('when creating a child route with a loader from the root route with context
 
   const routeTree = rootRoute.addChildren([invoicesRoute])
 
-   
   const router = createRouter({
     routeTree,
     context: { userId: '123' },
@@ -520,7 +513,6 @@ test('when creating a child route with search params from the root route', () =>
     validateSearch: () => ({ page: 0 }),
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
@@ -547,7 +539,6 @@ test('when creating a child route with optional search params from the root rout
     validateSearch: (): { page?: number } => ({ page: 0 }),
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
@@ -600,7 +591,6 @@ test('when creating a child route with a splat param from the root route', () =>
     getParentRoute: () => rootRoute,
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
@@ -625,7 +615,7 @@ test('when creating a child route with a param and splat param from the root rou
     path: 'invoices/$invoiceId/$',
     getParentRoute: () => rootRoute,
   })
-   
+
   const router = createRouter({
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
@@ -835,7 +825,6 @@ test('when creating a child route with params from a parent with params', () => 
     getParentRoute: () => invoicesRoute,
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       invoicesRoute.addChildren([detailsRoute]),
@@ -873,7 +862,6 @@ test('when creating a child route with search from a parent with search', () => 
     validateSearch: () => ({ detailPage: 0 }),
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       invoicesRoute.addChildren([detailsRoute]),
@@ -942,7 +930,6 @@ test('when creating a child route with routeContext from a parent with routeCont
     },
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       invoicesRoute.addChildren([detailsRoute]),
@@ -1015,7 +1002,6 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
     },
   })
 
-   
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       invoicesRoute.addChildren([detailsRoute]),

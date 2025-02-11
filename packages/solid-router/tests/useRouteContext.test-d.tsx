@@ -31,7 +31,6 @@ test('when there is no context', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -102,7 +101,6 @@ test('when there is the root context', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -186,7 +184,6 @@ test('when there are multiple contexts', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -270,7 +267,6 @@ test('when there are overlapping contexts', () => {
     indexRoute,
   ])
 
-   
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
