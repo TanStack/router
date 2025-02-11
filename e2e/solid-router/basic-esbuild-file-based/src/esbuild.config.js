@@ -4,7 +4,7 @@ export default {
   // ...
   plugins: [
     TanStackRouterEsbuild({
-      target: "solid",
+      target: 'solid',
       autoCodeSplitting: true,
     }),
   ],
