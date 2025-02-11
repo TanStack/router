@@ -28,7 +28,8 @@ import {
 } from '@tanstack/router-core'
 import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
-import * as Solid from 'solid-js'
+import { setupScrollRestoration } from './scroll-restoration'
+import type * as Solid from 'solid-js'
 import type {
   HistoryLocation,
   HistoryState,
@@ -89,7 +90,6 @@ import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ToOptions } from './link'
-import { setupScrollRestoration } from './scroll-restoration'
 
 declare global {
   interface Window {
@@ -754,7 +754,7 @@ export class Router<
     }
 
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+       
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -773,7 +773,7 @@ export class Router<
       this.buildRouteTree()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+     
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -792,7 +792,7 @@ export class Router<
     if (
       typeof window !== 'undefined' &&
       'CSS' in window &&
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+       
       typeof window.CSS?.supports === 'function'
     ) {
       this.isViewTransitionTypesSupported = window.CSS.supports(

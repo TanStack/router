@@ -16,8 +16,8 @@ import { isRedirect } from './redirects'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
-import type { AnyRoute } from './route'
 import { ScrollRestoration } from './scroll-restoration'
+import type { AnyRoute } from './route'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()

@@ -7,7 +7,7 @@ import {
   waitFor,
 } from '@solidjs/testing-library'
 import { z } from 'zod'
-import { createEffect, onMount } from 'solid-js'
+import { createEffect } from 'solid-js'
 import {
   Link,
   Outlet,
@@ -19,6 +19,7 @@ import {
   createRouter,
   useNavigate,
 } from '../src'
+import { sleep } from './utils'
 import type { StandardSchemaValidator } from '@tanstack/router-core'
 import type {
   AnyRoute,
@@ -28,7 +29,6 @@ import type {
   ValidatorFn,
   ValidatorObj,
 } from '../src'
-import { sleep } from './utils'
 
 afterEach(() => {
   vi.resetAllMocks()

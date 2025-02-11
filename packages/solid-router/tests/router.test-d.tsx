@@ -9,7 +9,7 @@ import {
 import type { RouterHistory } from '../src'
 
 test('when creating a router without context', () => {
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const rootRoute = createRootRoute()
 
   type RouteTree = typeof rootRoute
@@ -100,7 +100,7 @@ test('when building location using router', () => {
 })
 
 test('when creating a router with context', () => {
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   type RouteTree = typeof rootRoute
@@ -130,7 +130,7 @@ test('when creating a router with context and children', () => {
     path: '/',
   })
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const routeTree = rootRoute.addChildren([indexRoute])
 
   type RouteTree = typeof routeTree

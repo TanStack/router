@@ -7,7 +7,6 @@ import {
   createRouter,
   linkOptions,
 } from '../src'
-import type * as Solid from 'solid-js'
 import type {
   CreateLinkProps,
   ResolveRelativePath,
