@@ -9,6 +9,7 @@ import {
   useMatches,
 } from '../src'
 import type { AnyRouteMatch, RouteMatch } from '../src'
+import type * as Solid from 'solid-js'
 
 const rootRoute = createRootRoute()
 
@@ -169,7 +170,7 @@ test('when matching a route with params', () => {
     matchRoute({
       to: '/invoices/$invoiceId',
     }),
-  ).toEqualTypeOf<false | { invoiceId: string }>()
+  ).toEqualTypeOf<Solid.Accessor<false | { invoiceId: string }>>()
 })
 
 test('when matching a route with params underneath a layout route', () => {
@@ -179,7 +180,7 @@ test('when matching a route with params underneath a layout route', () => {
     matchRoute({
       to: '/comments/$id',
     }),
-  ).toEqualTypeOf<false | { id: string }>()
+  ).toEqualTypeOf<Solid.Accessor<false | { id: string }>>()
 })
 
 test('useMatches returns a union of all matches', () => {
