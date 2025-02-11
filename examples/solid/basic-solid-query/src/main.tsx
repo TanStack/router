@@ -19,7 +19,7 @@ import type { ErrorComponentProps } from '@tanstack/solid-router'
 import './styles.css'
 import { render } from 'solid-js/web'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
-import { createEffect } from 'solid-js'
+import { createEffect, createMemo, Suspense } from 'solid-js'
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -150,12 +150,12 @@ function PostErrorComponent({ error, reset }: ErrorComponentProps) {
 function PostRouteComponent() {
   const params = postRoute.useParams()
   const postQuery = createQuery(() => postQueryOptions(params().postId))
-  const post = postQuery.data
+  const post = createMemo(() => postQuery.data)
 
   return (
     <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{post!.title}</h4>
-      <div class="text-sm">{post!.body}</div>
+      <h4 class="text-xl font-bold underline">{post()?.title}</h4>
+      <div class="text-sm">{post()?.body}</div>
     </div>
   )
 }
