@@ -1,15 +1,18 @@
+import { format } from './utils'
 import type { Config } from './config'
 
 type TemplateTag = 'tsrImports' | 'tsrPath' | 'tsrExportStart' | 'tsrExportEnd'
 
 export function fillTemplate(
+  config: Config,
   template: string,
   values: Record<TemplateTag, string>,
 ) {
-  return template.replace(
+  const replaced = template.replace(
     /%%(\w+)%%/g,
     (_, key) => values[key as TemplateTag] || '',
   )
+  return format(replaced, config)
 }
 
 type TargetTemplate = {
