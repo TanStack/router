@@ -63,10 +63,10 @@
   },
   "dependencies": {
     "@tanstack/server-functions-plugin": "workspace:^",
-    "@vitejs/plugin-react": "^4.3.4",
     "tiny-invariant": "^1.3.3"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.7.2"
