@@ -1,4 +1,4 @@
-import { isNotFound, isPlainObject, isRedirect } from '@tanstack/react-router'
+import { isNotFound, isRedirect } from '@tanstack/react-router'
 import invariant from 'tiny-invariant'
 import {
   eventHandler,
@@ -29,7 +29,7 @@ const serverFnManifest = _serverFnManifest as Record<
 
 async function handleServerAction(event: H3Event) {
   const request = toWebRequest(event)!
-  const response = (await handleServerRequest(request, event)) as Response
+  const response = await handleServerRequest(request, event)
 
   // NOTE: I'm not sure if nitro should be handling this or if Vinxi was
   // handling it for us, but not all headers were being returned with the
@@ -75,7 +75,10 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
   const serverFnId = match ? match[1] : null
   const search = Object.fromEntries(url.searchParams.entries()) as {
     payload?: any
+    createServerFn?: boolean
   }
+
+  const isCreateServerFn = 'createServerFn' in search
 
   if (typeof serverFnId !== 'string') {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
@@ -101,25 +104,6 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
     fnModule = await serverFnInfo.importer()
   }
 
-  // let moduleUrl = serverFnInfo.extractedFilename
-  // // In dev, we (for now) use Vinxi to get the "server" server-side router
-  // // Then we use that router's devServer.ssrLoadModule to get the serverFn
-  // if (process.env.NODE_ENV === 'development') {
-  //   fnModule = await (globalThis as any).app
-  //     .getRouter('server')
-  //     .internals.devServer.ssrLoadModule(serverFnInfo.extractedFilename)
-  // } else {
-  //   // In prod, we use the serverFn's chunkName to get the serverFn
-  //   const router = (globalThis as any).app.getRouter('server')
-  //   const filePath = join(
-  //     router.outDir,
-  //     router.base,
-  //     serverFnInfo.chunkName + '.mjs',
-  //   )
-  //   moduleUrl = pathToFileURL(filePath).toString()
-  //   fnModule = await import(/* @vite-ignore */ moduleUrl)
-  // }
-
   if (!fnModule) {
     console.log('serverFnManifest', serverFnManifest)
     throw new Error('Server function module not resolved for ' + serverFnId)
@@ -143,7 +127,7 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
 
   const response = await (async () => {
     try {
-      const arg = await (async () => {
+      let result = await (async () => {
         // FormData
         if (
           request.headers.get('Content-Type') &&
@@ -157,36 +141,75 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
             'GET requests with FormData payloads are not supported',
           )
 
-          return await request.formData()
+          return await action(await request.formData())
         }
 
         // Get requests use the query string
         if (method.toLowerCase() === 'get') {
-          // First we need to get the ?payload query string
-          if (!search.payload) {
-            return undefined
+          // By default the payload is the search params
+          let payload: any = search
+
+          // If this GET request was created by createServerFn,
+          // then the payload will be on the payload param
+          if (isCreateServerFn) {
+            payload = search.payload
           }
 
-          // If there's a payload, we need to parse it
-          return startSerializer.parse(search.payload)
+          // If there's a payload, we should try to parse it
+          payload = payload ? startSerializer.parse(payload) : payload
+
+          // Send it through!
+          return await action(payload)
         }
 
-        // For non-form, non-get
+        // This must be a POST request, likely JSON???
         const jsonPayloadAsString = await request.text()
-        return startSerializer.parse(jsonPayloadAsString)
+
+        // We should probably try to deserialize the payload
+        // as JSON, but we'll just pass it through for now.
+        const payload = startSerializer.parse(jsonPayloadAsString)
+
+        // If this POST request was created by createServerFn,
+        // it's payload will be the only argument
+        if (isCreateServerFn) {
+          return await action(payload)
+        }
+
+        // Otherwise, we'll spread the payload. Need to
+        // support `use server` functions that take multiple
+        // arguments.
+        return await action(...(payload as any))
       })()
 
-      const result = await action(arg)
-
+      // Any time we get a Response back, we should just
+      // return it immediately.
       if (result instanceof Response) {
         return result
-      } else if (
-        isPlainObject(result) &&
-        'result' in result &&
-        result.result instanceof Response
-      ) {
-        return result.result
       }
+
+      // If this is a non createServerFn request, we need to
+      // pull out the result from the result object
+      if (!isCreateServerFn) {
+        result = result.result
+
+        // The result might again be a response,
+        // and if it is, return it.
+        if (result instanceof Response) {
+          return result
+        }
+      }
+
+      // if (!search.createServerFn) {
+      //   result = result.result
+      // }
+
+      // else if (
+      //   isPlainObject(result) &&
+      //   'result' in result &&
+      //   result.result instanceof Response
+      // ) {
+      //   return result.result
+      // }
 
       // TODO: RSCs
       // if (isValidElement(result)) {
@@ -223,13 +246,14 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
     } catch (error: any) {
       if (error instanceof Response) {
         return error
-      } else if (
-        isPlainObject(error) &&
-        'result' in error &&
-        error.result instanceof Response
-      ) {
-        return error.result
       }
+      // else if (
+      //   isPlainObject(error) &&
+      //   'result' in error &&
+      //   error.result instanceof Response
+      // ) {
+      //   return error.result
+      // }
 
       // Currently this server-side context has no idea how to
       // build final URLs, so we need to defer that to the client.
@@ -240,7 +264,9 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
         return redirectOrNotFoundResponse(error)
       }
 
-      console.error('Server Fn Error!')
+      console.info()
+      console.info('Server Fn Error!')
+      console.info()
       console.error(error)
       console.info()
 

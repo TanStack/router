@@ -36,7 +36,6 @@ const fetchPost = async (postId: string) => {
   const post = await axios
     .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
     .then((r) => r.data)
-    .catch(console.log)
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!post) {
