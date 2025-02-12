@@ -1,5 +1,5 @@
 import { Outlet } from '@tanstack/react-router';
-import { importedComponent as ImportedComponent } from '../../../shared/imported';
+import { importedComponent as ImportedComponent } from '../../shared/imported';
 const HEADER_HEIGHT = '63px';
 const SplitComponent = function Layout() {
   return <main>

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { importedLoader } from '../../../shared/imported';
+import { importedLoader } from '../../shared/imported';
 function Component() {
   return <div>Component</div>;
 }

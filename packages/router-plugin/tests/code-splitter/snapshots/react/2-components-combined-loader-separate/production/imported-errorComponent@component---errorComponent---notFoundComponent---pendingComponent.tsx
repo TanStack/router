@@ -1,4 +1,4 @@
-import ImportedDefaultComponent, { importedErrorComponent } from '../../../shared/imported';
+import ImportedDefaultComponent, { importedErrorComponent } from '../../shared/imported';
 const SplitComponent = ImportedDefaultComponent;
 export { SplitComponent as component };
 const SplitErrorComponent = importedErrorComponent;

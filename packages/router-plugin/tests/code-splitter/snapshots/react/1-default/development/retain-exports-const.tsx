@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
-import { importedComponent as ImportedComponent, importedLoader } from '../../../shared/imported';
+import { importedComponent as ImportedComponent, importedLoader } from '../../shared/imported';
 export const loaderFn = () => {
   return importedLoader();
 };

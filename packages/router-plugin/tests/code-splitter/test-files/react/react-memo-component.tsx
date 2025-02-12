@@ -1,7 +1,7 @@
 import React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { importedLoader } from '../../../shared/imported'
+import { importedLoader } from '../../shared/imported'
 
 export const Route = createFileRoute('/')({
   component: React.memo(Component),

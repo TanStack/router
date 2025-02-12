@@ -1,7 +1,7 @@
 const $$splitLoaderImporter = () => import('retain-export-component.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent');
 import { lazyFn } from '@tanstack/react-router';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
-import { importedComponent as ImportedComponent } from '../../../shared/imported';
+import { importedComponent as ImportedComponent } from '../../shared/imported';
 export function Layout() {
   return <main>
       <header style={{
