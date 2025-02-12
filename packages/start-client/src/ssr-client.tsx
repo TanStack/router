@@ -114,7 +114,8 @@ export function hydrate(router: AnyRouter) {
   }
 
   // Hydrate the router state
-  const matches = router.matchRoutes(router.state.location).map((match) => {
+  const matches = router.matchRoutes(router.state.location)
+  matches.forEach((match) => {
     const route = router.looseRoutesById[match.routeId]!
 
     // Right after hydration and before the first render, we need to rehydrate each match
@@ -128,7 +129,7 @@ export function hydrate(router: AnyRouter) {
     if (dehydratedMatch) {
       Object.assign(match, dehydratedMatch)
 
-      const parentMatch = router.state.matches[match.index - 1]
+      const parentMatch = matches[match.index - 1]
       const parentContext = parentMatch?.context ?? router.options.context ?? {}
 
       // Handle beforeLoadContext
@@ -186,7 +187,7 @@ export function hydrate(router: AnyRouter) {
   router.__store.setState((s) => {
     return {
       ...s,
-      matches: matches,
+      matches,
     }
   })
 
