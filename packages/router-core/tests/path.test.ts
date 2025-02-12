@@ -265,7 +265,7 @@ describe('resolvePath', () => {
   })
 })
 
-describe.only('interpolatePath', () => {
+describe('interpolatePath', () => {
   ;[
     {
       name: 'should interpolate the path',
