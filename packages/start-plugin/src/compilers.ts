@@ -5,20 +5,6 @@ import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
-export function compileEliminateDeadCode(
-  opts: ParseAstOptions,
-): GeneratorResult {
-  const ast = parseAst(opts)
-  deadCodeElimination(ast)
-  return generateFromAst(ast, {
-    sourceMaps: true,
-    sourceFileName: opts.filename,
-    filename: opts.filename,
-  })
-}
-
-const debug = process.env.TSR_VITE_DEBUG === 'true'
-
 // build these once and reuse them
 const handleServerOnlyCallExpression =
   buildEnvOnlyCallExpressionHandler('server')
@@ -27,7 +13,9 @@ const handleClientOnlyCallExpression =
 
 type CompileOptions = ParseAstOptions & {
   env: 'server' | 'client' | 'ssr'
+  dce?: boolean
 }
+
 type IdentifierConfig = {
   name: string
   type: 'ImportSpecifier' | 'ImportNamespaceSpecifier'
@@ -178,6 +166,10 @@ export function compileStartOutput(opts: CompileOptions): GeneratorResult {
       },
     },
   })
+
+  if (opts.dce ?? true) {
+    deadCodeElimination(ast)
+  }
 
   return generateFromAst(ast, {
     sourceMaps: true,

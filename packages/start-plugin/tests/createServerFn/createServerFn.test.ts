@@ -25,6 +25,7 @@ describe('createServerFn compiles correctly', async () => {
           code,
           root: './test-files',
           filename,
+          dce: false,
         })
 
         await expect(compiledResult.code).toMatchFileSnapshot(
@@ -43,6 +44,7 @@ describe('createServerFn compiles correctly', async () => {
         createServerFn()`,
         root: './test-files',
         filename: 'no-fn.ts',
+        dce: false,
       })
     }).toThrowError()
   })
@@ -56,6 +58,7 @@ describe('createServerFn compiles correctly', async () => {
         createServerFn().handler(async () => {})`,
         root: './test-files',
         filename: 'no-fn.ts',
+        dce: false,
       })
     }).toThrowError()
   })
@@ -73,6 +76,7 @@ describe('createServerFn compiles correctly', async () => {
       filename: 'test.ts',
       code,
       env: 'client',
+      dce: false,
     })
 
     const compiledResultServer = compileStartOutput({
@@ -80,6 +84,7 @@ describe('createServerFn compiles correctly', async () => {
       filename: 'test.ts',
       code,
       env: 'server',
+      dce: false,
     })
 
     expect(compiledResultClient.code).toMatchInlineSnapshot(`
@@ -101,6 +106,58 @@ describe('createServerFn compiles correctly', async () => {
 
         return myServerFn.__executeServer(opts);
       }, myFunc);"
+    `)
+  })
+
+  test('should use dce by default', () => {
+    const code = `
+      import { createServerFn } from '@tanstack/start'
+      const exportedVar = 'exported'
+      export const exportedFn = createServerFn().handler(async () => {
+        return exportedVar
+      })
+      const nonExportedVar = 'non-exported'
+      const nonExportedFn = createServerFn().handler(async () => {
+        return nonExportedVar
+      })`
+
+    // Client
+    const compiledResult = compileStartOutput({
+      root: '/test',
+      filename: 'test.ts',
+      code,
+      env: 'client',
+      dce: true,
+    })
+
+    expect(compiledResult.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/start';
+      export const exportedFn = createServerFn().handler(opts => {
+        "use server";
+
+        return exportedFn.__executeServer(opts);
+      });"
+    `)
+
+    // Server
+    const compiledResultServer = compileStartOutput({
+      root: '/test',
+      filename: 'test.ts',
+      code,
+      env: 'server',
+      dce: true,
+    })
+
+    expect(compiledResultServer.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/start';
+      const exportedVar = 'exported';
+      export const exportedFn = createServerFn().handler(opts => {
+        "use server";
+
+        return exportedFn.__executeServer(opts);
+      }, async () => {
+        return exportedVar;
+      });"
     `)
   })
 })

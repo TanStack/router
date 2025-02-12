@@ -25,6 +25,7 @@ describe('envOnly functions compile correctly', async () => {
           code,
           root: './test-files',
           filename,
+          dce: false,
         })
 
         await expect(compiledResult.code).toMatchFileSnapshot(
@@ -42,6 +43,7 @@ describe('envOnly functions compile correctly', async () => {
         const fn = clientOnly()`,
         root: './test-files',
         filename: 'no-fn.ts',
+        dce: false,
       })
     }).toThrowError()
     expect(() => {
@@ -52,6 +54,7 @@ describe('envOnly functions compile correctly', async () => {
         const fn = serverOnly()`,
         root: './test-files',
         filename: 'no-fn.ts',
+        dce: false,
       })
     }).toThrowError()
   })

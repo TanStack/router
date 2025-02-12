@@ -41,6 +41,7 @@ describe('createIsomorphicFn compiles correctly', async () => {
           code,
           root: './test-files',
           filename,
+          dce: false,
         })
 
         await expect(compiledResult.code).toMatchFileSnapshot(
@@ -58,6 +59,7 @@ describe('createIsomorphicFn compiles correctly', async () => {
         const clientOnly = createIsomorphicFn().client()`,
         root: './test-files',
         filename: 'no-fn.ts',
+        dce: false,
       })
     }).toThrowError()
     expect(() => {
@@ -68,6 +70,7 @@ describe('createIsomorphicFn compiles correctly', async () => {
         const serverOnly = createIsomorphicFn().server()`,
         root: './test-files',
         filename: 'no-fn.ts',
+        dce: false,
       })
     }).toThrowError()
   })
@@ -79,6 +82,7 @@ describe('createIsomorphicFn compiles correctly', async () => {
       const noImpl = createIsomorphicFn()`,
       root: './test-files',
       filename: 'no-fn.ts',
+      dce: false,
     })
     expect(consoleSpy).toHaveBeenCalledWith(
       noImplWarning,
