@@ -44,7 +44,7 @@ const testGroups: Array<{ name: string; groupings: CodeSplitGroupings }> = [
   },
 ]
 
-const frameworks: Array<Config['target']> = ['react']
+const frameworks: Array<Config['target']> = ['react', 'solid']
 
 describe('code-splitter works', () => {
   describe.each(frameworks)('FRAMEWORK=%s', (framework) => {
