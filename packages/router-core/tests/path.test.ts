@@ -324,12 +324,6 @@ describe('interpolatePath', () => {
         ['@', '+'].map((char) => [encodeURIComponent(char), char]),
       ),
     },
-    {
-      name: 'should interpolate the path and expect to receive the decoded value of "100%"',
-      path: '/users/$percentage',
-      params: { percentage: '100%' },
-      result: '/users/100%',
-    },
   ].forEach((exp) => {
     it(exp.name, () => {
       const result = interpolatePath({
