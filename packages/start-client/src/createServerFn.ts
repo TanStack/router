@@ -19,7 +19,7 @@ import type {
 } from '@tanstack/react-router'
 import type {
   AnyMiddleware,
-  AssignAllClientAfterContext,
+  AssignAllClientSendContext,
   AssignAllServerContext,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
@@ -102,7 +102,7 @@ export interface RequiredFetcherDataOptions<
 export interface FullFetcherData<TMiddlewares, TResponse> {
   error: unknown
   result: FetcherData<TResponse>
-  context: AssignAllClientAfterContext<TMiddlewares>
+  context: AssignAllClientSendContext<TMiddlewares>
 }
 
 export type FetcherData<TResponse> =
