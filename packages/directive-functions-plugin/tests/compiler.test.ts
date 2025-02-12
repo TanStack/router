@@ -648,4 +648,66 @@ describe('server function compilation', () => {
       export { bytesSignupServerFn_1 };"
     `)
   })
+
+  test.only('file-wide use server directive', () => {
+    const code = `
+      'use server'
+
+      import { imported } from 'imported'
+
+      export const serverFnConstWithImport = async () => {
+        return imported
+      }
+
+      export function serverFnNamedWithImport () {
+        return imported
+      }
+    `
+
+    const client = compileDirectives({ ...clientConfig, code })
+    const ssr = compileDirectives({ ...ssrConfig, code })
+    const server = compileDirectives({
+      ...serverConfig,
+      code,
+      filename:
+        ssr.directiveFnsById[Object.keys(ssr.directiveFnsById)[0]!]!
+          .extractedFilename,
+    })
+
+    console.log(ssr.directiveFnsById)
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "'use server';
+
+      import { createClientRpc } from "my-rpc-lib-client";
+      const serverFnConstWithImport_1 = createClientRpc("test_ts--serverFnConstWithImport_1");
+      export const serverFnConstWithImport = serverFnConstWithImport_1;
+      const serverFnNamedWithImport_1 = createClientRpc("test_ts--serverFnNamedWithImport_1");
+      export const serverFnNamedWithImport = serverFnNamedWithImport_1;"
+    `)
+
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "'use server';
+
+      import { createSsrRpc } from "my-rpc-lib-server";
+      const serverFnConstWithImport_1 = createSsrRpc("test_ts--serverFnConstWithImport_1");
+      export const serverFnConstWithImport = serverFnConstWithImport_1;
+      const serverFnNamedWithImport_1 = createSsrRpc("test_ts--serverFnNamedWithImport_1");
+      export const serverFnNamedWithImport = serverFnNamedWithImport_1;"
+    `)
+
+    expect(server.compiledResult.code).toMatchInlineSnapshot(`
+      "'use server';
+
+      import { createServerRpc } from "my-rpc-lib-server";
+      import { imported } from 'imported';
+      const serverFnConstWithImport_1 = createServerRpc("test_ts--serverFnConstWithImport_1", async () => {
+        return imported;
+      });
+      const serverFnNamedWithImport_1 = createServerRpc("test_ts--serverFnNamedWithImport_1", function serverFnNamedWithImport() {
+        return imported;
+      });
+      export { serverFnConstWithImport_1, serverFnNamedWithImport_1 };"
+    `)
+  })
 })
