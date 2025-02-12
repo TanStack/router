@@ -401,3 +401,20 @@ export function shallow<T>(objA: T, objB: T) {
   }
   return true
 }
+
+/**
+ * Checks if a string contains URI-encoded special characters (e.g., %3F, %20).
+ *
+ * @param {string} inputString The string to check.
+ * @returns {boolean} True if the string contains URI-encoded characters, false otherwise.
+ * @example
+ * ```typescript
+ * const str1 = "foo%3Fbar";
+ * const hasEncodedChars = hasUriEncodedChars(str1); // returns true
+ * ```
+ */
+export function hasUriEncodedChars(inputString: string): boolean {
+  // This regex looks for a percent sign followed by two hexadecimal digits
+  const pattern = /%[0-9A-Fa-f]{2}/
+  return pattern.test(inputString)
+}

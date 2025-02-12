@@ -1,6 +1,5 @@
-/* eslint-disable */
-import { describe, it, expect } from 'vitest'
-import { encode, decode } from '../src/qss'
+import { describe, expect, it } from 'vitest'
+import { decode, encode } from '../src/qss'
 
 describe('encode function', () => {
   it('should encode an object into a query string without a prefix', () => {
@@ -87,5 +86,16 @@ describe('decode function', () => {
     const queryString = 'foo%3Dbar'
     const decodedObj = decode(queryString)
     expect(decodedObj).toEqual({ 'foo=bar': '' })
+  })
+
+  it('should handle decoding a query with "100%" as a value', () => {
+    const queryString = 'percentage=100%&name=Sean&foo%3Dbar&key=value%3D'
+    const decodedObj = decode(queryString)
+    expect(decodedObj).toEqual({
+      percentage: '100%',
+      name: 'Sean',
+      'foo=bar': '',
+      key: 'value=',
+    })
   })
 })
