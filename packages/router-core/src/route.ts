@@ -247,7 +247,7 @@ export type ResolveRouteContext<TRouteContextFn, TBeforeLoadFn> = Assign<
 export type ResolveLoaderData<TLoaderFn> = unknown extends TLoaderFn
   ? TLoaderFn
   : LooseAsyncReturnType<TLoaderFn> extends never
-    ? {}
+    ? undefined
     : LooseAsyncReturnType<TLoaderFn>
 
 export type RoutePrefix<

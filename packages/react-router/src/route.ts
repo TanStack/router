@@ -459,7 +459,7 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >
     params: ResolveAllParamsFromParent<TParentRoute, TParams>
-    loaderData: ResolveLoaderData<TLoaderFn> | undefined
+    loaderData: ResolveLoaderData<TLoaderFn>
   }) => {
     links?: AnyRouteMatch['links']
     scripts?: AnyRouteMatch['scripts']
