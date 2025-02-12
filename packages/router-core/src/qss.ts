@@ -4,6 +4,8 @@
  * https://github.com/lukeed/qss/blob/master/license.md
  */
 
+import { hasUriEncodedChars } from './utils'
+
 /**
  * Encodes an object into a query string.
  * @param obj - The object to encode into a query string.
@@ -48,7 +50,10 @@ export function encode(obj: any, pfx?: string) {
  */
 function toValue(mix: any) {
   if (!mix) return ''
-  const str = decodeURIComponent(mix)
+  const str = hasUriEncodedChars(mix)
+    ? decodeURIComponent(mix)
+    : decodeURIComponent(encodeURIComponent(mix))
+
   if (str === 'false') return false
   if (str === 'true') return true
   return +str * 0 === 0 && +str + '' === str ? +str : str
