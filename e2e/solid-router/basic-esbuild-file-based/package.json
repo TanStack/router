@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "esbuild src/main.tsx --serve=5601 --bundle --outfile=dist/main.js --watch --servedir=.",
-    "build": "esbuild src/main.tsx --bundle --outfile=dist/main.js && tsc --noEmit",
-    "serve": "esbuild src/main.tsx --bundle --outfile=dist/main.js --servedir=.",
+    "dev": "esbuild src/main.tsx --jsx=preserve --jsx-import-source=solid-js --serve=5601 --bundle --outfile=dist/main.js --watch --servedir=.",
+    "build": "esbuild src/main.tsx --jsx=preserve --jsx-import-source=solid-js --bundle --outfile=dist/main.js && tsc --noEmit",
+    "serve": "esbuild src/main.tsx --jsx=preserve --jsx-import-source=solid-js --bundle --outfile=dist/main.js --servedir=.",
     "start": "dev",
     "test:e2e": "playwright test --project=chromium"
   },
