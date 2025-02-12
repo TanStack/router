@@ -5,8 +5,10 @@ import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { tsrSplit } from '../constants'
 import { createIdentifier } from './path-ids'
+import { getFrameworkOptions } from './framework-options'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
+import type { Config } from '../config'
 
 // eslint-disable-next-line unused-imports/no-unused-vars
 const debug = process.env.TSR_VITE_DEBUG
@@ -31,7 +33,7 @@ interface State {
 
 type SplitNodeMeta = {
   routeIdent: SplitRouteIdentNodes
-  splitStrategy: 'normal' | 'react-component'
+  splitStrategy: 'lazyFn' | 'lazyRouteComponent'
   localImporterIdent: string
   exporterIdent: string
   localExporterIdent: string
@@ -42,7 +44,7 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     {
       routeIdent: 'loader',
       localImporterIdent: '$$splitLoaderImporter', // const $$splitLoaderImporter = () => import('...')
-      splitStrategy: 'normal',
+      splitStrategy: 'lazyFn',
       localExporterIdent: 'SplitLoader', // const SplitLoader = ...
       exporterIdent: 'loader', // export { SplitLoader as loader }
     },
@@ -52,7 +54,7 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     {
       routeIdent: 'component',
       localImporterIdent: '$$splitComponentImporter', // const $$splitComponentImporter = () => import('...')
-      splitStrategy: 'react-component',
+      splitStrategy: 'lazyRouteComponent',
       localExporterIdent: 'SplitComponent', // const SplitComponent = ...
       exporterIdent: 'component', // export { SplitComponent as component }
     },
@@ -62,7 +64,7 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     {
       routeIdent: 'pendingComponent',
       localImporterIdent: '$$splitPendingComponentImporter', // const $$splitPendingComponentImporter = () => import('...')
-      splitStrategy: 'react-component',
+      splitStrategy: 'lazyRouteComponent',
       localExporterIdent: 'SplitPendingComponent', // const SplitPendingComponent = ...
       exporterIdent: 'pendingComponent', // export { SplitPendingComponent as pendingComponent }
     },
@@ -72,7 +74,7 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     {
       routeIdent: 'errorComponent',
       localImporterIdent: '$$splitErrorComponentImporter', // const $$splitErrorComponentImporter = () => import('...')
-      splitStrategy: 'react-component',
+      splitStrategy: 'lazyRouteComponent',
       localExporterIdent: 'SplitErrorComponent', // const SplitErrorComponent = ...
       exporterIdent: 'errorComponent', // export { SplitErrorComponent as errorComponent }
     },
@@ -82,7 +84,7 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     {
       routeIdent: 'notFoundComponent',
       localImporterIdent: '$$splitNotFoundComponentImporter', // const $$splitNotFoundComponentImporter = () => import('...')
-      splitStrategy: 'react-component',
+      splitStrategy: 'lazyRouteComponent',
       localExporterIdent: 'SplitNotFoundComponent', // const SplitNotFoundComponent = ...
       exporterIdent: 'notFoundComponent', // export { SplitNotFoundComponent as notFoundComponent }
     },
@@ -111,6 +113,7 @@ export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions & {
     runtimeEnv: 'dev' | 'prod'
     codeSplitGroupings: CodeSplitGroupings
+    targetFramework: Config['target']
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -120,6 +123,11 @@ export function compileCodeSplitReferenceRoute(
       group.includes(str as any),
     )
   }
+
+  const frameworkOptions = getFrameworkOptions(opts.targetFramework)
+  const PACKAGE = frameworkOptions.package
+  const LAZY_ROUTE_COMPONENT_IDENT = frameworkOptions.idents.lazyRouteComponent
+  const LAZY_FN_IDENT = frameworkOptions.idents.lazyFn
 
   babel.traverse(ast, {
     Program: {
@@ -202,7 +210,9 @@ export function compileCodeSplitReferenceRoute(
                           codeSplitGroup,
                         )
 
-                        if (splitNodeMeta.splitStrategy === 'react-component') {
+                        if (
+                          splitNodeMeta.splitStrategy === 'lazyRouteComponent'
+                        ) {
                           const value = prop.value
 
                           let shouldSplit = true
@@ -238,12 +248,12 @@ export function compileCodeSplitReferenceRoute(
 
                           if (
                             !hasImportedOrDefinedIdentifier(
-                              'lazyRouteComponent',
+                              LAZY_ROUTE_COMPONENT_IDENT,
                             )
                           ) {
                             programPath.unshiftContainer('body', [
                               template.statement(
-                                `import { lazyRouteComponent } from '@tanstack/react-router'`,
+                                `import { ${LAZY_ROUTE_COMPONENT_IDENT} } from '${PACKAGE}'`,
                               )(),
                             ])
                           }
@@ -265,28 +275,30 @@ export function compileCodeSplitReferenceRoute(
                           // If it's a component, we need to pass the function to check the Route.ssr value
                           if (key === 'component') {
                             prop.value = template.expression(
-                              `lazyRouteComponent(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
+                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
                             )()
                           } else {
                             prop.value = template.expression(
-                              `lazyRouteComponent(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
                             )()
                           }
 
                           // If the TSRDummyComponent is not defined, define it
                           if (
                             opts.runtimeEnv !== 'prod' && // only in development
-                            !hasImportedOrDefinedIdentifier('TSRDummyComponent')
+                            !hasImportedOrDefinedIdentifier(
+                              frameworkOptions.idents.dummyHMRComponent,
+                            )
                           ) {
                             programPath.pushContainer('body', [
                               template.statement(
-                                `export function TSRDummyComponent() { return null }`,
+                                frameworkOptions.dummyHMRComponent,
                               )(),
                             ])
                           }
                         }
 
-                        if (splitNodeMeta.splitStrategy === 'normal') {
+                        if (splitNodeMeta.splitStrategy === 'lazyFn') {
                           const value = prop.value
 
                           let shouldSplit = true
@@ -317,11 +329,11 @@ export function compileCodeSplitReferenceRoute(
                           }
 
                           // Prepend the import statement to the program along with the importer function
-                          if (!hasImportedOrDefinedIdentifier('lazyFn')) {
+                          if (!hasImportedOrDefinedIdentifier(LAZY_FN_IDENT)) {
                             programPath.unshiftContainer(
                               'body',
                               template.smart(
-                                `import { lazyFn } from '@tanstack/react-router'`,
+                                `import { ${LAZY_FN_IDENT} } from '${PACKAGE}'`,
                               )(),
                             )
                           }
@@ -342,7 +354,7 @@ export function compileCodeSplitReferenceRoute(
 
                           // Add the lazyFn call with the dynamic import to the prop value
                           prop.value = template.expression(
-                            `lazyFn(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                            `${LAZY_FN_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
                           )()
                         }
                       }
