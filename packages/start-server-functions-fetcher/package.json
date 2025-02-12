@@ -63,10 +63,10 @@
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
-    "@tanstack/start-client": "workspace:^",
-    "@vitejs/plugin-react": "^4.3.4"
+    "@tanstack/start-client": "workspace:^"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.7.2"
