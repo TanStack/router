@@ -143,6 +143,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       filename: id,
       runtimeEnv: isProduction ? 'prod' : 'dev',
       codeSplitGroupings: splitGroupings,
+      targetFramework: userConfig.target,
     })
 
     if (debug) {

@@ -9,6 +9,7 @@ import {
 import { createIdentifier } from '../src/core/code-splitter/path-ids'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import type { CodeSplitGroupings } from '../src/core/constants'
+import type { Config } from '../src/core/config'
 
 function getFrameworkDir(framework: string) {
   const files = path.resolve(
@@ -43,7 +44,7 @@ const testGroups: Array<{ name: string; groupings: CodeSplitGroupings }> = [
   },
 ]
 
-const frameworks = ['react']
+const frameworks: Array<Config['target']> = ['react']
 
 describe('code-splitter works', () => {
   describe.each(frameworks)('FRAMEWORK=%s', (framework) => {
@@ -70,6 +71,7 @@ describe('code-splitter works', () => {
                   filename,
                   runtimeEnv: NODE_ENV === 'production' ? 'prod' : 'dev',
                   codeSplitGroupings: grouping,
+                  targetFramework: framework,
                 })
 
                 await expect(compileResult.code).toMatchFileSnapshot(
