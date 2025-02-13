@@ -881,6 +881,9 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.0
+      esbuild-plugin-solid:
+        specifier: ^0.6.0
+        version: 0.6.0(esbuild@0.25.0)(solid-js@1.9.4)
 
   e2e/solid-router/basic-file-based:
     dependencies:
@@ -9624,6 +9627,12 @@ packages:
     resolution: {integrity: sha512-FGgH2h8zKNim9ljj7dankFPcICIK9Cp5bm+c2gQSYePhpaG5+esrLODihIorn+Pe6FGJzWhXQotPv73jTaldXA==}
     engines: {node: '>= 0.4'}
 
+  esbuild-plugin-solid@0.6.0:
+    resolution: {integrity: sha512-V1FvDALwLDX6K0XNYM9CMRAnMzA0+Ecu55qBUT9q/eAJh1KIDsTMFoOzMSgyHqbOfvrVfO3Mws3z7TW2GVnIZA==}
+    peerDependencies:
+      esbuild: '>=0.20'
+      solid-js: '>= 1.0'
+
   esbuild-register@3.6.0:
     resolution: {integrity: sha512-H2/S7Pm8a9CL1uhp9OvjwrBh5Pvx0H8qVOxNu8Wed9Y7qv56MPtq+GGM8RJpq6glYJn9Wspr8uw7l55uyinNeg==}
     peerDependencies:
@@ -17257,6 +17266,16 @@ snapshots:
   es-object-atoms@1.1.1:
     dependencies:
       es-errors: 1.3.0
+
+  esbuild-plugin-solid@0.6.0(esbuild@0.25.0)(solid-js@1.9.4):
+    dependencies:
+      '@babel/core': 7.26.8
+      '@babel/preset-typescript': 7.26.0(@babel/core@7.26.8)
+      babel-preset-solid: 1.9.3(@babel/core@7.26.8)
+      esbuild: 0.25.0
+      solid-js: 1.9.4
+    transitivePeerDependencies:
+      - supports-color
 
   esbuild-register@3.6.0(esbuild@0.25.0):
     dependencies:
