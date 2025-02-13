@@ -140,7 +140,7 @@ export function hydrate(router: AnyRouter) {
 
         match.context = {
           ...parentContext,
-          ...match.context,
+          ...match.__routeContext,
           ...match.__beforeLoadContext,
         }
       }
