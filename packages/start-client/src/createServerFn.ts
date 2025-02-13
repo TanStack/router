@@ -52,6 +52,15 @@ export interface OptionalFetcher<TMiddlewares, TValidator, TResponse>
   (
     ...args: [options?: OptionalFetcherDataOptions<TMiddlewares, TValidator>]
   ): Promise<FetcherData<TResponse>>
+  mock: {
+    setImpl: (
+      fn: (
+        opts?: CompiledFetcherFnOptions,
+      ) =>
+        | Promise<SerializerStringify<TResponse>>
+        | SerializerStringify<TResponse>,
+    ) => void
+  }
 }
 
 export interface RequiredFetcher<TMiddlewares, TValidator, TResponse>
@@ -59,6 +68,15 @@ export interface RequiredFetcher<TMiddlewares, TValidator, TResponse>
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TValidator>,
   ): Promise<FetcherData<TResponse>>
+  mock: {
+    setImpl: (
+      fn: (
+        opts?: CompiledFetcherFnOptions,
+      ) =>
+        | Promise<SerializerStringify<TResponse>>
+        | SerializerStringify<TResponse>,
+    ) => void
+  }
 }
 
 export type FetcherBaseOptions = {
@@ -244,9 +262,13 @@ export function createServerFn<
 
       // We want to make sure the new function has the same
       // properties as the original function
-      return Object.assign(
+      const serverFnInstance = Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
-          // Start by executing the client-side middleware chain
+          const mockFn = serverFnInstance.__mock
+          if (mockFn) {
+            return mockFn(opts)
+          }
+
           return executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             method: resolvedOptions.method,
@@ -261,11 +283,30 @@ export function createServerFn<
         {
           // This copies over the URL, function ID and filename
           ...extractedFn,
+          mock: {
+            setImpl: (
+              fn: (
+                opts?: CompiledFetcherFnOptions,
+              ) =>
+                | Promise<SerializerStringify<TResponse>>
+                | SerializerStringify<TResponse>,
+            ) => {
+              // Store the mock on the instance itself
+              serverFnInstance.__mock = fn
+            },
+          },
           // The extracted function on the server-side calls
           // this function
           __executeServer: async (opts: any) => {
             const parsedOpts =
               opts instanceof FormData ? extractFormDataContext(opts) : opts
+
+            // Check for mock implementation
+            const mockFn = serverFnInstance.__mock
+            if (mockFn) {
+              const mockResult = await mockFn(parsedOpts)
+              return { result: mockResult, error: null, context: {} } as any
+            }
 
             const result = await executeMiddleware(
               resolvedMiddleware,
@@ -285,6 +326,8 @@ export function createServerFn<
           },
         },
       ) as any
+
+      return serverFnInstance
     },
   }
 }
