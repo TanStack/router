@@ -12,7 +12,7 @@
   "dependencies": {
     "@prisma/client": "5.22.0",
     "@tanstack/react-router": "^1.104.1",
-    "@tanstack/router-devtools": "^1.104.1",
+    "@tanstack/router-devtools": "^1.104.3",
     "@tanstack/start": "^1.104.2",
     "prisma": "^5.22.0",
     "react": "^19.0.0",
