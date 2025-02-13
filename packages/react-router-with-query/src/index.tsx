@@ -12,11 +12,16 @@ import type {
   UseQueryOptions,
 } from '@tanstack/react-query'
 
+type AdditionalOptions = {
+  WrapProvider?: (props: { children: any }) => React.JSX.Element
+}
+
 export function routerWithQueryClient<TRouter extends AnyRouter>(
   router: TRouter['options']['context'] extends { queryClient: QueryClient }
     ? TRouter
     : never,
   queryClient: QueryClient,
+  additionalOpts?: AdditionalOptions,
 ): TRouter {
   const seenQueryKeys = new Set<string>()
   const streamedQueryKeys = new Set<string>()
@@ -116,11 +121,14 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     },
     // Wrap the app in a QueryClientProvider
     Wrap: ({ children }) => {
+      const OuterWrapper = additionalOpts?.WrapProvider || Fragment
       const OGWrap = ogOptions.Wrap || Fragment
       return (
-        <QueryClientProvider client={queryClient}>
-          <OGWrap>{children}</OGWrap>
-        </QueryClientProvider>
+        <OuterWrapper>
+          <QueryClientProvider client={queryClient}>
+            <OGWrap>{children}</OGWrap>
+          </QueryClientProvider>
+        </OuterWrapper>
       )
     },
   }
