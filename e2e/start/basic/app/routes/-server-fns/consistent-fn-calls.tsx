@@ -100,6 +100,10 @@ export function ConsistentServerFnCalls() {
             setPostServerResult,
           )
           cons_postFn1({ data: { username: 'TEST' } }).then(setPostDirectResult)
+
+          cons_postFn1({ data: { username: 'TEST' }, fullResponse: true }).then(
+            setPostDirectResult,
+          )
         }}
       >
         Test Consistent server function responses

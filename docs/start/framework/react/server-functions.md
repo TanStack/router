@@ -867,6 +867,12 @@ function Home() {
 }
 ```
 
+## Static Server Functions
+
+When using prerendering/static-generation, server functions can also be "static", which enables their results to be cached at build time and served as static assets.
+
+Learn all about this pattern on the [Static Server Functions](../static-server-functions) page.
+
 ## How are server functions compiled?
 
 Under the hood, server functions are extracted out of the client bundle and into a separate server bundle. On the server, they are executed as-is, and the result is sent back to the client. On the client, server functions proxy the request to the server, which executes the function and sends the result back to the client, all via `fetch`.

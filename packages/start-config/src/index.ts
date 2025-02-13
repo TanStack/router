@@ -13,6 +13,7 @@ import { config } from 'vinxi/plugins/config'
 // import { serverComponents } from '@vinxi/server-components/plugin'
 import { createTanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
 import { createFetch } from 'ofetch'
+import { createNitro } from 'nitropack'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import {
   checkDeploymentPresetInput,
@@ -78,9 +79,9 @@ function mergeSsrOptions(options: Array<vite.SSROptions | undefined>) {
   return ssrOptions
 }
 
-export function defineConfig(
+export async function defineConfig(
   inlineConfig: TanStackStartInputConfig = {},
-): VinxiApp {
+): Promise<VinxiApp> {
   const opts = inlineConfigSchema.parse(inlineConfig)
 
   const { preset: configDeploymentPreset, ...serverOptions } =
@@ -137,6 +138,15 @@ export function defineConfig(
     },
   })
 
+  // Create a dummy nitro app to get the resolved public output path
+  const dummyNitroApp = await createNitro({
+    preset: deploymentPreset,
+    compatibilityDate: '2024-12-01',
+  })
+
+  const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
+  await dummyNitroApp.close()
+
   let vinxiApp = createApp({
     server: {
       ...serverOptions,
@@ -179,6 +189,10 @@ export function defineConfig(
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
               },
               ssr: mergeSsrOptions([
                 viteConfig.userConfig.ssr,
@@ -239,6 +253,10 @@ export function defineConfig(
                 ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
               },
               ssr: mergeSsrOptions([
                 viteConfig.userConfig.ssr,
@@ -304,6 +322,10 @@ export function defineConfig(
                 ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
                 ...injectDefineEnv('TSS_API_BASE', apiBase),
                 ...injectDefineEnv('TSS_SERVER_FN_BASE', serverBase),
+                ...injectDefineEnv(
+                  'TSS_OUTPUT_PUBLIC_DIR',
+                  nitroOutputPublicDir,
+                ),
               },
               ssr: mergeSsrOptions([
                 viteConfig.userConfig.ssr,
@@ -409,6 +431,7 @@ export function defineConfig(
               ...injectDefineEnv('TSS_PUBLIC_BASE', publicBase),
               ...injectDefineEnv('TSS_CLIENT_BASE', clientBase),
               ...injectDefineEnv('TSS_API_BASE', apiBase),
+              ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
             },
           }),
           TanStackRouterVite({

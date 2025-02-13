@@ -54,6 +54,12 @@ export async function serverFnFetcher(
       }
     }
 
+    if (url.includes('?')) {
+      url += `&createServerFn`
+    } else {
+      url += `?createServerFn`
+    }
+
     const handlerResponse = await handler(url, {
       method: first.method,
       headers,
@@ -81,7 +87,8 @@ export async function serverFnFetcher(
     return response
   }
 
-  // If not a custom fetcher, just proxy the arguments
+  // If not a custom fetcher, it was probably
+  // a `use server` function, so just proxy the arguments
   // through as a POST request
   const response = await handleResponseErrors(
     await handler(url, {
