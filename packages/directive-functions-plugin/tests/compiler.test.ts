@@ -649,7 +649,7 @@ describe('server function compilation', () => {
     `)
   })
 
-  test.only('file-wide use server directive', () => {
+  test('file-wide use server directive', () => {
     const code = `
       'use server'
 
