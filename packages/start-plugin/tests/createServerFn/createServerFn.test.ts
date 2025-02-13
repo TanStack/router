@@ -136,6 +136,11 @@ describe('createServerFn compiles correctly', async () => {
         "use server";
 
         return exportedFn.__executeServer(opts);
+      });
+      const nonExportedFn = createServerFn().handler(opts => {
+        "use server";
+
+        return nonExportedFn.__executeServer(opts);
       });"
     `)
 
@@ -157,6 +162,14 @@ describe('createServerFn compiles correctly', async () => {
         return exportedFn.__executeServer(opts);
       }, async () => {
         return exportedVar;
+      });
+      const nonExportedVar = 'non-exported';
+      const nonExportedFn = createServerFn().handler(opts => {
+        "use server";
+
+        return nonExportedFn.__executeServer(opts);
+      }, async () => {
+        return nonExportedVar;
       });"
     `)
   })

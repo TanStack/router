@@ -139,8 +139,12 @@ describe('server function compilation', () => {
       export const exportedArrowFunction = wrapper(exportedArrowFunction_wrapper);
       const namedExportConst_1 = createClientRpc("test_ts--namedExportConst_1");
       export const namedExportConst = namedExportConst_1;
+      function unusedFn() {
+        return 'hello';
+      }
       const namedDefaultExport = 'namedDefaultExport';
       export default namedDefaultExport;
+      const usedButNotExported = 'usedButNotExported';
       const namedExport = 'namedExport';
       export { namedExport };"
     `)
@@ -165,8 +169,12 @@ describe('server function compilation', () => {
       export const exportedArrowFunction = wrapper(exportedArrowFunction_wrapper);
       const namedExportConst_1 = createSsrRpc("test_ts--namedExportConst_1");
       export const namedExportConst = namedExportConst_1;
+      function unusedFn() {
+        return 'hello';
+      }
       const namedDefaultExport = 'namedDefaultExport';
       export default namedDefaultExport;
+      const usedButNotExported = 'usedButNotExported';
       const namedExport = 'namedExport';
       export { namedExport };"
     `)
@@ -206,6 +214,11 @@ describe('server function compilation', () => {
       function usedFn() {
         return 'hello';
       }
+      function unusedFn() {
+        return 'hello';
+      }
+      const usedButNotExported = 'usedButNotExported';
+      const namedExportFn = namedExportFn_1;
       export { namedFunction_createServerFn_namedFunction, arrowFunction_createServerFn, anonymousFunction_createServerFn, multipleDirectives_multipleDirectives, iife_1, defaultExportFn_1, namedExportFn_1, exportedArrowFunction_wrapper, namedExportConst_1 };"
     `,
     )
@@ -481,6 +494,9 @@ describe('server function compilation', () => {
       import { createClientRpc } from "my-rpc-lib-client";
       const useServer_1 = createClientRpc("test_ts--useServer_1");
       export const useServer = useServer_1;
+      function notExported() {
+        return 'hello';
+      }
       const defaultExport_1 = createClientRpc("test_ts--defaultExport_1");
       export default defaultExport_1;"
     `)
@@ -490,6 +506,9 @@ describe('server function compilation', () => {
       import { createSsrRpc } from "my-rpc-lib-server";
       const useServer_1 = createSsrRpc("test_ts--useServer_1");
       export const useServer = useServer_1;
+      function notExported() {
+        return 'hello';
+      }
       const defaultExport_1 = createSsrRpc("test_ts--defaultExport_1");
       export default defaultExport_1;"
     `)
@@ -500,12 +519,16 @@ describe('server function compilation', () => {
       const useServer_1 = createServerRpc("test_ts--useServer_1", function useServer() {
         return usedInUseServer();
       });
+      function notExported() {
+        return 'hello';
+      }
       function usedInUseServer() {
         return 'hello';
       }
       const defaultExport_1 = createServerRpc("test_ts--defaultExport_1", function defaultExport() {
         return 'hello';
       });
+      const useServer = useServer_1;
       export { useServer_1, defaultExport_1 };"
     `)
   })
