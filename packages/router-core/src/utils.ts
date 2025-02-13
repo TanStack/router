@@ -93,13 +93,15 @@ export type ExtractObjects<TUnion> = TUnion extends MergeAllPrimitive
 
 export type PartialMergeAllObject<TUnion> =
   ExtractObjects<TUnion> extends infer TObj
-    ? {
-        [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
-          ? TKey extends keyof TObj
-            ? TObj[TKey]
+    ? [TObj] extends [never]
+      ? never
+      : {
+          [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
+            ? TKey extends keyof TObj
+              ? TObj[TKey]
+              : never
             : never
-          : never
-      }
+        }
     : never
 
 export type MergeAllPrimitive =

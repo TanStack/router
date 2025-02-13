@@ -130,10 +130,6 @@ describe('ssr meta', () => {
           description: 'Root',
         })),
       head: ({ loaderData }) => {
-        if (!loaderData) {
-          return {}
-        }
-
         return {
           meta: [
             {
@@ -171,10 +167,6 @@ describe('ssr meta', () => {
           description: 'Index',
         })),
       head: ({ loaderData }) => {
-        if (!loaderData) {
-          return {}
-        }
-
         return {
           meta: [
             {
