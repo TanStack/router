@@ -64,6 +64,18 @@ export interface OptionalFetcher<TMiddlewares, TValidator, TResponse>
   ): TFullResponse extends true
     ? Promise<FullFetcherData<TMiddlewares, TResponse>>
     : Promise<FetcherData<TResponse>>
+  mock: {
+    setImpl: (
+      fn: (
+        opts?: CompiledFetcherFnOptions,
+      ) =>
+        | Promise<SerializerStringify<TResponse>>
+        | SerializerStringify<TResponse>,
+    ) => void
+  }
+  __mock?: (
+    opts?: CompiledFetcherFnOptions,
+  ) => Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
 }
 
 export interface RequiredFetcher<TMiddlewares, TValidator, TResponse>
@@ -73,6 +85,18 @@ export interface RequiredFetcher<TMiddlewares, TValidator, TResponse>
   ): TFullResponse extends true
     ? Promise<FullFetcherData<TMiddlewares, TResponse>>
     : Promise<FetcherData<TResponse>>
+  mock: {
+    setImpl: (
+      fn: (
+        opts?: CompiledFetcherFnOptions,
+      ) =>
+        | Promise<SerializerStringify<TResponse>>
+        | SerializerStringify<TResponse>,
+    ) => void
+  }
+  __mock?: (
+    opts?: CompiledFetcherFnOptions,
+  ) => Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
 }
 
 export type FetcherBaseOptions<TFullResponse extends boolean = false> = {
