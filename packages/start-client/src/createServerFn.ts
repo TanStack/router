@@ -268,7 +268,7 @@ export function createServerFn<
           if (mockFn) {
             return mockFn(opts)
           }
-
+          // Start by executing the client-side middleware chain
           return executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             method: resolvedOptions.method,
