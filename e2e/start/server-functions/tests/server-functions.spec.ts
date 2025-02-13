@@ -238,6 +238,20 @@ test('Direct POST submitting FormData to a Server function returns the correct m
   expect(result).toBe(expected)
 })
 
+test("server function's dead code is preserved if already there", async ({
+  page,
+}) => {
+  await page.goto('/dead-code-preserve')
+
+  await page.waitForLoadState('networkidle')
+  await page.getByTestId('test-dead-code-fn-call-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('dead-code-fn-call-response')).toContainText(
+    '1',
+  )
+})
+
 test.describe('server function sets cookies', () => {
   async function runCookieTest(page: Page, expectedCookieValue: string) {
     for (let i = 1; i <= 4; i++) {

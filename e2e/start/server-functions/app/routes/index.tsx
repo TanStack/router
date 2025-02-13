@@ -61,6 +61,9 @@ function Home() {
         <li>
           <Link to="/cookies">server function sets cookies</Link>
         </li>
+        <li>
+          <Link to="/dead-code-preserve">dead code elimation only affects code after transformation</Link>
+        </li>
       </ul>
     </div>
   )
