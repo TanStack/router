@@ -488,3 +488,63 @@ describe('router.navigate navigation using layout routes resolves correctly', ()
     expect(router.state.location.search).toStrictEqual({ 'foo=bar': 3 })
   })
 })
+
+describe('relative navigation', () => {
+  it('should navigate to a child route', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts')
+
+    await router.navigate({
+      from: '/posts',
+      to: './$slug',
+      params: { slug: 'tkdodo' },
+    })
+
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+
+  it('should navigate to a parent route', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      to: '..',
+    })
+
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts')
+  })
+
+  it('should navigate to a sibling route', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      from: '/posts/$slug',
+      to: '.',
+      params: { slug: 'tkdodo' },
+    })
+
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+})
