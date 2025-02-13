@@ -69,7 +69,6 @@ export { StartClient } from './StartClient'
 export { mergeHeaders } from './headers'
 export { renderRsc } from './renderRSC'
 export { useServerFn } from './useServerFn'
-export { serverFnFetcher } from './serverFnFetcher'
 export {
   type DehydratedRouter,
   type ClientExtractedBaseEntry,
