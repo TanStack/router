@@ -260,6 +260,24 @@ export function findDirectives(
           compileDirective(path.get('declaration') as SupportedFunctionPath)
         }
       },
+      ExportDeclaration(path) {
+        if (
+          babel.types.isExportNamedDeclaration(path.node) &&
+          babel.types.isVariableDeclaration(path.node.declaration) &&
+          (babel.types.isFunctionExpression(
+            path.node.declaration.declarations[0]?.init,
+          ) ||
+            babel.types.isArrowFunctionExpression(
+              path.node.declaration.declarations[0]?.init,
+            ))
+        ) {
+          compileDirective(
+            path.get(
+              'declaration.declarations.0.init',
+            ) as SupportedFunctionPath,
+          )
+        }
+      },
     })
   } else {
     // Find all directives
