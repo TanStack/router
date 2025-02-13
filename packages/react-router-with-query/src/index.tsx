@@ -13,7 +13,7 @@ import type {
 } from '@tanstack/react-query'
 
 type AdditionalOptions = {
-  WrapProvider: (props: { children: any }) => React.JSX.Element
+  WrapProvider?: (props: { children: any }) => React.JSX.Element
 }
 
 export function routerWithQueryClient<TRouter extends AnyRouter>(
@@ -34,7 +34,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
       ...ogClientOptions.queries,
       _experimental_beforeQuery: (options: UseQueryOptions) => {
         // Call the original beforeQuery
-        ;(ogClientOptions.queries as any)?._experimental_beforeQuery?.(options)
+        ; (ogClientOptions.queries as any)?._experimental_beforeQuery?.(options)
 
         const hash = options.queryKeyHashFn || hashKey
         // On the server, check if we've already seen the query before
@@ -49,7 +49,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
           // That means it's going to get dehydrated with critical
           // data, so we can skip the injection
           if (queryClient.getQueryData(options.queryKey) !== undefined) {
-            ;(options as any).__skipInjection = true
+            ; (options as any).__skipInjection = true
             return
           }
         } else {
@@ -91,7 +91,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
         }
 
         // Call the original afterQuery
-        ;(ogClientOptions.queries as any)?._experimental_afterQuery?.(
+        ; (ogClientOptions.queries as any)?._experimental_afterQuery?.(
           options,
           _result,
         )
