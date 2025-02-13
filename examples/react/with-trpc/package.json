@@ -11,7 +11,7 @@
     "@tanstack/react-router": "^1.102.5",
     "@tanstack/router-devtools": "^1.102.5",
     "@tanstack/router-plugin": "^1.102.6",
-    "@tanstack/start": "^1.103.0",
+    "@tanstack/start": "^1.103.1",
     "@trpc/client": "11.0.0-rc.749",
     "@trpc/server": "11.0.0-rc.749",
     "react": "^19.0.0",
