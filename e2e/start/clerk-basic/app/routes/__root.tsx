@@ -1,10 +1,10 @@
 /// <reference types="vite/client" />
 import {
+  HeadContent,
   Link,
   Outlet,
-  createRootRoute,
-  HeadContent,
   Scripts,
+  createRootRoute,
 } from '@tanstack/react-router'
 import {
   ClerkProvider,
