@@ -1,6 +1,7 @@
 // @ts-expect-error
 import tsrGetManifest from 'tsr:routes-manifest'
 import { getManifest } from 'vinxi/manifest'
+import { invariant } from '@tanstack/react-router'
 import type { Manifest } from '@tanstack/react-router'
 
 function sanitizeBase(base: string) {
@@ -44,14 +45,21 @@ window.__vite_plugin_react_preamble_installed__ = true`,
   // Get the entry for the client from vinxi
   const vinxiClientManifest = getManifest('client')
 
+  const importPath =
+    vinxiClientManifest.inputs[vinxiClientManifest.handler]?.output.path
+  if (!importPath) {
+    invariant(importPath, 'Could not find client entry in vinxi manifest')
+  }
+
+  const initScript = `import("${importPath}")`
   rootRoute.assets.push({
     tag: 'script',
     attrs: {
-      src: vinxiClientManifest.inputs[vinxiClientManifest.handler]?.output.path,
       type: 'module',
       suppressHydrationWarning: true,
       async: true,
     },
+    children: initScript,
   })
 
   return routerManifest

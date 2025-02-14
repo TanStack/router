@@ -88,6 +88,7 @@ export interface RouteMatch<
   meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
   links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
   scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
+  headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption

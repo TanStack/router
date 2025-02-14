@@ -292,7 +292,7 @@ describe('route.head', () => {
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
 
-    const scriptsState = router.state.matches.map((m) => m.scripts)
+    const scriptsState = router.state.matches.map((m) => m.headScripts)
     expect(scriptsState).toEqual([
       [{ src: 'root.js' }, { src: 'root2.js' }],
       [{ src: 'index.js' }],
@@ -322,7 +322,7 @@ describe('route.head', () => {
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
 
-    const scriptsState = router.state.matches.map((m) => m.scripts)
+    const scriptsState = router.state.matches.map((m) => m.headScripts)
     expect(scriptsState).toEqual([
       [{ src: 'root.js' }, { src: 'root2.js' }],
       [{ src: 'index.js' }],

@@ -1,5 +1,4 @@
 /// <reference types="vinxi/types/client" />
-export { Asset } from './Asset'
 export {
   createIsomorphicFn,
   type IsomorphicFn,

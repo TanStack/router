@@ -1,5 +1,4 @@
-/* eslint-disable @eslint-react/dom/no-dangerously-set-innerhtml */
-import type { RouterManagedTag } from '@tanstack/react-router'
+import type { RouterManagedTag } from '@tanstack/router-core'
 
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
   switch (tag) {

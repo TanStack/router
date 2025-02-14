@@ -198,9 +198,8 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // app/routes/__root.tsx
-import { createRootRoute } from '@tanstack/react-router'
+import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
 import { Outlet } from '@tanstack/react-router'
-import { Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 
 export const Route = createRootRoute({
@@ -231,7 +230,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html>
       <head>
-        <Meta />
+        <HeadContent />
       </head>
       <body>
         {children}

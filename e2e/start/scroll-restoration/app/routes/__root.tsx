@@ -4,8 +4,9 @@ import {
   Outlet,
   createRootRoute,
   linkOptions,
+  HeadContent,
+  Scripts,
 } from '@tanstack/react-router'
-import { Meta, Scripts } from '@tanstack/start'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -73,7 +74,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html>
       <head>
-        <Meta />
+        <HeadContent />
       </head>
       <body>
         <Nav type="header" />
