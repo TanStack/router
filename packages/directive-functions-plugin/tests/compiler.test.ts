@@ -710,4 +710,53 @@ describe('server function compilation', () => {
       export { serverFnConstWithImport_1, serverFnNamedWithImport_1 };"
     `)
   })
+  test('async function with anonymous default export', () => {
+    const code = `
+      async function bytesSignupServerFn({ email }: { email: string }) {
+        'use server'
+
+        return 'test'
+      }
+
+      export default function () {
+        return null;
+      }
+
+    `
+
+    const client = compileDirectives({ ...clientConfig, code })
+    const ssr = compileDirectives({ ...ssrConfig, code })
+    const server = compileDirectives({
+      ...serverConfig,
+      code,
+      filename:
+        ssr.directiveFnsById[Object.keys(ssr.directiveFnsById)[0]!]!
+          .extractedFilename,
+    })
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "export default function () {
+        return null;
+      }"
+    `)
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "export default function () {
+        return null;
+      }"
+    `)
+    expect(server.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createServerRpc } from "my-rpc-lib-server";
+      const bytesSignupServerFn_1 = createServerRpc("test_ts--bytesSignupServerFn_1", async function ({
+        email
+      }: {
+        email: string;
+      }) {
+        return 'test';
+      });
+      export default function () {
+        return null;
+      }
+      export { bytesSignupServerFn_1 };"
+    `)
+  })
 })
