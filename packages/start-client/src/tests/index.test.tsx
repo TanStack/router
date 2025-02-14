@@ -59,29 +59,19 @@ describe('ssr scripts', () => {
 
     await router.load()
 
-    expect(router.state.matches.map((d) => d.scripts).flat(1)).toEqual([
+    expect(router.state.matches.map((d) => d.headScripts).flat(1)).toEqual([
       { src: 'script.js' },
       { src: 'script2.js' },
       { src: 'script3.js' },
     ])
-
-    const { container } = render(<RouterProvider router={router} />)
-
-    expect(container.innerHTML).toEqual(
-      `<script src="script.js"></script><script src="script2.js"></script><script src="script3.js"></script>`,
-    )
   })
 
   test('excludes `undefined` script values', async () => {
     const rootRoute = createRootRoute({
-      head: () => {
-        return {
-          scripts: [
-            { src: 'script.js' },
-            undefined, // 'script2.js' opted out by certain conditions, such as `NODE_ENV=production`.
-          ],
-        }
-      },
+      scripts: () => [
+        { src: 'script.js' },
+        undefined, // 'script2.js' opted out by certain conditions, such as `NODE_ENV=production`.
+      ],
       component: () => {
         return <Scripts />
       },
@@ -90,11 +80,7 @@ describe('ssr scripts', () => {
     const indexRoute = createRoute({
       path: '/',
       getParentRoute: () => rootRoute,
-      head: () => {
-        return {
-          scripts: [{ src: 'script3.js' }],
-        }
-      },
+      scripts: () => [{ src: 'script3.js' }],
     })
 
     const router = createRouter({
