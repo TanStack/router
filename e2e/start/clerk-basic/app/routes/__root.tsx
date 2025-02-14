@@ -1,5 +1,11 @@
 /// <reference types="vite/client" />
-import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+} from '@tanstack/react-router'
 import {
   ClerkProvider,
   SignInButton,
@@ -8,7 +14,7 @@ import {
   UserButton,
 } from '@clerk/tanstack-start'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { HeadContent, Scripts, createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/start'
 import * as React from 'react'
 import { getAuth } from '@clerk/tanstack-start/server'
 import { getWebRequest } from '@tanstack/start/server'

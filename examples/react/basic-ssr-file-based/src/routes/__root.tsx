@@ -3,8 +3,9 @@ import {
   Link,
   Outlet,
   createRootRouteWithContext,
+  HeadContent,
+  Scripts,
 } from '@tanstack/react-router'
-import { HeadContent, Scripts } from '@tanstack/start'
 import type { RouterContext } from '../routerContext'
 
 export const Route = createRootRouteWithContext<RouterContext>()({

@@ -4,8 +4,9 @@ import {
   Outlet,
   createRootRoute,
   linkOptions,
+  HeadContent,
+  Scripts,
 } from '@tanstack/react-router'
-import { HeadContent, Scripts } from '@tanstack/start'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'

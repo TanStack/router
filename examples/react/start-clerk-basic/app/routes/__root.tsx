@@ -2,13 +2,15 @@
 import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import {
   ClerkProvider,
+  HeadContent,
+  Scripts,
   SignInButton,
   SignedIn,
   SignedOut,
   UserButton,
 } from '@clerk/tanstack-start'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { HeadContent, Scripts, createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/start'
 import * as React from 'react'
 import { getAuth } from '@clerk/tanstack-start/server'
 import { getWebRequest } from '@tanstack/start/server'

@@ -1,12 +1,13 @@
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools/production'
 import {
+  HeadContent,
   Link,
   Outlet,
+  Scripts,
   createRootRouteWithContext,
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { HeadContent, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import { Toaster } from 'react-hot-toast'
 import type { QueryClient } from '@tanstack/react-query'

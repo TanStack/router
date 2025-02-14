@@ -100,8 +100,12 @@ Because it is **always rendered**, it is the perfect place to construct your app
 
 ```tsx
 // app/routes/__root.tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { HeadContent, Scripts } from '@tanstack/start'
+import {
+  Outlet,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+} from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 export const Route = createRootRoute({

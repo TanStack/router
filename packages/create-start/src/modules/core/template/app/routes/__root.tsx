@@ -1,7 +1,11 @@
 // @ts-nocheck
 
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { HeadContent, Scripts } from '@tanstack/start'
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 export const Route = createRootRoute({

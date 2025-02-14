@@ -1,6 +1,10 @@
 // app/routes/__root.tsx
-import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
-import { HeadContent, Scripts } from '@tanstack/start'
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+} from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import appCss from '~/styles.css?url'

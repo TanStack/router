@@ -9,8 +9,8 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
-
-import { HeadContent, Scripts } from '../index'
+import { Scripts } from '../src/Scripts'
+import { HeadContent } from '../src'
 
 describe('ssr scripts', () => {
   test('it works', async () => {
