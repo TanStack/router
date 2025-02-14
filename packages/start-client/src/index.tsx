@@ -64,6 +64,7 @@ export {
 export { serverOnly, clientOnly } from './envOnly'
 export { json } from './json'
 export { Meta } from './Meta'
+export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'
 export { StartClient } from './StartClient'
 export { mergeHeaders } from './headers'

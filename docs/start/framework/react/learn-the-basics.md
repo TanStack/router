@@ -101,7 +101,7 @@ Because it is **always rendered**, it is the perfect place to construct your app
 ```tsx
 // app/routes/__root.tsx
 import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { Meta, Scripts } from '@tanstack/start'
+import { HeadContent, Scripts } from '@tanstack/start'
 import type { ReactNode } from 'react'
 
 export const Route = createRootRoute({
@@ -134,7 +134,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html>
       <head>
-        <Meta />
+        <HeadContent />
       </head>
       <body>
         {children}

@@ -17,7 +17,7 @@ The correct property order is as follows
 - `context`
 - `beforeLoad`
 - `loader`
-- `onEnter`, `onStay`, `onLeave`, `meta`, `links`, `scripts`, `headers`, `remountDeps`
+- `onEnter`, `onStay`, `onLeave`, `head`, `scripts`, `headers`, `remountDeps`
 
 All other properties are insensitive to the order as they do not depend on type inference.
 

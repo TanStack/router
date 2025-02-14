@@ -1311,6 +1311,7 @@ export class Router<
           preload: false,
           links: undefined,
           scripts: undefined,
+          headScripts: undefined,
           meta: undefined,
           staticData: route.options.staticData || {},
           loadPromise: createControlledPromise(),
@@ -1378,16 +1379,17 @@ export class Router<
         match.headers = route.options.headers?.({
           loaderData: match.loaderData,
         })
-        const headFnContent = route.options.head?.({
+        const assetContext = {
           matches,
           match,
           params: match.params,
           loaderData: match.loaderData,
-        })
-
+        }
+        const headFnContent = route.options.head?.(assetContext)
         match.links = headFnContent?.links
-        match.scripts = headFnContent?.scripts
+        match.headScripts = headFnContent?.scripts
         match.meta = headFnContent?.meta
+        match.scripts = route.options.scripts?.(assetContext)
       }
     })
 
@@ -2557,16 +2559,19 @@ export class Router<
 
                           await potentialPendingMinPromise()
 
-                          const headFnContent = route.options.head?.({
+                          const assetContext = {
                             matches,
                             match: this.getMatch(matchId)!,
                             params: this.getMatch(matchId)!.params,
                             loaderData,
-                          })
+                          }
+                          const headFnContent =
+                            route.options.head?.(assetContext)
                           const meta = headFnContent?.meta
                           const links = headFnContent?.links
-                          const scripts = headFnContent?.scripts
+                          const headScripts = headFnContent?.scripts
 
+                          const scripts = route.options.scripts?.(assetContext)
                           const headers = route.options.headers?.({
                             loaderData,
                           })
@@ -2580,8 +2585,9 @@ export class Router<
                             loaderData,
                             meta,
                             links,
-                            scripts,
+                            headScripts,
                             headers,
+                            scripts,
                           }))
                         } catch (e) {
                           let error = e

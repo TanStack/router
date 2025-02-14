@@ -168,18 +168,20 @@ export function hydrate(router: AnyRouter) {
       })
     }
 
-    const headFnContent = route.options.head?.({
+    const assetContext = {
       matches: router.state.matches,
       match,
       params: match.params,
       loaderData: match.loaderData,
-    })
+    }
+    const headFnContent = route.options.head?.(assetContext)
 
-    Object.assign(match, {
-      meta: headFnContent?.meta,
-      links: headFnContent?.links,
-      scripts: headFnContent?.scripts,
-    })
+    const scripts = route.options.scripts?.(assetContext)
+
+    match.meta = headFnContent?.meta
+    match.links = headFnContent?.links
+    match.headScripts = headFnContent?.scripts
+    match.scripts = scripts
 
     return match
   })

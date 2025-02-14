@@ -10,7 +10,7 @@ import {
   createRouter,
 } from '@tanstack/react-router'
 
-import { Meta, Scripts } from '../index'
+import { HeadContent, Scripts } from '../index'
 
 describe('ssr scripts', () => {
   test('it works', async () => {
@@ -122,8 +122,8 @@ describe('ssr scripts', () => {
   })
 })
 
-describe('ssr meta', () => {
-  test('derives title, dedupes meta, and allows non-loader meta', async () => {
+describe('ssr HeadContent', () => {
+  test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {
     const rootRoute = createRootRoute({
       loader: () =>
         new Promise((r) => setTimeout(r, 1)).then(() => ({
@@ -155,7 +155,7 @@ describe('ssr meta', () => {
         }
       },
       component: () => {
-        return <Meta />
+        return <HeadContent />
       },
     })
 
