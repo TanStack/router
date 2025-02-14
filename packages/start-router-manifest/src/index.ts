@@ -21,6 +21,7 @@ export function getFullRouterManifest() {
 
   rootRoute.assets = rootRoute.assets || []
 
+  let script = ''
   // Always fake that HMR is ready
   if (process.env.NODE_ENV === 'development') {
     const CLIENT_BASE = sanitizeBase(process.env.TSS_CLIENT_BASE || '')
@@ -30,16 +31,11 @@ export function getFullRouterManifest() {
         'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
       )
     }
-
-    rootRoute.assets.push({
-      tag: 'script',
-      attrs: { type: 'module' },
-      children: `import RefreshRuntime from "/${CLIENT_BASE}/@react-refresh";
-RefreshRuntime.injectIntoGlobalHook(window)
-window.$RefreshReg$ = () => {}
-window.$RefreshSig$ = () => (type) => type
-window.__vite_plugin_react_preamble_installed__ = true`,
-    })
+    script = `import RefreshRuntime from "/${CLIENT_BASE}/@react-refresh";
+    RefreshRuntime.injectIntoGlobalHook(window)
+    window.$RefreshReg$ = () => {}
+    window.$RefreshSig$ = () => (type) => type
+    window.__vite_plugin_react_preamble_installed__ = true;`
   }
 
   // Get the entry for the client from vinxi
@@ -51,7 +47,6 @@ window.__vite_plugin_react_preamble_installed__ = true`,
     invariant(importPath, 'Could not find client entry in vinxi manifest')
   }
 
-  const initScript = `import("${importPath}")`
   rootRoute.assets.push({
     tag: 'script',
     attrs: {
@@ -59,7 +54,7 @@ window.__vite_plugin_react_preamble_installed__ = true`,
       suppressHydrationWarning: true,
       async: true,
     },
-    children: initScript,
+    children: `${script}import("${importPath}")`,
   })
 
   return routerManifest
