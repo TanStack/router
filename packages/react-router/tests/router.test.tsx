@@ -620,6 +620,16 @@ describe('encoding: URL path segment', () => {
       type: 'not encoded',
     },
     {
+      input: '/path-segment/100%25',
+      output: '/path-segment/100%25',
+      type: 'not encoded',
+    },
+    {
+      input: '/path-segment/100%25%25',
+      output: '/path-segment/100%25%25',
+      type: 'not encoded',
+    },
+    {
       input: '/path-segment/%F0%9F%9A%80',
       output: '/path-segment/🚀',
       type: 'encoded',
@@ -627,6 +637,22 @@ describe('encoding: URL path segment', () => {
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
       output: '/path-segment/🚀to%2Fthe%2Fmoon',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
+      output: '/path-segment/%25🚀to%2Fthe%2Fmoon',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
+      output: '/path-segment/🚀to%2Fthe%2Fmoon%25',
+      type: 'encoded',
+    },
+    {
+      input:
+        '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
+      output: '/path-segment/🚀to%2Fthe%2Fmoon%25🚀to%2Fthe%2Fmoon',
       type: 'encoded',
     },
     {
