@@ -1,9 +1,12 @@
 packages:
   - 'packages/*'
+  - '!packages/solid-router-copy'
   - 'examples/react/*'
+  - 'examples/solid/*'
   - 'examples/react/router-monorepo-react-query/packages/*'
   - 'examples/react/router-monorepo-simple/packages/*'
   - 'examples/react/router-monorepo-simple-lazy/packages/*'
   - 'e2e/e2e-utils'
   - 'e2e/react-router/*'
+  - 'e2e/solid-router/*'
   - 'e2e/start/*'
