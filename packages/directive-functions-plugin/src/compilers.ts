@@ -1,7 +1,10 @@
 import * as babel from '@babel/core'
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
+import {
+  deadCodeElimination,
+  findReferencedIdentifiers,
+} from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
@@ -51,6 +54,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
 
   const ast = parseAst(opts)
+  const refIdents = findReferencedIdentifiers(ast)
   const directiveFnsById = findDirectives(ast, {
     ...opts,
     directiveSplitParam,
@@ -99,7 +103,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
     )
   }
 
-  deadCodeElimination(ast)
+  deadCodeElimination(ast, refIdents)
 
   const compiledResult = generateFromAst(ast, {
     sourceMaps: true,

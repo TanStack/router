@@ -7,6 +7,7 @@ import { AllowServerFnReturnNull } from './-server-fns/allow-fn-return-null'
 import { SerializeFormDataFnCall } from './-server-fns/serialize-formdata-fn-call'
 import { ResponseHeaders, getTestHeaders } from './-server-fns/response-headers'
 import { SubmitPostFormDataFn } from './-server-fns/submit-post-formdata-fn'
+import { DeadCodeFnCall } from './-server-fns/dead-code-preserve'
 
 export const Route = createFileRoute('/server-fns')({
   component: RouteComponent,
@@ -27,6 +28,7 @@ function RouteComponent() {
       <SerializeFormDataFnCall />
       <ResponseHeaders initialTestHeaders={testHeaders} />
       <SubmitPostFormDataFn />
+      <DeadCodeFnCall />
     </>
   )
 }

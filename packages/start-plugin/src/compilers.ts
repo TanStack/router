@@ -1,7 +1,10 @@
 import * as babel from '@babel/core'
 import * as t from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
+import {
+  deadCodeElimination,
+  findReferencedIdentifiers,
+} from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
@@ -29,6 +32,10 @@ type IdentifierConfig = {
 
 export function compileStartOutput(opts: CompileOptions): GeneratorResult {
   const ast = parseAst(opts)
+
+  const doDce = opts.dce ?? true
+  // find referenced identifiers *before* we transform anything
+  const refIdents = doDce ? findReferencedIdentifiers(ast) : undefined
 
   babel.traverse(ast, {
     Program: {
@@ -167,8 +174,8 @@ export function compileStartOutput(opts: CompileOptions): GeneratorResult {
     },
   })
 
-  if (opts.dce ?? true) {
-    deadCodeElimination(ast)
+  if (doDce) {
+    deadCodeElimination(ast, refIdents)
   }
 
   return generateFromAst(ast, {

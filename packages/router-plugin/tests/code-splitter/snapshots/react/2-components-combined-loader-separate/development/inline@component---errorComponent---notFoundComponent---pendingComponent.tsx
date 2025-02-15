@@ -1,3 +1,4 @@
+import * as React from 'react';
 import * as styles from '../style.css';
 import { TEST_DATA } from '../test.const';
 const Button = (props: {

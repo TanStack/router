@@ -1,12 +1,14 @@
 import * as React from 'react';
 import { CgCornerUpLeft, CgSpinner } from 'react-icons/cg';
-import { FaDiscord, FaGithub, FaTshirt, FaTwitter } from 'react-icons/fa';
+import { FaBolt, FaBook, FaCheckCircle, FaCogs, FaDiscord, FaGithub, FaTshirt, FaTwitter } from 'react-icons/fa';
 import { Await, Link, getRouteApi } from '@tanstack/react-router';
 import { Carbon } from '~/components/Carbon';
 import { Footer } from '~/components/Footer';
+import { VscPreview, VscWand } from 'react-icons/vsc';
 import { TbHeartHandshake } from 'react-icons/tb';
 import SponsorPack from '~/components/SponsorPack';
 import { startProject } from '~/projects/start';
+import { Framework, getBranch } from '~/projects';
 const menu = [{
   label: <div className="flex items-center gap-2">
         <CgCornerUpLeft className="text-lg" /> TanStack
@@ -57,7 +59,9 @@ export default function VersionIndex() {
   const {
     version
   } = Route.useParams();
-  const [, setIsDark] = React.useState(true);
+  const branch = getBranch(startProject, version);
+  const [framework, setFramework] = React.useState<Framework>('react');
+  const [isDark, setIsDark] = React.useState(true);
   React.useEffect(() => {
     setIsDark(window.matchMedia?.(`(prefers-color-scheme: dark)`).matches);
   }, []);

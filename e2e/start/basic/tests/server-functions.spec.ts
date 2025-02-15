@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import * as fs from 'node:fs'
 
 test('invoking a server function with custom response status code', async ({
   page,
@@ -234,4 +235,20 @@ test('Direct POST submitting FormData to a Server function returns the correct m
 
   const result = await page.innerText('body')
   expect(result).toBe(expected)
+})
+
+test("server function's dead code is preserved if already there", async ({
+  page,
+}) => {
+  await page.goto('/server-fns')
+
+  await page.waitForLoadState('networkidle')
+  await page.getByTestId('test-dead-code-fn-call-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('dead-code-fn-call-response')).toContainText(
+    '1',
+  )
+
+  await fs.promises.rm('count-effect.txt')
 })

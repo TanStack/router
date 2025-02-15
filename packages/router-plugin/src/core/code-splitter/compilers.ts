@@ -1,7 +1,10 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
 import * as template from '@babel/template'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
+import {
+  deadCodeElimination,
+  findReferencedIdentifiers,
+} from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { tsrSplit } from '../constants'
 import { createIdentifier } from './path-ids'
@@ -117,6 +120,8 @@ export function compileCodeSplitReferenceRoute(
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
+
+  const refIdents = findReferencedIdentifiers(ast)
 
   function findIndexForSplitNode(str: string) {
     return opts.codeSplitGroupings.findIndex((group) =>
@@ -389,7 +394,7 @@ export function compileCodeSplitReferenceRoute(
     },
   })
 
-  deadCodeElimination(ast)
+  deadCodeElimination(ast, refIdents)
 
   return generateFromAst(ast, {
     sourceMaps: true,
@@ -404,6 +409,7 @@ export function compileCodeSplitVirtualRoute(
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
+  const refIdents = findReferencedIdentifiers(ast)
 
   const intendedSplitNodes = new Set(opts.splitTargets)
 
@@ -675,7 +681,7 @@ export function compileCodeSplitVirtualRoute(
     },
   })
 
-  deadCodeElimination(ast)
+  deadCodeElimination(ast, refIdents)
 
   // if there are exported identifiers, then we need to add a warning
   // to the file to let the user know that the exported identifiers

@@ -1,0 +1,1 @@
+import { Route } from "imported-default-component-destructured-loader.tsx";

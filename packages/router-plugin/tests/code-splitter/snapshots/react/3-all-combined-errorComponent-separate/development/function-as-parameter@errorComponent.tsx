@@ -1,6 +1,7 @@
 import * as React from 'react';
 // @ts-expect-error
 import { useMemo } from 'tan-react';
+const useUsedVar = 'i-am-unused';
 const ReactUseMemoCall1 = React.useMemo(function performAction() {
   return 'true';
 }, []);

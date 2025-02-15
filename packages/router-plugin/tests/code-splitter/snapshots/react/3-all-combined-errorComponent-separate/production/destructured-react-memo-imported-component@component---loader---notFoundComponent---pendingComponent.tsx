@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { importedLoader } from '../../shared/imported';
+import { Route } from "destructured-react-memo-imported-component.tsx";
 function Component() {
   return <div>Component</div>;
 }
