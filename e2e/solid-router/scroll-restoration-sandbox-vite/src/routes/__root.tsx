@@ -4,6 +4,7 @@ import {
   createRootRoute,
   linkOptions,
 } from '@tanstack/solid-router'
+import { Dynamic } from 'solid-js/web'
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 export const Route = createRootRoute({
@@ -27,7 +28,7 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
   const Elem = type === 'header' ? 'header' : 'footer'
   const prefix = type === 'header' ? 'Head' : 'Foot'
   return (
-    <Elem class="p-2 flex gap-2 text-lg">
+    <Dynamic component={Elem} class="p-2 flex gap-2 text-lg">
       <Link
         to="/"
         activeProps={{
@@ -55,6 +56,6 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
           {prefix}-{options.to}
         </Link>
       ))}
-    </Elem>
+    </Dynamic>
   )
 }

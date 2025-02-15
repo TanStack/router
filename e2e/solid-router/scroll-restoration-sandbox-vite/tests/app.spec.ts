@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { linkOptions } from '@tanstack/solid-router'
 
 test('Smoke - Renders home', async ({ page }) => {
   await page.goto('/')
@@ -10,11 +9,11 @@ test('Smoke - Renders home', async ({ page }) => {
 
 // Test for scroll related stuff
 ;[
-  linkOptions({ to: '/normal-page' }),
-  linkOptions({ to: '/lazy-page' }),
-  linkOptions({ to: '/virtual-page' }),
-  linkOptions({ to: '/lazy-with-loader-page' }),
-  linkOptions({ to: '/page-with-search', search: { where: 'footer' } }),
+  { to: '/normal-page' },
+  { to: '/lazy-page' },
+  { to: '/virtual-page' },
+  { to: '/lazy-with-loader-page' },
+  { to: '/page-with-search', search: { where: 'footer' } },
 ].forEach((options) => {
   test(`On navigate to ${options.to} (from the header), scroll should be at top`, async ({
     page,

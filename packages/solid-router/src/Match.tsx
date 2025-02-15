@@ -201,13 +201,13 @@ export const MatchInner = (props: { matchId: string }): any => {
   // useChangedDiff(match)
   const match = () => matchState().match
 
-  const out = Solid.createMemo(() => {
+  const out = () => {
     const Comp = route().options.component ?? router.options.defaultComponent
     if (Comp) {
       return <Comp />
     }
     return <Outlet />
-  })
+  }
 
   return (
     <Solid.Switch>

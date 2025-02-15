@@ -4,7 +4,12 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/solid-router'
-import { createRenderEffect, createSignal } from 'solid-js'
+import {
+  createEffect,
+  createRenderEffect,
+  createSignal,
+  onCleanup,
+} from 'solid-js'
 
 export const Route = createFileRoute('/anchor')({
   component: AnchorComponent,
@@ -35,10 +40,10 @@ function AnchorSection({ id, title }: { id: string; title: string }) {
   const [hasShown, setHasShown] = createSignal(false)
   let elementRef: HTMLHeadingElement | null = null
 
-  createRenderEffect(() => {
+  createEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!hasShown && entry.isIntersecting) {
+        if (!hasShown() && entry.isIntersecting) {
           setHasShown(true)
         }
       },
@@ -50,12 +55,12 @@ function AnchorSection({ id, title }: { id: string; title: string }) {
       observer.observe(currentRef)
     }
 
-    return () => {
+    onCleanup(() => {
       if (currentRef) {
         observer.unobserve(currentRef)
       }
-    }
-  }, [hasShown])
+    })
+  })
 
   return (
     <div id={id} class="p-2 min-h-dvh">
