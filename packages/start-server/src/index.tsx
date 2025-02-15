@@ -68,7 +68,13 @@ import {
   writeEarlyHints as _writeEarlyHints,
 } from 'h3'
 import { getContext as getUnctxContext } from 'unctx'
-import type { _RequestMiddleware, _ResponseMiddleware } from 'h3'
+import type {
+  Encoding,
+  HTTPHeaderName,
+  InferEventInput,
+  _RequestMiddleware,
+  _ResponseMiddleware,
+} from 'h3'
 
 export { StartServer } from './StartServer'
 export { createStartHandler } from './createStartHandler'
@@ -227,7 +233,9 @@ function getHTTPEvent() {
 
 export const HTTPEventSymbol = Symbol('$HTTPEvent')
 
-export function isEvent(obj: any) {
+export function isEvent(
+  obj: any,
+): obj is H3Event | { [HTTPEventSymbol]: H3Event } {
   return (
     typeof obj === 'object' &&
     (obj instanceof H3Event ||
@@ -237,53 +245,93 @@ export function isEvent(obj: any) {
   // Implement logic to check if obj is an H3Event
 }
 
-type WrapFunction<TFn extends (...args: Array<any>) => any> = (
-  ...args: Parameters<TFn> extends [H3Event, ...infer TArgs]
-    ? TArgs | Parameters<TFn>
-    : Parameters<TFn>
-) => ReturnType<TFn>
+type Tail<T> = T extends [any, ...infer U] ? U : never
+
+type PrependOverload<
+  TOriginal extends (...args: Array<any>) => any,
+  TOverload extends (...args: Array<any>) => any,
+> = TOverload & TOriginal
+
+// add an overload to the function without the event argument
+type WrapFunction<TFn extends (...args: Array<any>) => any> = PrependOverload<
+  TFn,
+  (
+    ...args: Parameters<TFn> extends [H3Event, ...infer TArgs]
+      ? TArgs
+      : Parameters<TFn>
+  ) => ReturnType<TFn>
+>
 
 function createWrapperFunction<TFn extends (...args: Array<any>) => any>(
   h3Function: TFn,
 ): WrapFunction<TFn> {
   return function (...args: Array<any>) {
-    let event = args[0]
+    const event = args[0]
     if (!isEvent(event)) {
       if (!(globalThis as any).app.config.server.experimental?.asyncContext) {
         throw new Error(
           'AsyncLocalStorage was not enabled. Use the `server.experimental.asyncContext: true` option in your app configuration to enable it. Or, pass the instance of HTTPEvent that you have as the first argument to the function.',
         )
       }
-      event = getHTTPEvent()
-      if (!event) {
-        throw new Error(
-          `No HTTPEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.`,
-        )
-      }
-      args.unshift(event)
+      args.unshift(getHTTPEvent())
     } else {
       args[0] =
-        event instanceof H3Event || event.__is_event__
+        event instanceof H3Event || (event as any).__is_event__
           ? event
           : event[HTTPEventSymbol]
     }
 
     return (h3Function as any)(...args)
-  }
+  } as any
 }
 
 // Creating wrappers for each utility and exporting them with their original names
-export const readRawBody = createWrapperFunction(_readRawBody)
-export const readBody = createWrapperFunction(_readBody)
-export const getQuery = createWrapperFunction(_getQuery)
+type WrappedReadRawBody = <TEncoding extends Encoding = 'utf8'>(
+  ...args: Tail<Parameters<typeof _readRawBody<TEncoding>>>
+) => ReturnType<typeof _readRawBody<TEncoding>>
+export const readRawBody: PrependOverload<
+  typeof _readRawBody,
+  WrappedReadRawBody
+> = createWrapperFunction(_readRawBody)
+type WrappedReadBody = <T, TEventInput = InferEventInput<'body', H3Event, T>>(
+  ...args: Tail<Parameters<typeof _readBody<T, H3Event, TEventInput>>>
+) => ReturnType<typeof _readBody<T, H3Event, TEventInput>>
+export const readBody: PrependOverload<typeof _readBody, WrappedReadBody> =
+  createWrapperFunction(_readBody)
+type WrappedGetQuery = <
+  T,
+  TEventInput = Exclude<InferEventInput<'query', H3Event, T>, undefined>,
+>(
+  ...args: Tail<Parameters<typeof _getQuery<T, H3Event, TEventInput>>>
+) => ReturnType<typeof _getQuery<T, H3Event, TEventInput>>
+export const getQuery: PrependOverload<typeof _getQuery, WrappedGetQuery> =
+  createWrapperFunction(_getQuery)
 export const isMethod = createWrapperFunction(_isMethod)
 export const isPreflightRequest = createWrapperFunction(_isPreflightRequest)
-export const getValidatedQuery = createWrapperFunction(_getValidatedQuery)
+type WrappedGetValidatedQuery = <
+  T,
+  TEventInput = InferEventInput<'query', H3Event, T>,
+>(
+  ...args: Tail<Parameters<typeof _getValidatedQuery<T, H3Event, TEventInput>>>
+) => ReturnType<typeof _getValidatedQuery<T, H3Event, TEventInput>>
+export const getValidatedQuery: PrependOverload<
+  typeof _getValidatedQuery,
+  WrappedGetValidatedQuery
+> = createWrapperFunction(_getValidatedQuery)
 export const getRouterParams = createWrapperFunction(_getRouterParams)
 export const getRouterParam = createWrapperFunction(_getRouterParam)
-export const getValidatedRouterParams = createWrapperFunction(
-  _getValidatedRouterParams,
-)
+type WrappedGetValidatedRouterParams = <
+  T,
+  TEventInput = InferEventInput<'routerParams', H3Event, T>,
+>(
+  ...args: Tail<
+    Parameters<typeof _getValidatedRouterParams<T, H3Event, TEventInput>>
+  >
+) => ReturnType<typeof _getValidatedRouterParams<T, H3Event, TEventInput>>
+export const getValidatedRouterParams: PrependOverload<
+  typeof _getValidatedRouterParams,
+  WrappedGetValidatedRouterParams
+> = createWrapperFunction(_getValidatedRouterParams)
 export const assertMethod = createWrapperFunction(_assertMethod)
 export const getRequestHeaders = createWrapperFunction(_getRequestHeaders)
 export const getRequestHeader = createWrapperFunction(_getRequestHeader)
@@ -301,11 +349,23 @@ export const getResponseStatusText = createWrapperFunction(
 export const getResponseHeaders = createWrapperFunction(_getResponseHeaders)
 export const getResponseHeader = createWrapperFunction(_getResponseHeader)
 export const setResponseHeaders = createWrapperFunction(_setResponseHeaders)
-export const setResponseHeader = createWrapperFunction(_setResponseHeader)
+type WrappedSetResponseHeader = <T extends HTTPHeaderName>(
+  ...args: Tail<Parameters<typeof _setResponseHeader<T>>>
+) => ReturnType<typeof _setResponseHeader<T>>
+export const setResponseHeader: PrependOverload<
+  typeof _setResponseHeader,
+  WrappedSetResponseHeader
+> = createWrapperFunction(_setResponseHeader)
 export const appendResponseHeaders = createWrapperFunction(
   _appendResponseHeaders,
 )
-export const appendResponseHeader = createWrapperFunction(_appendResponseHeader)
+type WrappedAppendResponseHeader = <T extends HTTPHeaderName>(
+  ...args: Tail<Parameters<typeof _appendResponseHeader<T>>>
+) => ReturnType<typeof _appendResponseHeader<T>>
+export const appendResponseHeader: PrependOverload<
+  typeof _appendResponseHeader,
+  WrappedAppendResponseHeader
+> = createWrapperFunction(_appendResponseHeader)
 export const defaultContentType = createWrapperFunction(_defaultContentType)
 export const sendRedirect = createWrapperFunction(_sendRedirect)
 export const sendStream = createWrapperFunction(_sendStream)
@@ -313,7 +373,17 @@ export const writeEarlyHints = createWrapperFunction(_writeEarlyHints)
 export const sendError = createWrapperFunction(_sendError)
 export const sendProxy = createWrapperFunction(_sendProxy)
 export const proxyRequest = createWrapperFunction(_proxyRequest)
-export const fetchWithEvent = createWrapperFunction(_fetchWithEvent)
+type WrappedFetchWithEvent = <
+  T = unknown,
+  TResponse = any,
+  TFetch extends (req: RequestInfo | URL, opts?: any) => any = typeof fetch,
+>(
+  ...args: Tail<Parameters<typeof _fetchWithEvent<T, TResponse, TFetch>>>
+) => ReturnType<typeof _fetchWithEvent<T, TResponse, TFetch>>
+export const fetchWithEvent: PrependOverload<
+  typeof _fetchWithEvent,
+  WrappedFetchWithEvent
+> = createWrapperFunction(_fetchWithEvent)
 export const getProxyRequestHeaders = createWrapperFunction(
   _getProxyRequestHeaders,
 )
@@ -323,10 +393,37 @@ export const getCookie = createWrapperFunction(_getCookie)
 export const setCookie = createWrapperFunction(_setCookie)
 export const deleteCookie = createWrapperFunction(_deleteCookie)
 export const useBase = createWrapperFunction(_useBase)
-export const useSession = createWrapperFunction(_useSession)
-export const getSession = createWrapperFunction(_getSession)
-export const updateSession = createWrapperFunction(_updateSession)
-export const sealSession = createWrapperFunction(_sealSession)
+// not exported :(
+type SessionDataT = Record<string, any>
+type WrappedUseSession = <T extends SessionDataT>(
+  ...args: Tail<Parameters<typeof _useSession<T>>>
+) => ReturnType<typeof _useSession<T>>
+// we need to `as` these because the WrapFunction doesn't work for them
+// because they also accept CompatEvent instead of H3Event
+export const useSession = createWrapperFunction(_useSession) as PrependOverload<
+  typeof _useSession,
+  WrappedUseSession
+>
+type WrappedGetSession = <T extends SessionDataT>(
+  ...args: Tail<Parameters<typeof _getSession<T>>>
+) => ReturnType<typeof _getSession<T>>
+export const getSession = createWrapperFunction(_getSession) as PrependOverload<
+  typeof _getSession,
+  WrappedGetSession
+>
+type WrappedUpdateSession = <T extends SessionDataT>(
+  ...args: Tail<Parameters<typeof _updateSession<T>>>
+) => ReturnType<typeof _updateSession<T>>
+export const updateSession: PrependOverload<
+  typeof _updateSession,
+  WrappedUpdateSession
+> = createWrapperFunction(_updateSession)
+type WrappedSealSession = <T extends SessionDataT>(
+  ...args: Tail<Parameters<typeof _sealSession<T>>>
+) => ReturnType<typeof _sealSession<T>>
+export const sealSession = createWrapperFunction(
+  _sealSession,
+) as PrependOverload<typeof _sealSession, WrappedSealSession>
 export const unsealSession = createWrapperFunction(_unsealSession)
 export const clearSession = createWrapperFunction(_clearSession)
 export const handleCacheHeaders = createWrapperFunction(_handleCacheHeaders)
@@ -336,9 +433,19 @@ export const appendCorsPreflightHeaders = createWrapperFunction(
   _appendCorsPreflightHeaders,
 )
 export const sendWebResponse = createWrapperFunction(_sendWebResponse)
-export const appendHeader = createWrapperFunction(_appendHeader)
+type WrappedAppendHeader = <T extends HTTPHeaderName>(
+  ...args: Tail<Parameters<typeof _appendHeader<T>>>
+) => ReturnType<typeof _appendHeader<T>>
+export const appendHeader: PrependOverload<
+  typeof _appendHeader,
+  WrappedAppendHeader
+> = createWrapperFunction(_appendHeader)
 export const appendHeaders = createWrapperFunction(_appendHeaders)
-export const setHeader = createWrapperFunction(_setHeader)
+type WrappedSetHeader = <T extends HTTPHeaderName>(
+  ...args: Tail<Parameters<typeof _setHeader<T>>>
+) => ReturnType<typeof _setHeader<T>>
+export const setHeader: PrependOverload<typeof _setHeader, WrappedSetHeader> =
+  createWrapperFunction(_setHeader)
 export const setHeaders = createWrapperFunction(_setHeaders)
 export const getHeader = createWrapperFunction(_getHeader)
 export const getHeaders = createWrapperFunction(_getHeaders)
@@ -350,7 +457,16 @@ export const readFormData = createWrapperFunction(_readFormData)
 export const readMultipartFormData = createWrapperFunction(
   _readMultipartFormData,
 )
-export const readValidatedBody = createWrapperFunction(_readValidatedBody)
+type WrappedReadValidatedBody = <
+  T,
+  TEventInput = InferEventInput<'body', H3Event, T>,
+>(
+  ...args: Tail<Parameters<typeof _readValidatedBody<T, H3Event, TEventInput>>>
+) => ReturnType<typeof _readValidatedBody<T, H3Event, TEventInput>>
+export const readValidatedBody: PrependOverload<
+  typeof _readValidatedBody,
+  WrappedReadValidatedBody
+> = createWrapperFunction(_readValidatedBody)
 export const removeResponseHeader = createWrapperFunction(_removeResponseHeader)
 export const getContext = createWrapperFunction(_getContext)
 export const setContext = createWrapperFunction(_setContext)
@@ -374,7 +490,15 @@ function getNitroAsyncContext() {
 }
 
 export function getEvent() {
-  return (getNitroAsyncContext().use() as any).event
+  const event = (getNitroAsyncContext().use() as any).event as
+    | H3Event
+    | undefined
+  if (!event) {
+    throw new Error(
+      `No HTTPEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.`,
+    )
+  }
+  return event
 }
 
 export async function handleHTTPEvent(event: H3Event) {
