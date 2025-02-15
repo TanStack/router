@@ -20,8 +20,7 @@ TanStack Router is currently only compatible with React and ReactDOM. If you wou
 
 ### Requirements
 
-- React v18.x.x
-- ReactDOM v18.x.x
+- `react` and `react-dom`, either v18.x.x or v19.x.x
   - Note that `ReactDOM.createRoot` is required.
   - The legacy `.render()` function is not supported.
 - TypeScript >= v5.3.x (TypeScript is optional, but recommended)
