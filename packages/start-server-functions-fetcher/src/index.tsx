@@ -37,6 +37,12 @@ export async function serverFnFetcher(
 
     // If the method is GET, we need to move the payload to the query string
     if (first.method === 'GET') {
+      if (hasBinaryData(first.data)) {
+        throw new Error(
+          'Cannot send binary data to a GET server function. Please set the method of the server function to POST instead.',
+        )
+      }
+
       // If the method is GET, we need to move the payload to the query string
       const encodedPayload = encode({
         payload: startSerializer.stringify({
@@ -52,6 +58,10 @@ export async function serverFnFetcher(
           url += `?${encodedPayload}`
         }
       }
+    } else if (type === 'payload' && hasBinaryData(first.data)) {
+      throw new Error(
+        'Binary data cannot be sent within objects. Use FormData instead.',
+      )
     }
 
     if (url.includes('?')) {
@@ -146,4 +156,28 @@ async function handleResponseErrors(response: Response) {
   }
 
   return response
+}
+
+const hasBinaryData = (data: any): boolean => {
+  // If it's a file or blob, it's binary data
+  if (data instanceof File || data instanceof Blob) return true
+  if (data instanceof FormData) {
+    // Check if FormData contains any File objects
+    for (const value of data.values()) {
+      if (hasBinaryData(value)) return true
+    }
+  }
+  if (data instanceof Array) {
+    // Check if array contains any File objects (recursively)
+    for (const item of data) {
+      if (hasBinaryData(item)) return true
+    }
+  }
+  if (typeof data === 'object' && data !== null) {
+    // If it's an object, check if it contains any binary data (recursively)
+    for (const value of Object.values(data)) {
+      if (hasBinaryData(value)) return true
+    }
+  }
+  return false
 }
