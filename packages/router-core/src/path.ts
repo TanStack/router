@@ -183,7 +183,12 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
       return {
         type: 'pathname',
-        value: decodeURI(part),
+        value: part.includes('%25')
+          ? part
+              .split('%25')
+              .map((segment) => decodeURI(segment))
+              .join('%25')
+          : decodeURI(part),
       }
     }),
   )
