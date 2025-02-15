@@ -62,18 +62,6 @@ export type AssignAllClientContextAfterNext<
       Assign<TClientContext, TSendContext>
     >
 
-export type AssignAllClientContextAfterServer<
-  TMiddlewares,
-  TClientContext = undefined,
-  TClientSendContext = undefined,
-  TClientAfterContext = undefined,
-> = unknown extends TClientContext
-  ? Assign<Assign<TClientContext, TClientSendContext>, TClientAfterContext>
-  : Assign<
-      AssignAllMiddleware<TMiddlewares, 'allClientContextAfterServer'>,
-      Assign<Assign<TClientContext, TClientSendContext>, TClientAfterContext>
-    >
-
 /**
  * Recursively resolve the server context type produced by a sequence of middleware
  */
@@ -157,13 +145,6 @@ export interface MiddlewareOptions<
     TMiddlewares,
     TValidator,
     TServerContext,
-    unknown,
-    unknown
-  >
-  clientAfter?: MiddlewareClientAfterFn<
-    TMiddlewares,
-    TValidator,
-    TClientContext,
     unknown,
     unknown
   >
@@ -279,86 +260,6 @@ export type MiddlewareClientFnResult<
   | Promise<ClientResultWithContext<TMiddlewares, TSendContext, TClientContext>>
   | ClientResultWithContext<TMiddlewares, TSendContext, TClientContext>
 
-export type MiddlewareClientAfterNextFn<
-  TMiddlewares,
-  TClientContext,
-  TClientSendContext,
-> = <TNewClientAfterContext = undefined>(ctx?: {
-  context?: TNewClientAfterContext
-  sendContext?: never
-  headers?: HeadersInit
-}) => Promise<
-  ClientAfterResultWithContext<
-    TMiddlewares,
-    TClientContext,
-    TClientSendContext,
-    TNewClientAfterContext
-  >
->
-
-export interface MiddlewareClientAfterFnOptions<
-  in out TMiddlewares,
-  in out TValidator,
-  in out TClientContext,
-  in out TClientSendContext,
-> {
-  data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
-  context: Expand<
-    AssignAllClientContextAfterServer<
-      TMiddlewares,
-      TClientContext,
-      TClientSendContext
-    >
-  >
-  method: Method
-  next: MiddlewareClientAfterNextFn<
-    TMiddlewares,
-    TClientContext,
-    TClientSendContext
-  >
-}
-
-export type MiddlewareClientAfterFn<
-  TMiddlewares,
-  TValidator,
-  TClientContext,
-  TClientSendContext,
-  TNewClientAfterContext,
-> = (
-  options: MiddlewareClientAfterFnOptions<
-    TMiddlewares,
-    TValidator,
-    TClientContext,
-    TClientSendContext
-  >,
-) => MiddlewareClientAfterFnResult<
-  TMiddlewares,
-  TClientContext,
-  TClientSendContext,
-  TNewClientAfterContext
->
-
-export type MiddlewareClientAfterFnResult<
-  TMiddlewares,
-  TClientContext,
-  TClientSendContext,
-  TNewClientAfterContext,
-> =
-  | Promise<
-      ClientAfterResultWithContext<
-        TMiddlewares,
-        TClientContext,
-        TClientSendContext,
-        TNewClientAfterContext
-      >
-    >
-  | ClientAfterResultWithContext<
-      TMiddlewares,
-      TClientContext,
-      TClientSendContext,
-      TNewClientAfterContext
-    >
-
 export type ServerResultWithContext<
   in out TMiddlewares,
   in out TServerSendContext,
@@ -366,28 +267,14 @@ export type ServerResultWithContext<
   in out TSendContext,
 > = {
   'use functions must return the result of next()': true
+  _types: {
+    context: TServerContext
+    sendContext: TSendContext
+  }
   context: Expand<
     AssignAllServerContext<TMiddlewares, TServerSendContext, TServerContext>
   >
   sendContext: Expand<AssignAllClientSendContext<TMiddlewares, TSendContext>>
-}
-
-export type ClientAfterResultWithContext<
-  in out TMiddlewares,
-  in out TClientContext,
-  in out TClientSendContext,
-  in out TClientAfterContext,
-> = {
-  'use functions must return the result of next()': true
-  context: Expand<
-    AssignAllClientContextAfterServer<
-      TMiddlewares,
-      TClientContext,
-      TClientSendContext,
-      TClientAfterContext
-    >
-  >
-  headers: HeadersInit
 }
 
 export type ClientResultWithContext<
@@ -401,7 +288,7 @@ export type ClientResultWithContext<
   headers: HeadersInit
 }
 
-export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any, any, any>
+export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any, any>
 
 export interface MiddlewareTypes<
   TMiddlewares,
@@ -410,7 +297,6 @@ export interface MiddlewareTypes<
   TServerSendContext,
   TClientContext,
   TClientSendContext,
-  TClientAfterContext,
 > {
   _types: {
     middlewares: TMiddlewares
@@ -444,13 +330,6 @@ export interface MiddlewareTypes<
       TMiddlewares,
       TClientSendContext
     >
-    clientAfterContext: TClientAfterContext
-    allClientContextAfterServer: AssignAllClientContextAfterServer<
-      TMiddlewares,
-      TClientContext,
-      TClientSendContext,
-      TClientAfterContext
-    >
     validator: TValidator
   }
   options: MiddlewareOptions<
@@ -468,7 +347,6 @@ export interface MiddlewareAfterValidator<TMiddlewares, TValidator>
       undefined,
       undefined,
       undefined,
-      undefined,
       undefined
     >,
     MiddlewareServer<TMiddlewares, TValidator, undefined, undefined>,
@@ -480,51 +358,6 @@ export interface MiddlewareValidator<TMiddlewares> {
   ) => MiddlewareAfterValidator<TMiddlewares, TNewValidator>
 }
 
-export interface MiddlewareAfterClientAfter<
-  TMiddlewares,
-  TValidator,
-  TServerContext,
-  TServerSendContext,
-  TClientContext,
-  TClientSendContext,
-  TClientAfterContext,
-> extends MiddlewareTypes<
-    TMiddlewares,
-    TValidator,
-    TServerContext,
-    TServerSendContext,
-    TClientContext,
-    TClientSendContext,
-    TClientAfterContext
-  > {}
-
-export interface MiddlewareClientAfter<
-  TMiddlewares,
-  TValidator,
-  TServerContext,
-  TServerSendContext,
-  TClientContext,
-  TClientSendContext,
-> {
-  clientAfter: <TNewClientAfterContext = undefined>(
-    clientAfter: MiddlewareClientAfterFn<
-      TMiddlewares,
-      TValidator,
-      TClientContext,
-      TClientSendContext,
-      TNewClientAfterContext
-    >,
-  ) => MiddlewareAfterClientAfter<
-    TMiddlewares,
-    TValidator,
-    TServerContext,
-    TServerSendContext,
-    TClientContext,
-    TClientSendContext,
-    TNewClientAfterContext
-  >
-}
-
 export interface MiddlewareAfterServer<
   TMiddlewares,
   TValidator,
@@ -533,22 +366,13 @@ export interface MiddlewareAfterServer<
   TClientContext,
   TClientSendContext,
 > extends MiddlewareTypes<
-      TMiddlewares,
-      TValidator,
-      TServerContext,
-      TServerSendContext,
-      TClientContext,
-      TClientSendContext,
-      undefined
-    >,
-    MiddlewareClientAfter<
-      TMiddlewares,
-      TValidator,
-      TServerContext,
-      TServerSendContext,
-      TClientContext,
-      TClientSendContext
-    > {}
+    TMiddlewares,
+    TValidator,
+    TServerContext,
+    TServerSendContext,
+    TClientContext,
+    TClientSendContext
+  > {}
 
 export interface MiddlewareServer<
   TMiddlewares,
@@ -585,7 +409,6 @@ export interface MiddlewareAfterClient<
       undefined,
       TServerSendContext,
       TClientContext,
-      undefined,
       undefined
     >,
     MiddlewareServer<
@@ -614,7 +437,6 @@ export interface MiddlewareClient<TMiddlewares, TValidator> {
 export interface MiddlewareAfterMiddleware<TMiddlewares>
   extends MiddlewareTypes<
       TMiddlewares,
-      undefined,
       undefined,
       undefined,
       undefined,
@@ -671,12 +493,6 @@ export function createMiddleware(
       return createMiddleware(
         undefined,
         Object.assign(resolvedOptions, { server }),
-      ) as any
-    },
-    clientAfter: (clientAfter: any) => {
-      return createMiddleware(
-        undefined,
-        Object.assign(resolvedOptions, { clientAfter }),
       ) as any
     },
   } as unknown as Middleware

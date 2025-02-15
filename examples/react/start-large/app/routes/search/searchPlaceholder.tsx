@@ -31,12 +31,6 @@ const middleware = createMiddleware()
       sendContext: context,
     })
   })
-  .clientAfter(({ next }) => {
-    const context = { clientAfter: { searchPlaceholder: 'searchPlaceholder' } }
-    return next({
-      context,
-    })
-  })
 
 const fn = createServerFn()
   .middleware([middleware])
