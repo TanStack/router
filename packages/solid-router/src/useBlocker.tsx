@@ -130,12 +130,14 @@ export function useBlocker<
   TWithResolver extends boolean = false,
 >(
   opts: UseBlockerOpts<TRouter, TWithResolver>,
-): TWithResolver extends true ? BlockerResolver<TRouter> : void
+): TWithResolver extends true ? Solid.Accessor<BlockerResolver<TRouter>> : void
 
 /**
  * @deprecated Use the shouldBlockFn property instead
  */
-export function useBlocker(blockerFnOrOpts?: LegacyBlockerOpts): BlockerResolver
+export function useBlocker(
+  blockerFnOrOpts?: LegacyBlockerOpts,
+): Solid.Accessor<BlockerResolver>
 
 /**
  * @deprecated Use the UseBlockerOpts object syntax instead
@@ -143,12 +145,12 @@ export function useBlocker(blockerFnOrOpts?: LegacyBlockerOpts): BlockerResolver
 export function useBlocker(
   blockerFn?: LegacyBlockerFn,
   condition?: boolean | any,
-): BlockerResolver
+): Solid.Accessor<BlockerResolver>
 
 export function useBlocker(
   opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
   condition?: boolean | any,
-): BlockerResolver | void {
+): Solid.Accessor<BlockerResolver> | void {
   const {
     shouldBlockFn,
     enableBeforeUnload = true,
@@ -232,7 +234,7 @@ export function useBlocker(
       : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
   })
 
-  return resolver()
+  return resolver
 }
 
 const _resolvePromptBlockerArgs = (

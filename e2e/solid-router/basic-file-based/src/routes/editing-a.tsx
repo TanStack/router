@@ -9,7 +9,7 @@ function RouteComponent() {
   const navigate = Route.useNavigate()
   const [input, setInput] = createSignal('')
 
-  const { proceed, status } = useBlocker({
+  const blocker = useBlocker({
     shouldBlockFn: ({ next }) => {
       if (next.fullPath === '/editing-b' && input().length > 0) {
         return true
@@ -37,8 +37,8 @@ function RouteComponent() {
       >
         Go to next step
       </button>
-      {status === 'blocked' && (
-        <button onClick={() => proceed()}>Proceed</button>
+      {blocker().status === 'blocked' && (
+        <button onClick={() => blocker().proceed?.()}>Proceed</button>
       )}
     </div>
   )

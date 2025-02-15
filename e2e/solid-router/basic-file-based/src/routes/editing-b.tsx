@@ -1,5 +1,5 @@
 import { createFileRoute, useBlocker } from '@tanstack/solid-router'
-import { createSignal } from 'solid-js'
+import { createEffect, createSignal, createMemo } from 'solid-js'
 
 export const Route = createFileRoute('/editing-b')({
   component: RouteComponent,
@@ -9,9 +9,11 @@ function RouteComponent() {
   const navigate = Route.useNavigate()
   const [input, setInput] = createSignal('')
 
-  const { proceed, status } = useBlocker({
-    condition: input,
-  })
+  const blocker = createMemo(() =>
+    useBlocker({
+      condition: input(),
+    }),
+  )
 
   return (
     <div>
@@ -31,8 +33,8 @@ function RouteComponent() {
       >
         Go back
       </button>
-      {status === 'blocked' && (
-        <button onClick={() => proceed()}>Proceed</button>
+      {blocker()().status === 'blocked' && (
+        <button onClick={() => blocker()().proceed?.()}>Proceed</button>
       )}
     </div>
   )
