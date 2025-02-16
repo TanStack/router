@@ -568,6 +568,15 @@ const safeRemoveExports = (ast: babel.types.File) => {
         const insertIndex = programBody.findIndex(
           (node) => node === path.node.declaration,
         )
+        // do not remove export if it is an anonymous function / class, otherwise this would produce a syntax error
+        if (
+          babel.types.isFunctionDeclaration(path.node.declaration) ||
+          babel.types.isClassDeclaration(path.node.declaration)
+        ) {
+          if (!path.node.declaration.id) {
+            return
+          }
+        }
         programBody.splice(insertIndex, 0, path.node.declaration as any)
       }
     }
