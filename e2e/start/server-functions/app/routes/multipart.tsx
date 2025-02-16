@@ -1,5 +1,11 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { createServerFn } from '@tanstack/start'
+
+export const Route = createFileRoute('/multipart')({
+  component: MultipartServerFnCall,
+})
+
 
 const multipartFormDataServerFn = createServerFn({ method: 'POST' })
   .validator((x: unknown) => {
@@ -35,7 +41,7 @@ const multipartFormDataServerFn = createServerFn({ method: 'POST' })
     }
   })
 
-export function MultipartServerFnCall() {
+function MultipartServerFnCall() {
   const formRef = React.useRef<HTMLFormElement | null>(null)
   const [multipartResult, setMultipartResult] = React.useState({})
 
@@ -51,7 +57,7 @@ export function MultipartServerFnCall() {
   }
 
   return (
-    <div className="p-2 border m-2 grid gap-2">
+    <div className="p-2 m-2 grid gap-2">
       <h3>Multipart Server Fn POST Call</h3>
       <div className="overflow-y-auto">
         It should return{' '}

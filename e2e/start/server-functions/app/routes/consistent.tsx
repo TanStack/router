@@ -1,13 +1,23 @@
+import { createFileRoute } from '@tanstack/react-router'
+import * as React from 'react'
+import { createServerFn } from '@tanstack/start'
+
 /**
- * This exported component is for checking whether the returned payloads from a
+ * This checks whether the returned payloads from a
  * server function are the same, regardless of whether the server function is
  * called directly from the client or from within the server function.
  * @link https://github.com/TanStack/router/issues/1866
  * @link https://github.com/TanStack/router/issues/2481
  */
 
-import * as React from 'react'
-import { createServerFn } from '@tanstack/start'
+export const Route = createFileRoute('/consistent')({
+  component: ConsistentServerFnCalls,
+  loader: async () => {
+    const data = await cons_serverGetFn1({ data: { username: 'TEST' } })
+    console.log('cons_serverGetFn1', data)
+    return {data}
+  }
+})
 
 const cons_getFn1 = createServerFn()
   .validator((d: { username: string }) => d)
@@ -33,7 +43,7 @@ const cons_serverPostFn1 = createServerFn({ method: 'POST' })
     return cons_postFn1({ data })
   })
 
-export function ConsistentServerFnCalls() {
+function ConsistentServerFnCalls() {
   const [getServerResult, setGetServerResult] = React.useState({})
   const [getDirectResult, setGetDirectResult] = React.useState({})
 
@@ -41,7 +51,7 @@ export function ConsistentServerFnCalls() {
   const [postDirectResult, setPostDirectResult] = React.useState({})
 
   return (
-    <div className="p-2 border m-2 grid gap-2">
+    <div className="p-2 m-2 grid gap-2">
       <h3>Consistent Server Fn GET Calls</h3>
       <p>
         This component checks whether the returned payloads from server function

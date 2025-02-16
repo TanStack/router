@@ -13,14 +13,10 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as UsersImport } from './routes/users'
 import { Route as StreamImport } from './routes/stream'
-import { Route as StatusImport } from './routes/status'
-import { Route as ServerFnsImport } from './routes/server-fns'
 import { Route as SearchParamsImport } from './routes/search-params'
 import { Route as ScriptsImport } from './routes/scripts'
 import { Route as PostsImport } from './routes/posts'
 import { Route as LinksImport } from './routes/links'
-import { Route as IsomorphicFnsImport } from './routes/isomorphic-fns'
-import { Route as EnvOnlyImport } from './routes/env-only'
 import { Route as DeferredImport } from './routes/deferred'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as NotFoundRouteImport } from './routes/not-found/route'
@@ -60,18 +56,6 @@ const StreamRoute = StreamImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const StatusRoute = StatusImport.update({
-  id: '/status',
-  path: '/status',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ServerFnsRoute = ServerFnsImport.update({
-  id: '/server-fns',
-  path: '/server-fns',
-  getParentRoute: () => rootRoute,
-} as any)
-
 const SearchParamsRoute = SearchParamsImport.update({
   id: '/search-params',
   path: '/search-params',
@@ -93,18 +77,6 @@ const PostsRoute = PostsImport.update({
 const LinksRoute = LinksImport.update({
   id: '/links',
   path: '/links',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const IsomorphicFnsRoute = IsomorphicFnsImport.update({
-  id: '/isomorphic-fns',
-  path: '/isomorphic-fns',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const EnvOnlyRoute = EnvOnlyImport.update({
-  id: '/env-only',
-  path: '/env-only',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -287,20 +259,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeferredImport
       parentRoute: typeof rootRoute
     }
-    '/env-only': {
-      id: '/env-only'
-      path: '/env-only'
-      fullPath: '/env-only'
-      preLoaderRoute: typeof EnvOnlyImport
-      parentRoute: typeof rootRoute
-    }
-    '/isomorphic-fns': {
-      id: '/isomorphic-fns'
-      path: '/isomorphic-fns'
-      fullPath: '/isomorphic-fns'
-      preLoaderRoute: typeof IsomorphicFnsImport
-      parentRoute: typeof rootRoute
-    }
     '/links': {
       id: '/links'
       path: '/links'
@@ -327,20 +285,6 @@ declare module '@tanstack/react-router' {
       path: '/search-params'
       fullPath: '/search-params'
       preLoaderRoute: typeof SearchParamsImport
-      parentRoute: typeof rootRoute
-    }
-    '/server-fns': {
-      id: '/server-fns'
-      path: '/server-fns'
-      fullPath: '/server-fns'
-      preLoaderRoute: typeof ServerFnsImport
-      parentRoute: typeof rootRoute
-    }
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusImport
       parentRoute: typeof rootRoute
     }
     '/stream': {
@@ -598,14 +542,10 @@ export interface FileRoutesByFullPath {
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/env-only': typeof EnvOnlyRoute
-  '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
-  '/server-fns': typeof ServerFnsRoute
-  '/status': typeof StatusRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -633,13 +573,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/env-only': typeof EnvOnlyRoute
-  '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
-  '/server-fns': typeof ServerFnsRoute
-  '/status': typeof StatusRoute
   '/stream': typeof StreamRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
@@ -667,14 +603,10 @@ export interface FileRoutesById {
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/env-only': typeof EnvOnlyRoute
-  '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
-  '/server-fns': typeof ServerFnsRoute
-  '/status': typeof StatusRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
@@ -706,14 +638,10 @@ export interface FileRouteTypes {
     | '/not-found'
     | ''
     | '/deferred'
-    | '/env-only'
-    | '/isomorphic-fns'
     | '/links'
     | '/posts'
     | '/scripts'
     | '/search-params'
-    | '/server-fns'
-    | '/status'
     | '/stream'
     | '/users'
     | '/not-found/via-beforeLoad'
@@ -740,13 +668,9 @@ export interface FileRouteTypes {
     | '/'
     | ''
     | '/deferred'
-    | '/env-only'
-    | '/isomorphic-fns'
     | '/links'
     | '/scripts'
     | '/search-params'
-    | '/server-fns'
-    | '/status'
     | '/stream'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
@@ -772,14 +696,10 @@ export interface FileRouteTypes {
     | '/not-found'
     | '/_layout'
     | '/deferred'
-    | '/env-only'
-    | '/isomorphic-fns'
     | '/links'
     | '/posts'
     | '/scripts'
     | '/search-params'
-    | '/server-fns'
-    | '/status'
     | '/stream'
     | '/users'
     | '/_layout/_layout-2'
@@ -810,14 +730,10 @@ export interface RootRouteChildren {
   NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
-  EnvOnlyRoute: typeof EnvOnlyRoute
-  IsomorphicFnsRoute: typeof IsomorphicFnsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
   SearchParamsRoute: typeof SearchParamsRoute
-  ServerFnsRoute: typeof ServerFnsRoute
-  StatusRoute: typeof StatusRoute
   StreamRoute: typeof StreamRoute
   UsersRoute: typeof UsersRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
@@ -830,14 +746,10 @@ const rootRouteChildren: RootRouteChildren = {
   NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
-  EnvOnlyRoute: EnvOnlyRoute,
-  IsomorphicFnsRoute: IsomorphicFnsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
   SearchParamsRoute: SearchParamsRoute,
-  ServerFnsRoute: ServerFnsRoute,
-  StatusRoute: StatusRoute,
   StreamRoute: StreamRoute,
   UsersRoute: UsersRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
@@ -859,14 +771,10 @@ export const routeTree = rootRoute
         "/not-found",
         "/_layout",
         "/deferred",
-        "/env-only",
-        "/isomorphic-fns",
         "/links",
         "/posts",
         "/scripts",
         "/search-params",
-        "/server-fns",
-        "/status",
         "/stream",
         "/users",
         "/redirect/$target",
@@ -894,12 +802,6 @@ export const routeTree = rootRoute
     "/deferred": {
       "filePath": "deferred.tsx"
     },
-    "/env-only": {
-      "filePath": "env-only.tsx"
-    },
-    "/isomorphic-fns": {
-      "filePath": "isomorphic-fns.tsx"
-    },
     "/links": {
       "filePath": "links.tsx"
     },
@@ -915,12 +817,6 @@ export const routeTree = rootRoute
     },
     "/search-params": {
       "filePath": "search-params.tsx"
-    },
-    "/server-fns": {
-      "filePath": "server-fns.tsx"
-    },
-    "/status": {
-      "filePath": "status.tsx"
     },
     "/stream": {
       "filePath": "stream.tsx"
