@@ -1,11 +1,16 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/start'
+import * as React from 'react'
+
 /**
- * This exported component checks whether the server function can
+ * This checks whether the server function can
  * return null without throwing an error or returning something else.
  * @link https://github.com/TanStack/router/issues/2776
  */
 
-import * as React from 'react'
-import { createServerFn } from '@tanstack/start'
+export const Route = createFileRoute('/return-null')({
+  component: AllowServerFnReturnNull,
+})
 
 const $allow_return_null_getFn = createServerFn().handler(async () => {
   return null
@@ -16,12 +21,12 @@ const $allow_return_null_postFn = createServerFn({ method: 'POST' }).handler(
   },
 )
 
-export function AllowServerFnReturnNull() {
+function AllowServerFnReturnNull() {
   const [getServerResult, setGetServerResult] = React.useState<any>('-')
   const [postServerResult, setPostServerResult] = React.useState<any>('-')
 
   return (
-    <div className="p-2 border m-2 grid gap-2">
+    <div className="p-2 m-2 grid gap-2">
       <h3>Allow ServerFn to return `null`</h3>
       <p>
         This component checks whether the server function can return null

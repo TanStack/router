@@ -1,5 +1,10 @@
 import * as React from 'react'
+import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/start'
+
+export const Route = createFileRoute('/serialize-form-data')({
+  component: SerializeFormDataFnCall,
+})
 
 const testValues = {
   name: 'Sean',
@@ -32,12 +37,11 @@ export const greetUser = createServerFn()
     return `Hello, ${name}! You are ${age + testValues.__adder} years old, and your favorite pets are ${pets.join(',')}.`
   })
 
-// Usage
 export function SerializeFormDataFnCall() {
   const [formDataResult, setFormDataResult] = React.useState({})
 
   return (
-    <div className="p-2 border m-2 grid gap-2">
+    <div className="p-2 m-2 grid gap-2">
       <h3>Serialize FormData Fn POST Call</h3>
       <div className="overflow-y-auto">
         It should return{' '}

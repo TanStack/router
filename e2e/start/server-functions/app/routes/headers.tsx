@@ -1,7 +1,20 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { createServerFn } from '@tanstack/start'
 import { getHeaders, setHeader } from '@tanstack/start/server'
 import type { HTTPHeaderName } from '@tanstack/start/server'
+
+export const Route = createFileRoute('/headers')({
+  loader: async () => {
+    return {
+      testHeaders: await getTestHeaders(),
+    }
+  },
+  component: () => {
+    const { testHeaders } = Route.useLoaderData()
+    return <ResponseHeaders initialTestHeaders={testHeaders} />
+  },
+})
 
 export const getTestHeaders = createServerFn().handler(() => {
   setHeader('x-test-header', 'test-value')
@@ -17,8 +30,7 @@ type TestHeadersResult = {
   serverHeaders?: Partial<Record<HTTPHeaderName, string | undefined>>
 }
 
-// Usage
-export function ResponseHeaders({
+function ResponseHeaders({
   initialTestHeaders,
 }: {
   initialTestHeaders: TestHeadersResult
@@ -27,7 +39,7 @@ export function ResponseHeaders({
     React.useState<TestHeadersResult>(initialTestHeaders)
 
   return (
-    <div className="p-2 border m-2 grid gap-2">
+    <div className="p-2 m-2 grid gap-2">
       <h3>Headers Test</h3>
       <form
         className="flex flex-col gap-2"

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { PORT } from '../playwright.config'
 
-test('invoking a server function with custom response status code', async ({
+test.only('invoking a server function with custom response status code', async ({
   page,
 }) => {
   await page.goto('/status')
@@ -28,7 +29,7 @@ test('invoking a server function with custom response status code', async ({
 test('Consistent server function returns both on client and server for GET and POST calls', async ({
   page,
 }) => {
-  await page.goto('/server-fns')
+  await page.goto('/consistent')
 
   await page.waitForLoadState('networkidle')
   const expected =
@@ -58,7 +59,7 @@ test('Consistent server function returns both on client and server for GET and P
 test('submitting multipart/form-data as server function input', async ({
   page,
 }) => {
-  await page.goto('/server-fns')
+  await page.goto('/multipart')
 
   await page.waitForLoadState('networkidle')
   const expected =
@@ -133,7 +134,7 @@ test('env-only functions can only be called on the server or client respectively
 test('Server function can return null for GET and POST calls', async ({
   page,
 }) => {
-  await page.goto('/server-fns')
+  await page.goto('/return-null')
 
   await page.waitForLoadState('networkidle')
   await page.getByTestId('test-allow-server-fn-return-null-btn').click()
@@ -153,7 +154,7 @@ test('Server function can return null for GET and POST calls', async ({
 test('Server function can correctly send and receive FormData', async ({
   page,
 }) => {
-  await page.goto('/server-fns')
+  await page.goto('/serialize-form-data')
 
   await page.waitForLoadState('networkidle')
   const expected =
@@ -173,7 +174,7 @@ test('Server function can correctly send and receive FormData', async ({
 test('server function can correctly send and receive headers', async ({
   page,
 }) => {
-  await page.goto('/server-fns')
+  await page.goto('/headers')
 
   await page.waitForLoadState('networkidle')
   // console.log(await page.getByTestId('test-headers-result').textContent())
@@ -183,7 +184,7 @@ test('server function can correctly send and receive headers', async ({
   "accept-language": "en-US",
   "connection": "keep-alive",
   "content-type": "application/json",
-  "host": "localhost:42322",
+  "host": "localhost:${PORT}",
   "sec-ch-ua": "\\"Not(A:Brand\\";v=\\"99\\", \\"HeadlessChrome\\";v=\\"133\\", \\"Chromium\\";v=\\"133\\"",
   "sec-ch-ua-mobile": "?0",
   "sec-ch-ua-platform": "\\"Windows\\"",
@@ -199,7 +200,7 @@ test('server function can correctly send and receive headers', async ({
   await page.waitForLoadState('networkidle')
 
   await expect(page.getByTestId('test-headers-result')).toContainText(`{
-  "host": "localhost:42322",
+  "host": "localhost:${PORT}",
   "connection": "keep-alive",
   "sec-ch-ua-platform": "\\"Windows\\"",
   "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6943.16 Safari/537.36",
@@ -211,7 +212,7 @@ test('server function can correctly send and receive headers', async ({
   "sec-fetch-site": "same-origin",
   "sec-fetch-mode": "cors",
   "sec-fetch-dest": "empty",
-  "referer": "http://localhost:42322/server-fns",
+  "referer": "http://localhost:${PORT}/headers",
   "accept-encoding": "gzip, deflate, br, zstd"
 }`)
 })
@@ -219,7 +220,7 @@ test('server function can correctly send and receive headers', async ({
 test('Direct POST submitting FormData to a Server function returns the correct message', async ({
   page,
 }) => {
-  await page.goto('/server-fns')
+  await page.goto('/submit-post-formdata')
 
   await page.waitForLoadState('networkidle')
 
