@@ -1,7 +1,8 @@
 import { queryOptions } from '@tanstack/react-query'
 import { notFound } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/start'
+import { createServerFn, Fetcher } from '@tanstack/start'
 import axios from 'redaxios'
+import { serverFnQuery } from './serverFnQuery'
 
 export type PostType = {
   id: string
@@ -18,11 +19,7 @@ export const fetchPosts = createServerFn({ method: 'GET' }).handler(
   },
 )
 
-export const postsQueryOptions = () =>
-  queryOptions({
-    queryKey: ['posts'],
-    queryFn: () => fetchPosts(),
-  })
+export const postsFnQuery = serverFnQuery(fetchPosts)
 
 export const fetchPost = createServerFn({ method: 'GET' })
   .validator((d: string) => d)
@@ -42,8 +39,4 @@ export const fetchPost = createServerFn({ method: 'GET' })
     return post
   })
 
-export const postQueryOptions = (postId: string) =>
-  queryOptions({
-    queryKey: ['post', postId],
-    queryFn: () => fetchPost({ data: postId }),
-  })
+export const postFnQuery = serverFnQuery(fetchPost)

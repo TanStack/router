@@ -11,6 +11,8 @@ export {
   type JsonResponse,
   type ServerFn as FetchFn,
   type ServerFnCtx as FetchFnCtx,
+  type FetcherParameters,
+  type FetcherResult,
   type CompiledFetcherFnOptions,
   type CompiledFetcherFn,
   type Fetcher,

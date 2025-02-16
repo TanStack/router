@@ -38,10 +38,12 @@ export type CompiledFetcherFnOptions = {
   context?: any
 }
 
-export type Fetcher<TMiddlewares, TValidator, TResponse> =
-  undefined extends IntersectAllValidatorInputs<TMiddlewares, TValidator>
-    ? OptionalFetcher<TMiddlewares, TValidator, TResponse>
-    : RequiredFetcher<TMiddlewares, TValidator, TResponse>
+export interface Fetcher<TMiddlewares, TValidator, TResponse>
+  extends FetcherBase {
+  <TFullResponse extends boolean>(
+    ...args: FetcherParameters<TMiddlewares, TValidator, TFullResponse>
+  ): FetcherResult<TMiddlewares, TResponse, TFullResponse>
+}
 
 export interface FetcherBase {
   url: string
@@ -53,13 +55,34 @@ export interface FetcherBase {
   }) => Promise<unknown>
 }
 
-export type FetchResult<
+export type FetcherResult<
   TMiddlewares,
   TResponse,
   TFullResponse extends boolean,
 > = false extends TFullResponse
   ? Promise<FetcherData<TResponse>>
   : Promise<FullFetcherData<TMiddlewares, TResponse>>
+
+export type FetcherParameters<
+  TMiddlewares,
+  TValidator,
+  TFullResponse extends boolean,
+> =
+  undefined extends IntersectAllValidatorInputs<TMiddlewares, TValidator>
+    ? [
+        options?: OptionalFetcherDataOptions<
+          TMiddlewares,
+          TValidator,
+          TFullResponse
+        >,
+      ]
+    : [
+        options: RequiredFetcherDataOptions<
+          TMiddlewares,
+          TValidator,
+          TFullResponse
+        >,
+      ]
 
 export interface OptionalFetcher<TMiddlewares, TValidator, TResponse>
   extends FetcherBase {
@@ -69,14 +92,14 @@ export interface OptionalFetcher<TMiddlewares, TValidator, TResponse>
       TValidator,
       TFullResponse
     >,
-  ): FetchResult<TMiddlewares, TResponse, TFullResponse>
+  ): FetcherResult<TMiddlewares, TResponse, TFullResponse>
 }
 
 export interface RequiredFetcher<TMiddlewares, TValidator, TResponse>
   extends FetcherBase {
   <TFullResponse extends boolean>(
     opts: RequiredFetcherDataOptions<TMiddlewares, TValidator, TFullResponse>,
-  ): FetchResult<TMiddlewares, TResponse, TFullResponse>
+  ): FetcherResult<TMiddlewares, TResponse, TFullResponse>
 }
 
 export type FetcherBaseOptions<TFullResponse extends boolean = false> = {

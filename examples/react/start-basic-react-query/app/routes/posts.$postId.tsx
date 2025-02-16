@@ -1,13 +1,13 @@
 import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { postQueryOptions } from '../utils/posts'
+import { postFnQuery } from '../utils/posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { NotFound } from '~/components/NotFound'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId }, context }) => {
     const data = await context.queryClient.ensureQueryData(
-      postQueryOptions(postId),
+      postFnQuery.queryOptions({ data: postId }),
     )
 
     return {
@@ -30,7 +30,7 @@ export function PostErrorComponent({ error }: ErrorComponentProps) {
 
 function PostComponent() {
   const { postId } = Route.useParams()
-  const postQuery = useSuspenseQuery(postQueryOptions(postId))
+  const postQuery = useSuspenseQuery(postFnQuery.queryOptions({ data: postId }))
 
   return (
     <div className="space-y-2">
