@@ -28,7 +28,7 @@ export {
   type MiddlewareServerFn,
   type AnyMiddleware,
   type MiddlewareOptions,
-  type MiddlewareTypes,
+  type MiddlewareWithTypes,
   type MiddlewareValidator,
   type MiddlewareServer,
   type MiddlewareAfterClient,

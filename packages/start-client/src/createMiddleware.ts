@@ -288,9 +288,51 @@ export type ClientResultWithContext<
   headers: HeadersInit
 }
 
-export type AnyMiddleware = MiddlewareTypes<any, any, any, any, any, any>
+export type AnyMiddleware = MiddlewareWithTypes<any, any, any, any, any, any>
 
 export interface MiddlewareTypes<
+  in out TMiddlewares,
+  in out TValidator,
+  in out TServerContext,
+  in out TServerSendContext,
+  in out TClientContext,
+  in out TClientSendContext,
+> {
+  middlewares: TMiddlewares
+  input: ResolveValidatorInput<TValidator>
+  allInput: IntersectAllValidatorInputs<TMiddlewares, TValidator>
+  output: ResolveValidatorOutput<TValidator>
+  allOutput: IntersectAllValidatorOutputs<TMiddlewares, TValidator>
+  clientContext: TClientContext
+  allClientContextBeforeNext: AssignAllClientContextBeforeNext<
+    TMiddlewares,
+    TClientContext
+  >
+  allClientContextAfterNext: AssignAllClientContextAfterNext<
+    TMiddlewares,
+    TClientContext,
+    TClientSendContext
+  >
+  serverContext: TServerContext
+  serverSendContext: TServerSendContext
+  allServerSendContext: AssignAllServerSendContext<
+    TMiddlewares,
+    TServerSendContext
+  >
+  allServerContext: AssignAllServerContext<
+    TMiddlewares,
+    TServerSendContext,
+    TServerContext
+  >
+  clientSendContext: TClientSendContext
+  allClientSendContext: AssignAllClientSendContext<
+    TMiddlewares,
+    TClientSendContext
+  >
+  validator: TValidator
+}
+
+export interface MiddlewareWithTypes<
   TMiddlewares,
   TValidator,
   TServerContext,
@@ -298,40 +340,14 @@ export interface MiddlewareTypes<
   TClientContext,
   TClientSendContext,
 > {
-  _types: {
-    middlewares: TMiddlewares
-    input: ResolveValidatorInput<TValidator>
-    allInput: IntersectAllValidatorInputs<TMiddlewares, TValidator>
-    output: ResolveValidatorOutput<TValidator>
-    allOutput: IntersectAllValidatorOutputs<TMiddlewares, TValidator>
-    clientContext: TClientContext
-    allClientContextBeforeNext: AssignAllClientContextBeforeNext<
-      TMiddlewares,
-      TClientContext
-    >
-    allClientContextAfterNext: AssignAllClientContextAfterNext<
-      TMiddlewares,
-      TClientContext,
-      TClientSendContext
-    >
-    serverContext: TServerContext
-    serverSendContext: TServerSendContext
-    allServerSendContext: AssignAllServerSendContext<
-      TMiddlewares,
-      TServerSendContext
-    >
-    allServerContext: AssignAllServerContext<
-      TMiddlewares,
-      TServerSendContext,
-      TServerContext
-    >
-    clientSendContext: TClientSendContext
-    allClientSendContext: AssignAllClientSendContext<
-      TMiddlewares,
-      TClientSendContext
-    >
-    validator: TValidator
-  }
+  _types: MiddlewareTypes<
+    TMiddlewares,
+    TValidator,
+    TServerContext,
+    TServerSendContext,
+    TClientContext,
+    TClientSendContext
+  >
   options: MiddlewareOptions<
     TMiddlewares,
     TValidator,
@@ -341,7 +357,7 @@ export interface MiddlewareTypes<
 }
 
 export interface MiddlewareAfterValidator<TMiddlewares, TValidator>
-  extends MiddlewareTypes<
+  extends MiddlewareWithTypes<
       TMiddlewares,
       TValidator,
       undefined,
@@ -365,7 +381,7 @@ export interface MiddlewareAfterServer<
   TServerSendContext,
   TClientContext,
   TClientSendContext,
-> extends MiddlewareTypes<
+> extends MiddlewareWithTypes<
     TMiddlewares,
     TValidator,
     TServerContext,
@@ -403,7 +419,7 @@ export interface MiddlewareAfterClient<
   TValidator,
   TServerSendContext,
   TClientContext,
-> extends MiddlewareTypes<
+> extends MiddlewareWithTypes<
       TMiddlewares,
       TValidator,
       undefined,
@@ -435,7 +451,7 @@ export interface MiddlewareClient<TMiddlewares, TValidator> {
 }
 
 export interface MiddlewareAfterMiddleware<TMiddlewares>
-  extends MiddlewareTypes<
+  extends MiddlewareWithTypes<
       TMiddlewares,
       undefined,
       undefined,
