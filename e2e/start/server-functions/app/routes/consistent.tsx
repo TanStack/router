@@ -15,8 +15,8 @@ export const Route = createFileRoute('/consistent')({
   loader: async () => {
     const data = await cons_serverGetFn1({ data: { username: 'TEST' } })
     console.log('cons_serverGetFn1', data)
-    return {data}
-  }
+    return { data }
+  },
 })
 
 const cons_getFn1 = createServerFn()

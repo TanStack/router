@@ -6,7 +6,6 @@ export const Route = createFileRoute('/multipart')({
   component: MultipartServerFnCall,
 })
 
-
 const multipartFormDataServerFn = createServerFn({ method: 'POST' })
   .validator((x: unknown) => {
     if (!(x instanceof FormData)) {

@@ -22,9 +22,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
     ],
-    links: [
-      { rel: 'stylesheet', href: appCss },
-    ],
+    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   errorComponent: (props) => {
     return (
