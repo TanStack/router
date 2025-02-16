@@ -32,6 +32,8 @@ import { Route as NotFoundViaLoaderImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaBeforeLoadImport } from './routes/not-found/via-beforeLoad'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
 import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
+import { Route as RedirectComponentSecondImport } from './routes/redirect/component/second'
+import { Route as RedirectComponentFirstImport } from './routes/redirect/component/first'
 import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
@@ -166,6 +168,18 @@ const RedirectTargetIndexRoute = RedirectTargetIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
+} as any)
+
+const RedirectComponentSecondRoute = RedirectComponentSecondImport.update({
+  id: '/redirect/component/second',
+  path: '/redirect/component/second',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RedirectComponentFirstRoute = RedirectComponentFirstImport.update({
+  id: '/redirect/component/first',
+  path: '/redirect/component/first',
+  getParentRoute: () => rootRoute,
 } as any)
 
 const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderImport.update({
@@ -406,6 +420,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTargetViaLoaderImport
       parentRoute: typeof RedirectTargetImport
     }
+    '/redirect/component/first': {
+      id: '/redirect/component/first'
+      path: '/redirect/component/first'
+      fullPath: '/redirect/component/first'
+      preLoaderRoute: typeof RedirectComponentFirstImport
+      parentRoute: typeof rootRoute
+    }
+    '/redirect/component/second': {
+      id: '/redirect/component/second'
+      path: '/redirect/component/second'
+      fullPath: '/redirect/component/second'
+      preLoaderRoute: typeof RedirectComponentSecondImport
+      parentRoute: typeof rootRoute
+    }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
@@ -562,6 +590,8 @@ export interface FileRoutesByFullPath {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/component/first': typeof RedirectComponentFirstRoute
+  '/redirect/component/second': typeof RedirectComponentSecondRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -590,6 +620,8 @@ export interface FileRoutesByTo {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/component/first': typeof RedirectComponentFirstRoute
+  '/redirect/component/second': typeof RedirectComponentSecondRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -624,6 +656,8 @@ export interface FileRoutesById {
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/component/first': typeof RedirectComponentFirstRoute
+  '/redirect/component/second': typeof RedirectComponentSecondRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -658,6 +692,8 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/component/first'
+    | '/redirect/component/second'
     | '/redirect/$target/'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -685,6 +721,8 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/component/first'
+    | '/redirect/component/second'
     | '/redirect/$target'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -717,6 +755,8 @@ export interface FileRouteTypes {
     | '/posts_/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/component/first'
+    | '/redirect/component/second'
     | '/redirect/$target/'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -739,6 +779,8 @@ export interface RootRouteChildren {
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+  RedirectComponentFirstRoute: typeof RedirectComponentFirstRoute
+  RedirectComponentSecondRoute: typeof RedirectComponentSecondRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -755,6 +797,8 @@ const rootRouteChildren: RootRouteChildren = {
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
+  RedirectComponentFirstRoute: RedirectComponentFirstRoute,
+  RedirectComponentSecondRoute: RedirectComponentSecondRoute,
 }
 
 export const routeTree = rootRoute
@@ -779,7 +823,9 @@ export const routeTree = rootRoute
         "/users",
         "/redirect/$target",
         "/redirect/",
-        "/posts_/$postId/deep"
+        "/posts_/$postId/deep",
+        "/redirect/component/first",
+        "/redirect/component/second"
       ]
     },
     "/": {
@@ -897,6 +943,12 @@ export const routeTree = rootRoute
     "/redirect/$target/via-loader": {
       "filePath": "redirect/$target/via-loader.tsx",
       "parent": "/redirect/$target"
+    },
+    "/redirect/component/first": {
+      "filePath": "redirect/component/first.tsx"
+    },
+    "/redirect/component/second": {
+      "filePath": "redirect/component/second.tsx"
     },
     "/redirect/$target/": {
       "filePath": "redirect/$target/index.tsx",
