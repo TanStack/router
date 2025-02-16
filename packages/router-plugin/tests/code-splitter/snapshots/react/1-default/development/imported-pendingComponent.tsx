@@ -3,8 +3,8 @@ const $$splitComponentImporter = () => import('imported-pendingComponent.tsx?tsr
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr),
-  pendingComponent: lazyRouteComponent($$splitPendingComponentImporter, 'pendingComponent')
+  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr, import.meta.url),
+  pendingComponent: lazyRouteComponent($$splitPendingComponentImporter, 'pendingComponent', undefined, import.meta.url)
 });
 export function TSRDummyComponent() {
   return null;

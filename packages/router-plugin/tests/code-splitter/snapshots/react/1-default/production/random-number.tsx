@@ -11,5 +11,5 @@ export const Route = createFileRoute('/')({
       sponsorsPromise: defer(getSponsorsForSponsorPack())
     };
   },
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
+  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr, import.meta.url)
 });

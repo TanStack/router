@@ -5,7 +5,7 @@ import { lazyFn } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/posts')({
   loader: lazyFn($$splitLoaderImporter, 'loader'),
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
+  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr, import.meta.url)
 });
 export function TSRDummyComponent() {
   return null;
