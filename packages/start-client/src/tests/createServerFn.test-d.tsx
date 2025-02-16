@@ -50,6 +50,8 @@ test('createServerFn with validator', () => {
     type?: 'static' | 'dynamic'
     fullResponse?: boolean
   }>()
+
+  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn with middleware and context', () => {
@@ -152,6 +154,8 @@ test('createServerFn with middleware and validator', () => {
     type?: 'static' | 'dynamic'
     fullResponse?: boolean
   }>()
+
+  expectTypeOf(fn).returns.resolves.toEqualTypeOf<'data'>()
 
   expectTypeOf(() =>
     fn({
@@ -283,6 +287,8 @@ test('createServerFn where validator is optional if object is optional', () => {
       }
     | undefined
   >()
+
+  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn where data is optional if there is no validator', () => {
@@ -303,6 +309,8 @@ test('createServerFn where data is optional if there is no validator', () => {
       }
     | undefined
   >()
+
+  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn returns Date', () => {
