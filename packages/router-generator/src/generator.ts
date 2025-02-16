@@ -576,9 +576,7 @@ export async function generator(config: Config, root: string) {
               )
                 .filter((d) => d[1])
                 .map((d) => {
-                  return `${
-                    d[0]
-                  }: lazyRouteComponent(() => import('./${replaceBackslash(
+                  const importPath = replaceBackslash(
                     removeExt(
                       path.relative(
                         path.dirname(config.generatedRouteTree),
@@ -586,7 +584,13 @@ export async function generator(config: Config, root: string) {
                       ),
                       config.addExtensions,
                     ),
-                  )}'), '${d[0]}')`
+                  )
+                  return `${d[0]}: lazyRouteComponent(
+                    () => import('./${importPath}'),
+                    '${d[0]}',
+                    undefined,
+                    import.meta.url
+                  )`
                 })
                 .join('\n,')}
             })`
