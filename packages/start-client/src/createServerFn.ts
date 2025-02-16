@@ -53,26 +53,30 @@ export interface FetcherBase {
   }) => Promise<unknown>
 }
 
+export type FetchResult<
+  TMiddlewares,
+  TResponse,
+  TFullResponse extends boolean,
+> = false extends TFullResponse
+  ? Promise<FetcherData<TResponse>>
+  : Promise<FullFetcherData<TMiddlewares, TResponse>>
+
 export interface OptionalFetcher<TMiddlewares, TValidator, TResponse>
   extends FetcherBase {
-  <TFullResponse extends boolean = false>(
+  <TFullResponse extends boolean>(
     options?: OptionalFetcherDataOptions<
       TMiddlewares,
       TValidator,
       TFullResponse
     >,
-  ): TFullResponse extends true
-    ? Promise<FullFetcherData<TMiddlewares, TResponse>>
-    : Promise<FetcherData<TResponse>>
+  ): FetchResult<TMiddlewares, TResponse, TFullResponse>
 }
 
 export interface RequiredFetcher<TMiddlewares, TValidator, TResponse>
   extends FetcherBase {
-  <TFullResponse extends boolean = false>(
+  <TFullResponse extends boolean>(
     opts: RequiredFetcherDataOptions<TMiddlewares, TValidator, TFullResponse>,
-  ): TFullResponse extends true
-    ? Promise<FullFetcherData<TMiddlewares, TResponse>>
-    : Promise<FetcherData<TResponse>>
+  ): FetchResult<TMiddlewares, TResponse, TFullResponse>
 }
 
 export type FetcherBaseOptions<TFullResponse extends boolean = false> = {
