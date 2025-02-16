@@ -7,7 +7,10 @@ import type { AsyncRouteComponent } from './route'
 // If this happens, the old version in the user's browser would have an outdated
 // URL to the lazy module.
 // In that case, we want to attempt one window refresh to get the latest.
-function getModuleNotFoundErrorKey(error: any, importerName?: string): string | false {
+function getModuleNotFoundErrorKey(
+  error: any,
+  importerName?: string,
+): string | false {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // safari: "Importing a module script failed."

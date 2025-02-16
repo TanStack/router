@@ -32,7 +32,9 @@ test('Navigating to a not-found route', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
 })
 
-test('Navigating to a route where the lazy component fails to load', async ({ page }) => {
+test('Navigating to a route where the lazy component fails to load', async ({
+  page,
+}) => {
   // block (and count) all requests to the posts.index route component
   let requested = 0
   await page.route('**/assets/posts.index-*', (route) => {
@@ -40,7 +42,7 @@ test('Navigating to a route where the lazy component fails to load', async ({ pa
     return route.fulfill({
       status: 404,
       contentType: 'text/plain',
-      body: 'Not Found!'
+      body: 'Not Found!',
     })
   })
 
@@ -59,7 +61,7 @@ test('Navigating to a route where the lazy component fails to load', async ({ pa
     expect(requested).toBe(2)
   }).toPass({
     intervals: [50],
-    timeout: 3000
+    timeout: 3000,
   })
 
   // the error component should be rendered
