@@ -275,11 +275,11 @@ export function compileCodeSplitReferenceRoute(
                           // If it's a component, we need to pass the function to check the Route.ssr value
                           if (key === 'component') {
                             prop.value = template.expression(
-                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
+                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr, import.meta.url)`,
                             )()
                           } else {
                             prop.value = template.expression(
-                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', undefined, import.meta.url)`,
                             )()
                           }
 
