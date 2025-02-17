@@ -16,9 +16,10 @@ import type {
 type AdditionalOptions = {
   WrapProvider?: (props: { children: any }) => React.JSX.Element
   /**
-   * If `true`, the QueryClient will handle redirects thrown in serverFns
+   * If `true`, the QueryClient will handle errors thrown by `redirect()` inside of mutations and queries.
    *
    * @default true
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction)
    */
   handleRedirects?: boolean
 }
