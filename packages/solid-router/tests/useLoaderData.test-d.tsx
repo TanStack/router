@@ -50,9 +50,7 @@ test('when there is no loaders', () => {
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
-    .toMatchTypeOf<{
-      loaderData?: {}
-    }>()
+    .toMatchTypeOf<undefined>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/'>)
     .parameter(0)
@@ -60,14 +58,11 @@ test('when there is no loaders', () => {
     .returns.toEqualTypeOf<unknown>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
-    Accessor<{}>
+    Accessor<undefined>
   >()
 
-  expectTypeOf(
-    useLoaderData<DefaultRouter, '/', false>({
-      strict: false,
-    }),
-  ).toEqualTypeOf<Accessor<{}>>
+  expectTypeOf(useLoaderData<DefaultRouter, '/', false>({ strict: false }))
+    .toEqualTypeOf<Accessor<undefined>>
 })
 
 test('when there is one loader', () => {
@@ -99,6 +94,7 @@ test('when there is one loader', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -121,7 +117,7 @@ test('when there is one loader', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<Accessor<{ data?: Array<string> }>>()
+  ).returns.toEqualTypeOf<Accessor<{ data?: Array<string> } | undefined>>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -162,6 +158,7 @@ test('when there is one loader that is async', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -184,7 +181,7 @@ test('when there is one loader that is async', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<Accessor<{ data?: Array<string> }>>()
+  ).returns.toEqualTypeOf<Accessor<{ data?: Array<string> } | undefined>>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -227,6 +224,7 @@ test('when there are multiple loaders', () => {
     indexRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -234,7 +232,7 @@ test('when there are multiple loaders', () => {
   type DefaultRouter = typeof defaultRouter
 
   expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
-    Accessor<{}>
+    Accessor<undefined>
   >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
@@ -251,12 +249,15 @@ test('when there are multiple loaders', () => {
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
   ).returns.toEqualTypeOf<
-    Accessor<{
-      data?:
-        | readonly ['invoice1', 'invoice2']
-        | readonly ['post1', 'post2']
-        | undefined
-    }>
+    Accessor<
+      | {
+          data?:
+            | readonly ['invoice1', 'invoice2']
+            | readonly ['post1', 'post2']
+            | undefined
+        }
+      | undefined
+    >
   >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
@@ -268,12 +269,15 @@ test('when there are multiple loaders', () => {
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
-    .toEqualTypeOf<{
-      data?:
-        | readonly ['invoice1', 'invoice2']
-        | readonly ['post1', 'post2']
-        | undefined
-    }>()
+    .toEqualTypeOf<
+      | {
+          data?:
+            | readonly ['invoice1', 'invoice2']
+            | readonly ['post1', 'post2']
+            | undefined
+        }
+      | undefined
+    >()
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }>,
@@ -317,6 +321,7 @@ test('when there are multiple loaders of objects and primtives', () => {
     postsRoute,
   ])
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -324,7 +329,7 @@ test('when there are multiple loaders of objects and primtives', () => {
   type DefaultRouter = typeof defaultRouter
 
   expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
-    Accessor<{}>
+    Accessor<undefined>
   >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
@@ -355,6 +360,7 @@ test('when there are multiple loaders of objects and primtives', () => {
               }
             | undefined
         }
+      | undefined
     >
   >()
 
@@ -372,5 +378,6 @@ test('when there are multiple loaders of objects and primtives', () => {
               }
             | undefined
         }
+      | undefined
     >()
 })
