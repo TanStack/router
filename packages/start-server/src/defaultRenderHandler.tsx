@@ -1,11 +1,10 @@
 import ReactDOMServer from 'react-dom/server'
 import { StartServer } from './StartServer'
-import type { HandlerCallback } from './defaultStreamHandler'
-import type { AnyRouter } from '@tanstack/react-router'
+import { defineHandlerCallback } from './handlerCallback'
 
-export const defaultRenderHandler: HandlerCallback<AnyRouter> = async ({
+export const defaultRenderHandler = defineHandlerCallback(async ({
   router,
-  responseHeaders,
+  responseHeaders
 }) => {
   try {
     let html = ReactDOMServer.renderToString(<StartServer router={router} />)
@@ -24,4 +23,4 @@ export const defaultRenderHandler: HandlerCallback<AnyRouter> = async ({
       headers: responseHeaders,
     })
   }
-}
+})
