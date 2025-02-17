@@ -116,6 +116,7 @@ export const Match = (props: { matchId: string }) => {
           </Dynamic>
         </Dynamic>
       </matchContext.Provider>
+
       {parentRouteId() === rootRouteId ? (
         <>
           <OnRendered />
@@ -136,18 +137,21 @@ export const Match = (props: { matchId: string }) => {
 function OnRendered() {
   const router = useRouter()
 
-  return (
-    <script
-      ref={(el) => {
-        if (el) {
-          router.emit({
-            type: 'onRendered',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-      }}
-    />
-  )
+  const location = useRouterState({
+    select: (s) => {
+      return s.location
+    },
+  })
+
+  Solid.createEffect(() => {
+    location()
+    router.emit({
+      type: 'onRendered',
+      ...getLocationChangeInfo(router.state),
+    })
+  })
+
+  return null
 }
 
 export const MatchInner = (props: { matchId: string }): any => {
