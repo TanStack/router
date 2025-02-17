@@ -2,21 +2,25 @@ import { createMemoryHistory } from '@tanstack/react-router'
 import { mergeHeaders } from '@tanstack/start-client'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
-import type { H3Event } from 'h3'
+import type { HandlerCallback } from './handlerCallback'
+import type { EventHandlerResponse, H3Event } from 'h3'
 import type { AnyRouter, Manifest } from '@tanstack/react-router'
-import type { HandlerCallback } from './defaultStreamHandler'
 
-export type CustomizeStartHandler<TRouter extends AnyRouter> = (
-  cb: HandlerCallback<TRouter>,
-) => ReturnType<typeof eventHandler>
+export type CustomizeStartHandler<
+  TRouter extends AnyRouter,
+  TResponse extends EventHandlerResponse = EventHandlerResponse,
+> = (cb: HandlerCallback<TRouter, TResponse>) => ReturnType<typeof eventHandler>
 
-export function createStartHandler<TRouter extends AnyRouter>({
+export function createStartHandler<
+  TRouter extends AnyRouter,
+  TResponse extends EventHandlerResponse = EventHandlerResponse,
+>({
   createRouter,
   getRouterManifest,
 }: {
   createRouter: () => TRouter
   getRouterManifest?: () => Manifest
-}): CustomizeStartHandler<TRouter> {
+}): CustomizeStartHandler<TRouter, TResponse> {
   return (cb) => {
     return eventHandler(async (event) => {
       const request = toWebRequest(event)
@@ -42,11 +46,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
       dehydrateRouter(router)
 
-      const responseHeaders = getRequestHeaders({
-        event,
-        router,
-      })
-
+      const responseHeaders = getStartResponseHeaders({ event, router })
       const response = await cb({
         request,
         router,
@@ -58,14 +58,10 @@ export function createStartHandler<TRouter extends AnyRouter>({
   }
 }
 
-function getRequestHeaders(opts: {
-  event: H3Event
-  router: AnyRouter
-}): Headers {
-  ;(opts.event as any).__tsrHeadersSent = true
-
+function getStartResponseHeaders(opts: { event: H3Event; router: AnyRouter }) {
   let headers = mergeHeaders(
     getResponseHeaders(opts.event),
+    (opts.event as any).___ssrRpcResponseHeaders,
     {
       'Content-Type': 'text/html; charset=UTF-8',
     },
@@ -82,6 +78,5 @@ function getRequestHeaders(opts: {
       Location: redirect.href,
     })
   }
-
   return headers
 }

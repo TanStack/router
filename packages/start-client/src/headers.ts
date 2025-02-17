@@ -1,5 +1,5 @@
+import { splitSetCookieString } from 'cookie-es'
 import type { OutgoingHttpHeaders } from 'node:http2'
-
 // A utility function to turn HeadersInit into an object
 export function headersInitToObject(
   headers: HeadersInit,
@@ -38,7 +38,12 @@ export function mergeHeaders(...headers: Array<AnyHeaders>) {
   return headers.reduce((acc: Headers, header) => {
     const headersInstance = toHeadersInstance(header)
     for (const [key, value] of headersInstance.entries()) {
-      acc.set(key, value)
+      if (key === 'set-cookie') {
+        const splitCookies = splitSetCookieString(value)
+        splitCookies.forEach((cookie) => acc.append('set-cookie', cookie))
+      } else {
+        acc.set(key, value)
+      }
     }
     return acc
   }, new Headers())
