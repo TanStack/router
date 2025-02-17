@@ -108,14 +108,19 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
             ...error,
             _fromLocation: router.state.location,
           }),
-        );
+        )
       }
 
-      return ogMutationCacheConfig.onError?.(error, _variables, _context, _mutation)
-    }
+      return ogMutationCacheConfig.onError?.(
+        error,
+        _variables,
+        _context,
+        _mutation,
+      )
+    },
   }
 
-  const ogQueryCacheConfig = queryClient.getQueryCache().config;
+  const ogQueryCacheConfig = queryClient.getQueryCache().config
   queryClient.getQueryCache().config = {
     ...ogQueryCacheConfig,
     onError: (error, _query) => {
@@ -125,11 +130,11 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
             ...error,
             _fromLocation: router.state.location,
           }),
-        );
+        )
       }
 
       return ogQueryCacheConfig.onError?.(error, _query)
-    }
+    },
   }
 
   const ogOptions = router.options
