@@ -35,7 +35,7 @@ export function trimPath(path: string) {
 }
 
 export function removeTrailingSlash(value: string, basepath: string): string {
-  if (value.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
+  if (value?.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
     return value.slice(0, -1)
   }
   return value
