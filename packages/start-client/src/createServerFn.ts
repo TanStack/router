@@ -699,27 +699,6 @@ async function executeMiddleware(
     if (middlewareFn) {
       // Execute the middleware
       return applyMiddleware(middlewareFn, ctx, async (newCtx) => {
-        // If there is a clientAfter function and we are on the client
-        const clientAfter = nextMiddleware.options.clientAfter as
-          | MiddlewareFn
-          | undefined
-
-        if (env === 'client' && clientAfter) {
-          // We need to await the next middleware and get the result
-          const result = await next(newCtx)
-
-          // Then we can execute the clientAfter function
-          return applyMiddleware(
-            clientAfter,
-            {
-              ...newCtx,
-              ...result,
-            },
-            // Identity, because there "next" is just returning
-            (d: any) => d,
-          )
-        }
-
         return next(newCtx).catch((error) => {
           if (isRedirect(error) || isNotFound(error)) {
             return {

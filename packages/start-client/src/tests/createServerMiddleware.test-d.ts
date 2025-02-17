@@ -38,7 +38,6 @@ test('createServeMiddleware removes middleware after middleware,', () => {
     return result
   })
 
-  expectTypeOf(middlewareAfterServer).toHaveProperty('clientAfter')
   expectTypeOf(middlewareAfterServer).not.toHaveProperty('server')
   expectTypeOf(middlewareAfterServer).not.toHaveProperty('input')
   expectTypeOf(middlewareAfterServer).not.toHaveProperty('middleware')
@@ -54,6 +53,12 @@ test('createMiddleware merges server context', () => {
 
     expectTypeOf(result).toEqualTypeOf<{
       'use functions must return the result of next()': true
+      _types: {
+        context: {
+          a: boolean
+        }
+        sendContext: undefined
+      }
       context: { a: boolean }
       sendContext: undefined
     }>()
@@ -70,6 +75,12 @@ test('createMiddleware merges server context', () => {
 
     expectTypeOf(result).toEqualTypeOf<{
       'use functions must return the result of next()': true
+      _types: {
+        context: {
+          b: string
+        }
+        sendContext: undefined
+      }
       context: { b: string }
       sendContext: undefined
     }>()
@@ -86,6 +97,12 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
+        _types: {
+          context: {
+            c: number
+          }
+          sendContext: undefined
+        }
         context: { a: boolean; b: string; c: number }
         sendContext: undefined
       }>()
@@ -106,6 +123,12 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
+        _types: {
+          context: {
+            d: number
+          }
+          sendContext: undefined
+        }
         context: { a: boolean; b: string; c: number; d: number }
         sendContext: undefined
       }>()
@@ -203,6 +226,12 @@ test('createMiddleware merges client context and sends to the server', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
+        _types: {
+          context: {
+            e: string
+          }
+          sendContext: undefined
+        }
         context: { a: boolean; b: string; c: number; d: number; e: string }
         sendContext: undefined
       }>()
@@ -275,23 +304,14 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
+        _types: {
+          context: {
+            fromServer1: string
+          }
+          sendContext: undefined
+        }
         context: { fromServer1: string }
         sendContext: undefined
-      }>()
-
-      return result
-    })
-    .clientAfter(async (options) => {
-      expectTypeOf(options.context).toEqualTypeOf<{ fromClient1: string }>()
-
-      const result = await options.next({
-        context: { clientAfter1: 'clientAfter1' },
-      })
-
-      expectTypeOf(result).toEqualTypeOf<{
-        'use functions must return the result of next()': true
-        context: { fromClient1: string; clientAfter1: string }
-        headers: HeadersInit
       }>()
 
       return result
@@ -323,23 +343,14 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
+        _types: {
+          context: {
+            fromServer2: string
+          }
+          sendContext: undefined
+        }
         context: { fromServer2: string }
         sendContext: undefined
-      }>()
-
-      return result
-    })
-    .clientAfter(async (options) => {
-      expectTypeOf(options.context).toEqualTypeOf<{ fromClient2: string }>()
-
-      const result = await options.next({
-        context: { clientAfter2: 'clientAfter2' },
-      })
-
-      expectTypeOf(result).toEqualTypeOf<{
-        'use functions must return the result of next()': true
-        context: { fromClient2: string; clientAfter2: string }
-        headers: HeadersInit
       }>()
 
       return result
@@ -382,40 +393,18 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
+        _types: {
+          context: {
+            fromServer3: string
+          }
+          sendContext: undefined
+        }
         context: {
           fromServer1: string
           fromServer2: string
           fromServer3: string
         }
         sendContext: undefined
-      }>()
-
-      return result
-    })
-    .clientAfter(async (options) => {
-      expectTypeOf(options.context).toEqualTypeOf<{
-        fromClient1: string
-        fromClient2: string
-        fromClient3: string
-        clientAfter1: string
-        clientAfter2: string
-      }>()
-
-      const result = await options.next({
-        context: { clientAfter3: 'clientAfter3' },
-      })
-
-      expectTypeOf(result).toEqualTypeOf<{
-        'use functions must return the result of next()': true
-        context: {
-          fromClient1: string
-          fromClient2: string
-          fromClient3: string
-          clientAfter1: string
-          clientAfter2: string
-          clientAfter3: string
-        }
-        headers: HeadersInit
       }>()
 
       return result
@@ -464,6 +453,14 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
+        _types: {
+          context: {
+            fromServer4: string
+          }
+          sendContext: {
+            toClient1: 'toClient1'
+          }
+        }
         context: {
           fromServer1: string
           fromServer2: string
@@ -472,40 +469,6 @@ test('createMiddleware merges server context and client context, sends server co
           toServer1: 'toServer1'
         }
         sendContext: { toClient1: 'toClient1' }
-      }>()
-
-      return result
-    })
-    .clientAfter(async (options) => {
-      expectTypeOf(options.context).toEqualTypeOf<{
-        fromClient1: string
-        fromClient2: string
-        clientAfter1: string
-        clientAfter2: string
-        fromClient3: string
-        clientAfter3: string
-        fromClient4: string
-        toClient1: 'toClient1'
-      }>
-
-      const result = await options.next({
-        context: { clientAfter4: 'clientAfter4' },
-      })
-
-      expectTypeOf(result).toEqualTypeOf<{
-        'use functions must return the result of next()': true
-        context: {
-          fromClient1: string
-          fromClient2: string
-          fromClient3: string
-          fromClient4: string
-          clientAfter1: string
-          clientAfter2: string
-          clientAfter3: string
-          clientAfter4: string
-          toClient1: 'toClient1'
-        }
-        headers: HeadersInit
       }>()
 
       return result
@@ -559,6 +522,14 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
+        _types: {
+          context: {
+            fromServer5: string
+          }
+          sendContext: {
+            toClient2: 'toClient2'
+          }
+        }
         context: {
           fromServer1: string
           fromServer2: string
@@ -569,46 +540,6 @@ test('createMiddleware merges server context and client context, sends server co
           toServer2: 'toServer2'
         }
         sendContext: { toClient1: 'toClient1'; toClient2: 'toClient2' }
-      }>()
-
-      return result
-    })
-    .clientAfter(async (options) => {
-      expectTypeOf(options.context).toEqualTypeOf<{
-        fromClient1: string
-        fromClient2: string
-        fromClient3: string
-        fromClient4: string
-        fromClient5: string
-        clientAfter1: string
-        clientAfter2: string
-        clientAfter3: string
-        clientAfter4: string
-        toClient1: 'toClient1'
-        toClient2: 'toClient2'
-      }>
-
-      const result = await options.next({
-        context: { clientAfter5: 'clientAfter5' },
-      })
-
-      expectTypeOf(result).toEqualTypeOf<{
-        'use functions must return the result of next()': true
-        context: {
-          fromClient1: string
-          fromClient2: string
-          fromClient3: string
-          fromClient4: string
-          fromClient5: string
-          clientAfter1: string
-          clientAfter2: string
-          clientAfter3: string
-          clientAfter4: string
-          clientAfter5: string
-          toClient1: 'toClient1'
-          toClient2: 'toClient2'
-        }
-        headers: HeadersInit
       }>()
 
       return result

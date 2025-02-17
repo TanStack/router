@@ -235,22 +235,29 @@ const requestLogger = createMiddleware()
 
 ## Sending server context to the client
 
-Similar to sending client context to the server, you can also send server context to the client by calling the `next` function with a `sendContext` property and object to transmit any data to the client. Any properties passed to `sendContext` will be merged, serialized and sent to the client along with the response and will be available on the normal context object of any nested client middleware.
+Similar to sending client context to the server, you can also send server context to the client by calling the `next` function with a `sendContext` property and object to transmit any data to the client. Any properties passed to `sendContext` will be merged, serialized and sent to the client along with the response and will be available on the normal context object of any nested client middleware. The returned object of calling `next` in `client` contains the context sent from server to the client and is type-safe. Middleware is able to infer the context sent from the server to the client from previous middleware chained from the `middleware` function.
+
+> [!WARNING]
+> The return type of `next` in `client` can only be inferred from middleware known in the current middleware chain. Therefore the most accurate return type of `next` is in middleware at the end of the middleware chain
 
 ```tsx
+const serverTimer = createMiddleware().server(async ({ next }) => {
+  return next({
+    sendContext: {
+      // Send the current time to the client
+      timeFromServer: new Date(),
+    },
+  })
+})
+
 const requestLogger = createMiddleware()
-  .client(async ({ next, context }) => {
-    const result = next()
+  .middleware([serverTimer])
+  .client(async ({ next }) => {
+    const result = await next()
     // Woah! We have the time from the server!
     console.log('Time from the server:', result.context.timeFromServer)
-  })
-  .server(async ({ next }) => {
-    return next({
-      sendContext: {
-        // Send the current time to the client
-        timeFromServer: new Date(),
-      },
-    })
+
+    return result
   })
 ```
 
