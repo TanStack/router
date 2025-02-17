@@ -5,7 +5,7 @@ import {
   hashKey,
   hydrate,
 } from '@tanstack/react-query'
-import type { AnyRouter } from '@tanstack/react-router'
+import { type AnyRouter, isRedirect } from '@tanstack/react-router'
 import type {
   QueryClient,
   QueryObserverResult,
@@ -27,7 +27,6 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
   const streamedQueryKeys = new Set<string>()
 
   const ogClientOptions = queryClient.getDefaultOptions()
-
   queryClient.setDefaultOptions({
     ...ogClientOptions,
     queries: {
@@ -98,6 +97,40 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
       },
     } as any,
   })
+
+  const ogMutationCacheConfig = queryClient.getMutationCache().config
+  queryClient.getMutationCache().config = {
+    ...ogMutationCacheConfig,
+    onError: (error, _variables, _context, _mutation) => {
+      if (isRedirect(error)) {
+        return router.navigate(
+          router.resolveRedirect({
+            ...error,
+            _fromLocation: router.state.location,
+          }),
+        );
+      }
+
+      return ogMutationCacheConfig.onError?.(error, _variables, _context, _mutation)
+    }
+  }
+
+  const ogQueryCacheConfig = queryClient.getQueryCache().config;
+  queryClient.getQueryCache().config = {
+    ...ogQueryCacheConfig,
+    onError: (error, _query) => {
+      if (isRedirect(error)) {
+        return router.navigate(
+          router.resolveRedirect({
+            ...error,
+            _fromLocation: router.state.location,
+          }),
+        );
+      }
+
+      return ogQueryCacheConfig.onError?.(error, _query)
+    }
+  }
 
   const ogOptions = router.options
   router.options = {
