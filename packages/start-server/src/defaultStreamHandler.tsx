@@ -13,7 +13,7 @@ import { defineHandlerCallback } from './handlerCallback'
 import type { ReadableStream } from 'node:stream/web'
 
 export const defaultStreamHandler = defineHandlerCallback(
-  async ({ request, router , responseHeaders}) => {
+  async ({ request, router, responseHeaders }) => {
     if (typeof ReactDOMServer.renderToReadableStream === 'function') {
       const stream = await ReactDOMServer.renderToReadableStream(
         <StartServer router={router} />,

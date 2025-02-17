@@ -40,9 +40,8 @@ export function mergeHeaders(...headers: Array<AnyHeaders>) {
     for (const [key, value] of headersInstance.entries()) {
       if (key === 'set-cookie') {
         const splitCookies = splitSetCookieString(value)
-        splitCookies.forEach(cookie => acc.append('set-cookie', cookie))
-      }
-      else {
+        splitCookies.forEach((cookie) => acc.append('set-cookie', cookie))
+      } else {
         acc.set(key, value)
       }
     }

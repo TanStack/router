@@ -1,10 +1,6 @@
 import { createMemoryHistory } from '@tanstack/react-router'
 import { mergeHeaders } from '@tanstack/start-client'
-import {
-  eventHandler,
-  getResponseHeaders,
-  toWebRequest,
-} from 'h3'
+import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'
 import type { EventHandlerResponse, H3Event } from 'h3'
@@ -15,7 +11,10 @@ export type CustomizeStartHandler<
   TResponse extends EventHandlerResponse = EventHandlerResponse,
 > = (cb: HandlerCallback<TRouter, TResponse>) => ReturnType<typeof eventHandler>
 
-export function createStartHandler<TRouter extends AnyRouter,  TResponse extends EventHandlerResponse = EventHandlerResponse>({
+export function createStartHandler<
+  TRouter extends AnyRouter,
+  TResponse extends EventHandlerResponse = EventHandlerResponse,
+>({
   createRouter,
   getRouterManifest,
 }: {

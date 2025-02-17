@@ -5,7 +5,11 @@ export interface HandlerCallback<
   TRouter extends AnyRouter,
   TResponse extends EventHandlerResponse = EventHandlerResponse,
 > {
-  (ctx: { request: Request; router: TRouter, responseHeaders: Headers }): TResponse
+  (ctx: {
+    request: Request
+    router: TRouter
+    responseHeaders: Headers
+  }): TResponse
 }
 
 export function defineHandlerCallback<

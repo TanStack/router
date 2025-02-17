@@ -58,7 +58,9 @@ function Home() {
             respectively
           </Link>
         </li>
-        <li><Link  to="/cookies">server function sets cookies</Link></li>
+        <li>
+          <Link to="/cookies">server function sets cookies</Link>
+        </li>
       </ul>
     </div>
   )
