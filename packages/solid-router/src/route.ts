@@ -466,6 +466,15 @@ export interface UpdatableRouteOptions<
     meta?: AnyRouteMatch['meta']
   }
   ssr?: boolean
+  codeSplitGroupings?: Array<
+    Array<
+      | 'loader'
+      | 'component'
+      | 'pendingComponent'
+      | 'notFoundComponent'
+      | 'errorComponent'
+    >
+  >
 }
 
 export type RouteLoaderFn<
