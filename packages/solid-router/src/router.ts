@@ -1449,7 +1449,9 @@ export class Router<
       )
       let pathname: string
       if (dest.to) {
-        pathname = this.resolvePathWithBase(fromPath, `${dest.to}`)
+        const resolvePathTo =
+          fromMatch?.fullPath || this.latestLocation.pathname
+        pathname = this.resolvePathWithBase(resolvePathTo, `${dest.to}`)
       } else {
         const fromRouteByFromPathRouteId =
           this.routesById[
