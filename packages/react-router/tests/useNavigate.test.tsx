@@ -953,9 +953,9 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
       <>
         <h1>Details!</h1>
         <button
-          onClick={() => {
+          onClick={async () => {
             try {
-              navigate({
+              await navigate({
                 from: '/invoices',
                 to: './$invoiceId',
                 params: { invoiceId: 'id1' },

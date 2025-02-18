@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { z } from 'zod'
 import {
   createMemoryHistory,
   createRootRoute,
+  createRootRouteWithContext,
   createRoute,
   createRouter,
+  linkOptions,
+  redirect,
 } from '../src'
+import { cancelNavigation } from '../src/cancelNavigation'
 import type { RouterHistory } from '../src'
 
 afterEach(() => {
@@ -92,6 +97,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
     projectTree,
     uTree,
     gTree,
+    searchRoute,
   ])
   const router = createRouter({ routeTree, history })
 
@@ -546,5 +552,147 @@ describe('relative navigation', () => {
     await router.invalidate()
 
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+})
+
+describe('beforeNavigate', () => {
+  type CustomRouterContext = {
+    greeting: string
+    universe: {
+      alpha: string
+      beta: number
+    }
+  }
+
+  function createTestRouterWithBeforeNavigate(initialHistory?: RouterHistory) {
+    const postIdRouteBeforeLoad = vi.fn()
+    const lineItemIdRouteBeforeNavigate = vi.fn()
+    const history =
+      initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+
+    
+    const rootRoute = createRootRouteWithContext<CustomRouterContext>()({})
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+    })
+    const postsIndexRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '/',
+      beforeNavigate: () => {
+        throw redirect({
+          to: '/posts/$postId1',
+          search: { redirect: true },
+          params: { postId1: '1' },
+        })
+      },
+    })
+    const postIdRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      validateSearch: z.object({ redirect: z.boolean().optional() }),
+      beforeLoad: postIdRouteBeforeLoad,
+    })
+    const usersRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'users',
+    })
+    const userIdRoute = createRoute({
+      getParentRoute: () => usersRoute,
+      path: '$userId',
+      beforeNavigate: ({ params }) => {
+        if (params.userId === 'user1') {
+          throw cancelNavigation()
+        }
+      },
+    })
+    const invoicesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'invoices',
+      validateSearch: z.object({ invoicesRouteSearchParam: z.string() }),
+    })
+    const invoiceIdRoute = createRoute({
+      getParentRoute: () => invoicesRoute,
+      path: '$invoiceId',
+      validateSearch: z.object({
+        invoiceIdRouteSearchParam: z.string().catch('default-invoice-id-route'),
+      }),
+    })
+    const lineItemIdRoute = createRoute({
+      getParentRoute: () => invoiceIdRoute,
+      path: '$lineItemId',
+      validateSearch: z.object({ lineItemIdRouteSearchParam: z.string() }),
+      beforeNavigate: lineItemIdRouteBeforeNavigate,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      postsRoute.addChildren([postsIndexRoute, postIdRoute]),
+      usersRoute.addChildren([userIdRoute]),
+      invoicesRoute.addChildren([
+        invoiceIdRoute.addChildren([lineItemIdRoute]),
+      ]),
+    ])
+    const context : CustomRouterContext = { greeting: 'hello world', universe: { alpha: 'a', beta: 123 } }
+    const router = createRouter({ routeTree, history, context })
+    return {
+      router,
+      context,
+      mocks: { postIdRouteBeforeLoad, lineItemIdRouteBeforeNavigate },
+    }
+  }
+
+  it('should navigate to /posts/1?redirect=true if beforeNavigate in /posts throws redirect', async () => {
+    const { router, mocks } = createTestRouterWithBeforeNavigate()
+
+    await router.load()
+    await router.navigate({ to: '/posts' })
+    expect(router.state.location.href).toBe('/posts/1?redirect=true')
+    expect(router.state.location.search).toEqual({ redirect: true })
+    expect(mocks.postIdRouteBeforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { postId: '1' },
+        search: { redirect: true },
+      }),
+    )
+  })
+
+  it('should cancel navigation if beforeNavigate in /users/user1 throws cancelNavigation', async () => {
+    const { router } = createTestRouterWithBeforeNavigate()
+
+    await router.load()
+    await router.navigate({ to: '/users/user1' })
+    expect(router.state.location.pathname).toBe('/')
+  })
+
+  it('beforeNavigate is called with all parent path, search params and router context', async () => {
+    const { router, context, mocks } = createTestRouterWithBeforeNavigate()
+
+    await router.load()
+    const link = linkOptions({
+      to: '/invoices/$invoiceId/$lineItemId',
+      params: { invoiceId: 'invoice-1', lineItemId: 'line-item-5' },
+      search: {
+        invoicesRouteSearchParam: 'foo',
+        lineItemIdRouteSearchParam: 'bar',
+      },
+    })
+    const location = router.buildLocation(link)
+    await router.navigate(link)
+    expect(router.state.location.pathname).toBe(location.pathname)
+    expect(mocks.lineItemIdRouteBeforeNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: link.params,
+        search: {
+          ...link.search,
+          invoiceIdRouteSearchParam: 'default-invoice-id-route',
+        },
+        context
+      }),
+    )
   })
 })
