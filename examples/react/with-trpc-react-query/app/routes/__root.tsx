@@ -8,10 +8,13 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 import { Spinner } from './-components/spinner'
-import type { trpcQueryUtils } from '../router'
+import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
+import type { AppRouter } from '../../trpc-server.handler'
+import type { QueryClient } from '@tanstack/react-query'
 
 export interface RouterAppContext {
-  trpcQueryUtils: typeof trpcQueryUtils
+  trpc: TRPCOptionsProxy<AppRouter>
+  queryClient: QueryClient
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
