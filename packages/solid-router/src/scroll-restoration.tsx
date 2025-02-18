@@ -44,7 +44,6 @@ export const scrollRestorationCache: ScrollRestorationCache = sessionsStorage
         // update.
         set: (updater) => (
           (scrollRestorationCache.state =
-             
             functionalUpdate(updater, scrollRestorationCache.state) ||
             scrollRestorationCache.state),
           window.sessionStorage.setItem(
