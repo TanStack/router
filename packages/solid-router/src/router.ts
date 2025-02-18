@@ -1293,15 +1293,6 @@ export class Router<
         }
       }
 
-      // If it's already a success, update the headers
-      // These may get updated again if the match is refreshed
-      // due to being stale
-      if (match.status === 'success') {
-        match.headers = route.options.headers?.({
-          loaderData: match.loaderData,
-        })
-      }
-
       if (!opts?.preload) {
         // If we have a global not found, mark the right match as global not found
         match.globalNotFound = globalNotFoundRouteId === route.id
@@ -1355,17 +1346,25 @@ export class Router<
         }
       }
 
-      const assetContext = {
-        matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
+      // If it's already a success, update headers and head content
+      // These may get updated again if the match is refreshed
+      // due to being stale
+      if (match.status === 'success') {
+        match.headers = route.options.headers?.({
+          loaderData: match.loaderData,
+        })
+        const assetContext = {
+          matches,
+          match,
+          params: match.params,
+          loaderData: match.loaderData,
+        }
+        const headFnContent = route.options.head?.(assetContext)
+        match.links = headFnContent?.links
+        match.headScripts = headFnContent?.scripts
+        match.meta = headFnContent?.meta
+        match.scripts = route.options.scripts?.(assetContext)
       }
-      const headFnContent = route.options.head?.(assetContext)
-      match.links = headFnContent?.links
-      match.headScripts = headFnContent?.scripts
-      match.meta = headFnContent?.meta
-      match.scripts = route.options.scripts?.(assetContext)
     })
 
     return matches
