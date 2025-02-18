@@ -1737,13 +1737,21 @@ export class Router<
     ...next
   }: ParsedLocation & CommitLocationOptions): Promise<void> => {
     const isSameState = () => {
-      // `state.key` is ignored but may still be provided when navigating,
-      // temporarily add the previous key to the next state so it doesn't affect
+      // the following props are ignored but may still be provided when navigating,
+      // temporarily add the previous values to the next state so they don't affect
       // the comparison
-
-      next.state.key = this.latestLocation.state.key
+      const ignoredProps = [
+        'key',
+        '__TSR_index',
+        '__hashScrollIntoViewOptions',
+      ] as const
+      ignoredProps.forEach((prop) => {
+        ;(next.state as any)[prop] = this.latestLocation.state[prop]
+      })
       const isEqual = deepEqual(next.state, this.latestLocation.state)
-      delete next.state.key
+      ignoredProps.forEach((prop) => {
+        delete next.state[prop]
+      })
       return isEqual
     }
 
