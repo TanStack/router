@@ -3,14 +3,14 @@ import { render } from '@testing-library/react'
 import ReactDOMServer from 'react-dom/server'
 
 import {
+  HeadContent,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
-} from '@tanstack/react-router'
+} from '../src'
 import { Scripts } from '../src/Scripts'
-import { HeadContent } from '../src'
 
 describe('ssr scripts', () => {
   test('it works', async () => {
