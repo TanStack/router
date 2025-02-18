@@ -10,7 +10,6 @@ import {
 } from '@tanstack/solid-router'
 import { Scripts } from '../src/Scripts'
 import { HeadContent } from '../src'
-import { renderToString } from 'solid-js/web'
 
 describe('ssr scripts', () => {
   test('it works', async () => {
@@ -198,9 +197,10 @@ describe('ssr HeadContent', () => {
       { property: 'og:image', content: 'index-image.jpg' },
     ])
 
-    const html = renderToString(() => <RouterProvider router={router} />)
-    expect(html).toEqual(
-      `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/><!--$--><!--/$-->`,
+    const data = render(() => <RouterProvider router={router} />)
+
+    expect(data.baseElement.children[1]?.innerHTML).toEqual(
+      `<title>Index</title><meta name="image" content="image.jpg"><meta property="og:description" content="Root description"><meta name="description" content="Index"><meta name="last-modified" content="2021-10-10"><meta property="og:image" content="index-image.jpg">`,
     )
   })
 })
