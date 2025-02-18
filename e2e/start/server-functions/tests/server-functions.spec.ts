@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { PORT } from '../playwright.config'
+import type { Page } from '@playwright/test'
 
-test.only('invoking a server function with custom response status code', async ({
+test('invoking a server function with custom response status code', async ({
   page,
 }) => {
   await page.goto('/status')
@@ -235,4 +236,27 @@ test('Direct POST submitting FormData to a Server function returns the correct m
 
   const result = await page.innerText('body')
   expect(result).toBe(expected)
+})
+
+test.describe('server function sets cookies', () => {
+  async function runCookieTest(page: Page, expectedCookieValue: string) {
+    for (let i = 1; i <= 4; i++) {
+      const key = `cookie-${i}-${expectedCookieValue}`
+
+      const actualValue = await page.getByTestId(key).textContent()
+      expect(actualValue).toBe(expectedCookieValue)
+    }
+  }
+  test('SSR', async ({ page }) => {
+    const expectedCookieValue = `SSR-${Date.now()}`
+    await page.goto(`/cookies/set?value=${expectedCookieValue}`)
+    await runCookieTest(page, expectedCookieValue)
+  })
+
+  test('client side navigation', async ({ page }) => {
+    const expectedCookieValue = `CLIENT-${Date.now()}`
+    await page.goto(`/cookies?value=${expectedCookieValue}`)
+    await page.getByTestId('link-to-set').click()
+    await runCookieTest(page, expectedCookieValue)
+  })
 })

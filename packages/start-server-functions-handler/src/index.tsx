@@ -3,7 +3,6 @@ import invariant from 'tiny-invariant'
 import {
   eventHandler,
   getEvent,
-  getHeaders,
   getResponseStatus,
   toWebRequest,
 } from '@tanstack/start-server'
@@ -30,24 +29,6 @@ const serverFnManifest = _serverFnManifest as Record<
 async function handleServerAction(event: H3Event) {
   const request = toWebRequest(event)!
   const response = await handleServerRequest(request, event)
-
-  // NOTE: I'm not sure if nitro should be handling this or if Vinxi was
-  // handling it for us, but not all headers were being returned with the
-  // response from the h3 utils. So we merge the headers from h3 and
-  // the headers from the response and set them on the response.
-  Object.entries(getHeaders()).forEach(([key, value]) => {
-    if (
-      key &&
-      value &&
-      (!response.headers.has(key) || !response.headers.get(key)) &&
-      // For some reason, content-length is being set by h3, but doesn't
-      // match the actual content length of the response.
-      key.toLowerCase() !== 'content-length'
-    ) {
-      response.headers.set(key, value)
-    }
-  })
-
   return response
 }
 

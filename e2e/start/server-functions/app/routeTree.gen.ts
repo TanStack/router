@@ -21,6 +21,8 @@ import { Route as HeadersImport } from './routes/headers'
 import { Route as EnvOnlyImport } from './routes/env-only'
 import { Route as ConsistentImport } from './routes/consistent'
 import { Route as IndexImport } from './routes/index'
+import { Route as CookiesIndexImport } from './routes/cookies/index'
+import { Route as CookiesSetImport } from './routes/cookies/set'
 
 // Create/Update Routes
 
@@ -81,6 +83,18 @@ const ConsistentRoute = ConsistentImport.update({
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const CookiesIndexRoute = CookiesIndexImport.update({
+  id: '/cookies/',
+  path: '/cookies/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const CookiesSetRoute = CookiesSetImport.update({
+  id: '/cookies/set',
+  path: '/cookies/set',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -158,6 +172,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubmitPostFormdataImport
       parentRoute: typeof rootRoute
     }
+    '/cookies/set': {
+      id: '/cookies/set'
+      path: '/cookies/set'
+      fullPath: '/cookies/set'
+      preLoaderRoute: typeof CookiesSetImport
+      parentRoute: typeof rootRoute
+    }
+    '/cookies/': {
+      id: '/cookies/'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesIndexImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -174,6 +202,8 @@ export interface FileRoutesByFullPath {
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
+  '/cookies/set': typeof CookiesSetRoute
+  '/cookies': typeof CookiesIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -187,6 +217,8 @@ export interface FileRoutesByTo {
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
+  '/cookies/set': typeof CookiesSetRoute
+  '/cookies': typeof CookiesIndexRoute
 }
 
 export interface FileRoutesById {
@@ -201,6 +233,8 @@ export interface FileRoutesById {
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
+  '/cookies/set': typeof CookiesSetRoute
+  '/cookies/': typeof CookiesIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -216,6 +250,8 @@ export interface FileRouteTypes {
     | '/serialize-form-data'
     | '/status'
     | '/submit-post-formdata'
+    | '/cookies/set'
+    | '/cookies'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -228,6 +264,8 @@ export interface FileRouteTypes {
     | '/serialize-form-data'
     | '/status'
     | '/submit-post-formdata'
+    | '/cookies/set'
+    | '/cookies'
   id:
     | '__root__'
     | '/'
@@ -240,6 +278,8 @@ export interface FileRouteTypes {
     | '/serialize-form-data'
     | '/status'
     | '/submit-post-formdata'
+    | '/cookies/set'
+    | '/cookies/'
   fileRoutesById: FileRoutesById
 }
 
@@ -254,6 +294,8 @@ export interface RootRouteChildren {
   SerializeFormDataRoute: typeof SerializeFormDataRoute
   StatusRoute: typeof StatusRoute
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
+  CookiesSetRoute: typeof CookiesSetRoute
+  CookiesIndexRoute: typeof CookiesIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -267,6 +309,8 @@ const rootRouteChildren: RootRouteChildren = {
   SerializeFormDataRoute: SerializeFormDataRoute,
   StatusRoute: StatusRoute,
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
+  CookiesSetRoute: CookiesSetRoute,
+  CookiesIndexRoute: CookiesIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -288,7 +332,9 @@ export const routeTree = rootRoute
         "/return-null",
         "/serialize-form-data",
         "/status",
-        "/submit-post-formdata"
+        "/submit-post-formdata",
+        "/cookies/set",
+        "/cookies/"
       ]
     },
     "/": {
@@ -320,6 +366,12 @@ export const routeTree = rootRoute
     },
     "/submit-post-formdata": {
       "filePath": "submit-post-formdata.tsx"
+    },
+    "/cookies/set": {
+      "filePath": "cookies/set.tsx"
+    },
+    "/cookies/": {
+      "filePath": "cookies/index.tsx"
     }
   }
 }

@@ -380,3 +380,6 @@ export function getEvent() {
 export async function handleHTTPEvent(event: H3Event) {
   return await (globalThis as any).$handle(event)
 }
+
+export { defineHandlerCallback } from './handlerCallback'
+export type { HandlerCallback } from './handlerCallback'

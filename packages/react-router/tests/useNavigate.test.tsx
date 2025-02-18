@@ -1,10 +1,17 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, expect, test, vi } from 'vitest'
+import {
+  cleanup,
+  configure,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react'
 
 import { z } from 'zod'
 import {
+  Navigate,
   Outlet,
   RouterProvider,
   createRootRoute,
@@ -1293,4 +1300,38 @@ test('when setting search params with 2 parallel navigate calls', async () => {
   const search = new URLSearchParams(window.location.search)
   expect(search.get('param1')).toEqual('foo')
   expect(search.get('param2')).toEqual('bar')
+})
+
+test('<Navigate> navigates only once in <StrictMode>', async () => {
+  configure({ reactStrictMode: true })
+  const rootRoute = createRootRoute()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <Navigate to="/posts" />,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts',
+    component: () => {
+      return (
+        <React.Fragment>
+          <h1 data-testid="posts-title">Posts</h1>
+        </React.Fragment>
+      )
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+  })
+
+  const navigateSpy = vi.spyOn(router, 'navigate')
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('posts-title')).toBeInTheDocument()
+  expect(navigateSpy.mock.calls.length).toBe(1)
 })

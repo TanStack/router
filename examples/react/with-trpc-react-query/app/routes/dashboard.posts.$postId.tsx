@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-
+import { useQuery } from '@tanstack/react-query'
 import { trpc } from '../router'
 import { Spinner } from './-components/spinner'
 
@@ -10,8 +10,8 @@ export const Route = createFileRoute('/dashboard/posts/$postId')({
     showNotes: z.boolean().optional(),
     notes: z.string().optional(),
   }),
-  loader: async ({ context: { trpcQueryUtils }, params: { postId } }) => {
-    await trpcQueryUtils.post.ensureData(postId)
+  loader: async ({ context: { trpc, queryClient }, params: { postId } }) => {
+    await queryClient.ensureQueryData(trpc.post.queryOptions(postId))
   },
   pendingComponent: Spinner,
   component: DashboardPostsPostIdComponent,
@@ -20,7 +20,7 @@ export const Route = createFileRoute('/dashboard/posts/$postId')({
 function DashboardPostsPostIdComponent() {
   const postId = Route.useParams({ select: (d) => d.postId })
 
-  const postQuery = trpc.post.useQuery(postId)
+  const postQuery = useQuery(trpc.post.queryOptions(postId))
   const post = postQuery.data
 
   const search = Route.useSearch()
