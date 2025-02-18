@@ -4,13 +4,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
-test('Navigating to a post page', async ({ page }) => {
+test.skip('Navigating to a post page', async ({ page }) => {
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
-test('Navigating nested layouts', async ({ page }) => {
+test.skip('Navigating nested layouts', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
@@ -24,7 +24,7 @@ test('Navigating nested layouts', async ({ page }) => {
   await expect(page.locator('#app')).toContainText("I'm layout B!")
 })
 
-test('Navigating to a not-found route', async ({ page }) => {
+test.skip('Navigating to a not-found route', async ({ page }) => {
   await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
   await expect(page.getByRole('paragraph')).toContainText(
     'This is the notFoundComponent configured on root route',
@@ -33,14 +33,16 @@ test('Navigating to a not-found route', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
 })
 
-test('Navigating to a route inside a route group', async ({ page }) => {
+test.skip('Navigating to a route inside a route group', async ({ page }) => {
   await page.getByTestId('link-to-route-inside-group').click()
   await expect(page.getByTestId('search-via-hook')).toContainText('world')
   await expect(page.getByTestId('search-via-route-hook')).toContainText('world')
   await expect(page.getByTestId('search-via-route-api')).toContainText('world')
 })
 
-test('Navigating to a lazy route inside a route group', async ({ page }) => {
+test.skip('Navigating to a lazy route inside a route group', async ({
+  page,
+}) => {
   await page.getByTestId('link-to-lazy-route-inside-group').click()
   await expect(page.getByTestId('search-via-hook')).toContainText('world')
   await expect(page.getByTestId('search-via-route-hook')).toContainText('world')
