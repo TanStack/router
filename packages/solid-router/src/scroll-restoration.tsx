@@ -44,6 +44,7 @@ export const scrollRestorationCache: ScrollRestorationCache = sessionsStorage
         // update.
         set: (updater) => (
           (scrollRestorationCache.state =
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             functionalUpdate(updater, scrollRestorationCache.state) ||
             scrollRestorationCache.state),
           window.sessionStorage.setItem(
@@ -88,6 +89,7 @@ export function restoreScroll(
   key?: string,
   behavior?: ScrollToOptions['behavior'],
   shouldScrollRestoration?: boolean,
+  scrollToTopSelectors?: Array<string>,
 ) {
   let byKey: ScrollRestorationByKey
 
@@ -112,13 +114,11 @@ export function restoreScroll(
       for (const elementSelector in elementEntries) {
         const entry = elementEntries[elementSelector]!
         if (elementSelector === 'window') {
-          setTimeout(() => {
-            window.scrollTo({
-              top: entry.scrollY,
-              left: entry.scrollX,
-              behavior,
-            })
-          }, 0)
+          window.scrollTo({
+            top: entry.scrollY,
+            left: entry.scrollX,
+            behavior,
+          })
         } else if (elementSelector) {
           const element = document.querySelector(elementSelector)
           if (element) {
@@ -131,38 +131,42 @@ export function restoreScroll(
       return
     }
 
-    setTimeout(() => {
-      // If we don't have a cached entry for the hash,
-      // Which means we've never seen this location before,
-      // we need to check if there is a hash in the URL.
-      // If there is, we need to scroll it's ID into view
-      // .
-      const hash = window.location.hash.split('#')[1]
+    // If we don't have a cached entry for the hash,
+    // Which means we've never seen this location before,
+    // we need to check if there is a hash in the URL.
+    // If there is, we need to scroll it's ID into view.
+    const hash = window.location.hash.split('#')[1]
 
-      if (hash) {
-        const hashScrollIntoViewOptions =
-          (window.history.state || {}).__hashScrollIntoViewOptions ?? true
+    if (hash) {
+      const hashScrollIntoViewOptions =
+        (window.history.state || {}).__hashScrollIntoViewOptions ?? true
 
-        if (hashScrollIntoViewOptions) {
-          const el = document.getElementById(hash)
-
-          console.log({ hash, el })
-          if (el) {
-            el.scrollIntoView(hashScrollIntoViewOptions)
-          }
+      if (hashScrollIntoViewOptions) {
+        const el = document.getElementById(hash)
+        if (el) {
+          el.scrollIntoView(hashScrollIntoViewOptions)
         }
-
-        return
       }
 
-      // If there is no cached entry for the hash and there is no hash in the URL,
-      // we need to scroll to the top of the page.
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior,
-      })
-    }, 100)
+      return
+    }
+
+    // If there is no cached entry for the hash and there is no hash in the URL,
+    // we need to scroll to the top of the page for every scrollToTop element
+    ;[
+      'window',
+      ...(scrollToTopSelectors?.filter((d) => d !== 'window') ?? []),
+    ].forEach((selector) => {
+      const element =
+        selector === 'window' ? window : document.querySelector(selector)
+      if (element) {
+        element.scrollTo({
+          top: 0,
+          left: 0,
+          behavior,
+        })
+      }
+    })
   })()
 
   //
@@ -297,6 +301,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       cacheKey,
       router.options.scrollRestorationBehavior,
       router.isScrollRestoring,
+      router.options.scrollToTopSelectors,
     )
 
     if (router.isScrollRestoring) {
