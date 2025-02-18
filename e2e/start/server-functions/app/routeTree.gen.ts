@@ -19,6 +19,7 @@ import { Route as MultipartImport } from './routes/multipart'
 import { Route as IsomorphicFnsImport } from './routes/isomorphic-fns'
 import { Route as HeadersImport } from './routes/headers'
 import { Route as EnvOnlyImport } from './routes/env-only'
+import { Route as DeadCodePreserveImport } from './routes/dead-code-preserve'
 import { Route as ConsistentImport } from './routes/consistent'
 import { Route as IndexImport } from './routes/index'
 import { Route as CookiesIndexImport } from './routes/cookies/index'
@@ -74,6 +75,12 @@ const EnvOnlyRoute = EnvOnlyImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const DeadCodePreserveRoute = DeadCodePreserveImport.update({
+  id: '/dead-code-preserve',
+  path: '/dead-code-preserve',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const ConsistentRoute = ConsistentImport.update({
   id: '/consistent',
   path: '/consistent',
@@ -114,6 +121,13 @@ declare module '@tanstack/react-router' {
       path: '/consistent'
       fullPath: '/consistent'
       preLoaderRoute: typeof ConsistentImport
+      parentRoute: typeof rootRoute
+    }
+    '/dead-code-preserve': {
+      id: '/dead-code-preserve'
+      path: '/dead-code-preserve'
+      fullPath: '/dead-code-preserve'
+      preLoaderRoute: typeof DeadCodePreserveImport
       parentRoute: typeof rootRoute
     }
     '/env-only': {
@@ -194,6 +208,7 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/consistent': typeof ConsistentRoute
+  '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
@@ -209,6 +224,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/consistent': typeof ConsistentRoute
+  '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
@@ -225,6 +241,7 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/consistent': typeof ConsistentRoute
+  '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
@@ -242,6 +259,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/consistent'
+    | '/dead-code-preserve'
     | '/env-only'
     | '/headers'
     | '/isomorphic-fns'
@@ -256,6 +274,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/consistent'
+    | '/dead-code-preserve'
     | '/env-only'
     | '/headers'
     | '/isomorphic-fns'
@@ -270,6 +289,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/consistent'
+    | '/dead-code-preserve'
     | '/env-only'
     | '/headers'
     | '/isomorphic-fns'
@@ -286,6 +306,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConsistentRoute: typeof ConsistentRoute
+  DeadCodePreserveRoute: typeof DeadCodePreserveRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
   HeadersRoute: typeof HeadersRoute
   IsomorphicFnsRoute: typeof IsomorphicFnsRoute
@@ -301,6 +322,7 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConsistentRoute: ConsistentRoute,
+  DeadCodePreserveRoute: DeadCodePreserveRoute,
   EnvOnlyRoute: EnvOnlyRoute,
   HeadersRoute: HeadersRoute,
   IsomorphicFnsRoute: IsomorphicFnsRoute,
@@ -325,6 +347,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/consistent",
+        "/dead-code-preserve",
         "/env-only",
         "/headers",
         "/isomorphic-fns",
@@ -342,6 +365,9 @@ export const routeTree = rootRoute
     },
     "/consistent": {
       "filePath": "consistent.tsx"
+    },
+    "/dead-code-preserve": {
+      "filePath": "dead-code-preserve.tsx"
     },
     "/env-only": {
       "filePath": "env-only.tsx"
