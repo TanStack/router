@@ -113,7 +113,7 @@ export const Match = React.memo(function MatchImpl({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {parentRouteId === rootRouteId ? (
+      {parentRouteId === rootRouteId && router.options.scrollRestoration ? (
         <>
           <OnRendered />
           <ScrollRestoration />
