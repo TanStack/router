@@ -200,14 +200,6 @@ test('createServerFn overrides properties', () => {
       const newContext = { context: 'b' } as const
       return next({ sendContext: newContext, context: newContext })
     })
-    .clientAfter(({ context, next }) => {
-      expectTypeOf(context).toEqualTypeOf<{
-        readonly context: 'b'
-      }>
-
-      const newContext = { context: 'c' } as const
-      return next({ context: newContext })
-    })
 
   const middleware2 = createMiddleware()
     .middleware([middleware1])
@@ -230,13 +222,6 @@ test('createServerFn overrides properties', () => {
       const newContext = { context: 'bb' } as const
 
       return next({ sendContext: newContext, context: newContext })
-    })
-    .clientAfter(({ context, next }) => {
-      expectTypeOf(context).toEqualTypeOf<{ readonly context: 'bb' }>()
-
-      const newContext = { context: 'cc' } as const
-
-      return next({ context: newContext })
     })
 
   createServerFn()
