@@ -20,6 +20,7 @@ test('Smoke - Renders home', async ({ page }) => {
   }) => {
     await page.goto('/')
     await page.getByRole('link', { name: `Head-${options.to}` }).click()
+    await page.waitForTimeout(0)
     await expect(page.getByTestId('at-the-top')).toBeInViewport()
   })
 
@@ -31,6 +32,7 @@ test('Smoke - Renders home', async ({ page }) => {
     await page
       .getByRole('link', { name: `${options.to}#at-the-bottom` })
       .click()
+    await page.waitForTimeout(0)
     await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
   })
 
@@ -43,6 +45,7 @@ test('Smoke - Renders home', async ({ page }) => {
       url = `${url}?where=${options.search}`
     }
     await page.goto(`${url}#at-the-bottom`)
+    await page.waitForTimeout(0)
     await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
   })
 })
