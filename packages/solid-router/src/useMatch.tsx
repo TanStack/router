@@ -11,7 +11,7 @@ export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
-  TThrow,
+  TThrow extends boolean,
   TSelected,
 > {
   select?: (
@@ -31,10 +31,11 @@ export type UseMatchOptions<
   TRouter extends AnyRouter,
   TFrom extends string | undefined,
   TStrict extends boolean,
-  TSelected,
   TThrow extends boolean,
+  TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
   UseMatchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
+
 export type UseMatchResult<
   TRouter extends AnyRouter,
   TFrom,
@@ -46,7 +47,7 @@ export type UseMatchResult<
     : MakeRouteMatchUnion<TRouter>
   : TSelected
 
-type ThrowConstraint<
+export type ThrowConstraint<
   TStrict extends boolean,
   TThrow extends boolean,
 > = TStrict extends false ? (TThrow extends true ? never : TThrow) : TThrow
@@ -62,8 +63,8 @@ export function useMatch<
     TRouter,
     TFrom,
     TStrict,
-    TSelected,
-    ThrowConstraint<TStrict, TThrow>
+    ThrowConstraint<TStrict, TThrow>,
+    TSelected
   >,
 ): Solid.Accessor<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
