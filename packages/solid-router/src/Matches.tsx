@@ -84,6 +84,7 @@ export interface RouteMatch<
   meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
   links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
   scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
+  headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
