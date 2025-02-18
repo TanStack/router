@@ -44,7 +44,7 @@ export const scrollRestorationCache: ScrollRestorationCache = sessionsStorage
         // update.
         set: (updater) => (
           (scrollRestorationCache.state =
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+             
             functionalUpdate(updater, scrollRestorationCache.state) ||
             scrollRestorationCache.state),
           window.sessionStorage.setItem(

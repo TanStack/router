@@ -17,8 +17,8 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import type { AnyRoute } from './route'
 import { useLocation } from './useLocation'
+import type { AnyRoute } from './route'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
