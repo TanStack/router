@@ -570,7 +570,6 @@ describe('beforeNavigate', () => {
     const history =
       initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
 
-    
     const rootRoute = createRootRouteWithContext<CustomRouterContext>()({})
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -637,7 +636,10 @@ describe('beforeNavigate', () => {
         invoiceIdRoute.addChildren([lineItemIdRoute]),
       ]),
     ])
-    const context : CustomRouterContext = { greeting: 'hello world', universe: { alpha: 'a', beta: 123 } }
+    const context: CustomRouterContext = {
+      greeting: 'hello world',
+      universe: { alpha: 'a', beta: 123 },
+    }
     const router = createRouter({ routeTree, history, context })
     return {
       router,
@@ -691,7 +693,7 @@ describe('beforeNavigate', () => {
           ...link.search,
           invoiceIdRouteSearchParam: 'default-invoice-id-route',
         },
-        context
+        context,
       }),
     )
   })
