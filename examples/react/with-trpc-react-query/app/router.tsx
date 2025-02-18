@@ -1,7 +1,7 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { httpBatchLink } from '@trpc/client'
-import { createTRPCQueryUtils, createTRPCReact } from '@trpc/react-query'
+import { createTRPCClient, httpBatchLink } from '@trpc/client'
+import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
@@ -11,22 +11,18 @@ import type { AppRouter } from '../trpc-server.handler'
 
 export const queryClient = new QueryClient()
 
-export const trpc = createTRPCReact<AppRouter>({})
-
-export const trpcClient = trpc.createClient({
-  links: [
-    httpBatchLink({
-      // since we are using Vinxi, the server is running on the same port,
-      // this means in dev the url is `http://localhost:3000/trpc`
-      // and since its from the same origin, we don't need to explicitly set the full URL
-      url: '/trpc',
-    }),
-  ],
-})
-
-export const trpcQueryUtils = createTRPCQueryUtils({
+export const trpc = createTRPCOptionsProxy<AppRouter>({
+  client: createTRPCClient({
+    links: [
+      httpBatchLink({
+        // since we are using Vinxi, the server is running on the same port,
+        // this means in dev the url is `http://localhost:3000/trpc`
+        // and since its from the same origin, we don't need to explicitly set the full URL
+        url: '/trpc',
+      }),
+    ],
+  }),
   queryClient,
-  client: trpcClient,
 })
 
 export function createRouter() {
@@ -35,7 +31,8 @@ export function createRouter() {
     scrollRestoration: true,
     defaultPreload: 'intent',
     context: {
-      trpcQueryUtils,
+      trpc,
+      queryClient,
     },
     defaultPendingComponent: () => (
       <div className={`p-2 text-2xl`}>
@@ -44,11 +41,9 @@ export function createRouter() {
     ),
     Wrap: function WrapComponent({ children }) {
       return (
-        <trpc.Provider client={trpcClient} queryClient={queryClient}>
-          <QueryClientProvider client={queryClient}>
-            {children}
-          </QueryClientProvider>
-        </trpc.Provider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
       )
     },
   })
