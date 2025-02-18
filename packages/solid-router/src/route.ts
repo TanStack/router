@@ -699,14 +699,14 @@ export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
     return useSearch({
       select: opts?.select,
       from: this.id,
-    } as any)
+    } as any) as any
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
     return useParams({
       select: opts?.select,
       from: this.id,
-    } as any)
+    } as any) as any
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
@@ -1102,14 +1102,14 @@ export class Route<
     return useSearch({
       select: opts?.select,
       from: this.id,
-    } as any)
+    } as any) as any
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
     return useParams({
       select: opts?.select,
       from: this.id,
-    } as any)
+    } as any) as any
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {

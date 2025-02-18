@@ -234,14 +234,14 @@ export class LazyRoute<TRoute extends AnyRoute> {
     return useSearch({
       select: opts?.select,
       from: this.options.id,
-    } as any)
+    } as any) as any
   }
 
   useParams: UseParamsRoute<TRoute['id']> = (opts) => {
     return useParams({
       select: opts?.select,
       from: this.options.id,
-    } as any)
+    } as any) as any
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {

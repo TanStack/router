@@ -176,6 +176,7 @@ export type ValidateUseParamsOptions<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
+    InferShouldThrow<TOptions>,
     InferSelected<TOptions>
   >
 >
@@ -189,7 +190,6 @@ export type ValidateUseParamsResult<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
-    InferShouldThrow<TOptions>,
     InferSelected<TOptions>
   >
 >
