@@ -18,6 +18,7 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { AnyRoute } from './route'
+import { useLocation } from './useLocation'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -137,11 +138,7 @@ export const Match = (props: { matchId: string }) => {
 function OnRendered() {
   const router = useRouter()
 
-  const location = useRouterState({
-    select: (s) => {
-      return s.location
-    },
-  })
+  const location = useLocation()
 
   Solid.createEffect(() => {
     location()
