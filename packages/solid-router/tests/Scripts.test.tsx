@@ -7,7 +7,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-} from '../src/index'
+} from '@tanstack/solid-router'
 import { Scripts } from '../src/Scripts'
 import { HeadContent } from '../src'
 import { renderToString } from 'solid-js/web'

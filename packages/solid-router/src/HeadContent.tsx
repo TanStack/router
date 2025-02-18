@@ -1,4 +1,4 @@
-import * as React from 'react'
+import * as Solid from 'solid-js'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -13,7 +13,7 @@ export const useTags = () => {
     },
   })
 
-  const meta: Array<RouterManagedTag> = React.useMemo(() => {
+  const meta: Solid.Accessor<Array<RouterManagedTag>> = Solid.createMemo(() => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
@@ -113,7 +113,7 @@ export const useTags = () => {
 
   return uniqBy(
     [
-      ...meta,
+      ...meta(),
       ...preloadMeta(),
       ...links(),
       ...headScripts(),
