@@ -730,6 +730,7 @@ describe('server function compilation', () => {
       const serverFnNamedWithImport_1 = createServerRpc("test_ts--serverFnNamedWithImport_1", function serverFnNamedWithImport() {
         return imported;
       });
+      const serverFnNamedWithImport = serverFnNamedWithImport_1;
       export { serverFnConstWithImport_1, serverFnNamedWithImport_1 };"
     `)
   })
@@ -755,12 +756,18 @@ describe('server function compilation', () => {
     })
 
     expect(client.compiledResult.code).toMatchInlineSnapshot(`
-      "export default function () {
+      "import { createClientRpc } from "my-rpc-lib-client";
+      const bytesSignupServerFn_1 = createClientRpc("test_ts--bytesSignupServerFn_1");
+      const bytesSignupServerFn = bytesSignupServerFn_1;
+      export default function () {
         return null;
       }"
     `)
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
-      "export default function () {
+      "import { createSsrRpc } from "my-rpc-lib-server";
+      const bytesSignupServerFn_1 = createSsrRpc("test_ts--bytesSignupServerFn_1");
+      const bytesSignupServerFn = bytesSignupServerFn_1;
+      export default function () {
         return null;
       }"
     `)
@@ -773,6 +780,7 @@ describe('server function compilation', () => {
       }) {
         return 'test';
       });
+      const bytesSignupServerFn = bytesSignupServerFn_1;
       export default function () {
         return null;
       }
