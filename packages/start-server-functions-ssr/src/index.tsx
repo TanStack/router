@@ -20,11 +20,12 @@ export const createSsrRpc: CreateRpcFn = (functionId, serverBase) => {
       const event = getEvent()
       const mergedHeaders = mergeHeaders(
         res.headers,
-        event.___ssrRpcResponseHeaders,
+        (event as any).___ssrRpcResponseHeaders,
       )
+
       // any response headers set in the server function need to be set on the document response
       // we attach the headers to the event so we can later set them
-      event.___ssrRpcResponseHeaders = mergedHeaders
+      ;(event as any).___ssrRpcResponseHeaders = mergedHeaders
       return res
     })
   }
