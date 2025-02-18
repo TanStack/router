@@ -277,26 +277,3 @@ test.describe('server function sets cookies', () => {
     await runCookieTest(page, expectedCookieValue)
   })
 })
-
-test.describe('server function sets cookies', () => {
-  async function runCookieTest(page: Page, expectedCookieValue: string) {
-    for (let i = 1; i <= 4; i++) {
-      const key = `cookie-${i}-${expectedCookieValue}`
-
-      const actualValue = await page.getByTestId(key).textContent()
-      expect(actualValue).toBe(expectedCookieValue)
-    }
-  }
-  test('SSR', async ({ page }) => {
-    const expectedCookieValue = `SSR-${Date.now()}`
-    await page.goto(`/cookies/set?value=${expectedCookieValue}`)
-    await runCookieTest(page, expectedCookieValue)
-  })
-
-  test('client side navigation', async ({ page }) => {
-    const expectedCookieValue = `CLIENT-${Date.now()}`
-    await page.goto(`/cookies?value=${expectedCookieValue}`)
-    await page.getByTestId('link-to-set').click()
-    await runCookieTest(page, expectedCookieValue)
-  })
-})
