@@ -84,7 +84,7 @@ export const Route = createRootRoute({
 #### `src/routes/index.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { createLazyFileRoute } from '@tanstack/solid-router'
 
 export const Route = createLazyFileRoute('/')({
   component: Index,
@@ -102,7 +102,7 @@ function Index() {
 #### `src/routes/about.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { createLazyFileRoute } from '@tanstack/solid-router'
 
 export const Route = createLazyFileRoute('/about')({
   component: About,
@@ -202,7 +202,7 @@ const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
 const router = createRouter({ routeTree })
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/solid-router' {
   interface Register {
     router: typeof router
   }
