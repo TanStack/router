@@ -66,6 +66,9 @@ function Home() {
             dead code elimation only affects code after transformation
           </Link>
         </li>
+        <li>
+          <Link to="/abort-signal">aborting a server function call</Link>
+        </li>
       </ul>
     </div>
   )

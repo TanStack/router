@@ -277,3 +277,47 @@ test.describe('server function sets cookies', () => {
     await runCookieTest(page, expectedCookieValue)
   })
 })
+
+test.describe('aborting a server function call', () => {
+  test('without aborting', async ({ page }) => {
+    await page.goto('/abort-signal')
+
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('run-without-abort-btn').click()
+    await page.waitForLoadState('networkidle')
+    await page.waitForSelector(
+      '[data-testid="result"]:has-text("server function result")',
+    )
+    await page.waitForSelector(
+      '[data-testid="errorMessage"]:has-text("$undefined")',
+    )
+
+    const result = (await page.getByTestId('result').textContent()) || ''
+    expect(result).toBe('server function result')
+
+    const errorMessage =
+      (await page.getByTestId('errorMessage').textContent()) || ''
+    expect(errorMessage).toBe('$undefined')
+  })
+
+  test('aborting', async ({ page }) => {
+    await page.goto('/abort-signal')
+
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('run-with-abort-btn').click()
+    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('[data-testid="result"]:has-text("$undefined")')
+    await page.waitForSelector(
+      '[data-testid="errorMessage"]:has-text("aborted")',
+    )
+
+    const result = (await page.getByTestId('result').textContent()) || ''
+    expect(result).toBe('$undefined')
+
+    const errorMessage =
+      (await page.getByTestId('errorMessage').textContent()) || ''
+    expect(errorMessage).toContain('abort')
+  })
+})

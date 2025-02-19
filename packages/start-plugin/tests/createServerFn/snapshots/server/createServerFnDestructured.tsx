@@ -2,10 +2,10 @@ import { createServerFn } from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = createServerFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withUseServer.__executeServer(opts);
+  return withUseServer.__executeServer(opts, signal);
 }, async function () {
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
@@ -13,24 +13,24 @@ export const withUseServer = createServerFn({
 });
 export const withArrowFunction = createServerFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withArrowFunction.__executeServer(opts);
+  return withArrowFunction.__executeServer(opts, signal);
 }, async () => null);
 export const withArrowFunctionAndFunction = createServerFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withArrowFunctionAndFunction.__executeServer(opts);
+  return withArrowFunctionAndFunction.__executeServer(opts, signal);
 }, async () => test());
 export const withoutUseServer = createServerFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withoutUseServer.__executeServer(opts);
+  return withoutUseServer.__executeServer(opts, signal);
 }, async () => {
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
@@ -38,10 +38,10 @@ export const withoutUseServer = createServerFn({
 });
 export const withVariable = createServerFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withVariable.__executeServer(opts);
+  return withVariable.__executeServer(opts, signal);
 }, abstractedFunction);
 async function abstractedFunction() {
   console.info('Fetching posts...');
@@ -55,10 +55,10 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
 }
 export const withZodValidator = createServerFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withZodValidator.__executeServer(opts);
+  return withZodValidator.__executeServer(opts, signal);
 }, zodValidator(z.number(), input => {
   return {
     'you gave': input
@@ -66,10 +66,10 @@ export const withZodValidator = createServerFn({
 }));
 export const withValidatorFn = createServerFn({
   method: 'GET'
-}).validator(z.number()).handler(opts => {
+}).validator(z.number()).handler((opts, signal) => {
   "use server";
 
-  return withValidatorFn.__executeServer(opts);
+  return withValidatorFn.__executeServer(opts, signal);
 }, async ({
   input
 }) => {
