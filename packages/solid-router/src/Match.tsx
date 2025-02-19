@@ -4,6 +4,7 @@ import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  ParsedLocation,
   pick,
   rootRouteId,
 } from '@tanstack/router-core'
@@ -138,18 +139,18 @@ export const Match = (props: { matchId: string }) => {
 function OnRendered() {
   const router = useRouter()
 
-  const location = useLocation()
-
-  Solid.createEffect(
-    Solid.on([location], () => {
-      router.emit({
-        type: 'onRendered',
-        ...getLocationChangeInfo(router.state),
-      })
-    }),
+  return (
+    <script
+      ref={(el) => {
+        if (el) {
+          router.emit({
+            type: 'onRendered',
+            ...getLocationChangeInfo(router.state),
+          })
+        }
+      }}
+    />
   )
-
-  return null
 }
 
 export const MatchInner = (props: { matchId: string }): any => {
