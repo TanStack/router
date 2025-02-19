@@ -46,6 +46,15 @@
               "to": "framework/react/decisions-on-dx"
             }
           ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Installation",
+              "to": "framework/solid/installation"
+            }
+          ]
         }
       ]
     },
@@ -185,6 +194,10 @@
               "to": "framework/react/guide/render-optimizations"
             }
           ]
+        },
+        {
+          "label": "solid",
+          "children": []
         }
       ]
     },
@@ -200,6 +213,10 @@
               "to": "framework/react/api/router"
             }
           ]
+        },
+        {
+          "label": "solid",
+          "children": []
         }
       ]
     },
@@ -312,6 +329,10 @@
               "to": "framework/react/examples/router-monorepo-react-query"
             }
           ]
+        },
+        {
+          "label": "solid",
+          "children": []
         }
       ]
     }
