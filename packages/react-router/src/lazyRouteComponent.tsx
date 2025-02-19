@@ -43,7 +43,6 @@ export function lazyRouteComponent<
 >(
   importer: () => Promise<T>,
   exportName?: TKey,
-  ssr?: () => boolean,
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
@@ -53,10 +52,6 @@ export function lazyRouteComponent<
   let reload: boolean
 
   const load = () => {
-    // if (typeof document === 'undefined' && ssr?.() === false) {
-    //   comp = (() => null) as any
-    //   return Promise.resolve()
-    // }
     if (!loadPromise) {
       loadPromise = importer()
         .then((res) => {
@@ -108,13 +103,6 @@ export function lazyRouteComponent<
       throw load()
     }
 
-    // if (ssr?.() === false) {
-    //   return (
-    //     <ClientOnly fallback={<Outlet />}>
-    //       {React.createElement(comp, props)}
-    //     </ClientOnly>
-    //   )
-    // }
     return React.createElement(comp, props)
   }
 

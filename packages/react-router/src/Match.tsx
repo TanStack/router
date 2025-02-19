@@ -12,6 +12,7 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { CatchNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
+import { createSsrError } from './ssr-error'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
@@ -267,6 +268,10 @@ export const MatchInner = React.memo(function MatchInnerImpl({
           }))
         }, pendingMinMs)
       }
+    }
+
+    if (router.isServer && !route.ssr) {
+      throw createSsrError()
     }
 
     throw router.getMatch(match.id)?.loadPromise
