@@ -64,24 +64,19 @@ export function Transitioner() {
 
   // Try to load the initial location
   useLayoutEffect(() => {
+    // Don't load if we're already mounted
     if (
-      (typeof window !== 'undefined' && router.clientSsr) ||
-      (mountLoadForRouter.current.router === router &&
-        mountLoadForRouter.current.mounted)
+      mountLoadForRouter.current.router === router &&
+      mountLoadForRouter.current.mounted
     ) {
       return
     }
+
     mountLoadForRouter.current = { router, mounted: true }
 
-    const tryLoad = async () => {
-      try {
-        await router.load()
-      } catch (err) {
-        console.error(err)
-      }
-    }
-
-    tryLoad()
+    router.load().catch((err) => {
+      console.error(err)
+    })
   }, [router])
 
   useLayoutEffect(() => {

@@ -167,8 +167,16 @@ export function onMatchSettled(opts: {
 }) {
   const { router, match } = opts
 
+  const loaderDataProps: { loaderData?: any } = {}
+  const extractedProps: {
+    extracted?: Array<{ type: string; path: Array<string> }>
+  } = {}
+  const errorProps: { error?: any } = {}
+  const beforeLoadContextProps: { __beforeLoadContext?: any } = {}
+
   let extracted: Array<ServerExtractedEntry> | undefined = undefined
   let serializedLoaderData: any = undefined
+
   if (match.loaderData !== undefined) {
     const result = extractAsyncLoaderData(match.loaderData, {
       router,
@@ -182,20 +190,34 @@ export function onMatchSettled(opts: {
       },
       { temp: result.replaced },
     ).temp
+
+    loaderDataProps.loaderData =
+      router.ssr!.serializer.stringify(serializedLoaderData)
+
+    extractedProps.extracted = extracted.map((entry) =>
+      pick(entry, ['type', 'path']),
+    )
+  }
+
+  if (match.error !== undefined) {
+    errorProps.error = router.ssr!.serializer.stringify(match.error)
+  }
+
+  if (Object.keys(match.__beforeLoadContext).length > 0) {
+    beforeLoadContextProps.__beforeLoadContext =
+      router.ssr!.serializer.stringify(match.__beforeLoadContext)
   }
 
   const initCode = `__TSR_SSR__.initMatch(${jsesc(
     {
       id: match.id,
-      __beforeLoadContext: router.ssr!.serializer.stringify(
-        match.__beforeLoadContext,
-      ),
-      loaderData: router.ssr!.serializer.stringify(serializedLoaderData),
-      error: router.ssr!.serializer.stringify(match.error),
-      extracted: extracted?.map((entry) => pick(entry, ['type', 'path'])),
-      updatedAt: match.updatedAt,
       status: match.status,
-    } satisfies SsrMatch,
+      updatedAt: match.updatedAt,
+      ...beforeLoadContextProps,
+      ...errorProps,
+      ...loaderDataProps,
+      ...extractedProps,
+    } satisfies unknown as SsrMatch,
     {
       isScriptContext: true,
       wrap: true,

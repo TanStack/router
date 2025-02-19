@@ -2287,6 +2287,10 @@ export class Router<
 
               const route = this.looseRoutesById[routeId]!
 
+              if (!route.ssr && this.isServer) {
+                continue
+              }
+
               const pendingMs =
                 route.options.pendingMs ?? this.options.defaultPendingMs
 
@@ -2301,7 +2305,10 @@ export class Router<
                   this.options.defaultPendingComponent)
               )
 
-              let executeBeforeLoad = true
+              // By default, execute the beforeLoad if the match is not dehydrated
+              // We'll unset this after the loader skips down below
+              let executeBeforeLoad = !existingMatch.dehydrated
+
               if (
                 // If we are in the middle of a load, either of these will be present
                 // (not to be confused with `loadPromise`, which is always defined)
@@ -2446,11 +2453,21 @@ export class Router<
             validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
               matchPromises.push(
                 (async () => {
-                  const { loaderPromise: prevLoaderPromise } =
+                  const route = this.looseRoutesById[routeId]!
+
+                  const { loaderPromise: prevLoaderPromise, dehydrated } =
                     this.getMatch(matchId)!
 
                   let loaderShouldRunAsync = false
                   let loaderIsRunningAsync = false
+
+                  // Do not run the loader if the route is not SSR'able
+                  if (
+                    (this.isServer && !route.ssr) ||
+                    (!this.isServer && dehydrated)
+                  ) {
+                    return this.getMatch(matchId)!
+                  }
 
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
@@ -2459,8 +2476,11 @@ export class Router<
                       handleRedirectAndNotFound(match, match.error)
                     }
                   } else {
+                    if (!route.ssr && this.isServer) {
+                      return this.getMatch(matchId)!
+                    }
+
                     const parentMatchPromise = matchPromises[index - 1] as any
-                    const route = this.looseRoutesById[routeId]!
 
                     const getLoaderContext = (): LoaderFnContext => {
                       const {
@@ -2633,9 +2653,11 @@ export class Router<
 
                     // If the route is successful and still fresh, just resolve
                     const { status, invalid } = this.getMatch(matchId)!
+
                     loaderShouldRunAsync =
                       status === 'success' &&
                       (invalid || (shouldReload ?? age > staleAge))
+
                     if (preload && route.options.preload === false) {
                       // Do nothing
                     } else if (loaderShouldRunAsync && !sync) {
@@ -2664,6 +2686,7 @@ export class Router<
                       await runLoader()
                     }
                   }
+
                   if (!loaderIsRunningAsync) {
                     const { loaderPromise, loadPromise } =
                       this.getMatch(matchId)!
@@ -2678,6 +2701,7 @@ export class Router<
                       ? prev.loaderPromise
                       : undefined,
                     invalid: false,
+                    dehydrated: false,
                   }))
                   return this.getMatch(matchId)!
                 })(),

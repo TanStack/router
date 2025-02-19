@@ -57,7 +57,7 @@ export const Match = React.memo(function MatchImpl({
     (!route.isRoot || route.options.wrapInSuspense) &&
     (route.options.wrapInSuspense ??
       PendingComponent ??
-      (route.options.errorComponent as any)?.preload)
+      ((route.options.errorComponent as any)?.preload || !route.ssr))
       ? React.Suspense
       : SafeFragment
 
@@ -268,6 +268,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }, pendingMinMs)
       }
     }
+
     throw router.getMatch(match.id)?.loadPromise
   }
 
