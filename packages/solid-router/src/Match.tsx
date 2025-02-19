@@ -137,18 +137,18 @@ export const Match = (props: { matchId: string }) => {
 function OnRendered() {
   const router = useRouter()
 
-  return (
-    <script
-      ref={(el) => {
-        if (el) {
-          router.emit({
-            type: 'onRendered',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-      }}
-    />
-  )
+  const location = useRouterState({
+    select: (s) => {
+      return s.resolvedLocation?.state.key
+    },
+  })
+  Solid.createEffect(Solid.on([location], () => {
+    router.emit({
+      type: 'onRendered',
+      ...getLocationChangeInfo(router.state),
+    })
+  }));
+  return null
 }
 
 export const MatchInner = (props: { matchId: string }): any => {
