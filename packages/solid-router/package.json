@@ -88,7 +88,6 @@
     "zod": "^3.23.8"
   },
   "peerDependencies": {
-    "solid-js": "^1",
-    "vite-plugin-solid": "^2.11.2"
+    "solid-js": "^1"
   }
 }
