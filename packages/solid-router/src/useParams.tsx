@@ -1,4 +1,5 @@
-import { ThrowConstraint, useMatch } from './useMatch'
+import { useMatch } from './useMatch'
+import type { ThrowConstraint} from './useMatch';
 import type { Accessor } from 'solid-js'
 import type { AllParams, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'

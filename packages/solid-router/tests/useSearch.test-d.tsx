@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useSearch } from '../src'
+import type { Accessor } from 'solid-js'
 import type { SearchSchemaInput } from '../src'
-import { Accessor } from 'solid-js'
 
 describe('useSearch', () => {
   test('when there are no search params', () => {
@@ -32,7 +32,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -102,7 +102,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -189,7 +189,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -254,7 +254,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -320,7 +320,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -388,7 +388,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -459,7 +459,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -517,7 +517,7 @@ describe('useSearch', () => {
     })
 
     const routeTree = rootRoute.addChildren([indexRoute])
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const router = createRouter({ routeTree })
     expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
       Accessor<{
@@ -548,7 +548,7 @@ describe('useSearch', () => {
     const routeTree = rootRoute.addChildren([
       indexRoute.addChildren([indexRoute]),
     ])
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const router = createRouter({ routeTree })
     expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
       Accessor<
@@ -573,7 +573,7 @@ describe('useSearch', () => {
 
     const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const router = createRouter({ routeTree })
 
     const from = '/invoices'

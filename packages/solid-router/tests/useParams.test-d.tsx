@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useParams } from '../src'
-import { Accessor } from 'solid-js'
+import type { Accessor } from 'solid-js'
 
 describe('useParams', () => {
   test('when there are no params', () => {
@@ -26,7 +26,7 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -93,7 +93,7 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -177,7 +177,7 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -252,7 +252,7 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+     
     const router = createRouter({ routeTree })
 
     const from = '/invoices/$id'
