@@ -328,7 +328,7 @@ function handleCreateServerFnCallExpression(
 
   handlerFnPath.replaceWith(
     t.arrowFunctionExpression(
-      [t.identifier('opts')],
+      [t.identifier('opts'), t.identifier('signal')],
       t.blockStatement(
         // Everything in here is server-only, since the client
         // will strip out anything in the 'use server' directive.
@@ -336,7 +336,7 @@ function handleCreateServerFnCallExpression(
           t.returnStatement(
             t.callExpression(
               t.identifier(`${existingVariableName}.__executeServer`),
-              [t.identifier('opts')],
+              [t.identifier('opts'), t.identifier('signal')],
             ),
           ),
         ],

@@ -21,6 +21,7 @@ import { Route as HeadersImport } from './routes/headers'
 import { Route as EnvOnlyImport } from './routes/env-only'
 import { Route as DeadCodePreserveImport } from './routes/dead-code-preserve'
 import { Route as ConsistentImport } from './routes/consistent'
+import { Route as AbortSignalImport } from './routes/abort-signal'
 import { Route as IndexImport } from './routes/index'
 import { Route as CookiesIndexImport } from './routes/cookies/index'
 import { Route as CookiesSetImport } from './routes/cookies/set'
@@ -87,6 +88,12 @@ const ConsistentRoute = ConsistentImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const AbortSignalRoute = AbortSignalImport.update({
+  id: '/abort-signal',
+  path: '/abort-signal',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
@@ -114,6 +121,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/abort-signal': {
+      id: '/abort-signal'
+      path: '/abort-signal'
+      fullPath: '/abort-signal'
+      preLoaderRoute: typeof AbortSignalImport
       parentRoute: typeof rootRoute
     }
     '/consistent': {
@@ -207,6 +221,7 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/abort-signal': typeof AbortSignalRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -223,6 +238,7 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/abort-signal': typeof AbortSignalRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -240,6 +256,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/abort-signal': typeof AbortSignalRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -258,6 +275,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/abort-signal'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -273,6 +291,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/abort-signal'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -288,6 +307,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/abort-signal'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -305,6 +325,7 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AbortSignalRoute: typeof AbortSignalRoute
   ConsistentRoute: typeof ConsistentRoute
   DeadCodePreserveRoute: typeof DeadCodePreserveRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
@@ -321,6 +342,7 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AbortSignalRoute: AbortSignalRoute,
   ConsistentRoute: ConsistentRoute,
   DeadCodePreserveRoute: DeadCodePreserveRoute,
   EnvOnlyRoute: EnvOnlyRoute,
@@ -346,6 +368,7 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/abort-signal",
         "/consistent",
         "/dead-code-preserve",
         "/env-only",
@@ -362,6 +385,9 @@ export const routeTree = rootRoute
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/abort-signal": {
+      "filePath": "abort-signal.tsx"
     },
     "/consistent": {
       "filePath": "consistent.tsx"
