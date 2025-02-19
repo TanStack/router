@@ -20,7 +20,7 @@ TanStack Router is currently only compatible with solid and solidDOM. If you wou
 
 ### Requirements
 
-- `solid-js`v1.x.x  
+- `solid-js`v1.x.x
 - TypeScript >= v5.3.x (TypeScript is optional, but recommended)
   - We aim to support the last five minor versions of TypeScript. If you are using an older version, you may run into issues. Please upgrade to the latest version of TypeScript to ensure compatibility.
   - We may drop support for older versions of TypeScript, outside of the range mentioned above, without warning in a minor or patch release.
