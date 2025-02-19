@@ -142,12 +142,14 @@ function OnRendered() {
       return s.resolvedLocation?.state.key
     },
   })
-  Solid.createEffect(Solid.on([location], () => {
-    router.emit({
-      type: 'onRendered',
-      ...getLocationChangeInfo(router.state),
-    })
-  }));
+  Solid.createEffect(
+    Solid.on([location], () => {
+      router.emit({
+        type: 'onRendered',
+        ...getLocationChangeInfo(router.state),
+      })
+    }),
+  )
   return null
 }
 
