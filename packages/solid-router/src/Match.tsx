@@ -4,7 +4,6 @@ import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
-  ParsedLocation,
   pick,
   rootRouteId,
 } from '@tanstack/router-core'
@@ -18,7 +17,6 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import { useLocation } from './useLocation'
 import type { AnyRoute } from './route'
 
 export const Match = (props: { matchId: string }) => {
