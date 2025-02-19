@@ -1554,7 +1554,7 @@ describe('history: History gives correct notifcations and state', () => {
   })
 })
 
-it.only('does not push to history if url and state are the same', async () => {
+it('does not push to history if url and state are the same', async () => {
   const history = createMemoryHistory({ initialEntries: ['/linksToItself'] })
   const { router } = createTestRouter({
     history,
