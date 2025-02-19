@@ -133,6 +133,10 @@
               "to": "framework/react/guide/type-safety"
             },
             {
+              "label": "Type Utilities",
+              "to": "framework/react/guide/type-utilities"
+            },
+            {
               "label": "Preloading",
               "to": "framework/react/guide/preloading"
             },
