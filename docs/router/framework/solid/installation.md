@@ -16,8 +16,6 @@ bun add @tanstack/solid-router
 deno add npm:@tanstack/solid-router
 ```
 
-TanStack Router is currently only compatible with solid and solidDOM. If you would like to contribute to the solid Native adapter, please reach out to us on [Discord](https://tlinz.com/discord).
-
 ### Requirements
 
 - `solid-js`v1.x.x
