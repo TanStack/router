@@ -26,7 +26,6 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -93,7 +92,6 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -177,7 +175,6 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -252,7 +249,6 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-     
     const router = createRouter({ routeTree })
 
     const from = '/invoices/$id'

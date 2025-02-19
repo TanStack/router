@@ -32,7 +32,6 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -102,7 +101,6 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -189,7 +187,6 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -254,7 +251,6 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -320,7 +316,6 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -388,7 +383,6 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -459,7 +453,6 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-     
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -517,7 +510,7 @@ describe('useSearch', () => {
     })
 
     const routeTree = rootRoute.addChildren([indexRoute])
-     
+
     const router = createRouter({ routeTree })
     expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
       Accessor<{
@@ -548,7 +541,7 @@ describe('useSearch', () => {
     const routeTree = rootRoute.addChildren([
       indexRoute.addChildren([indexRoute]),
     ])
-     
+
     const router = createRouter({ routeTree })
     expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
       Accessor<
@@ -573,7 +566,6 @@ describe('useSearch', () => {
 
     const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-     
     const router = createRouter({ routeTree })
 
     const from = '/invoices'
