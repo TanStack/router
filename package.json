@@ -40,6 +40,8 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "@vitest/browser": "^3.0.5",
+    "@vitest/ui": "^3.0.5",
     "eslint": "^9.20.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-unused-imports": "^4.1.4",
