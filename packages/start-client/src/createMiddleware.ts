@@ -176,6 +176,7 @@ export interface MiddlewareServerFnOptions<
   method: Method
   filename: string
   functionId: string
+  signal: AbortSignal
 }
 
 export type MiddlewareServerFn<
@@ -237,6 +238,7 @@ export interface MiddlewareClientFnOptions<
   context: Expand<AssignAllClientContextBeforeNext<TMiddlewares>>
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares>>
   method: Method
+  signal: AbortSignal
   next: MiddlewareClientNextFn<TMiddlewares>
   filename: string
   functionId: string

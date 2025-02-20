@@ -31,7 +31,7 @@ export function HeadingLink(props: HeaderLinkProps): React.ReactNode {
 }
 ```
 
-A more permissive overload of `HeadingLink` is used to avoid type assertions you would otherwise have to do with the generic signature.
+A more permissive overload of `HeadingLink` is used to avoid type assertions you would otherwise have to do with the generic signature. Using a looser signature without type parameters is an easy way to avoid type assertions in the implementation of `HeadingLink`
 
 All type parameters for utilities are optional but for the best TypeScript performance `TRouter` should always be specified for the public facing signature. And `TOptions` should always be used at inference sites like `HeadingLink` to infer the `linkOptions` to correctly narrow `params` and `search`
 
@@ -112,7 +112,7 @@ export function Menu(props: MenuProps): React.ReactNode {
 }
 ```
 
-`ValidateLinkOptionsArray` allows you to fix `from` by providing an extra type parameter. The result is a type safe array of `Link` options providing relative navigation with a fixed `from`
+`ValidateLinkOptionsArray` allows you to fix `from` by providing an extra type parameter. The result is a type safe array of `Link` options providing navigation relative to `from`
 
 ```tsx
 <Menu
@@ -150,7 +150,7 @@ export async function fetchOrRedirect(
 The result is that `redirectOptions` passed to `fetchOrRedirect` is completely type-safe
 
 ```tsx
-fetchOrRedirect('url', { to: '/login' })
+fetchOrRedirect('http://example.com/', { to: '/login' })
 ```
 
 # Type checking navigate options with `ValidateNavigateOptions`

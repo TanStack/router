@@ -2,24 +2,24 @@ import { createServerFn as serverFn } from '@tanstack/start';
 import { z } from 'zod';
 export const withUseServer = serverFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withUseServer.__executeServer(opts);
+  return withUseServer.__executeServer(opts, signal);
 });
 export const withoutUseServer = serverFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withoutUseServer.__executeServer(opts);
+  return withoutUseServer.__executeServer(opts, signal);
 });
 export const withVariable = serverFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withVariable.__executeServer(opts);
+  return withVariable.__executeServer(opts, signal);
 });
 function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn: (input: z.output<TSchema>) => TResult) {
   return async (input: unknown) => {
@@ -28,8 +28,8 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
 }
 export const withZodValidator = serverFn({
   method: 'GET'
-}).handler(opts => {
+}).handler((opts, signal) => {
   "use server";
 
-  return withZodValidator.__executeServer(opts);
+  return withZodValidator.__executeServer(opts, signal);
 });

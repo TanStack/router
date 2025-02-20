@@ -497,6 +497,51 @@ function Test() {
 }
 ```
 
+## Cancellation
+
+On the client, server function calls can be cancelled via an `AbortSignal`.
+On the server, an `AbortSignal` will notify if the request closed before execution finished.
+
+```tsx
+import { createServerFn } from '@tanstack/start'
+
+export const abortableServerFn = createServerFn().handler(
+  async ({ signal }) => {
+    return new Promise<string>((resolve, reject) => {
+      if (signal.aborted) {
+        return reject(new Error('Aborted before start'))
+      }
+      const timerId = setTimeout(() => {
+        console.log('server function finished')
+        resolve('server function result')
+      }, 1000)
+      const onAbort = () => {
+        clearTimeout(timerId)
+        console.log('server function aborted')
+        reject(new Error('Aborted'))
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+    })
+  },
+)
+
+// Usage
+function Test() {
+  const controller = new AbortController()
+  const serverFnPromise = abortableServerFn({
+    signal: controller.signal,
+  })
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  controller.abort()
+  try {
+    const serverFnResult = await serverFnPromise
+    console.log(serverFnResult) // should never get here
+  } catch (error) {
+    console.error(error) // "signal is aborted without reason"
+  }
+}
+```
+
 ## Calling server functions from within route lifecycles
 
 Server functions can be called normally from route `loader`s, `beforeLoad`s, or any other router-controlled APIs. These APIs are equipped to handle errors, redirects, and notFounds thrown by server functions automatically.

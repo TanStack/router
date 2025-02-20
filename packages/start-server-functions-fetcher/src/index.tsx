@@ -63,6 +63,7 @@ export async function serverFnFetcher(
     const handlerResponse = await handler(url, {
       method: first.method,
       headers,
+      signal: first.signal,
       ...getFetcherRequestOptions(first),
     })
 
