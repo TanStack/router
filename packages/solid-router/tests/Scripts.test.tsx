@@ -2,14 +2,14 @@ import { describe, expect, test } from 'vitest'
 import { render } from '@solidjs/testing-library'
 
 import {
+  HeadContent,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
-} from '@tanstack/solid-router'
+} from '../src'
 import { Scripts } from '../src/Scripts'
-import { HeadContent } from '../src'
 
 describe('ssr scripts', () => {
   test('it works', async () => {
