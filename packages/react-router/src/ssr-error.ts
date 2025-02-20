@@ -5,5 +5,5 @@ export function createSsrError() {
 }
 
 export function isSsrError(error: any): error is Error {
-  return error instanceof Error && error.message === message
+  return error instanceof Error && error.message.includes(message)
 }

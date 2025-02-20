@@ -180,6 +180,41 @@ export async function defineConfig(
           )
 
           return [
+            {
+              name: 'extend-react',
+              enforce: 'pre',
+              resolveId: (source: string, importer: string) => {
+                if (
+                  source === 'react-dom/client' &&
+                  !importer.includes('\0extended-react-dom-client')
+                ) {
+                  return '\0extended-react-dom-client'
+                }
+                return null
+              },
+              load: (id: string) => {
+                if (id.includes('\0extended-react-dom-client')) {
+                  return `
+                    import * as ReactDomClient from 'react-dom/client';
+                    const { hydrateRoot: originalHydrateRoot, ...rest } = ReactDomClient;
+                    import { isSsrError } from '@tanstack/react-router'
+                    
+                    export const hydrateRoot = (a, b, c) => originalHydrateRoot(a, b, {
+                      ...c,
+                      onRecoverableError(error) {
+                        if (isSsrError(error)) return
+                        c?.onRecoverableError ? c.onRecoverableError(error) : console.error(error)
+                      },
+                    });
+                    
+                    export default { hydrateRoot, ...rest };
+                    export * from 'react-dom/client';
+                  `
+                }
+
+                return null
+              },
+            },
             config('tss-vite-config-client', {
               ...viteConfig.userConfig,
               ...clientViteConfig.userConfig,
