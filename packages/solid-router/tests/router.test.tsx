@@ -7,7 +7,6 @@ import {
   waitFor,
 } from '@solidjs/testing-library'
 import { z } from 'zod'
-import { createEffect } from 'solid-js'
 import {
   Link,
   Outlet,
@@ -24,7 +23,6 @@ import type { StandardSchemaValidator } from '@tanstack/router-core'
 import type {
   AnyRoute,
   AnyRouter,
-  MakeRemountDepsOptionsUnion,
   RouterOptions,
   ValidatorFn,
   ValidatorObj,
