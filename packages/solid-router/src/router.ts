@@ -493,7 +493,7 @@ export interface RouterState<
   pendingMatches?: Array<TRouteMatch>
   cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
-  resolvedLocation: ParsedLocation<FullSearchSchema<TRouteTree>>
+  resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   statusCode: number
   redirect?: ResolvedRedirect
 }
@@ -3056,7 +3056,7 @@ export function getInitialRouterState(
     isLoading: false,
     isTransitioning: false,
     status: 'idle',
-    resolvedLocation: { ...location },
+    resolvedLocation: undefined,
     location,
     matches: [],
     pendingMatches: [],
