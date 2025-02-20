@@ -66,11 +66,11 @@ import { createRootRoute, Link, Outlet } from '@tanstack/solid-router'
 export const Route = createRootRoute({
   component: () => (
     <>
-      <div className="p-2 flex gap-2">
-        <Link to="/" className="[&.active]:font-bold">
+      <div class="p-2 flex gap-2">
+        <Link to="/" class="[&.active]:font-bold">
           Home
         </Link>{' '}
-        <Link to="/about" className="[&.active]:font-bold">
+        <Link to="/about" class="[&.active]:font-bold">
           About
         </Link>
       </div>
@@ -92,7 +92,7 @@ export const Route = createLazyFileRoute('/')({
 
 function Index() {
   return (
-    <div className="p-2">
+    <div class="p-2">
       <h3>Welcome Home!</h3>
     </div>
   )
@@ -109,7 +109,7 @@ export const Route = createLazyFileRoute('/about')({
 })
 
 function About() {
-  return <div className="p-2">Hello from About!</div>
+  return <div class="p-2">Hello from About!</div>
 }
 ```
 
@@ -164,11 +164,11 @@ import {
 const rootRoute = createRootRoute({
   component: () => (
     <>
-      <div className="p-2 flex gap-2">
-        <Link to="/" className="[&.active]:font-bold">
+      <div class="p-2 flex gap-2">
+        <Link to="/" class="[&.active]:font-bold">
           Home
         </Link>{' '}
-        <Link to="/about" className="[&.active]:font-bold">
+        <Link to="/about" class="[&.active]:font-bold">
           About
         </Link>
       </div>
@@ -183,7 +183,7 @@ const indexRoute = createRoute({
   path: '/',
   component: function Index() {
     return (
-      <div className="p-2">
+      <div class="p-2">
         <h3>Welcome Home!</h3>
       </div>
     )
@@ -194,7 +194,7 @@ const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/about',
   component: function About() {
-    return <div className="p-2">Hello from About!</div>
+    return <div class="p-2">Hello from About!</div>
   },
 })
 
