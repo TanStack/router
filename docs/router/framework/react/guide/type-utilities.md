@@ -5,7 +5,7 @@ title: Type Utilities
 
 Most types exposed by TanStack Router are internal, subject to breaking changes and not always easy to use. That is why TanStack Router has a subset of exposed types focused on ease of use with the intension to be used externally. These types provide the same type safe experience from TanStack Router's runtime concepts on the type level, with flexibility of where to provide type checking
 
-# Type checking Link options with `ValidateLinkOptions`
+## Type checking Link options with `ValidateLinkOptions`
 
 `ValidateLinkOptions` type checks object literal types to ensure they conform to `Link` options at inference sites. For example, you may have a generic `HeadingLink` component which accepts a `title` prop along with `linkOptions`, the idea being this component can be re-used for any navigation.
 
@@ -42,7 +42,7 @@ The result of this is that `linkOptions` in the following is completely type-saf
 <HeadingLink title="Post" linkOptions={{ to: '/posts/$postId', params: {postId: 'postId'} }} />
 ```
 
-# Type checking an array of Link options with `ValidateLinkOptionsArray`
+## Type checking an array of Link options with `ValidateLinkOptionsArray`
 
 All navigation type utilities have an array variant. `ValidateLinkOptionsArray` enables type checking of an array of `Link` options. For example, you might have a generic `Menu` component where each item is a `Link`.
 
@@ -121,7 +121,7 @@ export function Menu(props: MenuProps): React.ReactNode {
 />
 ```
 
-# Type checking redirect options with `ValidateRedirectOptions`
+## Type checking redirect options with `ValidateRedirectOptions`
 
 `ValidateRedirectOptions` type checks object literal types to ensure they conform to redirect options at inference sites. For example, you may need a generic `fetchOrRedirect` function which accepts a `url` along with `redirectOptions`, the idea being this function will redirect when the `fetch` fails.
 
@@ -153,7 +153,7 @@ The result is that `redirectOptions` passed to `fetchOrRedirect` is completely t
 fetchOrRedirect('http://example.com/', { to: '/login' })
 ```
 
-# Type checking navigate options with `ValidateNavigateOptions`
+## Type checking navigate options with `ValidateNavigateOptions`
 
 `ValidateNavigateOptions` type checks object literal types to ensure they conform to navigate options at inference sites. For example, you may want to write a custom hook to enable/disable navigation.
 
