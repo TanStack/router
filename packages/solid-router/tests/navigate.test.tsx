@@ -183,7 +183,6 @@ describe('router.navigate navigation using a single path param - function syntax
   })
 })
 
-
 describe('router.navigate navigation using multiple path params - object syntax for updates', () => {
   it('should change $projectId in "/p/$projectId/$version/$framework" from "router" to "query"', async () => {
     const { router } = createTestRouter(
