@@ -37,7 +37,7 @@
     "@inquirer/prompts": "^5.5.0",
     "commander": "^12.1.0",
     "cross-spawn": "^7.0.6",
-    "tinyglobby": "^0.2.10",
+    "tinyglobby": "^0.2.12",
     "picocolors": "^1.1.1",
     "validate-npm-package-name": "^6.0.0",
     "yocto-spinner": "^0.2.0"
