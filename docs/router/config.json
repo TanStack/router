@@ -9,10 +9,7 @@
     {
       "label": "Getting Started",
       "children": [
-        {
-          "label": "Overview",
-          "to": "overview"
-        }
+        
       ],
       "frameworks": [
         {
@@ -55,6 +52,10 @@
         {
           "label": "solid",
           "children": [
+            {
+              "label": "Overview",
+              "to": "framework/solid/overview"
+            },
             {
               "label": "Installation",
               "to": "framework/solid/installation"
