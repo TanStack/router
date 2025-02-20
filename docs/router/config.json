@@ -8,9 +8,7 @@
   "sections": [
     {
       "label": "Getting Started",
-      "children": [
-        
-      ],
+      "children": [],
       "frameworks": [
         {
           "label": "react",
