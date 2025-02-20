@@ -861,51 +861,6 @@ describe('router rendering stability', () => {
 
     expect(mountMocks[page]).toBeCalledTimes(expected.mountCount)
   }
-
-  it.skip('should not remount the page component when navigating to the same route but different path param if no remount deps are configured', async () => {
-    const { mountMocks, links } = await setup()
-
-    await fireEvent.click(links.foo1)
-    await check('fooId', { value: '1', mountCount: 1 }, mountMocks)
-    expect(mountMocks.barId).not.toHaveBeenCalled()
-
-    await fireEvent.click(links.foo2)
-    await check('fooId', { value: '2', mountCount: 1 }, mountMocks)
-    expect(mountMocks.barId).not.toHaveBeenCalled()
-
-    await fireEvent.click(links.foo3bar1)
-    await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
-    await check('barId', { value: '1', mountCount: 1 }, mountMocks),
-      await fireEvent.click(links.foo3bar2)
-    await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
-    await check('barId', { value: '2', mountCount: 1 }, mountMocks)
-  })
-
-  it.skip('should remount the fooId and barId page component when navigating to the same route but different path param if defaultRemountDeps with params is used', async () => {
-    const defaultRemountDeps: RemountDepsFn = (opts) => {
-      return opts.params
-    }
-    const { mountMocks, links } = await setup({
-      remountDeps: { default: defaultRemountDeps },
-    })
-
-    await fireEvent.click(links.foo1)
-    await check('fooId', { value: '1', mountCount: 1 }, mountMocks)
-    expect(mountMocks.barId).not.toHaveBeenCalled()
-
-    await fireEvent.click(links.foo2)
-
-    await check('fooId', { value: '2', mountCount: 2 }, mountMocks)
-    expect(mountMocks.barId).not.toHaveBeenCalled()
-
-    await fireEvent.click(links.foo3bar1)
-    await check('fooId', { value: '3', mountCount: 3 }, mountMocks)
-    await check('barId', { value: '1', mountCount: 1 }, mountMocks)
-
-    await fireEvent.click(links.foo3bar2)
-    await check('fooId', { value: '3', mountCount: 3 }, mountMocks)
-    await check('barId', { value: '2', mountCount: 2 }, mountMocks)
-  })
 })
 
 describe('router matches URLs to route definitions', () => {
