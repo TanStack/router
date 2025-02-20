@@ -320,7 +320,7 @@ setServerFnStaticCache(() => {
         const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
 
         // Use fs instead of fetch to read from filesystem
-        const fs = await import('node:fs/promises')
+        const { promises: fs } = await import('node:fs')
         const path = await import('node:path')
         const filePath = path.join(publicUrl, url)
 
@@ -345,7 +345,7 @@ setServerFnStaticCache(() => {
       return undefined
     },
     setItem: async (ctx, response) => {
-      const fs = await import('node:fs/promises')
+      const { promises: fs } = await import('node:fs')
       const path = await import('node:path')
 
       const hash = jsonToFilenameSafeString(ctx.data)
