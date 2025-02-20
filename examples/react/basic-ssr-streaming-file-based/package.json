@@ -14,7 +14,7 @@
     "@tanstack/react-router": "^1.109.0",
     "@tanstack/router-devtools": "^1.109.0",
     "@tanstack/router-plugin": "^1.109.0",
-    "@tanstack/start": "^1.109.0",
+    "@tanstack/start": "^1.109.1",
     "get-port": "^7.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
