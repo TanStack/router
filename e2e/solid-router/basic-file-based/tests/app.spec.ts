@@ -253,4 +253,3 @@ async function structuralSharingTest(page: Page, enabled: boolean) {
   await page.getByTestId('link').click()
   await checkSearch({ bar: 'b2', foo: 'f2' })
 }
-
