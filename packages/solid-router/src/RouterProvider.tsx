@@ -64,7 +64,7 @@ export function RouterContextProvider<
   children,
   ...rest
 }: RouterProps<TRouter, TDehydrated> & {
-  children: () => Solid.JSXElement
+  children: () => Solid.JSX.Element
 }) {
   // Allow the router to update options on the router instance
   router.update({

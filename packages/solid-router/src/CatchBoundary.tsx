@@ -5,7 +5,7 @@ import type { ErrorRouteComponent } from './route'
 export function CatchBoundary(
   props: {
     getResetKey: () => number | string
-    children: Solid.JSXElement
+    children: Solid.JSX.Element
     errorComponent?: ErrorRouteComponent
     onCatch?: (error: Error) => void
   } & Solid.ParentProps,

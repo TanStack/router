@@ -77,10 +77,10 @@ describe('Link', () => {
   //     return memoLocation
   //   }
 
-  //   const IndexComponent = ({ children }: { children: Solid.JSXElement }) => {
+  //   const IndexComponent = ({ children }: { children: Solid.JSX.Element }) => {
   //     return <h1 data-testid="testId">{children}</h1>
   //   }
-  //   const RouterContainer = ({ children }: { children: Solid.JSXElement }) => {
+  //   const RouterContainer = ({ children }: { children: Solid.JSX.Element }) => {
   //     const childrenRef = Solid.useRef(children)
   //     const memoedRouteTree = Solid.useMemo(() => {
   //       const rootRoute = createRootRoute()

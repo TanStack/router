@@ -389,7 +389,7 @@ export interface RouterOptions<
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#innerwrap-property)
    */
-  InnerWrap?: (props: { children: any }) => Solid.JSXElement
+  InnerWrap?: (props: { children: any }) => Solid.JSX.Element
   /**
    * Use `notFoundComponent` instead.
    *

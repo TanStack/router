@@ -1407,9 +1407,9 @@ export function createRouteMask<
   return opts as any
 }
 
-export type SolidNode = Solid.JSXElement
+export type SolidNode = Solid.JSX.Element
 
-export type SyncRouteComponent<TProps> = (props: TProps) => Solid.JSXElement
+export type SyncRouteComponent<TProps> = (props: TProps) => Solid.JSX.Element
 
 export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>

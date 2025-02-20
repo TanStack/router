@@ -69,8 +69,7 @@ function AnchorSection({ id, title }: { id: string; title: string }) {
         class="font-bold text-xl pt-10"
         ref={elementRef!}
       >
-        {title}
-        {hasShown() ? ' (shown)' : ''}
+        {`${title} ${hasShown() ? '(shown)' : ''}`}
       </h1>
     </div>
   )

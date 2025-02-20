@@ -32,9 +32,9 @@ export function isNotFound(obj: any): obj is NotFoundError {
 }
 
 export function CatchNotFound(props: {
-  fallback?: (error: NotFoundError) => Solid.JSXElement
+  fallback?: (error: NotFoundError) => Solid.JSX.Element
   onCatch?: (error: Error) => void
-  children: Solid.JSXElement
+  children: Solid.JSX.Element
 }) {
   // TODO: Some way for the user to programmatically reset the not-found boundary?
   const resetKey = useRouterState({

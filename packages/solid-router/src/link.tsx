@@ -901,11 +901,11 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | Solid.JSXElement
+    | Solid.JSX.Element
     | ((state: {
         isActive: boolean
         isTransitioning: boolean
-      }) => Solid.JSXElement)
+      }) => Solid.JSX.Element)
 }
 
 type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
@@ -939,10 +939,10 @@ export type LinkComponent<TComp> = <
   const TMaskTo extends string = '',
 >(
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => Solid.JSXElement
+) => Solid.JSX.Element
 
 export function createLink<const TComp>(
-  Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSXElement>,
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSX.Element>,
 ): LinkComponent<TComp> {
   return (props) => <Link {...(props as any)} _asChild={Comp} />
 }

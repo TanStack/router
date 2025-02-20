@@ -239,8 +239,8 @@ export type MakeMatchRouteOptions<
           TRouter['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
-      ) => Solid.JSXElement)
-    | Solid.JSXElement
+      ) => Solid.JSX.Element)
+    | Solid.JSX.Element
 }
 
 export function MatchRoute<

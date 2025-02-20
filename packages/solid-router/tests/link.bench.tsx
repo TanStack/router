@@ -14,7 +14,7 @@ import type { LinkProps } from '../src'
 import type * as Solid from 'solid-js'
 
 const createRouterRenderer =
-  (routesCount: number) => (children: Solid.JSXElement) => {
+  (routesCount: number) => (children: Solid.JSX.Element) => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
