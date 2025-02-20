@@ -125,6 +125,7 @@
     "@rsbuild/core": ">=1.0.2",
     "@tanstack/react-router": "workspace:^",
     "vite": ">=5.0.0 || >=6.0.0",
+    "vite-plugin-solid": "^2.11.2",
     "webpack": ">=5.92.0"
   },
   "peerDependenciesMeta": {
@@ -135,6 +136,9 @@
       "optional": true
     },
     "vite": {
+      "optional": true
+    },
+    "vite-plugin-solid": {
       "optional": true
     },
     "webpack": {

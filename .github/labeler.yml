@@ -32,6 +32,8 @@
   - 'packages/router-vite-plugin/**/*'
 'package: server-functions-plugin':
   - 'packages/server-functions-plugin/**/*'
+'package: solid-router':
+  - 'packages/solid-router/**/*'
 'package: start':
   - 'packages/start/**/*'
 'package: start-api-routes':
