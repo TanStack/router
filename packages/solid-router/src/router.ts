@@ -1286,6 +1286,7 @@ export class Router<
           preload: false,
           links: undefined,
           scripts: undefined,
+          headScripts: undefined,
           meta: undefined,
           staticData: route.options.staticData || {},
           loadPromise: createControlledPromise(),
@@ -2042,6 +2043,13 @@ export class Router<
       loadPromise !== this.latestLoadPromise
     ) {
       await this.latestLoadPromise
+    }
+
+    if (this.hasNotFoundMatch()) {
+      this.__store.setState((s) => ({
+        ...s,
+        statusCode: 404,
+      }))
     }
   }
 
