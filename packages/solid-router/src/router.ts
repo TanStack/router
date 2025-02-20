@@ -2918,7 +2918,7 @@ export class Router<
 
     const baseLocation = pending
       ? this.latestLocation
-      : this.state.resolvedLocation
+      : this.state.resolvedLocation || this.state.location
 
     const match = matchPathname(this.basepath, baseLocation.pathname, {
       ...opts,
