@@ -50,10 +50,7 @@ export type BuildLocationFn = <
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '',
 >(
-  opts: ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
-    leaveParams?: boolean
-    _includeValidateSearch?: boolean
-  },
+  opts: ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => ParsedLocation
 
 export function RouterContextProvider<

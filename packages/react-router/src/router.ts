@@ -30,6 +30,7 @@ import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
 
 import { setupScrollRestoration } from './scroll-restoration'
+import { isCancelNavigation } from './cancelNavigation'
 import type * as React from 'react'
 import type {
   HistoryLocation,
@@ -530,7 +531,21 @@ export interface BuildNextOptions {
 export interface MatchedRoutesResult {
   matchedRoutes: Array<AnyRoute>
   routeParams: Record<string, string>
+  foundRoute?: AnyRoute
 }
+
+type BuildLocationInternalFn = <
+  TRouter extends RegisteredRouter,
+  TTo extends string | undefined,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskTo extends string = '',
+>(
+  opts: ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
+    leaveParams?: boolean
+    _includeValidateSearch?: boolean
+  },
+) => { location: ParsedLocation; matchedRoutesResult: MatchedRoutesResult }
 
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
@@ -1396,7 +1411,10 @@ export class Router<
     return matches
   }
 
-  getMatchedRoutes = (next: ParsedLocation, dest?: BuildNextOptions) => {
+  getMatchedRoutes = (
+    next: ParsedLocation,
+    dest?: BuildNextOptions,
+  ): MatchedRoutesResult => {
     let routeParams: Record<string, string> = {}
     const trimmedPath = trimPathRight(next.pathname)
     const getMatchedParams = (route: AnyRoute) => {
@@ -1455,6 +1473,10 @@ export class Router<
   }
 
   buildLocation: BuildLocationFn = (opts) => {
+    return this.buildLocationInternal(opts as any).location
+  }
+
+  buildLocationInternal: BuildLocationInternalFn = (opts) => {
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
@@ -1742,7 +1764,7 @@ export class Router<
         final.maskedLocation = maskedFinal
       }
 
-      return final
+      return { location: final, matchedRoutesResult: nextMatches }
     }
 
     if (opts.mask) {
@@ -1864,10 +1886,10 @@ export class Router<
       rest.hash = parsed.hash.slice(1)
     }
 
-    const location = this.buildLocation({
+    const location = this.buildLocationInternal({
       ...(rest as any),
       _includeValidateSearch: true,
-    })
+    }).location
     return this.commitLocation({
       ...location,
       viewTransition,
@@ -1878,7 +1900,7 @@ export class Router<
     })
   }
 
-  navigate: NavigateFn = ({ to, reloadDocument, href, ...rest }) => {
+  navigate: NavigateFn = async ({ to, reloadDocument, href, ...rest }) => {
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
@@ -1891,7 +1913,28 @@ export class Router<
       }
       return
     }
-
+    const next = this.buildLocationInternal({
+      to,
+      ...rest,
+      _includeValidateSearch: true,
+    } as any)
+    try {
+      await next.matchedRoutesResult.foundRoute?.options.beforeNavigate?.({
+        context: this.options.context,
+        search: next.location.search as any,
+        params: next.matchedRoutesResult.routeParams,
+      })
+    } catch (err) {
+      if (isRedirect(err)) {
+        return this.navigate({
+          ...err,
+        })
+      }
+      if (isCancelNavigation(err)) {
+        return
+      }
+      throw err
+    }
     return this.buildAndCommitLocation({
       ...rest,
       href,
