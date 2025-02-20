@@ -120,7 +120,7 @@ Regardless of whether you are using the `@tanstack/router-plugin` package and ru
 Import the generated route tree and create a new router instance:
 
 ```tsx
-import { render } from 'solid-js'
+import { render } from 'solid-js/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 
 // Import the generated route tree
@@ -151,7 +151,7 @@ If you are working with this pattern you should change the `id` of the root `<di
 > The following example shows how to configure routes using code, and for simplicity's sake is in a single file for this demo. While code-based generation allows you to declare many routes and even the router instance in a single file, we recommend splitting your routes into separate files for better organization and performance as your application grows.
 
 ```tsx
-import { render } from 'solid-js'
+import { render } from 'solid-js/web'
 import {
   Outlet,
   RouterProvider,
