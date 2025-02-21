@@ -217,7 +217,16 @@
         },
         {
           "label": "solid",
-          "children": []
+          "children": [
+            {
+              "label": "Route Trees & Nesting",
+              "to": "framework/solid/guide/route-trees"
+            },
+            {
+              "label": "Routing Concepts",
+              "to": "framework/solid/guide/routing-concepts"
+            }
+          ]
         }
       ]
     },
