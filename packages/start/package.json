@@ -62,14 +62,14 @@
         "default": "./dist/cjs/server.cjs"
       }
     },
-    "./config": {
+    "./plugin": {
       "import": {
-        "types": "./dist/esm/config.d.ts",
-        "default": "./dist/esm/config.js"
+        "types": "./dist/esm/plugin.d.ts",
+        "default": "./dist/esm/plugin.js"
       },
       "require": {
-        "types": "./dist/cjs/config.d.cts",
-        "default": "./dist/cjs/config.cjs"
+        "types": "./dist/cjs/plugin.d.cts",
+        "default": "./dist/cjs/plugin.cjs"
       }
     },
     "./api": {
@@ -145,7 +145,7 @@
   "dependencies": {
     "@tanstack/react-start-client": "workspace:^",
     "@tanstack/react-start-server": "workspace:^",
-    "@tanstack/start-config": "workspace:^",
+    "@tanstack/react-start-plugin": "workspace:^",
     "@tanstack/react-start-router-manifest": "workspace:^",
     "@tanstack/react-start-server-functions-client": "workspace:^",
     "@tanstack/start-server-functions-server": "workspace:^",
