@@ -101,14 +101,6 @@ await publish({
       packageDir: 'packages/react-start-server',
     },
     {
-      name: '@tanstack/start-config',
-      packageDir: 'packages/start-config',
-    },
-    {
-      name: '@tanstack/react-start-config',
-      packageDir: 'packages/react-start-config',
-    },
-    {
       name: '@tanstack/react-start-api-routes',
       packageDir: 'packages/react-start-api-routes',
     },
