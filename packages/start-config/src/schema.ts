@@ -158,7 +158,7 @@ const routersSchema = z.object({
   server: z
     .object({
       base: z.string().optional(),
-      globalMiddlewareEntry: z.string().optional(),
+      entry: z.string().optional(),
       middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })

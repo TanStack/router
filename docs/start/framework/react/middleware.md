@@ -296,13 +296,13 @@ Middleware can be used in two different ways:
 
 Global middleware runs automatically for every server function in your application. This is useful for functionality like authentication, logging, and monitoring that should apply to all requests.
 
-To use global middleware, create a `global-middleware.ts` file in your project (typically at `app/global-middleware.ts`). This file runs in both client and server environments and is where you register global middleware.
+To use global middleware, create a `server-functions.ts` file in your project (typically at `app/server-functions.ts`). This file runs in both client and server environments and is where you register global middleware.
 
 Here's how to register global middleware:
 
 ```tsx
-// app/global-middleware.ts
-import { registerGlobalMiddleware } from '@tanstack/react-start'
+// app/server-functions.ts
+import { registerGlobalMiddleware } from '@tanstack/start'
 import { authMiddleware } from './middleware'
 
 registerGlobalMiddleware({
@@ -315,7 +315,7 @@ registerGlobalMiddleware({
 Global middleware types are inherently **detached** from server functions themselves. This means that if a global middleware supplies additional context to server functions or other server function specific middleware, the types will not be automatically passed through to the server function or other server function specific middleware.
 
 ```tsx
-// app/global-middleware.ts
+// app/server-functions.ts
 registerGlobalMiddleware({
   middleware: [authMiddleware],
 })
