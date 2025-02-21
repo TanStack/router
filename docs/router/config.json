@@ -225,6 +225,22 @@
             {
               "label": "Routing Concepts",
               "to": "framework/solid/guide/routing-concepts"
+            },
+            {
+              "label": "Code Splitting",
+              "to": "framework/solid/guide/code-splitting"
+            },
+            {
+              "label": "File-Based Routing",
+              "to": "framework/solid/guide/file-based-routing"
+            },
+            {
+              "label": "Virtual File Routes",
+              "to": "framework/solid/guide/virtual-file-routes"
+            },
+            {
+              "label": "Code Based Routing",
+              "to": "framework/solid/guide/code-based-routing"
             }
           ]
         }
