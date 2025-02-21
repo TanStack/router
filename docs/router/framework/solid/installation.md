@@ -1,8 +1,7 @@
 ---
-id: installation
 title: Installation
 ref: docs/router/framework/react/installation.md
-replace: { 'React': 'Solid', 'react-router': 'solid-router' }
+replace: { 'react-router': 'solid-router' }
 ---
 
 [//]: # 'Requirements'
