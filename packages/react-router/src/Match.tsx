@@ -12,11 +12,11 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { CatchNotFound, isNotFound } from './not-found'
 import { isRedirect } from './redirects'
-import { createSsrError } from './ssr-error'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import { createSsrError } from './ssr-error'
 import type { ParsedLocation } from '@tanstack/router-core'
 import type { AnyRoute } from './route'
 
@@ -58,7 +58,9 @@ export const Match = React.memo(function MatchImpl({
     (!route.isRoot || route.options.wrapInSuspense) &&
     (route.options.wrapInSuspense ??
       PendingComponent ??
-      ((route.options.errorComponent as any)?.preload || !route.ssr))
+      ((route.options.errorComponent as any)?.preload ||
+        !route.ssr ||
+        route.ssr === 'data-only'))
       ? React.Suspense
       : SafeFragment
 
@@ -220,6 +222,10 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     throw router.getMatch(match.id)?.loadPromise
   }
 
+  if (router.isServer && (!route.ssr || route.ssr === 'data-only')) {
+    throw createSsrError()
+  }
+
   if (match.status === 'error') {
     // If we're on the server, we need to use React's new and super
     // wonky api for throwing errors from a server side render inside
@@ -268,10 +274,6 @@ export const MatchInner = React.memo(function MatchInnerImpl({
           }))
         }, pendingMinMs)
       }
-    }
-
-    if (router.isServer && !route.ssr) {
-      throw createSsrError()
     }
 
     throw router.getMatch(match.id)?.loadPromise

@@ -180,41 +180,7 @@ export async function defineConfig(
           )
 
           return [
-            {
-              name: 'extend-react',
-              enforce: 'pre',
-              resolveId: (source: string, importer: string) => {
-                if (
-                  source === 'react-dom/client' &&
-                  !importer.includes('\0extended-react-dom-client')
-                ) {
-                  return '\0extended-react-dom-client'
-                }
-                return null
-              },
-              load: (id: string) => {
-                if (id.includes('\0extended-react-dom-client')) {
-                  return `
-                    import * as ReactDomClient from 'react-dom/client';
-                    const { hydrateRoot: originalHydrateRoot, ...rest } = ReactDomClient;
-                    import { isSsrError } from '@tanstack/react-router'
-                    
-                    export const hydrateRoot = (a, b, c) => originalHydrateRoot(a, b, {
-                      ...c,
-                      onRecoverableError(error) {
-                        if (isSsrError(error)) return
-                        c?.onRecoverableError ? c.onRecoverableError(error) : console.error(error)
-                      },
-                    });
-                    
-                    export default { hydrateRoot, ...rest };
-                    export * from 'react-dom/client';
-                  `
-                }
-
-                return null
-              },
-            },
+            silenceReactErrorBoundaryPlugin(),
             config('tss-vite-config-client', {
               ...viteConfig.userConfig,
               ...clientViteConfig.userConfig,
@@ -692,4 +658,41 @@ function injectDefineEnv<TKey extends string, TValue extends string>(
     [`process.env.${key}`]: JSON.stringify(value),
     [`import.meta.env.${key}`]: JSON.stringify(value),
   } as { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue }
+}
+
+function silenceReactErrorBoundaryPlugin(): vite.Plugin {
+  return {
+    name: 'extend-react',
+    enforce: 'pre',
+    resolveId: (source, importer) => {
+      if (
+        source === 'react-dom/client' &&
+        !importer?.includes('\0react-dom/client-tss')
+      ) {
+        return '\0react-dom/client-tss'
+      }
+      return null
+    },
+    load: (id) => {
+      if (id.includes('\0react-dom/client-tss')) {
+        return `
+          import * as ReactDomClient from 'react-dom/client';
+          const { hydrateRoot: originalHydrateRoot, ...rest } = ReactDomClient;
+          import { isSsrError } from '@tanstack/react-router'
+
+          export const hydrateRoot = (a, b, c) => originalHydrateRoot(a, b, {
+            ...c,
+            onRecoverableError(error) {
+              if (isSsrError(error)) return
+              c?.onRecoverableError ? c.onRecoverableError(error) : console.error(error)
+            },
+          });
+
+          export default { hydrateRoot, ...rest };
+          export * from 'react-dom/client'`
+      }
+
+      return null
+    },
+  }
 }

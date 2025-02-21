@@ -2235,6 +2235,26 @@ export class Router<
       }
     }
 
+    const shouldSkipLoader = (matchId: string) => {
+      const match = this.getMatch(matchId)!
+      const route = this.looseRoutesById[match.routeId]!
+
+      // Check if any parent route has ssr: false
+      const parentMatches = matches.slice(
+        0,
+        matches.findIndex((m) => m.id === matchId),
+      )
+
+      const isNonSsr =
+        !route.ssr ||
+        parentMatches.some((m) => {
+          const parentRoute = this.looseRoutesById[m.routeId]!
+          return !parentRoute.ssr
+        })
+
+      return (this.isServer && isNonSsr) || (!this.isServer && match.dehydrated)
+    }
+
     try {
       await new Promise<void>((resolveAll, rejectAll) => {
         ;(async () => {
@@ -2287,7 +2307,7 @@ export class Router<
 
               const route = this.looseRoutesById[routeId]!
 
-              if (!route.ssr && this.isServer) {
+              if (shouldSkipLoader(matchId)) {
                 continue
               }
 
@@ -2455,17 +2475,14 @@ export class Router<
                 (async () => {
                   const route = this.looseRoutesById[routeId]!
 
-                  const { loaderPromise: prevLoaderPromise, dehydrated } =
+                  const { loaderPromise: prevLoaderPromise } =
                     this.getMatch(matchId)!
 
                   let loaderShouldRunAsync = false
                   let loaderIsRunningAsync = false
 
                   // Do not run the loader if the route is not SSR'able
-                  if (
-                    (this.isServer && !route.ssr) ||
-                    (!this.isServer && dehydrated)
-                  ) {
+                  if (shouldSkipLoader(matchId)) {
                     return this.getMatch(matchId)!
                   }
 
@@ -2476,10 +2493,6 @@ export class Router<
                       handleRedirectAndNotFound(match, match.error)
                     }
                   } else {
-                    if (!route.ssr && this.isServer) {
-                      return this.getMatch(matchId)!
-                    }
-
                     const parentMatchPromise = matchPromises[index - 1] as any
 
                     const getLoaderContext = (): LoaderFnContext => {
