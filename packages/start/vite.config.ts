@@ -17,7 +17,7 @@ export default mergeConfig(
     entry: [
       './src/client.tsx',
       './src/server.tsx',
-      './src/config.tsx',
+      './src/plugin.tsx',
       './src/router-manifest.tsx',
       './src/server-functions-client.tsx',
       './src/server-functions-server.tsx',
@@ -27,7 +27,7 @@ export default mergeConfig(
     externalDeps: [
       '@tanstack/start-client',
       '@tanstack/start-server',
-      '@tanstack/start-config',
+      '@tanstack/start-plugin',
       '@tanstack/start-router-manifest',
       '@tanstack/start-server-functions-client',
       '@tanstack/start-server-functions-server',

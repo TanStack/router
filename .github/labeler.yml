@@ -40,8 +40,6 @@
   - 'packages/start-api-routes/**/*'
 'package: start-client':
   - 'packages/start-client/**/*'
-'package: start-config':
-  - 'packages/start-config/**/*'
 'package: start-plugin':
   - 'packages/start-plugin/**/*'
 'package: start-router-manifest':

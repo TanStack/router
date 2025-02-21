@@ -100,7 +100,6 @@
       "@tanstack/start-server-functions-ssr": "workspace:*",
       "@tanstack/start-server-functions-server": "workspace:*",
       "@tanstack/start-router-manifest": "workspace:*",
-      "@tanstack/start-config": "workspace:*",
       "@tanstack/start-plugin": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
