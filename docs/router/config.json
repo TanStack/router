@@ -61,6 +61,10 @@
             {
               "label": "Quick Start",
               "to": "framework/solid/quick-start"
+            },
+            {
+              "label": "Decisions on DX",
+              "to": "framework/react/decisions-on-dx"
             }
           ]
         }
