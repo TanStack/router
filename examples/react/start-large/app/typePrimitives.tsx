@@ -1,77 +1,49 @@
-import { redirect, useParams, useSearch } from '@tanstack/react-router'
+import { Link, redirect, useNavigate } from '@tanstack/react-router'
 import type {
+  RegisteredRouter,
   ValidateFromPath,
-  ValidateId,
+  ValidateLinkOptions,
+  ValidateLinkOptionsArray,
   ValidateNavigateOptions,
-  ValidateNavigateOptionsArray,
-  ValidateParams,
-  ValidateSearch,
-  ValidateToPath,
-  ValidateUseParamsOptions,
-  ValidateUseParamsResult,
-  ValidateUseSearchOptions,
-  ValidateUseSearchResult,
+  ValidateRedirectOptions,
 } from '@tanstack/react-router'
 
-export const customTo = <TTo extends string>(to: ValidateToPath<TTo>) => {
-  throw redirect({ to })
-}
-
-export const customFrom = <TFrom extends string>(
-  from: ValidateFromPath<TFrom>,
-) => {
-  throw redirect({ from })
-}
-
-export const customFromAndTo = <TTo extends string, TFrom extends string>(
-  from: ValidateFromPath<TFrom>,
-  to: ValidateToPath<TTo, TFrom>,
-) => {
-  throw redirect({ from, to })
-}
-
-export const customSearch = <TTo extends string>(
-  options: {
-    to: ValidateToPath<TTo>
-  } & ValidateSearch<TTo>,
-) => {
-  throw redirect(options as never)
-}
-
-export const customParams = <TTo extends string>(
-  options: { to: ValidateToPath<TTo> } & ValidateParams<TTo>,
-) => {
-  throw redirect(options as never)
-}
-
-export const customNavigateOptions = <TOptions,>(
-  options: ValidateNavigateOptions<TOptions>,
-) => {
+export function customRedirect<TRouter extends RegisteredRouter, TOptions>(
+  options: ValidateRedirectOptions<TRouter, TOptions>,
+): void
+export function customRedirect(options: ValidateRedirectOptions): void {
   throw redirect(options)
 }
 
-export const customNavigateOptionsArray = <
+export function useCustomNavigate<TRouter extends RegisteredRouter, TOptions>(
+  options: ValidateNavigateOptions<TRouter, TOptions>,
+): void
+export function useCustomNavigate(options: ValidateNavigateOptions): void {
+  const navigate = useNavigate()
+  navigate(options)
+}
+
+export function MyLink<TRouter extends RegisteredRouter, TOptions>(
+  options: ValidateLinkOptions<TRouter, TOptions>,
+): React.ReactNode
+export function MyLink(options: ValidateLinkOptions) {
+  return <Link {...options} />
+}
+
+export interface ListItemsProps<
+  TRouter extends RegisteredRouter = RegisteredRouter,
+  TOptions extends ReadonlyArray<unknown> = ReadonlyArray<unknown>,
+  TFrom extends string = string,
+> {
+  from: ValidateFromPath<TRouter, TFrom>
+  items: ValidateLinkOptionsArray<TRouter, TOptions, TFrom>
+}
+
+export function ListItems<
+  TRouter extends RegisteredRouter,
   TOptions extends ReadonlyArray<unknown>,
->(
-  ...options: ValidateNavigateOptionsArray<TOptions>
-) => {
-  for (const option of options) {
-    throw redirect(option)
-  }
-}
-
-export const useCustomId = <TId extends string>(id: ValidateId<TId>) => {
-  console.log(id)
-}
-
-export const useCustomSearch = <TOptions,>(
-  options: ValidateUseSearchOptions<TOptions>,
-): ValidateUseSearchResult<TOptions> => {
-  return useSearch(options as never) as any
-}
-
-export const useCustomParams = <TOptions,>(
-  options: ValidateUseParamsOptions<TOptions>,
-): ValidateUseParamsResult<TOptions> => {
-  return useParams(options as never)
+  TFrom extends string,
+>(options: ListItemsProps<TRouter, TOptions, TFrom>): React.ReactNode
+export function ListItems(options: ListItemsProps) {
+  return options.items.map((item) => <Link {...item} from={options.from} />)
 }

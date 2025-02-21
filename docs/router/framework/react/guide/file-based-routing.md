@@ -141,7 +141,7 @@ File-based routing requires that you follow a few simple file naming conventions
   - Routes segments ending with the `index` token (but before any file types) will be used to match the parent route when the URL pathname matches the parent route exactly.
     This can be configured via the `indexToken` configuration option, see [options](#options).
 - **`.route.tsx` File Type**
-  - When using directories to organize your routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used at the route file for the `/blog/post` route.
+  - When using directories to organize your routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used as the route file for the `/blog/post` route.
     This can be configured via the `routeToken` configuration option, see [options](#options).
 - **`.lazy.tsx` File Type**
   - The `lazy` suffix can be used to code-split components for a route. For example, `blog.post.lazy.tsx` will be used as the component for the `blog.post` route.

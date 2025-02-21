@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-functions-fetcher",
-  "version": "1.107.0",
+  "version": "1.109.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
