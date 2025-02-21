@@ -5,13 +5,13 @@ import { fileURLToPath } from 'node:url'
 import viteReact from '@vitejs/plugin-react'
 import { resolve } from 'import-meta-resolve'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import { TanStackStartVitePlugin } from '@tanstack/start-plugin'
 import { getConfig } from '@tanstack/router-generator'
 import { createApp } from 'vinxi'
 import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
 import { createTanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
+import { createTanStackStartPlugin } from '@tanstack/start-plugin'
 import { createFetch } from 'ofetch'
 import { createNitro } from 'nitropack'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
@@ -110,7 +110,9 @@ export async function defineConfig(
   const ssrEntry =
     opts.routers?.ssr?.entry || path.join(appDirectory, 'ssr.tsx')
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
-
+  const serverFnEntry =
+    opts.routers?.server?.entry ||
+    path.join(appDirectory, 'server-functions.ts')
   const apiEntryExists = existsSync(apiEntry)
 
   const viteConfig = getUserViteConfig(opts.vite)
@@ -136,6 +138,11 @@ export async function defineConfig(
       replacer: (opts) =>
         `createServerRpc('${opts.functionId}', '${serverBase}', ${opts.fn})`,
     },
+  })
+
+  const TanStackStartPlugin = createTanStackStartPlugin({
+    serverFnEntry,
+    manifestVirtualImportId: 'tsr:start-manifest',
   })
 
   // Create a dummy nitro app to get the resolved public output path
@@ -215,9 +222,7 @@ export async function defineConfig(
                 ...tsrConfig.experimental,
               },
             }),
-            TanStackStartVitePlugin({
-              env: 'client',
-            }),
+            TanStackStartPlugin.client,
             TanStackServerFnsPlugin.client,
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
@@ -280,9 +285,7 @@ export async function defineConfig(
                 ...tsrConfig.experimental,
               },
             }),
-            TanStackStartVitePlugin({
-              env: 'ssr',
-            }),
+            TanStackStartPlugin.ssr,
             TanStackServerFnsPlugin.ssr,
             tsrRoutesManifest({
               tsrConfig,
@@ -348,9 +351,7 @@ export async function defineConfig(
                 ...tsrConfig.experimental,
               },
             }),
-            TanStackStartVitePlugin({
-              env: 'server',
-            }),
+            TanStackStartPlugin.server,
             TanStackServerFnsPlugin.server,
             // TODO: RSCS - remove this
             // resolve: {
