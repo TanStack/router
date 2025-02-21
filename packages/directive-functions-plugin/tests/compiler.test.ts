@@ -139,8 +139,12 @@ describe('server function compilation', () => {
       export const exportedArrowFunction = wrapper(exportedArrowFunction_wrapper);
       const namedExportConst_1 = createClientRpc("test_ts--namedExportConst_1");
       export const namedExportConst = namedExportConst_1;
+      function unusedFn() {
+        return 'hello';
+      }
       const namedDefaultExport = 'namedDefaultExport';
       export default namedDefaultExport;
+      const usedButNotExported = 'usedButNotExported';
       const namedExport = 'namedExport';
       export { namedExport };"
     `)
@@ -165,8 +169,12 @@ describe('server function compilation', () => {
       export const exportedArrowFunction = wrapper(exportedArrowFunction_wrapper);
       const namedExportConst_1 = createSsrRpc("test_ts--namedExportConst_1");
       export const namedExportConst = namedExportConst_1;
+      function unusedFn() {
+        return 'hello';
+      }
       const namedDefaultExport = 'namedDefaultExport';
       export default namedDefaultExport;
+      const usedButNotExported = 'usedButNotExported';
       const namedExport = 'namedExport';
       export { namedExport };"
     `)
@@ -206,6 +214,11 @@ describe('server function compilation', () => {
       function usedFn() {
         return 'hello';
       }
+      function unusedFn() {
+        return 'hello';
+      }
+      const usedButNotExported = 'usedButNotExported';
+      const namedExportFn = namedExportFn_1;
       export { namedFunction_createServerFn_namedFunction, arrowFunction_createServerFn, anonymousFunction_createServerFn, multipleDirectives_multipleDirectives, iife_1, defaultExportFn_1, namedExportFn_1, exportedArrowFunction_wrapper, namedExportConst_1 };"
     `,
     )
@@ -481,6 +494,9 @@ describe('server function compilation', () => {
       import { createClientRpc } from "my-rpc-lib-client";
       const useServer_1 = createClientRpc("test_ts--useServer_1");
       export const useServer = useServer_1;
+      function notExported() {
+        return 'hello';
+      }
       const defaultExport_1 = createClientRpc("test_ts--defaultExport_1");
       export default defaultExport_1;"
     `)
@@ -490,6 +506,9 @@ describe('server function compilation', () => {
       import { createSsrRpc } from "my-rpc-lib-server";
       const useServer_1 = createSsrRpc("test_ts--useServer_1");
       export const useServer = useServer_1;
+      function notExported() {
+        return 'hello';
+      }
       const defaultExport_1 = createSsrRpc("test_ts--defaultExport_1");
       export default defaultExport_1;"
     `)
@@ -500,12 +519,16 @@ describe('server function compilation', () => {
       const useServer_1 = createServerRpc("test_ts--useServer_1", function useServer() {
         return usedInUseServer();
       });
+      function notExported() {
+        return 'hello';
+      }
       function usedInUseServer() {
         return 'hello';
       }
       const defaultExport_1 = createServerRpc("test_ts--defaultExport_1", function defaultExport() {
         return 'hello';
       });
+      const useServer = useServer_1;
       export { useServer_1, defaultExport_1 };"
     `)
   })
@@ -645,6 +668,122 @@ describe('server function compilation', () => {
       });
       const bytesSignupServerFn = bytesSignupServerFn_1;
       bytesSignupServerFn();
+      export { bytesSignupServerFn_1 };"
+    `)
+  })
+
+  test('file-wide use server directive', () => {
+    const code = `
+      'use server'
+
+      import { imported } from 'imported'
+
+      export const serverFnConstWithImport = async () => {
+        return imported
+      }
+
+      export function serverFnNamedWithImport () {
+        return imported
+      }
+    `
+
+    const client = compileDirectives({ ...clientConfig, code })
+    const ssr = compileDirectives({ ...ssrConfig, code })
+    const server = compileDirectives({
+      ...serverConfig,
+      code,
+      filename:
+        ssr.directiveFnsById[Object.keys(ssr.directiveFnsById)[0]!]!
+          .extractedFilename,
+    })
+
+    console.log(ssr.directiveFnsById)
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "'use server';
+
+      import { createClientRpc } from "my-rpc-lib-client";
+      const serverFnConstWithImport_1 = createClientRpc("test_ts--serverFnConstWithImport_1");
+      export const serverFnConstWithImport = serverFnConstWithImport_1;
+      const serverFnNamedWithImport_1 = createClientRpc("test_ts--serverFnNamedWithImport_1");
+      export const serverFnNamedWithImport = serverFnNamedWithImport_1;"
+    `)
+
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "'use server';
+
+      import { createSsrRpc } from "my-rpc-lib-server";
+      const serverFnConstWithImport_1 = createSsrRpc("test_ts--serverFnConstWithImport_1");
+      export const serverFnConstWithImport = serverFnConstWithImport_1;
+      const serverFnNamedWithImport_1 = createSsrRpc("test_ts--serverFnNamedWithImport_1");
+      export const serverFnNamedWithImport = serverFnNamedWithImport_1;"
+    `)
+
+    expect(server.compiledResult.code).toMatchInlineSnapshot(`
+      "'use server';
+
+      import { createServerRpc } from "my-rpc-lib-server";
+      import { imported } from 'imported';
+      const serverFnConstWithImport_1 = createServerRpc("test_ts--serverFnConstWithImport_1", async () => {
+        return imported;
+      });
+      const serverFnNamedWithImport_1 = createServerRpc("test_ts--serverFnNamedWithImport_1", function serverFnNamedWithImport() {
+        return imported;
+      });
+      const serverFnNamedWithImport = serverFnNamedWithImport_1;
+      export { serverFnConstWithImport_1, serverFnNamedWithImport_1 };"
+    `)
+  })
+  test('async function with anonymous default export', () => {
+    const code = `
+      async function bytesSignupServerFn({ email }: { email: string }) {
+        'use server'
+        return 'test'
+      }
+      export default function () {
+        return null;
+      }
+    `
+
+    const client = compileDirectives({ ...clientConfig, code })
+    const ssr = compileDirectives({ ...ssrConfig, code })
+    const server = compileDirectives({
+      ...serverConfig,
+      code,
+      filename:
+        ssr.directiveFnsById[Object.keys(ssr.directiveFnsById)[0]!]!
+          .extractedFilename,
+    })
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createClientRpc } from "my-rpc-lib-client";
+      const bytesSignupServerFn_1 = createClientRpc("test_ts--bytesSignupServerFn_1");
+      const bytesSignupServerFn = bytesSignupServerFn_1;
+      export default function () {
+        return null;
+      }"
+    `)
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createSsrRpc } from "my-rpc-lib-server";
+      const bytesSignupServerFn_1 = createSsrRpc("test_ts--bytesSignupServerFn_1");
+      const bytesSignupServerFn = bytesSignupServerFn_1;
+      export default function () {
+        return null;
+      }"
+    `)
+    expect(server.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createServerRpc } from "my-rpc-lib-server";
+      const bytesSignupServerFn_1 = createServerRpc("test_ts--bytesSignupServerFn_1", async function ({
+        email
+      }: {
+        email: string;
+      }) {
+        return 'test';
+      });
+      const bytesSignupServerFn = bytesSignupServerFn_1;
+      export default function () {
+        return null;
+      }
       export { bytesSignupServerFn_1 };"
     `)
   })

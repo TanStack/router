@@ -115,6 +115,13 @@ export function hydrate(router: AnyRouter) {
 
   // Hydrate the router state
   const matches = router.matchRoutes(router.state.location)
+  // kick off loading the route chunks
+  const routeChunkPromise = Promise.all(
+    matches.map((match) => {
+      const route = router.looseRoutesById[match.routeId]!
+      return router.loadRouteChunk(route)
+    }),
+  )
   matches.forEach((match) => {
     const route = router.looseRoutesById[match.routeId]!
 
@@ -140,7 +147,7 @@ export function hydrate(router: AnyRouter) {
 
         match.context = {
           ...parentContext,
-          ...match.context,
+          ...match.__routeContext,
           ...match.__beforeLoadContext,
         }
       }
@@ -168,18 +175,20 @@ export function hydrate(router: AnyRouter) {
       })
     }
 
-    const headFnContent = route.options.head?.({
+    const assetContext = {
       matches: router.state.matches,
       match,
       params: match.params,
       loaderData: match.loaderData,
-    })
+    }
+    const headFnContent = route.options.head?.(assetContext)
 
-    Object.assign(match, {
-      meta: headFnContent?.meta,
-      links: headFnContent?.links,
-      scripts: headFnContent?.scripts,
-    })
+    const scripts = route.options.scripts?.(assetContext)
+
+    match.meta = headFnContent?.meta
+    match.links = headFnContent?.links
+    match.headScripts = headFnContent?.scripts
+    match.scripts = scripts
 
     return match
   })
@@ -193,6 +202,7 @@ export function hydrate(router: AnyRouter) {
 
   // Allow the user to handle custom hydration data
   router.options.hydrate?.(dehydratedData)
+  return routeChunkPromise
 }
 
 function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {

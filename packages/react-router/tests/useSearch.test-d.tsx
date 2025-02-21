@@ -230,6 +230,7 @@ describe('useSearch', () => {
       .toHaveProperty('structuralSharing')
       .toEqualTypeOf<false | undefined>()
 
+    // eslint-disable-next-line unused-imports/no-unused-vars
     const routerWithStructuralSharing = createRouter({
       routeTree,
       defaultStructuralSharing: true,
@@ -392,6 +393,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
+    // eslint-disable-next-line unused-imports/no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })

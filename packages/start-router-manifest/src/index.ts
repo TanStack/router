@@ -1,6 +1,7 @@
 // @ts-expect-error
 import tsrGetManifest from 'tsr:routes-manifest'
 import { getManifest } from 'vinxi/manifest'
+import { invariant } from '@tanstack/react-router'
 import type { Manifest } from '@tanstack/react-router'
 
 function sanitizeBase(base: string) {
@@ -20,6 +21,7 @@ export function getFullRouterManifest() {
 
   rootRoute.assets = rootRoute.assets || []
 
+  let script = ''
   // Always fake that HMR is ready
   if (process.env.NODE_ENV === 'development') {
     const CLIENT_BASE = sanitizeBase(process.env.TSS_CLIENT_BASE || '')
@@ -29,29 +31,30 @@ export function getFullRouterManifest() {
         'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
       )
     }
-
-    rootRoute.assets.push({
-      tag: 'script',
-      attrs: { type: 'module' },
-      children: `import RefreshRuntime from "/${CLIENT_BASE}/@react-refresh";
-RefreshRuntime.injectIntoGlobalHook(window)
-window.$RefreshReg$ = () => {}
-window.$RefreshSig$ = () => (type) => type
-window.__vite_plugin_react_preamble_installed__ = true`,
-    })
+    script = `import RefreshRuntime from "/${CLIENT_BASE}/@react-refresh";
+    RefreshRuntime.injectIntoGlobalHook(window)
+    window.$RefreshReg$ = () => {}
+    window.$RefreshSig$ = () => (type) => type
+    window.__vite_plugin_react_preamble_installed__ = true;`
   }
 
   // Get the entry for the client from vinxi
   const vinxiClientManifest = getManifest('client')
 
+  const importPath =
+    vinxiClientManifest.inputs[vinxiClientManifest.handler]?.output.path
+  if (!importPath) {
+    invariant(importPath, 'Could not find client entry in vinxi manifest')
+  }
+
   rootRoute.assets.push({
     tag: 'script',
     attrs: {
-      src: vinxiClientManifest.inputs[vinxiClientManifest.handler]?.output.path,
       type: 'module',
       suppressHydrationWarning: true,
       async: true,
     },
+    children: `${script}import("${importPath}")`,
   })
 
   return routerManifest

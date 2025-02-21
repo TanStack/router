@@ -1,6 +1,11 @@
 import * as React from 'react'
-import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
-import { Meta, Scripts } from '@tanstack/start'
+import {
+  HeadContent,
+  Link,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -79,7 +84,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html>
       <head>
-        <Meta />
+        <HeadContent />
       </head>
       <body>
         <div className="p-2 flex gap-2 text-lg">

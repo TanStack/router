@@ -1311,20 +1311,12 @@ export class Router<
           preload: false,
           links: undefined,
           scripts: undefined,
+          headScripts: undefined,
           meta: undefined,
           staticData: route.options.staticData || {},
           loadPromise: createControlledPromise(),
           fullPath: route.fullPath,
         }
-      }
-
-      // If it's already a success, update the headers
-      // These may get updated again if the match is refreshed
-      // due to being stale
-      if (match.status === 'success') {
-        match.headers = route.options.headers?.({
-          loaderData: match.loaderData,
-        })
       }
 
       if (!opts?.preload) {
@@ -1380,16 +1372,25 @@ export class Router<
         }
       }
 
-      const headFnContent = route.options.head?.({
-        matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData ?? undefined,
-      })
-
-      match.links = headFnContent?.links
-      match.scripts = headFnContent?.scripts
-      match.meta = headFnContent?.meta
+      // If it's already a success, update headers and head content
+      // These may get updated again if the match is refreshed
+      // due to being stale
+      if (match.status === 'success') {
+        match.headers = route.options.headers?.({
+          loaderData: match.loaderData,
+        })
+        const assetContext = {
+          matches,
+          match,
+          params: match.params,
+          loaderData: match.loaderData,
+        }
+        const headFnContent = route.options.head?.(assetContext)
+        match.links = headFnContent?.links
+        match.headScripts = headFnContent?.scripts
+        match.meta = headFnContent?.meta
+        match.scripts = route.options.scripts?.(assetContext)
+      }
     })
 
     return matches
@@ -1491,7 +1492,9 @@ export class Router<
       )
       let pathname: string
       if (dest.to) {
-        pathname = this.resolvePathWithBase(fromPath, `${dest.to}`)
+        const resolvePathTo =
+          fromMatch?.fullPath || this.latestLocation.pathname
+        pathname = this.resolvePathWithBase(resolvePathTo, `${dest.to}`)
       } else {
         const fromRouteByFromPathRouteId =
           this.routesById[
@@ -1608,8 +1611,8 @@ export class Router<
               }
               if (opts._includeValidateSearch && route.options.validateSearch) {
                 const validate: SearchMiddleware<any> = ({ search, next }) => {
+                  const result = next(search)
                   try {
-                    const result = next(search)
                     const validatedSearch = {
                       ...result,
                       ...(validateSearch(
@@ -1620,6 +1623,7 @@ export class Router<
                     return validatedSearch
                   } catch {
                     // ignore errors here because they are already handled in matchRoutes
+                    return result
                   }
                 }
                 middlewares.push(validate)
@@ -2556,16 +2560,19 @@ export class Router<
 
                           await potentialPendingMinPromise()
 
-                          const headFnContent = route.options.head?.({
+                          const assetContext = {
                             matches,
                             match: this.getMatch(matchId)!,
                             params: this.getMatch(matchId)!.params,
                             loaderData,
-                          })
+                          }
+                          const headFnContent =
+                            route.options.head?.(assetContext)
                           const meta = headFnContent?.meta
                           const links = headFnContent?.links
-                          const scripts = headFnContent?.scripts
+                          const headScripts = headFnContent?.scripts
 
+                          const scripts = route.options.scripts?.(assetContext)
                           const headers = route.options.headers?.({
                             loaderData,
                           })
@@ -2579,8 +2586,9 @@ export class Router<
                             loaderData,
                             meta,
                             links,
-                            scripts,
+                            headScripts,
                             headers,
+                            scripts,
                           }))
                         } catch (e) {
                           let error = e

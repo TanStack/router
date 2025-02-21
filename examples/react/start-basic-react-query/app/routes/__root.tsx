@@ -2,10 +2,11 @@ import {
   Link,
   Outlet,
   createRootRouteWithContext,
+  HeadContent,
+  Scripts,
 } from '@tanstack/react-router'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
@@ -77,7 +78,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html>
       <head>
-        <Meta />
+        <HeadContent />
       </head>
       <body>
         <div className="p-2 flex gap-2 text-lg">

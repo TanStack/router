@@ -17,6 +17,10 @@ await publish({
       packageDir: 'packages/router-core',
     },
     {
+      name: '@tanstack/solid-router',
+      packageDir: 'packages/solid-router',
+    },
+    {
       name: '@tanstack/react-router',
       packageDir: 'packages/react-router',
     },

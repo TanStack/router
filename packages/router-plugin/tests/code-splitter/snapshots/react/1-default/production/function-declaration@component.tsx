@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Link, Outlet } from '@tanstack/react-router';
 import { Route } from "function-declaration.tsx";
 const SplitComponent = function PostsComponent() {

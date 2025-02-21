@@ -19,6 +19,7 @@ test('createServerFn without middleware', () => {
       method: 'GET'
       context: undefined
       data: undefined
+      signal: AbortSignal
     }>()
   })
 })
@@ -41,6 +42,7 @@ test('createServerFn with validator', () => {
       data: {
         a: string
       }
+      signal: AbortSignal
     }>()
   })
 
@@ -49,7 +51,10 @@ test('createServerFn with validator', () => {
     headers?: HeadersInit
     type?: 'static' | 'dynamic'
     fullResponse?: boolean
+    signal?: AbortSignal
   }>()
+
+  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn with middleware and context', () => {
@@ -99,6 +104,7 @@ test('createServerFn with middleware and context', () => {
         readonly d: 'd'
       }
       data: undefined
+      signal: AbortSignal
     }>()
   })
 })
@@ -137,6 +143,7 @@ test('createServerFn with middleware and validator', () => {
           readonly outputB: 'outputB'
           readonly outputC: 'outputC'
         }
+        signal: AbortSignal
       }>()
 
       return 'data' as const
@@ -151,7 +158,10 @@ test('createServerFn with middleware and validator', () => {
     headers?: HeadersInit
     type?: 'static' | 'dynamic'
     fullResponse?: boolean
+    signal?: AbortSignal
   }>()
+
+  expectTypeOf(fn).returns.resolves.toEqualTypeOf<'data'>()
 
   expectTypeOf(() =>
     fn({
@@ -196,14 +206,6 @@ test('createServerFn overrides properties', () => {
       const newContext = { context: 'b' } as const
       return next({ sendContext: newContext, context: newContext })
     })
-    .clientAfter(({ context, next }) => {
-      expectTypeOf(context).toEqualTypeOf<{
-        readonly context: 'b'
-      }>
-
-      const newContext = { context: 'c' } as const
-      return next({ context: newContext })
-    })
 
   const middleware2 = createMiddleware()
     .middleware([middleware1])
@@ -226,13 +228,6 @@ test('createServerFn overrides properties', () => {
       const newContext = { context: 'bb' } as const
 
       return next({ sendContext: newContext, context: newContext })
-    })
-    .clientAfter(({ context, next }) => {
-      expectTypeOf(context).toEqualTypeOf<{ readonly context: 'bb' }>()
-
-      const newContext = { context: 'cc' } as const
-
-      return next({ context: newContext })
     })
 
   createServerFn()
@@ -259,6 +254,7 @@ test('createServerFn where validator is a primitive', () => {
         method: 'GET'
         context: undefined
         data: 'c'
+        signal: AbortSignal
       }>()
     })
 })
@@ -271,6 +267,7 @@ test('createServerFn where validator is optional if object is optional', () => {
         method: 'GET'
         context: undefined
         data: 'c' | undefined
+        signal: AbortSignal
       }>()
     })
 
@@ -280,9 +277,12 @@ test('createServerFn where validator is optional if object is optional', () => {
         headers?: HeadersInit
         type?: 'static' | 'dynamic'
         fullResponse?: boolean
+        signal?: AbortSignal
       }
     | undefined
   >()
+
+  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn where data is optional if there is no validator', () => {
@@ -291,6 +291,7 @@ test('createServerFn where data is optional if there is no validator', () => {
       method: 'GET'
       context: undefined
       data: undefined
+      signal: AbortSignal
     }>()
   })
 
@@ -300,9 +301,12 @@ test('createServerFn where data is optional if there is no validator', () => {
         headers?: HeadersInit
         type?: 'static' | 'dynamic'
         fullResponse?: boolean
+        signal?: AbortSignal
       }
     | undefined
   >()
+
+  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn returns Date', () => {

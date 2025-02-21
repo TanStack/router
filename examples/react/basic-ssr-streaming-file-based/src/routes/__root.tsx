@@ -4,8 +4,9 @@ import {
   Link,
   Outlet,
   createRootRouteWithContext,
+  HeadContent,
+  Scripts,
 } from '@tanstack/react-router'
-import { Meta, Scripts } from '@tanstack/start'
 import type { RouterContext } from '../routerContext'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
@@ -51,7 +52,7 @@ function RootComponent() {
   return (
     <html lang="en">
       <head>
-        <Meta />
+        <HeadContent />
       </head>
       <body>
         <div className="p-2 flex gap-2 text-lg">

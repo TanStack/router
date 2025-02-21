@@ -175,7 +175,7 @@ invalidTestMatrix.push({
 
 invalidTestMatrix.push({
   createRouteFunction: 'createFileRoute',
-  properties: { invalid: ['meta', 'loader'], valid: ['loader', 'meta'] },
+  properties: { invalid: ['head', 'loader'], valid: ['loader', 'head'] },
 })
 
 const invalidTestCases = invalidTestMatrix.map(

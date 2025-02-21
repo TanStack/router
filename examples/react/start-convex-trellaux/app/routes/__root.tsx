@@ -4,9 +4,10 @@ import {
   Outlet,
   createRootRouteWithContext,
   useRouterState,
+  HeadContent,
+  Scripts,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import { Toaster } from 'react-hot-toast'
 import type { QueryClient } from '@tanstack/react-query'
@@ -81,7 +82,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html>
       <head>
-        <Meta />
+        <HeadContent />
       </head>
       <body>
         <div className="h-screen flex flex-col min-h-0">

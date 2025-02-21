@@ -325,6 +325,51 @@ export interface BeforeLoadContextOptions<
   >
 }
 
+type AssetFnContextOptions<
+  in out TRouteId,
+  in out TFullPath,
+  in out TParentRoute extends AnyRoute,
+  in out TParams,
+  in out TSearchValidator,
+  in out TLoaderFn,
+  in out TRouterContext,
+  in out TRouteContextFn,
+  in out TBeforeLoadFn,
+  in out TLoaderDeps,
+> = {
+  matches: Array<
+    RouteMatch<
+      TRouteId,
+      TFullPath,
+      ResolveAllParamsFromParent<TParentRoute, TParams>,
+      ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveLoaderData<TLoaderFn>,
+      ResolveAllContext<
+        TParentRoute,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn
+      >,
+      TLoaderDeps
+    >
+  >
+  match: RouteMatch<
+    TRouteId,
+    TFullPath,
+    ResolveAllParamsFromParent<TParentRoute, TParams>,
+    ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+    ResolveLoaderData<TLoaderFn>,
+    ResolveAllContext<
+      TParentRoute,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >,
+    TLoaderDeps
+  >
+  params: ResolveAllParamsFromParent<TParentRoute, TParams>
+  loaderData: ResolveLoaderData<TLoaderFn>
+}
 export interface UpdatableRouteOptions<
   in out TParentRoute extends AnyRoute,
   in out TRouteId,
@@ -427,44 +472,38 @@ export interface UpdatableRouteOptions<
   headers?: (ctx: {
     loaderData: ResolveLoaderData<TLoaderFn>
   }) => Record<string, string>
-  head?: (ctx: {
-    matches: Array<
-      RouteMatch<
-        TRouteId,
-        TFullPath,
-        ResolveAllParamsFromParent<TParentRoute, TParams>,
-        ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-        ResolveLoaderData<TLoaderFn>,
-        ResolveAllContext<
-          TParentRoute,
-          TRouterContext,
-          TRouteContextFn,
-          TBeforeLoadFn
-        >,
-        TLoaderDeps
-      >
-    >
-    match: RouteMatch<
+  head?: (
+    ctx: AssetFnContextOptions<
       TRouteId,
       TFullPath,
-      ResolveAllParamsFromParent<TParentRoute, TParams>,
-      ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-      ResolveLoaderData<TLoaderFn>,
-      ResolveAllContext<
-        TParentRoute,
-        TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn
-      >,
+      TParentRoute,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
       TLoaderDeps
-    >
-    params: ResolveAllParamsFromParent<TParentRoute, TParams>
-    loaderData: ResolveLoaderData<TLoaderFn> | undefined
-  }) => {
+    >,
+  ) => {
     links?: AnyRouteMatch['links']
-    scripts?: AnyRouteMatch['scripts']
+    scripts?: AnyRouteMatch['headScripts']
     meta?: AnyRouteMatch['meta']
   }
+  scripts?: (
+    ctx: AssetFnContextOptions<
+      TRouteId,
+      TFullPath,
+      TParentRoute,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps
+    >,
+  ) => AnyRouteMatch['scripts']
   ssr?: boolean
   codeSplitGroupings?: Array<
     Array<

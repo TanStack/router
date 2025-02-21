@@ -133,8 +133,16 @@
               "to": "framework/react/guide/type-safety"
             },
             {
+              "label": "Type Utilities",
+              "to": "framework/react/guide/type-utilities"
+            },
+            {
               "label": "Preloading",
               "to": "framework/react/guide/preloading"
+            },
+            {
+              "label": "Document Head Management",
+              "to": "framework/react/guide/document-head-management"
             },
             {
               "label": "Route Masking",

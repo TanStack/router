@@ -3,7 +3,6 @@ import invariant from 'tiny-invariant'
 import {
   eventHandler,
   getEvent,
-  getHeaders,
   getResponseStatus,
   toWebRequest,
 } from '@tanstack/start-server'
@@ -29,25 +28,11 @@ const serverFnManifest = _serverFnManifest as Record<
 
 async function handleServerAction(event: H3Event) {
   const request = toWebRequest(event)!
-  const response = await handleServerRequest(request, event)
 
-  // NOTE: I'm not sure if nitro should be handling this or if Vinxi was
-  // handling it for us, but not all headers were being returned with the
-  // response from the h3 utils. So we merge the headers from h3 and
-  // the headers from the response and set them on the response.
-  Object.entries(getHeaders()).forEach(([key, value]) => {
-    if (
-      key &&
-      value &&
-      (!response.headers.has(key) || !response.headers.get(key)) &&
-      // For some reason, content-length is being set by h3, but doesn't
-      // match the actual content length of the response.
-      key.toLowerCase() !== 'content-length'
-    ) {
-      response.headers.set(key, value)
-    }
+  const response = await handleServerRequest({
+    request,
+    event,
   })
-
   return response
 }
 
@@ -61,7 +46,18 @@ function sanitizeBase(base: string | undefined) {
   return base.replace(/^\/|\/$/g, '')
 }
 
-async function handleServerRequest(request: Request, _event?: H3Event) {
+async function handleServerRequest({
+  request,
+  event,
+}: {
+  request: Request
+  event: H3Event
+}) {
+  const controller = new AbortController()
+  const signal = controller.signal
+  const abort = () => controller.abort()
+  event.node.req.on('close', abort)
+
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
   // extract the serverFnId from the url as host/_server/:serverFnId
@@ -141,7 +137,7 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
             'GET requests with FormData payloads are not supported',
           )
 
-          return await action(await request.formData())
+          return await action(await request.formData(), signal)
         }
 
         // Get requests use the query string
@@ -159,7 +155,7 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
           payload = payload ? startSerializer.parse(payload) : payload
 
           // Send it through!
-          return await action(payload)
+          return await action(payload, signal)
         }
 
         // This must be a POST request, likely JSON???
@@ -172,13 +168,13 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
         // If this POST request was created by createServerFn,
         // it's payload will be the only argument
         if (isCreateServerFn) {
-          return await action(payload)
+          return await action(payload, signal)
         }
 
         // Otherwise, we'll spread the payload. Need to
         // support `use server` functions that take multiple
         // arguments.
-        return await action(...(payload as any))
+        return await action(...(payload as any), signal)
       })()
 
       // Any time we get a Response back, we should just
@@ -278,6 +274,7 @@ async function handleServerRequest(request: Request, _event?: H3Event) {
       })
     }
   })()
+  event.node.req.removeListener('close', abort)
 
   if (process.env.NODE_ENV === 'development')
     console.info(`ServerFn Response: ${response.status}`)
