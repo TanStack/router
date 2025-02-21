@@ -10,8 +10,7 @@ const debug =
   ['true', 'start-plugin'].includes(process.env.TSR_VITE_DEBUG)
 
 export type TanStackStartViteOptions = {
-  manifestVirtualImportId: string
-  serverFnEntry: string
+  globalMiddlewareEntry: string
 }
 
 const transformFuncs = [
@@ -50,7 +49,7 @@ export function createTanStackStartPlugin(opts: TanStackStartViteOptions): {
           transform(code, id) {
             if (entry && id.includes(entry)) {
               return {
-                code: `${code}\n\nimport '${path.resolve(ROOT, opts.serverFnEntry)}'`,
+                code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
                 map: null,
               }
             }
@@ -78,7 +77,7 @@ export function createTanStackStartPlugin(opts: TanStackStartViteOptions): {
           transform(code, id) {
             if (entry && id.includes(entry)) {
               return {
-                code: `${code}\n\nimport '${path.resolve(ROOT, opts.serverFnEntry)}'`,
+                code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
                 map: null,
               }
             }
@@ -106,7 +105,7 @@ export function createTanStackStartPlugin(opts: TanStackStartViteOptions): {
           transform(code, id) {
             if (entry && id.includes(entry)) {
               return {
-                code: `${code}\n\nimport '${path.resolve(ROOT, opts.serverFnEntry)}'`,
+                code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
                 map: null,
               }
             }
