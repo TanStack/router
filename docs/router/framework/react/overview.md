@@ -23,9 +23,9 @@ To get started quickly, head to the next page. For a more lengthy explanation, b
 
 ## "A Fork in the Route"
 
-[//]: # 'AForkInTheRoute'
-
 Using a router to build applications is widely regarded as a must-have and is usually one of the first choices you’ll make in your tech stack.
+
+[//]: # 'WhyChooseTanStackRouter'
 
 **So, why should you choose TanStack Router over another router?**
 
@@ -38,7 +38,7 @@ Both of these frameworks (and their routers) are great, and I can personally att
 
 It's probably no surprise at this point that picking a router is so important that it is often tied 1-to-1 with your choice of framework, since most frameworks rely on a specific router.
 
-[//]: # 'AForkInTheRoute'
+[//]: # 'WhyChooseTanStackRouter'
 
 **Does this mean that TanStack Router is a framework?**
 
