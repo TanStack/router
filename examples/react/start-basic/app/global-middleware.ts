@@ -4,5 +4,3 @@ import { logMiddleware } from './utils/loggingMiddleware'
 registerGlobalMiddleware({
   middleware: [logMiddleware],
 })
-
-console.log('hello')
