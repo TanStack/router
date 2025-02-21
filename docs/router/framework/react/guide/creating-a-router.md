@@ -62,21 +62,15 @@ As promised in earlier guides, we'll now cover the `notFoundRoute` option. This 
 
 ### File-Based Routing
 
-If you used file-based routing, then you'll need to import your root route from it's location and then use the `notFoundRoute` method to create a `NotFoundRoute` instance:
+If you are using file-based routing, then you'll need to add a `notFoundComponent` key to `createRootRoute`:
 
 ```tsx
-import { NotFoundRoute } from '@tanstack/react-router'
-import { Route as rootRoute } from './routes/__root.tsx'
-
-const notFoundRoute = new NotFoundRoute({
-  getParentRoute: () => rootRoute,
-  component: () => '404 Not Found',
-})
-
-const router = createRouter({
-  routeTree,
-  notFoundRoute,
-})
+export const Route = createRootRoute({
+  component: () => (
+    // ...
+  ),
+  notFoundComponent: () => <div>404 Not Found</div>,
+});
 ```
 
 ### Code-Based Routing
