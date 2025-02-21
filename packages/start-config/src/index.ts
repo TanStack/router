@@ -110,9 +110,9 @@ export async function defineConfig(
   const ssrEntry =
     opts.routers?.ssr?.entry || path.join(appDirectory, 'ssr.tsx')
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
-  const serverFnEntry =
-    opts.routers?.server?.entry ||
-    path.join(appDirectory, 'server-functions.ts')
+  const globalMiddlewareEntry =
+    opts.routers?.server?.globalMiddlewareEntry ||
+    path.join(appDirectory, 'global-middleware.ts')
   const apiEntryExists = existsSync(apiEntry)
 
   const viteConfig = getUserViteConfig(opts.vite)
@@ -141,8 +141,7 @@ export async function defineConfig(
   })
 
   const TanStackStartPlugin = createTanStackStartPlugin({
-    serverFnEntry,
-    manifestVirtualImportId: 'tsr:start-manifest',
+    globalMiddlewareEntry,
   })
 
   // Create a dummy nitro app to get the resolved public output path
