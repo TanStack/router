@@ -2,7 +2,7 @@
 title: Overview
 ---
 
-**TanStack Router is a router for building React applications**. Some of its features include:
+**TanStack Router is a router for building React and Solid applications**. Some of its features include:
 
 - 100% inferred TypeScript support
 - Typesafe navigation
@@ -23,6 +23,8 @@ To get started quickly, head to the next page. For a more lengthy explanation, b
 
 ## "A Fork in the Route"
 
+[//]: # 'AForkInTheRoute'
+
 Using a router to build applications is widely regarded as a must-have and is usually one of the first choices you’ll make in your tech stack.
 
 **So, why should you choose TanStack Router over another router?**
@@ -35,6 +37,8 @@ To answer this question, we need to look at the other options in the space. Ther
 Both of these frameworks (and their routers) are great, and I can personally attest that both are very good solutions for building React applications. My experience has also taught me that these solutions could also be much better, especially around the actual routing APIs that are available to developers to make their apps faster, easier, and more enjoyable to work with.
 
 It's probably no surprise at this point that picking a router is so important that it is often tied 1-to-1 with your choice of framework, since most frameworks rely on a specific router.
+
+[//]: # 'AForkInTheRoute'
 
 **Does this mean that TanStack Router is a framework?**
 
