@@ -303,6 +303,22 @@
               "to": "framework/solid/guide/preloading"
             },
             {
+              "label": "Document Head Management",
+              "to": "framework/solid/guide/document-head-management"
+            },
+            {
+              "label": "Route Masking",
+              "to": "framework/solid/guide/route-masking"
+            },
+            {
+              "label": "Navigation Blocking",
+              "to": "framework/solid/guide/navigation-blocking"
+            },
+            {
+              "label": "Custom Search Param Serialization",
+              "to": "framework/solid/guide/custom-search-param-serialization"
+            },
+            {
               "label": "History Types",
               "to": "framework/solid/guide/history-types"
             },
