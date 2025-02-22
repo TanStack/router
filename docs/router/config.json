@@ -477,7 +477,16 @@
         },
         {
           "label": "solid",
-          "children": []
+          "children": [
+            {
+              "label": "Basic + Solid Query (code-based)",
+              "to": "framework/solid/examples/basic-solid-query"
+            },
+            {
+              "label": "Kitchen Sink (file-based)",
+              "to": "framework/solid/examples/kitchen-sink-file-based"
+            }
+          ]
         }
       ]
     }
