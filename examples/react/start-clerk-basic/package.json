@@ -12,7 +12,7 @@
     "@clerk/tanstack-start": "0.9.4",
     "@tanstack/react-router": "^1.109.2",
     "@tanstack/router-devtools": "^1.109.2",
-    "@tanstack/start": "^1.110.2",
+    "@tanstack/start": "^1.110.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
