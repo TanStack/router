@@ -1,4 +1,4 @@
 ---
-ref: docs/router/guide/search-params.md
+ref: docs/router/framework/react/guide/search-params.md
 replace: { 'react-router': 'solid-router' }
 ---

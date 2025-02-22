@@ -1,5 +1,5 @@
 ---
-ref: docs/router/guide/file-based-routing.md
+ref: docs/router/framework/react/guide/file-based-routing.md
 replace: { 'react-router': 'solid-router' }
 ---
 

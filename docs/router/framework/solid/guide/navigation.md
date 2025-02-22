@@ -1,4 +1,4 @@
 ---
-ref: docs/router/guide/navigation.md
+ref: docs/router/framework/react/guide/navigation.md
 replace: { 'react-router': 'solid-router' }
 ---

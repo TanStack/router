@@ -1,5 +1,5 @@
 ---
-ref: docs/router/guide/custom-link.md
+ref: docs/router/framework/react/guide/custom-link.md
 replace: { 'react-router': 'solid-router' }
 ---
 

@@ -1,5 +1,5 @@
 ---
-ref: docs/router/guide/type-utilities.md
+ref: docs/router/framework/react/guide/type-utilities.md
 replace:
   { 'react-router': 'solid-router', 'React.ReactNode': 'Solid.JSX.Element' }
 ---

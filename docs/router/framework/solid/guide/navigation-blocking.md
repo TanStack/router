@@ -1,5 +1,5 @@
 ---
-ref: docs/router/guide/navigation-blocking.md
+ref: docs/router/framework/react/guide/navigation-blocking.md
 replace: { 'react-router': 'solid-router' }
 ---
 
