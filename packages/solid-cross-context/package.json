@@ -50,7 +50,7 @@
     "src"
   ],
   "devDependencies": {
-    "vite-plugin-solid": "^2.0.0",
-    "solid-js": "^1.0.0"
+    "vite-plugin-solid": "^2.11.2",
+    "solid-js": "^1.9.5"
   }
 }
