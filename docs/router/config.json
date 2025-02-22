@@ -68,7 +68,7 @@
             },
             {
               "label": "Decisions on DX",
-              "to": "framework/react/decisions-on-dx"
+              "to": "framework/solid/decisions-on-dx"
             }
           ]
         }
