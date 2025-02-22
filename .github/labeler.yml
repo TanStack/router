@@ -14,24 +14,36 @@
   - 'packages/react-cross-context/**/*'
 'package: react-router':
   - 'packages/react-router/**/*'
+'package: react-router-devtools':
+  - 'packages/react-router-devtools/**/*'
 'package: react-router-with-query':
   - 'packages/react-router-with-query/**/*'
+'package: router-arktype-adapter':
+  - 'packages/router-arktype-adapter/**/*'
 'package: router-cli':
   - 'packages/router-cli/**/*'
 'package: router-core':
   - 'packages/router-core/**/*'
 'package: router-devtools':
   - 'packages/router-devtools/**/*'
+'package: router-devtools copy':
+  - 'packages/router-devtools copy/**/*'
 'package: router-generator':
   - 'packages/router-generator/**/*'
 'package: router-plugin':
   - 'packages/router-plugin/**/*'
 'package: router-utils':
   - 'packages/router-utils/**/*'
+'package: router-valibot-adapter':
+  - 'packages/router-valibot-adapter/**/*'
 'package: router-vite-plugin':
   - 'packages/router-vite-plugin/**/*'
+'package: router-zod-adapter':
+  - 'packages/router-zod-adapter/**/*'
 'package: server-functions-plugin':
   - 'packages/server-functions-plugin/**/*'
+'package: solid-cross-context':
+  - 'packages/solid-cross-context/**/*'
 'package: solid-router':
   - 'packages/solid-router/**/*'
 'package: start':
