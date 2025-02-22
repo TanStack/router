@@ -8,7 +8,7 @@ export const Route = createFileRoute('/redirect/')({
         to="./$target"
         params={{ target: 'internal' }}
         activeProps={{
-          className: 'font-bold',
+          class: 'font-bold',
         }}
       >
         internal
@@ -18,7 +18,7 @@ export const Route = createFileRoute('/redirect/')({
         to="./$target"
         params={{ target: 'external' }}
         activeProps={{
-          className: 'font-bold',
+          class: 'font-bold',
         }}
       >
         external

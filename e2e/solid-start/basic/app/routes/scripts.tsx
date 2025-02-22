@@ -20,7 +20,7 @@ export const Route = createFileRoute('/scripts')({
 
 function ScriptsComponent() {
   return (
-    <div className="p-2">
+    <div class="p-2">
       <h3>Scripts Test</h3>
       <p>
         Both `script.js` and `script2.js` are included in development, but only
