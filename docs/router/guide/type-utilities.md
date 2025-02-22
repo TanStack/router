@@ -173,7 +173,7 @@ export function useConditionalNavigate<
 export function useConditionalNavigate(
   navigateOptions: ValidateNavigateOptions,
 ): UseConditionalNavigateResult {
-  const [enabled, setEnabled] = React.useState(false)
+  const [enabled, setEnabled] = useState(false)
   const navigate = useNavigate()
   return {
     enable: () => setEnabled(true),
