@@ -275,6 +275,22 @@
               "to": "framework/solid/guide/custom-link"
             },
             {
+              "label": "Data Loading",
+              "to": "framework/solid/guide/data-loading"
+            },
+            {
+              "label": "Deferred Data Loading",
+              "to": "framework/solid/guide/deferred-data-loading"
+            },
+            {
+              "label": "External Data Loading",
+              "to": "framework/solid/guide/external-data-loading"
+            },
+            {
+              "label": "Data Mutations",
+              "to": "framework/solid/guide/data-mutations"
+            },
+            {
               "label": "Preloading",
               "to": "framework/solid/guide/preloading"
             },
