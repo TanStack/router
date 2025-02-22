@@ -20,8 +20,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
     "@tanstack/router-devtools": "^1.109.2",
-    "vite": "^6.1.0",
-    "postcss": "^8.5.1",
+    "vite": "^6.1.1",
+    "postcss": "^8.5.3",
     "autoprefixer": "^10.4.20",
     "tailwindcss": "^3.4.17",
     "vite-plugin-dts": "^4.5.0"
