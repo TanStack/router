@@ -1,4 +1,4 @@
 ---
-ref: docs/router/guide/route-masking.md
+ref: docs/router/framework/react/guide/route-masking.md
 replace: { 'react-router': 'solid-router' }
 ---

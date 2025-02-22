@@ -1,4 +1,4 @@
 ---
-ref: docs/router/guide/routing-concepts.md
+ref: docs/router/framework/react/guide/routing-concepts.md
 replace: { 'react-router': 'solid-router' }
 ---

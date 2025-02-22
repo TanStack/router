@@ -1,5 +1,5 @@
 ---
-ref: docs/router/guide/path-params.md
+ref: docs/router/framework/react/guide/path-params.md
 replace:
   {
     'react-router': 'solid-router',

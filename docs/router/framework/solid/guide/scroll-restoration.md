@@ -1,5 +1,5 @@
 ---
-ref: docs/router/guide/scroll-restoration.md
+ref: docs/router/framework/react/guide/scroll-restoration.md
 replace: { 'react-router': 'solid-router' }
 ---
 
