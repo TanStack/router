@@ -454,6 +454,18 @@ type LinkCurrentTargetElement = {
   preloadTimeout?: null | ReturnType<typeof setTimeout>
 }
 
+const observerOptions = { rootMargin: '100px' }
+
+const composeHandlers =
+  (handlers: Array<undefined | ((e: any) => void)>) =>
+  (e: { persist?: () => void; defaultPrevented: boolean }) => {
+    e.persist?.()
+    handlers.filter(Boolean).forEach((handler) => {
+      if (e.defaultPrevented) return
+      handler!(e)
+    })
+  }
+
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
@@ -482,6 +494,14 @@ export function useLinkProps<
     startTransition,
     resetScroll,
     viewTransition,
+    params,
+    search,
+    hash,
+    state,
+    mask,
+    reloadDocument,
+    _fromLocation,
+    from,
     // element props
     children,
     target,
@@ -494,19 +514,8 @@ export function useLinkProps<
     onMouseLeave,
     onTouchStart,
     ignoreBlocker,
-    ...rest
-  } = options
-
-  const {
-    // prevent these from being returned
-    params: _params,
-    search: _search,
-    hash: _hash,
-    state: _state,
-    mask: _mask,
-    reloadDocument: _reloadDocument,
     ...propsSafeToSpread
-  } = rest
+  } = options
 
   // If this link simply reloads the current route,
   // make sure it has a new key so it will trigger a data refresh
@@ -532,23 +541,61 @@ export function useLinkProps<
   // we'll use the current route as the `from` location so relative routing works as expected
   const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
 
-  // Use it as the default `from` location
-  options = {
-    from: parentRouteId,
-    ...options,
-  }
+  const locationOptions = React.useMemo(
+    () => ({
+      to,
+      _fromLocation,
+      mask,
+      params,
+      search,
+      hash,
+      state,
+      from: from ?? parentRouteId,
+    }),
+    [
+      to,
+      _fromLocation, // <- could be an object
+      mask, // <- could be an object
+      params, // <- could be an object
+      search, // <- could be an object
+      hash,
+      state, // <- could be an object
+      from,
+      parentRouteId,
+    ],
+  )
+
+  const navigateOptions = React.useMemo(
+    () => ({
+      hashScrollIntoView,
+      replace,
+      resetScroll,
+      startTransition,
+      viewTransition,
+      ignoreBlocker,
+      reloadDocument,
+    }),
+    [
+      hashScrollIntoView, // <- could be an object
+      replace,
+      resetScroll,
+      startTransition,
+      viewTransition, // <- could be an object
+      ignoreBlocker,
+      reloadDocument,
+    ],
+  )
 
   const next = React.useMemo(
-    () => router.buildLocation(options as any),
+    () => router.buildLocation(locationOptions as any),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, options, currentSearch],
+    [router, locationOptions, currentSearch],
   )
-  const preload = React.useMemo(() => {
-    if (options.reloadDocument) {
-      return false
-    }
-    return userPreload ?? router.options.defaultPreload
-  }, [router.options.defaultPreload, userPreload, options.reloadDocument])
+
+  const preload = reloadDocument
+    ? false
+    : (userPreload ?? router.options.defaultPreload)
+
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -599,11 +646,13 @@ export function useLinkProps<
   })
 
   const doPreload = React.useCallback(() => {
-    router.preloadRoute(options as any).catch((err) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
-  }, [options, router])
+    router
+      .preloadRoute({ ...locationOptions, ...navigateOptions } as any)
+      .catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+  }, [locationOptions, navigateOptions, router])
 
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
@@ -617,7 +666,7 @@ export function useLinkProps<
   useIntersectionObserver(
     innerRef,
     preloadViewportIoCallback,
-    { rootMargin: '100px' },
+    observerOptions,
     { disabled: !!disabled || !(preload === 'viewport') },
   )
 
@@ -673,13 +722,8 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
-        ...options,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
+        ...locationOptions,
+        ...navigateOptions,
       } as any)
     }
   }
@@ -719,16 +763,6 @@ export function useLinkProps<
       eventTarget.preloadTimeout = null
     }
   }
-
-  const composeHandlers =
-    (handlers: Array<undefined | ((e: any) => void)>) =>
-    (e: { persist?: () => void; defaultPrevented: boolean }) => {
-      e.persist?.()
-      handlers.filter(Boolean).forEach((handler) => {
-        if (e.defaultPrevented) return
-        handler!(e)
-      })
-    }
 
   // Get the active props
   const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
