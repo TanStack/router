@@ -5,9 +5,7 @@
     "jsxImportSource": "solid-js",
     "module": "esnext",
     "skipLibCheck": true
-
   },
   "include": ["src", "vite.config.ts", "src/tsrScript.ts"],
   "exclude": ["node_modules"]
-
 }

@@ -1,4 +1,3 @@
-
 export function CustomMessage({ message }: { message: string }) {
   return (
     <div className="py-2">
