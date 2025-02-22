@@ -291,6 +291,14 @@
               "to": "framework/solid/guide/data-mutations"
             },
             {
+              "label": "Type Safety",
+              "to": "framework/solid/guide/type-safety"
+            },
+            {
+              "label": "Type Utilities",
+              "to": "framework/solid/guide/type-utilities"
+            },
+            {
               "label": "Preloading",
               "to": "framework/solid/guide/preloading"
             },
