@@ -14,9 +14,7 @@ export default [
     plugins: {
       'react-hooks': pluginReactHooks,
     },
-    rules: {
-  
-    },
+    rules: {},
   },
   {
     files: ['**/__tests__/**'],
