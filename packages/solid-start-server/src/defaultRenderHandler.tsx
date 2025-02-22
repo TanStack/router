@@ -5,7 +5,7 @@ import { defineHandlerCallback } from './handlerCallback'
 export const defaultRenderHandler = defineHandlerCallback(
   async ({ router, responseHeaders }) => {
     try {
-      let html = Solid.renderToString(()=><StartServer router={router} />)
+      let html = Solid.renderToString(() => <StartServer router={router} />)
       const injectedHtml = await Promise.all(
         router.serverSsr!.injectedHtml,
       ).then((htmls) => htmls.join(''))
