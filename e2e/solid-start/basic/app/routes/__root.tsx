@@ -87,11 +87,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
             activeOptions={{ exact: true }}
           >
@@ -100,7 +100,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link
             to="/posts"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             Posts
@@ -108,7 +108,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link
             to="/users"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             Users
@@ -116,7 +116,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link
             to="/layout-a"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             Layout
@@ -124,7 +124,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link
             to="/scripts"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             Scripts
@@ -132,7 +132,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link
             to="/deferred"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             Deferred
@@ -140,7 +140,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link
             to="/redirect"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             redirect
@@ -149,7 +149,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             This Route Does Not Exist

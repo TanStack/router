@@ -6,8 +6,8 @@ export const Route = createFileRoute('/_layout')({
 
 function LayoutComponent() {
   return (
-    <div className="p-2">
-      <div className="border-b">I'm a layout</div>
+    <div class="p-2">
+      <div class="border-b">I'm a layout</div>
       <div>
         <Outlet />
       </div>

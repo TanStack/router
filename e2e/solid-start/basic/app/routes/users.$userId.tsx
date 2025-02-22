@@ -30,9 +30,9 @@ function UserComponent() {
   const user = Route.useLoaderData()
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-xl font-bold underline">{user.name}</h4>
-      <div className="text-sm">{user.email}</div>
+    <div class="space-y-2">
+      <h4 class="text-xl font-bold underline">{user.name}</h4>
+      <div class="text-sm">{user.email}</div>
     </div>
   )
 }

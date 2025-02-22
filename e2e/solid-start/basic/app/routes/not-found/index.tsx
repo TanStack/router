@@ -5,7 +5,7 @@ export const Route = createFileRoute('/not-found/')({
     const preload = Route.useSearch({ select: (s) => s.preload })
     return (
       <div>
-        <div className="mb-2">
+        <div class="mb-2">
           <Link
             from={Route.fullPath}
             to="./via-beforeLoad"
@@ -15,7 +15,7 @@ export const Route = createFileRoute('/not-found/')({
             via-beforeLoad
           </Link>
         </div>
-        <div className="mb-2">
+        <div class="mb-2">
           <Link
             from={Route.fullPath}
             to="./via-loader"

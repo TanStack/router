@@ -49,7 +49,7 @@ function Home() {
       <Await
         promise={promise}
         children={(promiseData) => (
-          <div className="p-2" data-testid="promise-data">
+          <div class="p-2" data-testid="promise-data">
             {promiseData}
             <div data-testid="stream-data">
               {streamData.map((d) => (
