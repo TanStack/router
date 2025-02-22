@@ -39,7 +39,10 @@ export const Match = React.memo(function MatchImpl({
   const PendingComponent =
     route.options.pendingComponent ?? router.options.defaultPendingComponent
 
-  const pendingElement = PendingComponent ? <PendingComponent /> : null
+  const pendingElement =
+    PendingComponent && PendingComponent !== 'never' ? (
+      <PendingComponent />
+    ) : null
 
   const routeErrorComponent =
     route.options.errorComponent ?? router.options.defaultErrorComponent
