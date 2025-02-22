@@ -9,7 +9,7 @@ const config = defineConfig({
     rollupOptions: {
       external: ['solid-js'],
     },
-  }
+  },
 })
 
 export default mergeConfig(
