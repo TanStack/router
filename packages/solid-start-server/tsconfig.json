@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "module": "esnext"
+  },
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "../start-client/src/tsrScript.ts"
+  ]
+}
