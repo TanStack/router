@@ -5417,22 +5417,16 @@ importers:
 
   packages/start-router-manifest:
     dependencies:
-      '@tanstack/react-router':
+      '@tanstack/router-core':
         specifier: workspace:*
-        version: link:../react-router
+        version: link:../router-core
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
       vinxi:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
     devDependencies:
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
