@@ -1,10 +1,12 @@
 ---
 ref: docs/router/guide/scroll-restoration.md
+replace: { 'react-router': 'solid-router' }
 ---
 
 [//]: # 'ManualRestorationExample'
 
 ```tsx
+// TODO: Port over to Solid
 function Component() {
   // We need a unique ID for manual scroll restoration on a specific element
   // It should be as unique as possible for this element across your app

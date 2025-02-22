@@ -325,6 +325,22 @@
             {
               "label": "Router Context",
               "to": "framework/solid/guide/router-context"
+            },
+            {
+              "label": "Not Found Errors",
+              "to": "framework/solid/guide/not-found-errors"
+            },
+            {
+              "label": "Authenticated Routes",
+              "to": "framework/solid/guide/authenticated-routes"
+            },
+            {
+              "label": "Scroll Restoration",
+              "to": "framework/solid/guide/scroll-restoration"
+            },
+            {
+              "label": "Static Route Data",
+              "to": "framework/solid/guide/static-route-data"
             }
           ]
         }
