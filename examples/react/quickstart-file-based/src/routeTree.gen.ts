@@ -8,13 +8,26 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as AboutImport } from './routes/about'
 import { Route as IndexImport } from './routes/index'
 
+// Create Virtual Routes
+
+const WorkingpreloadLazyImport = createFileRoute('/workingpreload')()
+
 // Create/Update Routes
+
+const WorkingpreloadLazyRoute = WorkingpreloadLazyImport.update({
+  path: '/workingpreload',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/workingpreload.lazy').then((d) => d.Route),
+)
 
 const AboutRoute = AboutImport.update({
   id: '/about',
@@ -46,6 +59,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
+    '/workingpreload': {
+      id: '/workingpreload'
+      path: '/workingpreload'
+      fullPath: '/workingpreload'
+      preLoaderRoute: typeof WorkingpreloadLazyImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -54,36 +74,41 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/workingpreload': typeof WorkingpreloadLazyRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/workingpreload': typeof WorkingpreloadLazyRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/workingpreload': typeof WorkingpreloadLazyRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about'
+  fullPaths: '/' | '/about' | '/workingpreload'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about'
-  id: '__root__' | '/' | '/about'
+  to: '/' | '/about' | '/workingpreload'
+  id: '__root__' | '/' | '/about' | '/workingpreload'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  WorkingpreloadLazyRoute: typeof WorkingpreloadLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  WorkingpreloadLazyRoute: WorkingpreloadLazyRoute,
 }
 
 export const routeTree = rootRoute
@@ -97,7 +122,8 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/about"
+        "/about",
+        "/workingpreload"
       ]
     },
     "/": {
@@ -105,6 +131,9 @@ export const routeTree = rootRoute
     },
     "/about": {
       "filePath": "about.tsx"
+    },
+    "/workingpreload": {
+      "filePath": "workingpreload.lazy.tsx"
     }
   }
 }
