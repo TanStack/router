@@ -39,6 +39,15 @@ export interface RouterHistory {
   _ignoreSubscribers?: boolean
 }
 
+export interface RouterMemoryHistory extends RouterHistory {
+  entries: () => Array<HistoryEntry>
+}
+
+export interface HistoryEntry {
+  index: number;
+  getState: () => ParsedHistoryState
+}
+
 export interface HistoryLocation extends ParsedPath {
   state: ParsedHistoryState
 }
@@ -567,33 +576,43 @@ export function createMemoryHistory(
   } = {
     initialEntries: ['/'],
   },
-): RouterHistory {
-  const entries = opts.initialEntries
+): RouterMemoryHistory {
   let index = opts.initialIndex
-    ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
-    : entries.length - 1
-  const states = entries.map((_entry, index) =>
-    assignKeyAndIndex(index, undefined),
-  )
+    ? Math.min(Math.max(opts.initialIndex, 0), opts.initialEntries.length - 1)
+    : opts.initialEntries.length - 1
+  const entries = opts.initialEntries.map((path, index) => {
+    const state = assignKeyAndIndex(index, undefined)
+    const entry: HistoryEntry = {
+      index,
+      getState: () => state,
+    }
+    return {
+      path,
+      entry,
+    }
+  })
 
-  const getLocation = () => parseHref(entries[index]!, states[index])
+  const getLocation = () => parseHref(entries[index]!.path, entries[index]!.entry.getState())
 
-  return createHistory({
+  const routerHistory = createHistory({
     getLocation,
     getLength: () => entries.length,
     pushState: (path, state) => {
       // Removes all subsequent entries after the current index to start a new branch
       if (index < entries.length - 1) {
-        entries.splice(index + 1)
-        states.splice(index + 1)
+        entries.splice(index + 1).forEach(entry => {
+          entry.entry.index = -1
+        })
       }
-      states.push(state)
-      entries.push(path)
-      index = Math.max(entries.length - 1, 0)
+      index = Math.max(entries.length, 0)
+      entries.push({ path, entry: { index, getState: () => state } })
     },
     replaceState: (path, state) => {
-      states[index] = state
-      entries[index] = path
+      entries[index]!.entry.index = -1
+      entries[index] = {
+        path,
+        entry: { index, getState: () => state }
+      }
     },
     back: () => {
       index = Math.max(index - 1, 0)
@@ -605,7 +624,11 @@ export function createMemoryHistory(
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
     createHref: (path) => path,
-  })
+  }) as RouterMemoryHistory
+
+  routerHistory.entries = () => entries.map(entry => entry.entry)
+
+  return routerHistory
 }
 
 export function parseHref(
