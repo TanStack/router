@@ -1,14 +1,14 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
-import packageJson from './package.json'
-import type { ViteUserConfig } from 'vitest/config'
+import solid from 'vite-plugin-solid'
+import type { UserConfig } from 'vitest/config'
 
 const config = defineConfig({
-  plugins: [] as ViteUserConfig['plugins'],
-  test: {
-    name: packageJson.name,
-    watch: false,
-    environment: 'jsdom',
+  plugins: [solid()] as UserConfig['plugins'],
+  build: {
+    rollupOptions: {
+      external: ['solid-js'],
+    },
   },
 })
 
@@ -17,6 +17,5 @@ export default mergeConfig(
   tanstackViteConfig({
     entry: './src/index.ts',
     srcDir: './src',
-    externalDeps: ['tsr:routes-manifest'],
   }),
 )
