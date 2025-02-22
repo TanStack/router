@@ -16,13 +16,20 @@ bun add @tanstack/react-router
 deno add npm:@tanstack/react-router
 ```
 
-TanStack Router is currently only compatible with React and ReactDOM. If you would like to contribute to the React Native adapter, please reach out to us on [Discord](https://tlinz.com/discord).
+TanStack Router is currently only compatible with React (with ReactDOM) and Solid. If you would like to contribute to the React Native, Angular, or Vue adapter, please reach out to us on [Discord](https://tlinz.com/discord).
 
 ### Requirements
 
-- `react` and `react-dom`, either v18.x.x or v19.x.x
+[//]: # 'Requirements'
+
+- `react` either v18.x.x or v19.x.x
+- `react-dom`, either v18.x.x or v19.x.x
   - Note that `ReactDOM.createRoot` is required.
   - The legacy `.render()` function is not supported.
-- TypeScript >= v5.3.x (TypeScript is optional, but recommended)
-  - We aim to support the last five minor versions of TypeScript. If you are using an older version, you may run into issues. Please upgrade to the latest version of TypeScript to ensure compatibility.
-  - We may drop support for older versions of TypeScript, outside of the range mentioned above, without warning in a minor or patch release.
+
+[//]: # 'Requirements'
+
+TypeScript is _optional_, but **HIGHLY** recommended! If you are using it, please ensure you are using `typescript>=v5.3.x`.
+
+> [!IMPORTANT]
+> We aim to support the last five minor versions of TypeScript. If you are using an older version, you may run into issues. Please upgrade to the latest version of TypeScript to ensure compatibility. We may drop support for older versions of TypeScript, outside of the range mentioned above, without warning in a minor or patch release.
