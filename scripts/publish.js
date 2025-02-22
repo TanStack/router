@@ -69,6 +69,10 @@ await publish({
       packageDir: 'packages/react-cross-context',
     },
     {
+      name: '@tanstack/solid-cross-context',
+      packageDir: 'packages/solid-cross-context',
+    },
+    {
       name: '@tanstack/directive-functions-plugin',
       packageDir: 'packages/directive-functions-plugin',
     },
