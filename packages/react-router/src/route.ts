@@ -395,7 +395,7 @@ export interface UpdatableRouteOptions<
   pendingMinMs?: number
   staleTime?: number
   gcTime?: number
-  preload?: boolean
+  preload?: false | 'intent' | 'viewport' | 'render'
   preloadStaleTime?: number
   preloadGcTime?: number
   search?: {
