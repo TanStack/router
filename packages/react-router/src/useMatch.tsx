@@ -110,7 +110,12 @@ export function useMatch<
         return undefined
       }
 
-      return opts.select ? opts.select(match) : match
+      const stableLocationMatch = {
+        ...match,
+        search: state.location.search,
+      }
+
+      return opts.select ? opts.select(stableLocationMatch) : stableLocationMatch
     },
     structuralSharing: opts.structuralSharing,
   } as any)
