@@ -504,7 +504,7 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => AnyRouteMatch['scripts']
-  ssr?: boolean
+  ssr?: boolean | 'data-only'
   codeSplitGroupings?: Array<
     Array<
       | 'loader'
@@ -776,7 +776,7 @@ export class Route<
   private _path!: TPath
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
-  private _ssr!: boolean
+  private _ssr!: boolean | 'data-only'
 
   public get to() {
     /* invariant(

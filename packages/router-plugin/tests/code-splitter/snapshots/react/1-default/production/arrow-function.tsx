@@ -5,5 +5,5 @@ import { createFileRoute } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
 export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
+  component: lazyRouteComponent($$splitComponentImporter, 'component')
 });
