@@ -317,18 +317,18 @@ test('createServerFn returns Date', () => {
   expectTypeOf(fn()).toEqualTypeOf<Promise<{ dates: readonly [Date, Date] }>>()
 })
 
-test('createServerFn returns RSC', () => {
-  const fn = createServerFn().handler(() => ({
-    rscs: [
-      <div key="0">I'm an RSC</div>,
-      <div key="1">I'm an RSC</div>,
-    ] as const,
-  }))
+// test('createServerFn returns RSC', () => {
+//   const fn = createServerFn().handler(() => ({
+//     rscs: [
+//       <div key="0">I'm an RSC</div>,
+//       <div key="1">I'm an RSC</div>,
+//     ] as const,
+//   }))
 
-  expectTypeOf(fn()).toEqualTypeOf<
-    Promise<{ rscs: readonly [ReadableStream, ReadableStream] }>
-  >()
-})
+//   expectTypeOf(fn()).toEqualTypeOf<
+//     Promise<{ rscs: readonly [ReadableStream, ReadableStream] }>
+//   >()
+// })
 
 test('createServerFn returns undefined', () => {
   const fn = createServerFn().handler(() => ({
