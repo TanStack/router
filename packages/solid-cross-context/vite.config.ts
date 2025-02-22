@@ -5,6 +5,11 @@ import type { UserConfig } from 'vitest/config'
 
 const config = defineConfig({
   plugins: [solid()] as UserConfig['plugins'],
+  build: {
+    rollupOptions: {
+      external: ['solid-js'],
+    },
+  }
 })
 
 export default mergeConfig(
