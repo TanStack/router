@@ -6,15 +6,14 @@ replace: { 'react-router': 'solid-router' }
 [//]: # 'HookBasedBlockingExample'
 
 ```tsx
-// TODO: Port over to Solid
 import { useBlocker } from '@tanstack/solid-router'
 
 function MyComponent() {
-  const [formIsDirty, setFormIsDirty] = useState(false)
+  const [formIsDirty, setFormIsDirty] = createSignal(false)
 
   useBlocker({
     shouldBlockFn: () => {
-      if (!formIsDirty) return false
+      if (!formIsDirty()) return false
 
       const shouldLeave = confirm('Are you sure you want to leave?')
       return !shouldLeave
@@ -29,16 +28,15 @@ function MyComponent() {
 [//]: # 'ComponentBasedBlockingExample'
 
 ```tsx
-// TODO: Port over to Solid
 import { Block } from '@tanstack/solid-router'
 
 function MyComponent() {
-  const [formIsDirty, setFormIsDirty] = useState(false)
+  const [formIsDirty, setFormIsDirty] = createSignal(false)
 
   return (
     <Block
       shouldBlockFn={() => {
-        if (!formIsDirty) return false
+        if (!formIsDirty()) return false
 
         const shouldLeave = confirm('Are you sure you want to leave?')
         return !shouldLeave
@@ -60,14 +58,13 @@ function MyComponent() {
 [//]: # 'HookBasedCustomUIBlockingWithResolverExample'
 
 ```tsx
-// TODO: Port over to Solid
 import { useBlocker } from '@tanstack/solid-router'
 
 function MyComponent() {
-  const [formIsDirty, setFormIsDirty] = useState(false)
+  const [formIsDirty, setFormIsDirty] = createSignal(false)
 
   const { proceed, reset, status } = useBlocker({
-    shouldBlockFn: () => formIsDirty,
+    shouldBlockFn: () => formIsDirty(),
     withResolver: true,
   })
 
@@ -91,15 +88,14 @@ function MyComponent() {
 [//]: # 'HookBasedCustomUIBlockingWithoutResolverExample'
 
 ```tsx
-// TODO: Port over to Solid
 import { useBlocker } from '@tanstack/solid-router'
 
 function MyComponent() {
-  const [formIsDirty, setFormIsDirty] = useState(false)
+  const [formIsDirty, setFormIsDirty] = createSignal(false)
 
   useBlocker({
     shouldBlockFn: () => {
-      if (!formIsDirty) {
+      if (!formIsDirty()) {
         return false
       }
 
@@ -134,14 +130,13 @@ function MyComponent() {
 [//]: # 'ComponentBasedCustomUIBlockingExample'
 
 ```tsx
-// TODO: Port over to Solid
 import { Block } from '@tanstack/solid-router'
 
 function MyComponent() {
-  const [formIsDirty, setFormIsDirty] = useState(false)
+  const [formIsDirty, setFormIsDirty] = createSignal(false)
 
   return (
-    <Block shouldBlockFn={() => formIsDirty} withResolver>
+    <Block shouldBlockFn={() => formIsDirty()} withResolver>
       {({ status, proceed, reset }) => (
         <>
           {/* ... */}
