@@ -44,7 +44,7 @@ export interface RouterMemoryHistory extends RouterHistory {
 }
 
 export interface HistoryEntry {
-  index: number;
+  index: number
   getState: () => ParsedHistoryState
 }
 
@@ -592,7 +592,8 @@ export function createMemoryHistory(
     }
   })
 
-  const getLocation = () => parseHref(entries[index]!.path, entries[index]!.entry.getState())
+  const getLocation = () =>
+    parseHref(entries[index]!.path, entries[index]!.entry.getState())
 
   const routerHistory = createHistory({
     getLocation,
@@ -600,7 +601,7 @@ export function createMemoryHistory(
     pushState: (path, state) => {
       // Removes all subsequent entries after the current index to start a new branch
       if (index < entries.length - 1) {
-        entries.splice(index + 1).forEach(entry => {
+        entries.splice(index + 1).forEach((entry) => {
           entry.entry.index = -1
         })
       }
@@ -611,7 +612,7 @@ export function createMemoryHistory(
       entries[index]!.entry.index = -1
       entries[index] = {
         path,
-        entry: { index, getState: () => state }
+        entry: { index, getState: () => state },
       }
     },
     back: () => {
@@ -626,7 +627,7 @@ export function createMemoryHistory(
     createHref: (path) => path,
   }) as RouterMemoryHistory
 
-  routerHistory.entries = () => entries.map(entry => entry.entry)
+  routerHistory.entries = () => entries.map((entry) => entry.entry)
 
   return routerHistory
 }
