@@ -26,8 +26,6 @@
   - 'packages/router-core/**/*'
 'package: router-devtools':
   - 'packages/router-devtools/**/*'
-'package: router-devtools copy':
-  - 'packages/router-devtools copy/**/*'
 'package: router-generator':
   - 'packages/router-generator/**/*'
 'package: router-plugin':
