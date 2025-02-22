@@ -5678,6 +5678,46 @@ importers:
         specifier: ^3.23.8
         version: 3.24.1
 
+  packages/solid-start:
+    dependencies:
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+      '@tanstack/solid-start-config':
+        specifier: workspace:^
+        version: link:../solid-start-config
+      '@tanstack/solid-start-server':
+        specifier: workspace:^
+        version: link:../solid-start-server
+      '@tanstack/solid-start-server-functions-client':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-client
+      '@tanstack/solid-start-server-functions-handler':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-handler
+      '@tanstack/start-api-routes':
+        specifier: workspace:*
+        version: link:../start-api-routes
+      '@tanstack/start-router-manifest':
+        specifier: workspace:*
+        version: link:../start-router-manifest
+      '@tanstack/start-server-functions-server':
+        specifier: workspace:*
+        version: link:../start-server-functions-server
+      '@tanstack/start-server-functions-ssr':
+        specifier: workspace:*
+        version: link:../start-server-functions-ssr
+      solid-js:
+        specifier: '>=1.0.0'
+        version: 1.9.4
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.0
+
   packages/solid-start-client:
     dependencies:
       '@tanstack/router-core':
@@ -5718,6 +5758,51 @@ importers:
         specifier: ^2.11.2
         version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  packages/solid-start-config:
+    dependencies:
+      '@tanstack/router-generator':
+        specifier: workspace:*
+        version: link:../router-generator
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../router-plugin
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:*
+        version: link:../server-functions-plugin
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      '@tanstack/solid-start-server-functions-handler':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-handler
+      '@tanstack/start-plugin':
+        specifier: workspace:*
+        version: link:../start-plugin
+      import-meta-resolve:
+        specifier: ^4.1.0
+        version: 4.1.0
+      nitropack:
+        specifier: ^2.10.4
+        version: 2.10.4(typescript@5.7.3)
+      ofetch:
+        specifier: ^1.4.1
+        version: 1.4.1
+      solid-js:
+        specifier: '>=1.0.0'
+        version: 1.9.4
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
+
   packages/solid-start-server:
     dependencies:
       '@tanstack/solid-cross-context':
@@ -5748,6 +5833,63 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.0
+      solid-js:
+        specifier: ^1.0.0
+        version: 1.9.4
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  packages/solid-start-server-functions-client:
+    dependencies:
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:*
+        version: link:../server-functions-plugin
+      '@tanstack/solid-start-server-functions-fetcher':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-fetcher
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+
+  packages/solid-start-server-functions-fetcher:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+    devDependencies:
+      solid-js:
+        specifier: ^1.0.0
+        version: 1.9.4
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  packages/solid-start-server-functions-handler:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+      '@tanstack/solid-start-server':
+        specifier: workspace:^
+        version: link:../solid-start-server
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+    devDependencies:
       solid-js:
         specifier: ^1.0.0
         version: 1.9.4
