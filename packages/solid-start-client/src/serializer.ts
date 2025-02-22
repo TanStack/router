@@ -1,5 +1,5 @@
-import { isPlainObject } from '@tanstack/solid-router'
-import type { StartSerializer } from '@tanstack/solid-router'
+import { isPlainObject } from '@tanstack/router-core'
+import type { StartSerializer } from '@tanstack/router-core'
 
 export const startSerializer: StartSerializer = {
   stringify: (value: any) =>
