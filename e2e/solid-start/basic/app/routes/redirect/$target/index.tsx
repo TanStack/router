@@ -5,12 +5,12 @@ export const Route = createFileRoute('/redirect/$target/')({
     const preload = Route.useSearch({ select: (s) => s.preload })
     return (
       <div>
-        <div className="mb-2">
+        <div class="mb-2">
           <Link
             from={Route.fullPath}
             to="./via-beforeLoad"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
             preload={preload}
             data-testid="via-beforeLoad"
@@ -18,13 +18,13 @@ export const Route = createFileRoute('/redirect/$target/')({
             via-beforeLoad
           </Link>
         </div>
-        <div className="mb-2">
+        <div class="mb-2">
           <Link
             from={Route.fullPath}
             to="./via-beforeLoad"
             search={{ reloadDocument: true }}
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
             preload={preload}
             data-testid="via-beforeLoad-reloadDocument"
@@ -32,12 +32,12 @@ export const Route = createFileRoute('/redirect/$target/')({
             via-beforeLoad (reloadDocument=true)
           </Link>
         </div>
-        <div className="mb-2">
+        <div class="mb-2">
           <Link
             from={Route.fullPath}
             to="./via-loader"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
             preload={preload}
             data-testid="via-loader"
@@ -45,12 +45,12 @@ export const Route = createFileRoute('/redirect/$target/')({
             via-loader
           </Link>
         </div>
-        <div className="mb-2">
+        <div class="mb-2">
           <Link
             from={Route.fullPath}
             to="./via-loader"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
             search={{ reloadDocument: true }}
             preload={preload}
@@ -59,12 +59,12 @@ export const Route = createFileRoute('/redirect/$target/')({
             via-loader (reloadDocument=true)
           </Link>
         </div>
-        <div className="mb-2">
+        <div class="mb-2">
           <Link
             from={Route.fullPath}
             to="./serverFn"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             serverFn

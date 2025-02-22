@@ -8,11 +8,11 @@ function LayoutComponent() {
   return (
     <div>
       <div>I'm a nested layout</div>
-      <div className="flex gap-2 border-b">
+      <div class="flex gap-2 border-b">
         <Link
           to="/layout-a"
           activeProps={{
-            className: 'font-bold',
+            class: 'font-bold',
           }}
         >
           Layout A
@@ -20,7 +20,7 @@ function LayoutComponent() {
         <Link
           to="/layout-b"
           activeProps={{
-            className: 'font-bold',
+            class: 'font-bold',
           }}
         >
           Layout B
