@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/react-cross-context"
+    "directory": "packages/solid-cross-context"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
