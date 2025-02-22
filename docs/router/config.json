@@ -241,6 +241,30 @@
             {
               "label": "Code Based Routing",
               "to": "framework/solid/guide/code-based-routing"
+            },
+            {
+              "label": "Creating a Router",
+              "to": "framework/solid/guide/creating-a-router"
+            },
+            {
+              "label": "Route Matching",
+              "to": "framework/solid/guide/route-matching"
+            },
+            {
+              "label": "Outlets",
+              "to": "framework/solid/guide/outlets"
+            },
+            {
+              "label": "Preloading",
+              "to": "framework/solid/guide/preloading"
+            },
+            {
+              "label": "History Types",
+              "to": "framework/solid/guide/history-types"
+            },
+            {
+              "label": "Router Context",
+              "to": "framework/solid/guide/router-context"
             }
           ]
         }
