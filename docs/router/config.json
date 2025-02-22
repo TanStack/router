@@ -255,6 +255,26 @@
               "to": "framework/solid/guide/outlets"
             },
             {
+              "label": "Navigation",
+              "to": "framework/solid/guide/navigation"
+            },
+            {
+              "label": "Path Params",
+              "to": "framework/solid/guide/path-params"
+            },
+            {
+              "label": "Search Params",
+              "to": "framework/solid/guide/search-params"
+            },
+            {
+              "label": "Link Options",
+              "to": "framework/solid/guide/link-options"
+            },
+            {
+              "label": "Custom Links",
+              "to": "framework/solid/guide/custom-link"
+            },
+            {
               "label": "Preloading",
               "to": "framework/solid/guide/preloading"
             },
