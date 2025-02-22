@@ -1,18 +1,18 @@
 // @ts-check
 
-import pluginReact from '@eslint-react/eslint-plugin'
-import pluginReactHooks from 'eslint-plugin-react-hooks'
+// import pluginReact from '@eslint-react/eslint-plugin'
+// import pluginReactHooks from 'eslint-plugin-react-hooks'
 import rootConfig from '../../eslint.config.js'
 
 export default [
   ...rootConfig,
   {
-    ...pluginReact.configs.recommended,
+    // ...pluginReact.configs.recommended,
     files: ['**/*.{ts,tsx}'],
   },
   {
     plugins: {
-      'react-hooks': pluginReactHooks,
+      // 'react-hooks': pluginReactHooks,
     },
     rules: {},
   },
