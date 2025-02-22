@@ -3,9 +3,7 @@
   "compilerOptions": {
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "module": "esnext",
-    "skipLibCheck": true
+    "module": "esnext"
   },
-  "include": ["src", "vite.config.ts", "src/tsrScript.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src", "vite.config.ts", "src/tsrScript.ts"]
 }
