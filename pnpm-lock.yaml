@@ -5289,7 +5289,7 @@ importers:
     dependencies:
       '@tanstack/react-cross-context':
         specifier: workspace:*
-        version: link:../solid-cross-context
+        version: link:../react-cross-context
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -5435,7 +5435,7 @@ importers:
     dependencies:
       '@tanstack/react-cross-context':
         specifier: workspace:*
-        version: link:../solid-cross-context
+        version: link:../react-cross-context
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -5483,15 +5483,6 @@ importers:
         specifier: workspace:*
         version: link:../start-server-functions-fetcher
     devDependencies:
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
