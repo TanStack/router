@@ -69,7 +69,7 @@ export default defineConfig({
 
 Create the following files:
 
-- `src/routes/__root.tsx`
+- `src/routes/__root.tsx` (with two '`_`' characters)
 - `src/routes/index.tsx`
 - `src/routes/about.tsx`
 - `src/main.tsx`
