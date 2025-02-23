@@ -223,10 +223,13 @@ describe('Link', () => {
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
+        validateSearch: z.object({ foo: z.string().optional() }),
         component: () => {
+          const { foo } = indexRoute.useSearch()
           return (
             <>
               <h1>Index</h1>
+              <div data-testid="foo-value">{foo ?? '$undefined'}</div>
               <Link
                 to="/"
                 activeOptions={{ exact: true }}
@@ -345,7 +348,8 @@ describe('Link', () => {
       expect(indexFooBarLink).not.toHaveAttribute('data-status', 'active')
 
       // navigate to /?foo=bar
-      fireEvent.click(indexFooBarLink)
+      act(() => fireEvent.click(indexFooBarLink))
+      expect(await screen.findByTestId('foo-value')).toHaveTextContent('bar')
 
       expect(indexExactLink).toHaveClass('inactive')
       expect(indexExactLink).not.toHaveClass('active')

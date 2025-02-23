@@ -155,8 +155,20 @@ export type FileBaseRouteOptions<
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TRemountDepsFn = AnyContext,
+  TBeforeNavigateFn = undefined,
 > = ParamsOptions<TPath, TParams> & {
   validateSearch?: Constrain<TSearchValidator, AnyValidator, DefaultValidator>
+
+  beforeNavigate?: Constrain<
+    TBeforeNavigateFn,
+    (
+      opt: BeforeNavigateOptions<
+        Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>,
+        Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>,
+        TRouterContext
+      >,
+    ) => void | Promise<void>
+  >
 
   shouldReload?:
     | boolean
@@ -210,7 +222,7 @@ export type FileBaseRouteOptions<
     (
       opt: RemountDepsOptions<
         TId,
-        FullSearchSchemaOption<TParentRoute, TSearchValidator>,
+        Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>,
         Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>,
         TLoaderDeps
       >,
@@ -286,6 +298,16 @@ export interface RouteContextOptions<
 > extends ContextOptions<TParentRoute, TParams> {
   deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
+}
+
+export interface BeforeNavigateOptions<
+  in out TFullSearchSchema,
+  in out TAllParams,
+  in out TRouterContext,
+> {
+  search: TFullSearchSchema
+  params: TAllParams
+  context: TRouterContext
 }
 
 export interface RemountDepsOptions<

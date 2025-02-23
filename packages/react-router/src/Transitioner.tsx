@@ -41,14 +41,14 @@ export function Transitioner() {
   React.useEffect(() => {
     const unsub = router.history.subscribe(router.load)
 
-    const nextLocation = router.buildLocation({
+    const nextLocation = router.buildLocationInternal({
       to: router.latestLocation.pathname,
       search: true,
       params: true,
       hash: true,
       state: true,
       _includeValidateSearch: true,
-    })
+    }).location
 
     if (
       trimPathRight(router.latestLocation.href) !==
