@@ -141,7 +141,7 @@ File-based routing requires that you follow a few simple file naming conventions
   - Routes segments ending with the `index` token (but before any file types) will be used to match the parent route when the URL pathname matches the parent route exactly.
     This can be configured via the `indexToken` configuration option, see [options](#options).
 - **`.route.tsx` File Type**
-  - When using directories to organize your routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used at the route file for the `/blog/post` route.
+  - When using directories to organize your routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used as the route file for the `/blog/post` route.
     This can be configured via the `routeToken` configuration option, see [options](#options).
 - **`.lazy.tsx` File Type**
   - The `lazy` suffix can be used to code-split components for a route. For example, `blog.post.lazy.tsx` will be used as the component for the `blog.post` route.
@@ -150,17 +150,22 @@ File-based routing requires that you follow a few simple file naming conventions
 
 To get started with file-based routing, you'll need to configure your project's bundler to use the TanStack Router Plugin or the TanStack Router CLI.
 
-To enable file-based routing, you'll need to be using React with a supported bundler. TanStack Router currently has support for the following bundlers:
+To enable file-based routing, you'll need to be using React with a supported bundler. See if your bundler is listed in the configuration guides below.
 
-- [Vite](#configuration-with-vite)
-- [Rspack/Rsbuild](#configuration-with-rspackrsbuild)
-- [Webpack](#configuration-with-webpack)
-- [Esbuild](#configuration-with-esbuild)
-- Others??? (let us know if you'd like to see support for a specific bundler)
+[//]: # 'SupportedBundlersList'
+
+- [Configuration with Vite](#configuration-with-vite)
+- [Configuration with Rspack/Rsbuild](#configuration-with-rspackrsbuild)
+- [Configuration with Webpack](#configuration-with-webpack)
+- [Configuration with Esbuild](#configuration-with-esbuild)
+
+[//]: # 'SupportedBundlersList'
 
 When using TanStack Router's file-based routing through one of the supported bundlers, our plugin will **automatically generate your route configuration through your bundler's dev and build processes**. It is the easiest way to use TanStack Router's route generation features.
 
 If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
+
+[//]: # 'ConfigurationBundlerVite'
 
 ### Configuration with Vite
 
@@ -172,7 +177,7 @@ npm install -D @tanstack/router-plugin
 
 Once installed, you'll need to add the plugin to your Vite configuration.
 
-```tsx
+```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
 import viteReact from '@vitejs/plugin-react'
@@ -196,6 +201,9 @@ Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/rout
 Now that you've added the plugin to your Vite configuration, you're all set to start using file-based routing with TanStack Router.
 
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
+[//]: # 'ConfigurationBundlerVite'
+[//]: # 'ConfigurationBundlerRspack'
 
 ### Configuration with Rspack/Rsbuild
 
@@ -229,6 +237,9 @@ Now that you've added the plugin to your Rspack/Rsbuild configuration, you're al
 
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
+[//]: # 'ConfigurationBundlerRspack'
+[//]: # 'ConfigurationBundlerWebpack'
+
 ### Configuration with Webpack
 
 To use file-based routing with **Webpack**, you'll need to install the `@tanstack/router-plugin` package.
@@ -253,6 +264,9 @@ Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/r
 Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
 
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
+[//]: # 'ConfigurationBundlerWebpack'
+[//]: # 'ConfigurationBundlerEsbuild'
 
 ### Configuration with Esbuild
 
@@ -279,6 +293,8 @@ Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/r
 Now that you've added the plugin to your Esbuild configuration, you're all set to start using file-based routing with TanStack Router.
 
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
+[//]: # 'ConfigurationBundlerEsbuild'
 
 ### Configuration with the TanStack Router CLI
 
@@ -324,29 +340,6 @@ tsr watch
 ```
 
 With file-based routing enabled, whenever you start your application in development mode, TanStack Router will watch your configured `routesDirectory` and generate your route tree whenever a file is added, removed, or changed.
-
-### Disabling the TanStack Router Plugin during tests
-
-> ⚠️ Note: To disable the plugin when running tests via vitest, you can conditionally add it based on the current `NODE_ENV`:
-
-```tsx
-// vite.config.ts
-import { defineConfig } from 'vite'
-import viteReact from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
-
-// vitest automatically sets NODE_ENV to 'test' when running tests
-const isTest = process.env.NODE_ENV === 'test'
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    !isTest && TanStackRouterVite(),
-    viteReact(),
-    // ...
-  ],
-})
-```
 
 ### Ignoring the generated route tree file
 

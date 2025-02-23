@@ -1371,8 +1371,80 @@ it('does not push to history if url and state are the same', async () => {
   const { router } = createTestRouter({
     history,
   })
-  await render(() => <RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />)
   const link = await screen.findByTestId('link')
-  await fireEvent.click(link)
+  fireEvent.click(link)
   expect(history.length).toBe(1)
+})
+
+describe('does not strip search params if search validation fails', () => {
+  afterEach(() => {
+    window.history.replaceState(null, 'root', '/')
+    cleanup()
+  })
+
+  function getRouter() {
+    const rootRoute = createRootRoute({
+      validateSearch: z.object({ root: z.string() }),
+      component: () => {
+        const search = rootRoute.useSearch()
+        return (
+          <div>
+            <div data-testid="search-root">{search().root ?? '$undefined'}</div>
+            <Outlet />
+          </div>
+        )
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      validateSearch: z.object({ index: z.string() }),
+      component: () => {
+        const search = rootRoute.useSearch()
+        return (
+          <>
+            <div data-testid="search-index">
+              {search().index ?? '$undefined'}
+            </div>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createRouter({ routeTree })
+
+    return router
+  }
+
+  it('smoke test - all required search params are present', async () => {
+    window.history.replaceState(null, 'root', '/?root=hello&index=world')
+    const router = getRouter()
+    render(() => <RouterProvider router={router} />)
+
+    expect(await screen.findByTestId('search-root')).toHaveTextContent('hello')
+    expect(await screen.findByTestId('search-index')).toHaveTextContent('world')
+
+    expect(window.location.search).toBe('?root=hello&index=world')
+  })
+
+  it('root is missing', async () => {
+    window.history.replaceState(null, 'root', '/?index=world')
+    const router = getRouter()
+    render(() => <RouterProvider router={router} />)
+
+    expect(window.location.search).toBe('?index=world')
+  })
+
+  it('index is missing', async () => {
+    window.history.replaceState(null, 'root', '/?root=hello')
+    const router = getRouter()
+
+    render(() => <RouterProvider router={router} />)
+
+    expect(window.location.search).toBe('?root=hello')
+  })
 })

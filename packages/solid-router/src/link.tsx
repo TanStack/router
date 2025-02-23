@@ -563,8 +563,8 @@ export type LinkOptionsFnOptions<
   TRouter extends AnyRouter = RegisteredRouter,
 > =
   TOptions extends ReadonlyArray<any>
-    ? ValidateLinkOptionsArray<TOptions, TComp, TRouter>
-    : ValidateLinkOptions<TOptions, TComp, TRouter>
+    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
+    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,

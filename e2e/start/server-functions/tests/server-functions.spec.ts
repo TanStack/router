@@ -9,7 +9,6 @@ test('invoking a server function with custom response status code', async ({
   await page.goto('/status')
 
   await page.waitForLoadState('networkidle')
-  await page.getByTestId('invoke-server-fn').click()
 
   const requestPromise = new Promise<void>((resolve) => {
     page.on('response', async (response) => {
@@ -25,6 +24,7 @@ test('invoking a server function with custom response status code', async ({
       resolve()
     })
   })
+  await page.getByTestId('invoke-server-fn').click()
   await requestPromise
 })
 

@@ -103,6 +103,8 @@ Most of the time, you won't need to do anything special to get scroll restoratio
 
 To manually control scroll restoration, you can use the `useElementScrollRestoration` hook and the `data-scroll-restoration-id` DOM attribute:
 
+[//]: # 'ManualRestorationExample'
+
 ```tsx
 function Component() {
   // We need a unique ID for manual scroll restoration on a specific element
@@ -139,6 +141,8 @@ function Component() {
   )
 }
 ```
+
+[//]: # 'ManualRestorationExample'
 
 ## Scroll Behavior
 

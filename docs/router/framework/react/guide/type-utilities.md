@@ -157,6 +157,8 @@ fetchOrRedirect('http://example.com/', { to: '/login' })
 
 `ValidateNavigateOptions` type checks object literal types to ensure they conform to navigate options at inference sites. For example, you may want to write a custom hook to enable/disable navigation.
 
+[//]: # 'TypeCheckingNavigateOptionsWithValidateNavigateOptionsImpl'
+
 ```tsx
 export interface UseConditionalNavigateResult {
   enable: () => void
@@ -173,7 +175,7 @@ export function useConditionalNavigate<
 export function useConditionalNavigate(
   navigateOptions: ValidateNavigateOptions,
 ): UseConditionalNavigateResult {
-  const [enabled, setEnabled] = React.useState(false)
+  const [enabled, setEnabled] = useState(false)
   const navigate = useNavigate()
   return {
     enable: () => setEnabled(true),
@@ -186,6 +188,8 @@ export function useConditionalNavigate(
   }
 }
 ```
+
+[//]: # 'TypeCheckingNavigateOptionsWithValidateNavigateOptionsImpl'
 
 The result of this is that `navigateOptions` passed to `useConditionalNavigate` is completely type-safe and we can enable/disable navigation based on react state
 

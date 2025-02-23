@@ -1602,8 +1602,8 @@ export class Router<
               }
               if (opts._includeValidateSearch && route.options.validateSearch) {
                 const validate: SearchMiddleware<any> = ({ search, next }) => {
+                  const result = next(search)
                   try {
-                    const result = next(search)
                     const validatedSearch = {
                       ...result,
                       ...(validateSearch(
@@ -1614,6 +1614,7 @@ export class Router<
                     return validatedSearch
                   } catch {
                     // ignore errors here because they are already handled in matchRoutes
+                    return result
                   }
                 }
                 middlewares.push(validate)
