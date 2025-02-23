@@ -10,8 +10,6 @@ export function useStableCallback<T extends (...args: Array<any>) => any>(
   return ref.current as T
 }
 
-
-
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
