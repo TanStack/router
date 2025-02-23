@@ -122,6 +122,7 @@ export type {
   ValidatorAdapter,
   ValidatorObj,
   FileRoutesByPath,
+  RouteById,
 } from '@tanstack/router-core'
 
 export {
