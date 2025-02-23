@@ -10,57 +10,29 @@ import { useNavigate } from './useNavigate'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
-import type {
-  AnyContext,
-  AnyPathParams,
-  AnyValidator,
-  Constrain,
-  ResolveParams,
-} from '@tanstack/router-core'
 
 import type {
   AnyRoute,
   FileBaseRouteOptions,
-  RootRoute,
   Route,
   RouteConstraints,
   RouteLoaderFn,
   UpdatableRouteOptions,
 } from './route'
 import type { RegisteredRouter } from './router'
-import type { RouteById, RouteIds } from './routeInfo'
+import type {
+  AnyContext,
+  AnyPathParams,
+  AnyValidator,
+  Constrain,
+  FileRoutesByPath,
+  ResolveParams,
+  RouteById,
+  RouteIds,
+} from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
-
-export interface FileRoutesByPath {
-  // '/': {
-  //   parentRoute: typeof rootRoute
-  // }
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: any
-  fullPaths: any
-  to: any
-  fileRoutesByTo: any
-  id: any
-  fileRoutesById: any
-}
-
-export type InferFileRouteTypes<TRouteTree extends AnyRoute> =
-  TRouteTree extends RootRoute<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    infer TFileRouteTypes extends FileRouteTypes
-  >
-    ? TFileRouteTypes
-    : never
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,

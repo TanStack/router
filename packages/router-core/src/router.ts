@@ -1,6 +1,38 @@
 import type { ParsedLocation } from './location'
 import type { DeferredPromiseState } from './defer'
 import type { ControlledPromise } from './utils'
+import type { AnyRoute, AnyRouteWithContext } from './route'
+
+export interface Register {
+  // router: Router
+}
+
+export type RegisteredRouter = Register extends {
+  router: infer TRouter extends AnyRouter
+}
+  ? TRouter
+  : AnyRouter
+
+export interface RouterOptions<
+  in out TTrailingSlashOption extends TrailingSlashOption,
+> {
+  trailingSlash?: TTrailingSlashOption
+}
+
+export interface Router<
+  in out TRouteTree extends AnyRoute,
+  in out TTrailingSlashOption extends TrailingSlashOption,
+> {
+  routeTree: TRouteTree
+  options: RouterOptions<TTrailingSlashOption>
+}
+
+export type AnyRouterWithContext<TContext> = Router<
+  AnyRouteWithContext<TContext>,
+  any
+>
+
+export type AnyRouter = Router<any, any>
 
 export interface ViewTransitionOptions {
   types: Array<string>

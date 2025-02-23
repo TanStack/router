@@ -9,30 +9,26 @@ import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
 import type { AnyRoute } from './route'
 import type {
-  ControlledPromise,
-  DeepPartial,
-  NoInfer,
-  ResolveRelativePath,
-  StaticDataRouteOption,
-} from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
-import type {
-  MakeOptionalPathParams,
-  MakeOptionalSearchParams,
-  MaskOptions,
-  ResolveRoute,
-  ToSubOptionsProps,
-} from './link'
-import type {
   AllContext,
   AllLoaderData,
   AllParams,
+  ControlledPromise,
+  DeepPartial,
   FullSearchSchema,
+  MakeOptionalPathParams,
+  MakeOptionalSearchParams,
+  MaskOptions,
+  NoInfer,
   ParseRoute,
+  ResolveRelativePath,
+  ResolveRoute,
   RouteById,
   RouteByPath,
   RouteIds,
-} from './routeInfo'
+  StaticDataRouteOption,
+  ToSubOptionsProps,
+} from '@tanstack/router-core'
+import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['id'],

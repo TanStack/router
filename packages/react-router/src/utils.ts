@@ -1,7 +1,9 @@
 import * as React from 'react'
-import type { RouteIds } from './routeInfo'
-import type { AnyRouter } from './router'
-import type { ConstrainLiteral } from '@tanstack/router-core'
+import type {
+  AnyRouter,
+  ConstrainLiteral,
+  RouteIds,
+} from '@tanstack/router-core'
 
 export function useStableCallback<T extends (...args: Array<any>) => any>(
   fn: T,

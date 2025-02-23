@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
-import type { FromPathOption, NavigateOptions } from './link'
+import type { FromPathOption, NavigateOptions } from '@tanstack/router-core'
 import type { AnyRouter, RegisteredRouter } from './router'
 
 export type UseNavigateResult<TDefaultFrom extends string> = <

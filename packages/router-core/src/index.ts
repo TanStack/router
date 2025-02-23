@@ -14,7 +14,53 @@ export type {
   ResolveParentPath,
   ResolveRelativePath,
   LinkCurrentTargetElement,
+  FindDescendantToPaths,
+  InferDescendantToPaths,
+  RelativeToPath,
+  RelativeToParentPath,
+  RelativeToCurrentPath,
+  AbsoluteToPath,
+  RelativeToPathAutoComplete,
+  NavigateOptions,
+  ToOptions,
+  ToMaskOptions,
+  ToSubOptions,
+  ResolveRoute,
+  SearchParamOptions,
+  PathParamOptions,
+  ToPathOption,
+  LinkOptions,
+  MakeOptionalPathParams,
+  FromPathOption,
+  MakeOptionalSearchParams,
+  MaskOptions,
+  ToSubOptionsProps,
+  RequiredToOptions,
 } from './link'
+
+export type {
+  RouteToPath,
+  TrailingSlashOptionByRouter,
+  ParseRoute,
+  CodeRouteToPath,
+  RouteIds,
+  FullSearchSchema,
+  FullSearchSchemaInput,
+  AllParams,
+  RouteById,
+  AllContext,
+  RoutePaths,
+  RoutesById,
+  RoutesByPath,
+  AllLoaderData,
+  RouteByPath,
+} from './routeInfo'
+
+export type {
+  InferFileRouteTypes,
+  FileRouteTypes,
+  FileRoutesByPath,
+} from './fileRoute'
 
 export type {
   StartSerializer,
@@ -106,6 +152,21 @@ export type {
   ResolveSearchSchemaInput,
   ResolveSearchSchemaFn,
   ResolveSearchSchema,
+  ResolveFullSearchSchema,
+  ResolveFullSearchSchemaInput,
+  ResolveAllContext,
+  BeforeLoadContextParameter,
+  RouteContextParameter,
+  ResolveAllParamsFromParent,
+  AnyRoute,
+  Route,
+  RootRoute,
+  RouteTypes,
+  FullSearchSchemaOption,
+  RemountDepsOptions,
+  MakeRemountDepsOptionsUnion,
+  ResolveFullPath,
+  AnyRouteWithContext,
 } from './route'
 
 export { defaultSerializeError, getLocationChangeInfo } from './router'
@@ -117,9 +178,17 @@ export type {
   ExtractedEntry,
   StreamState,
   TrailingSlashOption,
+  Register,
+  AnyRouter,
+  AnyRouterWithContext,
 } from './router'
 
-export type { MatchLocation, CommitLocationOptions } from './RouterProvider'
+export type {
+  MatchLocation,
+  CommitLocationOptions,
+  NavigateFn,
+  BuildLocationFn,
+} from './RouterProvider'
 
 export { retainSearchParams, stripSearchParams } from './searchMiddleware'
 
