@@ -165,6 +165,10 @@ export type {
   RemountDepsOptions,
   FileRouteTypes,
   FileRoutesByPath,
+  UseNavigateResult,
+  AnyRedirect,
+  Redirect,
+  ResolvedRedirect,
 } from '@tanstack/router-core'
 
 export {
@@ -238,7 +242,6 @@ export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
 export { redirect, isRedirect } from './redirects'
-export type { AnyRedirect, Redirect, ResolvedRedirect } from './redirects'
 
 export {
   RouteApi,
@@ -318,7 +321,6 @@ export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
 
 export { useNavigate, Navigate } from './useNavigate'
-export type { UseNavigateResult } from './useNavigate'
 
 export { useParams } from './useParams'
 export { useSearch } from './useSearch'

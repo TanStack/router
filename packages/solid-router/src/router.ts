@@ -40,6 +40,7 @@ import type { NoInfer } from '@tanstack/solid-store'
 
 import type {
   AnyContext,
+  AnyRedirect,
   AnySchema,
   AnyValidator,
   BuildLocationFn,
@@ -54,6 +55,7 @@ import type {
   ParsedLocation,
   PickAsRequired,
   Register,
+  ResolvedRedirect,
   ResolveRelativePath,
   RouteById,
   RoutePaths,
@@ -86,7 +88,6 @@ import type {
   MatchRouteOptions,
 } from './Matches'
 
-import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 
 declare global {

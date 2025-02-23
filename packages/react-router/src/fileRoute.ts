@@ -29,10 +29,10 @@ import type {
   ResolveParams,
   RouteById,
   RouteIds,
+  UseRouteContextRoute,
 } from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
-import type { UseRouteContextRoute } from './useRouteContext'
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,

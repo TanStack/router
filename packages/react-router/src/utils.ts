@@ -1,9 +1,4 @@
 import * as React from 'react'
-import type {
-  AnyRouter,
-  ConstrainLiteral,
-  RouteIds,
-} from '@tanstack/router-core'
 
 export function useStableCallback<T extends (...args: Array<any>) => any>(
   fn: T,
@@ -15,19 +10,7 @@ export function useStableCallback<T extends (...args: Array<any>) => any>(
   return ref.current as T
 }
 
-export type StrictOrFrom<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean = true,
-> = TStrict extends false
-  ? {
-      from?: never
-      strict: TStrict
-    }
-  : {
-      from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
-      strict?: TStrict
-    }
+
 
 export const useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect

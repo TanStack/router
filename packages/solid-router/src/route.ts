@@ -51,6 +51,8 @@ import type {
   ToMaskOptions,
   TrimPathRight,
   UpdatableStaticRouteOption,
+  UseNavigateResult,
+  UseRouteContextRoute,
 } from '@tanstack/router-core'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseMatchRoute } from './useMatch'
@@ -58,7 +60,6 @@ import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type * as Solid from 'solid-js'
-import type { UseNavigateResult } from './useNavigate'
 import type {
   AnyRouteMatch,
   MakeRouteMatchFromRoute,
@@ -68,8 +69,6 @@ import type {
 import type { AnyRouter, RegisteredRouter, Router } from './router'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
-
-import type { UseRouteContextRoute } from './useRouteContext'
 
 export type RouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
