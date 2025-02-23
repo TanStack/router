@@ -179,8 +179,8 @@ async function handleServerRequest({
 
       // Any time we get a Response back, we should just
       // return it immediately.
-      if (result instanceof Response) {
-        return result
+      if (result.result instanceof Response) {
+        return result.result
       }
 
       // If this is a non createServerFn request, we need to
