@@ -120,6 +120,51 @@ export type {
   Validator,
   ValidatorAdapter,
   ValidatorObj,
+  NavigateFn,
+  BuildLocationFn,
+  InferDescendantToPaths,
+  RelativeToPath,
+  RelativeToParentPath,
+  RelativeToCurrentPath,
+  Register,
+  AbsoluteToPath,
+  RelativeToPathAutoComplete,
+  NavigateOptions,
+  ToOptions,
+  ToMaskOptions,
+  ToSubOptions,
+  ResolveRoute,
+  SearchParamOptions,
+  PathParamOptions,
+  ToPathOption,
+  LinkOptions,
+  MakeOptionalPathParams,
+  AnyRouterWithContext,
+  ParseRoute,
+  RoutesById,
+  RouteById,
+  RouteIds,
+  RoutesByPath,
+  RouteByPath,
+  RoutePaths,
+  FullSearchSchema,
+  AllParams,
+  AllLoaderData,
+  FullSearchSchemaInput,
+  AllContext,
+  CommitLocationOptions,
+  MatchLocation,
+  ResolveFullSearchSchema,
+  ResolveFullSearchSchemaInput,
+  ResolveAllParamsFromParent,
+  RouteContextParameter,
+  BeforeLoadContextParameter,
+  ResolveAllContext,
+  FullSearchSchemaOption,
+  MakeRemountDepsOptionsUnion,
+  RemountDepsOptions,
+  FileRouteTypes,
+  FileRoutesByPath,
 } from '@tanstack/router-core'
 
 export {
@@ -150,11 +195,7 @@ export {
   createLazyRoute,
   createLazyFileRoute,
 } from './fileRoute'
-export type {
-  FileRoutesByPath,
-  FileRouteTypes,
-  LazyRouteOptions,
-} from './fileRoute'
+export type { LazyRouteOptions } from './fileRoute'
 
 export * from './history'
 
@@ -162,28 +203,12 @@ export { lazyRouteComponent } from './lazyRouteComponent'
 
 export { useLinkProps, createLink, Link, linkOptions } from './link'
 export type {
-  InferDescendantToPaths,
-  RelativeToPath,
-  RelativeToParentPath,
-  RelativeToCurrentPath,
-  AbsoluteToPath,
-  RelativeToPathAutoComplete,
-  NavigateOptions,
-  ToOptions,
-  ToMaskOptions,
-  ToSubOptions,
-  ResolveRoute,
-  SearchParamOptions,
-  PathParamOptions,
-  ToPathOption,
-  LinkOptions,
   UseLinkPropsOptions,
   ActiveLinkOptions,
   LinkProps,
   LinkComponent,
   LinkComponentProps,
   CreateLinkProps,
-  MakeOptionalPathParams,
 } from './link'
 
 export {
@@ -234,8 +259,6 @@ export type {
   UpdatableRouteOptions,
   RouteLoaderFn,
   LoaderFnContext,
-  ResolveFullSearchSchema,
-  ResolveFullSearchSchemaInput,
   AnyRoute,
   RouteConstraints,
   AnyRootRoute,
@@ -249,34 +272,12 @@ export type {
   NotFoundRouteComponent,
   RootRouteOptions,
   AnyRouteWithContext,
-  FullSearchSchemaOption,
   RouteContextFn,
   RouteContextOptions,
   BeforeLoadFn,
   BeforeLoadContextOptions,
   ContextOptions,
-  RouteContextParameter,
-  BeforeLoadContextParameter,
-  ResolveAllContext,
-  ResolveAllParamsFromParent,
-  MakeRemountDepsOptionsUnion,
-  RemountDepsOptions,
 } from './route'
-
-export type {
-  ParseRoute,
-  RoutesById,
-  RouteById,
-  RouteIds,
-  RoutesByPath,
-  RouteByPath,
-  RoutePaths,
-  FullSearchSchema,
-  AllParams,
-  AllLoaderData,
-  FullSearchSchemaInput,
-  AllContext,
-} from './routeInfo'
 
 export {
   componentTypes,
@@ -289,7 +290,6 @@ export {
 } from './router'
 
 export type {
-  Register,
   AnyRouter,
   RegisteredRouter,
   RouterContextOptions,
@@ -302,19 +302,12 @@ export type {
   RouterEvents,
   RouterEvent,
   RouterListener,
-  AnyRouterWithContext,
   ControllablePromise,
   InjectedHtmlEntry,
 } from './router'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
-export type {
-  RouterProps,
-  CommitLocationOptions,
-  MatchLocation,
-  NavigateFn,
-  BuildLocationFn,
-} from './RouterProvider'
+export type { RouterProps } from './RouterProvider'
 
 export {
   useElementScrollRestoration,

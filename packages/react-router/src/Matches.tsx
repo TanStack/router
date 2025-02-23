@@ -13,21 +13,6 @@ import type {
 } from './structuralSharing'
 import type { AnyRoute, ReactNode } from './route'
 import type {
-  ControlledPromise,
-  DeepPartial,
-  NoInfer,
-  ResolveRelativePath,
-  StaticDataRouteOption,
-} from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
-import type {
-  MakeOptionalPathParams,
-  MakeOptionalSearchParams,
-  MaskOptions,
-  ResolveRoute,
-  ToSubOptionsProps,
-} from './link'
-import type {
   AllContext,
   AllLoaderData,
   AllParams,
@@ -36,7 +21,18 @@ import type {
   RouteById,
   RouteByPath,
   RouteIds,
-} from './routeInfo'
+  ControlledPromise,
+  DeepPartial,
+  MakeOptionalPathParams,
+  MakeOptionalSearchParams,
+  MaskOptions,
+  NoInfer,
+  ResolveRelativePath,
+  ResolveRoute,
+  StaticDataRouteOption,
+  ToSubOptionsProps,
+} from '@tanstack/router-core'
+import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['id'],

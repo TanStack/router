@@ -1,7 +1,6 @@
 import * as Solid from 'solid-js'
-import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
-import type { ConstrainLiteral } from '@tanstack/router-core'
+import type { ConstrainLiteral, RouteIds } from '@tanstack/router-core'
 
 export type StrictOrFrom<
   TRouter extends AnyRouter,

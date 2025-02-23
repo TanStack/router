@@ -1,12 +1,8 @@
 import type { InferFileRouteTypes } from './fileRoute'
-import type {
-  AddTrailingSlash,
-  PartialMergeAll,
-  RemoveTrailingSlashes,
-  TrailingSlashOption,
-} from '@tanstack/router-core'
+import type { AddTrailingSlash, RemoveTrailingSlashes } from './link'
 import type { AnyRoute } from './route'
-import type { AnyRouter } from './router'
+import type { AnyRouter, TrailingSlashOption } from './router'
+import type { PartialMergeAll } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
   types: { children: infer TChildren }

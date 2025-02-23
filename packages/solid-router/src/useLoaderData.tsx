@@ -1,9 +1,8 @@
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { AllLoaderData, RouteById } from './routeInfo'
 import type { StrictOrFrom } from './utils'
-import type { Expand } from '@tanstack/router-core'
+import type { AllLoaderData, Expand, RouteById } from '@tanstack/router-core'
 
 export interface UseLoaderDataBaseOptions<
   TRouter extends AnyRouter,

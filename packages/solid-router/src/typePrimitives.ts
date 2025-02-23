@@ -1,16 +1,17 @@
-import type {
-  FromPathOption,
-  LinkComponentProps,
-  NavigateOptions,
-  PathParamOptions,
-  SearchParamOptions,
-  ToPathOption,
-} from './link'
-import type { RouteIds } from './routeInfo'
+import type { LinkComponentProps } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsOptions, UseParamsResult } from './useParams'
 import type { UseSearchOptions, UseSearchResult } from './useSearch'
-import type { Constrain, ConstrainLiteral } from '@tanstack/router-core'
+import type {
+  Constrain,
+  ConstrainLiteral,
+  FromPathOption,
+  NavigateOptions,
+  PathParamOptions,
+  RouteIds,
+  SearchParamOptions,
+  ToPathOption,
+} from '@tanstack/router-core'
 
 export type ValidateFromPath<
   TFrom,

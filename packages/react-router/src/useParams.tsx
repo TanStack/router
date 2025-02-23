@@ -4,10 +4,14 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AllParams, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { StrictOrFrom } from './utils'
-import type { Expand, ThrowOrOptional } from '@tanstack/router-core'
+import type {
+  AllParams,
+  Expand,
+  RouteById,
+  ThrowOrOptional,
+} from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
   TRouter extends AnyRouter,

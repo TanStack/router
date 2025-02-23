@@ -1,4 +1,11 @@
-import type { ViewTransitionOptions } from './router'
+import type { NavigateOptions, ToOptions } from './link'
+import type { ParsedLocation } from './location'
+import type { RoutePaths } from './routeInfo'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  ViewTransitionOptions,
+} from './router'
 
 export interface MatchLocation {
   to?: string | number | null
@@ -18,3 +25,26 @@ export interface CommitLocationOptions {
   startTransition?: boolean
   ignoreBlocker?: boolean
 }
+
+export type NavigateFn = <
+  TRouter extends RegisteredRouter,
+  TTo extends string | undefined,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskTo extends string = '',
+>(
+  opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Promise<void> | void
+
+export type BuildLocationFn = <
+  TRouter extends AnyRouter,
+  TTo extends string | undefined,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskTo extends string = '',
+>(
+  opts: ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
+    leaveParams?: boolean
+    _includeValidateSearch?: boolean
+  },
+) => ParsedLocation
