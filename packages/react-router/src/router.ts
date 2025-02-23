@@ -102,7 +102,6 @@ declare global {
 
 export type AnyRouter = Router<any, any, any, any, any, any>
 
-
 export type RegisteredRouter = Register extends {
   router: infer TRouter extends AnyRouter
 }
