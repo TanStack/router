@@ -18,7 +18,7 @@ TanStack Start is (currently\*) powered by [Vinxi](https://vinxi.vercel.app/), [
 ## It all "Starts" with the Router
 
 This is the file that will dictate the behavior of TanStack Router used within Start. Here, you can configure everything
-from the default [preloading functionality](../guide/preloading.md) to [caching staleness](../guide/data-loading.md).
+from the default [preloading functionality](/router/latest/docs/framework/react/guide/preloading) to [caching staleness](/router/latest/docs/framework/react/guide/data-loading).
 
 ```tsx
 // app/router.tsx
