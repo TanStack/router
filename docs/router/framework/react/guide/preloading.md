@@ -79,6 +79,10 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 ```
 
+## Preloaded data garbage collection & `preloadGcTime`
+
+Similarly to `preloadStaleTime`, you can control how long preloaded data should be kept in the cache before being garbage collected by setting either `routerOptions.defaultPreloadGcTime` or `routeOptions.preloadGcTime`. **By default, preloaded data is kept in cache for 30 minutes.**.
+
 ## Preloading with External Libraries
 
 When integrating external caching libraries like React Query, which have their own mechanisms for determining stale data, you may want to override the default preloading and stale-while-revalidate logic of TanStack Router. These libraries often use options like staleTime to control the freshness of data.

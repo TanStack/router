@@ -187,9 +187,11 @@ export interface RouterOptions<
    *
    * If `'viewport'`, routes will be preloaded by default when they are within the viewport.
    *
+   * If `'render'`, routes will be preloaded by default when the corresponding `Link` component gets rendered.
+   *
    * @default false
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreload-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#supported-preloading-strategies)
    */
   defaultPreload?: false | 'intent' | 'viewport' | 'render'
   /**
@@ -223,15 +225,15 @@ export interface RouterOptions<
    */
   defaultPendingComponent?: RouteComponent
   /**
-   * The default `pendingMs` a route should use if no pendingMs is provided.
+   * The default `pendingMs` a route should use if no `pendingMs` is provided.
    *
    * @default 1000
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingms-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#avoiding-pending-component-flash)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#showing-a-pending-component)
    */
   defaultPendingMs?: number
   /**
-   * The default `pendingMinMs` a route should use if no pendingMinMs is provided.
+   * The default `pendingMinMs` a route should use if no `pendingMinMs` is provided.
    *
    * @default 500
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingminms-property)
@@ -251,7 +253,7 @@ export interface RouterOptions<
    *
    * @default 30_000 `(30 seconds)`
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloadstaletime-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#built-in-preloading--preloadstaletime)
    */
   defaultPreloadStaleTime?: number
   /**
@@ -259,7 +261,7 @@ export interface RouterOptions<
    *
    * @default 1_800_000 `(30 minutes)`
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloadgctime-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#built-in-preloading--preloadstaletime)
    */
   defaultPreloadGcTime?: number
   /**
