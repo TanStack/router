@@ -1,8 +1,8 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
+import { existsSync } from 'node:fs'
 import { logDiff } from '@tanstack/router-utils'
 import { compileStartOutput } from './compilers'
-
 import type { Plugin } from 'vite'
 
 const debug =
@@ -30,89 +30,52 @@ export function createTanStackStartPlugin(opts: TanStackStartViteOptions): {
   ssr: Array<Plugin>
   server: Array<Plugin>
 } {
+  const globalMiddlewarePlugin = (): Plugin => {
+    let entry: string | null = null
+    let resolvedGlobalMiddlewareEntry: string | null = null
+    let globalMiddlewareEntryExists = false
+    let ROOT: string = process.cwd()
+    return {
+      name: 'vite-plugin-tanstack-start-ensure-global-middleware',
+      enforce: 'pre',
+      configResolved: (config) => {
+        ROOT = config.root
+        entry = path.resolve(ROOT, (config as any).router.handler)
+        resolvedGlobalMiddlewareEntry = path.resolve(
+          ROOT,
+          opts.globalMiddlewareEntry,
+        )
+        globalMiddlewareEntryExists = existsSync(resolvedGlobalMiddlewareEntry)
+
+        if (!entry) {
+          throw new Error('@tanstack/start-plugin: No server entry found!')
+        }
+      },
+      transform(code, id) {
+        if (entry && id.includes(entry)) {
+          if (globalMiddlewareEntryExists) {
+            return {
+              code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
+              map: null,
+            }
+          }
+        }
+        return code
+      },
+    }
+  }
+
   return {
     client: [
-      (() => {
-        let entry: string | null = null
-        let ROOT: string = process.cwd()
-        return {
-          name: 'vite-plugin-tanstack-start-server-entry-client',
-          enforce: 'pre',
-          configResolved: (config) => {
-            ROOT = config.root
-            entry = path.resolve(ROOT, (config as any).router.handler)
-
-            if (!entry) {
-              throw new Error('@tanstack/start-plugin: No server entry found!')
-            }
-          },
-          transform(code, id) {
-            if (entry && id.includes(entry)) {
-              return {
-                code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
-                map: null,
-              }
-            }
-            return null
-          },
-        }
-      })(),
+      globalMiddlewarePlugin(),
       TanStackStartServerFnsAndMiddleware({ ...opts, env: 'client' }),
     ],
     ssr: [
-      (() => {
-        let entry: string | null = null
-        let ROOT: string = process.cwd()
-        return {
-          name: 'vite-plugin-tanstack-start-server-entry-ssr',
-          enforce: 'pre',
-          configResolved: (config) => {
-            ROOT = config.root
-            entry = path.resolve(ROOT, (config as any).router.handler)
-
-            if (!entry) {
-              throw new Error('@tanstack/start-plugin: No server entry found!')
-            }
-          },
-          transform(code, id) {
-            if (entry && id.includes(entry)) {
-              return {
-                code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
-                map: null,
-              }
-            }
-            return null
-          },
-        }
-      })(),
+      globalMiddlewarePlugin(),
       TanStackStartServerFnsAndMiddleware({ ...opts, env: 'ssr' }),
     ],
     server: [
-      (() => {
-        let entry: string | null = null
-        let ROOT: string = process.cwd()
-        return {
-          name: 'vite-plugin-tanstack-start-server-entry-server',
-          enforce: 'pre',
-          configResolved: (config) => {
-            ROOT = config.root
-            entry = path.resolve(ROOT, (config as any).router.handler)
-
-            if (!entry) {
-              throw new Error('@tanstack/start-plugin: No server entry found!')
-            }
-          },
-          transform(code, id) {
-            if (entry && id.includes(entry)) {
-              return {
-                code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
-                map: null,
-              }
-            }
-            return null
-          },
-        }
-      })(),
+      globalMiddlewarePlugin(),
       TanStackStartServerFnsAndMiddleware({ ...opts, env: 'server' }),
     ],
   }
