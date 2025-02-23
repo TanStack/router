@@ -96,11 +96,7 @@ export interface RequiredFetcher<
   TRawResponse extends boolean,
 > extends FetcherBase {
   <TFullResponse extends boolean>(
-    opts: RequiredFetcherDataOptions<
-      TMiddlewares,
-      TValidator,
-      TFullResponse
-    >,
+    opts: RequiredFetcherDataOptions<TMiddlewares, TValidator, TFullResponse>,
   ): FetchResult<TMiddlewares, TResponse, TFullResponse, TRawResponse>
 }
 

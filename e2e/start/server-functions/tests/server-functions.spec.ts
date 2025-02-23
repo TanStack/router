@@ -322,14 +322,12 @@ test.describe('aborting a server function call', () => {
   })
 })
 
-
 test('raw response', async ({ page }) => {
   await page.goto('/raw-response')
 
   await page.waitForLoadState('networkidle')
 
-  const expectedValue =
-    (await page.getByTestId('expected').textContent()) || ''
+  const expectedValue = (await page.getByTestId('expected').textContent()) || ''
   expect(expectedValue).not.toBe('')
 
   await page.getByTestId('button').click()
