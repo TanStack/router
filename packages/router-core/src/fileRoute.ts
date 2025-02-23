@@ -20,7 +20,9 @@ export type InferFileRouteTypes<TRouteTree extends AnyRoute> =
     any,
     infer TFileRouteTypes extends FileRouteTypes
   >
-    ? TFileRouteTypes
+    ? unknown extends TFileRouteTypes
+      ? never
+      : TFileRouteTypes
     : never
 
 export interface FileRoutesByPath {
