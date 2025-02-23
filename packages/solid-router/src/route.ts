@@ -12,7 +12,6 @@ import type {
   AnyPathParams,
   AnySchema,
   AnyValidator,
-  Assign,
   BeforeLoadContextParameter,
   BuildLocationFn,
   Constrain,

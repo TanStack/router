@@ -43,25 +43,31 @@ import type {
   AnyContext,
   AnySchema,
   AnyValidator,
+  BuildLocationFn,
   CommitLocationOptions,
   ControlledPromise,
+  FullSearchSchema,
+  MakeRemountDepsOptionsUnion,
   Manifest,
+  NavigateFn,
   NavigateOptions,
   NonNullableUpdater,
   ParsedLocation,
   PickAsRequired,
+  Register,
   ResolveRelativePath,
+  RouteById,
+  RoutePaths,
+  RoutesById,
+  RoutesByPath,
   SearchMiddleware,
   SearchParser,
   SearchSerializer,
   StartSerializer,
-  TrailingSlashOption,
   ToOptions,
+  TrailingSlashOption,
   Updater,
   ViewTransitionOptions,
-  Register,
-  MakeRemountDepsOptionsUnion,
-  AnyRouteWithContext,
 } from '@tanstack/router-core'
 import type {
   AnyRoute,
@@ -76,20 +82,11 @@ import type {
 } from './route'
 
 import type {
-  FullSearchSchema,
-  RouteById,
-  RoutePaths,
-  RoutesById,
-  RoutesByPath,
-} from '@tanstack/router-core'
-import type {
   AnyRouteMatch,
   MakeRouteMatch,
   MakeRouteMatchUnion,
   MatchRouteOptions,
 } from './Matches'
-
-import type { BuildLocationFn, NavigateFn } from '@tanstack/router-core'
 
 import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
