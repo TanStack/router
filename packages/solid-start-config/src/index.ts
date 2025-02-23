@@ -112,8 +112,8 @@ export async function defineConfig(
   const apiEntry = opts.routers?.api?.entry || path.join(appDirectory, 'api.ts')
 
   const globalMiddlewareEntry =
-  opts.routers?.server?.globalMiddlewareEntry ||
-  path.join(appDirectory, 'global-middleware.ts')
+    opts.routers?.server?.globalMiddlewareEntry ||
+    path.join(appDirectory, 'global-middleware.ts')
 
   const apiEntryExists = existsSync(apiEntry)
 
