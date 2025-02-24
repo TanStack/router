@@ -85,6 +85,12 @@ export type {
   IsMatchResult,
   IsMatchParse,
   IsMatch,
+  RouteMatch,
+  RouteMatchExtensions,
+  MakeRouteMatchUnion,
+  MakeRouteMatch,
+  AnyRouteMatch,
+  MakeRouteMatchFromRoute,
 } from './Matches'
 export {
   joinPaths,
@@ -167,6 +173,19 @@ export type {
   MakeRemountDepsOptionsUnion,
   ResolveFullPath,
   AnyRouteWithContext,
+  RouteOptions,
+  FileBaseRouteOptions,
+  BaseRouteOptions,
+  UpdatableRouteOptions,
+  RouteLoaderFn,
+  LoaderFnContext,
+  RouteContextFn,
+  RouteContextOptions,
+  BeforeLoadFn,
+  BeforeLoadContextOptions,
+  ContextOptions,
+  RootRouteOptions,
+  UpdatableRouteOptionsExtensions,
 } from './route'
 
 export { defaultSerializeError, getLocationChangeInfo } from './router'

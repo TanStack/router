@@ -42,13 +42,18 @@ import type { NoInfer } from '@tanstack/react-store'
 import type {
   AnyContext,
   AnyRedirect,
+  AnyRouteMatch,
   AnySchema,
   AnyValidator,
+  BeforeLoadContextOptions,
   BuildLocationFn,
   CommitLocationOptions,
   ControlledPromise,
   FullSearchSchema,
+  LoaderFnContext,
   MakeRemountDepsOptionsUnion,
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
   Manifest,
   NavigateFn,
   NavigateOptions,
@@ -59,6 +64,7 @@ import type {
   ResolveRelativePath,
   ResolvedRedirect,
   RouteById,
+  RouteContextOptions,
   RoutePaths,
   RoutesById,
   RoutesByPath,
@@ -73,22 +79,14 @@ import type {
 } from '@tanstack/router-core'
 import type {
   AnyRoute,
-  BeforeLoadContextOptions,
   ErrorRouteComponent,
-  LoaderFnContext,
   NotFoundRouteComponent,
   RootRoute,
   RouteComponent,
-  RouteContextOptions,
   RouteMask,
 } from './route'
 
-import type {
-  AnyRouteMatch,
-  MakeRouteMatch,
-  MakeRouteMatchUnion,
-  MatchRouteOptions,
-} from './Matches'
+import type { MatchRouteOptions } from './Matches'
 
 import type { NotFoundError } from './not-found'
 

@@ -18,20 +18,16 @@ import type {
   AnyValidator,
   Constrain,
   ConstrainLiteral,
+  FileBaseRouteOptions,
   FileRoutesByPath,
   ResolveParams,
   RouteById,
   RouteIds,
-} from '@tanstack/router-core'
-
-import type {
-  AnyRoute,
-  FileBaseRouteOptions,
-  Route,
-  RouteConstraints,
   RouteLoaderFn,
   UpdatableRouteOptions,
-} from './route'
+} from '@tanstack/router-core'
+
+import type { AnyRoute, Route, RouteConstraints } from './route'
 import type { RegisteredRouter } from './router'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
