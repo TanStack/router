@@ -4,14 +4,14 @@ title: Routing Concepts
 
 TanStack Router supports a number of powerful routing concepts that allow you to build complex and dynamic routing systems with ease.
 
-- [The Root Route](./routing-concepts.md#the-root-route)
-- [Static Routes](./routing-concepts.md#static-routes)
-- [Index Routes](./routing-concepts.md#index-routes)
-- [Dynamic Route Segments](./routing-concepts.md#dynamic-route-segments)
-- [Splat / Catch-All Routes](./routing-concepts.md#splat--catch-all-routes)
-- [Pathless Routes](./routing-concepts.md#pathless-routes)
-- [Non-Nested Routes](./routing-concepts.md#non-nested-routes)
-- [Not-Found Routes](./routing-concepts.md#404--notfoundroutes)
+- [The Root Route](./guide/routing-concepts.md#the-root-route)
+- [Static Routes](./guide/routing-concepts.md#static-routes)
+- [Index Routes](./guide/routing-concepts.md#index-routes)
+- [Dynamic Route Segments](./guide/routing-concepts.md#dynamic-route-segments)
+- [Splat / Catch-All Routes](./guide/routing-concepts.md#splat--catch-all-routes)
+- [Pathless Routes](./guide/routing-concepts.md#pathless-routes)
+- [Non-Nested Routes](./guide/routing-concepts.md#non-nested-routes)
+- [Not-Found Routes](./guide/routing-concepts.md#404--notfoundroutes)
 
 Each of these concepts is useful and powerful, and we'll dive into each of them in the following sections.
 
