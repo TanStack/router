@@ -13,10 +13,10 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
+        {[...posts(), { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
           (post) => {
             return (
-              <li key={post.id} class="whitespace-nowrap">
+              <li class="whitespace-nowrap">
                 <Link
                   to="/posts/$postId"
                   params={{

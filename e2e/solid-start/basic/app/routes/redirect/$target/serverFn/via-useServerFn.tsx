@@ -5,13 +5,13 @@ export const Route = createFileRoute(
   '/redirect/$target/serverFn/via-useServerFn',
 )({
   component: () => {
-    const { target } = Route.useParams()
-    const { reloadDocument, externalHost } = Route.useSearch()
+    const params = Route.useParams()
+    const search = Route.useSearch()
     return (
       <RedirectOnClick
-        target={target}
-        reloadDocument={reloadDocument}
-        externalHost={externalHost}
+        target={params().target}
+        reloadDocument={search().reloadDocument}
+        externalHost={search().externalHost}
       />
     )
   },
