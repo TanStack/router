@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.111.3",
+    "@tanstack/solid-router": "^1.111.4",
     "@tanstack/router-devtools": "^1.111.3",
     "@tanstack/router-plugin": "^1.111.3",
     "immer": "^10.1.1",
