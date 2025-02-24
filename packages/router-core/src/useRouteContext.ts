@@ -1,5 +1,5 @@
 import type { AllContext, RouteById } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { AnyRouter } from './router'
 import type { Expand, StrictOrFrom } from './utils'
 
 export interface UseRouteContextBaseOptions<
@@ -37,10 +37,3 @@ export type UseRouteContextResult<
 > = unknown extends TSelected
   ? ResolveUseRouteContext<TRouter, TFrom, TStrict>
   : TSelected
-
-export type UseRouteContextRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
-  TSelected = unknown,
->(
-  opts?: UseRouteContextBaseOptions<TRouter, TFrom, true, TSelected>,
-) => UseRouteContextResult<TRouter, TFrom, true, TSelected>

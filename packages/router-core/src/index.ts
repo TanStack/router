@@ -277,7 +277,6 @@ export type {
 } from './validators'
 
 export type {
-  UseRouteContextRoute,
   UseRouteContextBaseOptions,
   UseRouteContextOptions,
   UseRouteContextResult,

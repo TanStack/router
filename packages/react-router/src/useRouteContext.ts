@@ -1,9 +1,17 @@
 import { useMatch } from './useMatch'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type {
+  UseRouteContextBaseOptions,
   UseRouteContextOptions,
   UseRouteContextResult,
 } from '@tanstack/router-core'
+
+export type UseRouteContextRoute<out TFrom> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+>(
+  opts?: UseRouteContextBaseOptions<TRouter, TFrom, true, TSelected>,
+) => UseRouteContextResult<TRouter, TFrom, true, TSelected>
 
 export function useRouteContext<
   TRouter extends AnyRouter = RegisteredRouter,
