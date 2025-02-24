@@ -5,4 +5,4 @@ import { render } from 'solid-js/web'
 
 const router = createRouter()
 
-render(()=> <StartClient router={router} />, document)
+render(() => <StartClient router={router} />, document)
