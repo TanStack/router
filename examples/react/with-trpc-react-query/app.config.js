@@ -30,9 +30,10 @@ export default createApp({
       target: 'browser',
       plugins: () => [
         TanStackRouterVite({
+          target: 'react',
+          autoCodeSplitting: true,
           routesDirectory: './app/routes',
           generatedRouteTree: './app/routeTree.gen.ts',
-          autoCodeSplitting: true,
         }),
         reactRefresh(),
       ],
