@@ -5,6 +5,7 @@ import type { ErrorComponentProps } from '@tanstack/solid-router'
 import type { User } from '~/utils/users'
 import { DEPLOY_URL } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
+import { UserErrorComponent } from '~/components/UserErrorComponent'
 
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
@@ -22,9 +23,7 @@ export const Route = createFileRoute('/users/$userId')({
   },
 })
 
-export function UserErrorComponent({ error }: ErrorComponentProps) {
-  return <ErrorComponent error={error} />
-}
+
 
 function UserComponent() {
   const user = Route.useLoaderData()

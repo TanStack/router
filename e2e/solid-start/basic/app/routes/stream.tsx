@@ -24,7 +24,7 @@ export const Route = createFileRoute('/stream')({
 const decoder = new TextDecoder('utf-8')
 
 function Home() {
-  const loaderData: any = Route.useLoaderData()
+  const loaderData = Route.useLoaderData()
   const [streamData, setStreamData] = createSignal<Array<string>>([])
 
   createEffect(() => {
