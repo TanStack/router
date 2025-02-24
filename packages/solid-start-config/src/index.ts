@@ -156,7 +156,6 @@ export async function defineConfig(
   await dummyNitroApp.close()
 
   let vinxiApp = createApp({
-    
     server: {
       ...serverOptions,
       preset: deploymentPreset,
