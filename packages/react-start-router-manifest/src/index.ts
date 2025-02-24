@@ -31,11 +31,12 @@ export function getFullRouterManifest() {
         'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
       )
     }
-    script = `import RefreshRuntime from "/${CLIENT_BASE}/@react-refresh";
-    RefreshRuntime.injectIntoGlobalHook(window)
-    window.$RefreshReg$ = () => {}
-    window.$RefreshSig$ = () => (type) => type
-    window.__vite_plugin_react_preamble_installed__ = true;`
+    // TODO: WE NEED TO CONDITIONALLY DISABLE THIS FOR SOLID
+    // script = `import RefreshRuntime from "/${CLIENT_BASE}/@react-refresh";
+    // RefreshRuntime.injectIntoGlobalHook(window)
+    // window.$RefreshReg$ = () => {}
+    // window.$RefreshSig$ = () => (type) => type
+    // window.__vite_plugin_react_preamble_installed__ = true;`
   }
 
   // Get the entry for the client from vinxi
