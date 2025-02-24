@@ -16,7 +16,7 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
-    entry: './src/index.tsx',
+    entry: './src/index.ts',
     srcDir: './src',
     externalDeps: ['tsr:server-fn-manifest'],
   }),
