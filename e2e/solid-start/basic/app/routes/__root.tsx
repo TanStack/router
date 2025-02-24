@@ -16,7 +16,6 @@ import { seo } from '~/utils/seo'
 export const Route = createRootRoute({
   head: () => ({
     meta: [
-      
       {
         name: 'viewport',
         content: 'width=device-width, initial-scale=1',
