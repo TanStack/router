@@ -6,6 +6,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 export default defineConfig({
   plugins: [
     TanStackRouterVite({
+      target: 'react',
       autoCodeSplitting: true,
       codeSplittingOptions: {
         splitBehavior: ({ routeId }) => {
