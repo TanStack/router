@@ -13,15 +13,16 @@ import { defineHandlerCallback } from './handlerCallback'
 import type { ReadableStream } from 'node:stream/web'
 
 export const defaultStreamHandler = defineHandlerCallback(
-  async ({ request, router, responseHeaders }) => {
+  ({ request, router, responseHeaders }) => {
     if (typeof Solid.renderToStream === 'function') {
-      const stream = await Solid.renderToStream(() => (
-        <StartServer router={router} />
-      ))
+      const stream = Solid.renderToStream(() => <StartServer router={router} />)
+
+      const { writable, readable } = new TransformStream()
+      stream.pipeTo(writable)
 
       const responseStream = transformReadableStreamWithRouter(
         router,
-        stream as unknown as ReadableStream,
+        readable as unknown as ReadableStream,
       )
       return new Response(responseStream as any, {
         status: router.state.statusCode,

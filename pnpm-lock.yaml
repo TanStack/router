@@ -5680,6 +5680,9 @@ importers:
 
   packages/solid-start:
     dependencies:
+      '@tanstack/solid-start-api-routes':
+        specifier: workspace:^
+        version: link:../solid-start-api-routes
       '@tanstack/solid-start-client':
         specifier: workspace:^
         version: link:../solid-start-client
@@ -5695,28 +5698,41 @@ importers:
       '@tanstack/solid-start-server-functions-handler':
         specifier: workspace:^
         version: link:../solid-start-server-functions-handler
-      '@tanstack/start-api-routes':
-        specifier: workspace:*
-        version: link:../start-api-routes
+      '@tanstack/solid-start-server-functions-ssr':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-ssr
       '@tanstack/start-router-manifest':
         specifier: workspace:*
         version: link:../start-router-manifest
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
-      '@tanstack/start-server-functions-ssr':
-        specifier: workspace:*
-        version: link:../start-server-functions-ssr
       solid-js:
         specifier: '>=1.0.0'
         version: 1.9.4
       vite:
         specifier: 6.1.0
-        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
     devDependencies:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.0
+
+  packages/solid-start-api-routes:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/solid-start-server':
+        specifier: workspace:^
+        version: link:../solid-start-server
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
 
   packages/solid-start-client:
     dependencies:
@@ -5743,7 +5759,7 @@ importers:
         version: 1.0.3
       vinxi:
         specifier: ^0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
@@ -5756,7 +5772,7 @@ importers:
         version: 3.0.3
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start-config:
     dependencies:
@@ -5792,13 +5808,13 @@ importers:
         version: 1.9.4
       vinxi:
         specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
       vite:
         specifier: 6.1.0
-        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       zod:
         specifier: ^3.24.1
         version: 3.24.1
@@ -5847,7 +5863,7 @@ importers:
         version: 5.7.3
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start-server-functions-client:
     dependencies:
@@ -5882,7 +5898,7 @@ importers:
         version: 5.7.3
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start-server-functions-handler:
     dependencies:
@@ -5907,7 +5923,29 @@ importers:
         version: 5.7.3
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  packages/solid-start-server-functions-ssr:
+    dependencies:
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:*
+        version: link:../server-functions-plugin
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+      '@tanstack/solid-start-server':
+        specifier: workspace:^
+        version: link:../solid-start-server
+      '@tanstack/solid-start-server-functions-fetcher':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-fetcher
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
 
   packages/start:
     dependencies:

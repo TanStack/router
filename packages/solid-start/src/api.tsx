@@ -1,1 +1,1 @@
-export * from '@tanstack/start-api-routes'
+export * from '@tanstack/solid-start-api-routes'
