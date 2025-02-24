@@ -8,19 +8,19 @@ import {
 } from '../src'
 import type { Accessor } from 'solid-js'
 import type {
-  AnyRouter,
   BuildLocationFn,
   ControlledPromise,
   NavigateFn,
   NavigateOptions,
   ParsedLocation,
-  Route,
   SearchSchemaInput,
 } from '../src'
 import type {
+  AnyRoute,
+  AnyRouter,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
-} from '../src/Matches'
+} from '@tanstack/router-core'
 
 test('when creating the root', () => {
   const rootRoute = createRootRoute()
@@ -89,7 +89,7 @@ test('when creating the root with a loader', () => {
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: never
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>()
     },
   })
@@ -197,7 +197,7 @@ test('when creating the root route with context and a loader', () => {
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: never
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>()
     },
   })
@@ -272,7 +272,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: never
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>()
     },
   })
@@ -414,7 +414,7 @@ test('when creating a child route with a loader from the root route', () => {
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>()
       return [{ id: 'invoice1' }, { id: 'invoice2' }] as const
     },
@@ -460,7 +460,7 @@ test('when creating a child route with a loader from the root route with context
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>()
       return [{ id: 'invoice1' }, { id: 'invoice2' }] as const
     },
@@ -654,7 +654,7 @@ test('when creating a child route with params, search and loader from the root r
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>
     },
   })
@@ -679,7 +679,7 @@ test('when creating a child route with params, search, loader and loaderDeps fro
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>(),
   })
 })
@@ -703,7 +703,7 @@ test('when creating a child route with params, search, loader and loaderDeps fro
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>(),
   })
 })
@@ -806,7 +806,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
         parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>()
     },
   })
@@ -1167,7 +1167,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           MakeRouteMatchFromRoute<typeof detailsRoute>
         >
         cause: 'preload' | 'enter' | 'stay'
-        route: Route
+        route: AnyRoute
       }>(),
   })
 })

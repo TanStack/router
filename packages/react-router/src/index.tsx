@@ -123,6 +123,7 @@ export type {
   ValidatorObj,
   FileRoutesByPath,
   RouteById,
+  RootRouteOptions,
 } from '@tanstack/router-core'
 
 export {
@@ -271,7 +272,6 @@ export type {
   RouteComponent,
   ErrorRouteComponent,
   NotFoundRouteComponent,
-  RootRouteOptions,
 } from './route'
 
 export {

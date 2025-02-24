@@ -10,7 +10,13 @@ import type { RootRouteId } from './root'
 import type { ParseRoute } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
-import type { Assign, Constrain, Expand, IntersectAssign } from './utils'
+import type {
+  Assign,
+  Constrain,
+  Expand,
+  IntersectAssign,
+  NoInfer,
+} from './utils'
 import type {
   AnySchema,
   AnyStandardSchemaValidator,
