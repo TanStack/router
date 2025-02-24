@@ -711,18 +711,19 @@ export async function generator(config: Config, root: string) {
     )
   }
 
+  const includeManifest = ['react', 'solid']
   const routeConfigFileContent =
     // TODO: Remove this disabled eslint rule when more target types are added.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    config.disableManifestGeneration
-      ? routeImports
-      : [
+    includeManifest.includes(config.target)
+      ? [
           routeImports,
           '\n',
           '/* ROUTE_MANIFEST_START',
           createRouteManifest(),
           'ROUTE_MANIFEST_END */',
         ].join('\n')
+      : routeImports
 
   if (!checkLatest()) return
 
