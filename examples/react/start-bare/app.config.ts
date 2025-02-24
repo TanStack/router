@@ -1,7 +1,6 @@
 import { defineConfig } from '@tanstack/start/config'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite';
-import { PluginOption } from 'vite';
 
 export default defineConfig({
   vite: {
@@ -9,7 +8,7 @@ export default defineConfig({
       tsConfigPaths({
         projects: ['./tsconfig.json'],
       }),
-      tailwindcss() as PluginOption,
+      tailwindcss(),
     ],
   },
 })
