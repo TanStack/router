@@ -23,8 +23,6 @@ export const Route = createFileRoute('/users/$userId')({
   },
 })
 
-
-
 function UserComponent() {
   const user = Route.useLoaderData()
 
