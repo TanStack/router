@@ -9,7 +9,7 @@ export const Route = createFileRoute('/not-found/')({
           <Link
             from={Route.fullPath}
             to="./via-beforeLoad"
-            preload={preload}
+            preload={preload()}
             data-testid="via-beforeLoad"
           >
             via-beforeLoad
@@ -19,7 +19,7 @@ export const Route = createFileRoute('/not-found/')({
           <Link
             from={Route.fullPath}
             to="./via-loader"
-            preload={preload}
+            preload={preload()}
             data-testid="via-loader"
           >
             via-loader
