@@ -4538,7 +4538,7 @@ importers:
         specifier: ^5.66.0
         version: 5.66.0(@tanstack/solid-query@5.66.0(solid-js@1.9.4))(solid-js@1.9.4)
       '@tanstack/solid-router':
-        specifier: ^1.111.7
+        specifier: ^1.111.8
         version: link:../../../packages/solid-router
       autoprefixer:
         specifier: ^10.4.20
@@ -4575,7 +4575,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.111.7
+        specifier: ^1.111.8
         version: link:../../../packages/solid-router
       autoprefixer:
         specifier: ^10.4.20
