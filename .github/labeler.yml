@@ -10,8 +10,6 @@
   - 'packages/eslint-plugin-router/**/*'
 'package: history':
   - 'packages/history/**/*'
-'package: react-cross-context':
-  - 'packages/react-cross-context/**/*'
 'package: react-router':
   - 'packages/react-router/**/*'
 'package: react-router-with-query':
@@ -32,8 +30,6 @@
   - 'packages/router-vite-plugin/**/*'
 'package: server-functions-plugin':
   - 'packages/server-functions-plugin/**/*'
-'package: solid-cross-context':
-  - 'packages/solid-cross-context/**/*'
 'package: solid-router':
   - 'packages/solid-router/**/*'
 'package: start':
