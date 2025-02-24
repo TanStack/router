@@ -281,6 +281,7 @@ export async function defineConfig(
             }),
             TanStackRouterVite({
               ...tsrConfig,
+              target: 'solid',
               enableRouteGeneration: false,
               autoCodeSplitting: true,
               experimental: {
@@ -347,6 +348,7 @@ export async function defineConfig(
             }),
             TanStackRouterVite({
               ...tsrConfig,
+              target: 'solid',
               enableRouteGeneration: false,
               autoCodeSplitting: true,
               experimental: {
@@ -439,6 +441,7 @@ export async function defineConfig(
           }),
           TanStackRouterVite({
             ...tsrConfig,
+            target: 'solid',
             enableRouteGeneration: false,
             autoCodeSplitting: true,
             experimental: {
