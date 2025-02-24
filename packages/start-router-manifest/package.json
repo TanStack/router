@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-router-manifest",
-  "version": "1.111.0",
+  "version": "1.111.6",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",

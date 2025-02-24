@@ -90,12 +90,16 @@
               "to": "framework/react/guide/routing-concepts"
             },
             {
+              "label": "File-Based Routing",
+              "to": "framework/react/guide/file-based-routing"
+            },
+            {
               "label": "Code Splitting",
               "to": "framework/react/guide/code-splitting"
             },
             {
-              "label": "File-Based Routing",
-              "to": "framework/react/guide/file-based-routing"
+              "label": "Automatic Code Splitting",
+              "to": "framework/react/guide/automatic-code-splitting"
             },
             {
               "label": "Virtual File Routes",
@@ -227,12 +231,16 @@
               "to": "framework/solid/guide/routing-concepts"
             },
             {
+              "label": "File-Based Routing",
+              "to": "framework/solid/guide/file-based-routing"
+            },
+            {
               "label": "Code Splitting",
               "to": "framework/solid/guide/code-splitting"
             },
             {
-              "label": "File-Based Routing",
-              "to": "framework/solid/guide/file-based-routing"
+              "label": "Automatic Code Splitting",
+              "to": "framework/solid/guide/automatic-code-splitting"
             },
             {
               "label": "Virtual File Routes",

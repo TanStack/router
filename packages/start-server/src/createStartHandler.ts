@@ -19,7 +19,7 @@ export function createStartHandler<
   getRouterManifest,
 }: {
   createRouter: () => TRouter
-  getRouterManifest?: () => Manifest
+  getRouterManifest?: () => Manifest | Promise<Manifest>
 }): CustomizeStartHandler<TRouter, TResponse> {
   return (cb) => {
     return eventHandler(async (event) => {
@@ -35,7 +35,7 @@ export function createStartHandler<
 
       const router = createRouter()
 
-      attachRouterServerSsrUtils(router, getRouterManifest?.())
+      attachRouterServerSsrUtils(router, await getRouterManifest?.())
 
       // Update the router with the history and context
       router.update({

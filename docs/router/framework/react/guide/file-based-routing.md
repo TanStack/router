@@ -125,26 +125,16 @@ File-based routing requires that you follow a few simple file naming conventions
 
 > **💡 Remember:** The file-naming conventions for your project could be affected by what [options](#options) are configured in your `tsr.config.json`. By default, the `routeFileIgnorePrefix` option is set to `-`, as such files and directories starting with `-` will not be considered for routing.
 
-- **`__root.tsx`**
-  - The root route file must be named `__root.tsx` and must be placed in the root of the configured `routesDirectory`.
-- **`.` Separator**
-  - Routes can use the `.` character to denote a nested route. For example, `blog.post` will be generated as a child of `blog`.
-- **`$` Token**
-  - Routes segments with the `$` token are parameterized and will extract the value from the URL pathname as a route `param`.
-- **`_` Prefix**
-  - Routes segments with the `_` prefix are considered layout-routes and will not be used when matching its child routes against the URL pathname.
-- **`_` Suffix**
-  - Routes segments with the `_` suffix exclude the route from being nested under any parent routes.
-- **`(folder)` folder name pattern**:
-  - A folder that matches this pattern is treated as a **route group** which prevents this folder to be included in the route's URL path.
-- **`index` Token**
-  - Routes segments ending with the `index` token (but before any file types) will be used to match the parent route when the URL pathname matches the parent route exactly.
-    This can be configured via the `indexToken` configuration option, see [options](#options).
-- **`.route.tsx` File Type**
-  - When using directories to organize your routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used as the route file for the `/blog/post` route.
-    This can be configured via the `routeToken` configuration option, see [options](#options).
-- **`.lazy.tsx` File Type**
-  - The `lazy` suffix can be used to code-split components for a route. For example, `blog.post.lazy.tsx` will be used as the component for the `blog.post` route.
+| Feature                            | Description                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`__root.tsx`**                   | The root route file must be named `__root.tsx` and must be placed in the root of the configured `routesDirectory`.                                                                                                                                                                                                                         |
+| **`.` Separator**                  | Routes can use the `.` character to denote a nested route. For example, `blog.post` will be generated as a child of `blog`.                                                                                                                                                                                                                |
+| **`$` Token**                      | Route segments with the `$` token are parameterized and will extract the value from the URL pathname as a route `param`.                                                                                                                                                                                                                   |
+| **`_` Prefix**                     | Route segments with the `_` prefix are considered to be pathless routes and will not be used when matching its child routes against the URL pathname.                                                                                                                                                                                      |
+| **`_` Suffix**                     | Route segments with the `_` suffix exclude the route from being nested under any parent routes.                                                                                                                                                                                                                                            |
+| **`(folder)` folder name pattern** | A folder that matches this pattern is treated as a **route group**, preventing the folder from being included in the route's URL path.                                                                                                                                                                                                     |
+| **`index` Token**                  | Route segments ending with the `index` token (before any file extensions) will match the parent route when the URL pathname matches the parent route exactly. This can be configured via the `indexToken` configuration option, see [options](#options).                                                                                   |
+| **`.route.tsx` File Type**         | When using directories to organise routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used as the route file for the `/blog/post` route. This can be configured via the `routeToken` configuration option, see [options](#options). |
 
 ## Installation
 
@@ -186,7 +176,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    TanStackRouterVite(),
+    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
     viteReact(),
     // ...
   ],
@@ -225,7 +215,9 @@ export default defineConfig({
   plugins: [pluginReact()],
   tools: {
     rspack: {
-      plugins: [TanStackRouterRspack()],
+      plugins: [
+        TanStackRouterRspack({ target: 'react', autoCodeSplitting: true }),
+      ],
     },
   },
 })
@@ -255,7 +247,9 @@ Once installed, you'll need to add the plugin to your configuration.
 import { TanStackRouterWebpack } from '@tanstack/router-plugin/webpack'
 
 export default {
-  plugins: [TanStackRouterWebpack()],
+  plugins: [
+    TanStackRouterWebpack({ target: 'react', autoCodeSplitting: true }),
+  ],
 }
 ```
 
@@ -284,7 +278,9 @@ import { TanStackRouterEsbuild } from '@tanstack/router-plugin/esbuild'
 
 export default {
   // ...
-  plugins: [TanStackRouterEsbuild()],
+  plugins: [
+    TanStackRouterEsbuild({ target: 'react', autoCodeSplitting: true }),
+  ],
 }
 ```
 
