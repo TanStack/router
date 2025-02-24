@@ -29,7 +29,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({ target: 'solid' }),
+    TanStackRouterVite({ target: 'solid', autoCodeSplitting: true }),
     solid(),
     // ...
   ],
