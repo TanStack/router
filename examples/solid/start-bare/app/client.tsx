@@ -1,8 +1,9 @@
 /// <reference types="vinxi/types/client" />
 import { StartClient } from '@tanstack/solid-start'
+
+import { hydrate } from 'solid-js/web'
 import { createRouter } from './router'
-import { render } from 'solid-js/web'
 
 const router = createRouter()
 
-render(() => <StartClient router={router} />, document)
+hydrate(() => <StartClient router={router} />, document)
