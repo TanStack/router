@@ -22,9 +22,12 @@ import type {
 import type { RegisteredRouter } from './router'
 import type {
   AnyContext,
+  AnyRoute as AnyCoreRoute,
   AnyPathParams,
+  AnyRouter,
   AnyValidator,
   Constrain,
+  ConstrainLiteral,
   FileRoutesByPath,
   ResolveParams,
   RouteById,
@@ -175,7 +178,7 @@ export type LazyRouteOptions = Pick<
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
 
-export class LazyRoute<TRoute extends AnyRoute> {
+export class LazyRoute<TRoute extends AnyCoreRoute> {
   options: {
     id: string
   } & LazyRouteOptions
@@ -236,11 +239,15 @@ export class LazyRoute<TRoute extends AnyRoute> {
 }
 
 export function createLazyRoute<
-  TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
->(id: TId) {
+  TRouter extends AnyRouter = RegisteredRouter,
+  TId extends string = string,
+  TRoute extends AnyCoreRoute = RouteById<TRouter['routeTree'], TId>,
+>(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
   return (opts: LazyRouteOptions) => {
-    return new LazyRoute<TRoute>({ id: id as any, ...opts })
+    return new LazyRoute<TRoute>({
+      id: id,
+      ...opts,
+    })
   }
 }
 

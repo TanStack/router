@@ -41,6 +41,7 @@ import type { NoInfer } from '@tanstack/react-store'
 
 import type {
   AnyContext,
+  AnyRedirect,
   AnySchema,
   AnyValidator,
   BuildLocationFn,
@@ -56,6 +57,7 @@ import type {
   PickAsRequired,
   Register,
   ResolveRelativePath,
+  ResolvedRedirect,
   RouteById,
   RoutePaths,
   RoutesById,
@@ -88,7 +90,6 @@ import type {
   MatchRouteOptions,
 } from './Matches'
 
-import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
 
 declare global {

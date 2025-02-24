@@ -5,12 +5,11 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { StrictOrFrom } from './utils'
 import type {
-  AllParams,
-  Expand,
-  RouteById,
+  ResolveUseParams,
+  StrictOrFrom,
   ThrowOrOptional,
+  UseParamsResult,
 } from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
@@ -22,7 +21,7 @@ export interface UseParamsBaseOptions<
   TStructuralSharing,
 > {
   select?: (
-    params: ResolveParams<TRouter, TFrom, TStrict>,
+    params: ResolveUseParams<TRouter, TFrom, TStrict>,
   ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
   shouldThrow?: TThrow
 }
@@ -44,23 +43,6 @@ export type UseParamsOptions<
     TStructuralSharing
   > &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
-
-export type ResolveParams<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-> = TStrict extends false
-  ? AllParams<TRouter['routeTree']>
-  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['allParams']>
-
-export type UseParamsResult<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-  TSelected,
-> = unknown extends TSelected
-  ? ResolveParams<TRouter, TFrom, TStrict>
-  : TSelected
 
 export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,

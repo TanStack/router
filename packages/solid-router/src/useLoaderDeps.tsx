@@ -1,14 +1,17 @@
 import { useMatch } from './useMatch'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { StrictOrFrom } from './utils'
-import type { Expand, RouteById } from '@tanstack/router-core'
+import type {
+  ResolveUseLoaderDeps,
+  UseLoaderDepsResult,
+} from '@tanstack/router-core'
 
 export interface UseLoaderDepsBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
   TSelected,
 > {
-  select?: (deps: ResolveLoaderDeps<TRouter, TFrom>) => TSelected
+  select?: (deps: ResolveUseLoaderDeps<TRouter, TFrom>) => TSelected
 }
 
 export type UseLoaderDepsOptions<
@@ -17,15 +20,6 @@ export type UseLoaderDepsOptions<
   TSelected,
 > = StrictOrFrom<TRouter, TFrom> &
   UseLoaderDepsBaseOptions<TRouter, TFrom, TSelected>
-export type ResolveLoaderDeps<TRouter extends AnyRouter, TFrom> = Expand<
-  RouteById<TRouter['routeTree'], TFrom>['types']['loaderDeps']
->
-
-export type UseLoaderDepsResult<
-  TRouter extends AnyRouter,
-  TFrom,
-  TSelected,
-> = unknown extends TSelected ? ResolveLoaderDeps<TRouter, TFrom> : TSelected
 
 export type UseLoaderDepsRoute<out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,

@@ -245,6 +245,7 @@ export type {
   MergeAllObjects,
   MergeAll,
   ValidateJSON,
+  StrictOrFrom,
 } from './utils'
 
 export type {
@@ -274,3 +275,21 @@ export type {
   ResolveValidatorOutputFn,
   ResolveValidatorOutput,
 } from './validators'
+
+export type {
+  UseRouteContextBaseOptions,
+  UseRouteContextOptions,
+  UseRouteContextResult,
+} from './useRouteContext'
+
+export type { UseSearchResult, ResolveUseSearch } from './useSearch'
+
+export type { UseParamsResult, ResolveUseParams } from './useParams'
+
+export type { UseNavigateResult } from './useNavigate'
+
+export type { UseLoaderDepsResult, ResolveUseLoaderDeps } from './useLoaderDeps'
+
+export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
+
+export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'
