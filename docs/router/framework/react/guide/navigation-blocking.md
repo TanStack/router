@@ -33,6 +33,8 @@ There are 2 ways to use navigation blocking:
 
 Let's imagine we want to prevent navigation if a form is dirty. We can do this by using the `useBlocker` hook:
 
+[//]: # 'HookBasedBlockingExample'
+
 ```tsx
 import { useBlocker } from '@tanstack/react-router'
 
@@ -51,6 +53,8 @@ function MyComponent() {
   // ...
 }
 ```
+
+[//]: # 'HookBasedBlockingExample'
 
 `shouldBlockFn` gives you type safe access to the `current` and `next` location:
 
@@ -81,6 +85,8 @@ You can find more information about the `useBlocker` hook in the [API reference]
 
 In addition to logical/hook based blocking, can use the `Block` component to achieve similar results:
 
+[//]: # 'ComponentBasedBlockingExample'
+
 ```tsx
 import { Block } from '@tanstack/react-router'
 
@@ -108,6 +114,8 @@ function MyComponent() {
 }
 ```
 
+[//]: # 'ComponentBasedBlockingExample'
+
 ## How can I show a custom UI?
 
 In most cases, using `window.confirm` in the `shouldBlockFn` function with `withResolver: false` in the hook is enough since it will clearly show the user that the navigation is being blocked and resolve the blocking based on their response.
@@ -117,6 +125,8 @@ However, in some situations, you might want to show a custom UI that is intentio
 **Note:** The return value of `shouldBlockFn` does not resolve the blocking if `withResolver` is `true`.
 
 ### Hook/logical-based custom UI with resolver
+
+[//]: # 'HookBasedCustomUIBlockingWithResolverExample'
 
 ```tsx
 import { useBlocker } from '@tanstack/react-router'
@@ -145,7 +155,11 @@ function MyComponent() {
 }
 ```
 
+[//]: # 'HookBasedCustomUIBlockingWithResolverExample'
+
 ### Hook/logical-based custom UI without resolver
+
+[//]: # 'HookBasedCustomUIBlockingWithoutResolverExample'
 
 ```tsx
 import { useBlocker } from '@tanstack/react-router'
@@ -186,9 +200,13 @@ function MyComponent() {
 }
 ```
 
+[//]: # 'HookBasedCustomUIBlockingWithoutResolverExample'
+
 ### Component-based custom UI
 
 Similarly to the hook, the `Block` component returns the same state and functions as render props:
+
+[//]: # 'ComponentBasedCustomUIBlockingExample'
 
 ```tsx
 import { Block } from '@tanstack/react-router'
@@ -214,3 +232,5 @@ function MyComponent() {
   )
 }
 ```
+
+[//]: # 'ComponentBasedCustomUIBlockingExample'

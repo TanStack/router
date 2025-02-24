@@ -17,7 +17,7 @@ const postRoute = createFileRoute('/_postLayout/posts/$postId_')()
 
 const protectedRoute = createFileRoute('/(auth)/protected')()
 
-declare module '../src/fileRoute' {
+declare module '@tanstack/router-core' {
   interface FileRoutesByPath {
     '/': {
       preLoaderRoute: typeof indexRoute

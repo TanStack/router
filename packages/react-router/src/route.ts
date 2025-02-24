@@ -12,38 +12,46 @@ import type {
   AnyPathParams,
   AnySchema,
   AnyValidator,
-  Assign,
+  BeforeLoadContextParameter,
+  BuildLocationFn,
   Constrain,
   ConstrainLiteral,
-  ContextAsyncReturnType,
-  ContextReturnType,
+  RootRoute as CoreRootRoute,
+  Route as CoreRoute,
   DefaultValidator,
   ErrorComponentProps,
   Expand,
-  InferAllContext,
-  InferAllParams,
-  InferFullSearchSchema,
-  InferFullSearchSchemaInput,
-  IntersectAssign,
+  FullSearchSchemaOption,
+  NavigateFn,
+  NavigateOptions,
   NoInfer,
   NotFoundRouteProps,
   ParamsOptions,
   ParsedLocation,
+  RemountDepsOptions,
+  ResolveAllContext,
+  ResolveAllParamsFromParent,
+  ResolveFullPath,
+  ResolveFullSearchSchema,
+  ResolveFullSearchSchemaInput,
   ResolveId,
   ResolveLoaderData,
   ResolveParams,
-  ResolveRouteContext,
-  ResolveSearchValidatorInput,
-  ResolveValidatorOutput,
   RootRouteId,
+  RouteById,
   RouteContext,
+  RouteContextParameter,
+  RouteIds,
   RoutePathOptions,
   RoutePathOptionsIntersection,
-  RoutePrefix,
+  RoutePaths,
+  RouteTypes,
   SearchFilter,
   SearchMiddleware,
+  ToMaskOptions,
   TrimPathRight,
   UpdatableStaticRouteOption,
+  UseNavigateResult,
 } from '@tanstack/router-core'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseMatchRoute } from './useMatch'
@@ -51,20 +59,15 @@ import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type * as React from 'react'
-import type { UseNavigateResult } from './useNavigate'
 import type {
   AnyRouteMatch,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
   RouteMatch,
 } from './Matches'
-import type { NavigateOptions, ToMaskOptions } from './link'
-import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, Router } from './router'
-import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type { NotFoundError } from './not-found'
 import type { LazyRoute } from './fileRoute'
-
 import type { UseRouteContextRoute } from './useRouteContext'
 
 export type RouteOptions<
@@ -105,13 +108,6 @@ export type RouteOptions<
     NoInfer<TRouteContextFn>,
     NoInfer<TBeforeLoadFn>
   >
-
-export interface FullSearchSchemaOption<
-  in out TParentRoute extends AnyRoute,
-  in out TSearchValidator,
-> {
-  search: Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
-}
 
 export type RouteContextFn<
   in out TParentRoute extends AnyRoute,
@@ -287,30 +283,6 @@ export interface RouteContextOptions<
   deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
-
-export interface RemountDepsOptions<
-  in out TRouteId,
-  in out TFullSearchSchema,
-  in out TAllParams,
-  in out TLoaderDeps,
-> {
-  routeId: TRouteId
-  search: TFullSearchSchema
-  params: TAllParams
-  loaderDeps: TLoaderDeps
-}
-
-export type MakeRemountDepsOptionsUnion<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRoute extends AnyRoute = ParseRoute<TRouteTree>,
-> = TRoute extends any
-  ? RemountDepsOptions<
-      TRoute['id'],
-      TRoute['types']['fullSearchSchema'],
-      TRoute['types']['allParams'],
-      TRoute['types']['loaderDeps']
-    >
-  : never
 
 export interface BeforeLoadContextOptions<
   in out TParentRoute extends AnyRoute,
@@ -570,50 +542,6 @@ export interface LoaderFnContext<
   route: Route
 }
 
-export type ResolveFullSearchSchema<
-  TParentRoute extends AnyRoute,
-  TSearchValidator,
-> = unknown extends TParentRoute
-  ? ResolveValidatorOutput<TSearchValidator>
-  : IntersectAssign<
-      InferFullSearchSchema<TParentRoute>,
-      ResolveValidatorOutput<TSearchValidator>
-    >
-
-export type ResolveFullSearchSchemaInput<
-  TParentRoute extends AnyRoute,
-  TSearchValidator,
-> = IntersectAssign<
-  InferFullSearchSchemaInput<TParentRoute>,
-  ResolveSearchValidatorInput<TSearchValidator>
->
-
-export type RouteContextParameter<
-  TParentRoute extends AnyRoute,
-  TRouterContext,
-> = unknown extends TParentRoute
-  ? TRouterContext
-  : Assign<TRouterContext, InferAllContext<TParentRoute>>
-
-export type BeforeLoadContextParameter<
-  TParentRoute extends AnyRoute,
-  TRouterContext,
-  TRouteContextFn,
-> = Assign<
-  RouteContextParameter<TParentRoute, TRouterContext>,
-  ContextReturnType<TRouteContextFn>
->
-
-export type ResolveAllContext<
-  TParentRoute extends AnyRoute,
-  TRouterContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-> = Assign<
-  BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>,
-  ContextAsyncReturnType<TBeforeLoadFn>
->
-
 export interface AnyRoute
   extends Route<
     any,
@@ -628,17 +556,9 @@ export interface AnyRoute
     any,
     any,
     any,
+    any,
     any
   > {}
-
-export type AnyRouteWithContext<TContext> = AnyRoute & {
-  types: { allContext: TContext }
-}
-
-export type ResolveAllParamsFromParent<
-  TParentRoute extends AnyRoute,
-  TParams,
-> = Assign<InferAllParams<TParentRoute>, TParams>
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -753,7 +673,25 @@ export class Route<
   in out TLoaderDeps extends Record<string, any> = {},
   in out TLoaderFn = undefined,
   in out TChildren = unknown,
-> {
+  in out TFileRouteTypes = unknown,
+> implements
+    CoreRoute<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+{
   isRoot: TParentRoute extends Route<any> ? true : false
   options: RouteOptions<
     TParentRoute,
@@ -852,37 +790,22 @@ export class Route<
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
-  types!: {
-    parentRoute: TParentRoute
-    path: TPath
-    to: TrimPathRight<TFullPath>
-    fullPath: TFullPath
-    customId: TCustomId
-    id: TId
-    searchSchema: ResolveValidatorOutput<TSearchValidator>
-    searchSchemaInput: ResolveSearchValidatorInput<TSearchValidator>
-    searchValidator: TSearchValidator
-    fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
-    fullSearchSchemaInput: ResolveFullSearchSchemaInput<
-      TParentRoute,
-      TSearchValidator
-    >
-    params: TParams
-    allParams: ResolveAllParamsFromParent<TParentRoute, TParams>
-    routerContext: TRouterContext
-    routeContext: ResolveRouteContext<TRouteContextFn, TBeforeLoadFn>
-    routeContextFn: TRouteContextFn
-    beforeLoadFn: TBeforeLoadFn
-    allContext: ResolveAllContext<
-      TParentRoute,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn
-    >
-    children: TChildren
-    loaderData: ResolveLoaderData<TLoaderFn>
-    loaderDeps: TLoaderDeps
-  }
+  types!: RouteTypes<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes
+  >
 
   init = (opts: { originalIndex: number; defaultSsr?: boolean }): void => {
     this.originalIndex = opts.originalIndex
@@ -973,7 +896,8 @@ export class Route<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TNewChildren
+    TNewChildren,
+    TFileRouteTypes
   > {
     return this._addFileChildren(children) as Route<
       TParentRoute,
@@ -988,7 +912,8 @@ export class Route<
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TNewChildren
+      TNewChildren,
+      TFileRouteTypes
     >
   }
 
@@ -1007,7 +932,8 @@ export class Route<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TNewChildren
+    TNewChildren,
+    TFileRouteTypes
   > {
     if (Array.isArray(children)) {
       this.children = children as TChildren
@@ -1030,7 +956,8 @@ export class Route<
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TNewChildren
+      TNewChildren,
+      TFileRouteTypes
     >
   }
 
@@ -1062,7 +989,8 @@ export class Route<
       TBeforeLoadFn,
       TLoaderDeps,
       TNewLoaderFn,
-      TChildren
+      TChildren,
+      TFileRouteTypes
     >
   }
 
@@ -1256,29 +1184,43 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-  in out TSearchValidator = undefined,
-  in out TRouterContext = {},
-  in out TRouteContextFn = AnyContext,
-  in out TBeforeLoadFn = AnyContext,
-  in out TLoaderDeps extends Record<string, any> = {},
-  in out TLoaderFn = undefined,
-  in out TChildren = unknown,
-  in out TFileRouteTypes = unknown,
-> extends Route<
-  any, // TParentRoute
-  '/', // TPath
-  '/', // TFullPath
-  string, // TCustomId
-  RootRouteId, // TId
-  TSearchValidator, // TSearchValidator
-  {}, // TParams
-  TRouterContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-  TLoaderDeps,
-  TLoaderFn,
-  TChildren // TChildren
-> {
+    in out TSearchValidator = undefined,
+    in out TRouterContext = {},
+    in out TRouteContextFn = AnyContext,
+    in out TBeforeLoadFn = AnyContext,
+    in out TLoaderDeps extends Record<string, any> = {},
+    in out TLoaderFn = undefined,
+    in out TChildren = unknown,
+    in out TFileRouteTypes = unknown,
+  >
+  extends Route<
+    any, // TParentRoute
+    '/', // TPath
+    '/', // TFullPath
+    string, // TCustomId
+    RootRouteId, // TId
+    TSearchValidator, // TSearchValidator
+    {}, // TParams
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren, // TChildren
+    TFileRouteTypes
+  >
+  implements
+    CoreRootRoute<
+      TSearchValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+{
   /**
    * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
    */
@@ -1388,12 +1330,6 @@ export function createRootRoute<
     TLoaderFn
   >(options)
 }
-
-export type ResolveFullPath<
-  TParentRoute extends AnyRoute,
-  TPath extends string,
-  TPrefixed = RoutePrefix<TParentRoute['fullPath'], TPath>,
-> = TPrefixed extends RootRouteId ? '/' : TPrefixed
 
 export type RouteMask<TRouteTree extends AnyRoute> = {
   routeTree: TRouteTree

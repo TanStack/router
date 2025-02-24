@@ -5,5 +5,12 @@ import { routes } from './routes'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [TanStackRouterVite({ virtualRouteConfig: routes }), react()],
+  plugins: [
+    TanStackRouterVite({
+      target: 'react',
+      autoCodeSplitting: true,
+      virtualRouteConfig: routes,
+    }),
+    react(),
+  ],
 })

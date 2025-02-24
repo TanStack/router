@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-client",
-  "version": "1.109.2",
+  "version": "1.111.6",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -63,7 +63,6 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/react-cross-context": "workspace:^",
     "@tanstack/react-router": "workspace:^",
     "cookie-es": "^1.2.2",
     "jsesc": "^3.1.0",

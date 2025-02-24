@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
-
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
@@ -18,6 +16,7 @@ import { Route as DashboardImport } from './routes/dashboard'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as IndexImport } from './routes/index'
+import { Route as ExpensiveIndexImport } from './routes/expensive/index'
 import { Route as DashboardIndexImport } from './routes/dashboard.index'
 import { Route as FooBarImport } from './routes/foo/bar'
 import { Route as DashboardUsersImport } from './routes/dashboard.users'
@@ -29,10 +28,6 @@ import { Route as DashboardUsersIndexImport } from './routes/dashboard.users.ind
 import { Route as DashboardInvoicesIndexImport } from './routes/dashboard.invoices.index'
 import { Route as DashboardUsersUserImport } from './routes/dashboard.users.user'
 import { Route as DashboardInvoicesInvoiceIdImport } from './routes/dashboard.invoices.$invoiceId'
-
-// Create Virtual Routes
-
-const ExpensiveIndexLazyImport = createFileRoute('/expensive/')()
 
 // Create/Update Routes
 
@@ -64,13 +59,11 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const ExpensiveIndexLazyRoute = ExpensiveIndexLazyImport.update({
+const ExpensiveIndexRoute = ExpensiveIndexImport.update({
   id: '/expensive/',
   path: '/expensive/',
   getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import('./routes/expensive/index.lazy').then((d) => d.Route),
-)
+} as any)
 
 const DashboardIndexRoute = DashboardIndexImport.update({
   id: '/',
@@ -232,7 +225,7 @@ declare module '@tanstack/react-router' {
       id: '/expensive/'
       path: '/expensive'
       fullPath: '/expensive'
-      preLoaderRoute: typeof ExpensiveIndexLazyImport
+      preLoaderRoute: typeof ExpensiveIndexImport
       parentRoute: typeof rootRoute
     }
     '/dashboard/invoices/$invoiceId': {
@@ -346,7 +339,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/users': typeof DashboardUsersRouteWithChildren
   '/foo/bar': typeof FooBarRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/expensive': typeof ExpensiveIndexLazyRoute
+  '/expensive': typeof ExpensiveIndexRoute
   '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
   '/dashboard/users/user': typeof DashboardUsersUserRoute
   '/dashboard/invoices/': typeof DashboardInvoicesIndexRoute
@@ -362,7 +355,7 @@ export interface FileRoutesByTo {
   '/layout-b': typeof LayoutLayoutBRoute
   '/foo/bar': typeof FooBarRoute
   '/dashboard': typeof DashboardIndexRoute
-  '/expensive': typeof ExpensiveIndexLazyRoute
+  '/expensive': typeof ExpensiveIndexRoute
   '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
   '/dashboard/users/user': typeof DashboardUsersUserRoute
   '/dashboard/invoices': typeof DashboardInvoicesIndexRoute
@@ -383,7 +376,7 @@ export interface FileRoutesById {
   '/dashboard/users': typeof DashboardUsersRouteWithChildren
   '/foo/bar': typeof FooBarRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/expensive/': typeof ExpensiveIndexLazyRoute
+  '/expensive/': typeof ExpensiveIndexRoute
   '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
   '/dashboard/users/user': typeof DashboardUsersUserRoute
   '/dashboard/invoices/': typeof DashboardInvoicesIndexRoute
@@ -453,7 +446,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   FooBarRoute: typeof FooBarRoute
-  ExpensiveIndexLazyRoute: typeof ExpensiveIndexLazyRoute
+  ExpensiveIndexRoute: typeof ExpensiveIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -463,7 +456,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   FooBarRoute: FooBarRoute,
-  ExpensiveIndexLazyRoute: ExpensiveIndexLazyRoute,
+  ExpensiveIndexRoute: ExpensiveIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -548,7 +541,7 @@ export const routeTree = rootRoute
       "parent": "/dashboard"
     },
     "/expensive/": {
-      "filePath": "expensive/index.lazy.tsx"
+      "filePath": "expensive/index.tsx"
     },
     "/dashboard/invoices/$invoiceId": {
       "filePath": "dashboard.invoices.$invoiceId.tsx",

@@ -1,10 +1,13 @@
 import { useMatch } from './useMatch'
 import type { ThrowConstraint } from './useMatch'
 import type { Accessor } from 'solid-js'
-import type { AllParams, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { StrictOrFrom } from './utils'
-import type { Expand, ThrowOrOptional } from '@tanstack/router-core'
+import type {
+  ResolveUseParams,
+  ThrowOrOptional,
+  UseParamsResult,
+} from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
   TRouter extends AnyRouter,
@@ -13,7 +16,7 @@ export interface UseParamsBaseOptions<
   TThrow extends boolean,
   TSelected,
 > {
-  select?: (params: ResolveParams<TRouter, TFrom, TStrict>) => TSelected
+  select?: (params: ResolveUseParams<TRouter, TFrom, TStrict>) => TSelected
   shouldThrow?: TThrow
 }
 
@@ -25,22 +28,6 @@ export type UseParamsOptions<
   TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
   UseParamsBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
-export type ResolveParams<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-> = TStrict extends false
-  ? AllParams<TRouter['routeTree']>
-  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['allParams']>
-
-export type UseParamsResult<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-  TSelected,
-> = unknown extends TSelected
-  ? ResolveParams<TRouter, TFrom, TStrict>
-  : TSelected
 
 export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,

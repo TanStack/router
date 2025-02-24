@@ -12,6 +12,8 @@ While repeating yourself can be acceptable in many situations, you might find th
 
 If you want to create a basic custom link component, you can do so with the following:
 
+[//]: # 'BasicExampleImplementation'
+
 ```tsx
 import * as React from 'react'
 import { createLink, LinkComponent } from '@tanstack/react-router'
@@ -35,13 +37,19 @@ export const CustomLink: LinkComponent<typeof BasicLinkComponent> = (props) => {
 }
 ```
 
+[//]: # 'BasicExampleImplementation'
+
 You can then use your newly created `Link` component as any other `Link`
 
 ```tsx
 <CustomLink to={'/dashboard/invoices/$invoiceId'} params={{ invoiceId: 0 }} />
 ```
 
+[//]: # 'ExamplesUsingThirdPartyLibs'
+
 ## `createLink` with third party libraries
+
+Here are some examples of how you can use `createLink` with third-party libraries.
 
 ### React Aria Components example
 
@@ -186,3 +194,5 @@ export const CustomLink: LinkComponent<typeof MantineLinkComponent> = (
   return <CreatedLinkComponent preload="intent" {...props} />
 }
 ```
+
+[//]: # 'ExamplesUsingThirdPartyLibs'

@@ -12,7 +12,12 @@ export default defineConfig({
   },
   tools: {
     rspack: {
-      plugins: [TanStackRouterRspack()],
+      plugins: [
+        TanStackRouterRspack({
+          target: 'react',
+          autoCodeSplitting: true,
+        }),
+      ],
     },
   },
 })

@@ -65,10 +65,6 @@ await publish({
       packageDir: 'packages/router-vite-plugin',
     },
     {
-      name: '@tanstack/react-cross-context',
-      packageDir: 'packages/react-cross-context',
-    },
-    {
       name: '@tanstack/directive-functions-plugin',
       packageDir: 'packages/directive-functions-plugin',
     },

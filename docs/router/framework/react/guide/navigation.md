@@ -129,12 +129,12 @@ export type LinkProps<
 > = LinkOptions<RegisteredRouter['routeTree'], TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+    | FrameworkHTMLAnchorTagAttributes
+    | (() => FrameworkHTMLAnchorAttributes)
   // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   inactiveProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+    | FrameworkHTMLAnchorAttributes
+    | (() => FrameworkHTMLAnchorAttributes)
 }
 ```
 
@@ -390,7 +390,7 @@ The `useNavigate` hook returns a `navigate` function that can be called to imper
 function Component() {
   const navigate = useNavigate({ from: '/posts/$postId' })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FrameworkFormEvent) => {
     e.preventDefault()
 
     const response = await fetch('/posts', {
@@ -415,7 +415,7 @@ The `navigate` function returned by `useNavigate` accepts the [`NavigateOptions`
 
 ## `Navigate` Component
 
-Occasionally, you may find yourself needing to navigate immediately when a component mounts. Your first instinct might be to reach for `useNavigate` and an immediate side-effect (e.g. React.useEffect), but this is unnecessary. Instead, you can render the `Navigate` component to achieve the same result:
+Occasionally, you may find yourself needing to navigate immediately when a component mounts. Your first instinct might be to reach for `useNavigate` and an immediate side-effect (e.g. useEffect), but this is unnecessary. Instead, you can render the `Navigate` component to achieve the same result:
 
 ```tsx
 function Component() {

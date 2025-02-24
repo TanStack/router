@@ -125,42 +125,37 @@ File-based routing requires that you follow a few simple file naming conventions
 
 > **💡 Remember:** The file-naming conventions for your project could be affected by what [options](#options) are configured in your `tsr.config.json`. By default, the `routeFileIgnorePrefix` option is set to `-`, as such files and directories starting with `-` will not be considered for routing.
 
-- **`__root.tsx`**
-  - The root route file must be named `__root.tsx` and must be placed in the root of the configured `routesDirectory`.
-- **`.` Separator**
-  - Routes can use the `.` character to denote a nested route. For example, `blog.post` will be generated as a child of `blog`.
-- **`$` Token**
-  - Routes segments with the `$` token are parameterized and will extract the value from the URL pathname as a route `param`.
-- **`_` Prefix**
-  - Routes segments with the `_` prefix are considered layout-routes and will not be used when matching its child routes against the URL pathname.
-- **`_` Suffix**
-  - Routes segments with the `_` suffix exclude the route from being nested under any parent routes.
-- **`(folder)` folder name pattern**:
-  - A folder that matches this pattern is treated as a **route group** which prevents this folder to be included in the route's URL path.
-- **`index` Token**
-  - Routes segments ending with the `index` token (but before any file types) will be used to match the parent route when the URL pathname matches the parent route exactly.
-    This can be configured via the `indexToken` configuration option, see [options](#options).
-- **`.route.tsx` File Type**
-  - When using directories to organize your routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used as the route file for the `/blog/post` route.
-    This can be configured via the `routeToken` configuration option, see [options](#options).
-- **`.lazy.tsx` File Type**
-  - The `lazy` suffix can be used to code-split components for a route. For example, `blog.post.lazy.tsx` will be used as the component for the `blog.post` route.
+| Feature                            | Description                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`__root.tsx`**                   | The root route file must be named `__root.tsx` and must be placed in the root of the configured `routesDirectory`.                                                                                                                                                                                                                         |
+| **`.` Separator**                  | Routes can use the `.` character to denote a nested route. For example, `blog.post` will be generated as a child of `blog`.                                                                                                                                                                                                                |
+| **`$` Token**                      | Route segments with the `$` token are parameterized and will extract the value from the URL pathname as a route `param`.                                                                                                                                                                                                                   |
+| **`_` Prefix**                     | Route segments with the `_` prefix are considered to be pathless routes and will not be used when matching its child routes against the URL pathname.                                                                                                                                                                                      |
+| **`_` Suffix**                     | Route segments with the `_` suffix exclude the route from being nested under any parent routes.                                                                                                                                                                                                                                            |
+| **`(folder)` folder name pattern** | A folder that matches this pattern is treated as a **route group**, preventing the folder from being included in the route's URL path.                                                                                                                                                                                                     |
+| **`index` Token**                  | Route segments ending with the `index` token (before any file extensions) will match the parent route when the URL pathname matches the parent route exactly. This can be configured via the `indexToken` configuration option, see [options](#options).                                                                                   |
+| **`.route.tsx` File Type**         | When using directories to organise routes, the `route` suffix can be used to create a route file at the directory's path. For example, `blog.post.route.tsx` or `blog/post/route.tsx` can be used as the route file for the `/blog/post` route. This can be configured via the `routeToken` configuration option, see [options](#options). |
 
 ## Installation
 
 To get started with file-based routing, you'll need to configure your project's bundler to use the TanStack Router Plugin or the TanStack Router CLI.
 
-To enable file-based routing, you'll need to be using React with a supported bundler. TanStack Router currently has support for the following bundlers:
+To enable file-based routing, you'll need to be using React with a supported bundler. See if your bundler is listed in the configuration guides below.
 
-- [Vite](#configuration-with-vite)
-- [Rspack/Rsbuild](#configuration-with-rspackrsbuild)
-- [Webpack](#configuration-with-webpack)
-- [Esbuild](#configuration-with-esbuild)
-- Others??? (let us know if you'd like to see support for a specific bundler)
+[//]: # 'SupportedBundlersList'
+
+- [Configuration with Vite](#configuration-with-vite)
+- [Configuration with Rspack/Rsbuild](#configuration-with-rspackrsbuild)
+- [Configuration with Webpack](#configuration-with-webpack)
+- [Configuration with Esbuild](#configuration-with-esbuild)
+
+[//]: # 'SupportedBundlersList'
 
 When using TanStack Router's file-based routing through one of the supported bundlers, our plugin will **automatically generate your route configuration through your bundler's dev and build processes**. It is the easiest way to use TanStack Router's route generation features.
 
 If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the [`@tanstack/router-cli`](#configuration-with-the-tanstack-router-cli) package to generate your route tree file.
+
+[//]: # 'ConfigurationBundlerVite'
 
 ### Configuration with Vite
 
@@ -172,7 +167,7 @@ npm install -D @tanstack/router-plugin
 
 Once installed, you'll need to add the plugin to your Vite configuration.
 
-```tsx
+```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
 import viteReact from '@vitejs/plugin-react'
@@ -181,7 +176,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    TanStackRouterVite(),
+    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
     viteReact(),
     // ...
   ],
@@ -196,6 +191,9 @@ Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/rout
 Now that you've added the plugin to your Vite configuration, you're all set to start using file-based routing with TanStack Router.
 
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
+[//]: # 'ConfigurationBundlerVite'
+[//]: # 'ConfigurationBundlerRspack'
 
 ### Configuration with Rspack/Rsbuild
 
@@ -217,7 +215,9 @@ export default defineConfig({
   plugins: [pluginReact()],
   tools: {
     rspack: {
-      plugins: [TanStackRouterRspack()],
+      plugins: [
+        TanStackRouterRspack({ target: 'react', autoCodeSplitting: true }),
+      ],
     },
   },
 })
@@ -228,6 +228,9 @@ Or, you can clone our [Quickstart Rspack/Rsbuild example](https://github.com/Tan
 Now that you've added the plugin to your Rspack/Rsbuild configuration, you're all set to start using file-based routing with TanStack Router.
 
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
+[//]: # 'ConfigurationBundlerRspack'
+[//]: # 'ConfigurationBundlerWebpack'
 
 ### Configuration with Webpack
 
@@ -244,7 +247,9 @@ Once installed, you'll need to add the plugin to your configuration.
 import { TanStackRouterWebpack } from '@tanstack/router-plugin/webpack'
 
 export default {
-  plugins: [TanStackRouterWebpack()],
+  plugins: [
+    TanStackRouterWebpack({ target: 'react', autoCodeSplitting: true }),
+  ],
 }
 ```
 
@@ -253,6 +258,9 @@ Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/r
 Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
 
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
+[//]: # 'ConfigurationBundlerWebpack'
+[//]: # 'ConfigurationBundlerEsbuild'
 
 ### Configuration with Esbuild
 
@@ -270,7 +278,9 @@ import { TanStackRouterEsbuild } from '@tanstack/router-plugin/esbuild'
 
 export default {
   // ...
-  plugins: [TanStackRouterEsbuild()],
+  plugins: [
+    TanStackRouterEsbuild({ target: 'react', autoCodeSplitting: true }),
+  ],
 }
 ```
 
@@ -279,6 +289,8 @@ Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/r
 Now that you've added the plugin to your Esbuild configuration, you're all set to start using file-based routing with TanStack Router.
 
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
+
+[//]: # 'ConfigurationBundlerEsbuild'
 
 ### Configuration with the TanStack Router CLI
 
@@ -324,29 +336,6 @@ tsr watch
 ```
 
 With file-based routing enabled, whenever you start your application in development mode, TanStack Router will watch your configured `routesDirectory` and generate your route tree whenever a file is added, removed, or changed.
-
-### Disabling the TanStack Router Plugin during tests
-
-> ⚠️ Note: To disable the plugin when running tests via vitest, you can conditionally add it based on the current `NODE_ENV`:
-
-```tsx
-// vite.config.ts
-import { defineConfig } from 'vite'
-import viteReact from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
-
-// vitest automatically sets NODE_ENV to 'test' when running tests
-const isTest = process.env.NODE_ENV === 'test'
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    !isTest && TanStackRouterVite(),
-    viteReact(),
-    // ...
-  ],
-})
-```
 
 ### Ignoring the generated route tree file
 

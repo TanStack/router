@@ -1,10 +1,13 @@
 import { useMatch } from './useMatch'
 import type { ThrowConstraint } from './useMatch'
 import type { Accessor } from 'solid-js'
-import type { FullSearchSchema, RouteById } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { StrictOrFrom } from './utils'
-import type { Expand, ThrowOrOptional } from '@tanstack/router-core'
+import type {
+  ResolveUseSearch,
+  ThrowOrOptional,
+  UseSearchResult,
+} from '@tanstack/router-core'
 
 export interface UseSearchBaseOptions<
   TRouter extends AnyRouter,
@@ -13,7 +16,7 @@ export interface UseSearchBaseOptions<
   TThrow extends boolean,
   TSelected,
 > {
-  select?: (state: ResolveSearch<TRouter, TFrom, TStrict>) => TSelected
+  select?: (state: ResolveUseSearch<TRouter, TFrom, TStrict>) => TSelected
   shouldThrow?: TThrow
 }
 
@@ -25,23 +28,6 @@ export type UseSearchOptions<
   TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
   UseSearchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
-
-export type UseSearchResult<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-  TSelected,
-> = unknown extends TSelected
-  ? ResolveSearch<TRouter, TFrom, TStrict>
-  : TSelected
-
-export type ResolveSearch<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-> = TStrict extends false
-  ? FullSearchSchema<TRouter['routeTree']>
-  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['fullSearchSchema']>
 
 export type UseSearchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,

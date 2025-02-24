@@ -1,8 +1,8 @@
 // @ts-expect-error
 import tsrGetManifest from 'tsr:routes-manifest'
 import { getManifest } from 'vinxi/manifest'
-import { invariant } from '@tanstack/react-router'
-import type { Manifest } from '@tanstack/react-router'
+import { default as invariant } from 'tiny-invariant'
+import type { Manifest } from '@tanstack/router-core'
 
 function sanitizeBase(base: string) {
   return base.replace(/^\/|\/$/g, '')

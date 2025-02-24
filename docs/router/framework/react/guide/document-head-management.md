@@ -2,13 +2,13 @@
 title: Document Head Management
 ---
 
-Document head management is the process of managing the head, title, meta, link, and script tags of a document and TanStack Router provides a robust way to manage the document head for full-stack applications that use Start and for single-page applications that use React Router. It provides:
+Document head management is the process of managing the head, title, meta, link, and script tags of a document and TanStack Router provides a robust way to manage the document head for full-stack applications that use Start and for single-page applications that use `@tanstack/react-router`. It provides:
 
 - Automatic deduping of `title` and `meta` tags
 - Automatic loading/unloading of tags based on route visibility
 - A composable way to merge `title` and `meta` tags from nested routes
 
-For full-stack applications that use Start, and even for single-page applications that use React Router, managing the document head is a crucial part of any application for the following reasons:
+For full-stack applications that use Start, and even for single-page applications that use `@tanstack/react-router`, managing the document head is a crucial part of any application for the following reasons:
 
 - SEO
 - Social media sharing

@@ -10,8 +10,6 @@
   - 'packages/eslint-plugin-router/**/*'
 'package: history':
   - 'packages/history/**/*'
-'package: react-cross-context':
-  - 'packages/react-cross-context/**/*'
 'package: react-router':
   - 'packages/react-router/**/*'
 'package: react-router-with-query':

@@ -2,7 +2,7 @@
 title: Search Params
 ---
 
-Similar to how TanStack Query made handling server-state in your React applications a breeze, TanStack Router aims to unlock the power of URL search params in your applications.
+Similar to how TanStack Query made handling server-state in your React and Solid applications a breeze, TanStack Router aims to unlock the power of URL search params in your applications.
 
 ## Why not just use `URLSearchParams`?
 

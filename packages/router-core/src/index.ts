@@ -14,7 +14,53 @@ export type {
   ResolveParentPath,
   ResolveRelativePath,
   LinkCurrentTargetElement,
+  FindDescendantToPaths,
+  InferDescendantToPaths,
+  RelativeToPath,
+  RelativeToParentPath,
+  RelativeToCurrentPath,
+  AbsoluteToPath,
+  RelativeToPathAutoComplete,
+  NavigateOptions,
+  ToOptions,
+  ToMaskOptions,
+  ToSubOptions,
+  ResolveRoute,
+  SearchParamOptions,
+  PathParamOptions,
+  ToPathOption,
+  LinkOptions,
+  MakeOptionalPathParams,
+  FromPathOption,
+  MakeOptionalSearchParams,
+  MaskOptions,
+  ToSubOptionsProps,
+  RequiredToOptions,
 } from './link'
+
+export type {
+  RouteToPath,
+  TrailingSlashOptionByRouter,
+  ParseRoute,
+  CodeRouteToPath,
+  RouteIds,
+  FullSearchSchema,
+  FullSearchSchemaInput,
+  AllParams,
+  RouteById,
+  AllContext,
+  RoutePaths,
+  RoutesById,
+  RoutesByPath,
+  AllLoaderData,
+  RouteByPath,
+} from './routeInfo'
+
+export type {
+  InferFileRouteTypes,
+  FileRouteTypes,
+  FileRoutesByPath,
+} from './fileRoute'
 
 export type {
   StartSerializer,
@@ -106,6 +152,21 @@ export type {
   ResolveSearchSchemaInput,
   ResolveSearchSchemaFn,
   ResolveSearchSchema,
+  ResolveFullSearchSchema,
+  ResolveFullSearchSchemaInput,
+  ResolveAllContext,
+  BeforeLoadContextParameter,
+  RouteContextParameter,
+  ResolveAllParamsFromParent,
+  AnyRoute,
+  Route,
+  RootRoute,
+  RouteTypes,
+  FullSearchSchemaOption,
+  RemountDepsOptions,
+  MakeRemountDepsOptionsUnion,
+  ResolveFullPath,
+  AnyRouteWithContext,
 } from './route'
 
 export { defaultSerializeError, getLocationChangeInfo } from './router'
@@ -117,9 +178,18 @@ export type {
   ExtractedEntry,
   StreamState,
   TrailingSlashOption,
+  Register,
+  AnyRouter,
+  AnyRouterWithContext,
+  RegisteredRouter,
 } from './router'
 
-export type { MatchLocation, CommitLocationOptions } from './RouterProvider'
+export type {
+  MatchLocation,
+  CommitLocationOptions,
+  NavigateFn,
+  BuildLocationFn,
+} from './RouterProvider'
 
 export { retainSearchParams, stripSearchParams } from './searchMiddleware'
 
@@ -176,6 +246,7 @@ export type {
   MergeAllObjects,
   MergeAll,
   ValidateJSON,
+  StrictOrFrom,
 } from './utils'
 
 export type {
@@ -205,3 +276,21 @@ export type {
   ResolveValidatorOutputFn,
   ResolveValidatorOutput,
 } from './validators'
+
+export type {
+  UseRouteContextBaseOptions,
+  UseRouteContextOptions,
+  UseRouteContextResult,
+} from './useRouteContext'
+
+export type { UseSearchResult, ResolveUseSearch } from './useSearch'
+
+export type { UseParamsResult, ResolveUseParams } from './useParams'
+
+export type { UseNavigateResult } from './useNavigate'
+
+export type { UseLoaderDepsResult, ResolveUseLoaderDeps } from './useLoaderDeps'
+
+export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
+
+export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'

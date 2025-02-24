@@ -213,25 +213,25 @@ All of this boilerplate, no matter how essential for providing a best-in-class t
 
 TanStack Router's file-based routing is designed to solve all of these issues. It allows you to define your routes in a predictable way that is easy to manage and maintain, and is scalable as your application grows.
 
-The file-based routing approach is powered by the TanStack Router CLI. It performs 3 essential tasks that solve the pain points in route configuration when using code-based routing:
+The file-based routing approach is powered by the TanStack Router Bundler Plugin. It performs 3 essential tasks that solve the pain points in route configuration when using code-based routing:
 
 1. **Route configuration boilerplate**: It generates the boilerplate for your route configurations.
 2. **Route tree stitching**: It stitches together your route configurations into a single cohesive route-tree. Also in the background, it correctly updates the route configurations to define the `getParentRoute` function match the routes with their parent routes.
-3. **Code-splitting**: It automatically code-splits your components and handles updating your route configurations with the correct lazy imports.
+3. **Code-splitting**: It automatically code-splits your route content components and updates the route configurations with the correct component. Additionally, at runtime, it ensures that the correct component is loaded when the route is visited.
 
 Let's take a look at how the route configuration for the previous example would look like with file-based routing.
 
 ```tsx
-// src/routes/posts/index.lazy.ts
-import { createLazyFileRoute } from '@tanstack/react-router'
+// src/routes/posts/index.ts
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createLazyFileRoute('/posts/')({
+export const Route = createFileRoute('/posts/')({
   component: () => 'Posts index component goes here!!!',
 })
 ```
 
-That's it! No need to worry about defining the `getParentRoute` function, stitching together the route-tree, or code-splitting your components. The CLI handles all of this for you.
+That's it! No need to worry about defining the `getParentRoute` function, stitching together the route-tree, or code-splitting your components. The TanStack Router Bundler Plugin handles all of this for you.
 
-At no point does the TanStack Router CLI take away your control over your route configurations. It's designed to be as flexible as possible, allowing you to define your routes in a way that suits your application whilst reducing the boilerplate and complexity of the route configuration.
+At no point does the TanStack Router Bundler Plugin take away your control over your route configurations. It's designed to be as flexible as possible, allowing you to define your routes in a way that suits your application whilst reducing the boilerplate and complexity of the route configuration.
 
 Check out the guides for [file-based routing](./guide/file-based-routing.md) and [code-splitting](./guide/code-splitting.md) for a more in-depth explanation of how they work in TanStack Router.
