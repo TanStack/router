@@ -1,6 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
-import { Suspense, useState } from 'react'
+import { Suspense, createSignal } from 'solid-js'
 
 const personServerFn = createServerFn({ method: 'GET' })
   .validator((data: { name: string }) => data)
@@ -29,17 +29,18 @@ export const Route = createFileRoute('/deferred')({
 })
 
 function Deferred() {
-  const [count, setCount] = useState(0)
-  const { deferredStuff, deferredPerson, person } = Route.useLoaderData()
+  const [count, setCount] = createSignal(0)
+  // const { deferredStuff, deferredPerson, person } = Route.useLoaderData()
+  const loaderData = Route.useLoaderData()
 
   return (
     <div class="p-2">
       <div data-testid="regular-person">
-        {person.name} - {person.randomNumber}
+        {loaderData().person.name} - {loaderData().person.randomNumber}
       </div>
       <Suspense fallback={<div>Loading person...</div>}>
         <Await
-          promise={deferredPerson}
+          promise={loaderData().deferredPerson}
           children={(data) => (
             <div data-testid="deferred-person">
               {data.name} - {data.randomNumber}
@@ -49,13 +50,13 @@ function Deferred() {
       </Suspense>
       <Suspense fallback={<div>Loading stuff...</div>}>
         <Await
-          promise={deferredStuff}
+          promise={loaderData().deferredStuff}
           children={(data) => <h3 data-testid="deferred-stuff">{data}</h3>}
         />
       </Suspense>
-      <div>Count: {count}</div>
+      <div>Count: {count()}</div>
       <div>
-        <button onClick={() => setCount(count + 1)}>Increment</button>
+        <button onClick={() => setCount(count() + 1)}>Increment</button>
       </div>
     </div>
   )

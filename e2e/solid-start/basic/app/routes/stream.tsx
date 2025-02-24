@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { useEffect, useState } from 'react'
+import { createEffect, createSignal } from 'solid-js'
 
 export const Route = createFileRoute('/stream')({
   component: Home,
@@ -24,12 +24,12 @@ export const Route = createFileRoute('/stream')({
 const decoder = new TextDecoder('utf-8')
 
 function Home() {
-  const { promise, stream } = Route.useLoaderData()
-  const [streamData, setStreamData] = useState<Array<string>>([])
+  const loaderData: any = Route.useLoaderData()
+  const [streamData, setStreamData] = createSignal<Array<string>>([])
 
-  useEffect(() => {
+  createEffect(() => {
     async function fetchStream() {
-      const reader = stream.getReader()
+      const reader = loaderData().stream.getReader()
       let chunk
 
       while (!(chunk = await reader.read()).done) {
@@ -42,18 +42,18 @@ function Home() {
     }
 
     fetchStream()
-  }, [])
+  })
 
   return (
     <>
       <Await
-        promise={promise}
+        promise={loaderData().promise}
         children={(promiseData) => (
           <div class="p-2" data-testid="promise-data">
             {promiseData}
             <div data-testid="stream-data">
-              {streamData.map((d) => (
-                <div key={d}>{d}</div>
+              {streamData().map((d) => (
+                <div>{d}</div>
               ))}
             </div>
           </div>
