@@ -10,10 +10,8 @@ import appCss from '~/styles/app.css?url'
 import * as React from 'react'
 
 export const Route = createRootRoute({
-  head: ()=>({
-    links: [
-      { rel: 'stylesheet', href: appCss },
-    ]
+  head: () => ({
+    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   component: RootComponent,
 })

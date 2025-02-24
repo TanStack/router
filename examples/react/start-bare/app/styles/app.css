@@ -1,7 +1,9 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 body {
-  font-family: Gordita, Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  font-family:
+    Gordita, Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue',
+    sans-serif;
 }
 
 a {
@@ -13,4 +15,3 @@ main {
   padding: 1em;
   margin: 0 auto;
 }
-
