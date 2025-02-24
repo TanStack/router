@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, useMatch } from '../src'
-import type { MakeRouteMatch, MakeRouteMatchUnion } from '../src/Matches'
+import type { MakeRouteMatch, MakeRouteMatchUnion } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 
 const rootRoute = createRootRoute()

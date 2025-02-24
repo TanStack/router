@@ -8,7 +8,7 @@ import {
   useMatchRoute,
   useMatches,
 } from '../src'
-import type { AnyRouteMatch, RouteMatch } from '../src'
+import type { AnyRouteMatch, RouteMatch } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 
 const rootRoute = createRootRoute()

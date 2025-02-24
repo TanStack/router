@@ -1,4 +1,15 @@
-import type { Constrain } from './utils'
+import type { AnyRoute, StaticDataRouteOption } from './route'
+import type {
+  AllContext,
+  AllLoaderData,
+  AllParams,
+  FullSearchSchema,
+  ParseRoute,
+  RouteById,
+  RouteIds,
+} from './routeInfo'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type { Constrain, ControlledPromise } from './utils'
 
 export type AnyMatchAndValue = { match: any; value: any }
 
@@ -92,3 +103,105 @@ export const isMatch = <TMatch, TPath extends string>(
 
   return value != null
 }
+
+export interface DefaultRouteMatchExtensions {
+  scripts?: unknown
+  links?: unknown
+  headScripts?: unknown
+  meta?: unknown
+}
+
+export interface RouteMatchExtensions extends DefaultRouteMatchExtensions {}
+
+export interface RouteMatch<
+  out TRouteId,
+  out TFullPath,
+  out TAllParams,
+  out TFullSearchSchema,
+  out TLoaderData,
+  out TAllContext,
+  out TLoaderDeps,
+> extends RouteMatchExtensions {
+  id: string
+  routeId: TRouteId
+  fullPath: TFullPath
+  index: number
+  pathname: string
+  params: TAllParams
+  _strictParams: TAllParams
+  status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
+  isFetching: false | 'beforeLoad' | 'loader'
+  error: unknown
+  paramsError: unknown
+  searchError: unknown
+  updatedAt: number
+  loadPromise?: ControlledPromise<void>
+  beforeLoadPromise?: ControlledPromise<void>
+  loaderPromise?: ControlledPromise<void>
+  loaderData?: TLoaderData
+  __routeContext: Record<string, unknown>
+  __beforeLoadContext: Record<string, unknown>
+  context: TAllContext
+  search: TFullSearchSchema
+  _strictSearch: TFullSearchSchema
+  fetchCount: number
+  abortController: AbortController
+  cause: 'preload' | 'enter' | 'stay'
+  loaderDeps: TLoaderDeps
+  preload: boolean
+  invalid: boolean
+  headers?: Record<string, string>
+  globalNotFound?: boolean
+  staticData: StaticDataRouteOption
+  minPendingPromise?: ControlledPromise<void>
+  pendingTimeout?: ReturnType<typeof setTimeout>
+}
+
+export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
+  TRoute['types']['id'],
+  TRoute['types']['fullPath'],
+  TRoute['types']['allParams'],
+  TRoute['types']['fullSearchSchema'],
+  TRoute['types']['loaderData'],
+  TRoute['types']['allContext'],
+  TRoute['types']['loaderDeps']
+>
+
+export type MakeRouteMatch<
+  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
+  TRouteId = RouteIds<TRouteTree>,
+  TStrict extends boolean = true,
+> = RouteMatch<
+  TRouteId,
+  RouteById<TRouteTree, TRouteId>['types']['fullPath'],
+  TStrict extends false
+    ? AllParams<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['allParams'],
+  TStrict extends false
+    ? FullSearchSchema<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
+  TStrict extends false
+    ? AllLoaderData<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['loaderData'],
+  TStrict extends false
+    ? AllContext<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['allContext'],
+  RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
+>
+
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
+
+export type MakeRouteMatchUnion<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+> = TRoute extends any
+  ? RouteMatch<
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema'],
+      TRoute['types']['loaderData'],
+      TRoute['types']['allContext'],
+      TRoute['types']['loaderDeps']
+    >
+  : never

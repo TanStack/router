@@ -123,6 +123,7 @@ export type {
   ValidatorObj,
   FileRoutesByPath,
   RouteById,
+  RootRouteOptions,
 } from '@tanstack/router-core'
 
 export {
@@ -199,6 +200,21 @@ export type {
   AnyRedirect,
   Redirect,
   ResolvedRedirect,
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
+  RouteMatch,
+  AnyRouteMatch,
+  RouteContextFn,
+  RouteContextOptions,
+  BeforeLoadFn,
+  BeforeLoadContextOptions,
+  ContextOptions,
+  RouteOptions,
+  FileBaseRouteOptions,
+  BaseRouteOptions,
+  UpdatableRouteOptions,
+  RouteLoaderFn,
+  LoaderFnContext,
 } from '@tanstack/router-core'
 export type {
   UseLinkPropsOptions,
@@ -219,13 +235,9 @@ export {
 } from './Matches'
 
 export type {
-  RouteMatch,
-  AnyRouteMatch,
   MatchRouteOptions,
   UseMatchRouteOptions,
   MakeMatchRouteOptions,
-  MakeRouteMatch,
-  MakeRouteMatchUnion,
 } from './Matches'
 
 export { matchContext } from './matchContext'
@@ -250,12 +262,6 @@ export {
   NotFoundRoute,
 } from './route'
 export type {
-  RouteOptions,
-  FileBaseRouteOptions,
-  BaseRouteOptions,
-  UpdatableRouteOptions,
-  RouteLoaderFn,
-  LoaderFnContext,
   AnyRoute,
   RouteConstraints,
   AnyRootRoute,
@@ -266,12 +272,6 @@ export type {
   RouteComponent,
   ErrorRouteComponent,
   NotFoundRouteComponent,
-  RootRouteOptions,
-  RouteContextFn,
-  RouteContextOptions,
-  BeforeLoadFn,
-  BeforeLoadContextOptions,
-  ContextOptions,
 } from './route'
 
 export {
