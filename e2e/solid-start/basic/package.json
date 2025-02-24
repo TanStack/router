@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
-    
     "@tanstack/solid-start": "workspace:^",
     "solid-js": "^1.0.0",
     "redaxios": "^0.5.1",
