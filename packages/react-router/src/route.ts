@@ -354,21 +354,85 @@ export interface UpdatableRouteOptions<
   in out TRouteContextFn,
   in out TBeforeLoadFn,
 > extends UpdatableStaticRouteOption {
-  // If true, this route will be matched as case-sensitive
+  /**
+   * If true, this route will be matched as case-sensitive.
+   */
   caseSensitive?: boolean
-  // If true, this route will be forcefully wrapped in a suspense boundary
+  /**
+   * If true, this route will be forcefully wrapped in a suspense boundary.
+   */
   wrapInSuspense?: boolean
-  // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
+  /**
+   * The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`.
+   */
   component?: RouteComponent
+  /**
+   * The component that is rendered when an error occurs during the route loading or rendering lifecycle
+   * If not set, defaults to `defaultErrorComponent`.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionserrorcomponent)
+   */
   errorComponent?: false | null | ErrorRouteComponent
+  /**
+   * The `notFoundComponent` will be displayed when no route is matched.
+   * If not set, defaults to `defaultNotFoundComponent`.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#default-router-wide-not-found-handling)
+   */
   notFoundComponent?: NotFoundRouteComponent
+  /**
+   * The `pendingComponent` will be displayed for loaders which take longer than `pendingMs` to resolve.
+   * If not set, defaults to `defaultPendingComponent` (**unset by default**).
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#showing-a-pending-component)
+   */
   pendingComponent?: RouteComponent
+  /**
+   * The time (in milliseconds) to wait before showing the pending component.
+   * If not set, defaults to `defaultPendingMs`.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#showing-a-pending-component)
+   */
   pendingMs?: number
+  /**
+   * The minimum time (in milliseconds) a pending component would be potentially displayed for. This avoids flashing the pending component for very short durations.
+   * If not set, defaults to `defaultPendingMs`.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#avoiding-pending-component-flash)
+   */
   pendingMinMs?: number
+  /**
+   * The time (in milliseconds) for which a route's data should be considered fresh when attempting to load.
+   * If not set, defaults to `defaultStaleTime`.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#key-options)
+   */
   staleTime?: number
+  /**
+   * The time (in milliseconds) for which a route's data should be kept in the cache before being garbage collected.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#key-options)
+   */
   gcTime?: number
+  /**
+   * Turn on/off data preloading for this route.
+   *
+   * @todo allow specifying strategies available in `defaultPreload` ('intent' | 'viewport' | 'render')
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#supported-preloading-strategies)
+   */
   preload?: boolean
+  /**
+   * The time (in milliseconds) for which a route's **preloaded data** should be considered fresh when attempting to load.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#built-in-preloading--preloadstaletime)
+   */
   preloadStaleTime?: number
+  /**
+   * The time (in milliseconds) for which a route's **preloaded data** should be kept in the cache before being garbage collected.
+   * If not set, defaults to `defaultPreloadGcTime`.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#built-in-preloading--preloadstaletime)
+   */
   preloadGcTime?: number
   search?: {
     middlewares?: Array<
