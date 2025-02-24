@@ -12,7 +12,13 @@ export default defineConfig({
   ],
   tools: {
     rspack: {
-      plugins: [TanStackRouterRspack({ target: 'solid' })],
+      plugins: [
+        TanStackRouterRspack({
+          target: 'solid',
+          autoCodeSplitting: true,
+          virtualRouteConfig: './routes.ts',
+        }),
+      ],
     },
   },
 })
