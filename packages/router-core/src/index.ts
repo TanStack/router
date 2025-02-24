@@ -181,6 +181,7 @@ export type {
   Register,
   AnyRouter,
   AnyRouterWithContext,
+  RegisteredRouter,
 } from './router'
 
 export type {
