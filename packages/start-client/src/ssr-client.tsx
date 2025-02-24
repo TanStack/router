@@ -9,10 +9,7 @@ import type {
   MakeRouteMatch,
 } from '@tanstack/react-router'
 
-import type {
-  DeferredPromiseState,
-  Manifest,
-} from '@tanstack/router-core'
+import type { DeferredPromiseState, Manifest } from '@tanstack/router-core'
 
 declare global {
   interface Window {

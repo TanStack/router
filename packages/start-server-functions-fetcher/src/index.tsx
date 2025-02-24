@@ -1,11 +1,5 @@
-import {
-  isNotFound,
-  isRedirect,
-} from '@tanstack/react-router'
-import {
-  encode,
-  isPlainObject,
-} from '@tanstack/router-core'
+import { isNotFound, isRedirect } from '@tanstack/react-router'
+import { encode, isPlainObject } from '@tanstack/router-core'
 import { startSerializer } from '@tanstack/start-client'
 import type { MiddlewareClientFnOptions } from '@tanstack/start-client'
 

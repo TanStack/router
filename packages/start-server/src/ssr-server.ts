@@ -1,4 +1,4 @@
-import {default as warning} from 'tiny-warning'
+import { default as warning } from 'tiny-warning'
 import {
   TSR_DEFERRED_PROMISE,
   defer,
@@ -15,14 +15,8 @@ import type {
   ResolvePromiseState,
   SsrMatch,
 } from '@tanstack/start-client'
-import type {
-  AnyRouteMatch,
-  AnyRouter,
-  Manifest,
-} from '@tanstack/react-router'
-import type {
-  DeferredPromise,
-} from '@tanstack/router-core'
+import type { AnyRouteMatch, AnyRouter, Manifest } from '@tanstack/react-router'
+import type { DeferredPromise } from '@tanstack/router-core'
 
 export type ServerExtractedEntry =
   | ServerExtractedStream
