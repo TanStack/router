@@ -711,9 +711,9 @@ export async function generator(config: Config, root: string) {
     )
   }
 
-  const includeManifest = ['react', 'solid']
+  const addManifest = ['react', 'solid']
   const routeConfigFileContent =
-    includeManifest.includes(config.target)
+    addManifest.includes(config.target)
       ? [
           routeImports,
           '\n',
