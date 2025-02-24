@@ -12,7 +12,7 @@ export const Route = createFileRoute('/redirect/$target/')({
             activeProps={{
               class: 'font-bold',
             }}
-            preload={preload}
+            preload={preload()}
             data-testid="via-beforeLoad"
           >
             via-beforeLoad
@@ -26,7 +26,7 @@ export const Route = createFileRoute('/redirect/$target/')({
             activeProps={{
               class: 'font-bold',
             }}
-            preload={preload}
+            preload={preload()}
             data-testid="via-beforeLoad-reloadDocument"
           >
             via-beforeLoad (reloadDocument=true)
@@ -39,7 +39,7 @@ export const Route = createFileRoute('/redirect/$target/')({
             activeProps={{
               class: 'font-bold',
             }}
-            preload={preload}
+            preload={preload()}
             data-testid="via-loader"
           >
             via-loader
@@ -53,7 +53,7 @@ export const Route = createFileRoute('/redirect/$target/')({
               class: 'font-bold',
             }}
             search={{ reloadDocument: true }}
-            preload={preload}
+            preload={preload()}
             data-testid="via-loader-reloadDocument"
           >
             via-loader (reloadDocument=true)
