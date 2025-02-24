@@ -31,8 +31,7 @@ function PostsComponent() {
               </li>
             )
           }}
-          </For>
-        
+        </For>
       </ul>
       <hr />
       <Outlet />
