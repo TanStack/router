@@ -7,6 +7,7 @@ import {
 } from '@tanstack/solid-router'
 import appCss from '~/styles/app.css?url'
 import * as Solid from 'solid-js'
+import { Hydration, HydrationScript, NoHydration } from 'solid-js/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -25,19 +26,23 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
-    <html>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <div class="p-2 flex gap-2 text-lg">
-          <Link to="/">Index</Link>
-          <Link to="/about">About</Link>
-        </div>
+    <NoHydration>
+      <html>
+        <head>
+          <HeadContent />
+          <HydrationScript />
+        </head>
+        <body>
+          <div class="p-2 flex gap-2 text-lg">
+            <Link to="/">Index</Link>
+            <Link to="/about">About</Link>
+          </div>
 
-        {children}
-        <Scripts />
-      </body>
-    </html>
+          <Hydration>{children}</Hydration>
+
+          <Scripts />
+        </body>
+      </html>
+    </NoHydration>
   )
 }
