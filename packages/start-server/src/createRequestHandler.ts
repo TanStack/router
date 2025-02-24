@@ -15,12 +15,12 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }: {
   createRouter: () => TRouter
   request: Request
-  getRouterManifest?: () => Manifest
+  getRouterManifest?: () => Manifest | Promise<Manifest>
 }): RequestHandler<TRouter> {
   return async (cb) => {
     const router = createRouter()
 
-    attachRouterServerSsrUtils(router, getRouterManifest?.())
+    attachRouterServerSsrUtils(router, await getRouterManifest?.())
 
     const url = new URL(request.url, 'http://localhost')
 
