@@ -1,5 +1,5 @@
-import { isPlainObject } from '@tanstack/react-router'
-import type { StartSerializer } from '@tanstack/react-router'
+import { isPlainObject } from '@tanstack/router-core'
+import type { StartSerializer } from '@tanstack/router-core'
 
 export const startSerializer: StartSerializer = {
   stringify: (value: any) =>

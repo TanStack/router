@@ -1,8 +1,8 @@
+import {default as invariant} from 'tiny-invariant'
+import {default as warning} from 'tiny-warning'
 import {
-  invariant,
   isNotFound,
   isRedirect,
-  warning,
 } from '@tanstack/react-router'
 import { mergeHeaders } from './headers'
 import { globalMiddleware } from './registerGlobalMiddleware'
@@ -16,7 +16,7 @@ import type {
   SerializerStringify,
   SerializerStringifyBy,
   Validator,
-} from '@tanstack/react-router'
+} from '@tanstack/router-core'
 import type {
   AnyMiddleware,
   AssignAllClientSendContext,

@@ -1,4 +1,4 @@
-import { isPlainObject } from '@tanstack/react-router'
+import { isPlainObject } from '@tanstack/router-core'
 
 import invariant from 'tiny-invariant'
 
@@ -6,10 +6,13 @@ import { startSerializer } from './serializer'
 import type {
   AnyRouter,
   ControllablePromise,
-  DeferredPromiseState,
   MakeRouteMatch,
-  Manifest,
 } from '@tanstack/react-router'
+
+import type {
+  DeferredPromiseState,
+  Manifest,
+} from '@tanstack/router-core'
 
 declare global {
   interface Window {
