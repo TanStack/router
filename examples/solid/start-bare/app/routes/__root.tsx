@@ -5,9 +5,13 @@ import {
   Outlet,
   Scripts,
 } from '@tanstack/solid-router'
+import appCss from '~/styles/app.css?url'
 import * as Solid from 'solid-js'
 
 export const Route = createRootRoute({
+  head: () => ({
+    links: [{ rel: 'stylesheet', href: appCss }],
+  }),
   component: RootComponent,
 })
 

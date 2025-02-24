@@ -1,4 +1,5 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
+import { For } from 'solid-js'
 
 import { fetchPosts } from '~/utils/posts'
 
@@ -13,8 +14,8 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        {[...posts(), { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
-          (post) => {
+        <For each={posts()}>
+          {(post) => {
             return (
               <li class="whitespace-nowrap">
                 <Link
@@ -29,8 +30,9 @@ function PostsComponent() {
                 </Link>
               </li>
             )
-          },
-        )}
+          }}
+          </For>
+        
       </ul>
       <hr />
       <Outlet />
