@@ -63,7 +63,6 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/react-cross-context": "workspace:^",
     "@tanstack/react-router": "workspace:^",
     "cookie-es": "^1.2.2",
     "jsesc": "^3.1.0",
