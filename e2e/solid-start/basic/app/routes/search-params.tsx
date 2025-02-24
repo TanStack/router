@@ -7,7 +7,7 @@ export const Route = createFileRoute('/search-params')({
     return (
       <div>
         <h1>SearchParams</h1>
-        <div data-testid="search-param">{search.step}</div>
+        <div data-testid="search-param">{search().step}</div>
       </div>
     )
   },

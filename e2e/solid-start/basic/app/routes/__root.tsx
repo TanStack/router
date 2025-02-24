@@ -1,4 +1,3 @@
-import * as React from 'react'
 import {
   HeadContent,
   Link,
@@ -6,6 +5,8 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/solid-router'
+
+import * as Solid from 'solid-js';
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -70,17 +71,17 @@ function RootComponent() {
   )
 }
 
-const RouterDevtools =
-  process.env.NODE_ENV === 'production'
-    ? () => null // Render nothing in production
-    : React.lazy(() =>
-        // Lazy load in development
-        import('@tanstack/router-devtools').then((res) => ({
-          default: res.TanStackRouterDevtools,
-        })),
-      )
+// const RouterDevtools =
+//   process.env.NODE_ENV === 'production'
+//     ? () => null // Render nothing in production
+//     : React.lazy(() =>
+//         // Lazy load in development
+//         import('@tanstack/router-devtools').then((res) => ({
+//           default: res.TanStackRouterDevtools,
+//         })),
+//       )
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <html>
       <head>
@@ -157,7 +158,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </div>
         <hr />
         {children}
-        <RouterDevtools position="bottom-right" />
+        {/* <RouterDevtools position="bottom-right" /> */}
         <Scripts />
       </body>
     </html>
