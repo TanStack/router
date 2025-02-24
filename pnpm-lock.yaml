@@ -5108,15 +5108,6 @@ importers:
         specifier: ^7.20.6
         version: 7.20.6
 
-  packages/solid-cross-context:
-    devDependencies:
-      solid-js:
-        specifier: ^1.0.0
-        version: 1.9.4
-      vite-plugin-solid:
-        specifier: ^2.0.0
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-
   packages/solid-router:
     dependencies:
       '@solid-devtools/logger':
