@@ -4,7 +4,7 @@ import {
   defer,
   isPlainArray,
   isPlainObject,
-  pick
+  pick,
 } from '@tanstack/router-core'
 import jsesc from 'jsesc'
 import { startSerializer } from '@tanstack/solid-start-client'

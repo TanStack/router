@@ -1,7 +1,4 @@
-import {
-  isNotFound,
-  isRedirect,
-} from '@tanstack/solid-router'
+import { isNotFound, isRedirect } from '@tanstack/solid-router'
 import { encode, isPlainObject } from '@tanstack/router-core'
 import { startSerializer } from '@tanstack/solid-start-client'
 import type { MiddlewareClientFnOptions } from '@tanstack/solid-start-client'
