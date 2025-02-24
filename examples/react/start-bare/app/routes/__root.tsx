@@ -31,7 +31,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link to="/">Index</Link>
           <Link to="/about">About</Link>
         </div>
-        
+
         {children}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
