@@ -6,7 +6,7 @@ import {
   createRootRoute,
 } from '@tanstack/solid-router'
 
-import * as Solid from 'solid-js';
+import * as Solid from 'solid-js'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
