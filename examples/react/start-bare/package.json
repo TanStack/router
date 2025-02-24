@@ -1,0 +1,29 @@
+{
+  "name": "tanstack-start-example-bare",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev --port 3000",
+    "dev:e2e": "vinxi dev",
+    "build": "vinxi build && tsc --noEmit",
+    "start": "vinxi start",
+    "test:e2e": "playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.111.3",
+    "@tanstack/router-devtools": "^1.111.3",
+    "@tanstack/start": "^1.111.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vinxi": "0.5.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
