@@ -1,10 +1,11 @@
-import { createMemoryHistory } from '@tanstack/solid-router'
-import { mergeHeaders } from '@tanstack/start-client'
+import { createMemoryHistory } from '@tanstack/history'
+import { mergeHeaders } from '@tanstack/solid-start-client'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'
 import type { EventHandlerResponse, H3Event } from 'h3'
-import type { AnyRouter, Manifest } from '@tanstack/solid-router'
+import type { AnyRouter } from '@tanstack/solid-router'
+import type { Manifest } from '@tanstack/router-core'
 
 export type CustomizeStartHandler<
   TRouter extends AnyRouter,

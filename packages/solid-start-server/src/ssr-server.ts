@@ -1,26 +1,22 @@
+import { default as warning } from 'tiny-warning'
 import {
   TSR_DEFERRED_PROMISE,
   defer,
   isPlainArray,
   isPlainObject,
-  pick,
-  warning,
-} from '@tanstack/solid-router'
+  pick
+} from '@tanstack/router-core'
 import jsesc from 'jsesc'
-import { startSerializer } from '@tanstack/start-client'
+import { startSerializer } from '@tanstack/solid-start-client'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import type {
   ClientExtractedBaseEntry,
   DehydratedRouter,
   ResolvePromiseState,
   SsrMatch,
-} from '@tanstack/start-client'
-import type {
-  AnyRouteMatch,
-  AnyRouter,
-  DeferredPromise,
-  Manifest,
-} from '@tanstack/solid-router'
+} from '@tanstack/solid-start-client'
+import type { AnyRouteMatch, AnyRouter } from '@tanstack/solid-router'
+import type { Manifest, DeferredPromise } from '@tanstack/router-core'
 
 export type ServerExtractedEntry =
   | ServerExtractedStream

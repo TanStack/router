@@ -62,12 +62,14 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/solid-cross-context": "workspace:^",
+    "@tanstack/history": "workspace:^",
+    "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-start-client": "workspace:^",
     "h3": "1.13.0",
     "isbot": "^5.1.22",
     "jsesc": "^3.1.0",
+    "tiny-warning": "^1.0.3",
     "unctx": "^2.4.1"
   },
   "devDependencies": {

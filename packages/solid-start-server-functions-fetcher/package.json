@@ -62,6 +62,7 @@
     "node": ">=12"
   },
   "dependencies": {
+    "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-start-client": "workspace:^"
   },

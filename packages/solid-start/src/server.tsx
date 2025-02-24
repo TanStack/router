@@ -1,1 +1,1 @@
-export * from '@tanstack/start-server'
+export * from '@tanstack/solid-start-server'
