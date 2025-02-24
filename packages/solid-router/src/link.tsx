@@ -542,8 +542,7 @@ export const Link: LinkComponent<'a'> = (props: any) => {
 
   if (typeof local._asChild === 'undefined') {
     // the Retlocal.urnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
-    // @ts-expect-error
-    delete linkProps.disabled
+    //delete linkProps.disabled
   }
 
   return (
