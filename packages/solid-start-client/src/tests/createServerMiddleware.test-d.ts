@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
-import type { Constrain, Validator } from '@tanstack/solid-router'
+import type { Constrain, Validator } from '@tanstack/router-core'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
   const middleware = createMiddleware()
