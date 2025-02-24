@@ -713,15 +713,15 @@ export async function generator(config: Config, root: string) {
 
   const includeManifest = ['react', 'solid']
   const routeConfigFileContent =
-    !config.disableManifestGeneration && includeManifest.includes(config.target)
-      ? [
+    config.disableManifestGeneration || !includeManifest.includes(config.target)
+      ? routeImports
+      : [
           routeImports,
           '\n',
           '/* ROUTE_MANIFEST_START',
           createRouteManifest(),
           'ROUTE_MANIFEST_END */',
         ].join('\n')
-      : routeImports
 
   if (!checkLatest()) return
 
