@@ -20,7 +20,7 @@ function RouteComponent() {
       <div class="flex gap-2">
         <Link
           to="/params/single/$value"
-          params={{ value:value() }}
+          params={{ value: value() }}
           reloadDocument
           class="border p-2"
           data-testid="self-link-same"
