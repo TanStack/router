@@ -2,4 +2,4 @@
 
 # TanStack Start Vite Plugin
 
-See https://tanstack.com/start
+See https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing
