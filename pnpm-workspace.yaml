@@ -8,4 +8,4 @@ packages:
   - 'e2e/e2e-utils'
   - 'e2e/react-router/*'
   - 'e2e/solid-router/*'
-  - 'e2e/start/*'
+  - 'e2e/react-start/*'
