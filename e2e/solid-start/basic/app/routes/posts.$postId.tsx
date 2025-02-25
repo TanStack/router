@@ -14,7 +14,6 @@ export const Route = createFileRoute('/posts/$postId')({
   },
 })
 
-
 function PostComponent() {
   const post = Route.useLoaderData()
 
