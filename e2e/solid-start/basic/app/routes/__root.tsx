@@ -81,7 +81,6 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
       </head>
       <body>
         <div id="app">
-
           <div class="p-2 flex gap-2 text-lg">
             <Link
               to="/"
