@@ -379,17 +379,6 @@ export async function defineConfig(
 
   const noExternal = [
     '@tanstack/start',
-    '@tanstack/start/server',
-    '@tanstack/start-client',
-    '@tanstack/start-server',
-    '@tanstack/start-server-functions-fetcher',
-    '@tanstack/start-server-functions-handler',
-    '@tanstack/start-server-functions-client',
-    '@tanstack/start-server-functions-ssr',
-    '@tanstack/start-server-functions-server',
-    '@tanstack/start-router-manifest',
-    '@tanstack/start-config',
-    '@tanstack/start-api-routes',
     '@tanstack/react-start',
     '@tanstack/react-start/server',
     '@tanstack/react-start-client',

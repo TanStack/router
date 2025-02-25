@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/start'
-import { setCookie } from '@tanstack/start/server'
+import { createServerFn } from '@tanstack/react-start'
+import { setCookie } from '@tanstack/react-start/server'
 import { z } from 'zod'
 import Cookies from 'js-cookie'
 import React, { useEffect } from 'react'
