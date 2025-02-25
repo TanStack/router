@@ -2,11 +2,13 @@
 title: Code-Based Routing
 ---
 
+> [!TIP]
+> Code-based routing is not recommended for most applications. It is recommended to use [File-Based Routing](./file-based-routing.md) instead.
+
 ## ⚠️ Before You Start
 
 - If you're using [File-Based Routing](./file-based-routing.md), **skip this guide**.
-- If you are new to TanStack Router, please be aware that **file-based routing is the recommended way to configure TanStack Router**. If you're not sure which to use, please read the [File-Based Routing](./file-based-routing.md) guide first.
-- If you still insist on using code-based routing, you must read the [File-Based Routing](./file-based-routing.md) guide first as it also covers core concepts of the router that are not repeated here.
+- If you still insist on using code-based routing, you must read the [Routing Concepts](./routing-concepts.md) guide first, as it also covers core concepts of the router.
 
 ## Route Trees
 
@@ -109,37 +111,6 @@ const filesRoute = createRoute({
 })
 ```
 
-## File-Based vs Code-Based Routing
-
-Believe it or not, file-based routing is really a superset of code-based routing and uses the filesystem and a bit of code-generation abstraction on top of it to generate this structure you see above automatically.
-
-We're going to assume you've read the [File-Based Routing](./file-based-routing.md) guide and are familiar with each of these main concepts:
-
-- The Root Route
-- Static Routes
-- Index Routes
-- Dynamic Route Segments
-- Splat / Catch-All Routes
-- Pathless Routes
-- Non-Nested Routes
-- Not-Found Routes
-
-**Now, let's take a look at how to create each of these route types in code.**
-
-## The Root Route
-
-Creating a root route in code-based routing is thankfully the same as doing so in file-based routing. Call the `createRootRoute()` function.
-
-Unlike file-based routing however, you do not need to export the root route if you don't want to. It's certainly not recommended to build an entire route tree and application in a single file (although you can and we do this in the examples to demonstrate routing concepts in brevity).
-
-```tsx
-import { createRootRoute } from '@tanstack/react-router'
-
-const rootRoute = createRootRoute()
-```
-
-> 🧠 You can also create a root route via the `createRootRouteWithContext<TContext>()` function, which is a type-safe way of doing dependency injection for the entire router. Read more about this in the [Context Section](./router-context.md) -->
-
 ## Anatomy of a Route
 
 All other routes other than the root route are configured using the `createRoute` function:
@@ -152,21 +123,16 @@ const route = createRoute({
 })
 ```
 
-### The `getParentRoute` option
-
 The `getParentRoute` option is a function that returns the parent route of the route you're creating.
 
 **❓❓❓ "Wait, you're making me pass the parent route for every route I make?"**
 
 Absolutely! The reason for passing the parent route has **everything to do with the magical type safety** of TanStack Router. Without the parent route, TypeScript would have no idea what types to supply your route with!
 
-### The `path` option
+> [!IMPORTANT]
+> For every route that **is not the root route or a pathless route**, a `path` option is required. This is the path that will be matched against the URL pathname to determine if the route is a match.
 
-For every route that **is not the root route or a pathless route**, a `path` option is required. This is the path that will be matched against the URL pathname to determine if the route is a match.
-
-#### Leading/Trailing Slashes
-
-When configuring routes via code, route paths ignore leading and trailing slashes (this does not include "index" route paths `/`). You can include them if you want, but they will be normalized internally by TanStack Router. Here is a table of valid paths and what they will be normalized to:
+When configuring route `path` option on a route, it ignores leading and trailing slashes (this does not include "index" route paths `/`). You can include them if you want, but they will be normalized internally by TanStack Router. Here is a table of valid paths and what they will be normalized to:
 
 | Path     | Normalized Path |
 | -------- | --------------- |
@@ -207,9 +173,52 @@ const routeTree = rootRoute.addChildren([
 /* prettier-ignore-end */
 ```
 
-## Static Routes
+But before you can go ahead and build the route tree, you need to understand how the Routing Concepts for Code-Based Routing work.
 
-To create a static route, simply provide a normal `path` string to the `createRoute` function:
+## Routing Concepts for Code-Based Routing
+
+Believe it or not, file-based routing is really a superset of code-based routing and uses the filesystem and a bit of code-generation abstraction on top of it to generate this structure you see above automatically.
+
+We're going to assume you've read the [Routing Concepts](./routing-concepts.md) guide and are familiar with each of these main concepts:
+
+- The Root Route
+- Basic Routes
+- Index Routes
+- Dynamic Route Segments
+- Splat / Catch-All Routes
+- Layout Routes
+- Pathless Routes
+- Non-Nested Routes
+
+Now, let's take a look at how to create each of these route types in code.
+
+## The Root Route
+
+Creating a root route in code-based routing is thankfully the same as doing so in file-based routing. Call the `createRootRoute()` function.
+
+Unlike file-based routing however, you do not need to export the root route if you don't want to. It's certainly not recommended to build an entire route tree and application in a single file (although you can and we do this in the examples to demonstrate routing concepts in brevity).
+
+```tsx
+// Standard root route
+import { createRootRoute } from '@tanstack/react-router'
+
+const rootRoute = createRootRoute()
+
+// Root route with Context
+import { createRootRouteWithContext } from '@tanstack/react-router'
+import type { QueryClient } from '@tanstack/react-query'
+
+export interface MyRouterContext {
+  queryClient: QueryClient
+}
+const rootRoute = createRootRouteWithContext<MyRouterContext>()
+```
+
+To learn more about Context in TanStack Router, see the [Router Context](../guide/router-context.md) guide.
+
+## Basic Routes
+
+To create a basic route, simply provide a normal `path` string to the `createRoute` function:
 
 ```tsx
 const aboutRoute = createRoute({
@@ -217,6 +226,8 @@ const aboutRoute = createRoute({
   path: 'about',
 })
 ```
+
+See, it's that simple! The `aboutRoute` will match the URL `/about`.
 
 ## Index Routes
 
@@ -234,6 +245,8 @@ const postsIndexRoute = createRoute({
   path: '/',
 })
 ```
+
+So, the `postsIndexRoute` will match the URL `/posts/` (or `/posts`).
 
 ## Dynamic Route Segments
 
@@ -358,7 +371,3 @@ const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute]),
 ])
 ```
-
-## 404 / `NotFoundRoute`s
-
-We'll cover how to configure a `NotFoundRoute` in the [Not Found Errors](./not-found-errors.md) guide.

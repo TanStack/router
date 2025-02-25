@@ -2,7 +2,7 @@
 
 # TanStack Router Plugin
 
-See https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing
+See https://tanstack.com/router/latest/docs/framework/react/routing/file-based-routing
 
 ## Installation
 
@@ -10,17 +10,4 @@ See https://tanstack.com/router/latest/docs/framework/react/guide/file-based-rou
 npm install -D @tanstack/router-plugin
 ```
 
-### Usage with vite
-
-```js
-// vite.config.js
-import { defineConfig } from 'vite'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-
-export default defineConfig({
-  plugins: [
-    TanStackRouterVite(),
-    // ...
-  ],
-})
-```
+See https://tanstack.com/router/latest/docs/framework/react/routing/installation-with-router-cli for usage instructions.
