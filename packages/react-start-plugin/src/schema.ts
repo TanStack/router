@@ -1,102 +1,10 @@
-import { configSchema } from '@tanstack/router-generator'
+import path from 'node:path'
+import { existsSync } from 'node:fs'
 import { z } from 'zod'
-import type { PluginOption } from 'vite'
-import type { AppOptions as VinxiAppOptions } from 'vinxi'
-import type { NitroOptions } from 'nitropack'
+import { configSchema, getConfig } from '@tanstack/router-generator'
+import type { UserConfig } from 'vite'
+import type { NitroConfig } from 'nitropack'
 import type { Options as ViteReactOptions } from '@vitejs/plugin-react'
-import type { CustomizableConfig } from 'vinxi/dist/types/lib/vite-dev'
-
-type StartUserViteConfig = CustomizableConfig | (() => CustomizableConfig)
-
-export function getUserViteConfig(config?: StartUserViteConfig): {
-  plugins: Array<PluginOption> | undefined
-  userConfig: CustomizableConfig
-} {
-  const { plugins, ...userConfig } =
-    typeof config === 'function' ? config() : { ...config }
-  return { plugins, userConfig }
-}
-
-/**
- * Not all the deployment presets are fully functional or tested.
- * @see https://github.com/TanStack/router/pull/2002
- */
-const vinxiDeploymentPresets = [
-  'alwaysdata', // untested
-  'aws-amplify', // untested
-  'aws-lambda', // untested
-  'azure', // untested
-  'azure-functions', // untested
-  'base-worker', // untested
-  'bun', // ✅ working
-  'cleavr', // untested
-  'cli', // untested
-  'cloudflare', // untested
-  'cloudflare-module', // untested
-  'cloudflare-pages', // ✅ working
-  'cloudflare-pages-static', // untested
-  'deno', // untested
-  'deno-deploy', // untested
-  'deno-server', // untested
-  'digital-ocean', // untested
-  'edgio', // untested
-  'firebase', // untested
-  'flight-control', // untested
-  'github-pages', // untested
-  'heroku', // untested
-  'iis', // untested
-  'iis-handler', // untested
-  'iis-node', // untested
-  'koyeb', // untested
-  'layer0', // untested
-  'netlify', // ✅ working
-  'netlify-builder', // untested
-  'netlify-edge', // untested
-  'netlify-static', // untested
-  'nitro-dev', // untested
-  'nitro-prerender', // untested
-  'node', // partially working
-  'node-cluster', // untested
-  'node-server', // ✅ working
-  'platform-sh', // untested
-  'service-worker', // untested
-  'static', // 🟧 partially working
-  'stormkit', // untested
-  'vercel', // ✅ working
-  'vercel-edge', // untested
-  'vercel-static', // untested
-  'winterjs', // untested
-  'zeabur', // untested
-  'zeabur-static', // untested
-] as const
-
-type DeploymentPreset = (typeof vinxiDeploymentPresets)[number] | (string & {})
-
-const testedDeploymentPresets: Array<DeploymentPreset> = [
-  'bun',
-  'netlify',
-  'vercel',
-  'cloudflare-pages',
-  'node-server',
-]
-
-export function checkDeploymentPresetInput(preset: string): DeploymentPreset {
-  if (!vinxiDeploymentPresets.includes(preset as any)) {
-    console.warn(
-      `Invalid deployment preset "${preset}". Available presets are: ${vinxiDeploymentPresets
-        .map((p) => `"${p}"`)
-        .join(', ')}.`,
-    )
-  }
-
-  if (!testedDeploymentPresets.includes(preset as any)) {
-    console.warn(
-      `The deployment preset '${preset}' is not fully supported yet and may not work as expected.`,
-    )
-  }
-
-  return preset
-}
 
 type HTTPSOptions = {
   cert?: string
@@ -107,88 +15,131 @@ type HTTPSOptions = {
   domains?: Array<string>
 }
 
-type ServerOptions_ = VinxiAppOptions['server'] & {
+type ServerOptions = NitroConfig & {
   https?: boolean | HTTPSOptions
 }
 
-type ServerOptions = {
-  [K in keyof ServerOptions_]: ServerOptions_[K]
-}
+export const serverSchema = z.custom<ServerOptions>().and(
+  z.object({
+    preset: z
+      .custom<ServerOptions['preset']>()
+      .optional()
+      .default('node-server'),
+  }),
+)
 
-export const serverSchema = z
-  .object({
-    routeRules: z.custom<NitroOptions['routeRules']>().optional(),
-    preset: z.custom<DeploymentPreset>().optional(),
-    static: z.boolean().optional(),
-    prerender: z
-      .object({
-        routes: z.array(z.string()),
-        ignore: z
-          .array(
-            z.custom<
-              string | RegExp | ((path: string) => undefined | null | boolean)
-            >(),
-          )
-          .optional(),
-        crawlLinks: z.boolean().optional(),
-      })
-      .optional(),
-  })
-  .and(z.custom<ServerOptions>())
-
-const viteSchema = z.custom<StartUserViteConfig>()
+const viteSchema = z.custom<UserConfig>()
 
 const viteReactSchema = z.custom<ViteReactOptions>()
 
 const routersSchema = z.object({
   ssr: z
     .object({
-      entry: z.string().optional(),
-      middleware: z.string().optional(),
+      entry: z.string().optional().default('ssr.tsx'),
+      // middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
-    .optional(),
+    .optional()
+    .default({}),
   client: z
     .object({
-      entry: z.string().optional(),
-      base: z.string().optional(),
+      entry: z.string().optional().default('client.tsx'),
+      base: z.string().optional().default('/_build'),
       vite: viteSchema.optional(),
     })
-    .optional(),
+    .optional()
+    .default({}),
   server: z
     .object({
-      base: z.string().optional(),
-      globalMiddlewareEntry: z.string().optional(),
-      middleware: z.string().optional(),
+      base: z.string().optional().default('/_server'),
+      globalMiddlewareEntry: z
+        .string()
+        .optional()
+        .default('global-middleware.ts'),
+      // middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
-    .optional(),
+    .optional()
+    .default({}),
   api: z
     .object({
-      entry: z.string().optional(),
-      middleware: z.string().optional(),
+      base: z.string().optional().default('/api'),
+      entry: z.string().optional().default('api.ts'),
+      // middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
-    .optional(),
+    .optional()
+    .default({}),
   public: z
     .object({
-      dir: z.string().optional(),
-      base: z.string().optional(),
+      dir: z.string().optional().default('public'),
+      base: z.string().optional().default('/'),
     })
-    .optional(),
+    .optional()
+    .default({}),
+})
+
+const sitemapSchema = z.object({
+  host: z.string(),
 })
 
 const tsrConfig = configSchema.partial().extend({
-  appDirectory: z.string().optional(),
+  // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
+  appDirectory: z.string().optional().default('app'),
 })
 
-export const inlineConfigSchema = z.object({
-  react: viteReactSchema.optional(),
-  vite: viteSchema.optional(),
-  tsr: tsrConfig.optional(),
-  routers: routersSchema.optional(),
-  server: serverSchema.optional(),
-})
+const TanStackStartOptionsSchema = z
+  .object({
+    root: z.string().optional().default(process.cwd()),
+    react: viteReactSchema.optional(),
+    vite: viteSchema.optional(),
+    tsr: tsrConfig.optional().default({}),
+    routers: routersSchema.optional().default({}),
+    server: serverSchema.optional().default({}),
+    sitemap: sitemapSchema.optional(),
+  })
+  .optional()
+  .default({})
 
-export type TanStackStartInputConfig = z.input<typeof inlineConfigSchema>
-export type TanStackStartOutputConfig = z.infer<typeof inlineConfigSchema>
+export function getTanStackStartOptions(opts?: TanStackStartInputConfig) {
+  const options = TanStackStartOptionsSchema.parse(opts)
+
+  const appDirectory = options.tsr.appDirectory
+  const routesDirectory =
+    options.tsr.routesDirectory ?? path.join(appDirectory, 'routes')
+  const generatedRouteTree =
+    options.tsr.generatedRouteTree ??
+    path.join(appDirectory, 'routeTree.gen.ts')
+  const clientEntryPath = path.join(appDirectory, options.routers.client.entry)
+  const ssrEntryPath = path.join(appDirectory, options.routers.ssr.entry)
+  const apiEntryPath = path.join(appDirectory, options.routers.api.entry)
+  const globalMiddlewareEntryPath = path.join(
+    appDirectory,
+    options.routers.server.globalMiddlewareEntry,
+  )
+  const hasApiEntry = existsSync(apiEntryPath)
+
+  return {
+    ...options,
+    tsr: {
+      ...options.tsr,
+      ...getConfig({
+        ...options.tsr,
+        routesDirectory,
+        generatedRouteTree,
+      }),
+    },
+    clientEntryPath,
+    ssrEntryPath,
+    apiEntryPath,
+    globalMiddlewareEntryPath,
+    hasApiEntry,
+  }
+}
+
+export type TanStackStartInputConfig = z.input<
+  typeof TanStackStartOptionsSchema
+>
+export type TanStackStartOutputConfig = ReturnType<
+  typeof getTanStackStartOptions
+>
