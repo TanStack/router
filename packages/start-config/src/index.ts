@@ -11,7 +11,7 @@ import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
 import { createTanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
-import { createTanStackStartPlugin } from '@tanstack/start-plugin'
+import { createTanStackStartPlugin } from '@tanstack/react-start-plugin'
 import { createFetch } from 'ofetch'
 import { createNitro } from 'nitropack'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
@@ -305,7 +305,7 @@ export async function defineConfig(
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative(
-          '@tanstack/start-server-functions-handler',
+          '@tanstack/react-start-server-functions-handler',
         ),
         plugins: () => {
           const routerType = 'server'
@@ -379,17 +379,18 @@ export async function defineConfig(
 
   const noExternal = [
     '@tanstack/start',
-    '@tanstack/start/server',
-    '@tanstack/start-client',
-    '@tanstack/start-server',
-    '@tanstack/start-server-functions-fetcher',
-    '@tanstack/start-server-functions-handler',
-    '@tanstack/start-server-functions-client',
-    '@tanstack/start-server-functions-ssr',
+    '@tanstack/react-start',
+    '@tanstack/react-start/server',
+    '@tanstack/react-start-client',
+    '@tanstack/react-start-server',
+    '@tanstack/react-start-server-functions-fetcher',
+    '@tanstack/react-start-server-functions-handler',
+    '@tanstack/react-start-server-functions-client',
+    '@tanstack/react-start-server-functions-ssr',
     '@tanstack/start-server-functions-server',
-    '@tanstack/start-router-manifest',
+    '@tanstack/react-start-router-manifest',
     '@tanstack/start-config',
-    '@tanstack/start-api-routes',
+    '@tanstack/react-start-api-routes',
     '@tanstack/server-functions-plugin',
     'tsr:routes-manifest',
     'tsr:server-fn-manifest',

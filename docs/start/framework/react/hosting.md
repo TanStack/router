@@ -48,7 +48,7 @@ Set the `server.preset` value to `netlify` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({
   server: {
@@ -71,7 +71,7 @@ Deploying your TanStack Start application to Vercel is easy and straightforward.
 
 ```ts
 // app.config.ts
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({
   server: {
@@ -106,7 +106,7 @@ Set the `server.preset` value to `cloudflare-pages` and the `server.unenv` value
 
 ```ts
 // app.config.ts
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 import { cloudflare } from 'unenv'
 
 export default defineConfig({
@@ -135,7 +135,7 @@ Set the `server.preset` value to `node-server` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({
   server: {
@@ -175,7 +175,7 @@ Set the `server.preset` value to `bun` in your `app.config.ts` file.
 
 ```ts
 // app.config.ts
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({
   server: {
