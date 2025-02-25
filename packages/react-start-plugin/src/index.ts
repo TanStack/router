@@ -48,7 +48,9 @@ export function createTanStackStartPlugin(opts: TanStackStartViteOptions): {
         globalMiddlewareEntryExists = existsSync(resolvedGlobalMiddlewareEntry)
 
         if (!entry) {
-          throw new Error('@tanstack/react-start-plugin: No server entry found!')
+          throw new Error(
+            '@tanstack/react-start-plugin: No server entry found!',
+          )
         }
       },
       transform(code, id) {

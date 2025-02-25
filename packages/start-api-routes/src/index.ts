@@ -1,1 +1,1 @@
-export * from '@tanstack/react-start-api-routes';
+export * from '@tanstack/react-start-api-routes'

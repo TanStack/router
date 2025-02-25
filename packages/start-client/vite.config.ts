@@ -1,9 +1,7 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
 
-const config = defineConfig({
-
-})
+const config = defineConfig({})
 
 export default mergeConfig(
   config,

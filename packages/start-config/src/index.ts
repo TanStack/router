@@ -1,1 +1,1 @@
-export * from '@tanstack/react-start-config';
+export * from '@tanstack/react-start-config'

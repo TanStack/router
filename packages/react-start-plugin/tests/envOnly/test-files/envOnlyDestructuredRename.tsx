@@ -1,4 +1,7 @@
-import { serverOnly as serverFn, clientOnly as clientFn } from '@tanstack/react-start'
+import {
+  serverOnly as serverFn,
+  clientOnly as clientFn,
+} from '@tanstack/react-start'
 
 const serverFunc = serverFn(() => 'server')
 

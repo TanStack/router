@@ -1,1 +1,1 @@
-export * from '@tanstack/react-start-router-manifest';
+export * from '@tanstack/react-start-router-manifest'
