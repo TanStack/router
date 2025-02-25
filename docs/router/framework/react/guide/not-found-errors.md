@@ -270,7 +270,29 @@ The main differences are:
 - When using `NotFoundRoute`, you can't use layouts. `notFoundComponent` can be used with layouts.
 - When using `notFoundComponent`, path matching is strict. This means that if you have a route at `/post/$postId`, a not-found error will be thrown if you try to access `/post/1/2/3`. With `NotFoundRoute`, `/post/1/2/3` would match the `NotFoundRoute` and only render it if there is an `<Outlet>`.
 
-To migrate from `NotFoundRoute` to `notFoundComponent`, follow these steps:
+To migrate from `NotFoundRoute` to `notFoundComponent`, you'll just need to make a few changes:
+
+```tsx
+// router.tsx
+import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen.'
+- import { notFoundRoute } from './notFoundRoute'  // [!code --]
+
+export const router = createRouter({
+  routeTree,
+- notFoundRoute // [!code --]
+})
+
+// routes/__root.tsx
+import { createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute({
+  // ...
++ notFoundComponent: () => {  // [!code ++]
++   return <p>Not found!</p>  // [!code ++]
++ } // [!code ++]
+})
+```
 
 - Replace `NotFoundRoute` with `notFoundComponent`s on the routes that need to handle not-found errors. For "global" not-found errors, attach a `notFoundComponent` to the root route.
 - Remove `<Outlet>`s from the routes that used `NotFoundRoute`.
