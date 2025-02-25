@@ -1,5 +1,5 @@
 ---
-title: Route Trees & Nesting
+title: Route Trees
 ---
 
 TanStack Router uses a nested route tree to match up the URL with the correct component tree to render.
