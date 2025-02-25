@@ -295,6 +295,10 @@
           "label": "solid",
           "children": [
             {
+              "label": "Code Splitting",
+              "to": "framework/solid/guide/code-splitting"
+            },
+            {
               "label": "Automatic Code Splitting",
               "to": "framework/solid/guide/automatic-code-splitting"
             },
