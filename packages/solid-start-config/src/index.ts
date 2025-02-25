@@ -451,6 +451,7 @@ export async function defineConfig(
           }),
           ...(viteConfig.plugins || []),
           ...(apiViteConfig.plugins || []),
+          viteSolid({ ...opts.solid, ssr: true }),
         ]
       },
     })
