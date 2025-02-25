@@ -388,3 +388,11 @@ test('createServerFn can validate FormData', () => {
       >
     >()
 })
+
+test('createServerFn with rawResponse:true', () => {
+  const fn = createServerFn({ rawResponse: true }).handler(() => {
+    return new Response('Hello World')
+  })
+
+  expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
+})
