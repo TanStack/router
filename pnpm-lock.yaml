@@ -5765,6 +5765,9 @@ importers:
       '@tanstack/react-start-client':
         specifier: workspace:*
         version: link:../react-start-client
+      '@tanstack/react-start-plugin':
+        specifier: workspace:*
+        version: link:../react-start-plugin
       '@tanstack/react-start-router-manifest':
         specifier: workspace:*
         version: link:../react-start-router-manifest
