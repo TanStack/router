@@ -56,6 +56,8 @@
   - 'packages/solid-router/**/*'
 'package: start':
   - 'packages/start/**/*'
+'package: start-config':
+  - 'packages/start-config/**/*'
 'package: start-server-functions-server':
   - 'packages/start-server-functions-server/**/*'
 'package: valibot-adapter':
