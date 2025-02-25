@@ -16,7 +16,7 @@ import type {
   SsrMatch,
 } from '@tanstack/start-client'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/react-router'
-import type { Manifest, DeferredPromise } from '@tanstack/router-core'
+import type { DeferredPromise, Manifest } from '@tanstack/router-core'
 
 export type ServerExtractedEntry =
   | ServerExtractedStream
