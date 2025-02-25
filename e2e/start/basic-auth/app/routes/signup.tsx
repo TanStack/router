@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { createServerFn, useServerFn } from '@tanstack/start'
+import { createServerFn, useServerFn } from '@tanstack/react-start'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { useMutation } from '~/hooks/useMutation'

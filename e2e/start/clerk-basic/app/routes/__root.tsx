@@ -14,10 +14,10 @@ import {
   UserButton,
 } from '@clerk/tanstack-start'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 import { getAuth } from '@clerk/tanstack-start/server'
-import { getWebRequest } from '@tanstack/start/server'
+import { getWebRequest } from '@tanstack/react-start/server'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'

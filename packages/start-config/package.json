@@ -1,13 +1,13 @@
 {
   "name": "@tanstack/start-config",
-  "version": "1.111.9",
+  "version": "1.111.7",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/start"
+    "directory": "packages/start-config"
   },
   "homepage": "https://tanstack.com/start",
   "funding": {
@@ -55,8 +55,8 @@
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/server-functions-plugin": "workspace:^",
-    "@tanstack/start-plugin": "workspace:^",
-    "@tanstack/start-server-functions-handler": "workspace:^",
+    "@tanstack/react-start-plugin": "workspace:^",
+    "@tanstack/react-start-server-functions-handler": "workspace:^",
     "@vitejs/plugin-react": "^4.3.4",
     "import-meta-resolve": "^4.1.0",
     "nitropack": "^2.10.4",
