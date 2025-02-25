@@ -20,8 +20,6 @@
   - 'packages/react-start-api-routes/**/*'
 'package: react-start-client':
   - 'packages/react-start-client/**/*'
-'package: react-start-config':
-  - 'packages/react-start-config/**/*'
 'package: react-start-plugin':
   - 'packages/react-start-plugin/**/*'
 'package: react-start-router-manifest':
