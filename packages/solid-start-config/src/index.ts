@@ -228,7 +228,7 @@ export async function defineConfig(
             TanStackServerFnsPlugin.client,
             ...(viteConfig.plugins || []),
             ...(clientViteConfig.plugins || []),
-            viteSolid(opts.solid),
+            viteSolid({ ...opts.solid, ssr: true }),
             // TODO: RSCS - enable this
             // serverComponents.client(),
           ]
@@ -376,6 +376,7 @@ export async function defineConfig(
             // }),
             ...(viteConfig.plugins || []),
             ...(serverViteConfig.plugins || []),
+            viteSolid({ ...opts.solid, ssr: true }),
           ]
         },
       },
