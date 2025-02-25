@@ -35,6 +35,7 @@ import { Route as RedirectPreloadFirstImport } from './routes/redirect/preload/f
 import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdEditImport } from './routes/posts_.$postId.edit'
+import { Route as ParamsSingleValueImport } from './routes/params.single.$value'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as groupSubfolderInsideImport } from './routes/(group)/subfolder/inside'
@@ -181,6 +182,12 @@ const RedirectTargetViaBeforeLoadRoute =
 const PostsPostIdEditRoute = PostsPostIdEditImport.update({
   id: '/posts_/$postId/edit',
   path: '/posts/$postId/edit',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ParamsSingleValueRoute = ParamsSingleValueImport.update({
+  id: '/params/single/$value',
+  path: '/params/single/$value',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -352,6 +359,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LayoutLayout2LayoutBImport
       parentRoute: typeof LayoutLayout2Import
     }
+    '/params/single/$value': {
+      id: '/params/single/$value'
+      path: '/params/single/$value'
+      fullPath: '/params/single/$value'
+      preLoaderRoute: typeof ParamsSingleValueImport
+      parentRoute: typeof rootRoute
+    }
     '/posts_/$postId/edit': {
       id: '/posts_/$postId/edit'
       path: '/posts/$postId/edit'
@@ -505,6 +519,7 @@ export interface FileRoutesByFullPath {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
@@ -530,6 +545,7 @@ export interface FileRoutesByTo {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
@@ -561,6 +577,7 @@ export interface FileRoutesById {
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
@@ -590,6 +607,7 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
@@ -614,6 +632,7 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
@@ -643,6 +662,7 @@ export interface FileRouteTypes {
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/params/single/$value'
     | '/posts_/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
@@ -664,6 +684,7 @@ export interface RootRouteChildren {
   groupRoute: typeof groupRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   RedirectIndexRoute: typeof RedirectIndexRoute
+  ParamsSingleValueRoute: typeof ParamsSingleValueRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
   RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
   RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
@@ -681,6 +702,7 @@ const rootRouteChildren: RootRouteChildren = {
   groupRoute: groupRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
+  ParamsSingleValueRoute: ParamsSingleValueRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
   RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
   RedirectPreloadSecondRoute: RedirectPreloadSecondRoute,
@@ -690,3 +712,152 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/_layout",
+        "/anchor",
+        "/editing-a",
+        "/editing-b",
+        "/posts",
+        "/(another-group)/onlyrouteinside",
+        "/(group)",
+        "/redirect/$target",
+        "/redirect/",
+        "/params/single/$value",
+        "/posts_/$postId/edit",
+        "/redirect/preload/first",
+        "/redirect/preload/second",
+        "/redirect/preload/third"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/_layout": {
+      "filePath": "_layout.tsx",
+      "children": [
+        "/_layout/_layout-2"
+      ]
+    },
+    "/anchor": {
+      "filePath": "anchor.tsx"
+    },
+    "/editing-a": {
+      "filePath": "editing-a.tsx"
+    },
+    "/editing-b": {
+      "filePath": "editing-b.tsx"
+    },
+    "/posts": {
+      "filePath": "posts.tsx",
+      "children": [
+        "/posts/$postId",
+        "/posts/"
+      ]
+    },
+    "/(another-group)/onlyrouteinside": {
+      "filePath": "(another-group)/onlyrouteinside.tsx"
+    },
+    "/(group)": {
+      "filePath": "(group)",
+      "children": [
+        "/(group)/_layout",
+        "/(group)/inside",
+        "/(group)/lazyinside",
+        "/(group)/subfolder/inside"
+      ]
+    },
+    "/(group)/_layout": {
+      "filePath": "(group)/_layout.tsx",
+      "parent": "/(group)",
+      "children": [
+        "/(group)/_layout/insidelayout"
+      ]
+    },
+    "/(group)/inside": {
+      "filePath": "(group)/inside.tsx",
+      "parent": "/(group)"
+    },
+    "/(group)/lazyinside": {
+      "filePath": "(group)/lazyinside.tsx",
+      "parent": "/(group)"
+    },
+    "/_layout/_layout-2": {
+      "filePath": "_layout/_layout-2.tsx",
+      "parent": "/_layout",
+      "children": [
+        "/_layout/_layout-2/layout-a",
+        "/_layout/_layout-2/layout-b"
+      ]
+    },
+    "/posts/$postId": {
+      "filePath": "posts.$postId.tsx",
+      "parent": "/posts"
+    },
+    "/redirect/$target": {
+      "filePath": "redirect/$target.tsx",
+      "children": [
+        "/redirect/$target/via-beforeLoad",
+        "/redirect/$target/via-loader",
+        "/redirect/$target/"
+      ]
+    },
+    "/posts/": {
+      "filePath": "posts.index.tsx",
+      "parent": "/posts"
+    },
+    "/redirect/": {
+      "filePath": "redirect/index.tsx"
+    },
+    "/(group)/_layout/insidelayout": {
+      "filePath": "(group)/_layout.insidelayout.tsx",
+      "parent": "/(group)/_layout"
+    },
+    "/(group)/subfolder/inside": {
+      "filePath": "(group)/subfolder/inside.tsx",
+      "parent": "/(group)"
+    },
+    "/_layout/_layout-2/layout-a": {
+      "filePath": "_layout/_layout-2/layout-a.tsx",
+      "parent": "/_layout/_layout-2"
+    },
+    "/_layout/_layout-2/layout-b": {
+      "filePath": "_layout/_layout-2/layout-b.tsx",
+      "parent": "/_layout/_layout-2"
+    },
+    "/params/single/$value": {
+      "filePath": "params.single.$value.tsx"
+    },
+    "/posts_/$postId/edit": {
+      "filePath": "posts_.$postId.edit.tsx"
+    },
+    "/redirect/$target/via-beforeLoad": {
+      "filePath": "redirect/$target/via-beforeLoad.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/$target/via-loader": {
+      "filePath": "redirect/$target/via-loader.tsx",
+      "parent": "/redirect/$target"
+    },
+    "/redirect/preload/first": {
+      "filePath": "redirect/preload/first.tsx"
+    },
+    "/redirect/preload/second": {
+      "filePath": "redirect/preload/second.tsx"
+    },
+    "/redirect/preload/third": {
+      "filePath": "redirect/preload/third.tsx"
+    },
+    "/redirect/$target/": {
+      "filePath": "redirect/$target/index.tsx",
+      "parent": "/redirect/$target"
+    }
+  }
+}
+ROUTE_MANIFEST_END */
