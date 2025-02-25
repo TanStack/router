@@ -34,7 +34,7 @@ overrides:
   '@tanstack/react-start-server-functions-handler': workspace:*
   '@tanstack/react-start-server-functions-client': workspace:*
   '@tanstack/react-start-server-functions-ssr': workspace:*
-  '@tanstack/react-start-server-functions-server': workspace:*
+  '@tanstack/start-server-functions-server': workspace:*
   '@tanstack/react-start-router-manifest': workspace:*
   '@tanstack/react-start-config': workspace:*
   '@tanstack/react-start-plugin': workspace:*
@@ -4963,12 +4963,12 @@ importers:
       '@tanstack/react-start-server-functions-handler':
         specifier: workspace:*
         version: link:../react-start-server-functions-handler
-      '@tanstack/react-start-server-functions-server':
-        specifier: workspace:*
-        version: link:../react-start-server-functions-server
       '@tanstack/react-start-server-functions-ssr':
         specifier: workspace:*
         version: link:../react-start-server-functions-ssr
+      '@tanstack/start-server-functions-server':
+        specifier: workspace:*
+        version: link:../start-server-functions-server
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -5263,19 +5263,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      typescript:
-        specifier: ^5.7.2
-        version: 5.7.3
-
-  packages/react-start-server-functions-server:
-    dependencies:
-      '@tanstack/server-functions-plugin':
-        specifier: workspace:*
-        version: link:../server-functions-plugin
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-    devDependencies:
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -5594,12 +5581,25 @@ importers:
       '@tanstack/react-start-server-functions-handler':
         specifier: workspace:*
         version: link:../react-start-server-functions-handler
-      '@tanstack/react-start-server-functions-server':
-        specifier: workspace:*
-        version: link:../react-start-server-functions-server
       '@tanstack/react-start-server-functions-ssr':
         specifier: workspace:*
         version: link:../react-start-server-functions-ssr
+      '@tanstack/start-server-functions-server':
+        specifier: workspace:*
+        version: link:../start-server-functions-server
+
+  packages/start-server-functions-server:
+    dependencies:
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:*
+        version: link:../server-functions-plugin
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
 
   packages/valibot-adapter:
     devDependencies:

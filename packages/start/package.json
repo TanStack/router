@@ -148,7 +148,7 @@
     "@tanstack/react-start-config": "workspace:^",
     "@tanstack/react-start-router-manifest": "workspace:^",
     "@tanstack/react-start-server-functions-client": "workspace:^",
-    "@tanstack/react-start-server-functions-server": "workspace:^",
+    "@tanstack/start-server-functions-server": "workspace:^",
     "@tanstack/react-start-server-functions-handler": "workspace:^",
     "@tanstack/react-start-server-functions-ssr": "workspace:^",
     "@tanstack/react-start-api-routes": "workspace:^"

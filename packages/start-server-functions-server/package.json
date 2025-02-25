@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/react-start-server-functions-server",
+  "name": "@tanstack/start-server-functions-server",
   "version": "1.111.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/react-start-server-functions-server"
+    "directory": "packages/start-server-functions-server"
   },
   "homepage": "https://tanstack.com/start",
   "funding": {

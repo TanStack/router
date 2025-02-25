@@ -125,7 +125,7 @@ await publish({
       packageDir: 'packages/react-start-server-functions-ssr',
     },
     {
-      name: '@tanstack/react-start-server-functions-server',
+      name: '@tanstack/start-server-functions-server',
       packageDir: 'packages/react-start-server-functions-server',
     },
     {
