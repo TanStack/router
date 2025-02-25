@@ -294,5 +294,8 @@ export const Route = createRootRoute({
 })
 ```
 
-- Replace `NotFoundRoute` with `notFoundComponent`s on the routes that need to handle not-found errors. For "global" not-found errors, attach a `notFoundComponent` to the root route.
-- Remove `<Outlet>`s from the routes that used `NotFoundRoute`.
+Important changes:
+
+- A `notFoundComponent` is added to the root route for global not-found handling.
+  - You can also add a `notFoundComponent` to any other route in your route tree to handle not-found errors for that specific route.
+- The `notFoundComponent` does not support rendering an `<Outlet>`.
