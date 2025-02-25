@@ -334,6 +334,26 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     expect(router.state.location.pathname).toBe('/posts/🚀')
   })
 
+  it('state.location.pathname, should have the params.slug value of "100%25"', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%25'] }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/100%25')
+  })
+
+  it('state.location.pathname, should have the params.slug value of "100%26"', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%26'] }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/100%26')
+  })
+
   it('state.location.pathname, should have the params.slug value of "%F0%9F%9A%80"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
@@ -414,6 +434,78 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     expect((match.params as unknown as any).slug).toBe('🚀')
   })
 
+  it('params.slug for the matched route, should be "100%"', async () => {
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%25'] }),
+    })
+
+    await router.load()
+
+    const match = router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!match) {
+      throw new Error('No match found')
+    }
+
+    expect((match.params as unknown as any).slug).toBe('100%')
+  })
+
+  it('params.slug for the matched route, should be "100&"', async () => {
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%26'] }),
+    })
+
+    await router.load()
+
+    const match = router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!match) {
+      throw new Error('No match found')
+    }
+
+    expect((match.params as unknown as any).slug).toBe('100&')
+  })
+
+  it('params.slug for the matched route, should be "100%100"', async () => {
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%25100'] }),
+    })
+
+    await router.load()
+
+    const match = router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!match) {
+      throw new Error('No match found')
+    }
+
+    expect((match.params as unknown as any).slug).toBe('100%100')
+  })
+
+  it('params.slug for the matched route, should be "100&100"', async () => {
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%26100'] }),
+    })
+
+    await router.load()
+
+    const match = router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!match) {
+      throw new Error('No match found')
+    }
+
+    expect((match.params as unknown as any).slug).toBe('100&100')
+  })
+
   it('params.slug for the matched route, should be "framework/react/guide/file-based-routing tanstack" instead of it being "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
     const { router, routes } = createTestRouter({
       history: createMemoryHistory({
@@ -485,6 +577,26 @@ describe('encoding: URL splat segment for /$', () => {
     await router.load()
 
     expect(router.state.location.pathname).toBe('/🚀')
+  })
+
+  it('state.location.pathname, should have the params._splat value of "100%25"', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/100%25'] }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/100%25')
+  })
+
+  it('state.location.pathname, should have the params._splat value of "100%26"', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/100%26'] }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/100%26')
   })
 
   it('state.location.pathname, should have the params._splat value of "%F0%9F%9A%80"', async () => {
@@ -617,6 +729,21 @@ describe('encoding: URL path segment', () => {
       type: 'not encoded',
     },
     {
+      input: '/path-segment/100%25', // `%25` = `%`
+      output: '/path-segment/100%25',
+      type: 'not encoded',
+    },
+    {
+      input: '/path-segment/100%25%25',
+      output: '/path-segment/100%25%25',
+      type: 'not encoded',
+    },
+    {
+      input: '/path-segment/100%26', // `%26` = `&`
+      output: '/path-segment/100%26',
+      type: 'not encoded',
+    },
+    {
       input: '/path-segment/%F0%9F%9A%80',
       output: '/path-segment/🚀',
       type: 'encoded',
@@ -624,6 +751,22 @@ describe('encoding: URL path segment', () => {
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
       output: '/path-segment/🚀to%2Fthe%2Fmoon',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
+      output: '/path-segment/%25🚀to%2Fthe%2Fmoon',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
+      output: '/path-segment/🚀to%2Fthe%2Fmoon%25',
+      type: 'encoded',
+    },
+    {
+      input:
+        '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
+      output: '/path-segment/🚀to%2Fthe%2Fmoon%25🚀to%2Fthe%2Fmoon',
       type: 'encoded',
     },
     {
