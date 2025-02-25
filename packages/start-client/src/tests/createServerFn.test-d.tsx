@@ -388,3 +388,19 @@ test('createServerFn can validate FormData', () => {
       >
     >()
 })
+
+test('createServerFn can be used as a mutation function', () => {
+  const serverFn = createServerFn()
+    .validator((data: number) => data)
+    .handler(() => 'foo')
+
+  type MutationFunction<TData = unknown, TVariables = unknown> = (
+    variables: TVariables,
+  ) => Promise<TData>
+
+  const useMutation = <TData, TVariables>(
+    fn: MutationFunction<TData, TVariables>,
+  ) => {}
+
+  useMutation(serverFn)
+})
