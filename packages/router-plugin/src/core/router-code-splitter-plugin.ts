@@ -55,9 +55,7 @@ type BannedBeforeExternalPlugin = {
   frameworks: Array<UnpluginContextMeta['framework']>
 }
 
-const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
-  
-]
+const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = []
 
 class FoundPluginInBeforeCode extends Error {
   constructor(externalPlugin: BannedBeforeExternalPlugin, framework: string) {

@@ -31,7 +31,6 @@ export function getFullRouterManifest() {
         'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
       )
     }
-    
   }
 
   // Get the entry for the client from vinxi
