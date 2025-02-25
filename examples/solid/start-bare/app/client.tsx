@@ -6,4 +6,6 @@ import { createRouter } from './router'
 
 const router = createRouter()
 
-hydrate(() => <StartClient router={router} />, document)
+const appDiv = document.getElementById('app')!
+
+hydrate(() => <StartClient router={router} />, appDiv)
