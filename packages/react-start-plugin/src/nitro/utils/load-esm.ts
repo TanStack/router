@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import { URL } from 'node:url';
+import { URL } from 'node:url'
 
 /**
  * This uses a dynamic import to load a module which may be ESM.
@@ -23,5 +23,5 @@ import { URL } from 'node:url';
 export function loadEsmModule<T>(modulePath: string | URL): Promise<T> {
   return new Function('modulePath', `return import(modulePath);`)(
     modulePath,
-  ) as Promise<T>;
+  ) as Promise<T>
 }
