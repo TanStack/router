@@ -7,6 +7,7 @@ import {
 } from '@tanstack/solid-router'
 
 import * as Solid from 'solid-js'
+import { Hydration, HydrationScript, NoHydration } from 'solid-js/web'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -80,84 +81,85 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
-    <html>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <div class="p-2 flex gap-2 text-lg">
-          <Link
-            to="/"
-            activeProps={{
-              class: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>{' '}
-          <Link
-            to="/posts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Posts
-          </Link>{' '}
-          <Link
-            to="/users"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Users
-          </Link>{' '}
-          <Link
-            to="/layout-a"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Layout
-          </Link>{' '}
-          <Link
-            to="/scripts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Scripts
-          </Link>{' '}
-          <Link
-            to="/deferred"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Deferred
-          </Link>{' '}
-          <Link
-            to="/redirect"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            redirect
-          </Link>{' '}
-          <Link
-            // @ts-expect-error
-            to="/this-route-does-not-exist"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            This Route Does Not Exist
-          </Link>
+    <NoHydration>
+      <>
+        <div id="app">
+          <HeadContent />
+          <HydrationScript />
+          <div class="p-2 flex gap-2 text-lg">
+            <Link
+              to="/"
+              activeProps={{
+                class: 'font-bold',
+              }}
+              activeOptions={{ exact: true }}
+            >
+              Home
+            </Link>{' '}
+            <Link
+              to="/posts"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Posts
+            </Link>{' '}
+            <Link
+              to="/users"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Users
+            </Link>{' '}
+            <Link
+              to="/layout-a"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Layout
+            </Link>{' '}
+            <Link
+              to="/scripts"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Scripts
+            </Link>{' '}
+            <Link
+              to="/deferred"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Deferred
+            </Link>{' '}
+            <Link
+              to="/redirect"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              redirect
+            </Link>{' '}
+            <Link
+              // @ts-expect-error
+              to="/this-route-does-not-exist"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              This Route Does Not Exist
+            </Link>
+          </div>
+
+          <Hydration>{children}</Hydration>
+
+          <Scripts />
         </div>
-        <hr />
-        {children}
-        {/* <RouterDevtools position="bottom-right" /> */}
-        <Scripts />
-      </body>
-    </html>
+      </>
+    </NoHydration>
   )
 }
