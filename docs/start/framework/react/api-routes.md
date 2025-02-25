@@ -48,7 +48,7 @@ Here's an example implementation:
 import {
   createStartAPIHandler,
   defaultAPIFileRouteHandler,
-} from '@tanstack/start/api'
+} from '@tanstack/react-start/api'
 
 export default createStartAPIHandler(defaultAPIFileRouteHandler)
 ```
@@ -64,7 +64,7 @@ API Routes export an APIRoute instance by calling the `createAPIFileRoute` funct
 
 ```ts
 // routes/api/hello.ts
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
 
 export const APIRoute = createAPIFileRoute('/api/hello')({
   GET: async ({ request }) => {
@@ -86,7 +86,7 @@ API Routes support dynamic path parameters, which are denoted by a `$` followed 
 
 ```ts
 // routes/api/users/$id.ts
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
 
 export const APIRoute = createAPIFileRoute('/users/$id')({
   GET: async ({ params }) => {
@@ -103,7 +103,7 @@ You can also have multiple dynamic path parameters in a single route. For exampl
 
 ```ts
 // routes/api/users/$id/posts/$postId.ts
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
 
 export const APIRoute = createAPIFileRoute('/users/$id/posts/$postId')({
   GET: async ({ params }) => {
@@ -122,7 +122,7 @@ API Routes also support wildcard parameters at the end of the path, which are de
 
 ```ts
 // routes/api/file/$.ts
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
 
 export const APIRoute = createAPIFileRoute('/file/$')({
   GET: async ({ params }) => {
@@ -141,7 +141,7 @@ To handle POST requests,you can add a `POST` handler to the route object. The ha
 
 ```ts
 // routes/api/hello.ts
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
 
 export const APIRoute = createAPIFileRoute('/api/hello')({
   POST: async ({ request }) => {
@@ -166,7 +166,7 @@ When returning JSON using a Response object, this is a common pattern:
 
 ```ts
 // routes/api/hello.ts
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
 
 export const APIRoute = createAPIFileRoute('/api/hello')({
   GET: async ({ request }) => {
@@ -188,8 +188,8 @@ Or you can use the `json` helper function to automatically set the `Content-Type
 
 ```ts
 // routes/api/hello.ts
-import { json } from '@tanstack/start'
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { json } from '@tanstack/react-start'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
 
 export const APIRoute = createAPIFileRoute('/api/hello')({
   GET: async ({ request }) => {
@@ -209,8 +209,8 @@ You can set the status code of the response by either:
 
   ```ts
   // routes/api/hello.ts
-  import { json } from '@tanstack/start'
-  import { createAPIFileRoute } from '@tanstack/start/api'
+  import { json } from '@tanstack/react-start'
+  import { createAPIFileRoute } from '@tanstack/react-start/api'
 
   export const APIRoute = createAPIFileRoute('/users/$id')({
     GET: async ({ request, params }) => {
@@ -225,13 +225,13 @@ You can set the status code of the response by either:
   })
   ```
 
-- Using the `setResponseStatus` helper function from `@tanstack/start/server`
+- Using the `setResponseStatus` helper function from `@tanstack/react-start/server`
 
   ```ts
   // routes/api/hello.ts
-  import { json } from '@tanstack/start'
-  import { createAPIFileRoute } from '@tanstack/start/api'
-  import { setResponseStatus } from '@tanstack/start/server'
+  import { json } from '@tanstack/react-start'
+  import { createAPIFileRoute } from '@tanstack/react-start/api'
+  import { setResponseStatus } from '@tanstack/react-start/server'
 
   export const APIRoute = createAPIFileRoute('/users/$id')({
     GET: async ({ request, params }) => {
@@ -255,7 +255,7 @@ Sometimes you may need to set headers in the response. You can do this by either
 
   ```ts
   // routes/api/hello.ts
-  import { createAPIFileRoute } from '@tanstack/start/api'
+  import { createAPIFileRoute } from '@tanstack/react-start/api'
 
   export const APIRoute = createAPIFileRoute('/api/hello')({
     GET: async ({ request }) => {
@@ -271,12 +271,12 @@ Sometimes you may need to set headers in the response. You can do this by either
   // Hello, World!
   ```
 
-- Or using the `setHeaders` helper function from `@tanstack/start/server`.
+- Or using the `setHeaders` helper function from `@tanstack/react-start/server`.
 
   ```ts
   // routes/api/hello.ts
-  import { createAPIFileRoute } from '@tanstack/start/api'
-  import { setHeaders } from '@tanstack/start/server'
+  import { createAPIFileRoute } from '@tanstack/react-start/api'
+  import { setHeaders } from '@tanstack/react-start/server'
 
   export const APIRoute = createAPIFileRoute('/api/hello')({
     GET: async ({ request }) => {
