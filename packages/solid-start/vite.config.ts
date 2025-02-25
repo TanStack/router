@@ -28,7 +28,7 @@ export default mergeConfig(
       '@tanstack/solid-start-client',
       '@tanstack/solid-start-server',
       '@tanstack/solid-start-config',
-      '@tanstack/start-router-manifest',
+      '@tanstack/solid-start-router-manifest',
       '@tanstack/solid-start-server-functions-client',
       '@tanstack/start-server-functions-server',
       '@tanstack/solid-start-server-functions-ssr',
