@@ -89,7 +89,7 @@
       "@tanstack/zod-adapter": "workspace:*",
       "@tanstack/valibot-adapter": "workspace:*",
       "@tanstack/arktype-adapter": "workspace:*",
-      "@tanstack/start": "workspace:*",
+      "@tanstack/react-start": "workspace:*",
       "@tanstack/react-start-client": "workspace:*",
       "@tanstack/react-start-server": "workspace:*",
       "@tanstack/react-start-api-routes": "workspace:*",
