@@ -123,18 +123,18 @@ export async function defineConfig(
     manifestVirtualImportId: 'tsr:server-fn-manifest',
     client: {
       getRuntimeCode: () =>
-        `import { createClientRpc } from '@tanstack/react-start/server-functions-client'`,
+        `import { createClientRpc } from '@tanstack/start/server-functions-client'`,
       replacer: (opts) =>
         `createClientRpc('${opts.functionId}', '${serverBase}')`,
     },
     ssr: {
       getRuntimeCode: () =>
-        `import { createSsrRpc } from '@tanstack/react-start/server-functions-ssr'`,
+        `import { createSsrRpc } from '@tanstack/start/server-functions-ssr'`,
       replacer: (opts) => `createSsrRpc('${opts.functionId}', '${serverBase}')`,
     },
     server: {
       getRuntimeCode: () =>
-        `import { createServerRpc } from '@tanstack/react-start/server-functions-server'`,
+        `import { createServerRpc } from '@tanstack/start/server-functions-server'`,
       replacer: (opts) =>
         `createServerRpc('${opts.functionId}', '${serverBase}', ${opts.fn})`,
     },
@@ -378,6 +378,18 @@ export async function defineConfig(
   })
 
   const noExternal = [
+    '@tanstack/start',
+    '@tanstack/start/server',
+    '@tanstack/start-client',
+    '@tanstack/start-server',
+    '@tanstack/start-server-functions-fetcher',
+    '@tanstack/start-server-functions-handler',
+    '@tanstack/start-server-functions-client',
+    '@tanstack/start-server-functions-ssr',
+    '@tanstack/start-server-functions-server',
+    '@tanstack/start-router-manifest',
+    '@tanstack/start-config',
+    '@tanstack/start-api-routes',
     '@tanstack/react-start',
     '@tanstack/react-start/server',
     '@tanstack/react-start-client',
