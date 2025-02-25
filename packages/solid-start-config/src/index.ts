@@ -11,7 +11,7 @@ import { config } from 'vinxi/plugins/config'
 // // @ts-expect-error
 // import { serverComponents } from '@vinxi/server-components/plugin'
 import { createTanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
-import { createTanStackStartPlugin } from '@tanstack/start-plugin'
+import { createTanStackStartPlugin } from '@tanstack/solid-start-plugin'
 import { createFetch } from 'ofetch'
 import { createNitro } from 'nitropack'
 import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
