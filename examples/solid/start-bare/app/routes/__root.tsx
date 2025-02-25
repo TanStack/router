@@ -28,17 +28,18 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <NoHydration>
       <>
-        <HeadContent />
-        <HydrationScript />
+        <div id="app">
+          <HeadContent />
+          <HydrationScript />
+          <div class="p-2 flex gap-2 text-lg">
+            <Link to="/">Index</Link>
+            <Link to="/about">About</Link>
+          </div>
 
-        <div class="p-2 flex gap-2 text-lg">
-          <Link to="/">Index</Link>
-          <Link to="/about">About</Link>
+          <Hydration>{children}</Hydration>
+
+          <Scripts />
         </div>
-
-        <Hydration>{children}</Hydration>
-
-        <Scripts />
       </>
     </NoHydration>
   )

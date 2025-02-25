@@ -56,12 +56,7 @@ type BannedBeforeExternalPlugin = {
 }
 
 const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
-  {
-    identifier: '@react-refresh',
-    pkg: '@vitejs/plugin-react',
-    usage: 'viteReact()',
-    frameworks: ['vite'],
-  },
+  
 ]
 
 class FoundPluginInBeforeCode extends Error {
