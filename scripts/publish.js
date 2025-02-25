@@ -126,7 +126,7 @@ await publish({
     },
     {
       name: '@tanstack/start-server-functions-server',
-      packageDir: 'packages/react-start-server-functions-server',
+      packageDir: 'packages/start-server-functions-server',
     },
     {
       name: '@tanstack/react-start-router-manifest',
