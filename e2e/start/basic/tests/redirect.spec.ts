@@ -205,4 +205,10 @@ test.describe('redirects', () => {
       }
     })
   })
+
+  test('throw redirect in route component', async ({ page }) => {
+    await page.goto(`/redirect/component/first`)
+    await page.waitForURL('/redirect/component/second')
+    await expect(page.getByTestId('second')).toBeInViewport()
+  })
 })

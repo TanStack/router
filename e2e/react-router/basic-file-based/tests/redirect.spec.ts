@@ -134,4 +134,20 @@ test.describe('redirects', () => {
     await page.waitForURL('/redirect/preload/third')
     await expect(page.getByTestId(`third`)).toBeInViewport()
   })
+
+  test.describe('throw redirect in route component', () => {
+    test('initial load', async ({ page }) => {
+      await page.goto(`/redirect/component/first`)
+      await page.waitForURL('/redirect/component/second')
+      await expect(page.getByTestId('second')).toBeInViewport()
+    })
+    test('when navigating', async ({ page }) => {
+      await page.goto(`/redirect/component/`)
+      const link = page.getByTestId(`link`)
+      await link.focus()
+      await link.click()
+      await page.waitForURL('/redirect/component/second')
+      await expect(page.getByTestId('second')).toBeInViewport()
+    })
+  })
 })

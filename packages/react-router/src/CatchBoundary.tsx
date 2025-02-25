@@ -1,4 +1,7 @@
 import * as React from 'react'
+import { useRouter } from './useRouter'
+import { isRedirect } from './redirects'
+import { Navigate } from './useNavigate'
 import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
 
@@ -9,6 +12,7 @@ export function CatchBoundary(props: {
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }) {
   const errorComponent = props.errorComponent ?? ErrorComponent
+  const router = useRouter()
 
   return (
     <CatchBoundaryImpl
@@ -16,6 +20,15 @@ export function CatchBoundary(props: {
       onCatch={props.onCatch}
       children={({ error, reset }) => {
         if (error) {
+          if (isRedirect(error)) {
+            const redirect = router.resolveRedirect({
+              ...error,
+              _fromLocation: router.state.location,
+            })
+            return (
+              <Navigate {...redirect} replace={true} ignoreBlocker={true} />
+            )
+          }
           return React.createElement(errorComponent, {
             error,
             reset,
