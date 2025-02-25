@@ -9,7 +9,6 @@ import {
 import * as Solid from 'solid-js'
 import { Hydration, HydrationScript, NoHydration } from 'solid-js/web'
 
-import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
@@ -50,13 +49,7 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
-  errorComponent: (props) => {
-    return (
-      <RootDocument>
-        <DefaultCatchBoundary {...props} />
-      </RootDocument>
-    )
-  },
+  errorComponent: (props)=><p>{props.error.stack}</p>,
   notFoundComponent: () => <NotFound />,
   component: RootComponent,
 })
