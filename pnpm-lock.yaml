@@ -5765,9 +5765,6 @@ importers:
       '@tanstack/react-start-client':
         specifier: workspace:*
         version: link:../react-start-client
-      '@tanstack/react-start-config':
-        specifier: workspace:^
-        version: link:../react-start-config
       '@tanstack/react-start-router-manifest':
         specifier: workspace:*
         version: link:../react-start-router-manifest
@@ -5942,16 +5939,6 @@ importers:
       '@tanstack/server-functions-plugin':
         specifier: workspace:*
         version: link:../server-functions-plugin
-      babel-dead-code-elimination:
-        specifier: ^1.0.9
-        version: 1.0.9
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      vite:
-        specifier: 6.1.0
-        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-    devDependencies:
       '@types/babel__code-frame':
         specifier: ^7.0.6
         version: 7.0.6
@@ -5967,6 +5954,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      babel-dead-code-elimination:
+        specifier: ^1.0.9
+        version: 1.0.9
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3
@@ -5976,6 +5966,12 @@ importers:
       nitropack:
         specifier: ^2.10.4
         version: 2.10.4(typescript@5.7.3)
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
       xmlbuilder2:
         specifier: ^3.1.1
         version: 3.1.1
@@ -12129,9 +12125,6 @@ packages:
     resolution: {integrity: sha512-2SPlun1JUPWoM6t3F0dw0FkCF/jWY8kttcY4f599GLTSjh2OCuuhdTkJQsEcZzBqbXZGKMK2OqW1oZsjtf/gQA==}
     engines: {node: '>=8'}
     hasBin: true
-
-  import-meta-resolve@4.1.0:
-    resolution: {integrity: sha512-I6fiaX09Xivtk+THaMfAwnA3MVA5Big1WHF1Dfx9hFuvNIWpXnorlkzhcQf6ehrqQiiZECRt1poOAkPmer3ruw==}
 
   imurmurhash@0.1.4:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
@@ -20836,8 +20829,6 @@ snapshots:
     dependencies:
       pkg-dir: 4.2.0
       resolve-cwd: 3.0.0
-
-  import-meta-resolve@4.1.0: {}
 
   imurmurhash@0.1.4: {}
 
