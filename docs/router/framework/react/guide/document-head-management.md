@@ -25,11 +25,11 @@ export const Route = createRootRoute()({
     meta: [
       {
         name: 'description',
-        content: 'My App is a web application'
+        content: 'My App is a web application',
       },
       {
         title: 'My App',
-      }
+      },
     ],
     links: [
       {
