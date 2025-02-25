@@ -289,7 +289,6 @@ export interface RouterOptions<
    *
    * @default false
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#casesensitive-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-trees#case-sensitivity)
    */
   caseSensitive?: boolean
   /**
@@ -297,7 +296,7 @@ export interface RouterOptions<
    * The route tree that will be used to configure the router instance.
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#routetree-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-trees)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/routing/route-trees)
    */
   routeTree?: TRouteTree
   /**

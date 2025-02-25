@@ -154,7 +154,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 
 ## Routes
 
-Routes are an extensive feature of TanStack Router, and are covered thoroughly in the [Routing Guide](/router/latest/docs/framework/react/guide/file-based-routing). As a summary:
+Routes are an extensive feature of TanStack Router, and are covered thoroughly in the [Routing Guide](/router/latest/docs/framework/react/routing/file-based-routing). As a summary:
 
 - Routes are defined using the `createFileRoute` function.
 - Routes are automatically code-split and lazy-loaded.
