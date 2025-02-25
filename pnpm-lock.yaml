@@ -2187,7 +2187,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       get-port:
         specifier: ^7.1.0
@@ -2257,7 +2257,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       get-port:
         specifier: ^7.1.0
@@ -3698,7 +3698,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -3744,7 +3744,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -3799,7 +3799,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       prisma:
         specifier: ^5.22.0
@@ -3863,7 +3863,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -3918,7 +3918,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -3967,7 +3967,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -4022,7 +4022,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -4086,7 +4086,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       concurrently:
         specifier: ^8.2.2
@@ -4153,7 +4153,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -4190,7 +4190,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -4254,7 +4254,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
@@ -4306,7 +4306,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       ky:
         specifier: ^1.7.4
@@ -4422,7 +4422,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       '@trpc/client':
         specifier: 11.0.0-rc.772
@@ -4483,7 +4483,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/start':
-        specifier: ^1.111.9
+        specifier: ^1.111.10
         version: link:../../../packages/start
       '@trpc/client':
         specifier: 11.0.0-rc.772
