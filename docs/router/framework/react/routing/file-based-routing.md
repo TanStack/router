@@ -96,7 +96,7 @@ See the example below:
 Both flat and directory routes can be mixed together to create a route tree that uses the best of both worlds where it makes sense.
 
 > [!TIP]
-> If you find the need to customize the location of your route files or completely override the discovery of routes, you can use [Virtual File Routes](../guide/virtual-file-routes.md) to programmatically build your route tree while still getting the awesome benefits of file-based routing.
+> If you find that the default file-based routing structure doesn't fit your needs, you can always use [Virtual File Routes](./virtual-file-routes.md) to control the source of your routes whilst still getting the awesome performance benefits of file-based routing.
 
 ## Getting started with File-Based Routing
 
