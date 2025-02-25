@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
+import { PostErrorComponent } from '~/components/PostErrorComponent'
 
-import { PostErrorComponent } from './posts.$postId'
 import { fetchPost } from '~/utils/posts'
 
 export const Route = createFileRoute('/posts_/$postId/deep')({
