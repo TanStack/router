@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/start'
 import React from 'react'
 
 export const Route = createFileRoute('/abort-signal')({

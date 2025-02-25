@@ -15,7 +15,7 @@
     "@prisma/client": "5.22.0",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
-    "@tanstack/react-start": "workspace:^",
+    "@tanstack/start": "workspace:^",
     "prisma": "^5.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+import { createIsomorphicFn, createServerFn } from '@tanstack/start'
 import { useState } from 'react'
 
 const getEnv = createIsomorphicFn()

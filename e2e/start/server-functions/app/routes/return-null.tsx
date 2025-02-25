@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/start'
 import * as React from 'react'
 
 /**

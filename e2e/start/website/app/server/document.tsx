@@ -1,5 +1,5 @@
 import { notFound } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/start'
 
 const documents: Array<{ id: string; title: string; content: string }> = [
   {

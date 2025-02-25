@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn, renderRsc } from '@tanstack/react-start'
+import { createServerFn, renderRsc } from '@tanstack/start'
 import { renderPosts } from '~/utils/renderPosts'
 
 export const serverRenderPosts = createServerFn({ method: 'GET' }).handler(
