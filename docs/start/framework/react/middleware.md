@@ -302,7 +302,7 @@ Here's how to register global middleware:
 
 ```tsx
 // app/global-middleware.ts
-import { registerGlobalMiddleware } from '@tanstack/start'
+import { registerGlobalMiddleware } from '@tanstack/react-start'
 import { authMiddleware } from './middleware'
 
 registerGlobalMiddleware({
