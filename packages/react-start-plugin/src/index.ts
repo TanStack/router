@@ -7,7 +7,7 @@ import type { Plugin } from 'vite'
 
 const debug =
   process.env.TSR_VITE_DEBUG &&
-  ['true', 'start-plugin'].includes(process.env.TSR_VITE_DEBUG)
+  ['true', 'react-start-plugin'].includes(process.env.TSR_VITE_DEBUG)
 
 export type TanStackStartViteOptions = {
   globalMiddlewareEntry: string
