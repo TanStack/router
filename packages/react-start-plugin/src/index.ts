@@ -114,6 +114,7 @@ export function TanStackStartServerFnsAndMiddleware(opts: {
         throw new Error(
           `We detected that the '@vitejs/plugin-react' was passed before '@tanstack/react-start-plugin'. Please make sure that '@tanstack/router-vite-plugin' is passed before '@vitejs/plugin-react' and try again: 
 e.g.
+
 plugins: [
   TanStackStartVite(), // Place this before viteReact()
   viteReact(),
