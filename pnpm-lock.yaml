@@ -5566,9 +5566,6 @@ importers:
       '@tanstack/react-start-client':
         specifier: workspace:*
         version: link:../react-start-client
-      '@tanstack/react-start-config':
-        specifier: workspace:*
-        version: link:../react-start-config
       '@tanstack/react-start-router-manifest':
         specifier: workspace:*
         version: link:../react-start-router-manifest
@@ -5584,9 +5581,60 @@ importers:
       '@tanstack/react-start-server-functions-ssr':
         specifier: workspace:*
         version: link:../react-start-server-functions-ssr
+      '@tanstack/start-config':
+        specifier: workspace:^
+        version: link:../start-config
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
+
+  packages/start-config:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@tanstack/react-start-plugin':
+        specifier: workspace:*
+        version: link:../react-start-plugin
+      '@tanstack/react-start-server-functions-handler':
+        specifier: workspace:*
+        version: link:../react-start-server-functions-handler
+      '@tanstack/router-generator':
+        specifier: workspace:*
+        version: link:../router-generator
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../router-plugin
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:*
+        version: link:../server-functions-plugin
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      import-meta-resolve:
+        specifier: ^4.1.0
+        version: 4.1.0
+      nitropack:
+        specifier: ^2.10.4
+        version: 2.10.4(typescript@5.7.3)
+      ofetch:
+        specifier: ^1.4.1
+        version: 1.4.1
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
 
   packages/start-server-functions-server:
     dependencies:

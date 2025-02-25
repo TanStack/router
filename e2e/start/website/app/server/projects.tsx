@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 import { notFound } from '@tanstack/react-router'
 import { capitalize } from '~/utils/seo'
 
