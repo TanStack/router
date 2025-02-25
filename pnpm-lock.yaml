@@ -212,8 +212,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -264,8 +264,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -316,8 +316,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -426,8 +426,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -530,8 +530,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -585,8 +585,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -747,8 +747,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -851,8 +851,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1211,8 +1211,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1281,8 +1281,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1351,8 +1351,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1446,8 +1446,8 @@ importers:
         specifier: ^1.9.5
         version: 1.9.5
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1492,8 +1492,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1535,8 +1535,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1667,8 +1667,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1713,8 +1713,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1759,8 +1759,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1900,8 +1900,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -2212,8 +2212,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2359,8 +2359,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2454,8 +2454,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2601,8 +2601,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2796,8 +2796,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2848,8 +2848,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2894,8 +2894,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2943,8 +2943,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -2995,8 +2995,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -3050,8 +3050,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -3108,8 +3108,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -3160,8 +3160,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -3335,8 +3335,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -3378,8 +3378,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -3630,8 +3630,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -3670,8 +3670,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -3879,8 +3879,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -3999,8 +3999,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -4109,8 +4109,8 @@ importers:
         specifier: 1.0.0-beta.15
         version: 1.0.0-beta.15(typescript@5.8.2)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
@@ -4155,8 +4155,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.0.8
@@ -4567,8 +4567,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -4839,8 +4839,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -4894,8 +4894,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -4955,8 +4955,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -5019,8 +5019,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -5302,8 +5302,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -5588,8 +5588,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@inquirer/type':
         specifier: ^3.0.4
@@ -5717,8 +5717,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
 
   packages/react-router-devtools:
     dependencies:
@@ -6228,8 +6228,8 @@ importers:
         specifier: ^4.19.2
         version: 4.19.2
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
 
   packages/router-plugin:
     dependencies:
@@ -6297,8 +6297,8 @@ importers:
         specifier: '>=5.92.0'
         version: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
 
   packages/router-utils:
     dependencies:
@@ -6872,8 +6872,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.24.1
+        specifier: ^3.24.2
+        version: 3.24.2
 
 packages:
 
@@ -23582,7 +23582,7 @@ snapshots:
       unenv: 1.10.0
       unstorage: 1.14.4(db0@0.2.3)(ioredis@5.4.2)
       vite: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-      zod: 3.24.1
+      zod: 3.24.2
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -23661,7 +23661,7 @@ snapshots:
       unenv: 1.10.0
       unstorage: 1.14.4(db0@0.2.3)(ioredis@5.4.2)
       vite: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-      zod: 3.24.1
+      zod: 3.24.2
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
