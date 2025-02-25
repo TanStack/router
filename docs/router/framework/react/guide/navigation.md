@@ -8,10 +8,10 @@ Believe it or not, every navigation within an app is **relative**, even if you a
 
 TanStack Router keeps this constant concept of relative navigation in mind for every navigation, so you'll constantly see two properties in the API:
 
-- `from` - The origin route ID
-- `to` - The destination route ID
+- `from` - The origin route path
+- `to` - The destination route path
 
-> ⚠️ If a `from` route ID isn't provided the router will assume you are navigating from the root `/` route and only auto-complete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
+> ⚠️ If a `from` route path isn't provided the router will assume you are navigating from the root `/` route and only auto-complete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
 
 ## Shared Navigation API
 
