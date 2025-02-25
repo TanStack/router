@@ -110,7 +110,6 @@ export function TanStackStartServerFnsAndMiddleware(opts: {
         return null
       }
 
-
       if (debug) console.info(`${opts.env} Compiling Start: `, id)
 
       const compiled = compileStartOutput({
