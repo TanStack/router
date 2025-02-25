@@ -74,11 +74,14 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
-    <NoHydration>
-      <>
+    <html>
+      <head>
+        <HeadContent />
+        <HydrationScript />
+      </head>
+      <body>
         <div id="app">
-          <HeadContent />
-          <HydrationScript />
+
           <div class="p-2 flex gap-2 text-lg">
             <Link
               to="/"
@@ -152,7 +155,7 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
 
           <Scripts />
         </div>
-      </>
-    </NoHydration>
+      </body>
+    </html>
   )
 }
