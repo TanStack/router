@@ -11,7 +11,7 @@ import type {
   ResolveValidatorInput,
   ResolveValidatorOutput,
   SerializerStringify,
-} from '@tanstack/react-router'
+} from '@tanstack/router-core'
 
 export type AssignAllMiddleware<
   TMiddlewares,

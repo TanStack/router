@@ -1,4 +1,4 @@
-import { createMemoryHistory } from '@tanstack/react-router'
+import { createMemoryHistory } from '@tanstack/history'
 import { mergeHeaders } from '@tanstack/start-client'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'

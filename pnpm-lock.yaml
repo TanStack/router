@@ -5273,6 +5273,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
@@ -5288,6 +5291,9 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
+      tiny-warning:
+        specifier: ^1.0.3
+        version: 1.0.3
       vinxi:
         specifier: ^0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
@@ -5417,9 +5423,15 @@ importers:
 
   packages/start-server:
     dependencies:
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../history
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/start-client':
         specifier: workspace:*
         version: link:../start-client
@@ -5432,6 +5444,9 @@ importers:
       jsesc:
         specifier: ^3.1.0
         version: 3.1.0
+      tiny-warning:
+        specifier: ^1.0.3
+        version: 1.0.3
       unctx:
         specifier: ^2.4.1
         version: 2.4.1
@@ -5473,6 +5488,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/start-client':
         specifier: workspace:*
         version: link:../start-client
