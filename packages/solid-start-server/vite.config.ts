@@ -6,7 +6,10 @@ import minifyScriptPlugin from './vite-minify-plugin'
 import type { ViteUserConfig } from 'vitest/config'
 
 const config = defineConfig({
-  plugins: [minifyScriptPlugin(), solid()] as ViteUserConfig['plugins'],
+  plugins: [
+    minifyScriptPlugin(),
+    solid({ solid: { generate: 'ssr' } }),
+  ] as ViteUserConfig['plugins'],
   test: {
     name: packageJson.name,
     watch: false,

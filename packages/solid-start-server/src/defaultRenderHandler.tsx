@@ -10,7 +10,7 @@ export const defaultRenderHandler = defineHandlerCallback(
         router.serverSsr!.injectedHtml,
       ).then((htmls) => htmls.join(''))
       html = html.replace(`</body>`, `${injectedHtml}</body>`)
-      return new Response(`<!DOCTYPE html>${html}`, {
+      return new Response(html, {
         status: router.state.statusCode,
         headers: responseHeaders,
       })
