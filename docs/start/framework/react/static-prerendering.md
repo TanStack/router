@@ -36,7 +36,6 @@ For this example, let's pretend we have a blog with a list of posts. We want to 
 
 ```ts
 // app.config.ts
-
 import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({
