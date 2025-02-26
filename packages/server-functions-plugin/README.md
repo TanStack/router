@@ -13,17 +13,17 @@ const TanStackServerFnsPlugin = createTanStackServerFnPlugin({
   manifestVirtualImportId: 'tsr:server-fn-manifest',
   client: {
     getRuntimeCode: () =>
-      `import { createClientRpc } from '@tanstack/start/client-runtime'`,
+      `import { createClientRpc } from '@tanstack/react-start/client-runtime'`,
     replacer: (opts) => `createClientRpc(${JSON.stringify(opts.functionId)})`,
   },
   ssr: {
     getRuntimeCode: () =>
-      `import { createSsrRpc } from '@tanstack/start/ssr-runtime'`,
+      `import { createSsrRpc } from '@tanstack/react-start/ssr-runtime'`,
     replacer: (opts) => `createSsrRpc(${JSON.stringify(opts.functionId)})`,
   },
   server: {
     getRuntimeCode: () =>
-      `import { createServerRpc } from '@tanstack/start/server-runtime'`,
+      `import { createServerRpc } from '@tanstack/react-start/server-runtime'`,
     replacer: (opts) =>
       `createServerRpc(${JSON.stringify(opts.functionId)}, ${opts.fn})`,
   },

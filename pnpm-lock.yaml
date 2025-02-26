@@ -5566,6 +5566,9 @@ importers:
       '@tanstack/react-start-client':
         specifier: workspace:*
         version: link:../react-start-client
+      '@tanstack/react-start-config':
+        specifier: workspace:*
+        version: link:../react-start-config
       '@tanstack/react-start-router-manifest':
         specifier: workspace:*
         version: link:../react-start-router-manifest
@@ -5581,9 +5584,6 @@ importers:
       '@tanstack/react-start-server-functions-ssr':
         specifier: workspace:*
         version: link:../react-start-server-functions-ssr
-      '@tanstack/start-config':
-        specifier: workspace:^
-        version: link:../start-config
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server

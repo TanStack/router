@@ -142,7 +142,7 @@ Here is a complete example of a server entry file that uses all of the concepts 
 import * as React from 'react'
 import ReactDOMServer from 'react-dom/server'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { StartServer } from '@tanstack/start/server'
+import { StartServer } from '@tanstack/react-start/server'
 import { createRouter } from './router'
 
 export async function render(url, response) {
@@ -179,7 +179,7 @@ On the client, things are much simpler.
 import * as React from 'react'
 import ReactDOM from 'react-dom/client'
 
-import { StartClient } from '@tanstack/start'
+import { StartClient } from '@tanstack/react-start'
 import { createRouter } from './router'
 
 const router = createRouter()

@@ -145,7 +145,7 @@
   "dependencies": {
     "@tanstack/react-start-client": "workspace:^",
     "@tanstack/react-start-server": "workspace:^",
-    "@tanstack/start-config": "workspace:^",
+    "@tanstack/react-start-config": "workspace:^",
     "@tanstack/react-start-router-manifest": "workspace:^",
     "@tanstack/react-start-server-functions-client": "workspace:^",
     "@tanstack/start-server-functions-server": "workspace:^",
