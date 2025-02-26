@@ -2,7 +2,7 @@ import { pipeline } from 'node:stream/promises'
 import {
   createRequestHandler,
   defaultStreamHandler,
-} from '@tanstack/start/server'
+} from '@tanstack/react-start/server'
 import { createRouter } from './router'
 import type express from 'express'
 import './fetch-polyfill'

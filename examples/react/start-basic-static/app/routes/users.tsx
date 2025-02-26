@@ -1,6 +1,6 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 import type { User } from '../utils/users'
 
 const fetchUsers = createServerFn({ method: 'GET', type: 'static' }).handler(

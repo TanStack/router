@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 import axios from 'redaxios'
 import { notFound } from '@tanstack/react-router'
 import { logMiddleware } from './loggingMiddleware'
