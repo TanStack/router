@@ -18,7 +18,7 @@ TanStack Start is (currently\*) powered by [Vinxi](https://vinxi.vercel.app/), [
 ## It all "Starts" with the Router
 
 This is the file that will dictate the behavior of TanStack Router used within Start. Here, you can configure everything
-from the default [preloading functionality](../guide/preloading.md) to [caching staleness](../guide/data-loading.md).
+from the default [preloading functionality](/router/latest/docs/framework/react/guide/preloading) to [caching staleness](/router/latest/docs/framework/react/guide/data-loading).
 
 ```tsx
 // app/router.tsx
@@ -58,8 +58,8 @@ This is done via the `app/ssr.tsx` file:
 import {
   createStartHandler,
   defaultStreamHandler,
-} from '@tanstack/start/server'
-import { getRouterManifest } from '@tanstack/start/router-manifest'
+} from '@tanstack/react-start/server'
+import { getRouterManifest } from '@tanstack/react-start/router-manifest'
 
 import { createRouter } from './router'
 
@@ -82,7 +82,7 @@ Getting our html to the client is only half the battle. Once there, we need to h
 ```tsx
 // app/client.tsx
 import { hydrateRoot } from 'react-dom/client'
-import { StartClient } from '@tanstack/start'
+import { StartClient } from '@tanstack/react-start'
 import { createRouter } from './router'
 
 const router = createRouter()
@@ -154,7 +154,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 
 ## Routes
 
-Routes are an extensive feature of TanStack Router, and are covered thoroughly in the [Routing Guide](/router/latest/docs/framework/react/guide/file-based-routing). As a summary:
+Routes are an extensive feature of TanStack Router, and are covered thoroughly in the [Routing Guide](/router/latest/docs/framework/react/routing/file-based-routing). As a summary:
 
 - Routes are defined using the `createFileRoute` function.
 - Routes are automatically code-split and lazy-loaded.
@@ -165,7 +165,7 @@ Routes are an extensive feature of TanStack Router, and are covered thoroughly i
 // app/routes/index.tsx
 import * as fs from 'node:fs'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 
 const filePath = 'count.txt'
 
@@ -246,7 +246,7 @@ Here's a quick overview of how server functions work:
 Here's a quick example of how you can use server functions to fetch and return data from the server:
 
 ```tsx
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 import * as fs from 'node:fs'
 import { z } from 'zod'
 
@@ -274,7 +274,7 @@ Server Functions can also be used to perform mutations on the server. This is al
 Here's a quick example of how you can use server functions to perform a mutation on the server and invalidate the data on the client:
 
 ```tsx
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 
 const UserSchema = z.object({
   id: z.string(),

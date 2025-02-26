@@ -4,9 +4,11 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { RouteById } from './routeInfo'
-import type { StrictOrFrom } from './utils'
-import type { Expand } from '@tanstack/router-core'
+import type {
+  ResolveUseLoaderDeps,
+  StrictOrFrom,
+  UseLoaderDepsResult,
+} from '@tanstack/router-core'
 
 export interface UseLoaderDepsBaseOptions<
   TRouter extends AnyRouter,
@@ -15,7 +17,7 @@ export interface UseLoaderDepsBaseOptions<
   TStructuralSharing,
 > {
   select?: (
-    deps: ResolveLoaderDeps<TRouter, TFrom>,
+    deps: ResolveUseLoaderDeps<TRouter, TFrom>,
   ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
@@ -27,16 +29,6 @@ export type UseLoaderDepsOptions<
 > = StrictOrFrom<TRouter, TFrom> &
   UseLoaderDepsBaseOptions<TRouter, TFrom, TSelected, TStructuralSharing> &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
-
-export type ResolveLoaderDeps<TRouter extends AnyRouter, TFrom> = Expand<
-  RouteById<TRouter['routeTree'], TFrom>['types']['loaderDeps']
->
-
-export type UseLoaderDepsResult<
-  TRouter extends AnyRouter,
-  TFrom,
-  TSelected,
-> = unknown extends TSelected ? ResolveLoaderDeps<TRouter, TFrom> : TSelected
 
 export type UseLoaderDepsRoute<out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,

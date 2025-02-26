@@ -65,36 +65,12 @@ await publish({
       packageDir: 'packages/router-vite-plugin',
     },
     {
-      name: '@tanstack/react-cross-context',
-      packageDir: 'packages/react-cross-context',
-    },
-    {
-      name: '@tanstack/solid-cross-context',
-      packageDir: 'packages/solid-cross-context',
-    },
-    {
       name: '@tanstack/directive-functions-plugin',
       packageDir: 'packages/directive-functions-plugin',
     },
     {
       name: '@tanstack/server-functions-plugin',
       packageDir: 'packages/server-functions-plugin',
-    },
-    {
-      name: '@tanstack/start-plugin',
-      packageDir: 'packages/start-plugin',
-    },
-    {
-      name: '@tanstack/start',
-      packageDir: 'packages/start',
-    },
-    {
-      name: '@tanstack/start-client',
-      packageDir: 'packages/start-client',
-    },
-    {
-      name: '@tanstack/start-server',
-      packageDir: 'packages/start-server',
     },
     {
       name: '@tanstack/create-router',
@@ -109,36 +85,60 @@ await publish({
       packageDir: 'packages/create-start',
     },
     {
+      name: '@tanstack/react-start',
+      packageDir: 'packages/react-start',
+    },
+    {
+      name: '@tanstack/react-start-plugin',
+      packageDir: 'packages/react-start-plugin',
+    },
+    {
+      name: '@tanstack/react-start-client',
+      packageDir: 'packages/react-start-client',
+    },
+    {
+      name: '@tanstack/react-start-server',
+      packageDir: 'packages/react-start-server',
+    },
+    {
       name: '@tanstack/start-config',
       packageDir: 'packages/start-config',
     },
     {
-      name: '@tanstack/start-api-routes',
-      packageDir: 'packages/start-api-routes',
+      name: '@tanstack/react-start-config',
+      packageDir: 'packages/react-start-config',
     },
     {
-      name: '@tanstack/start-server-functions-fetcher',
-      packageDir: 'packages/start-server-functions-fetcher',
+      name: '@tanstack/react-start-api-routes',
+      packageDir: 'packages/react-start-api-routes',
     },
     {
-      name: '@tanstack/start-server-functions-handler',
-      packageDir: 'packages/start-server-functions-handler',
+      name: '@tanstack/react-start-server-functions-fetcher',
+      packageDir: 'packages/react-start-server-functions-fetcher',
     },
     {
-      name: '@tanstack/start-server-functions-client',
-      packageDir: 'packages/start-server-functions-client',
+      name: '@tanstack/react-start-server-functions-handler',
+      packageDir: 'packages/react-start-server-functions-handler',
     },
     {
-      name: '@tanstack/start-server-functions-ssr',
-      packageDir: 'packages/start-server-functions-ssr',
+      name: '@tanstack/react-start-server-functions-client',
+      packageDir: 'packages/react-start-server-functions-client',
+    },
+    {
+      name: '@tanstack/react-start-server-functions-ssr',
+      packageDir: 'packages/react-start-server-functions-ssr',
     },
     {
       name: '@tanstack/start-server-functions-server',
       packageDir: 'packages/start-server-functions-server',
     },
     {
-      name: '@tanstack/start-router-manifest',
-      packageDir: 'packages/start-router-manifest',
+      name: '@tanstack/react-start-router-manifest',
+      packageDir: 'packages/react-start-router-manifest',
+    },
+    {
+      name: '@tanstack/start',
+      packageDir: 'packages/start',
     },
     {
       name: '@tanstack/router-utils',

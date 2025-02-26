@@ -10,57 +10,28 @@ import { useNavigate } from './useNavigate'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
+
+import type { AnyRoute, Route, RouteConstraints } from './route'
+import type { RegisteredRouter } from './router'
 import type {
   AnyContext,
+  AnyRoute as AnyCoreRoute,
   AnyPathParams,
+  AnyRouter,
   AnyValidator,
   Constrain,
-  ResolveParams,
-} from '@tanstack/router-core'
-
-import type {
-  AnyRoute,
+  ConstrainLiteral,
   FileBaseRouteOptions,
-  RootRoute,
-  Route,
-  RouteConstraints,
+  FileRoutesByPath,
+  ResolveParams,
+  RouteById,
+  RouteIds,
   RouteLoaderFn,
   UpdatableRouteOptions,
-} from './route'
-import type { RegisteredRouter } from './router'
-import type { RouteById, RouteIds } from './routeInfo'
+} from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
-
-export interface FileRoutesByPath {
-  // '/': {
-  //   parentRoute: typeof rootRoute
-  // }
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: any
-  fullPaths: any
-  to: any
-  fileRoutesByTo: any
-  id: any
-  fileRoutesById: any
-}
-
-export type InferFileRouteTypes<TRouteTree extends AnyRoute> =
-  TRouteTree extends RootRoute<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    infer TFileRouteTypes extends FileRouteTypes
-  >
-    ? TFileRouteTypes
-    : never
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -203,7 +174,7 @@ export type LazyRouteOptions = Pick<
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
 
-export class LazyRoute<TRoute extends AnyRoute> {
+export class LazyRoute<TRoute extends AnyCoreRoute> {
   options: {
     id: string
   } & LazyRouteOptions
@@ -264,11 +235,15 @@ export class LazyRoute<TRoute extends AnyRoute> {
 }
 
 export function createLazyRoute<
-  TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
->(id: TId) {
+  TRouter extends AnyRouter = RegisteredRouter,
+  TId extends string = string,
+  TRoute extends AnyCoreRoute = RouteById<TRouter['routeTree'], TId>,
+>(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
   return (opts: LazyRouteOptions) => {
-    return new LazyRoute<TRoute>({ id: id as any, ...opts })
+    return new LazyRoute<TRoute>({
+      id: id,
+      ...opts,
+    })
   }
 }
 

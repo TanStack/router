@@ -62,7 +62,7 @@ describe('barebones template e2e', () => {
       expect(pkgJson.type).toBe('module')
       expect(pkgJson.dependencies).toBeDefined()
       expect(pkgJson.dependencies['@tanstack/react-router']).toBeDefined()
-      expect(pkgJson.dependencies['@tanstack/start']).toBeDefined()
+      expect(pkgJson.dependencies['@tanstack/react-start']).toBeDefined()
       expect(pkgJson.dependencies['react']).toBeDefined()
       expect(pkgJson.dependencies['react-dom']).toBeDefined()
       expect(pkgJson.dependencies['vinxi']).toBeDefined()

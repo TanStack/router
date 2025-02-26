@@ -34,7 +34,7 @@ This interface can be customized by importing and calling the `createServerFnSta
 import {
   createServerFnStaticCache,
   setServerFnStaticCache,
-} from '@tanstack/start/client'
+} from '@tanstack/react-start/client'
 
 const myCustomStaticCache = createServerFnStaticCache({
   setItem: async (ctx, data) => {

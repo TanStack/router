@@ -390,7 +390,7 @@ export async function generator(config: Config, root: string) {
         config.customScaffolding?.apiTemplate ?? defaultAPIRouteTemplate,
         {
           tsrImports:
-            "import { createAPIFileRoute } from '@tanstack/start/api';",
+            "import { createAPIFileRoute } from '@tanstack/react-start/api';",
           tsrPath: escapedRoutePath,
           tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
           tsrExportEnd: ');',
@@ -711,10 +711,9 @@ export async function generator(config: Config, root: string) {
     )
   }
 
+  const includeManifest = ['react', 'solid']
   const routeConfigFileContent =
-    // TODO: Remove this disabled eslint rule when more target types are added.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    config.disableManifestGeneration || config.target !== 'react'
+    config.disableManifestGeneration || !includeManifest.includes(config.target)
       ? routeImports
       : [
           routeImports,

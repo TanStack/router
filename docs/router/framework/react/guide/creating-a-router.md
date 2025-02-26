@@ -18,7 +18,7 @@ const router = createRouter({
 
 You'll probably notice quickly that the `Router` constructor requires a `routeTree` option. This is the route tree that the router will use to match routes and render components.
 
-Whether you used [file-based routing](./route-trees.md) or [code-based routing](./code-based-routing.md), you'll need to pass your route tree to the `createRouter` function:
+Whether you used [file-based routing](../routing/file-based-routing.md) or [code-based routing](../routing/code-based-routing.md), you'll need to pass your route tree to the `createRouter` function:
 
 ### Filesystem Route Tree
 
@@ -56,13 +56,11 @@ declare module '@tanstack/react-router' {
 
 With your router registered, you'll now get type-safety across your entire project for anything related to routing.
 
-## Not-Found Route
+## 404 Not Found Route
 
 As promised in earlier guides, we'll now cover the `notFoundRoute` option. This option is used to configure a route that will render when no other suitable match is found. This is useful for rendering a 404 page or redirecting to a default route.
 
-### File-Based Routing
-
-If you are using file-based routing, then you'll need to add a `notFoundComponent` key to `createRootRoute`:
+If you are using either file-based or code-based routing, then you'll need to add a `notFoundComponent` key to `createRootRoute`:
 
 ```tsx
 export const Route = createRootRoute({
@@ -71,28 +69,6 @@ export const Route = createRootRoute({
   ),
   notFoundComponent: () => <div>404 Not Found</div>,
 });
-```
-
-### Code-Based Routing
-
-If You used code-based routing, then you'll need to create a `NotFoundRoute` with a reference to your root route, then pass it to your router's `notFoundRoute` option:
-
-```tsx
-import { NotFoundRoute } from '@tanstack/react-router'
-
-const rootRoute = createRootRoute()
-
-// ...
-
-const notFoundRoute = new NotFoundRoute({
-  getParentRoute: () => rootRoute,
-  component: () => '404 Not Found',
-})
-
-const router = createRouter({
-  routeTree,
-  notFoundRoute,
-})
 ```
 
 ## Other Options

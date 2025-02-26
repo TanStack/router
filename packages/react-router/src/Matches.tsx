@@ -11,114 +11,29 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRoute, ReactNode } from './route'
+import type { ReactNode } from './route'
 import type {
-  ControlledPromise,
   DeepPartial,
-  NoInfer,
-  ResolveRelativePath,
-  StaticDataRouteOption,
-} from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
-import type {
   MakeOptionalPathParams,
   MakeOptionalSearchParams,
+  MakeRouteMatchUnion,
   MaskOptions,
+  NoInfer,
+  ResolveRelativePath,
   ResolveRoute,
-  ToSubOptionsProps,
-} from './link'
-import type {
-  AllContext,
-  AllLoaderData,
-  AllParams,
-  FullSearchSchema,
-  ParseRoute,
-  RouteById,
   RouteByPath,
-  RouteIds,
-} from './routeInfo'
+  ToSubOptionsProps,
+} from '@tanstack/router-core'
+import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
-export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
-  TRoute['types']['id'],
-  TRoute['types']['fullPath'],
-  TRoute['types']['allParams'],
-  TRoute['types']['fullSearchSchema'],
-  TRoute['types']['loaderData'],
-  TRoute['types']['allContext'],
-  TRoute['types']['loaderDeps']
->
-
-export interface RouteMatch<
-  out TRouteId,
-  out TFullPath,
-  out TAllParams,
-  out TFullSearchSchema,
-  out TLoaderData,
-  out TAllContext,
-  out TLoaderDeps,
-> {
-  id: string
-  routeId: TRouteId
-  fullPath: TFullPath
-  index: number
-  pathname: string
-  params: TAllParams
-  _strictParams: TAllParams
-  status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
-  isFetching: false | 'beforeLoad' | 'loader'
-  error: unknown
-  paramsError: unknown
-  searchError: unknown
-  updatedAt: number
-  loadPromise?: ControlledPromise<void>
-  beforeLoadPromise?: ControlledPromise<void>
-  loaderPromise?: ControlledPromise<void>
-  loaderData?: TLoaderData
-  __routeContext: Record<string, unknown>
-  __beforeLoadContext: Record<string, unknown>
-  context: TAllContext
-  search: TFullSearchSchema
-  _strictSearch: TFullSearchSchema
-  fetchCount: number
-  abortController: AbortController
-  cause: 'preload' | 'enter' | 'stay'
-  loaderDeps: TLoaderDeps
-  preload: boolean
-  invalid: boolean
-  meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
-  links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
-  scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
-  headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
-  headers?: Record<string, string>
-  globalNotFound?: boolean
-  staticData: StaticDataRouteOption
-  minPendingPromise?: ControlledPromise<void>
-  pendingTimeout?: ReturnType<typeof setTimeout>
+declare module '@tanstack/router-core' {
+  export interface RouteMatchExtensions {
+    meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
+    links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
+    scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
+    headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
+  }
 }
-
-export type MakeRouteMatch<
-  TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRouteId = RouteIds<TRouteTree>,
-  TStrict extends boolean = true,
-> = RouteMatch<
-  TRouteId,
-  RouteById<TRouteTree, TRouteId>['types']['fullPath'],
-  TStrict extends false
-    ? AllParams<TRouteTree>
-    : RouteById<TRouteTree, TRouteId>['types']['allParams'],
-  TStrict extends false
-    ? FullSearchSchema<TRouteTree>
-    : RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
-  TStrict extends false
-    ? AllLoaderData<TRouteTree>
-    : RouteById<TRouteTree, TRouteId>['types']['loaderData'],
-  TStrict extends false
-    ? AllContext<TRouteTree>
-    : RouteById<TRouteTree, TRouteId>['types']['allContext'],
-  RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
->
-
-export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
 
 export function Matches() {
   const router = useRouter()
@@ -260,21 +175,6 @@ export function MatchRoute<
 
   return params ? props.children : null
 }
-
-export type MakeRouteMatchUnion<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
-> = TRoute extends any
-  ? RouteMatch<
-      TRoute['id'],
-      TRoute['fullPath'],
-      TRoute['types']['allParams'],
-      TRoute['types']['fullSearchSchema'],
-      TRoute['types']['loaderData'],
-      TRoute['types']['allContext'],
-      TRoute['types']['loaderDeps']
-    >
-  : never
 
 export interface UseMatchesBaseOptions<
   TRouter extends AnyRouter,

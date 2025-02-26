@@ -22,10 +22,13 @@ To manage the document head, it's required that you render both the `<HeadConten
 ```tsx
 export const Route = createRootRoute()({
   head: () => ({
-    title: 'My App',
     meta: [
       {
-        meta: [{ name: 'description', content: 'My App is a web application' }],
+        name: 'description',
+        content: 'My App is a web application',
+      },
+      {
+        title: 'My App',
       },
     ],
     links: [
