@@ -185,7 +185,7 @@ test.describe('redirects', () => {
         `/redirect/${target}/serverFn/via-useServerFn${reloadDocument ? '?reloadDocument=true' : ''}`,
       )
 
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(3000)
 
       const button = page.getByTestId('redirect-on-click')
 
