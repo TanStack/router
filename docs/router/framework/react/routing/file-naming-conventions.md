@@ -29,7 +29,7 @@ Dynamic path params can be used in both flat and directory routes to create rout
 | ...                   | ...              | ...                   |
 | ʦ `posts.$postId.tsx` | `/posts/$postId` | `<Root><Posts><Post>` |
 
-We'll learn more about dynamic path params in the [Path Params](./path-params.md) guide.
+We'll learn more about dynamic path params in the [Path Params](../guide/path-params.md) guide.
 
 ## Pathless Routes
 
