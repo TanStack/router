@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 import invariant from 'tiny-invariant'
 import * as z from 'zod'
 import {

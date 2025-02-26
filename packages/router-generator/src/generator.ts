@@ -390,7 +390,7 @@ export async function generator(config: Config, root: string) {
         config.customScaffolding?.apiTemplate ?? defaultAPIRouteTemplate,
         {
           tsrImports:
-            "import { createAPIFileRoute } from '@tanstack/start/api';",
+            "import { createAPIFileRoute } from '@tanstack/react-start/api';",
           tsrPath: escapedRoutePath,
           tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
           tsrExportEnd: ');',

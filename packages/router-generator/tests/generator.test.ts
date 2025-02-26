@@ -114,7 +114,7 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
           'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
         ].join(''),
         apiTemplate: [
-          'import { json } from "@tanstack/start";\n',
+          'import { json } from "@tanstack/react-start";\n',
           '%%tsrImports%%\n\n',
           '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message: "Hello /api/test" }) }}%%tsrExportEnd%%\n',
         ].join(''),

@@ -1,4 +1,4 @@
-import { defineEventHandler, toWebRequest } from '@tanstack/start/server'
+import { defineEventHandler, toWebRequest } from '@tanstack/react-start/server'
 import { initTRPC } from '@trpc/server'
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
 
