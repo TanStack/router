@@ -69,6 +69,9 @@ function Home() {
         <li>
           <Link to="/abort-signal">aborting a server function call</Link>
         </li>
+        <li>
+          <Link to="/raw-response">server function returns raw response</Link>
+        </li>
       </ul>
     </div>
   )
