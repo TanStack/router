@@ -34,24 +34,23 @@ Nitro ships with some prebuilt hooks that let you customize the prerendering pro
 
 For this example, let's pretend we have a blog with a list of posts. We want to prerender each post page. Our post route looks like `/posts/$postId`. We can use the `prerender:routes` hook to fetch the all of our posts and add each post path to the routes set.
 
-```
-// app.config.js
-
+```ts
+// app.config.ts
 import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({
   server: {
     hooks: {
-      "prerender:routes": async (routes) => {
-          // fetch the pages you want to render
-          const posts = await fetch('https://api.example.com/posts')
-          const postsData = await posts.json()
+      'prerender:routes': async (routes) => {
+        // fetch the pages you want to render
+        const posts = await fetch('https://api.example.com/posts')
+        const postsData = await posts.json()
 
-          // add each post path to the routes set
-          postsData.forEach((post) => {
-            routes.add(`/posts/${post.id}`)
-          })
-      }
+        // add each post path to the routes set
+        postsData.forEach((post) => {
+          routes.add(`/posts/${post.id}`)
+        })
+      },
     },
     prerender: {
       routes: ['/'],
