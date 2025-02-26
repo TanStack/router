@@ -20,8 +20,8 @@
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
+    "@types/react": "catalog:react",
+    "@types/react-dom": "catalog:react",
     "typescript": "^5.7.2"
   }
 }
