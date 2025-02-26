@@ -1,5 +1,5 @@
 import { redirect } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/start'
 
 export const throwRedirect = createServerFn()
   .validator(

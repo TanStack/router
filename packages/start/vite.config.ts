@@ -27,7 +27,7 @@ export default mergeConfig(
     externalDeps: [
       '@tanstack/react-start-client',
       '@tanstack/react-start-server',
-      '@tanstack/react-start-config',
+      '@tanstack/start-config',
       '@tanstack/react-start-router-manifest',
       '@tanstack/react-start-server-functions-client',
       '@tanstack/start-server-functions-server',
