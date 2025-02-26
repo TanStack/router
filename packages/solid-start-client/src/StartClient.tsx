@@ -1,8 +1,11 @@
 import { Await, RouterProvider } from '@tanstack/solid-router'
 import { hydrate } from './ssr-client'
 import type { AnyRouter } from '@tanstack/solid-router'
+import type { JSXElement } from 'solid-js'
 
 let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
+
+const Dummy = (props: { children?: JSXElement }) => <>{props.children}</>
 
 export function StartClient(props: { router: AnyRouter }) {
   if (!hydrationPromise) {
@@ -15,7 +18,21 @@ export function StartClient(props: { router: AnyRouter }) {
   return (
     <Await
       promise={hydrationPromise}
-      children={() => <RouterProvider router={props.router} />}
+      children={() => (
+        <Dummy>
+          <Dummy>
+            <RouterProvider
+              router={props.router}
+              InnerWrap={(props) => (
+                <Dummy>
+                  <Dummy>{props.children}</Dummy>
+                  <Dummy />
+                </Dummy>
+              )}
+            />
+          </Dummy>
+        </Dummy>
+      )}
     />
   )
 }

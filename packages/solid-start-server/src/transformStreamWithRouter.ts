@@ -1,5 +1,4 @@
 import { ReadableStream } from 'node:stream/web'
-import { Readable } from 'node:stream'
 import { createControlledPromise } from '@tanstack/solid-router'
 import type { AnyRouter } from '@tanstack/solid-router'
 
@@ -8,15 +7,6 @@ export function transformReadableStreamWithRouter(
   routerStream: ReadableStream,
 ) {
   return transformStreamWithRouter(router, routerStream)
-}
-
-export function transformPipeableStreamWithRouter(
-  router: AnyRouter,
-  routerStream: Readable,
-) {
-  return Readable.fromWeb(
-    transformStreamWithRouter(router, Readable.toWeb(routerStream)),
-  )
 }
 
 // regex pattern for matching closing body and html tags

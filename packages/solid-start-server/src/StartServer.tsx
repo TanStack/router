@@ -1,8 +1,34 @@
-import { RouterProvider } from '@tanstack/solid-router'
+import { HeadContent, RouterProvider, Scripts } from '@tanstack/solid-router'
+import { Hydration, HydrationScript, NoHydration, ssr } from 'solid-js/web'
 import type { AnyRouter } from '@tanstack/solid-router'
+
+const docType = ssr('<!DOCTYPE html>')
 
 export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter
 }) {
-  return <RouterProvider router={props.router} />
+  return (
+    <NoHydration>
+      {docType as any}
+      <html>
+        <head>
+          <HydrationScript />
+        </head>
+        <body>
+          <Hydration>
+            <RouterProvider
+              router={props.router}
+              InnerWrap={(props) => (
+                <NoHydration>
+                  <HeadContent />
+                  <Hydration>{props.children}</Hydration>
+                  <Scripts />
+                </NoHydration>
+              )}
+            />
+          </Hydration>
+        </body>
+      </html>
+    </NoHydration>
+  )
 }
