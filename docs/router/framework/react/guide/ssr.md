@@ -21,10 +21,10 @@ Non-Streaming server-side rendering is the classic process of rendering the mark
 
 To implement non-streaming SSR with TanStack Router, you will need the following utilities:
 
-- `StartServer` from `@tanstack/start/server`
+- `StartServer` from `@tanstack/react-start/server`
   - e.g. `<StartServer router={router} />`
   - Rendering this component in your server entry will render your application and also automatically handle application-level hydration/dehydration and implement the `Wrap` component option on `Router`
-- `StartClient` from `@tanstack/start`
+- `StartClient` from `@tanstack/react-start`
   - e.g. `<StartClient router={router} />`
   - Rendering this component in your client entry will render your application and also automatically implement the `Wrap` component option on `Router`
 
