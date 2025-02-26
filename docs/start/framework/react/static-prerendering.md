@@ -34,7 +34,7 @@ Nitro ships with some prebuilt hooks that let you customize the prerendering pro
 
 For this example, let's pretend we have a blog with a list of posts. We want to prerender each post page. Our post route looks like `/posts/$postId`. We can use the `prerender:routes` hook to fetch the all of our posts and add each post path to the routes set.
 
-```
+```js
 // app.config.js
 
 import { defineConfig } from '@tanstack/react-start/config'
