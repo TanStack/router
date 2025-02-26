@@ -8,10 +8,10 @@ Believe it or not, every navigation within an app is **relative**, even if you a
 
 TanStack Router keeps this constant concept of relative navigation in mind for every navigation, so you'll constantly see two properties in the API:
 
-- `from` - The origin route ID
-- `to` - The destination route ID
+- `from` - The origin route path
+- `to` - The destination route path
 
-> ⚠️ If a `from` route ID isn't provided the router will assume you are navigating from the root `/` route and only auto-complete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
+> ⚠️ If a `from` route path isn't provided the router will assume you are navigating from the root `/` route and only auto-complete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
 
 ## Shared Navigation API
 
@@ -129,12 +129,12 @@ export type LinkProps<
 > = LinkOptions<RegisteredRouter['routeTree'], TFrom, TTo> & {
   // A function that returns additional props for the `active` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   activeProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+    | FrameworkHTMLAnchorTagAttributes
+    | (() => FrameworkHTMLAnchorAttributes)
   // A function that returns additional props for the `inactive` state of this link. These props override other props passed to the link (`style`'s are merged, `className`'s are concatenated)
   inactiveProps?:
-    | React.AnchorHTMLAttributes<HTMLAnchorElement>
-    | (() => React.AnchorHTMLAttributes<HTMLAnchorElement>)
+    | FrameworkHTMLAnchorAttributes
+    | (() => FrameworkHTMLAnchorAttributes)
 }
 ```
 
@@ -390,7 +390,7 @@ The `useNavigate` hook returns a `navigate` function that can be called to imper
 function Component() {
   const navigate = useNavigate({ from: '/posts/$postId' })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FrameworkFormEvent) => {
     e.preventDefault()
 
     const response = await fetch('/posts', {
@@ -415,7 +415,7 @@ The `navigate` function returned by `useNavigate` accepts the [`NavigateOptions`
 
 ## `Navigate` Component
 
-Occasionally, you may find yourself needing to navigate immediately when a component mounts. Your first instinct might be to reach for `useNavigate` and an immediate side-effect (e.g. React.useEffect), but this is unnecessary. Instead, you can render the `Navigate` component to achieve the same result:
+Occasionally, you may find yourself needing to navigate immediately when a component mounts. Your first instinct might be to reach for `useNavigate` and an immediate side-effect (e.g. useEffect), but this is unnecessary. Instead, you can render the `Navigate` component to achieve the same result:
 
 ```tsx
 function Component() {

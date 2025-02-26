@@ -333,6 +333,26 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     expect(router.state.location.pathname).toBe('/posts/🚀')
   })
 
+  it('state.location.pathname, should have the params.slug value of "100%25"', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%25'] }),
+    })
+
+    await act(() => router.load())
+
+    expect(router.state.location.pathname).toBe('/posts/100%25')
+  })
+
+  it('state.location.pathname, should have the params.slug value of "100%26"', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%26'] }),
+    })
+
+    await act(() => router.load())
+
+    expect(router.state.location.pathname).toBe('/posts/100%26')
+  })
+
   it('state.location.pathname, should have the params.slug value of "%F0%9F%9A%80"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
@@ -413,6 +433,78 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     expect((match.params as unknown as any).slug).toBe('🚀')
   })
 
+  it('params.slug for the matched route, should be "100%"', async () => {
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%25'] }),
+    })
+
+    await act(() => router.load())
+
+    const match = router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!match) {
+      throw new Error('No match found')
+    }
+
+    expect((match.params as unknown as any).slug).toBe('100%')
+  })
+
+  it('params.slug for the matched route, should be "100&"', async () => {
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%26'] }),
+    })
+
+    await act(() => router.load())
+
+    const match = router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!match) {
+      throw new Error('No match found')
+    }
+
+    expect((match.params as unknown as any).slug).toBe('100&')
+  })
+
+  it('params.slug for the matched route, should be "100%100"', async () => {
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%25100'] }),
+    })
+
+    await act(() => router.load())
+
+    const match = router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!match) {
+      throw new Error('No match found')
+    }
+
+    expect((match.params as unknown as any).slug).toBe('100%100')
+  })
+
+  it('params.slug for the matched route, should be "100&100"', async () => {
+    const { router, routes } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/posts/100%26100'] }),
+    })
+
+    await act(() => router.load())
+
+    const match = router.state.matches.find(
+      (r) => r.routeId === routes.postIdRoute.id,
+    )
+
+    if (!match) {
+      throw new Error('No match found')
+    }
+
+    expect((match.params as unknown as any).slug).toBe('100&100')
+  })
+
   it('params.slug for the matched route, should be "framework/react/guide/file-based-routing tanstack" instead of it being "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
     const { router, routes } = createTestRouter({
       history: createMemoryHistory({
@@ -488,6 +580,26 @@ describe('encoding: URL splat segment for /$', () => {
     await router.load()
 
     expect(router.state.location.pathname).toBe('/🚀')
+  })
+
+  it('state.location.pathname, should have the params._splat value of "100%25"', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/100%25'] }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/100%25')
+  })
+
+  it('state.location.pathname, should have the params._splat value of "100%26"', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/100%26'] }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/100%26')
   })
 
   it('state.location.pathname, should have the params._splat value of "%F0%9F%9A%80"', async () => {
@@ -620,6 +732,21 @@ describe('encoding: URL path segment', () => {
       type: 'not encoded',
     },
     {
+      input: '/path-segment/100%25', // `%25` = `%`
+      output: '/path-segment/100%25',
+      type: 'not encoded',
+    },
+    {
+      input: '/path-segment/100%25%25',
+      output: '/path-segment/100%25%25',
+      type: 'not encoded',
+    },
+    {
+      input: '/path-segment/100%26', // `%26` = `&`
+      output: '/path-segment/100%26',
+      type: 'not encoded',
+    },
+    {
       input: '/path-segment/%F0%9F%9A%80',
       output: '/path-segment/🚀',
       type: 'encoded',
@@ -627,6 +754,22 @@ describe('encoding: URL path segment', () => {
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
       output: '/path-segment/🚀to%2Fthe%2Fmoon',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
+      output: '/path-segment/%25🚀to%2Fthe%2Fmoon',
+      type: 'encoded',
+    },
+    {
+      input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
+      output: '/path-segment/🚀to%2Fthe%2Fmoon%25',
+      type: 'encoded',
+    },
+    {
+      input:
+        '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
+      output: '/path-segment/🚀to%2Fthe%2Fmoon%25🚀to%2Fthe%2Fmoon',
       type: 'encoded',
     },
     {
@@ -1570,4 +1713,74 @@ it('does not push to history if url and state are the same', async () => {
   await act(() => fireEvent.click(link))
 
   expect(history.length).toBe(1)
+})
+
+describe('does not strip search params if search validation fails', () => {
+  afterEach(() => {
+    window.history.replaceState(null, 'root', '/')
+    cleanup()
+  })
+
+  function getRouter() {
+    const rootRoute = createRootRoute({
+      validateSearch: z.object({ root: z.string() }),
+      component: () => {
+        const search = rootRoute.useSearch()
+        return (
+          <>
+            <div data-testid="search-root">{search.root ?? '$undefined'}</div>
+            <Outlet />
+          </>
+        )
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      validateSearch: z.object({ index: z.string() }),
+      component: () => {
+        const search = rootRoute.useSearch()
+        return (
+          <>
+            <div data-testid="search-index">{search.index ?? '$undefined'}</div>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createRouter({ routeTree })
+
+    return router
+  }
+
+  it('smoke test - all required search params are present', async () => {
+    window.history.replaceState(null, 'root', '/?root=hello&index=world')
+    const router = getRouter()
+    await act(() => render(<RouterProvider router={router} />))
+
+    expect(await screen.findByTestId('search-root')).toHaveTextContent('hello')
+    expect(await screen.findByTestId('search-index')).toHaveTextContent('world')
+
+    expect(window.location.search).toBe('?root=hello&index=world')
+  })
+
+  it('root is missing', async () => {
+    window.history.replaceState(null, 'root', '/?index=world')
+    const router = getRouter()
+    await act(() => render(<RouterProvider router={router} />))
+
+    expect(window.location.search).toBe('?index=world')
+  })
+
+  it('index is missing', async () => {
+    window.history.replaceState(null, 'root', '/?root=hello')
+    const router = getRouter()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    expect(window.location.search).toBe('?root=hello')
+  })
 })

@@ -7,9 +7,12 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { MakeRouteMatch, MakeRouteMatchUnion } from './Matches'
-import type { StrictOrFrom } from './utils'
-import type { ThrowOrOptional } from '@tanstack/router-core'
+import type {
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
+  StrictOrFrom,
+  ThrowOrOptional,
+} from '@tanstack/router-core'
 
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,

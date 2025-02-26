@@ -14,7 +14,7 @@ TanStack Start is built on Nitro, which means we can take advantage of Nitro's p
 ```js
 // app.config.js
 
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({
   server: {
@@ -37,7 +37,7 @@ For this example, let's pretend we have a blog with a list of posts. We want to 
 ```
 // app.config.js
 
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({
   server: {

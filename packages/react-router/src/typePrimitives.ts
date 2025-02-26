@@ -1,48 +1,56 @@
 import type {
+  Constrain,
+  ConstrainLiteral,
   FromPathOption,
-  LinkComponentProps,
   NavigateOptions,
   PathParamOptions,
+  Redirect,
+  RouteIds,
   SearchParamOptions,
   ToPathOption,
-} from './link'
-import type { RouteIds } from './routeInfo'
+  UseParamsResult,
+  UseSearchResult,
+} from '@tanstack/router-core'
+import type { LinkComponentProps } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { UseParamsOptions, UseParamsResult } from './useParams'
-import type { UseSearchOptions, UseSearchResult } from './useSearch'
-import type { Constrain, ConstrainLiteral } from '@tanstack/router-core'
+
+import type { UseParamsOptions } from './useParams'
+import type { UseSearchOptions } from './useSearch'
 
 export type ValidateFromPath<
-  TFrom,
   TRouter extends AnyRouter = RegisteredRouter,
+  TFrom = string,
 > = FromPathOption<TRouter, TFrom>
 
 export type ValidateToPath<
-  TTo extends string | undefined,
-  TFrom extends string = string,
   TRouter extends AnyRouter = RegisteredRouter,
+  TTo extends string | undefined = undefined,
+  TFrom extends string = string,
 > = ToPathOption<TRouter, TFrom, TTo>
 
 export type ValidateSearch<
-  TTo extends string | undefined,
-  TFrom extends string = string,
   TRouter extends AnyRouter = RegisteredRouter,
+  TTo extends string | undefined = undefined,
+  TFrom extends string = string,
 > = SearchParamOptions<TRouter, TFrom, TTo>
 
 export type ValidateParams<
-  TTo extends string | undefined,
-  TFrom extends string = string,
   TRouter extends AnyRouter = RegisteredRouter,
+  TTo extends string | undefined = undefined,
+  TFrom extends string = string,
 > = PathParamOptions<TRouter, TFrom, TTo>
 
 /**
  * @internal
  */
-export type InferFrom<TOptions> = TOptions extends {
+export type InferFrom<
+  TOptions,
+  TDefaultFrom extends string = string,
+> = TOptions extends {
   from: infer TFrom extends string
 }
   ? TFrom
-  : string
+  : TDefaultFrom
 
 /**
  * @internal
@@ -69,13 +77,14 @@ export type InferMaskFrom<TOptions> = TOptions extends {
   : string
 
 export type ValidateNavigateOptions<
-  TOptions,
   TRouter extends AnyRouter = RegisteredRouter,
+  TOptions = unknown,
+  TDefaultFrom extends string = string,
 > = Constrain<
   TOptions,
   NavigateOptions<
     TRouter,
-    InferFrom<TOptions>,
+    InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
     InferMaskTo<TOptions>
@@ -83,20 +92,55 @@ export type ValidateNavigateOptions<
 >
 
 export type ValidateNavigateOptionsArray<
-  TOptions extends ReadonlyArray<any>,
   TRouter extends AnyRouter = RegisteredRouter,
-> = { [K in keyof TOptions]: ValidateNavigateOptions<TOptions[K], TRouter> }
+  TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
+  TDefaultFrom extends string = string,
+> = {
+  [K in keyof TOptions]: ValidateNavigateOptions<
+    TRouter,
+    TOptions[K],
+    TDefaultFrom
+  >
+}
+
+export type ValidateRedirectOptions<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TOptions = unknown,
+  TDefaultFrom extends string = string,
+> = Constrain<
+  TOptions,
+  Redirect<
+    TRouter,
+    InferFrom<TOptions, TDefaultFrom>,
+    InferTo<TOptions>,
+    InferMaskFrom<TOptions>,
+    InferMaskTo<TOptions>
+  >
+>
+
+export type ValidateRedirectOptionsArray<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
+  TDefaultFrom extends string = string,
+> = {
+  [K in keyof TOptions]: ValidateRedirectOptions<
+    TRouter,
+    TOptions[K],
+    TDefaultFrom
+  >
+}
 
 export type ValidateLinkOptions<
-  TOptions,
-  TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
+  TOptions = unknown,
+  TDefaultFrom extends string = string,
+  TComp = 'a',
 > = Constrain<
   TOptions,
   LinkComponentProps<
     TComp,
     TRouter,
-    InferFrom<TOptions>,
+    InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
     InferMaskTo<TOptions>
@@ -104,16 +148,22 @@ export type ValidateLinkOptions<
 >
 
 export type ValidateLinkOptionsArray<
-  TOptions extends ReadonlyArray<any>,
-  TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
+  TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
+  TDefaultFrom extends string = string,
+  TComp = 'a',
 > = {
-  [K in keyof TOptions]: ValidateLinkOptions<TOptions[K], TComp, TRouter>
+  [K in keyof TOptions]: ValidateLinkOptions<
+    TRouter,
+    TOptions[K],
+    TDefaultFrom,
+    TComp
+  >
 }
 
 export type ValidateId<
-  TId extends string,
   TRouter extends AnyRouter = RegisteredRouter,
+  TId extends string = string,
 > = ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>
 
 /**

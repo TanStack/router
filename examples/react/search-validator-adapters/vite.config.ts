@@ -11,5 +11,8 @@ export default defineConfig({
     environment: 'jsdom',
     typecheck: { enabled: true },
   },
-  plugins: [TanStackRouterVite(), react()],
+  plugins: [
+    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
+    react(),
+  ],
 })

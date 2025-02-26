@@ -41,56 +41,54 @@ import type { NoInfer } from '@tanstack/react-store'
 
 import type {
   AnyContext,
+  AnyRedirect,
+  AnyRouteMatch,
   AnySchema,
   AnyValidator,
+  BeforeLoadContextOptions,
+  BuildLocationFn,
   CommitLocationOptions,
   ControlledPromise,
+  FullSearchSchema,
+  LoaderFnContext,
+  MakeRemountDepsOptionsUnion,
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
   Manifest,
+  NavigateFn,
+  NavigateOptions,
   NonNullableUpdater,
   ParsedLocation,
   PickAsRequired,
+  Register,
   ResolveRelativePath,
+  ResolvedRedirect,
+  RouteById,
+  RouteContextOptions,
+  RoutePaths,
+  RoutesById,
+  RoutesByPath,
   SearchMiddleware,
   SearchParser,
   SearchSerializer,
   StartSerializer,
+  ToOptions,
   TrailingSlashOption,
   Updater,
   ViewTransitionOptions,
 } from '@tanstack/router-core'
 import type {
   AnyRoute,
-  AnyRouteWithContext,
-  BeforeLoadContextOptions,
   ErrorRouteComponent,
-  LoaderFnContext,
-  MakeRemountDepsOptionsUnion,
   NotFoundRouteComponent,
   RootRoute,
   RouteComponent,
-  RouteContextOptions,
   RouteMask,
 } from './route'
 
-import type {
-  FullSearchSchema,
-  RouteById,
-  RoutePaths,
-  RoutesById,
-  RoutesByPath,
-} from './routeInfo'
-import type {
-  AnyRouteMatch,
-  MakeRouteMatch,
-  MakeRouteMatchUnion,
-  MatchRouteOptions,
-} from './Matches'
+import type { MatchRouteOptions } from './Matches'
 
-import type { BuildLocationFn, NavigateFn } from './RouterProvider'
-
-import type { AnyRedirect, ResolvedRedirect } from './redirects'
 import type { NotFoundError } from './not-found'
-import type { NavigateOptions, ToOptions } from './link'
 
 declare global {
   interface Window {
@@ -98,19 +96,7 @@ declare global {
   }
 }
 
-export interface Register {
-  // router: Router
-}
-
 export type AnyRouter = Router<any, any, any, any, any, any>
-
-export type AnyRouterWithContext<TContext> = Router<
-  AnyRouteWithContext<TContext>,
-  any,
-  any,
-  any,
-  any
->
 
 export type RegisteredRouter = Register extends {
   router: infer TRouter extends AnyRouter
@@ -306,7 +292,6 @@ export interface RouterOptions<
    *
    * @default false
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#casesensitive-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-trees#case-sensitivity)
    */
   caseSensitive?: boolean
   /**
@@ -314,7 +299,7 @@ export interface RouterOptions<
    * The route tree that will be used to configure the router instance.
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#routetree-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-trees)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/routing/route-trees)
    */
   routeTree?: TRouteTree
   /**
@@ -1611,8 +1596,8 @@ export class Router<
               }
               if (opts._includeValidateSearch && route.options.validateSearch) {
                 const validate: SearchMiddleware<any> = ({ search, next }) => {
+                  const result = next(search)
                   try {
-                    const result = next(search)
                     const validatedSearch = {
                       ...result,
                       ...(validateSearch(
@@ -1623,6 +1608,7 @@ export class Router<
                     return validatedSearch
                   } catch {
                     // ignore errors here because they are already handled in matchRoutes
+                    return result
                   }
                 }
                 middlewares.push(validate)

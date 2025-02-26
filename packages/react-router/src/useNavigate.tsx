@@ -1,18 +1,11 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
-import type { FromPathOption, NavigateOptions } from './link'
+import type {
+  FromPathOption,
+  NavigateOptions,
+  UseNavigateResult,
+} from '@tanstack/router-core'
 import type { AnyRouter, RegisteredRouter } from './router'
-
-export type UseNavigateResult<TDefaultFrom extends string> = <
-  TRouter extends RegisteredRouter,
-  TTo extends string | undefined,
-  TFrom extends string = TDefaultFrom,
-  TMaskFrom extends string = TFrom,
-  TMaskTo extends string = '',
->({
-  from,
-  ...rest
-}: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>) => Promise<void>
 
 export function useNavigate<
   TRouter extends AnyRouter = RegisteredRouter,

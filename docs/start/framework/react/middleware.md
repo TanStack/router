@@ -22,7 +22,7 @@ Middleware allows you to customize the behavior of server functions created with
 Middleware is defined using the `createMiddleware` function. This function returns a `Middleware` object that can be used to continue customizing the middleware with methods like `middleware`, `validator`, `server`, and `client`.
 
 ```tsx
-import { createMiddleware } from '@tanstack/start'
+import { createMiddleware } from '@tanstack/react-start'
 
 const loggingMiddleware = createMiddleware().server(async ({ next, data }) => {
   console.log('Request received:', data)
@@ -37,7 +37,7 @@ const loggingMiddleware = createMiddleware().server(async ({ next, data }) => {
 Once you've defined your middleware, you can use it in combination with the `createServerFn` function to customize the behavior of your server functions.
 
 ```tsx
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 import { loggingMiddleware } from './middleware'
 
 const fn = createServerFn()
@@ -61,7 +61,7 @@ Several methods are available to customize the middleware. If you are (hopefully
 The `middleware` method is used to dependency middleware to the chain that will executed **before** the current middleware. Just call the `middleware` method with an array of middleware objects.
 
 ```tsx
-import { createMiddleware } from '@tanstack/start'
+import { createMiddleware } from '@tanstack/react-start'
 
 const loggingMiddleware = createMiddleware().middleware([
   authMiddleware,
@@ -76,7 +76,7 @@ Type-safe context and payload validation are also inherited from parent middlewa
 The `validator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this. Here is an example:
 
 ```tsx
-import { createMiddleware } from '@tanstack/start'
+import { createMiddleware } from '@tanstack/react-start'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
@@ -105,7 +105,7 @@ The `server` method is used to define **server-side** logic that the middleware 
 The `next` function is used to execute the next middleware in the chain. **You must await and return (or return directly) the result of the `next` function provided to you** for the chain to continue executing.
 
 ```tsx
-import { createMiddleware } from '@tanstack/start'
+import { createMiddleware } from '@tanstack/react-start'
 
 const loggingMiddleware = createMiddleware().server(async ({ next }) => {
   console.log('Request received')
@@ -120,7 +120,7 @@ const loggingMiddleware = createMiddleware().server(async ({ next }) => {
 The `next` function can be optionally called with an object that has a `context` property with an object value. Whatever properties you pass to this `context` value will be merged into the parent `context` and provided to the next middleware.
 
 ```tsx
-import { createMiddleware } from '@tanstack/start'
+import { createMiddleware } from '@tanstack/react-start'
 
 const awesomeMiddleware = createMiddleware().server(({ next }) => {
   return next({
@@ -151,7 +151,7 @@ By default, middleware validation is only performed on the server to keep the cl
 > The client-side validation schema is derived from the server-side schema. This is because the client-side validation schema is used to validate the data before it is sent to the server. If the client-side schema were different from the server-side schema, the server would receive data that it did not expect, which could lead to unexpected behavior.
 
 ```tsx
-import { createMiddleware } from '@tanstack/start'
+import { createMiddleware } from '@tanstack/react-start'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
@@ -294,15 +294,19 @@ Middleware can be used in two different ways:
 
 ## Global Middleware
 
-Global middleware is registered using the `registerGlobalMiddleware` function. This function receives an array of middleware to be appended to the global middleware array. There is currently no way to remove global middleware once it has been registered.
+Global middleware runs automatically for every server function in your application. This is useful for functionality like authentication, logging, and monitoring that should apply to all requests.
 
-Here's an example of registering global middleware:
+To use global middleware, create a `global-middleware.ts` file in your project (typically at `app/global-middleware.ts`). This file runs in both client and server environments and is where you register global middleware.
+
+Here's how to register global middleware:
 
 ```tsx
-import { registerGlobalMiddleware } from '@tanstack/start'
+// app/global-middleware.ts
+import { registerGlobalMiddleware } from '@tanstack/react-start'
+import { authMiddleware } from './middleware'
 
 registerGlobalMiddleware({
-  middleware: [authMiddleware, loggingMiddleware],
+  middleware: [authMiddleware],
 })
 ```
 
@@ -311,12 +315,14 @@ registerGlobalMiddleware({
 Global middleware types are inherently **detached** from server functions themselves. This means that if a global middleware supplies additional context to server functions or other server function specific middleware, the types will not be automatically passed through to the server function or other server function specific middleware.
 
 ```tsx
-// globalMiddleware.ts
+// app/global-middleware.ts
 registerGlobalMiddleware({
   middleware: [authMiddleware],
 })
+```
 
-// serverFunction.ts
+```tsx
+// authMiddleware.ts
 const authMiddleware = createMiddleware().server(({ next, context }) => {
   console.log(context.user) // <-- This will not be typed!
   // ...

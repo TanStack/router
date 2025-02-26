@@ -38,16 +38,6 @@ TanStack Router separates code into two categories:
 >
 >   Knowing the disadvantages of splitting the loader, if you still want to go ahead with it, head over to the [Data Loader Splitting](#data-loader-splitting) section.
 
-## Approaches to code splitting
-
-TanStack Router supports multiple approaches to code splitting. If you are using code-based routing, skip to the [Code-Based Splitting](#code-based-splitting) section.
-
-When you are using file-based routing, you can use the following approaches to code splitting:
-
-- [Using the `.lazy.tsx` suffix](#using-the-lazytsx-suffix)
-- [Using Virtual Routes](#using-virtual-routes)
-- [Using automatic code-splitting ✨](#using-automatic-code-splitting)
-
 ## Encapsulating a route's files into a directory
 
 Since TanStack Router's file-based routing system is designed to support both flat and nested file structures, it's possible to encapsulate a route's files into a single directory without any additional configuration.
@@ -59,19 +49,63 @@ For example, if you have a route file named `posts.tsx`, you would create a new 
 **Before**
 
 - `posts.tsx`
-- `posts.lazy.tsx`
 
 **After**
 
 - `posts`
   - `route.tsx`
-  - `route.lazy.tsx`
+
+## Approaches to code splitting
+
+TanStack Router supports multiple approaches to code splitting. If you are using code-based routing, skip to the [Code-Based Splitting](#code-based-splitting) section.
+
+When you are using file-based routing, you can use the following approaches to code splitting:
+
+- [Using automatic code-splitting ✨](#using-automatic-code-splitting)
+- [Using the `.lazy.tsx` suffix](#using-the-lazytsx-suffix)
+- [Using Virtual Routes](#using-virtual-routes)
+
+## Using automatic code-splitting✨
+
+This is the easiest and most powerful way to code split your route files.
+
+When using the `autoCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
+
+> [!IMPORTANT]
+> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../routing/file-based-routing.md#getting-started-with-file-based-routing).
+> This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
+
+To enable automatic code-splitting, you just need to add the following to the configuration of your TanStack Router Bundler Plugin:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import viteReact from '@vitejs/plugin-react'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+
+export default defineConfig({
+  plugins: [
+    TanStackRouterVite({
+      // ...
+      autoCodeSplitting: true,
+    }),
+    viteReact(), // Make sure to add this plugin after the TanStack Router Bundler plugin
+  ],
+})
+```
+
+That's it! TanStack Router will automatically code-split all your route files by their critical and non-critical route configurations.
+
+If you want more control over the code-splitting process, head over to the [Automatic Code Splitting](./automatic-code-splitting.md) guide to learn more about the options available.
 
 ## Using the `.lazy.tsx` suffix
 
-If you're using the recommended [File-Based Routing](./route-trees.md) approach, code splitting is **as easy as moving your code into a separate file with a `.lazy.tsx` suffix** and use the `createLazyFileRoute` function instead of the `FileRoute` class or `createFileRoute` function.
+If you are not able to use the automatic code-splitting feature, you can still code-split your route files using the `.lazy.tsx` suffix. It is **as easy as moving your code into a separate file with a `.lazy.tsx` suffix** and using the `createLazyFileRoute` function instead of `createFileRoute`.
 
-Here are the options currently supported by the `createLazyFileRoute` function:
+> [!IMPORTANT]
+> The `__root.tsx` route file, using either `createRootRoute` or `createRootRouteWithContext`, does not support code splitting, since it's always rendered regardless of the current route.
+
+These are the only options that `createLazyFileRoute` support:
 
 | Export Name         | Description                                                           |
 | ------------------- | --------------------------------------------------------------------- |
@@ -79,10 +113,6 @@ Here are the options currently supported by the `createLazyFileRoute` function:
 | `errorComponent`    | The component to render when an error occurs while loading the route. |
 | `pendingComponent`  | The component to render while the route is loading.                   |
 | `notFoundComponent` | The component to render if a not-found error gets thrown.             |
-
-### Exceptions to the `.lazy.tsx` rule
-
-- The `__root.tsx` route file does not support code splitting, since it's always rendered regardless of the current route.
 
 ### Example code splitting with `.lazy.tsx`
 
@@ -180,107 +210,9 @@ function Posts() {
 
 Tada! 🎉
 
-## Using automatic code-splitting
-
-When using the `autoCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
-
-> [!IMPORTANT]
-> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](./file-based-routing.md#installation).
-> This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
-
-If this is your first time using TanStack Router, then you can skip the following steps and head over to [Enabling automatic code-splitting](#enabling-automatic-code-splitting). If you've already been using TanStack Router, then you might need to make some changes to your route files to enable automatic code-splitting.
-
-### Preparing your route files for automatic code-splitting
-
-When using automatic code-splitting, you should **not** use the `.lazy.tsx` suffix. Instead, any routes that are split into two using the `.lazy.tsx` suffix should be merged back into a single file.
-
-**Before using the `.lazy` suffix**
-
-```tsx
-// src/routes/posts.tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({
-  loader: fetchPosts,
-})
-```
-
-```tsx
-// src/routes/posts.lazy.tsx
-import { createLazyFileRoute } from '@tanstack/react-router'
-
-export const Route = createLazyFileRoute('/posts')({
-  component: Posts,
-})
-
-function Posts() {
-  // ...
-}
-```
-
-**After removing the `.lazy` suffix**
-
-```tsx
-// src/routes/posts.tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({
-  loader: fetchPosts,
-  component: Posts,
-})
-
-function Posts() {
-  // ...
-}
-```
-
-Also, if you were previously using virtual routes, you should then have their `.lazy.tsx` suffixes removed.
-
-**Before using Virtual Routes**
-
-```tsx
-// src/routes/posts.lazy.tsx
-import { createLazyFileRoute } from '@tanstack/react-router'
-
-export const Route = createLazyFileRoute('/posts')({
-  /* ... */
-})
-```
-
-**After without Virtual Routes**
-
-```tsx
-// src/routes/posts.tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({
-  /* ... */
-})
-```
-
-Once you've done this, your route files are ready for automatic code-splitting.
-
-### Enabling automatic code-splitting
-
-> [!IMPORTANT]
-> At this time, when using automatic code-splitting, ALL of your route files will be code-split. This means that you should only use this feature if you are sure that you want to code-split all of your route files.
-
-To enable automatic code-splitting, you can add the following to your `tsr.config.json`:
-
-```jsonc
-{
-  // ...
-  "autoCodeSplitting": true,
-}
-```
-
-That's it! TanStack Router will automatically code-split all your route files by their critical and non-critical route configurations.
-
 ## Code-Based Splitting
 
-### Manually Splitting Using `route.lazy()` and `createLazyRoute`
-
-If you're not using the file-based routing system, you can still manually split your code using the `route.lazy()` method and the `createLazyRoute` function. You'd need to:
+If you are using code-based routing, you can still code-split your routes using the `Route.lazy()` method and the `createLazyRoute` function. You'll need to split your route configuration into two parts:
 
 Create a lazy route using the `createLazyRoute` function.
 
@@ -307,26 +239,11 @@ const postsRoute = createRoute({
 
 ## Data Loader Splitting
 
-> ⚠️ Splitting a data loader will incur 2 round trips to the server to retrieve the loader data. One round trip to load the loader code bundle itself and another to execute the loader code and retrieve the data. Do not proceed unless you are VERY sure that your loader is contributing to the bundle size enough to warrant these round trips.
+**Be warned!!!** Splitting a route loader is a dangerous game.
 
-You can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get most of the way there:
+It can be a powerful tool to reduce bundle size, but it comes with a cost as mentioned in the [How does TanStack Router split code?](#how-does-tanstack-router-split-code) section.
 
-```tsx
-import { LoaderContext } from '@tanstack/react-router'
-
-const route = createRoute({
-  path: '/my-route',
-  component: MyComponent,
-  loader: (...args) => import('./loader').then((d) => d.loader(...args)),
-})
-
-// In another file...
-export const loader = async (context: LoaderContext) => {
-  /// ...
-}
-```
-
-This process can feel heavy-handed, so TanStack Router exports a utility called `lazyFn` which is very similar to `lazyRouteComponent` that can help simplify this process:
+You can code split your data loading logic using the Route's `loader` option. While this process makes it difficult to maintain type-safety with the parameters passed to your loader, you can always use the generic `LoaderContext` type to get you most of the way there:
 
 ```tsx
 import { lazyFn } from '@tanstack/react-router'
@@ -342,6 +259,8 @@ export const loader = async (context: LoaderContext) => {
   /// ...
 }
 ```
+
+If you are using file-based routing, you'll only be able to split your `loader` if you are using [Automatic Code Splitting](#using-automatic-code-splitting) with customized bundling options.
 
 ## Manually accessing Route APIs in other files with the `getRouteApi` helper
 

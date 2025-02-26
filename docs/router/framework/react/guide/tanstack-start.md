@@ -90,7 +90,7 @@ Then configure TanStack Start's `app.config.ts` file:
 
 ```typescript
 // app.config.ts
-import { defineConfig } from '@tanstack/start/config'
+import { defineConfig } from '@tanstack/react-start/config'
 
 export default defineConfig({})
 ```
@@ -159,8 +159,8 @@ information to our server entry point:
 import {
   createStartHandler,
   defaultStreamHandler,
-} from '@tanstack/start/server'
-import { getRouterManifest } from '@tanstack/start/router-manifest'
+} from '@tanstack/react-start/server'
+import { getRouterManifest } from '@tanstack/react-start/router-manifest'
 
 import { createRouter } from './router'
 
@@ -180,7 +180,7 @@ router information to our client entry point:
 ```tsx
 // app/client.tsx
 import { hydrateRoot } from 'react-dom/client'
-import { StartClient } from '@tanstack/start'
+import { StartClient } from '@tanstack/react-start'
 import { createRouter } from './router'
 
 const router = createRouter({
@@ -203,18 +203,20 @@ import { Outlet } from '@tanstack/react-router'
 import * as React from 'react'
 
 export const Route = createRootRoute({
-  meta: () => [
-    {
-      charSet: 'utf-8',
-    },
-    {
-      name: 'viewport',
-      content: 'width=device-width, initial-scale=1',
-    },
-    {
-      title: 'TanStack Start Starter',
-    },
-  ],
+  head: () => ({
+    meta: [
+      {
+        charSet: 'utf-8',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+      {
+        title: 'TanStack Start Starter',
+      },
+    ],
+  }),
   component: RootComponent,
 })
 
@@ -249,7 +251,7 @@ Now that we have the basic templating setup, we can write our first route. This 
 // app/routes/index.tsx
 import * as fs from 'fs'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 
 const filePath = 'count.txt'
 

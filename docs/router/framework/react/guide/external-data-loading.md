@@ -46,7 +46,6 @@ Here is a naive illustration (don't do this) of using a Route's `loader` option 
 
 ```tsx
 // src/routes/posts.tsx
-
 let postsCache = []
 
 export const Route = createFileRoute('/posts')({
@@ -76,7 +75,6 @@ Let's take a look at a more realistic example using TanStack Query.
 
 ```tsx
 // src/routes/posts.tsx
-
 const postsQueryOptions = queryOptions({
   queryKey: ['posts'],
   queryFn: () => fetchPosts(),
@@ -113,7 +111,7 @@ export const Route = createFileRoute('/posts')({
     const router = useRouter()
     const queryErrorResetBoundary = useQueryErrorResetBoundary()
 
-    React.useEffect(() => {
+    useEffect(() => {
       // Reset the query error boundary
       queryErrorResetBoundary.reset()
     }, [queryErrorResetBoundary])

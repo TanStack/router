@@ -35,7 +35,7 @@ export function trimPath(path: string) {
 }
 
 export function removeTrailingSlash(value: string, basepath: string): string {
-  if (value.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
+  if (value?.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
     return value.slice(0, -1)
   }
   return value
@@ -183,7 +183,12 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
       return {
         type: 'pathname',
-        value: decodeURI(part),
+        value: part.includes('%25')
+          ? part
+              .split('%25')
+              .map((segment) => decodeURI(segment))
+              .join('%25')
+          : decodeURI(part),
       }
     }),
   )

@@ -10,12 +10,32 @@
   - 'packages/eslint-plugin-router/**/*'
 'package: history':
   - 'packages/history/**/*'
-'package: react-cross-context':
-  - 'packages/react-cross-context/**/*'
 'package: react-router':
   - 'packages/react-router/**/*'
 'package: react-router-with-query':
   - 'packages/react-router-with-query/**/*'
+'package: react-start':
+  - 'packages/react-start/**/*'
+'package: react-start-api-routes':
+  - 'packages/react-start-api-routes/**/*'
+'package: react-start-client':
+  - 'packages/react-start-client/**/*'
+'package: react-start-config':
+  - 'packages/react-start-config/**/*'
+'package: react-start-plugin':
+  - 'packages/react-start-plugin/**/*'
+'package: react-start-router-manifest':
+  - 'packages/react-start-router-manifest/**/*'
+'package: react-start-server':
+  - 'packages/react-start-server/**/*'
+'package: react-start-server-functions-client':
+  - 'packages/react-start-server-functions-client/**/*'
+'package: react-start-server-functions-fetcher':
+  - 'packages/react-start-server-functions-fetcher/**/*'
+'package: react-start-server-functions-handler':
+  - 'packages/react-start-server-functions-handler/**/*'
+'package: react-start-server-functions-ssr':
+  - 'packages/react-start-server-functions-ssr/**/*'
 'package: router-cli':
   - 'packages/router-cli/**/*'
 'package: router-core':
@@ -32,30 +52,14 @@
   - 'packages/router-vite-plugin/**/*'
 'package: server-functions-plugin':
   - 'packages/server-functions-plugin/**/*'
+'package: solid-router':
+  - 'packages/solid-router/**/*'
 'package: start':
   - 'packages/start/**/*'
-'package: start-api-routes':
-  - 'packages/start-api-routes/**/*'
-'package: start-client':
-  - 'packages/start-client/**/*'
 'package: start-config':
   - 'packages/start-config/**/*'
-'package: start-plugin':
-  - 'packages/start-plugin/**/*'
-'package: start-router-manifest':
-  - 'packages/start-router-manifest/**/*'
-'package: start-server':
-  - 'packages/start-server/**/*'
-'package: start-server-functions-client':
-  - 'packages/start-server-functions-client/**/*'
-'package: start-server-functions-fetcher':
-  - 'packages/start-server-functions-fetcher/**/*'
-'package: start-server-functions-handler':
-  - 'packages/start-server-functions-handler/**/*'
 'package: start-server-functions-server':
   - 'packages/start-server-functions-server/**/*'
-'package: start-server-functions-ssr':
-  - 'packages/start-server-functions-ssr/**/*'
 'package: valibot-adapter':
   - 'packages/valibot-adapter/**/*'
 'package: virtual-file-routes':

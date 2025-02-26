@@ -3,7 +3,7 @@ import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import type { ErrorInfo } from 'react'
 import type { RegisteredRouter } from './router'
-import type { RouteIds } from './routeInfo'
+import type { RouteIds } from '@tanstack/router-core'
 
 export type NotFoundError = {
   /**

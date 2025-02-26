@@ -57,7 +57,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({ autoCodeSplitting: true }),
+    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
     viteReact(),
     // ...,
   ],
@@ -65,11 +65,11 @@ export default defineConfig({
 ```
 
 > [!TIP]
-> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](./guide/file-based-routing.md#configuration-with-the-tanstack-router-cli) guide for more info.
+> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](./routing/installation-with-router-cli.md) guide for more info.
 
 Create the following files:
 
-- `src/routes/__root.tsx`
+- `src/routes/__root.tsx` (with two '`_`' characters)
 - `src/routes/index.tsx`
 - `src/routes/about.tsx`
 - `src/main.tsx`

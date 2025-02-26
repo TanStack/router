@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import * as v from 'valibot'
 import { queryOptions } from '@tanstack/react-query'
-import { createMiddleware, createServerFn } from '@tanstack/start'
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
 
 const params = v.object({
   oneParamsPlaceholder: v.literal('oneParamsPlaceholder'),

@@ -65,7 +65,7 @@ export const coreModule = createModule(
         type: 'new',
         dependencies: await deps([
           '@tanstack/react-router',
-          '@tanstack/start',
+          '@tanstack/react-start',
           'react',
           'react-dom',
           'vinxi',
