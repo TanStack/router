@@ -4,9 +4,6 @@ title: File-Based Routing API Reference
 
 TanStack Router's file-based routing is quite flexible and can be configured to suit your project's needs.
 
-> [!IMPORTANT]
-> Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the **File Naming Conventions** guide.
-
 ## Configuration options
 
 The following options are available for configuring the file-based routing:
@@ -28,6 +25,9 @@ The following options are available for configuring the file-based routing:
 - [`routeTreeFileHeader`](#routetreefileheader)
 - [`routeTreeFileFooter`](#routetreefilefooter)
 - [`disableManifestGeneration`](#disablemanifestgeneration)
+
+> [!WARNING]
+> Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the **File Naming Conventions** guide, or you may run into unexpected behavior.
 
 ### `routesDirectory` (required)
 
