@@ -11,8 +11,8 @@
   "dependencies": {
     "@tanstack/react-router": "^1.111.11",
     "@tanstack/router-devtools": "^1.111.11",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
     "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",
     "tailwindcss": "^3.4.17"

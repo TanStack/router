@@ -12,8 +12,8 @@
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-devtools": "workspace:^",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {

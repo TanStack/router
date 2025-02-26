@@ -9,8 +9,8 @@
   "dependencies": {
     "@tanstack/react-router": "^1.111.11",
     "@tanstack/router-devtools": "^1.111.11",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "catalog:react",
+    "react-dom": "catalog:react"
   },
   "devDependencies": {
     "@swc/core": "^1.10.15",

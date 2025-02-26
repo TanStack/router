@@ -68,8 +68,8 @@
     "@tanstack/start": "workspace:^",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
     "vinxi": "0.5.1",
     "vite": "^6.0.3"
   },

@@ -9,3 +9,14 @@ packages:
   - 'e2e/react-router/*'
   - 'e2e/solid-router/*'
   - 'e2e/react-start/*'
+
+catalogs:
+  # Can be referenced through "catalog:react"
+  react:
+    react: 19.0.0
+    react-dom: 19.0.0
+
+  # Can be referenced through "catalog:peer-react"
+  peer-react:
+    react: ">=18.0.0 || >=19.0.0"
+    react-dom: ">=18.0.0 || >=19.0.0"

@@ -6,8 +6,8 @@ settings:
 
 overrides:
   use-sync-external-store: 1.2.2
-  react: ^19.0.0
-  react-dom: ^19.0.0
+  react: 19.0.0
+  react-dom: 19.0.0
   '@types/react': ^19.0.8
   '@types/react-dom': ^19.0.3
   eslint: ^9.20.0
@@ -99,10 +99,10 @@ importers:
         specifier: ^0.3.4
         version: 0.3.4
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -112,7 +112,7 @@ importers:
         version: 6.0.1
       tinyglobby:
         specifier: ^0.2.10
-        version: 0.2.10
+        version: 0.2.11
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -155,10 +155,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -201,10 +201,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -250,10 +250,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -305,10 +305,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
         specifier: ^3.4.17
@@ -357,10 +357,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -412,10 +412,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -464,10 +464,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -516,10 +516,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -571,10 +571,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -614,10 +614,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -666,10 +666,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -733,10 +733,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -791,10 +791,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -834,10 +834,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -907,10 +907,10 @@ importers:
         specifier: ^5.22.0
         version: 5.22.0
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -977,10 +977,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -1041,10 +1041,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -1090,10 +1090,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       vinxi:
         specifier: 0.5.3
@@ -1130,10 +1130,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -1194,10 +1194,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -1264,10 +1264,10 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -1334,10 +1334,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -1899,10 +1899,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -1945,10 +1945,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -1991,10 +1991,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2040,10 +2040,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2092,10 +2092,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2144,10 +2144,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2193,10 +2193,10 @@ importers:
         specifier: ^7.1.0
         version: 7.1.0
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2263,10 +2263,10 @@ importers:
         specifier: ^7.1.0
         version: 7.1.0
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2339,10 +2339,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2391,10 +2391,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2437,10 +2437,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2486,10 +2486,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2538,10 +2538,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2593,10 +2593,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2651,10 +2651,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2703,10 +2703,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2755,10 +2755,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2801,10 +2801,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2844,10 +2844,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
         specifier: ^3.4.17
@@ -2881,10 +2881,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2921,10 +2921,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -2967,10 +2967,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
         specifier: ^3.4.17
@@ -3004,10 +3004,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
       '@swc/core':
@@ -3059,10 +3059,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3102,10 +3102,10 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
       '@tanstack/router-devtools':
@@ -3151,10 +3151,10 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
       '@types/react':
@@ -3216,10 +3216,10 @@ importers:
         specifier: workspace:*
         version: link:../../../../../packages/router-plugin
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3259,10 +3259,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3302,10 +3302,10 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3342,10 +3342,10 @@ importers:
         specifier: workspace:*
         version: link:../router
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
       '@tanstack/router-devtools':
@@ -3388,10 +3388,10 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
       '@types/react':
@@ -3425,10 +3425,10 @@ importers:
         specifier: workspace:*
         version: link:../../../../../packages/router-plugin
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3465,10 +3465,10 @@ importers:
         specifier: workspace:*
         version: link:../router
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
       '@tanstack/router-devtools':
@@ -3508,10 +3508,10 @@ importers:
         specifier: workspace:*
         version: link:../router
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
       '@types/react':
@@ -3545,10 +3545,10 @@ importers:
         specifier: workspace:*
         version: link:../../../../../packages/router-plugin
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3594,10 +3594,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
         specifier: ^3.4.17
@@ -3652,10 +3652,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       tailwindcss:
         specifier: ^3.4.17
@@ -3701,10 +3701,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       vinxi:
         specifier: 0.5.3
@@ -3747,10 +3747,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3805,10 +3805,10 @@ importers:
         specifier: ^5.22.0
         version: 5.22.0
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3866,10 +3866,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3921,10 +3921,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -3970,10 +3970,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -4025,10 +4025,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -4101,10 +4101,10 @@ importers:
         specifier: ^2.7.0
         version: 2.7.0(@types/node@22.13.4)(typescript@5.7.3)
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       react-hot-toast:
         specifier: ^2.5.1
@@ -4156,10 +4156,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       vinxi:
         specifier: 0.5.3
@@ -4193,10 +4193,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -4257,10 +4257,10 @@ importers:
         specifier: ^1.111.11
         version: link:../../../packages/start
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       vinxi:
         specifier: 0.5.3
@@ -4315,10 +4315,10 @@ importers:
         specifier: ^2.7.0
         version: 2.7.0(@types/node@22.13.4)(typescript@5.7.3)
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       react-hot-toast:
         specifier: ^2.5.1
@@ -4379,10 +4379,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -4437,10 +4437,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -4501,10 +4501,10 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       redaxios:
         specifier: ^0.5.1
@@ -4624,10 +4624,10 @@ importers:
         specifier: ^2.0.4
         version: 2.0.4
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
 
   packages/create-router:
@@ -4675,17 +4675,17 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       swc-loader:
         specifier: ^0.2.6
         version: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1)
       tinyglobby:
         specifier: ^0.2.10
-        version: 0.2.10
+        version: 0.2.11
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -4763,10 +4763,10 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       rollup-plugin-copy:
         specifier: ^3.5.0
@@ -4913,10 +4913,10 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       zod:
         specifier: ^3.24.1
@@ -4934,10 +4934,10 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
 
   packages/react-start:
@@ -4970,10 +4970,10 @@ importers:
         specifier: workspace:*
         version: link:../start-server-functions-server
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       vite:
         specifier: 6.1.0
@@ -5014,10 +5014,10 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       tiny-invariant:
         specifier: ^1.3.3
@@ -5072,10 +5072,10 @@ importers:
         specifier: ^1.4.1
         version: 1.4.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       vinxi:
         specifier: 0.5.3
@@ -5192,10 +5192,10 @@ importers:
         specifier: ^0.25.0
         version: 0.25.0
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       typescript:
         specifier: ^5.7.2
@@ -5230,10 +5230,10 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       typescript:
         specifier: ^5.7.2
@@ -5258,10 +5258,10 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       typescript:
         specifier: ^5.7.2
@@ -5333,10 +5333,10 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
 
   packages/router-generator:
@@ -5621,10 +5621,10 @@ importers:
         specifier: ^1.4.1
         version: 1.4.1
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       vinxi:
         specifier: 0.5.3
@@ -5661,10 +5661,10 @@ importers:
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.0)(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       valibot:
         specifier: 1.0.0-beta.15
@@ -5684,10 +5684,10 @@ importers:
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.0)(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       zod:
         specifier: ^3.24.1
@@ -5911,15 +5911,15 @@ packages:
     resolution: {integrity: sha512-u7g9MXxHuWBqVLvlXuvaq3tOmZqKhJAJMccSUHFSMmJsyjZsk5psBi4ek8iap33wbhZuyak/rwcbHwcK2yE0bQ==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
 
   '@clerk/shared@2.20.18':
     resolution: {integrity: sha512-vSQLZSRFr62+YeE1KE/Xu/eWCrwYJRNA2KRyQYmb2VPleFNmOjtTNlO4xkMZ0eN6BLKxrBo9b0NVwu3L28FhKg==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       react:
         optional: true
@@ -5932,8 +5932,8 @@ packages:
     peerDependencies:
       '@tanstack/react-router': workspace:*
       '@tanstack/start': '>=1.85.9'
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
 
   '@clerk/types@4.45.0':
     resolution: {integrity: sha512-DSXPWq1xD01tzyHv7CugX2T/XfVUZX2xxQ92cs+JPTrGoqIYm+yjRWqOz1CVJ/76TbYMOrB0efCGOxEcNV/PQw==}
@@ -7260,7 +7260,7 @@ packages:
     resolution: {integrity: sha512-Y9VzoRDSJtgFMUCoiZBDVo084VQ5hfpXxVE+NgkdNsjiDBByiImMZKKhxMwCbdHvhlENG6a833CbFkOQvTricw==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7269,7 +7269,7 @@ packages:
     resolution: {integrity: sha512-UASk9zi+crv9WteK/NU4PLvOoL3OuE6BWVKNF6hPRBtYBDXQ2u5iu3O59zUlJiTVvkyuycnqrztsHVJwcK9K+Q==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7279,8 +7279,8 @@ packages:
     peerDependencies:
       '@types/react': ^19.0.8
       '@types/react-dom': ^19.0.3
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7292,8 +7292,8 @@ packages:
     peerDependencies:
       '@types/react': ^19.0.8
       '@types/react-dom': ^19.0.3
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7304,7 +7304,7 @@ packages:
     resolution: {integrity: sha512-pSIwfrT1a6sIoDASCSpFwOasEwKTZWDw/iBdtnqKO7v6FeOzYJ7U53cPzYFVR3geGGXgVHaH+CdngrrAzqUGxg==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7314,8 +7314,8 @@ packages:
     peerDependencies:
       '@types/react': ^19.0.8
       '@types/react-dom': ^19.0.3
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7326,7 +7326,7 @@ packages:
     resolution: {integrity: sha512-EJUrI8yYh7WOjNOqpoJaf1jlFIH2LvtgAl+YcFqNCa+4hj64ZXmPkAKOFs/ukjz3byN6bdb/AVUqHkI8/uWWMA==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7336,8 +7336,8 @@ packages:
     peerDependencies:
       '@types/react': ^19.0.8
       '@types/react-dom': ^19.0.3
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7349,8 +7349,8 @@ packages:
     peerDependencies:
       '@types/react': ^19.0.8
       '@types/react-dom': ^19.0.3
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7362,8 +7362,8 @@ packages:
     peerDependencies:
       '@types/react': ^19.0.8
       '@types/react-dom': ^19.0.3
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7374,7 +7374,7 @@ packages:
     resolution: {integrity: sha512-YAKxaiGsSQJ38VzKH86/BPRC4rh+b1Jpa+JneA5LRE7skmLPNAyeG8kPJj/oo4STLvlrs8vkf/iYyc3A5stYCQ==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7383,7 +7383,7 @@ packages:
     resolution: {integrity: sha512-CasTfvsy+frcFkbXtSJ2Zu9JHpN8TYKxkgJGWbjiZhFivxaeW7rMeZt7QELGVLaYVfFMsKHjb7Ak0nMEe+2Vfw==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7392,7 +7392,7 @@ packages:
     resolution: {integrity: sha512-MtfMVJiSr2NjzS0Aa90NPTnvTSg6C/JLCV7ma0W6+OMV78vd8OyRpID+Ng9LxzsPbLeuBnWBA1Nq30AtBIDChw==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7401,7 +7401,7 @@ packages:
     resolution: {integrity: sha512-L7vwWlR1kTTQ3oh7g1O0CBF3YCyyTj8NmhLR+phShpyA50HCfBFKVJTpshm9PzLiKmehsrQzTYTpX9HvmC9rhw==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7410,7 +7410,7 @@ packages:
     resolution: {integrity: sha512-+FPE0rOdziWSrH9athwI1R0HDVbWlEhd+FR+aSDk4uWGmSJ9Z54sdZVDQPZAinJhJXwfT+qnj969mCsT2gfm5w==}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7837,7 +7837,7 @@ packages:
     resolution: {integrity: sha512-42T/fp8snYN19Fy/2P0Mwotu4gcdy+1Lx+uYCNcYP1o7wNGigJ7qb27sW7W34GyCCHjoCCfQgeOqDQsyY8LC9w==}
     engines: {node: '>=14.18'}
     peerDependencies:
-      react: ^19.0.0
+      react: 19.0.0
 
   '@sentry/tracing@7.120.3':
     resolution: {integrity: sha512-B7bqyYFgHuab1Pn7w5KXsZP/nfFo4VDBDdSXDSWYk5+TYJ3IDruO3eJFhOrircfsz4YwazWm9kbeZhkpsHDyHg==}
@@ -8174,24 +8174,24 @@ packages:
     resolution: {integrity: sha512-uB57wA2YZaQ2fPcFW0E9O1zAGDGSbRKRx84uMk/86VyU9jWVxvJ3Uzp+zNm+nZJYsuekCIo2opTdgNuvM3cKgA==}
     peerDependencies:
       '@tanstack/react-query': 5.66.0
-      react: ^19.0.0
+      react: 19.0.0
 
   '@tanstack/react-query@5.66.0':
     resolution: {integrity: sha512-z3sYixFQJe8hndFnXgWu7C79ctL+pI0KAelYyW+khaNJ1m22lWrhJU2QrsTcRKMuVPtoZvfBYrTStIdKo+x0Xw==}
     peerDependencies:
-      react: ^19.0.0
+      react: 19.0.0
 
   '@tanstack/react-store@0.7.0':
     resolution: {integrity: sha512-S/Rq17HaGOk+tQHV/yrePMnG1xbsKZIl/VsNWnNXt4XW+tTY8dTlvpJH2ZQ3GRALsusG5K6Q3unAGJ2pd9W/Ng==}
     peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
 
   '@tanstack/react-virtual@3.13.0':
     resolution: {integrity: sha512-CchF0NlLIowiM2GxtsoKBkXA4uqSnY2KvnXo+kyUFD4a4ll6+J0qzoRsUPMwXV/H26lRsxgJIr/YmjYum2oEjg==}
     peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
 
   '@tanstack/solid-query-devtools@5.66.0':
     resolution: {integrity: sha512-kLil+orz9uGS9LzDHtLInI/otaw7VZ7+++INrgaftrvmkx03/8/mIe1aG5+x8PZvSU223oRhyTaoGeUDA7iKWg==}
@@ -8235,8 +8235,8 @@ packages:
       '@testing-library/dom': ^10.0.0
       '@types/react': ^19.0.8
       '@types/react-dom': ^19.0.3
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -8266,8 +8266,8 @@ packages:
       '@tanstack/react-query': 5.66.0
       '@trpc/client': 11.0.0-rc.772+6627c5a96
       '@trpc/server': 11.0.0-rc.772+6627c5a96
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
       typescript: '>=5.7.2'
 
   '@trysound/sax@0.2.0':
@@ -9310,8 +9310,8 @@ packages:
     peerDependencies:
       '@auth0/auth0-react': ^2.0.1
       '@clerk/clerk-react': ^4.12.8 || ^5.0.0
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@auth0/auth0-react':
         optional: true
@@ -9706,10 +9706,6 @@ packages:
 
   end-of-stream@1.4.4:
     resolution: {integrity: sha512-+uw1inIHVPQoaVuHzRyXd21icM+cnt4CzD5rW+NC1wjOUSTOs+Te7FOv7AhN7vS9x/oIyhLP5PR1H+phQAHu5Q==}
-
-  enhanced-resolve@5.18.0:
-    resolution: {integrity: sha512-0/r0MySGYG8YqlayBZ6MuCfECmHFdJ5qyPh8s8wa5Hnm6SaFLSK1VYCbj+NKp090Nm1caZhD+QTnmxO7esYGyQ==}
-    engines: {node: '>=10.13.0'}
 
   enhanced-resolve@5.18.1:
     resolution: {integrity: sha512-ZSW3ma5GkcQBIpwZTSRAI8N71Uuwgs93IezB7mf7R60tC8ZbJideoDNKjHn2O9KIlx6rkGTTEk1xUCK2E1Y2Yg==}
@@ -10162,8 +10158,8 @@ packages:
     resolution: {integrity: sha512-5F5Och7wrvtLVElIpclDT0CBzMVg3dL22B64aZwHtsIY8RB4mXICLrkajK4G9R+ieSAGcgrLeae2SeUTg2pr6w==}
     peerDependencies:
       '@emotion/is-prop-valid': '*'
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
     peerDependenciesMeta:
       '@emotion/is-prop-valid':
         optional: true
@@ -11573,9 +11569,6 @@ packages:
   pathe@1.1.2:
     resolution: {integrity: sha512-whLdWMYL2TwI08hn8/ZqAbrVemu0LNaNNJZX73O6qaIdCTfXutsLhMkjdENX0qhsQ9uIimo4/aQOmXkoon2nDQ==}
 
-  pathe@2.0.2:
-    resolution: {integrity: sha512-15Ztpk+nov8DR524R4BF7uEuzESgzUEAV4Ah7CUMNGXdE5ELuvxElxGXndBl32vMSsWa1jpNf22Z+Er3sKwq+w==}
-
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
@@ -11937,14 +11930,14 @@ packages:
   react-dom@19.0.0:
     resolution: {integrity: sha512-4GV5sHFG0e/0AD4X+ySy6UJd3jVl1iNsNHdpad0qhABJ11twS3TTBnseqsKurKcsNqCEFeGL3uLpVChpIO3QfQ==}
     peerDependencies:
-      react: ^19.0.0
+      react: 19.0.0
 
   react-hot-toast@2.5.1:
     resolution: {integrity: sha512-54Gq1ZD1JbmAb4psp9bvFHjS7lje+8ubboUmvKZkCsQBLH6AOpZ9JemfRvIdHcfb9AZXRaFLrb3qUobGYDJhFQ==}
     engines: {node: '>=10'}
     peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: 19.0.0
+      react-dom: 19.0.0
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
@@ -11968,7 +11961,7 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -11978,7 +11971,7 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -11988,7 +11981,7 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -12493,7 +12486,7 @@ packages:
   swr@2.3.0:
     resolution: {integrity: sha512-NyZ76wA4yElZWBHzSgEJc28a0u6QZvhb6w0azeL2k7+Q1gAzVK+IqQYXhVOC/mzi+HZIozrZvBVeSeOZNR2bqA==}
     peerDependencies:
-      react: ^19.0.0
+      react: 19.0.0
 
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
@@ -12601,10 +12594,6 @@ packages:
 
   tinyexec@0.3.2:
     resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
-
-  tinyglobby@0.2.10:
-    resolution: {integrity: sha512-Zc+8eJlFMvgatPZTl6A9L/yht8QqdmUNtURHaKZLmKBE12hNPSrqNkUp2cs3M/UKmNVVAMFQYSjYIVHDjW5zew==}
-    engines: {node: '>=12.0.0'}
 
   tinyglobby@0.2.11:
     resolution: {integrity: sha512-32TmKeeKUahv0Go8WmQgiEp9Y21NuxjwjqiRC1nrUB51YacfSwuB44xgXD+HdIppmMRgjQNPdrHyA6vIybYZ+g==}
@@ -12989,7 +12978,7 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -12999,7 +12988,7 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       '@types/react': ^19.0.8
-      react: ^19.0.0
+      react: 19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -13007,7 +12996,7 @@ packages:
   use-sync-external-store@1.2.2:
     resolution: {integrity: sha512-PElTlVMwpblvbNqQ82d2n6RjStvdSoNe9FG28kNfz3WiXilJm4DdNkEzRhCZuIDwY8U08WVihhGR5iRqAwfDiw==}
     peerDependencies:
-      react: ^19.0.0
+      react: 19.0.0
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
@@ -17476,11 +17465,6 @@ snapshots:
     dependencies:
       once: 1.4.0
 
-  enhanced-resolve@5.18.0:
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.2.1
-
   enhanced-resolve@5.18.1:
     dependencies:
       graceful-fs: 4.2.11
@@ -17702,7 +17686,7 @@ snapshots:
       '@typescript-eslint/utils': 8.23.0(eslint@9.20.0(jiti@2.4.2))(typescript@5.7.3)
       debug: 4.4.0(supports-color@9.4.0)
       doctrine: 3.0.0
-      enhanced-resolve: 5.18.0
+      enhanced-resolve: 5.18.1
       eslint: 9.20.0(jiti@2.4.2)
       eslint-import-resolver-node: 0.3.9
       get-tsconfig: 4.10.0
@@ -17718,7 +17702,7 @@ snapshots:
   eslint-plugin-n@17.15.1(eslint@9.20.0(jiti@2.4.2)):
     dependencies:
       '@eslint-community/eslint-utils': 4.4.1(eslint@9.20.0(jiti@2.4.2))
-      enhanced-resolve: 5.18.0
+      enhanced-resolve: 5.18.1
       eslint: 9.20.0(jiti@2.4.2)
       eslint-plugin-es-x: 7.8.0(eslint@9.20.0(jiti@2.4.2))
       get-tsconfig: 4.10.0
@@ -19151,7 +19135,7 @@ snapshots:
       postcss: 8.5.1
       postcss-nested: 7.0.2(postcss@8.5.1)
       semver: 7.7.0
-      tinyglobby: 0.2.10
+      tinyglobby: 0.2.11
     optionalDependencies:
       typescript: 5.7.3
       vue-tsc: 2.0.29(typescript@5.7.3)
@@ -19159,7 +19143,7 @@ snapshots:
   mlly@1.7.4:
     dependencies:
       acorn: 8.14.0
-      pathe: 2.0.2
+      pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.5.4
 
@@ -19645,8 +19629,6 @@ snapshots:
 
   pathe@1.1.2: {}
 
-  pathe@2.0.2: {}
-
   pathe@2.0.3: {}
 
   pathval@2.0.0: {}
@@ -19671,7 +19653,7 @@ snapshots:
     dependencies:
       confbox: 0.1.8
       mlly: 1.7.4
-      pathe: 2.0.2
+      pathe: 2.0.3
 
   playwright-core@1.50.1: {}
 
@@ -20719,11 +20701,6 @@ snapshots:
 
   tinyexec@0.3.2: {}
 
-  tinyglobby@0.2.10:
-    dependencies:
-      fdir: 6.4.3(picomatch@4.0.2)
-      picomatch: 4.0.2
-
   tinyglobby@0.2.11:
     dependencies:
       fdir: 6.4.3(picomatch@4.0.2)
@@ -20901,13 +20878,13 @@ snapshots:
       magic-string: 0.30.17
       mkdist: 2.2.0(typescript@5.7.3)(vue-tsc@2.0.29(typescript@5.7.3))
       mlly: 1.7.4
-      pathe: 2.0.2
+      pathe: 2.0.3
       pkg-types: 1.3.1
       pretty-bytes: 6.1.1
       rollup: 4.34.0
       rollup-plugin-dts: 6.1.1(rollup@4.34.0)(typescript@5.7.3)
       scule: 1.3.0
-      tinyglobby: 0.2.10
+      tinyglobby: 0.2.11
       untyped: 1.5.2
     optionalDependencies:
       typescript: 5.7.3
@@ -21540,7 +21517,7 @@ snapshots:
       acorn: 8.14.0
       browserslist: 4.24.4
       chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.18.0
+      enhanced-resolve: 5.18.1
       es-module-lexer: 1.6.0
       eslint-scope: 5.1.1
       events: 3.3.0
@@ -21570,7 +21547,7 @@ snapshots:
       acorn: 8.14.0
       browserslist: 4.24.4
       chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.18.0
+      enhanced-resolve: 5.18.1
       es-module-lexer: 1.6.0
       eslint-scope: 5.1.1
       events: 3.3.0

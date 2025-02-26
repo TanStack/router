@@ -16,8 +16,8 @@
     "@tanstack/router-plugin": "^1.111.11",
     "@tanstack/start": "^1.111.11",
     "get-port": "^7.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
     "redaxios": "^0.5.1",
     "superjson": "^2.2.2"
   },

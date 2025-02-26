@@ -71,8 +71,8 @@
     "@tanstack/react-query": ">=5.66.0"
   },
   "peerDependencies": {
-    "react": ">=18.0.0 || >=19.0.0",
-    "react-dom": ">=18.0.0 || >=19.0.0",
+    "react": "catalog:peer-react",
+    "react-dom": "catalog:peer-react",
     "@tanstack/react-router": ">=1.43.2",
     "@tanstack/react-query": ">=5.49.2"
   }

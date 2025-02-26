@@ -68,8 +68,8 @@
     "@testing-library/react": "^16.2.0",
     "@tanstack/react-router": "workspace:^",
     "valibot": "1.0.0-beta.15",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "catalog:react",
+    "react-dom": "catalog:react"
   },
   "peerDependencies": {
     "valibot": "^1.0.0 || ^1.0.0-beta.5 || ^1.0.0-rc",
