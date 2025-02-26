@@ -80,7 +80,7 @@ To enable automatic code-splitting, you just need to add the following to the co
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
-import viteReact from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
@@ -89,7 +89,7 @@ export default defineConfig({
       // ...
       autoCodeSplitting: true,
     }),
-    viteReact(), // Make sure to add this plugin after the TanStack Router Bundler plugin
+    react(), // Make sure to add this plugin after the TanStack Router Bundler plugin
   ],
 })
 ```
