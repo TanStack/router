@@ -537,7 +537,7 @@ describe('server function compilation', () => {
     // The following code is the client output of the tanstack-start-plugin
     // that compiles `createServerFn` calls to automatically add the `use server`
     // directive in the right places.
-    const clientOrSsrCode = `import { createServerFn } from '@tanstack/start';
+    const clientOrSsrCode = `import { createServerFn } from '@tanstack/react-start';
       export const myServerFn = createServerFn().handler(opts => {
         "use server";
 
@@ -553,7 +553,7 @@ describe('server function compilation', () => {
     // The following code is the server output of the tanstack-start-plugin
     // that compiles `createServerFn` calls to automatically add the `use server`
     // directive in the right places.
-    const serverCode = `import { createServerFn } from '@tanstack/start';
+    const serverCode = `import { createServerFn } from '@tanstack/react-start';
       const myFunc = () => {
         return 'hello from the server'
       };
@@ -584,7 +584,7 @@ describe('server function compilation', () => {
 
     expect(client.compiledResult.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib-client";
-      import { createServerFn } from '@tanstack/start';
+      import { createServerFn } from '@tanstack/react-start';
       const myServerFn_createServerFn_handler = createClientRpc("test_ts--myServerFn_createServerFn_handler");
       export const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler);
       const myServerFn2_createServerFn_handler = createClientRpc("test_ts--myServerFn2_createServerFn_handler");
@@ -593,7 +593,7 @@ describe('server function compilation', () => {
 
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from "my-rpc-lib-server";
-      import { createServerFn } from '@tanstack/start';
+      import { createServerFn } from '@tanstack/react-start';
       const myServerFn_createServerFn_handler = createSsrRpc("test_ts--myServerFn_createServerFn_handler");
       export const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler);
       const myServerFn2_createServerFn_handler = createSsrRpc("test_ts--myServerFn2_createServerFn_handler");
@@ -602,7 +602,7 @@ describe('server function compilation', () => {
 
     expect(server.compiledResult.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from "my-rpc-lib-server";
-      import { createServerFn } from '@tanstack/start';
+      import { createServerFn } from '@tanstack/react-start';
       const myFunc = () => {
         return 'hello from the server';
       };

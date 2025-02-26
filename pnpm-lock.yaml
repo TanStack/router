@@ -826,12 +826,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/react-start':
-        specifier: workspace:*
-        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
+      '@tanstack/start':
+        specifier: workspace:^
+        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -2179,15 +2179,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       get-port:
         specifier: ^7.1.0
         version: 7.1.0
@@ -2249,15 +2249,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       get-port:
         specifier: ^7.1.0
         version: 7.1.0
@@ -3693,12 +3693,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3739,12 +3739,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3794,12 +3794,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       prisma:
         specifier: ^5.22.0
         version: 5.22.0
@@ -3858,12 +3858,12 @@ importers:
       '@tanstack/react-router-with-query':
         specifier: workspace:*
         version: link:../../../packages/react-router-with-query
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3913,12 +3913,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3962,12 +3962,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4017,12 +4017,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4081,12 +4081,12 @@ importers:
       '@tanstack/react-router-with-query':
         specifier: workspace:*
         version: link:../../../packages/react-router-with-query
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
@@ -4151,9 +4151,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4185,12 +4185,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4249,12 +4249,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4301,12 +4301,12 @@ importers:
       '@tanstack/react-router-with-query':
         specifier: workspace:*
         version: link:../../../packages/react-router-with-query
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       ky:
         specifier: ^1.7.4
         version: 1.7.4
@@ -4414,15 +4414,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       '@trpc/client':
         specifier: 11.0.0-rc.772
         version: 11.0.0-rc.772(@trpc/server@11.0.0-rc.772(typescript@5.7.3))(typescript@5.7.3)
@@ -4475,15 +4475,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      '@tanstack/start':
-        specifier: ^1.111.11
-        version: link:../../../packages/start
       '@trpc/client':
         specifier: 11.0.0-rc.772
         version: 11.0.0-rc.772(@trpc/server@11.0.0-rc.772(typescript@5.7.3))(typescript@5.7.3)
@@ -4734,12 +4734,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../react-start
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../router-devtools
-      '@tanstack/start':
-        specifier: workspace:^
-        version: link:../start
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8

@@ -2,160 +2,203 @@
 title: File-Based Routing API Reference
 ---
 
+TanStack Router's file-based routing is quite flexible and can be configured to suit your project's needs.
+
+## Configuration options
+
+The following options are available for configuring the file-based routing:
+
+- [`routesDirectory` (required)](#routesdirectory-required)
+- [`generatedRouteTree` (required)](#generatedroutetree-required)
+- [`virtualRouteConfig`](#virtualrouteconfig)
+- [`routeFilePrefix`](#routefileprefix)
+- [`routeFileIgnorePrefix`](#routefileignoreprefix)
+- [`indexToken`](#indextoken)
+- [`routeToken`](#routetoken)
+- [`quoteStyle`](#quotestyle)
+- [`semicolons`](#semicolons)
+- [`apiBase`](#apibase)
+- [`autoCodeSplitting`](#autocodesplitting)
+- [`disableTypes`](#disabletypes)
+- [`addExtensions`](#addextensions)
+- [`disableLogging`](#disablelogging)
+- [`routeTreeFileHeader`](#routetreefileheader)
+- [`routeTreeFileFooter`](#routetreefilefooter)
+- [`disableManifestGeneration`](#disablemanifestgeneration)
+
+> [!WARNING]
+> Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the **File Naming Conventions** guide, or you may run into unexpected behavior.
+
+### `routesDirectory` (required)
+
+This is the path to the directory where the route files are located, relative to the cwd (current working directory).
+
+By default, the value is set to the following and cannot be set to an empty `string` or `undefined`.
+
+```txt
+./src/routes
+```
+
+### `generatedRouteTree` (required)
+
+This is the path to the file where the generated route tree will be saved, relative to the cwd (current working directory).
+
+By default, the value is set to the following and cannot be set to an empty `string` or `undefined`.
+
+```txt
+./src/routeTree.gen.ts
+```
+
+If the [`disableTypes`](#disabletypes) is set to `true`, the generated route tree will be saved with the `.js` extension instead of `.ts`.
+
+### `virtualRouteConfig`
+
+This option is used to configure the Virtual File Routes feature. See the "Virtual File Routes" guide for more information.
+
+By default, this value is set to `undefined`.
+
+### `routeFileIgnorePrefix`
+
+This option is used to ignore specific files and directories in the route directory. This can be useful if you want to "opt-in" certain files or directories that you do not want to be considered for routing.
+
+By default, this value is set to `-`.
+
+When using this option, it allows you have structures like this where it let's you co-located related files that are not route files:
+
+```txt
+src/routes
+├── posts
+│   ├── -components  // Ignored
+│   │   ├── Post.tsx
+│   ├── index.tsx
+│   ├── route.tsx
+```
+
+### `routeFileIgnorePattern`
+
+This option is used to ignore specific files and directories in the route directory. It can be used in regular expression format. For example, `.((css|const).ts)|test-page` will ignore files / directories with names containing `.css.ts`, `.const.ts` or `test-page`.
+
+By default, this value is set to `undefined`.
+
+### `routeFilePrefix`
+
+This option is used to identify route files in the route directory. This means that only files that start with this prefix will be considered for routing.
+
+By default, this value is set to `` and as such all files in the route directory will be considered for routing.
+
+### `routeToken`
+
+As mentioned in the Routing Concepts guide, a layout route is rendered at the specified path, and the child routes are rendered within the layout route. The `routeToken` is used to identify the layout route file in the route directory.
+
+By default, this value is set to `route`.
+
+> 🧠 the following filenames would equal the same runtime URL:
+
+```txt
+src/routes/posts.tsx -> /posts
+src/routes/posts.route.tsx -> /posts
+src/routes/posts/route.tsx -> /posts
+```
+
+### `indexToken`
+
+As mentioned in the Routing Concepts guide, an index route is a route that is matched when the URL path is exactly the same as the parent route. The `indexToken` is used to identify the index route file in the route directory.
+
+By default, this value is set to `index`.
+
+> 🧠 the following filenames would equal the same runtime URL:
+
+```txt
+src/routes/posts.index.tsx -> /posts/
+src/routes/posts/index.tsx -> /posts/
+```
+
+### `quoteStyle`
+
+When your generated route tree is generated and when you first create a new route, those files will be formatted with the quote style you specify here.
+
+By default, this value is set to `single`.
+
+> [!TIP]
+> You should ignore the path of your generated route tree file from your linter and formatter to avoid conflicts.
+
+### `semicolons`
+
+When your generated route tree is generated and when you first create a new route, those files will be formatted with semicolons if this option is set to `true`.
+
+By default, this value is set to `false`.
+
+> [!TIP]
+> You should ignore the path of your generated route tree file from your linter and formatter to avoid conflicts.
+
+### `apiBase`
+
+As a framework, [TanStack Start](/start) supports the concept of API routes. This option configures the base path for API routes.
+
+By default, this value is set to `/api`.
+
 > [!IMPORTANT]
-> Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the [file-naming conventions](#file-naming-conventions) section.
+> This default value may conflict with your own project's routing if you planned on having a normal route with the same base path. You can change this value to avoid conflicts.
 
-- **`routeFilePrefix`**
-  - (Optional) If set, only route files and directories that start with this string will be considered for routing.
-- **`routeFileIgnorePrefix`**
-  - (Optional, **Defaults to `-`**) Route files and directories that start with this string will be ignored. By default this is set to `-` to allow for the use of directories to house related files that do not contain any route files.
-- **`routeFileIgnorePattern`**
-  - (Optional) Ignore specific files and directories in the route directory. It can be used in regular expression format. For example, `.((css|const).ts)|test-page` will ignore files / directories with names containing `.css.ts`, `.const.ts` or `test-page`.
-- **`indexToken`**
-  - (Optional, **Defaults to `'index'`**) allows to customize the `index` Token [file naming convention](#file-naming-conventions).
-- **`routeToken`**
-  - (Optional, **Defaults to `'route'`**) allows to customize the `route` Token [file naming convention](#file-naming-conventions).
-- **`routesDirectory`**
-  - (Required) The directory containing the routes relative to the cwd.
-- **`generatedRouteTree`**
-  - (Required) The path to the file where the generated route tree will be saved, relative to the cwd.
-- **`autoCodeSplitting`**
+### `autoCodeSplitting`
 
-  - (Optional, **Defaults to `false`**)
-  - If set to `true`, all non-critical route configuration items will be automatically code-split.
-  - See the [using automatic code-splitting](./code-splitting.md#using-automatic-code-splitting) guide.
+This feature is only available is you are using the TanStack Router Bundler Plugin.
 
-- **`quoteStyle`**
-  - (Optional, **Defaults to `single`**) whether to use `single` or `double` quotes when formatting the generated files.
-- **`semicolons`**
-  - (Optional, **Defaults to `false`**) whether to use semicolons in the generated files.
-- **`apiBase`**
-  - (Optional) The base path for API routes. Defaults to `/api`.
-  - This option is reserved for future use by the TanStack Start for API routes.
-- **`disableTypes`**
-  - (Optional, **Defaults to `false`**) whether to disable generating types for the route tree
-  - If set to `true`, the generated route tree will not include any types.
-  - If set to `true` and the `generatedRouteTree` file ends with `.ts` or `.tsx`, the generated route tree will be written as a `.js` file instead.
-- **`addExtensions`**
-  - (Optional, **Defaults to `false`**) add file extensions to the route names in the generated route tree
-- **`disableLogging`**
-  - (Optional, **Defaults to `false`**) disables logging for the route generation process
-- **`routeTreeFileHeader`**
+This option is used to enable automatic code-splitting for non-critical route configuration items. See the "Automatic Code-Splitting" guide for more information.
 
-  - (Optional) An array of strings to prepend to the generated route tree file content.
-  - Default:
-  - ```
-    [
-      '/* eslint-disable */',
-      '// @ts-nocheck',
-      '// noinspection JSUnusedGlobalSymbols'
-    ]
-    ```
+By default, this value is set to `false`.
 
-- **`routeTreeFileFooter`**
-  - (Optional) An array of strings to append to the generated route tree file content.
-  - Default: `[]`
-- **`disableManifestGeneration`**
-  - (Optional, **Defaults to `false`**) disables generating the route tree manifest
+> [!IMPORTANT]
+> The next major release of TanStack Router (i.e. v2), will have this value defaulted to `true`.
 
-## Route Inclusion / Exclusion
+### `disableTypes`
 
-Via the `routeFilePrefix` and `routeFileIgnorePrefix` options, the CLI can be configured to only include files and directories that start with a specific prefix, or to ignore files and directories that start with a specific prefix. This is especially useful when mixing non-route files with route files in the same directory, or when using a flat structure and wanting to exclude certain files from routing.
+This option is used to disable generating types for the route tree.
 
-### Route Inclusion Example
+If set to `true`, the generated route tree will not include any types and will be written as a `.js` file instead of a `.ts` file.
 
-To only consider files and directories that start with `~` for routing, the following configuration can be used:
+By default, this value is set to `false`.
 
-> 🧠 A prefix of `~` is generally recommended when using this option. Not only is this symbol typically associated with the home-folder navigation in unix-based systems, but it is also a valid character for use in filenames and urls that will typically force the file to the top of a directory for easier visual indication of routes.
+### `addExtensions`
+
+This option adds file extensions to the route names in the generated route tree.
+
+By default, this value is set to `false`.
+
+### `disableLogging`
+
+This option turns off the console logging for the route generation process.
+
+By default, this value is set to `false`.
+
+### `routeTreeFileHeader`
+
+This option let's you prepend content to the start of the generated route tree file.
+
+By default, this value is set to:
 
 ```json
-{
-  "routeFilePrefix": "~",
-  "routesDirectory": "./src/routes",
-  "generatedRouteTree": "./src/routeTree.gen.ts"
-}
+[
+  "/* eslint-disable */",
+  "// @ts-nocheck",
+  "// noinspection JSUnusedGlobalSymbols"
+]
 ```
 
-With this configuration, the `Posts.tsx`, `Post.tsx`, and `PostEditor.tsx` files will be ignored during route generation.
+### `routeTreeFileFooter`
 
-```
-~__root.tsx
-~posts.tsx
-~posts
-  ~index.tsx
-  ~$postId.tsx
-  ~$postId
-    ~edit.tsx
-    PostEditor.tsx
-  Post.tsx
-Posts.tsx
-```
+This option let's you append content to the end of the generated route tree file.
 
-It's also common to use directories to house related files that do not contain any route files:
-
-```
-~__root.tsx
-~posts.tsx
-~posts
-  ~index.tsx
-  ~$postId.tsx
-  ~$postId
-    ~edit.tsx
-    components
-      PostEditor.tsx
-  components
-    Post.tsx
-components
-  Posts.tsx
-utils
-  Posts.tsx
-```
-
-### Route Exclusion Example
-
-To ignore files and directories that start with `-` for routing, the following configuration can be used:
-
-> 🧠 A prefix of `-` is generally recommended when using this option since the minus symbol is typically associated with removal or exclusion.
+By default, this value is set to:
 
 ```json
-{
-  "routeFileIgnorePrefix": "-",
-  "routesDirectory": "./src/routes",
-  "generatedRouteTree": "./src/routeTree.gen.ts"
-}
+[]
 ```
 
-With this configuration, the `Posts.tsx`, `Post.tsx`, and `PostEditor.tsx` files will be ignored during route generation.
+### `disableManifestGeneration`
 
-```
-__root.tsx
-posts.tsx
-posts
-  index.tsx
-  $postId.tsx
-  $postId
-    edit.tsx
-    -PostEditor.tsx
-  -Post.tsx
--Posts.tsx
-```
+[TanStack Start](/start) leverages the `generatedRouteTree` file to also store a JSON tree which allows Start to easily traverse the available route tree to understand the routing structure of the application. This JSON tree is saved at the end of the generated route tree file.
 
-It's also common to use ignored directories to house related files that do not contain any route files:
+This option allows you to disable the generation of the manifest.
 
-```
-__root.tsx
-posts.tsx
-posts
-  index.tsx
-  $postId.tsx
-  $postId
-    edit.tsx
-    -components
-      PostEditor.tsx
-  -components
-    Post.tsx
--components
-  Posts.tsx
--utils
-  Posts.tsx
-```
+By default, this value is set to `false`.
