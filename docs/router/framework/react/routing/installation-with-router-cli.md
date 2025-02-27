@@ -24,6 +24,9 @@ Once installed, you'll need to amend your your scripts in your `package.json` fo
 }
 ```
 
+[//]: # 'AfterScripts'
+[//]: # 'AfterScripts'
+
 You shouldn't forget to _ignore_ the generated route tree file. Head over to the [Ignoring the generated route tree file](#ignoring-the-generated-route-tree-file) section to learn more.
 
 With the CLI installed, the following commands are made available via the `tsr` command
@@ -93,5 +96,8 @@ When using the TanStack Router CLI for File-based routing, it comes with some sa
 ```
 
 If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by creating a `tsr.config.json` file in the root of your project directory.
+
+[//]: # 'TargetConfiguration'
+[//]: # 'TargetConfiguration'
 
 You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
