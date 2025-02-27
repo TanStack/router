@@ -44,9 +44,6 @@ function RouteComponent() {
     })
   }
 
-  const { serverOnServer, clientOnServer, clientOnClient, serverOnClient } =
-    results() || {}
-
   return (
     <div>
       <button onClick={handleClick} data-testid="test-env-only-results-btn">
@@ -58,17 +55,17 @@ function RouteComponent() {
             <code>serverEcho</code>
           </h1>
           When we called the function on the server:
-          <pre data-testid="server-on-server">{serverOnServer}</pre>
+          <pre data-testid="server-on-server">{results()?.serverOnServer}</pre>
           When we called the function on the client:
-          <pre data-testid="server-on-client">{serverOnClient}</pre>
+          <pre data-testid="server-on-client">{results()?.serverOnClient}</pre>
           <br />
           <h1>
             <code>clientEcho</code>
           </h1>
           When we called the function on the server:
-          <pre data-testid="client-on-server">{clientOnServer}</pre>
+          <pre data-testid="client-on-server">{results()?.clientOnServer}</pre>
           When we called the function on the client:
-          <pre data-testid="client-on-client">{clientOnClient}</pre>
+          <pre data-testid="client-on-client">{results()?.clientOnClient}</pre>
         </div>
       )}
     </div>
