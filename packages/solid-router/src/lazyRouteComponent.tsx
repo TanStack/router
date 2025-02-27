@@ -1,4 +1,5 @@
 import { Dynamic, isServer } from 'solid-js/web'
+import { createResource } from 'solid-js'
 import { Outlet } from './Match'
 import type * as Solid from 'solid-js'
 import type { AsyncRouteComponent } from './route'
@@ -42,13 +43,14 @@ export function lazyRouteComponent<
   const load = () => {
     if (typeof document === 'undefined' && ssr?.() === false) {
       comp = (() => null) as any
-      return Promise.resolve()
+      return Promise.resolve(comp)
     }
     if (!loadPromise) {
       loadPromise = importer()
         .then((res) => {
           loadPromise = undefined
           comp = res[exportName ?? 'default']
+          return comp
         })
         .catch((err) => {
           error = err
@@ -94,18 +96,19 @@ export function lazyRouteComponent<
       throw error
     }
 
-    if (!comp) {
-      throw load()
-    }
+    const [compResource] = createResource(load, {
+      initialValue: comp,
+      ssrLoadFrom: 'initial',
+    })
 
     if (ssr?.() === false) {
       return (
         <ClientOnly fallback={<Outlet />}>
-          <Dynamic component={comp} {...props} />
+          <Dynamic component={compResource()} {...props} />
         </ClientOnly>
       )
     }
-    return <Dynamic component={comp} {...props} />
+    return <Dynamic component={compResource()} {...props} />
   }
 
   ;(lazyComp as any).preload = load
