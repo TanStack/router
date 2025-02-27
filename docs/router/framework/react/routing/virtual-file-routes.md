@@ -25,7 +25,7 @@ import {
 
 export const routes = rootRoute('root.tsx', [
   index('index.tsx'),
-  layout('pathless.tsx', [
+  layout('pathlessLayout.tsx', [
     route('/dashboard', 'app/dashboard.tsx', [
       index('app/dashboard-index.tsx'),
       route('/invoices', 'app/dashboard-invoices.tsx', [
@@ -155,7 +155,7 @@ The `layout` function is used to create a virtual pathless route. It takes a fil
 import { layout } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
-  layout('pathless.tsx', [
+  layout('pathlessLayout.tsx', [
     // ... children routes
   ]),
 ])
@@ -168,7 +168,7 @@ You can also specify a pathless ID to give the route a unique identifier that is
 import { layout } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
-  layout('my-pathless-id', 'pathless.tsx', [
+  layout('my-pathless-layout-id', 'pathlessLayout.tsx', [
     // ... children routes
   ]),
 ])
@@ -210,7 +210,7 @@ Let's use virtual routes to customize our route tree for everything but `posts`,
 export const routes = rootRoute('root.tsx', [
   // Set up your virtual routes as normal
   index('index.tsx'),
-  layout('pathless.tsx', [
+  layout('pathlessLayout.tsx', [
     route('/dashboard', 'app/dashboard.tsx', [
       index('app/dashboard-index.tsx'),
       route('/invoices', 'app/dashboard-invoices.tsx', [
@@ -343,12 +343,12 @@ Or you can define the virtual routes directly in the configuration, while much l
               {
                 "type": "route",
                 "file": "a.tsx",
-                "path": "/pathless-a"
+                "path": "/route-a"
               },
               {
                 "type": "route",
                 "file": "b.tsx",
-                "path": "/pathless-b"
+                "path": "/route-b"
               }
             ]
           }

@@ -149,7 +149,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 ```
 
-- This pathless layout may change in the future as we roll out SPA mode, which allows the root route to render the SPA shell without any page-specific content.
+- This layout may change in the future as we roll out SPA mode, which allows the root route to render the SPA shell without any page-specific content.
 - Notice the `Scripts` component. This is used to load all of the client-side JavaScript for the application.
 
 ## Routes

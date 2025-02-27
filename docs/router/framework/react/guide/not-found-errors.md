@@ -196,7 +196,7 @@ export const Route = createFileRoute('/_pathless/route-a')({
   },
   // This WILL NOT render
   notFoundComponent: () => {
-    return <p>Not found (in _pathlessLayout/router-a)</p>
+    return <p>Not found (in _pathlessLayout/route-a)</p>
   },
 })
 ```

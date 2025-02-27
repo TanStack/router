@@ -334,12 +334,12 @@ Now both `/route-a` and `/route-b` will render their contents inside of the `Pat
 ```tsx
 // URL: /route-a
 <PathlessLayoutComponent>
-  <PathlessLayoutAComponent />
+  <RouteAComponent />
 </PathlessLayoutComponent>
 
 // URL: /route-b
 <PathlessLayoutComponent>
-  <PathlessLayoutBComponent />
+  <RouteBComponent />
 </PathlessLayoutComponent>
 ```
 

@@ -168,18 +168,18 @@ Let's take a look at an example route called `_pathless.tsx`:
 ```
 routes/
 ├── _pathlessLayout.tsx
-├── _pathlessLayout.route-a.tsx
-├── _pathlessLayout.route-b.tsx
+├── _pathlessLayout.a.tsx
+├── _pathlessLayout.b.tsx
 ```
 
-In the tree above, `_pathlessLayout.tsx` is a pathless layout route that wraps two child routes, `_pathlessLayout.route-a.tsx` and `_pathlessLayout.route-b.tsx`.
+In the tree above, `_pathlessLayout.tsx` is a pathless layout route that wraps two child routes, `_pathlessLayout.a.tsx` and `_pathlessLayout.b.tsx`.
 
 The `_pathlessLayout.tsx` route is used to wrap the child routes with a Pathless layout component:
 
 ```tsx
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_pathless')({
+export const Route = createFileRoute('/_pathlessLayout')({
   component: PathlessLayoutComponent,
 })
 
