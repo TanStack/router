@@ -11,6 +11,7 @@ import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
+import { Dynamic } from 'solid-js/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -74,7 +75,7 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
   const Elem = type === 'header' ? 'header' : 'footer'
   const prefix = type === 'header' ? 'Head' : 'Foot'
   return (
-    <Elem class="p-2 flex gap-2 text-lg">
+    <Dynamic component={Elem} class="p-2 flex gap-2 text-lg">
       <Link
         to="/"
         activeProps={{
@@ -100,6 +101,6 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
           {prefix}-{options.to}
         </Link>
       ))}
-    </Elem>
+    </Dynamic>
   )
 }
