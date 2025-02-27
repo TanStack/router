@@ -552,7 +552,7 @@
               "to": "framework/solid/examples/basic-file-based"
             },
             {
-              "label": "Basic + Solid Query (file-based-based)",
+              "label": "Basic + Solid Query (file-based)",
               "to": "framework/solid/examples/basic-solid-query-file-based"
             },
             {
