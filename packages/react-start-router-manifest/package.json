@@ -59,8 +59,7 @@
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:^",
-    "tiny-invariant": "^1.3.3",
-    "vinxi": "0.5.3"
+    "tiny-invariant": "^1.3.3"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

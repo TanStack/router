@@ -1,7 +1,5 @@
 // @ts-expect-error
 import tsrGetManifest from 'tsr:routes-manifest'
-import { getManifest } from 'vinxi/manifest'
-import { default as invariant } from 'tiny-invariant'
 import type { Manifest } from '@tanstack/router-core'
 
 function sanitizeBase(base: string) {
@@ -39,23 +37,23 @@ export function getFullRouterManifest() {
   }
 
   // Get the entry for the client from vinxi
-  const vinxiClientManifest = getManifest('client')
+  // const vinxiClientManifest = getManifest('client')
 
-  const importPath =
-    vinxiClientManifest.inputs[vinxiClientManifest.handler]?.output.path
-  if (!importPath) {
-    invariant(importPath, 'Could not find client entry in vinxi manifest')
-  }
+  // const importPath =
+  //   vinxiClientManifest.inputs[vinxiClientManifest.handler]?.output.path
+  // if (!importPath) {
+  //   invariant(importPath, 'Could not find client entry in vinxi manifest')
+  // }
 
-  rootRoute.assets.push({
-    tag: 'script',
-    attrs: {
-      type: 'module',
-      suppressHydrationWarning: true,
-      async: true,
-    },
-    children: `${script}import("${importPath}")`,
-  })
+  // rootRoute.assets.push({
+  //   tag: 'script',
+  //   attrs: {
+  //     type: 'module',
+  //     suppressHydrationWarning: true,
+  //     async: true,
+  //   },
+  //   children: `${script}import("${importPath}")`,
+  // })
 
   return routerManifest
 }

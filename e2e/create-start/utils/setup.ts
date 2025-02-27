@@ -15,7 +15,7 @@ async function _setup(
   const ADDR = `http://localhost:${port}`
 
   const childProcess = exec(
-    `VITE_SERVER_PORT=${port} pnpm vinxi dev --port ${port}`,
+    `VITE_SERVER_PORT=${port} pnpm vite dev --port ${port}`,
     {
       cwd: projectPath,
     },

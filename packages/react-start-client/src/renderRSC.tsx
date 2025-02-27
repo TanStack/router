@@ -1,6 +1,4 @@
 // TODO: RSCs
-// // @ts-expect-error
-// import * as reactDom from '@vinxi/react-server-dom/client'
 import { isValidElement } from 'react'
 import invariant from 'tiny-invariant'
 import type React from 'react'

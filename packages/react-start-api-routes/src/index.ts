@@ -1,5 +1,4 @@
 import { eventHandler, toWebRequest } from '@tanstack/react-start-server'
-import vinxiFileRoutes from 'vinxi/routes'
 import type { ResolveParams } from '@tanstack/router-core'
 
 export type StartAPIHandlerCallback = (ctx: {
@@ -229,9 +228,9 @@ interface CustomizedVinxiFileRoute {
 /**
  * This is populated by the work done in the config file using the tsrFileRouter
  */
-const vinxiRoutes = (
-  vinxiFileRoutes as unknown as Array<CustomizedVinxiFileRoute>
-).filter((route) => route['$APIRoute'])
+// const vinxiRoutes = (
+//   vinxiFileRoutes as unknown as Array<CustomizedVinxiFileRoute>
+// ).filter((route) => route['$APIRoute'])
 
 /**
  * This function takes the vinxi routes and interpolates them into a format that can be worked with in the API handler
@@ -313,16 +312,20 @@ function toTSRFileBasedRoutes(
 export const defaultAPIFileRouteHandler: StartAPIHandlerCallback = async ({
   request,
 }) => {
-  // Simple early abort if there are no routes
-  if (!vinxiRoutes.length) {
-    return new Response('No routes found', { status: 404 })
+  // TODO: We need to reimplement api file routes without vinx-i
+  if (Math.random()) {
+    throw new Error('Not implemented')
   }
+  // Simple early abort if there are no routes
+  // if (!vinxiRoutes.length) {
+  //   return new Response('No routes found', { status: 404 })
+  // }
 
   if (!HTTP_API_METHODS.includes(request.method as HTTP_API_METHOD)) {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  const routes = toTSRFileBasedRoutes(vinxiRoutes)
+  const routes = toTSRFileBasedRoutes([])
 
   const url = new URL(request.url, 'http://localhost:3000')
 

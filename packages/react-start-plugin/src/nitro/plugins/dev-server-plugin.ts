@@ -16,6 +16,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
     config(userConfig, { mode }) {
       // config = userConfig
       isTest = isTest ? isTest : mode === 'test'
+
       return {
         resolve: {
           alias: {
@@ -34,20 +35,11 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
         registerDevServerMiddleware(options.root, viteServer)
 
         viteServer.middlewares.use(async (req, res) => {
-          const template = await viteServer.transformIndexHtml(
-            req.originalUrl as string,
-            `<html>
-              <head></head>
-              <body></body>
-            </html>`,
-          )
-
-          console.log('template, maybe use?', template)
-
           try {
             const serverEntry = (
               await viteServer.ssrLoadModule('~start/ssr-entry')
             )['default']
+
             const event = createEvent(req, res)
             const result: string | Response = await serverEntry(event)
 

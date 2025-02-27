@@ -4,10 +4,10 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3000",
-    "dev:e2e": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start",
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "vite build",
+    "start": "vite start",
     "test:e2e": "exit 0; playwright test --project=chromium"
   },
   "dependencies": {
@@ -18,8 +18,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.3"
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",

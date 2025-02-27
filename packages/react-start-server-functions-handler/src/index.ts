@@ -208,11 +208,11 @@ async function handleServerRequest({
       //   return result.result
       // }
 
-      // TODO: RSCs
+      // TODO: RSCs Where are we getting this package?
       // if (isValidElement(result)) {
       //   const { renderToPipeableStream } = await import(
       //     // @ts-expect-error
-      //     '@vinxi/react-server-dom/server'
+      //     'react-server-dom/server'
       //   )
 
       //   const pipeableStream = renderToPipeableStream(result)

@@ -68,21 +68,21 @@ export const coreModule = createModule(
           '@tanstack/react-start',
           'react',
           'react-dom',
-          'vinxi',
+          'vite',
         ]),
         devDependencies: await deps(['@types/react', '@types/react']),
         scripts: [
           {
             name: 'dev',
-            script: 'vinxi dev',
+            script: 'vite dev',
           },
           {
             name: 'build',
-            script: 'vinxi build',
+            script: 'vite build',
           },
           {
             name: 'start',
-            script: 'vinxi start',
+            script: 'vite start',
           },
         ],
         ...vals.packageJson,

@@ -108,7 +108,7 @@ export default function VersionIndex() {
         <p className="text opacity-90 max-w-[500px]
             lg:text-xl lg:max-w-[600px]">
           Full-document SSR, Streaming, Server Functions, bundling and more,
-          powered by <strong>TanStack Router</strong>, <strong>Vinxi</strong>,{' '}
+          powered by <strong>TanStack Router</strong>, {' '}
           <strong>Nitro</strong> and <strong>Vite</strong>. Ready to deploy to
           your favorite hosting provider.
         </p>
@@ -502,7 +502,7 @@ const SplitComponent = function VersionIndex() {
         <p className="text opacity-90 max-w-[500px]
             lg:text-xl lg:max-w-[600px]">
           Full-document SSR, Streaming, Server Functions, bundling and more,
-          powered by <strong>TanStack Router</strong>, <strong>Vinxi</strong>,{' '}
+          powered by <strong>TanStack Router</strong>, {' '}
           <strong>Nitro</strong> and <strong>Vite</strong>. Ready to deploy to
           your favorite hosting provider.
         </p>

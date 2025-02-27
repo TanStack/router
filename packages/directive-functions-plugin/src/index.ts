@@ -57,8 +57,6 @@ export function TanStackDirectiveFunctionsPlugin(
         code,
         root: ROOT,
         filename: id,
-        // globalThis.app currently refers to Vinxi's app instance. In the future, it can just be the
-        // vite dev server instance we get from Nitro.
       })
 
       opts.onDirectiveFnsById?.(directiveFnsById)
