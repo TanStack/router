@@ -1,8 +1,7 @@
-import * as React from 'react'
 import { Link, Outlet, createLazyRoute } from '@tanstack/solid-router'
 import { createQuery } from '@tanstack/solid-query'
-import { postsQueryOptions } from './posts'
 import { createMemo } from 'solid-js'
+import { postsQueryOptions } from './posts'
 
 export const Route = createLazyRoute('/posts')({
   component: PostsComponent,
