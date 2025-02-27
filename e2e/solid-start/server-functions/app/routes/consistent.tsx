@@ -70,28 +70,28 @@ function ConsistentServerFnCalls() {
         {`GET: cons_getFn1 called from server cons_serverGetFn1 returns`}
         <br />
         <span data-testid="cons_serverGetFn1-response">
-          {JSON.stringify(getServerResult)}
+          {JSON.stringify(getServerResult())}
         </span>
       </p>
       <p>
         {`GET: cons_getFn1 called directly returns`}
         <br />
         <span data-testid="cons_getFn1-response">
-          {JSON.stringify(getDirectResult)}
+          {JSON.stringify(getDirectResult())}
         </span>
       </p>
       <p>
         {`POST: cons_postFn1 called from cons_serverPostFn1 returns`}
         <br />
         <span data-testid="cons_serverPostFn1-response">
-          {JSON.stringify(postServerResult)}
+          {JSON.stringify(postServerResult())}
         </span>
       </p>
       <p>
         {`POST: cons_postFn1 called directly returns`}
         <br />
         <span data-testid="cons_postFn1-response">
-          {JSON.stringify(postDirectResult)}
+          {JSON.stringify(postDirectResult())}
         </span>
       </p>
       <button
