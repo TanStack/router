@@ -68,7 +68,7 @@
     "@tanstack/react-start-client": "workspace:^",
     "tiny-warning": "^1.0.3",
     "h3": "1.13.0",
-    "isbot": "^5.1.22",
+    "isbot": "^5.1.23",
     "jsesc": "^3.1.0",
     "unctx": "^2.4.1"
   },
