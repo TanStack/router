@@ -41,7 +41,7 @@ const multipartFormDataServerFn = createServerFn({ method: 'POST' })
   })
 
 function MultipartServerFnCall() {
-  const formRef: HTMLFormElement | null = null
+  let formRef: HTMLFormElement | undefined;
   const [multipartResult, setMultipartResult] = Solid.createSignal({})
 
   const handleSubmit = (e: any) => {
@@ -74,7 +74,7 @@ function MultipartServerFnCall() {
         action={multipartFormDataServerFn.url}
         method="post"
         enctype="multipart/form-data"
-        ref={()=>formRef}
+        ref={formRef}
         data-testid="multipart-form"
       >
         <input type="text" name="input_field" value="test field value" />
