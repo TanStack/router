@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { clientOnly, createServerFn, serverOnly } from '@tanstack/solid-start'
-import { useState } from 'react'
+import { createSignal } from 'solid-js'
 
 const serverEcho = serverOnly((input: string) => 'server got: ' + input)
 const clientEcho = clientOnly((input: string) => 'client got: ' + input)
@@ -23,7 +23,7 @@ export const Route = createFileRoute('/env-only')({
 })
 
 function RouteComponent() {
-  const [results, setResults] = useState<Partial<Record<string, string>>>()
+  const [results, setResults] = createSignal<Partial<Record<string, string>>>()
 
   async function handleClick() {
     const { serverOnServer, clientOnServer } = await testOnServer()
@@ -45,14 +45,14 @@ function RouteComponent() {
   }
 
   const { serverOnServer, clientOnServer, clientOnClient, serverOnClient } =
-    results || {}
+    results() || {}
 
   return (
     <div>
       <button onClick={handleClick} data-testid="test-env-only-results-btn">
         Run
       </button>
-      {!!results && (
+      {!!results() && (
         <div>
           <h1>
             <code>serverEcho</code>

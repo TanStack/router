@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import { createServerFn } from '@tanstack/solid-start'
 import { getRequestHeader } from '@tanstack/solid-start/server'
-import { useState } from 'react'
+import { createSignal } from 'solid-js'
 import { createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/dead-code-preserve')({
@@ -36,7 +36,7 @@ const readFileServerFn = createServerFn().handler(async () => {
 })
 
 function RouteComponent() {
-  const [serverFnOutput, setServerFnOutput] = useState<number>()
+  const [serverFnOutput, setServerFnOutput] = createSignal<number>()
   return (
     <div class="p-2 m-2 grid gap-2">
       <h3>Dead code test</h3>
@@ -54,7 +54,7 @@ function RouteComponent() {
         Call Dead Code Fn
       </button>
       <h4>Server output</h4>
-      <pre data-testid="dead-code-fn-call-response">{serverFnOutput}</pre>
+      <pre data-testid="dead-code-fn-call-response">{serverFnOutput()}</pre>
     </div>
   )
 }

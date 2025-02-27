@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { createIsomorphicFn, createServerFn } from '@tanstack/solid-start'
-import { useState } from 'react'
+import { createSignal } from 'solid-js'
 
 const getEnv = createIsomorphicFn()
   .server(() => 'server')
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/isomorphic-fns')({
 
 function RouteComponent() {
   const loaderData = Route.useLoaderData()
-  const [results, setResults] = useState<Partial<Record<string, string>>>()
+  const [results, setResults] = createSignal<Partial<Record<string, string>>>()
   async function handleClick() {
     const envOnClick = getEnv()
     const echo = getEcho('hello')
@@ -37,13 +37,13 @@ function RouteComponent() {
     ])
     setResults({ envOnClick, echo, serverEnv, serverEcho })
   }
-  const { envOnClick, echo, serverEnv, serverEcho } = results || {}
+  const { envOnClick, echo, serverEnv, serverEcho } = results() || {}
   return (
     <div>
       <button onClick={handleClick} data-testid="test-isomorphic-results-btn">
         Run
       </button>
-      {!!results && (
+      {!!results() && (
         <div>
           <h1>
             <code>getEnv</code>
