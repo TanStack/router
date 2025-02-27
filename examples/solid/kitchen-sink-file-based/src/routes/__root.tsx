@@ -5,7 +5,6 @@ import {
   createRootRouteWithContext,
   useRouterState,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Spinner } from '../components/Spinner'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import type { Auth } from '../utils/auth'
@@ -75,7 +74,6 @@ function RootComponent() {
           </div>
         </div>
       </div>
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
     </>
   )
 }
