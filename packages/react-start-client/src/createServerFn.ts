@@ -87,11 +87,7 @@ export interface OptionalFetcher<
   TServerFnResponseType extends ServerFnResponseType,
 > extends FetcherBase {
   (
-    options?: OptionalFetcherDataOptions<
-      TMiddlewares,
-      TValidator
-      
-    >,
+    options?: OptionalFetcherDataOptions<TMiddlewares, TValidator>,
   ): FetchResult<TMiddlewares, TResponse, TServerFnResponseType>
 }
 
@@ -102,10 +98,7 @@ export interface RequiredFetcher<
   TServerFnResponseType extends ServerFnResponseType,
 > extends FetcherBase {
   (
-    opts: RequiredFetcherDataOptions<
-      TMiddlewares,
-      TValidator
-    >,
+    opts: RequiredFetcherDataOptions<TMiddlewares, TValidator>,
   ): FetchResult<TMiddlewares, TResponse, TServerFnResponseType>
 }
 
@@ -117,17 +110,13 @@ export type FetcherBaseOptions = {
 
 export type ServerFnType = 'static' | 'dynamic'
 
-export interface OptionalFetcherDataOptions<
-  TMiddlewares,
-  TValidator,
-> extends FetcherBaseOptions {
+export interface OptionalFetcherDataOptions<TMiddlewares, TValidator>
+  extends FetcherBaseOptions {
   data?: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
-export interface RequiredFetcherDataOptions<
-  TMiddlewares,
-  TValidator,
-> extends FetcherBaseOptions {
+export interface RequiredFetcherDataOptions<TMiddlewares, TValidator>
+  extends FetcherBaseOptions {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 

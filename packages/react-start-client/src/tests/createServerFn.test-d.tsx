@@ -36,7 +36,6 @@ test('createServerFn with validator', () => {
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
   expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
-   
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
       method: 'GET'

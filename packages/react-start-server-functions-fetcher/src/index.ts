@@ -113,7 +113,9 @@ export async function serverFnFetcher(
   }
 }
 
-function getFetcherRequestOptions(opts: MiddlewareClientFnOptions<any, any, any>) {
+function getFetcherRequestOptions(
+  opts: MiddlewareClientFnOptions<any, any, any>,
+) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {
       opts.data.set('__TSR_CONTEXT', startSerializer.stringify(opts.context))
