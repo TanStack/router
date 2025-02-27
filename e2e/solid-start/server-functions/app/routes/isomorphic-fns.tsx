@@ -53,7 +53,9 @@ function RouteComponent() {
           When we called the function on the client it returned:
           <pre data-testid="client-result">{JSON.stringify(envOnClick)}</pre>
           When we called the function during SSR it returned:
-          <pre data-testid="ssr-result">{JSON.stringify(loaderData().envOnLoad)}</pre>
+          <pre data-testid="ssr-result">
+            {JSON.stringify(loaderData().envOnLoad)}
+          </pre>
           <br />
           <h1>
             <code>echo</code>

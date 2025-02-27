@@ -28,9 +28,9 @@ const abortableServerFn = createServerFn().handler(
 )
 
 function RouteComponent() {
-  const [errorMessage, setErrorMessage] = Solid.createSignal<string | undefined>(
-    undefined,
-  )
+  const [errorMessage, setErrorMessage] = Solid.createSignal<
+    string | undefined
+  >(undefined)
   const [result, setResult] = Solid.createSignal<string | undefined>(undefined)
 
   const reset = () => {
