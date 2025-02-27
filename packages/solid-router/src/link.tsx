@@ -540,12 +540,6 @@ export const Link: LinkComponent<'a'> = (props: any) => {
         })
       : rest.children
 
-  if (typeof local._asChild === 'undefined') {
-    // the Retlocal.urnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
-    // @ts-expect-error
-    delete linkProps.disabled
-  }
-
   return (
     <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>
       {children}
