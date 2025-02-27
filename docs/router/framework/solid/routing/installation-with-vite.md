@@ -39,7 +39,7 @@ If you are using TypeScript, you should also add the following options to your `
 }
 ```
 
-Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-file-based) and get started.
+Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-file-based) and get started.
 
 Now that you've added the plugin to your Vite configuration, you're all set to start using file-based routing with TanStack Router.
 
