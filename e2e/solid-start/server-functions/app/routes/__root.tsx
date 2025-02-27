@@ -1,11 +1,4 @@
-import * as Solid from 'react'
-import {
-  HeadContent,
-  Link,
-  Outlet,
-  Scripts,
-  createRootRoute,
-} from '@tanstack/solid-router'
+import { Outlet, createRootRoute } from '@tanstack/solid-router'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
