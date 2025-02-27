@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/solid-start'
 import { setCookie } from '@tanstack/solid-start/server'
 import { z } from 'zod'
 import Cookies from 'js-cookie'
-import React, { useEffect } from 'react'
+import * as Solid from 'solid-js'
 
 const cookieSchema = z.object({ value: z.string() })
 
@@ -32,14 +32,14 @@ export const setCookieServerFn2 = createServerFn()
   })
 
 function RouteComponent() {
-  const { value: expectedCookieValue } = Route.useSearch()
+  const search = Route.useSearch()
   const [cookiesFromDocument, setCookiesFromDocument] = Solid.createSignal<
     Record<string, string | undefined> | undefined
   >(undefined)
-  useEffect(() => {
+  Solid.createEffect(() => {
     const tempCookies: Record<string, string | undefined> = {}
     for (let i = 1; i <= 4; i++) {
-      const key = `cookie-${i}-${expectedCookieValue}`
+      const key = `cookie-${i}-${search().value}`
       tempCookies[key] = Cookies.get(key)
     }
     setCookiesFromDocument(tempCookies)
@@ -53,8 +53,8 @@ function RouteComponent() {
             <td>cookie</td>
             <td>value</td>
           </tr>
-          {Object.entries(cookiesFromDocument || {}).map(([key, value]) => (
-            <tr key={key}>
+          {Object.entries(cookiesFromDocument() || {}).map(([key, value]) => (
+            <tr>
               <td>{key}</td>
               <td data-testid={key}>{value}</td>
             </tr>
