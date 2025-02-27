@@ -544,6 +544,14 @@
           "label": "solid",
           "children": [
             {
+              "label": "Quickstart (file-based)",
+              "to": "framework/solid/examples/quickstart-file-based"
+            },
+            {
+              "label": "Basic (file-based)",
+              "to": "framework/solid/examples/basic-file-based"
+            },
+            {
               "label": "Basic + Solid Query (code-based)",
               "to": "framework/solid/examples/basic-solid-query"
             },
