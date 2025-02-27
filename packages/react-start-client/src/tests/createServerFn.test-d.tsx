@@ -418,6 +418,7 @@ describe('response', () => {
     test(`response: 'raw' is passed into handler`, () => {
       createServerFn({ response: 'raw' }).handler((options) => {
         expectTypeOf(options.response).toEqualTypeOf<'raw'>()
+        return null
       })
     })
   })

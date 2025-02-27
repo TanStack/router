@@ -184,11 +184,7 @@ export type ServerFnReturnType<
   TServerFnResponseType extends ServerFnResponseType,
   TResponse,
 > = [TServerFnResponseType] extends ['raw']
-  ?
-      | RawResponse
-      | Promise<RawResponse>
-      | Promise<SerializerStringify<TResponse>>
-      | SerializerStringify<TResponse>
+  ? RawResponse | Promise<RawResponse>
   : Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
 export type ServerFn<
   TMethod,
