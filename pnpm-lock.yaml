@@ -112,7 +112,7 @@ importers:
         version: 6.0.1
       tinyglobby:
         specifier: ^0.2.10
-        version: 0.2.10
+        version: 0.2.11
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -1118,8 +1118,8 @@ importers:
   e2e/react-start/clerk-basic:
     dependencies:
       '@clerk/tanstack-start':
-        specifier: ^0.9.4
-        version: 0.9.4(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+        specifier: ^0.11.0
+        version: 0.11.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4013,8 +4013,8 @@ importers:
   examples/react/start-clerk-basic:
     dependencies:
       '@clerk/tanstack-start':
-        specifier: 0.9.4
-        version: 0.9.4(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+        specifier: 0.11.0
+        version: 0.11.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4069,7 +4069,7 @@ importers:
     dependencies:
       '@convex-dev/react-query':
         specifier: 0.0.0-alpha.8
-        version: 0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.22.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
+        version: 0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.24.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
       '@tanstack/react-query':
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
@@ -4093,7 +4093,7 @@ importers:
         version: 8.2.2
       convex:
         specifier: ^1.19.0
-        version: 1.19.0(@clerk/clerk-react@5.22.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 1.19.0(@clerk/clerk-react@5.24.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       ky:
         specifier: ^1.7.4
         version: 1.7.4
@@ -4805,7 +4805,7 @@ importers:
         version: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1)
       tinyglobby:
         specifier: ^0.2.10
-        version: 0.2.10
+        version: 0.2.11
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -6023,19 +6023,19 @@ packages:
   '@bundled-es-modules/tough-cookie@0.1.6':
     resolution: {integrity: sha512-dvMHbL464C0zI+Yqxbz6kZ5TOEp7GLW+pry/RWndAR8MJQAXZ2rPmIs8tziTZjeIyhSNZgZbCePtfSbdWqStJw==}
 
-  '@clerk/backend@1.23.11':
-    resolution: {integrity: sha512-N5CYCnVbSVXUkQg9oAAAf9r/kfPmBGxMqjzslDC9Tl3rkXFTkWjkBNnToB6We2ySdrmqiQGR/+/c4mS9XRbaOQ==}
+  '@clerk/backend@1.24.3':
+    resolution: {integrity: sha512-kKdIAm4E/gazigdg/9uVrbwRl1Wnv+YYlZwTbb2U8y/XKMSiItjo0IaXAv3pF5j7gRxAVwcsnncQheqBOTNwNg==}
     engines: {node: '>=18.17.0'}
 
-  '@clerk/clerk-react@5.22.11':
-    resolution: {integrity: sha512-u7g9MXxHuWBqVLvlXuvaq3tOmZqKhJAJMccSUHFSMmJsyjZsk5psBi4ek8iap33wbhZuyak/rwcbHwcK2yE0bQ==}
+  '@clerk/clerk-react@5.24.0':
+    resolution: {integrity: sha512-li+I/Ca/VpJr8FSjNbvq4GSoHcAnCqo6Uw/tYYnpkSW9Zm1WcBDdKcGeKVJk+vOP5Yets0ZxGg9dPuaIVrTbCA==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@clerk/shared@2.20.18':
-    resolution: {integrity: sha512-vSQLZSRFr62+YeE1KE/Xu/eWCrwYJRNA2KRyQYmb2VPleFNmOjtTNlO4xkMZ0eN6BLKxrBo9b0NVwu3L28FhKg==}
+  '@clerk/shared@3.0.0':
+    resolution: {integrity: sha512-c5TUTMrir4yrxdQh2xiILowFvHZydBIuX1tFOKKWQZsNqlFYXbbeUHDxEIcxvb4uarGSiuEzVsx6S2hT2ZBCQQ==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: ^19.0.0
@@ -6046,17 +6046,17 @@ packages:
       react-dom:
         optional: true
 
-  '@clerk/tanstack-start@0.9.4':
-    resolution: {integrity: sha512-kelTeOjJivGCUf/hxFSLiINk0faLjI0dESoSTvMr3dvq3zjyXIamZBbLmjGxvr7StqH0wv+/Y4nd7+/lY9gJDQ==}
+  '@clerk/tanstack-start@0.11.0':
+    resolution: {integrity: sha512-P9AGSUYWqMx49BrRjVyVFaJ5VltDWzJuiG6zujxsYs6wJQDZ9KVAg3ubtWvfPei/wTSt/334PIDN/ExCo5otlA==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       '@tanstack/react-router': workspace:*
-      '@tanstack/start': '>=1.85.9'
+      '@tanstack/react-start': workspace:*
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@clerk/types@4.45.0':
-    resolution: {integrity: sha512-DSXPWq1xD01tzyHv7CugX2T/XfVUZX2xxQ92cs+JPTrGoqIYm+yjRWqOz1CVJ/76TbYMOrB0efCGOxEcNV/PQw==}
+  '@clerk/types@4.47.0':
+    resolution: {integrity: sha512-xB/gqMq6cq6/47ymKs0WaaxKEFPzlvbSgJTLFIfnPMnFSNwYE4WVgVh6geFx6qWr3z588JDDZkJskBHZlgPmQQ==}
     engines: {node: '>=18.17.0'}
 
   '@cloudflare/kv-asset-handler@0.3.4':
@@ -9552,9 +9552,6 @@ packages:
     resolution: {integrity: sha512-9+vem03dMXG7gDmZ62uqmRiMRNtinIZ9ZyuF6BdxzfOD+FdN5hretzynkn0ReS2DO2GSw76RWHs0UmJPI2zUjw==}
     engines: {node: '>=18'}
 
-  csstype@3.1.1:
-    resolution: {integrity: sha512-DJR/VvkAvSZW9bTouZue2sSxDwdTN92uHjqeKVm+0dAqdfNykRzQ95tay8aXMBAAPpUiq4Qcug2L7neoRh2Egw==}
-
   csstype@3.1.3:
     resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
 
@@ -9826,10 +9823,6 @@ packages:
 
   end-of-stream@1.4.4:
     resolution: {integrity: sha512-+uw1inIHVPQoaVuHzRyXd21icM+cnt4CzD5rW+NC1wjOUSTOs+Te7FOv7AhN7vS9x/oIyhLP5PR1H+phQAHu5Q==}
-
-  enhanced-resolve@5.18.0:
-    resolution: {integrity: sha512-0/r0MySGYG8YqlayBZ6MuCfECmHFdJ5qyPh8s8wa5Hnm6SaFLSK1VYCbj+NKp090Nm1caZhD+QTnmxO7esYGyQ==}
-    engines: {node: '>=10.13.0'}
 
   enhanced-resolve@5.18.1:
     resolution: {integrity: sha512-ZSW3ma5GkcQBIpwZTSRAI8N71Uuwgs93IezB7mf7R60tC8ZbJideoDNKjHn2O9KIlx6rkGTTEk1xUCK2E1Y2Yg==}
@@ -11693,9 +11686,6 @@ packages:
   pathe@1.1.2:
     resolution: {integrity: sha512-whLdWMYL2TwI08hn8/ZqAbrVemu0LNaNNJZX73O6qaIdCTfXutsLhMkjdENX0qhsQ9uIimo4/aQOmXkoon2nDQ==}
 
-  pathe@2.0.2:
-    resolution: {integrity: sha512-15Ztpk+nov8DR524R4BF7uEuzESgzUEAV4Ah7CUMNGXdE5ELuvxElxGXndBl32vMSsWa1jpNf22Z+Er3sKwq+w==}
-
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
@@ -12724,10 +12714,6 @@ packages:
 
   tinyexec@0.3.2:
     resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
-
-  tinyglobby@0.2.10:
-    resolution: {integrity: sha512-Zc+8eJlFMvgatPZTl6A9L/yht8QqdmUNtURHaKZLmKBE12hNPSrqNkUp2cs3M/UKmNVVAMFQYSjYIVHDjW5zew==}
-    engines: {node: '>=12.0.0'}
 
   tinyglobby@0.2.11:
     resolution: {integrity: sha512-32TmKeeKUahv0Go8WmQgiEp9Y21NuxjwjqiRC1nrUB51YacfSwuB44xgXD+HdIppmMRgjQNPdrHyA6vIybYZ+g==}
@@ -13847,10 +13833,10 @@ snapshots:
       '@types/tough-cookie': 4.0.5
       tough-cookie: 4.1.4
 
-  '@clerk/backend@1.23.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/backend@1.24.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/shared': 2.20.18(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.45.0
+      '@clerk/shared': 3.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.47.0
       cookie: 1.0.2
       snakecase-keys: 8.0.1
       tslib: 2.4.1
@@ -13858,17 +13844,17 @@ snapshots:
       - react
       - react-dom
 
-  '@clerk/clerk-react@5.22.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/clerk-react@5.24.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/shared': 2.20.18(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.45.0
+      '@clerk/shared': 3.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.47.0
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       tslib: 2.4.1
 
-  '@clerk/shared@2.20.18(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/shared@3.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/types': 4.45.0
+      '@clerk/types': 4.47.0
       dequal: 2.0.3
       glob-to-regexp: 0.4.1
       js-cookie: 3.0.5
@@ -13878,14 +13864,14 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@clerk/tanstack-start@0.9.4(@tanstack/react-router@packages+react-router)(@tanstack/start@packages+start)(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)':
+  '@clerk/tanstack-start@0.11.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)':
     dependencies:
-      '@clerk/backend': 1.23.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/clerk-react': 5.22.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/shared': 2.20.18(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.45.0
+      '@clerk/backend': 1.24.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/clerk-react': 5.24.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/shared': 3.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.47.0
       '@tanstack/react-router': link:packages/react-router
-      '@tanstack/start': link:packages/start
+      '@tanstack/react-start': link:packages/react-start
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       tslib: 2.4.1
@@ -13933,9 +13919,9 @@ snapshots:
       - xml2js
       - yaml
 
-  '@clerk/types@4.45.0':
+  '@clerk/types@4.47.0':
     dependencies:
-      csstype: 3.1.1
+      csstype: 3.1.3
 
   '@cloudflare/kv-asset-handler@0.3.4':
     dependencies:
@@ -13959,10 +13945,10 @@ snapshots:
       '@types/conventional-commits-parser': 5.0.1
       chalk: 5.4.1
 
-  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.22.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))':
+  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.24.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))':
     dependencies:
       '@tanstack/react-query': 5.66.0(react@19.0.0)
-      convex: 1.19.0(@clerk/clerk-react@5.22.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      convex: 1.19.0(@clerk/clerk-react@5.24.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
 
   '@csstools/color-helpers@5.0.1': {}
 
@@ -17272,13 +17258,13 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex@1.19.0(@clerk/clerk-react@5.22.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+  convex@1.19.0(@clerk/clerk-react@5.24.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
       esbuild: 0.23.0
       jwt-decode: 3.1.2
       prettier: 3.4.2
     optionalDependencies:
-      '@clerk/clerk-react': 5.22.11(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/clerk-react': 5.24.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
@@ -17411,8 +17397,6 @@ snapshots:
     dependencies:
       '@asamuzakjp/css-color': 2.8.3
       rrweb-cssom: 0.8.0
-
-  csstype@3.1.1: {}
 
   csstype@3.1.3: {}
 
@@ -17609,11 +17593,6 @@ snapshots:
   end-of-stream@1.4.4:
     dependencies:
       once: 1.4.0
-
-  enhanced-resolve@5.18.0:
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.2.1
 
   enhanced-resolve@5.18.1:
     dependencies:
@@ -17836,7 +17815,7 @@ snapshots:
       '@typescript-eslint/utils': 8.23.0(eslint@9.20.0(jiti@2.4.2))(typescript@5.7.3)
       debug: 4.4.0(supports-color@9.4.0)
       doctrine: 3.0.0
-      enhanced-resolve: 5.18.0
+      enhanced-resolve: 5.18.1
       eslint: 9.20.0(jiti@2.4.2)
       eslint-import-resolver-node: 0.3.9
       get-tsconfig: 4.10.0
@@ -17852,7 +17831,7 @@ snapshots:
   eslint-plugin-n@17.15.1(eslint@9.20.0(jiti@2.4.2)):
     dependencies:
       '@eslint-community/eslint-utils': 4.4.1(eslint@9.20.0(jiti@2.4.2))
-      enhanced-resolve: 5.18.0
+      enhanced-resolve: 5.18.1
       eslint: 9.20.0(jiti@2.4.2)
       eslint-plugin-es-x: 7.8.0(eslint@9.20.0(jiti@2.4.2))
       get-tsconfig: 4.10.0
@@ -19285,7 +19264,7 @@ snapshots:
       postcss: 8.5.1
       postcss-nested: 7.0.2(postcss@8.5.1)
       semver: 7.7.0
-      tinyglobby: 0.2.10
+      tinyglobby: 0.2.11
     optionalDependencies:
       typescript: 5.7.3
       vue-tsc: 2.0.29(typescript@5.7.3)
@@ -19293,7 +19272,7 @@ snapshots:
   mlly@1.7.4:
     dependencies:
       acorn: 8.14.0
-      pathe: 2.0.2
+      pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.5.4
 
@@ -19779,8 +19758,6 @@ snapshots:
 
   pathe@1.1.2: {}
 
-  pathe@2.0.2: {}
-
   pathe@2.0.3: {}
 
   pathval@2.0.0: {}
@@ -19805,7 +19782,7 @@ snapshots:
     dependencies:
       confbox: 0.1.8
       mlly: 1.7.4
-      pathe: 2.0.2
+      pathe: 2.0.3
 
   playwright-core@1.50.1: {}
 
@@ -20868,11 +20845,6 @@ snapshots:
 
   tinyexec@0.3.2: {}
 
-  tinyglobby@0.2.10:
-    dependencies:
-      fdir: 6.4.3(picomatch@4.0.2)
-      picomatch: 4.0.2
-
   tinyglobby@0.2.11:
     dependencies:
       fdir: 6.4.3(picomatch@4.0.2)
@@ -21050,13 +21022,13 @@ snapshots:
       magic-string: 0.30.17
       mkdist: 2.2.0(typescript@5.7.3)(vue-tsc@2.0.29(typescript@5.7.3))
       mlly: 1.7.4
-      pathe: 2.0.2
+      pathe: 2.0.3
       pkg-types: 1.3.1
       pretty-bytes: 6.1.1
       rollup: 4.34.0
       rollup-plugin-dts: 6.1.1(rollup@4.34.0)(typescript@5.7.3)
       scule: 1.3.0
-      tinyglobby: 0.2.10
+      tinyglobby: 0.2.11
       untyped: 1.5.2
     optionalDependencies:
       typescript: 5.7.3
@@ -21704,7 +21676,7 @@ snapshots:
       acorn: 8.14.0
       browserslist: 4.24.4
       chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.18.0
+      enhanced-resolve: 5.18.1
       es-module-lexer: 1.6.0
       eslint-scope: 5.1.1
       events: 3.3.0
@@ -21734,7 +21706,7 @@ snapshots:
       acorn: 8.14.0
       browserslist: 4.24.4
       chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.18.0
+      enhanced-resolve: 5.18.1
       es-module-lexer: 1.6.0
       eslint-scope: 5.1.1
       events: 3.3.0
