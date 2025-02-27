@@ -1991,31 +1991,6 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
-  e2e/solid-start/basic-tsr-config:
-    dependencies:
-      '@tanstack/solid-router':
-        specifier: workspace:^
-        version: link:../../../packages/solid-router
-      '@tanstack/solid-start':
-        specifier: workspace:^
-        version: link:../../../packages/solid-start
-      solid-js:
-        specifier: ^1.0.0
-        version: 1.9.5
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
-    devDependencies:
-      '@tanstack/router-e2e-utils':
-        specifier: workspace:^
-        version: link:../../e2e-utils
-      '@types/node':
-        specifier: ^22.10.2
-        version: 22.13.4
-      typescript:
-        specifier: ^5.7.2
-        version: 5.7.3
-
   e2e/solid-start/scroll-restoration:
     dependencies:
       '@tanstack/solid-router':
