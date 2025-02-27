@@ -1,8 +1,4 @@
-import {
-  Link,
-  Outlet,
-  createRootRoute,
-} from '@tanstack/solid-router'
+import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
 
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
