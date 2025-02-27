@@ -12,7 +12,7 @@ function RootComponent() {
         <Link
           to="/"
           activeProps={{
-            className: 'font-bold',
+            class: 'font-bold',
           }}
           activeOptions={{ exact: true }}
         >
