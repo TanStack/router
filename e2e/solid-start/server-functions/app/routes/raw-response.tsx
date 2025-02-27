@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
-import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/solid-router'
+import { createServerFn } from '@tanstack/solid-start'
 
 export const Route = createFileRoute('/raw-response')({
   component: RouteComponent,
