@@ -4,6 +4,7 @@ import { isNotFound, isRedirect } from '@tanstack/solid-router'
 import { mergeHeaders } from './headers'
 import { globalMiddleware } from './registerGlobalMiddleware'
 import { startSerializer } from './serializer'
+import type { Readable } from 'node:stream'
 import type {
   AnyValidator,
   Constrain,
@@ -31,20 +32,37 @@ export interface JsonResponse<TData> extends Response {
 export type CompiledFetcherFnOptions = {
   method: Method
   data: unknown
+  response?: ServerFnResponseType
   headers?: HeadersInit
   signal?: AbortSignal
   context?: any
 }
 
-export type Fetcher<TMiddlewares, TValidator, TResponse> =
+export type Fetcher<
+  TMiddlewares,
+  TValidator,
+  TResponse,
+  TServerFnResponseType extends ServerFnResponseType,
+> =
   undefined extends IntersectAllValidatorInputs<TMiddlewares, TValidator>
-    ? OptionalFetcher<TMiddlewares, TValidator, TResponse>
-    : RequiredFetcher<TMiddlewares, TValidator, TResponse>
+    ? OptionalFetcher<
+        TMiddlewares,
+        TValidator,
+        TResponse,
+        TServerFnResponseType
+      >
+    : RequiredFetcher<
+        TMiddlewares,
+        TValidator,
+        TResponse,
+        TServerFnResponseType
+      >
 
 export interface FetcherBase {
   url: string
   __executeServer: (opts: {
     method: Method
+    response?: ServerFnResponseType
     data: unknown
     headers?: HeadersInit
     context?: any
@@ -55,51 +73,50 @@ export interface FetcherBase {
 export type FetchResult<
   TMiddlewares,
   TResponse,
-  TFullResponse extends boolean,
-> = false extends TFullResponse
-  ? Promise<FetcherData<TResponse>>
-  : Promise<FullFetcherData<TMiddlewares, TResponse>>
+  TServerFnResponseType extends ServerFnResponseType,
+> = TServerFnResponseType extends 'raw'
+  ? Promise<Response>
+  : TServerFnResponseType extends 'full'
+    ? Promise<FullFetcherData<TMiddlewares, TResponse>>
+    : Promise<FetcherData<TResponse>>
 
-export interface OptionalFetcher<TMiddlewares, TValidator, TResponse>
-  extends FetcherBase {
-  <TFullResponse extends boolean>(
-    options?: OptionalFetcherDataOptions<
-      TMiddlewares,
-      TValidator,
-      TFullResponse
-    >,
-  ): FetchResult<TMiddlewares, TResponse, TFullResponse>
+export interface OptionalFetcher<
+  TMiddlewares,
+  TValidator,
+  TResponse,
+  TServerFnResponseType extends ServerFnResponseType,
+> extends FetcherBase {
+  (
+    options?: OptionalFetcherDataOptions<TMiddlewares, TValidator>,
+  ): FetchResult<TMiddlewares, TResponse, TServerFnResponseType>
 }
 
-export interface RequiredFetcher<TMiddlewares, TValidator, TResponse>
-  extends FetcherBase {
-  <TFullResponse extends boolean>(
-    opts: RequiredFetcherDataOptions<TMiddlewares, TValidator, TFullResponse>,
-  ): FetchResult<TMiddlewares, TResponse, TFullResponse>
+export interface RequiredFetcher<
+  TMiddlewares,
+  TValidator,
+  TResponse,
+  TServerFnResponseType extends ServerFnResponseType,
+> extends FetcherBase {
+  (
+    opts: RequiredFetcherDataOptions<TMiddlewares, TValidator>,
+  ): FetchResult<TMiddlewares, TResponse, TServerFnResponseType>
 }
 
-export type FetcherBaseOptions<TFullResponse extends boolean = false> = {
+export type FetcherBaseOptions = {
   headers?: HeadersInit
   type?: ServerFnType
   signal?: AbortSignal
-  fullResponse?: TFullResponse
 }
 
 export type ServerFnType = 'static' | 'dynamic'
 
-export interface OptionalFetcherDataOptions<
-  TMiddlewares,
-  TValidator,
-  TFullResponse extends boolean,
-> extends FetcherBaseOptions<TFullResponse> {
+export interface OptionalFetcherDataOptions<TMiddlewares, TValidator>
+  extends FetcherBaseOptions {
   data?: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
-export interface RequiredFetcherDataOptions<
-  TMiddlewares,
-  TValidator,
-  TFullResponse extends boolean,
-> extends FetcherBaseOptions<TFullResponse> {
+export interface RequiredFetcherDataOptions<TMiddlewares, TValidator>
+  extends FetcherBaseOptions {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
@@ -119,39 +136,78 @@ export type RscStream<T> = {
 }
 
 export type Method = 'GET' | 'POST'
+export type ServerFnResponseType = 'data' | 'full' | 'raw'
 
-export type ServerFn<TMethod, TMiddlewares, TValidator, TResponse> = (
-  ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
-) => Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
+// see https://h3.unjs.io/guide/event-handler#responses-types
+export type RawResponse = Response | ReadableStream | Readable | null | string
 
-export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
+export type ServerFnReturnType<
+  TServerFnResponseType extends ServerFnResponseType,
+  TResponse,
+> = TServerFnResponseType extends 'raw'
+  ? RawResponse | Promise<RawResponse>
+  : Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
+export type ServerFn<
+  TMethod,
+  TServerFnResponseType extends ServerFnResponseType,
+  TMiddlewares,
+  TValidator,
+  TResponse,
+> = (
+  ctx: ServerFnCtx<TMethod, TServerFnResponseType, TMiddlewares, TValidator>,
+) => ServerFnReturnType<TServerFnResponseType, TResponse>
+
+export interface ServerFnCtx<
+  TMethod,
+  TServerFnResponseType extends ServerFnResponseType,
+  TMiddlewares,
+  TValidator,
+> {
   method: TMethod
+  response: TServerFnResponseType
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
   context: Expand<AssignAllServerContext<TMiddlewares>>
   signal: AbortSignal
 }
 
-export type CompiledFetcherFn<TResponse> = {
+export type CompiledFetcherFn<
+  TResponse,
+  TServerFnResponseType extends ServerFnResponseType,
+> = {
   (
-    opts: CompiledFetcherFnOptions & ServerFnBaseOptions<Method>,
+    opts: CompiledFetcherFnOptions &
+      ServerFnBaseOptions<Method, TServerFnResponseType>,
   ): Promise<TResponse>
   url: string
 }
 
 type ServerFnBaseOptions<
   TMethod extends Method = 'GET',
+  TServerFnResponseType extends ServerFnResponseType = 'data',
   TResponse = unknown,
   TMiddlewares = unknown,
   TInput = unknown,
 > = {
   method: TMethod
+  response?: TServerFnResponseType
   validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
   validator?: ConstrainValidator<TInput>
-  extractedFn?: CompiledFetcherFn<TResponse>
-  serverFn?: ServerFn<TMethod, TMiddlewares, TInput, TResponse>
+  extractedFn?: CompiledFetcherFn<TResponse, TServerFnResponseType>
+  serverFn?: ServerFn<
+    TMethod,
+    TServerFnResponseType,
+    TMiddlewares,
+    TInput,
+    TResponse
+  >
   functionId: string
-  type: ServerFnTypeOrTypeFn<TMethod, TMiddlewares, AnyValidator>
+  type: ServerFnTypeOrTypeFn<
+    TMethod,
+    TServerFnResponseType,
+    TMiddlewares,
+    AnyValidator
+  >
 }
 
 export type ValidatorSerializerStringify<TValidator> = Validator<
@@ -166,78 +222,142 @@ export type ConstrainValidator<TValidator> = unknown extends TValidator
   ? TValidator
   : Constrain<TValidator, ValidatorSerializerStringify<TValidator>>
 
-export interface ServerFnMiddleware<TMethod extends Method, TValidator> {
+export interface ServerFnMiddleware<
+  TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
+  TValidator,
+> {
   middleware: <const TNewMiddlewares = undefined>(
     middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => ServerFnAfterMiddleware<TMethod, TNewMiddlewares, TValidator>
+  ) => ServerFnAfterMiddleware<
+    TMethod,
+    TServerFnResponseType,
+    TNewMiddlewares,
+    TValidator
+  >
 }
 
 export interface ServerFnAfterMiddleware<
   TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
-> extends ServerFnValidator<TMethod, TMiddlewares>,
-    ServerFnTyper<TMethod, TMiddlewares, TValidator>,
-    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+> extends ServerFnValidator<TMethod, TServerFnResponseType, TMiddlewares>,
+    ServerFnTyper<TMethod, TServerFnResponseType, TMiddlewares, TValidator>,
+    ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, TValidator> {}
 
-export type ValidatorFn<TMethod extends Method, TMiddlewares> = <TValidator>(
+export type ValidatorFn<
+  TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
+  TMiddlewares,
+> = <TValidator>(
   validator: ConstrainValidator<TValidator>,
-) => ServerFnAfterValidator<TMethod, TMiddlewares, TValidator>
+) => ServerFnAfterValidator<
+  TMethod,
+  TServerFnResponseType,
+  TMiddlewares,
+  TValidator
+>
 
-export interface ServerFnValidator<TMethod extends Method, TMiddlewares> {
-  validator: ValidatorFn<TMethod, TMiddlewares>
+export interface ServerFnValidator<
+  TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
+  TMiddlewares,
+> {
+  validator: ValidatorFn<TMethod, TServerFnResponseType, TMiddlewares>
 }
 
 export interface ServerFnAfterValidator<
   TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
-> extends ServerFnMiddleware<TMethod, TValidator>,
-    ServerFnTyper<TMethod, TMiddlewares, TValidator>,
-    ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+> extends ServerFnMiddleware<TMethod, TServerFnResponseType, TValidator>,
+    ServerFnTyper<TMethod, TServerFnResponseType, TMiddlewares, TValidator>,
+    ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, TValidator> {}
 
 // Typer
 export interface ServerFnTyper<
   TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
 > {
   type: (
-    typer: ServerFnTypeOrTypeFn<TMethod, TMiddlewares, TValidator>,
-  ) => ServerFnAfterTyper<TMethod, TMiddlewares, TValidator>
+    typer: ServerFnTypeOrTypeFn<
+      TMethod,
+      TServerFnResponseType,
+      TMiddlewares,
+      TValidator
+    >,
+  ) => ServerFnAfterTyper<
+    TMethod,
+    TServerFnResponseType,
+    TMiddlewares,
+    TValidator
+  >
 }
 
 export type ServerFnTypeOrTypeFn<
   TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
 > =
   | ServerFnType
-  | ((ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>) => ServerFnType)
+  | ((
+      ctx: ServerFnCtx<
+        TMethod,
+        TServerFnResponseType,
+        TMiddlewares,
+        TValidator
+      >,
+    ) => ServerFnType)
 
 export interface ServerFnAfterTyper<
   TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
-> extends ServerFnHandler<TMethod, TMiddlewares, TValidator> {}
+> extends ServerFnHandler<
+    TMethod,
+    TServerFnResponseType,
+    TMiddlewares,
+    TValidator
+  > {}
 
 // Handler
 export interface ServerFnHandler<
   TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
 > {
   handler: <TNewResponse>(
-    fn?: ServerFn<TMethod, TMiddlewares, TValidator, TNewResponse>,
-  ) => Fetcher<TMiddlewares, TValidator, TNewResponse>
+    fn?: ServerFn<
+      TMethod,
+      TServerFnResponseType,
+      TMiddlewares,
+      TValidator,
+      TNewResponse
+    >,
+  ) => Fetcher<TMiddlewares, TValidator, TNewResponse, TServerFnResponseType>
 }
 
-export interface ServerFnBuilder<TMethod extends Method = 'GET'>
-  extends ServerFnMiddleware<TMethod, undefined>,
-    ServerFnValidator<TMethod, undefined>,
-    ServerFnTyper<TMethod, undefined, undefined>,
-    ServerFnHandler<TMethod, undefined, undefined> {
-  options: ServerFnBaseOptions<TMethod, unknown, undefined, undefined>
+export interface ServerFnBuilder<
+  TMethod extends Method = 'GET',
+  TServerFnResponseType extends ServerFnResponseType = 'data',
+> extends ServerFnMiddleware<TMethod, TServerFnResponseType, undefined>,
+    ServerFnValidator<TMethod, TServerFnResponseType, undefined>,
+    ServerFnTyper<TMethod, TServerFnResponseType, undefined, undefined>,
+    ServerFnHandler<TMethod, TServerFnResponseType, undefined, undefined> {
+  options: ServerFnBaseOptions<
+    TMethod,
+    TServerFnResponseType,
+    unknown,
+    undefined,
+    undefined
+  >
 }
 
 type StaticCachedResult = {
@@ -379,18 +499,27 @@ setServerFnStaticCache(() => {
 
 export function createServerFn<
   TMethod extends Method,
+  TServerFnResponseType extends ServerFnResponseType = 'data',
   TResponse = unknown,
   TMiddlewares = undefined,
   TValidator = undefined,
 >(
   options?: {
     method?: TMethod
+    response?: TServerFnResponseType
     type?: ServerFnType
   },
-  __opts?: ServerFnBaseOptions<TMethod, TResponse, TMiddlewares, TValidator>,
-): ServerFnBuilder<TMethod> {
+  __opts?: ServerFnBaseOptions<
+    TMethod,
+    TServerFnResponseType,
+    TResponse,
+    TMiddlewares,
+    TValidator
+  >,
+): ServerFnBuilder<TMethod, TServerFnResponseType> {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
     TMethod,
+    ServerFnResponseType,
     TResponse,
     TMiddlewares,
     TValidator
@@ -403,30 +532,45 @@ export function createServerFn<
   return {
     options: resolvedOptions as any,
     middleware: (middleware) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
-        undefined,
-        Object.assign(resolvedOptions, { middleware }),
-      ) as any
+      return createServerFn<
+        TMethod,
+        ServerFnResponseType,
+        TResponse,
+        TMiddlewares,
+        TValidator
+      >(undefined, Object.assign(resolvedOptions, { middleware })) as any
     },
     validator: (validator) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
-        undefined,
-        Object.assign(resolvedOptions, { validator }),
-      ) as any
+      return createServerFn<
+        TMethod,
+        ServerFnResponseType,
+        TResponse,
+        TMiddlewares,
+        TValidator
+      >(undefined, Object.assign(resolvedOptions, { validator })) as any
     },
     type: (type) => {
-      return createServerFn<TMethod, TResponse, TMiddlewares, TValidator>(
-        undefined,
-        Object.assign(resolvedOptions, { type }),
-      ) as any
+      return createServerFn<
+        TMethod,
+        ServerFnResponseType,
+        TResponse,
+        TMiddlewares,
+        TValidator
+      >(undefined, Object.assign(resolvedOptions, { type })) as any
     },
     handler: (...args) => {
       // This function signature changes due to AST transformations
       // in the babel plugin. We need to cast it to the correct
       // function signature post-transformation
       const [extractedFn, serverFn] = args as unknown as [
-        CompiledFetcherFn<TResponse>,
-        ServerFn<TMethod, TMiddlewares, TValidator, TResponse>,
+        CompiledFetcherFn<TResponse, TServerFnResponseType>,
+        ServerFn<
+          TMethod,
+          TServerFnResponseType,
+          TMiddlewares,
+          TValidator,
+          TResponse
+        >,
       ]
 
       // Keep the original function around so we can use it
@@ -455,6 +599,9 @@ export function createServerFn<
             signal: opts?.signal,
             context: {},
           }).then((d) => {
+            if (resolvedOptions.response === 'full') {
+              return d
+            }
             if (d.error) throw d.error
             return d.result
           })
@@ -589,19 +736,20 @@ function flattenMiddlewares(
 
 export type MiddlewareOptions = {
   method: Method
+  response?: ServerFnResponseType
   data: any
   headers?: HeadersInit
   signal?: AbortSignal
   sendContext?: any
   context?: any
-  type: ServerFnTypeOrTypeFn<any, any, any>
+  type: ServerFnTypeOrTypeFn<any, any, any, any>
   functionId: string
 }
 
 export type MiddlewareResult = MiddlewareOptions & {
   result?: unknown
   error?: unknown
-  type: ServerFnTypeOrTypeFn<any, any, any>
+  type: ServerFnTypeOrTypeFn<any, any, any, any>
 }
 
 export type NextFn = (ctx: MiddlewareResult) => Promise<MiddlewareResult>
@@ -634,7 +782,11 @@ const applyMiddleware = async (
         },
         headers: mergeHeaders(ctx.headers, userCtx.headers),
         result:
-          userCtx.result !== undefined ? userCtx.result : (ctx as any).result,
+          userCtx.result !== undefined
+            ? userCtx.result
+            : ctx.response === 'raw'
+              ? userCtx
+              : (ctx as any).result,
         error: userCtx.error ?? (ctx as any).error,
       })
     }) as any,
@@ -729,7 +881,7 @@ async function executeMiddleware(
 }
 
 function serverFnBaseToMiddleware(
-  options: ServerFnBaseOptions<any, any, any, any>,
+  options: ServerFnBaseOptions<any, any, any, any, any>,
 ): AnyMiddleware {
   return {
     _types: undefined!,

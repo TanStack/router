@@ -15,6 +15,7 @@ import { Route as SubmitPostFormdataImport } from './routes/submit-post-formdata
 import { Route as StatusImport } from './routes/status'
 import { Route as SerializeFormDataImport } from './routes/serialize-form-data'
 import { Route as ReturnNullImport } from './routes/return-null'
+import { Route as RawResponseImport } from './routes/raw-response'
 import { Route as MultipartImport } from './routes/multipart'
 import { Route as IsomorphicFnsImport } from './routes/isomorphic-fns'
 import { Route as HeadersImport } from './routes/headers'
@@ -49,6 +50,12 @@ const SerializeFormDataRoute = SerializeFormDataImport.update({
 const ReturnNullRoute = ReturnNullImport.update({
   id: '/return-null',
   path: '/return-null',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RawResponseRoute = RawResponseImport.update({
+  id: '/raw-response',
+  path: '/raw-response',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -172,6 +179,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof MultipartImport
       parentRoute: typeof rootRoute
     }
+    '/raw-response': {
+      id: '/raw-response'
+      path: '/raw-response'
+      fullPath: '/raw-response'
+      preLoaderRoute: typeof RawResponseImport
+      parentRoute: typeof rootRoute
+    }
     '/return-null': {
       id: '/return-null'
       path: '/return-null'
@@ -228,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
+  '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
@@ -245,6 +260,7 @@ export interface FileRoutesByTo {
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
+  '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
@@ -263,6 +279,7 @@ export interface FileRoutesById {
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
+  '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
@@ -282,6 +299,7 @@ export interface FileRouteTypes {
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
+    | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
     | '/status'
@@ -298,6 +316,7 @@ export interface FileRouteTypes {
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
+    | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
     | '/status'
@@ -314,6 +333,7 @@ export interface FileRouteTypes {
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
+    | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
     | '/status'
@@ -332,6 +352,7 @@ export interface RootRouteChildren {
   HeadersRoute: typeof HeadersRoute
   IsomorphicFnsRoute: typeof IsomorphicFnsRoute
   MultipartRoute: typeof MultipartRoute
+  RawResponseRoute: typeof RawResponseRoute
   ReturnNullRoute: typeof ReturnNullRoute
   SerializeFormDataRoute: typeof SerializeFormDataRoute
   StatusRoute: typeof StatusRoute
@@ -349,6 +370,7 @@ const rootRouteChildren: RootRouteChildren = {
   HeadersRoute: HeadersRoute,
   IsomorphicFnsRoute: IsomorphicFnsRoute,
   MultipartRoute: MultipartRoute,
+  RawResponseRoute: RawResponseRoute,
   ReturnNullRoute: ReturnNullRoute,
   SerializeFormDataRoute: SerializeFormDataRoute,
   StatusRoute: StatusRoute,
@@ -375,6 +397,7 @@ export const routeTree = rootRoute
         "/headers",
         "/isomorphic-fns",
         "/multipart",
+        "/raw-response",
         "/return-null",
         "/serialize-form-data",
         "/status",
@@ -406,6 +429,9 @@ export const routeTree = rootRoute
     },
     "/multipart": {
       "filePath": "multipart.tsx"
+    },
+    "/raw-response": {
+      "filePath": "raw-response.tsx"
     },
     "/return-null": {
       "filePath": "return-null.tsx"
