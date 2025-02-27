@@ -297,9 +297,54 @@ For the URL `/documents/hello-world`, the `params` object will look like this:
 
 ## Layout Routes
 
-<!-- TODO -->
+Layout routes are routes that wrap their children in a layout component. In code-based routing, you can create a layout route by simply nesting a route under another route:
 
-TODO, Layout routes are an extension of Basic routes that allow you to wrap child routes with a layout component.
+```tsx
+const postsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'posts',
+  component: PostsLayoutComponent, // The layout component
+})
+
+function PostsLayoutComponent() {
+  return (
+    <div>
+      <h1>Posts</h1>
+      <Outlet />
+    </div>
+  )
+}
+
+const postsIndexRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '/',
+})
+
+const postsCreateRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: 'create',
+})
+
+const routeTree = rootRoute.addChildren([
+  // The postsRoute is the layout route
+  // Its children will be nested under the PostsLayoutComponent
+  postsRoute.addChildren([postsIndexRoute, postsCreateRoute]),
+])
+```
+
+Now, both the `postsIndexRoute` and `postsCreateRoute` will render their contents inside of the `PostsLayoutComponent`:
+
+```tsx
+// URL: /posts
+<PostsLayoutComponent>
+  <PostsIndexComponent />
+</PostsLayoutComponent>
+
+// URL: /posts/create
+<PostsLayoutComponent>
+  <PostsCreateComponent />
+</PostsLayoutComponent>
+```
 
 ## Pathless Layout Routes
 
@@ -311,6 +356,15 @@ const pathlessLayoutRoute = createRoute({
   id: 'pathlessLayout',
   component: PathlessLayoutComponent,
 })
+
+function PathlessLayoutComponent() {
+  return (
+    <div>
+      <h1>Pathless Layout</h1>
+      <Outlet />
+    </div>
+  )
+}
 
 const pathlessLayoutARoute = createRoute({
   getParentRoute: () => pathlessLayoutRoute,
