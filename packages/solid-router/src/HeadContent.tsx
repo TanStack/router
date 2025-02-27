@@ -1,4 +1,5 @@
 import * as Solid from 'solid-js'
+import { useAssets } from 'solid-js/web'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -130,7 +131,8 @@ export const useTags = () => {
  */
 export function HeadContent() {
   const tags = useTags()
-  return tags.map((tag) => <Asset {...tag} />)
+  useAssets(() => tags.map((tag) => <Asset {...tag} />))
+  return null
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
