@@ -99,7 +99,7 @@ function MultipartServerFnCall() {
       </form>
       <div class="overflow-y-auto">
         <pre data-testid="multipart-form-response">
-          {JSON.stringify(multipartResult)}
+          {JSON.stringify(multipartResult())}
         </pre>
       </div>
     </div>
