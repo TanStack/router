@@ -7,9 +7,12 @@ import './styles.css'
 // Set up a Router instance
 const router = createRouter({
   routeTree,
-  defaultPreload: 'intent',
+  // defaultPreload: 'intent',
   defaultStaleTime: 5000,
   scrollRestoration: true,
+  defaultPendingMs: 0,
+  defaultPendingMinMs: 0,
+  defaultPendingComponent: () => <div>Loading...</div>,
 })
 
 // Register things for typesafety
