@@ -21,7 +21,7 @@ function HomeComponent() {
           linkOptions({ to: '/with-search', search: { where: 'footer' } }),
         ] as const
       ).map((options, i) => (
-        <div  class="border p-2">
+        <div class="border p-2">
           <h4>{options.to} tests</h4>
           <p>
             <Link {...options} hash="at-the-bottom">
