@@ -74,7 +74,7 @@ function MultipartServerFnCall() {
         action={multipartFormDataServerFn.url}
         method="post"
         enctype="multipart/form-data"
-        ref={formRef!}
+        ref={()=>formRef}
         data-testid="multipart-form"
       >
         <input type="text" name="input_field" value="test field value" />
