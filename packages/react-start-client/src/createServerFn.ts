@@ -74,9 +74,9 @@ export type FetchResult<
   TMiddlewares,
   TResponse,
   TServerFnResponseType extends ServerFnResponseType,
-> = [TServerFnResponseType] extends ['raw']
+> = TServerFnResponseType extends 'raw'
   ? Promise<Response>
-  : [TServerFnResponseType] extends ['full']
+  : TServerFnResponseType extends 'full'
     ? Promise<FullFetcherData<TMiddlewares, TResponse>>
     : Promise<FetcherData<TResponse>>
 
@@ -85,26 +85,14 @@ export interface OptionalFetcher<
   TValidator,
   TResponse,
   TServerFnResponseType extends ServerFnResponseType,
-  TAllowedServerFnResponseType extends ServerFnResponseType = [
-    TServerFnResponseType,
-  ] extends ['raw']
-    ? 'raw'
-    : ServerFnResponseType,
 > extends FetcherBase {
-  <
-    TFetcherServerFnResponseType extends
-      ServerFnResponseType = TServerFnResponseType,
-  >(
+  (
     options?: OptionalFetcherDataOptions<
       TMiddlewares,
-      TValidator,
-      Constrain<
-        TFetcherServerFnResponseType,
-        TAllowedServerFnResponseType,
-        TServerFnResponseType
-      >
+      TValidator
+      
     >,
-  ): FetchResult<TMiddlewares, TResponse, TFetcherServerFnResponseType>
+  ): FetchResult<TMiddlewares, TResponse, TServerFnResponseType>
 }
 
 export interface RequiredFetcher<
@@ -112,33 +100,19 @@ export interface RequiredFetcher<
   TValidator,
   TResponse,
   TServerFnResponseType extends ServerFnResponseType,
-  TAllowedServerFnResponseType extends ServerFnResponseType = [
-    TServerFnResponseType,
-  ] extends ['raw']
-    ? 'raw'
-    : ServerFnResponseType,
 > extends FetcherBase {
-  <
-    TFetcherServerFnResponseType extends
-      ServerFnResponseType = TServerFnResponseType,
-  >(
+  (
     opts: RequiredFetcherDataOptions<
       TMiddlewares,
-      TValidator,
-      Constrain<
-        TFetcherServerFnResponseType,
-        TAllowedServerFnResponseType,
-        TServerFnResponseType
-      >
+      TValidator
     >,
-  ): FetchResult<TMiddlewares, TResponse, TFetcherServerFnResponseType>
+  ): FetchResult<TMiddlewares, TResponse, TServerFnResponseType>
 }
 
-export type FetcherBaseOptions<TFetcherServerFnResponseType> = {
+export type FetcherBaseOptions = {
   headers?: HeadersInit
   type?: ServerFnType
   signal?: AbortSignal
-  response?: TFetcherServerFnResponseType
 }
 
 export type ServerFnType = 'static' | 'dynamic'
@@ -146,16 +120,14 @@ export type ServerFnType = 'static' | 'dynamic'
 export interface OptionalFetcherDataOptions<
   TMiddlewares,
   TValidator,
-  TFetcherServerFnResponseType extends ServerFnResponseType,
-> extends FetcherBaseOptions<TFetcherServerFnResponseType> {
+> extends FetcherBaseOptions {
   data?: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
 export interface RequiredFetcherDataOptions<
   TMiddlewares,
   TValidator,
-  TFetcherServerFnResponseType extends ServerFnResponseType,
-> extends FetcherBaseOptions<TFetcherServerFnResponseType> {
+> extends FetcherBaseOptions {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
@@ -183,7 +155,7 @@ export type RawResponse = Response | ReadableStream | Readable | null | string
 export type ServerFnReturnType<
   TServerFnResponseType extends ServerFnResponseType,
   TResponse,
-> = [TServerFnResponseType] extends ['raw']
+> = TServerFnResponseType extends 'raw'
   ? RawResponse | Promise<RawResponse>
   : Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
 export type ServerFn<
@@ -201,12 +173,9 @@ export interface ServerFnCtx<
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
-  TActualServerFnResponseType = [TServerFnResponseType] extends ['raw']
-    ? 'raw'
-    : ServerFnResponseType,
 > {
   method: TMethod
-  response: TActualServerFnResponseType
+  response: TServerFnResponseType
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
   context: Expand<AssignAllServerContext<TMiddlewares>>
   signal: AbortSignal
@@ -388,7 +357,7 @@ export interface ServerFnHandler<
 
 export interface ServerFnBuilder<
   TMethod extends Method = 'GET',
-  TServerFnResponseType extends ServerFnResponseType = ServerFnResponseType,
+  TServerFnResponseType extends ServerFnResponseType = 'data',
 > extends ServerFnMiddleware<TMethod, TServerFnResponseType, undefined>,
     ServerFnValidator<TMethod, TServerFnResponseType, undefined>,
     ServerFnTyper<TMethod, TServerFnResponseType, undefined, undefined>,
@@ -541,7 +510,7 @@ setServerFnStaticCache(() => {
 
 export function createServerFn<
   TMethod extends Method,
-  TServerFnResponseType extends ServerFnResponseType = ServerFnResponseType,
+  TServerFnResponseType extends ServerFnResponseType = 'data',
   TResponse = unknown,
   TMiddlewares = undefined,
   TValidator = undefined,
