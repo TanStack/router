@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",
@@ -23,7 +23,6 @@
     "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",
     "tailwindcss": "^3.4.17",
-    "vinxi": "0.5.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {

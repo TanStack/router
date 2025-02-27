@@ -847,9 +847,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -920,9 +917,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -990,9 +984,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1054,9 +1045,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -1097,9 +1085,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
@@ -1143,9 +1128,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
@@ -1207,9 +1189,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -1277,9 +1256,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -1347,9 +1323,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -3469,10 +3442,10 @@ importers:
         version: 19.0.3(@types/react@19.0.8)
       html-webpack-plugin:
         specifier: ^5.6.3
-        version: 5.6.3(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
+        version: 5.6.3(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1)
       swc-loader:
         specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
+        version: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1)
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -4151,9 +4124,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -4261,9 +4231,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -4322,9 +4289,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -4377,9 +4341,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -4426,9 +4387,6 @@ importers:
       tailwind-merge:
         specifier: ^2.5.5
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.1
-        version: 0.5.1(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -4481,9 +4439,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -4563,9 +4518,6 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -4609,9 +4561,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -4654,10 +4603,7 @@ importers:
         version: 2.6.0
       valibot:
         specifier: ^1.0.0-beta.15
-        version: 1.0.0-beta.15(typescript@5.8.2)
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
+        version: 1.0.0-beta.15(typescript@5.7.3)
     devDependencies:
       '@types/node':
         specifier: ^22.5.4
@@ -4765,9 +4711,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -4835,9 +4778,6 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -4951,9 +4891,6 @@ importers:
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -5015,9 +4952,6 @@ importers:
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -5468,7 +5402,7 @@ importers:
         version: 7.0.6
       html-webpack-plugin:
         specifier: ^5.6.0
-        version: 5.6.3(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
+        version: 5.6.3(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1)
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -5480,7 +5414,7 @@ importers:
         version: 19.0.0(react@19.0.0)
       swc-loader:
         specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
+        version: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1)
       tinyglobby:
         specifier: ^0.2.10
         version: 0.2.12
@@ -5578,9 +5512,6 @@ importers:
       validate-npm-package-name:
         specifier: ^6.0.0
         version: 6.0.0
-      vinxi:
-        specifier: 0.5.1
-        version: 0.5.1(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
       vite:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
@@ -5808,9 +5739,6 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -5842,9 +5770,6 @@ importers:
       tiny-warning:
         specifier: ^1.0.3
         version: 1.0.3
-      vinxi:
-        specifier: ^0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -5990,9 +5915,6 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -14715,10 +14637,6 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  vinxi@0.5.1:
-    resolution: {integrity: sha512-jvl2hJ0fyWwfDVQdDDHCJiVxqU4k0A6kFAnljS0kIjrGfhdTvKEWIoj0bcJgMyrKhxNMoZZGmHZsstQgjDIL3g==}
-    hasBin: true
-
   vinxi@0.5.3:
     resolution: {integrity: sha512-4sL2SMrRzdzClapP44oXdGjCE1oq7/DagsbjY5A09EibmoIO4LP8ScRVdh03lfXxKRk7nCWK7n7dqKvm+fp/9w==}
     hasBin: true
@@ -18742,17 +18660,17 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
-  '@webpack-cli/configtest@2.1.1(webpack-cli@5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))':
+  '@webpack-cli/configtest@2.1.1(webpack-cli@5.1.4)(webpack@5.97.1)':
     dependencies:
       webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1)
 
-  '@webpack-cli/info@2.0.2(webpack-cli@5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))':
+  '@webpack-cli/info@2.0.2(webpack-cli@5.1.4)(webpack@5.97.1)':
     dependencies:
       webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1)
 
-  '@webpack-cli/serve@2.0.5(webpack-cli@5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1))(webpack-dev-server@5.2.0(webpack-cli@5.1.4)(webpack@5.97.1))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))':
+  '@webpack-cli/serve@2.0.5(webpack-cli@5.1.4)(webpack-dev-server@5.2.0)(webpack@5.97.1)':
     dependencies:
       webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1)
@@ -20719,7 +20637,7 @@ snapshots:
 
   html-tags@3.3.1: {}
 
-  html-webpack-plugin@5.6.3(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)):
+  html-webpack-plugin@5.6.3(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1):
     dependencies:
       '@types/html-minifier-terser': 6.1.0
       html-minifier-terser: 6.1.0
@@ -23016,7 +22934,7 @@ snapshots:
       csso: 5.0.5
       picocolors: 1.1.1
 
-  swc-loader@0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)):
+  swc-loader@0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1):
     dependencies:
       '@swc/core': 1.10.15(@swc/helpers@0.5.15)
       '@swc/counter': 0.1.3
@@ -23106,18 +23024,6 @@ snapshots:
       type-fest: 2.19.0
       unique-string: 3.0.0
 
-  terser-webpack-plugin@5.3.11(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)):
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.25
-      jest-worker: 27.5.1
-      schema-utils: 4.3.0
-      serialize-javascript: 6.0.2
-      terser: 5.37.0
-      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)
-    optionalDependencies:
-      '@swc/core': 1.10.15(@swc/helpers@0.5.15)
-      esbuild: 0.25.0
-
   terser-webpack-plugin@5.3.11(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
@@ -23126,6 +23032,18 @@ snapshots:
       serialize-javascript: 6.0.2
       terser: 5.37.0
       webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)
+    optionalDependencies:
+      '@swc/core': 1.10.15(@swc/helpers@0.5.15)
+      esbuild: 0.25.0
+
+  terser-webpack-plugin@5.3.11(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack@5.97.1):
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.25
+      jest-worker: 27.5.1
+      schema-utils: 4.3.0
+      serialize-javascript: 6.0.2
+      terser: 5.37.0
+      webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)
     optionalDependencies:
       '@swc/core': 1.10.15(@swc/helpers@0.5.15)
       esbuild: 0.25.0
@@ -23547,85 +23465,6 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vinxi@0.5.1(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0):
-    dependencies:
-      '@babel/core': 7.26.8
-      '@babel/plugin-syntax-jsx': 7.25.9(@babel/core@7.26.8)
-      '@babel/plugin-syntax-typescript': 7.25.9(@babel/core@7.26.8)
-      '@types/micromatch': 4.0.9
-      '@vinxi/listhen': 1.5.6
-      boxen: 7.1.1
-      chokidar: 3.6.0
-      citty: 0.1.6
-      consola: 3.4.0
-      crossws: 0.3.3
-      dax-sh: 0.39.2
-      defu: 6.1.4
-      es-module-lexer: 1.6.0
-      esbuild: 0.20.2
-      fast-glob: 3.3.3
-      get-port-please: 3.1.2
-      h3: 1.13.0
-      hookable: 5.5.3
-      http-proxy: 1.18.1
-      micromatch: 4.0.8
-      nitropack: 2.10.4(typescript@5.8.2)
-      node-fetch-native: 1.6.6
-      path-to-regexp: 6.3.0
-      pathe: 1.1.2
-      radix3: 1.1.2
-      resolve: 1.22.10
-      serve-placeholder: 2.0.2
-      serve-static: 1.16.2
-      ufo: 1.5.4
-      unctx: 2.4.1
-      unenv: 1.10.0
-      unstorage: 1.14.4(db0@0.2.3)(ioredis@5.4.2)
-      vite: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-      zod: 3.24.2
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@deno/kv'
-      - '@electric-sql/pglite'
-      - '@libsql/client'
-      - '@netlify/blobs'
-      - '@planetscale/database'
-      - '@types/node'
-      - '@upstash/redis'
-      - '@vercel/blob'
-      - '@vercel/kv'
-      - aws4fetch
-      - better-sqlite3
-      - db0
-      - debug
-      - drizzle-orm
-      - encoding
-      - idb-keyval
-      - ioredis
-      - jiti
-      - less
-      - lightningcss
-      - mysql2
-      - rolldown
-      - sass
-      - sass-embedded
-      - sqlite3
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - typescript
-      - uploadthing
-      - xml2js
-      - yaml
-
   vinxi@0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0):
     dependencies:
       '@babel/core': 7.26.8
@@ -23994,9 +23833,9 @@ snapshots:
   webpack-cli@5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1):
     dependencies:
       '@discoveryjs/json-ext': 0.5.7
-      '@webpack-cli/configtest': 2.1.1(webpack-cli@5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
-      '@webpack-cli/info': 2.0.2(webpack-cli@5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
-      '@webpack-cli/serve': 2.0.5(webpack-cli@5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1))(webpack-dev-server@5.2.0(webpack-cli@5.1.4)(webpack@5.97.1))(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
+      '@webpack-cli/configtest': 2.1.1(webpack-cli@5.1.4)(webpack@5.97.1)
+      '@webpack-cli/info': 2.0.2(webpack-cli@5.1.4)(webpack@5.97.1)
+      '@webpack-cli/serve': 2.0.5(webpack-cli@5.1.4)(webpack-dev-server@5.2.0)(webpack@5.97.1)
       colorette: 2.0.20
       commander: 10.0.1
       cross-spawn: 7.0.6
@@ -24010,7 +23849,7 @@ snapshots:
     optionalDependencies:
       webpack-dev-server: 5.2.0(webpack-cli@5.1.4)(webpack@5.97.1)
 
-  webpack-dev-middleware@7.4.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)):
+  webpack-dev-middleware@7.4.2(webpack@5.97.1):
     dependencies:
       colorette: 2.0.20
       memfs: 4.17.0
@@ -24048,7 +23887,7 @@ snapshots:
       serve-index: 1.9.1
       sockjs: 0.3.24
       spdy: 4.0.2
-      webpack-dev-middleware: 7.4.2(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
+      webpack-dev-middleware: 7.4.2(webpack@5.97.1)
       ws: 8.18.0
     optionalDependencies:
       webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)
@@ -24123,7 +23962,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.11(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack@5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4))
+      terser-webpack-plugin: 5.3.11(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack@5.97.1)
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     optionalDependencies:

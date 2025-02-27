@@ -63,8 +63,7 @@
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:^",
-    "@tanstack/react-start-server": "workspace:^",
-    "vinxi": "0.5.3"
+    "@tanstack/react-start-server": "workspace:^"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

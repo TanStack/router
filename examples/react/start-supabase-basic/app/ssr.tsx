@@ -1,5 +1,5 @@
 // app/ssr.tsx
-/// <reference types="vinxi/types/server" />
+
 import {
   createStartHandler,
   defaultStreamHandler,

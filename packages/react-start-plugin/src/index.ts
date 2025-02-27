@@ -1,8 +1,3 @@
-// import { importMetaResolve } from 'import-meta-resolve'
-// // @ts-expect-error
-// import { serverComponents } from '@vinxi/server-components/plugin'
-
-// import { tanstackStartVinxiFileRouter } from './vinxi-file-router.js'
 import path from 'node:path'
 import { createTanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
 import { mergeConfig, perEnvironmentPlugin } from 'vite'
@@ -32,19 +27,19 @@ export function TanStackStartVitePlugin(
     manifestVirtualImportId: 'tsr:server-fn-manifest',
     client: {
       getRuntimeCode: () =>
-        `import { createClientRpc } from '@tanstack/start/server-functions-client'`,
+        `import { createClientRpc } from '@tanstack/react-start/server-functions-client'`,
       replacer: (d) =>
         `createClientRpc('${d.functionId}', '${options.routers.server.base}')`,
     },
     ssr: {
       getRuntimeCode: () =>
-        `import { createSsrRpc } from '@tanstack/start/server-functions-ssr'`,
+        `import { createSsrRpc } from '@tanstack/react-start/server-functions-ssr'`,
       replacer: (d) =>
         `createSsrRpc('${d.functionId}', '${options.routers.server.base}')`,
     },
     server: {
       getRuntimeCode: () =>
-        `import { createServerRpc } from '@tanstack/start/server-functions-server'`,
+        `import { createServerRpc } from '@tanstack/react-start/server-functions-server'`,
       replacer: (d) =>
         `createServerRpc('${d.functionId}', '${options.routers.server.base}', ${d.fn})`,
     },
@@ -135,15 +130,20 @@ export function TanStackStartVitePlugin(
           ? TanStackServerFnsPlugin.client
           : TanStackServerFnsPlugin.server,
     ),
-    perEnvironmentPlugin(
-      'tanstack-router-manifest-plugin',
-      (environment) =>
-        environment.name === 'ssr' &&
-        tsrRoutesManifestPlugin({
-          clientBase: options.routers.client.base,
-          tsrConfig: options.tsr,
-        }),
-    ),
+    // perEnvironmentPlugin(
+    //   'tanstack-router-manifest-plugin',
+    //   (environment) =>
+    //     environment.name === 'ssr' &&
+    //     tsrRoutesManifestPlugin({
+    //       clientBase: options.routers.client.base,
+    //       tsrConfig: options.tsr,
+    //     }),
+    // ),
+    // TODO: Should this only be loaded for ssr? like above?
+    tsrRoutesManifestPlugin({
+      clientBase: options.routers.client.base,
+      tsrConfig: options.tsr,
+    }),
     nitroPlugin({
       ...options,
       server: {
@@ -171,31 +171,6 @@ export function TanStackStartVitePlugin(
     }),
   ]
 }
-
-//   // Because Vinxi doesn't use the normal nitro dev server, it doesn't
-//   // supply $fetch during dev. We need to hook into the dev server creation,
-//   // nab the proper utils from the custom nitro instance that is used
-//   // during dev and supply the $fetch to app.
-//   // Hopefully and likely, this will just get removed when we move to
-//   // Nitro directly.
-//   vinxiApp.hooks.hook('app:dev:nitro:config', (devServer) => {
-//     vinxiApp.hooks.hook(
-//       'app:dev:server:created',
-//       ({ devApp: { localFetch } }) => {
-//         const $fetch = createFetch({
-//           fetch: localFetch,
-//           defaults: {
-//             baseURL: devServer.nitro.options.runtimeConfig.app.baseURL,
-//           },
-//         })
-
-//         // @ts-expect-error
-//         globalThis.$fetch = $fetch
-//       },
-//     )
-//   })
-
-//   return vinxiApp
 
 function injectDefineEnv<TKey extends string, TValue extends string>(
   key: TKey,

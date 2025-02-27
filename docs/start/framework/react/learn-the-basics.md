@@ -7,13 +7,11 @@ This guide will help you learn the basics behind how TanStack Start works, regar
 
 ## Dependencies
 
-TanStack Start is (currently\*) powered by [Vinxi](https://vinxi.vercel.app/), [Nitro](https://nitro.unjs.io/) and [TanStack Router](https://tanstack.com/router).
+TanStack Start is powered by [Vite](https://vite.dev/), [Nitro](https://nitro.unjs.io/) and [TanStack Router](https://tanstack.com/router).
 
 - **TanStack Router**: A router for building web applications.
 - **Nitro**: A framework for building server applications.
-- **Vinxi**: A server framework for building web applications.
-
-> [!NOTE] Vinxi will be removed before version 1.0.0 is released and TanStack will rely only on Vite and Nitro. The commands and APIs that use Vinxi will likely be replaced with a Vite plugin.
+- **Vite**: A build tool for bundling your application.
 
 ## It all "Starts" with the Router
 

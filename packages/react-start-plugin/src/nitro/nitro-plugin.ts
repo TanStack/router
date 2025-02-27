@@ -1,8 +1,6 @@
 import { dirname, resolve } from 'node:path'
-import { writeFileSync } from 'node:fs'
 import { platform } from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { build, createDevServer, createNitro } from 'nitropack'
 import { normalizePath } from 'vite'
 
 import { buildServer } from './build-server.js'
@@ -96,50 +94,6 @@ export function nitroPlugin(
           '#start/ssr': options.ssrEntryPath,
         }
 
-        if (isBuild) {
-          nitroConfig.publicAssets = [{ dir: clientOutputPath }]
-          nitroConfig.serverAssets = [
-            {
-              baseName: 'public',
-              dir: clientOutputPath,
-            },
-          ]
-          nitroConfig.renderer = rendererEntry
-
-          if (ssrBuild) {
-            if (isWindows) {
-              // Write out the renderer manually because
-              // Windows doesn't resolve the aliases
-              // correctly in its native environment
-              writeFileSync(
-                normalizePath(rendererEntry.replace(filePrefix, '')),
-                `
-              /**
-               * This file is shipped as ESM for Windows support,
-               * as it won't resolve the renderer.ts file correctly in node.
-               */
-              import ssrEntry from '${options.ssrEntryPath}';
-              export default ssrEntry
-              `,
-              )
-
-              nitroConfig.externals = {
-                inline: ['std-env'],
-              }
-            }
-
-            nitroConfig = {
-              ...nitroConfig,
-              externals: {
-                ...nitroConfig.externals,
-                external: ['node-fetch-native/dist/polyfill'],
-              },
-              // moduleSideEffects: [],
-              handlers: [],
-            }
-          }
-        }
-
         return {
           environments: {
             ssr: {
@@ -155,6 +109,7 @@ export function nitroPlugin(
           builder: {
             sharedPlugins: true,
             buildApp: async (builder) => {
+              console.log('tanner buildApp', builder)
               environmentBuild = true
 
               if (!builder.environments['client']) {
@@ -190,32 +145,33 @@ export function nitroPlugin(
         }
       },
       async configureServer(viteServer: ViteDevServer) {
-        if (isServe && !isTest) {
-          const nitro = await createNitro({
-            dev: true,
-            ...nitroConfig,
-          })
-          const server = createDevServer(nitro)
+        return // TODO: We'll remove this when we're ready for non-entry routes
+        // if (isServe && !isTest) {
+        //   const nitro = await createNitro({
+        //     dev: true,
+        //     ...nitroConfig,
+        //   })
 
-          await build(nitro)
+        //   const server = createDevServer(nitro)
+        //   await build(nitro)
 
-          // viteServer.middlewares.use(
-          //   apiBase,
-          //   toNodeListener(server.app as unknown as App),
-          // )
+        //   // viteServer.middlewares.use(
+        //   //   apiBase,
+        //   //   toNodeListener(server.app as unknown as App),
+        //   // )
 
-          viteServer.httpServer?.once('listening', () => {
-            process.env['START_HOST'] = !viteServer.config.server.host
-              ? 'localhost'
-              : (viteServer.config.server.host as string)
-            process.env['START_PORT'] = `${viteServer.config.server.port}`
-          })
+        //   viteServer.httpServer?.once('listening', () => {
+        //     process.env['START_HOST'] = !viteServer.config.server.host
+        //       ? 'localhost'
+        //       : (viteServer.config.server.host as string)
+        //     process.env['START_PORT'] = `${viteServer.config.server.port}`
+        //   })
 
-          // handle upgrades if websockets are enabled
-          if (nitroConfig.experimental?.websocket) {
-            viteServer.httpServer?.on('upgrade', server.upgrade)
-          }
-        }
+        //   // handle upgrades if websockets are enabled
+        //   if (nitroConfig.experimental?.websocket) {
+        //     viteServer.httpServer?.on('upgrade', server.upgrade)
+        //   }
+        // }
       },
       async closeBundle() {
         // Skip when build is triggered by the Environment API

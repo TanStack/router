@@ -47,14 +47,12 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 
 ## Install Dependencies
 
-TanStack Start is (currently\*) powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
-
-> [!NOTE] > \*Vinxi will be removed before version 1.0.0 is released and TanStack will rely only on Vite and Nitro. The commands and APIs that use Vinxi will likely be replaced with a Vite plugin or dedicated TanStack Start CLI.
+TanStack Start is (currently\*) powered by [Vite](https://vite.dev/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
 
 To install them, run:
 
 ```shell
-npm i @tanstack/react-start @tanstack/react-router vinxi
+npm i @tanstack/react-start @tanstack/react-router vite
 ```
 
 You'll also need React and the Vite React plugin, so install them too:
@@ -72,16 +70,16 @@ npm i -D typescript @types/react @types/react-dom
 
 ## Update Configuration Files
 
-We'll then update our `package.json` to use Vinxi's CLI and set `"type": "module"`:
+We'll then update our `package.json` to set `"type": "module"`:
 
 ```json
 {
   // ...
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
   }
 }
 ```
@@ -189,7 +187,6 @@ router information to our client entry point:
 
 ```tsx
 // app/client.tsx
-/// <reference types="vinxi/types/client" />
 import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/react-start'
 import { createRouter } from './router'

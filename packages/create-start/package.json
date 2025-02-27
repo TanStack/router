@@ -70,7 +70,6 @@
     "@types/react-dom": "^19.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.1",
     "vite": "^6.0.3"
   },
   "peerDependenciesMeta": {
@@ -96,9 +95,6 @@
       "optional": true
     },
     "react-dom": {
-      "optional": true
-    },
-    "vinxi": {
       "optional": true
     },
     "vite": {
