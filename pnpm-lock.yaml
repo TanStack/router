@@ -111,8 +111,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1
       tinyglobby:
-        specifier: ^0.2.10
-        version: 0.2.11
+        specifier: ^0.2.12
+        version: 0.2.12
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -12716,6 +12716,10 @@ packages:
     resolution: {integrity: sha512-32TmKeeKUahv0Go8WmQgiEp9Y21NuxjwjqiRC1nrUB51YacfSwuB44xgXD+HdIppmMRgjQNPdrHyA6vIybYZ+g==}
     engines: {node: '>=12.0.0'}
 
+  tinyglobby@0.2.12:
+    resolution: {integrity: sha512-qkf4trmKSIiMTs/E63cxH+ojC2unam7rJ0WrauAzpT3ECNTxGRMlaXxVbfxMUC/w0LaYk6jQ4y/nGR9uBO3tww==}
+    engines: {node: '>=12.0.0'}
+
   tinygradient@1.1.5:
     resolution: {integrity: sha512-8nIfc2vgQ4TeLnk2lFj4tRLvvJwEfQuabdsmvDdQPT0xlk9TaNtpGd6nNRxXoK6vQhN6RSzj+Cnp5tTQmpxmbw==}
 
@@ -16482,7 +16486,7 @@ snapshots:
       flatted: 3.3.2
       pathe: 2.0.3
       sirv: 3.0.1
-      tinyglobby: 0.2.11
+      tinyglobby: 0.2.12
       tinyrainbow: 2.0.0
       vitest: 3.0.6(@types/node@22.13.4)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.4.2)(jsdom@25.0.1)(lightningcss@1.29.1)(msw@2.7.0(@types/node@22.13.4)(typescript@5.7.3))(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
@@ -20843,6 +20847,11 @@ snapshots:
   tinyexec@0.3.2: {}
 
   tinyglobby@0.2.11:
+    dependencies:
+      fdir: 6.4.3(picomatch@4.0.2)
+      picomatch: 4.0.2
+
+  tinyglobby@0.2.12:
     dependencies:
       fdir: 6.4.3(picomatch@4.0.2)
       picomatch: 4.0.2
