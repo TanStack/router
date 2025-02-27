@@ -1,6 +1,8 @@
 import { createMiddleware } from '@tanstack/react-start'
 
-const preLogMiddleware = createMiddleware()
+//
+
+const serverLogMiddleware = createMiddleware()
   .client(async (ctx) => {
     const clientTime = new Date()
 
@@ -26,7 +28,7 @@ const preLogMiddleware = createMiddleware()
   })
 
 export const logMiddleware = createMiddleware()
-  .middleware([preLogMiddleware])
+  .middleware([serverLogMiddleware])
   .client(async (ctx) => {
     const res = await ctx.next()
 

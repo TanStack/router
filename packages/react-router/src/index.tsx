@@ -347,3 +347,5 @@ export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'
+
+export { createSsrError, isSsrError } from './ssr-error'

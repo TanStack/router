@@ -134,7 +134,9 @@ export function hydrate(router: AnyRouter) {
     )
 
     if (dehydratedMatch) {
-      Object.assign(match, dehydratedMatch)
+      Object.assign(match, dehydratedMatch, {
+        dehydrated: true,
+      })
 
       const parentMatch = matches[match.index - 1]
       const parentContext = parentMatch?.context ?? router.options.context ?? {}
@@ -167,11 +169,6 @@ export function hydrate(router: AnyRouter) {
       // Handle extracted
       ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
         deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
-      })
-    } else {
-      Object.assign(match, {
-        status: 'success',
-        updatedAt: Date.now(),
       })
     }
 
