@@ -17,12 +17,7 @@ export type SerializerParseBy<T, TSerializable> = T extends TSerializable
     ? ReadableStream
     : { [K in keyof T]: SerializerParseBy<T[K], TSerializable> }
 
-export type Serializable =
-  | Date
-  | undefined
-  | Error
-  | FormData
-  | bigint
+export type Serializable = Date | undefined | Error | FormData | bigint
 
 export type SerializerStringify<T> = SerializerStringifyBy<T, Serializable>
 
