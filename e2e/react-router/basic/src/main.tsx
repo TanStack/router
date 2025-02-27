@@ -7,6 +7,8 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useLocation,
+  useNavigate,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
@@ -59,6 +61,15 @@ function RootComponent() {
           }}
         >
           Layout
+        </Link>{' '}
+        <Link
+          to="/search-param-binding"
+          search={{}}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Search Param Binding
         </Link>{' '}
         <Link
           // @ts-expect-error
@@ -205,11 +216,73 @@ function LayoutBComponent() {
   return <div>I'm layout B!</div>
 }
 
+const searchParamBindingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/search-param-binding',
+  component: SearchParamBindingComponent,
+  validateSearch: (input): { filter?: string } => {
+    return {
+      filter: typeof input.filter === 'string' ? input.filter : undefined,
+    }
+  },
+})
+
+function SearchParamBindingComponent() {
+  const navigate = useNavigate()
+
+  const useLocationFilter = useLocation()
+
+  const useSearchFilter = searchParamBindingRoute.useSearch()
+
+  const useMatchFilter = searchParamBindingRoute.useMatch()
+
+  return (
+    <div>
+      <div>useLocation</div>
+      <input
+        data-testid="useLocation-filter"
+        value={useLocationFilter.search.filter}
+        onChange={(e) =>
+          navigate({
+            to: '.',
+            search: { filter: e.target.value },
+          })
+        }
+      />
+
+      <div>useSearch</div>
+      <input
+        data-testid="useSearch-filter"
+        value={useSearchFilter.filter}
+        onChange={(e) =>
+          navigate({
+            to: '.',
+            search: { filter: e.target.value },
+          })
+        }
+      />
+
+      <div>useMatch</div>
+      <input
+        data-testid="useMatch-filter"
+        value={useMatchFilter.search.filter}
+        onChange={(e) =>
+          navigate({
+            to: '.',
+            search: { filter: e.target.value },
+          })
+        }
+      />
+    </div>
+  )
+}
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   layoutRoute.addChildren([
     layout2Route.addChildren([layoutARoute, layoutBRoute]),
   ]),
+  searchParamBindingRoute,
   indexRoute,
 ])
 
