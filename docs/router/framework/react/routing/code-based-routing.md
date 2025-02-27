@@ -30,10 +30,10 @@ routes/
 ├── settings/
 │   ├── profile.tsx
 │   ├── notifications.tsx
-├── _layout.tsx
-├── _layout/
-│   ├── layout-a.tsx
-├── ├── layout-b.tsx
+├── _pathlessLayout.tsx
+├── _pathlessLayout/
+│   ├── route-a.tsx
+├── ├── route-b.tsx
 ├── files/
 │   ├── $.tsx
 ```
@@ -90,19 +90,19 @@ const notificationsRoute = createRoute({
   path: 'notifications',
 })
 
-const layoutRoute = createRoute({
+const pathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: 'layout',
+  id: 'pathlessLayout',
 })
 
-const layoutARoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: 'layout-a',
+const pathlessLayoutARoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-a',
 })
 
-const layoutBRoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: 'layout-b',
+const pathlessLayoutBRoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-b',
 })
 
 const filesRoute = createRoute({
@@ -130,7 +130,7 @@ The `getParentRoute` option is a function that returns the parent route of the r
 Absolutely! The reason for passing the parent route has **everything to do with the magical type safety** of TanStack Router. Without the parent route, TypeScript would have no idea what types to supply your route with!
 
 > [!IMPORTANT]
-> For every route that **is not the root route or a pathless route**, a `path` option is required. This is the path that will be matched against the URL pathname to determine if the route is a match.
+> For every route that **NOT** the **Root Route** or a **Pathless Layout Route**, a `path` option is required. This is the path that will be matched against the URL pathname to determine if the route is a match.
 
 When configuring route `path` option on a route, it ignores leading and trailing slashes (this does not include "index" route paths `/`). You can include them if you want, but they will be normalized internally by TanStack Router. Here is a table of valid paths and what they will be normalized to:
 
@@ -162,9 +162,9 @@ const routeTree = rootRoute.addChildren([
     profileRoute,
     notificationsRoute,
   ]),
-  layoutRoute.addChildren([
-    layoutARoute,
-    layoutBRoute,
+  pathlessLayoutRoute.addChildren([
+    pathlessLayoutARoute,
+    pathlessLayoutBRoute,
   ]),
   filesRoute.addChildren([
     fileRoute,
@@ -295,46 +295,52 @@ For the URL `/documents/hello-world`, the `params` object will look like this:
 }
 ```
 
-## Pathless Routes
+## Layout Routes
 
-In file-based routing a pathless route is prefixed with a `_`, but in code-based routing, a pathless route is simply a route with an `id` instead of a `path` option. This is because code-based routing does not use the filesystem to organize routes, so there is no need to prefix a route with a `_` to denote that it has no path.
+<!-- TODO -->
+
+TODO, Layout routes are an extension of Basic routes that allow you to wrap child routes with a layout component.
+
+## Pathless Layout Routes
+
+In file-based routing a pathless layout route is prefixed with a `_`, but in code-based routing, this is simply a route with an `id` instead of a `path` option. This is because code-based routing does not use the filesystem to organize routes, so there is no need to prefix a route with a `_` to denote that it has no path.
 
 ```tsx
-const layoutRoute = createRoute({
+const pathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: 'layout',
-  component: LayoutComponent,
+  id: 'pathlessLayout',
+  component: PathlessLayoutComponent,
 })
 
-const layoutARoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: 'layout-a',
+const pathlessLayoutARoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-a',
 })
 
-const layoutBRoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: 'layout-b',
+const pathlessLayoutBRoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-b',
 })
 
 const routeTree = rootRoute.addChildren([
-  // The layout route has no path, only an id
-  // So its children will be nested under the layout route
-  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
+  // The pathless layout route has no path, only an id
+  // So its children will be nested under the pathless layout route
+  pathlessLayoutRoute.addChildren([pathlessLayoutARoute, pathlessLayoutBRoute]),
 ])
 ```
 
-Now both `/layout-a` and `/layout-b` will render their contents inside of the `LayoutComponent`:
+Now both `/route-a` and `/route-b` will render their contents inside of the `PathlessLayoutComponent`:
 
 ```tsx
-// URL: /layout-a
-<LayoutComponent>
-  <LayoutAComponent />
-</LayoutComponent>
+// URL: /route-a
+<PathlessLayoutComponent>
+  <PathlessLayoutAComponent />
+</PathlessLayoutComponent>
 
-// URL: /layout-b
-<LayoutComponent>
-  <LayoutBComponent />
-</LayoutComponent>
+// URL: /route-b
+<PathlessLayoutComponent>
+  <PathlessLayoutBComponent />
+</PathlessLayoutComponent>
 ```
 
 ## Non-Nested Routes

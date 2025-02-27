@@ -18,14 +18,14 @@ The `RouteOptions` type accepts an object with the following properties:
 ### `path` property
 
 - Type: `string`
-- Required, unless an `id` is provided to configure the route as a layout route
+- Required, unless an `id` is provided to configure the route as a pathless layout route
 - The path segment that will be used to match the route.
 
 ### `id` property
 
 - Type: `string`
 - Optional, but required if a `path` is not provided
-- The unique identifier for the route if it is to be configured as a layout route. If provided, the, the route will not match against the location pathname and its routes will be flattened into its parent route for matching.
+- The unique identifier for the route if it is to be configured as a pathless layout route. If provided, the, the route will not match against the location pathname and its routes will be flattened into its parent route for matching.
 
 ### `component` property
 

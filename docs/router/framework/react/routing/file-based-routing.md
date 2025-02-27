@@ -41,10 +41,10 @@ See the example below:
 | 📂 `settings`           |                           | `<Root><Settings>`                |
 | ┄ ʦ `profile.tsx`       | `/settings/profile`       | `<Root><Settings><Profile>`       |
 | ┄ ʦ `notifications.tsx` | `/settings/notifications` | `<Root><Settings><Notifications>` |
-| ʦ `_layout.tsx`         |                           | `<Root><Layout>`                  |
-| 📂 `_layout`            |                           |                                   |
-| ┄ ʦ `layout-a.tsx`      | `/layout-a`               | `<Root><Layout><LayoutA>`         |
-| ┄ ʦ `layout-b.tsx`      | `/layout-b`               | `<Root><Layout><LayoutB>`         |
+| ʦ `_pathless.tsx`       |                           | `<Root><Pathless>`                |
+| 📂 `_pathless`          |                           |                                   |
+| ┄ ʦ `pathless-a.tsx`    | `/pathless-a`             | `<Root><Pathless><PathlessA>`     |
+| ┄ ʦ `pathless-b.tsx`    | `/pathless-b`             | `<Root><Pathless><PathlessB>`     |
 | 📂 `files`              |                           |                                   |
 | ┄ ʦ `$.tsx`             | `/files/$`                | `<Root><Files>`                   |
 
@@ -68,9 +68,9 @@ See the example below:
 | ʦ `settings.tsx`               | `/settings`               | `<Root><Settings>`                |
 | ʦ `settings.profile.tsx`       | `/settings/profile`       | `<Root><Settings><Profile>`       |
 | ʦ `settings.notifications.tsx` | `/settings/notifications` | `<Root><Settings><Notifications>` |
-| ʦ `_layout.tsx`                |                           | `<Root><Layout>`                  |
-| ʦ `_layout.layout-a.tsx`       | `/layout-a`               | `<Root><Layout><LayoutA>`         |
-| ʦ `_layout.layout-b.tsx`       | `/layout-b`               | `<Root><Layout><LayoutB>`         |
+| ʦ `_pathless.tsx`              |                           | `<Root><Pathless>`                |
+| ʦ `_pathless.pathless-a.tsx`   | `/pathless-a`             | `<Root><Pathless><PathlessA>`     |
+| ʦ `_pathless.pathless-b.tsx`   | `/pathless-b`             | `<Root><Pathless><PathlessB>`     |
 | ʦ `files.$.tsx`                | `/files/$`                | `<Root><Files>`                   |
 
 ## Mixed Flat and Directory Routes

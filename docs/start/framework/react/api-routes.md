@@ -29,9 +29,9 @@ It's important to remember that each route can only have a single handler file a
 - `routes/api.users.ts`.
 - `routes/api.users.index.ts`.
 
-❗ One more thing, API Routes do not have the concept of pathless/layout routes or parallel routes. So, a file named:
+❗ One more thing, API Routes do not have the concept of pathless layout routes or parallel routes. So, a file named:
 
-- `routes/api/_layout/users.ts` would resolve to `/api/_layout/users` and **NOT** `/api/users`.
+- `routes/api/_pathless/users.ts` would resolve to `/api/_pathless/users` and **NOT** `/api/users`.
 
 ## Nested Directories vs File-names
 

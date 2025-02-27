@@ -94,7 +94,7 @@ This enables us to kick off client-side routing once the user's initial server r
 
 ## The Root of Your Application
 
-Other than the client entry point, the `__root` route of your application is the entry point for your application. The code in this file will wrap all other routes in the app, including your home page. It behaves like a layout route for your whole application.
+Other than the client entry point, the `__root` route of your application is the entry point for your application. The code in this file will wrap all other routes in the app, including your home page. It behaves like a pathless layout route for your whole application.
 
 Because it is **always rendered**, it is the perfect place to construct your application shell and take care of any global logic.
 
@@ -149,7 +149,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 ```
 
-- This layout may change in the future as we roll out SPA mode, which allows the root route to render the SPA shell without any page-specific content.
+- This pathless layout may change in the future as we roll out SPA mode, which allows the root route to render the SPA shell without any page-specific content.
 - Notice the `Scripts` component. This is used to load all of the client-side JavaScript for the application.
 
 ## Routes

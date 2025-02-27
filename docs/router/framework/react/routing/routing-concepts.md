@@ -151,11 +151,11 @@ For example, a route targeting the `files/$` path is a splat route. If the URL p
 
 TODO, Layout routes are an extension of Basic routes that allow you to wrap child routes with a layout component.
 
-## Pathless Routes
+## Pathless Layout Routes
 
-Routes that are prefixed with an underscore (`_`) are considered "pathless" and are used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL. You can use pathless routes to:
+Routes that are prefixed with an underscore (`_`) are considered "pathless" and are used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL. You can use pathless layout routes to:
 
-- Wrap child routes with a layout component
+- Wrap child routes with a pathless layout component
 - Enforce a `loader` requirement before displaying any child routes
 - Validate and provide search params to child routes
 - Provide fallbacks for error components or pending elements to child routes
@@ -167,24 +167,26 @@ Let's take a look at an example route called `_pathless.tsx`:
 
 ```
 routes/
-├── _pathless.tsx
-├── _pathless.a.tsx
-├── _pathless.b.tsx
+├── _pathlessLayout.tsx
+├── _pathlessLayout.route-a.tsx
+├── _pathlessLayout.route-b.tsx
 ```
 
-In the tree above, `_pathless.tsx` is a pathless route that wraps two child routes, `_pathless.a.tsx` and `_pathless.b.tsx`. The `_pathless.tsx` route is used to wrap the child routes with a layout component:
+In the tree above, `_pathlessLayout.tsx` is a pathless layout route that wraps two child routes, `_pathlessLayout.route-a.tsx` and `_pathlessLayout.route-b.tsx`.
+
+The `_pathlessLayout.tsx` route is used to wrap the child routes with a Pathless layout component:
 
 ```tsx
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_pathless')({
-  component: LayoutComponent,
+  component: PathlessLayoutComponent,
 })
 
-function LayoutComponent() {
+function PathlessLayoutComponent() {
   return (
     <div>
-      <h1>Layout</h1>
+      <h1>Pathless layout</h1>
       <Outlet />
     </div>
   )
@@ -193,11 +195,11 @@ function LayoutComponent() {
 
 The following table shows which component will be rendered based on the URL:
 
-| URL Path | Component     |
-| -------- | ------------- |
-| `/`      | `<Index>`     |
-| `/a`     | `<Layout><A>` |
-| `/b`     | `<Layout><B>` |
+| URL Path | Component             |
+| -------- | --------------------- |
+| `/`      | `<Index>`             |
+| `/a`     | `<PathlessLayout><A>` |
+| `/b`     | `<PathlessLayout><B>` |
 
 ## Non-Nested Routes
 
