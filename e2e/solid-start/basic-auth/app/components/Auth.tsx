@@ -1,4 +1,4 @@
-import * as Solid from 'solid-js';
+import * as Solid from 'solid-js'
 export function Auth({
   actionText,
   onSubmit,
