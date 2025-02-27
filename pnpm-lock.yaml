@@ -4531,14 +4531,8 @@ importers:
 
   examples/solid/basic-file-based:
     dependencies:
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: workspace:^
+        specifier: ^1.111.11
         version: link:../../../packages/solid-router
       autoprefixer:
         specifier: ^10.4.20
@@ -4559,6 +4553,9 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
     devDependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -4596,6 +4593,9 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
     devDependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -4615,7 +4615,7 @@ importers:
         specifier: ^5.66.0
         version: 5.66.0(@tanstack/solid-query@5.66.0(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: workspace:^
+        specifier: ^1.111.11
         version: link:../../../packages/solid-router
       autoprefixer:
         specifier: ^10.4.20
@@ -4639,6 +4639,9 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
       vite:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
@@ -4648,12 +4651,6 @@ importers:
 
   examples/solid/kitchen-sink-file-based:
     dependencies:
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
         specifier: ^1.111.11
         version: link:../../../packages/solid-router
@@ -4679,6 +4676,9 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
     devDependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
@@ -4691,14 +4691,8 @@ importers:
 
   examples/solid/quickstart-file-based:
     dependencies:
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: workspace:^
+        specifier: ^1.111.11
         version: link:../../../packages/solid-router
       autoprefixer:
         specifier: ^10.4.20
@@ -4719,6 +4713,9 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
     devDependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
       typescript:
         specifier: ^5.7.2
         version: 5.7.3

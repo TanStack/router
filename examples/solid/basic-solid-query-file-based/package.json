@@ -12,7 +12,7 @@
   "dependencies": {
     "@tanstack/solid-query": "^5.66.0",
     "@tanstack/solid-query-devtools": "^5.66.0",
-    "@tanstack/solid-router": "workspace:^",
+    "@tanstack/solid-router": "^1.111.11",
     "solid-js": "^1.9.4",
     "redaxios": "^0.5.1",
     "postcss": "^8.5.1",
@@ -21,8 +21,9 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "workspace:^",
-    "vite-plugin-solid": "^2.11.2",
-    "vite": "^6.1.0"
+    "@tanstack/router-plugin": "^1.111.12",
+    "typescript": "^5.7.2",
+    "vite": "^6.1.0",
+    "vite-plugin-solid": "^2.11.2"
   }
 }

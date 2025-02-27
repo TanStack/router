@@ -3,7 +3,6 @@ import {
   Outlet,
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import type { QueryClient } from '@tanstack/solid-query'
 
@@ -63,7 +62,6 @@ function RootComponent() {
       <hr />
       <Outlet />
       <SolidQueryDevtools buttonPosition="top-right" />
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
     </>
   )
 }
