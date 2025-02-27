@@ -21,7 +21,7 @@ export function getFullRouterManifest() {
 
   rootRoute.assets = rootRoute.assets || []
 
-  let script = ''
+  const script = ''
   // Always fake that HMR is ready
   if (process.env.NODE_ENV === 'development') {
     const CLIENT_BASE = sanitizeBase(process.env.TSS_CLIENT_BASE || '')

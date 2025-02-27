@@ -2,8 +2,8 @@
 // // @ts-expect-error
 // import * as reactDom from '@vinxi/react-server-dom/client'
 // import { isValidElement } from 'solid-js'
-import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
+import type * as Solid from 'solid-js'
 
 export function renderRsc(input: any): Solid.JSX.Element {
   // TODO:  isValidElement
