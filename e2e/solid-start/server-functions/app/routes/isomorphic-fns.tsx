@@ -37,7 +37,7 @@ function RouteComponent() {
     ])
     setResults({ envOnClick, echo, serverEnv, serverEcho })
   }
-  const { envOnClick, echo, serverEnv, serverEcho } = results() || {}
+  
   return (
     <div>
       <button onClick={handleClick} data-testid="test-isomorphic-results-btn">
@@ -49,9 +49,9 @@ function RouteComponent() {
             <code>getEnv</code>
           </h1>
           When we called the function on the server it returned:
-          <pre data-testid="server-result">{JSON.stringify(serverEnv)}</pre>
+          <pre data-testid="server-result">{JSON.stringify(results()?.serverEnv)}</pre>
           When we called the function on the client it returned:
-          <pre data-testid="client-result">{JSON.stringify(envOnClick)}</pre>
+          <pre data-testid="client-result">{JSON.stringify(results()?.envOnClick)}</pre>
           When we called the function during SSR it returned:
           <pre data-testid="ssr-result">
             {JSON.stringify(loaderData().envOnLoad)}
@@ -62,10 +62,10 @@ function RouteComponent() {
           </h1>
           When we called the function on the server it returned:
           <pre data-testid="server-echo-result">
-            {JSON.stringify(serverEcho)}
+            {JSON.stringify(results()?.serverEcho)}
           </pre>
           When we called the function on the client it returned:
-          <pre data-testid="client-echo-result">{JSON.stringify(echo)}</pre>
+          <pre data-testid="client-echo-result">{JSON.stringify(results()?.echo)}</pre>
         </div>
       )}
     </div>
