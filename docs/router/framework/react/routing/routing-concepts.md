@@ -230,9 +230,9 @@ Let's take a look at an example route called `_pathlessLayout.tsx`:
 ```
 
 routes/
-├── \_pathlessLayout.tsx
-├── \_pathlessLayout.a.tsx
-├── \_pathlessLayout.b.tsx
+├── _pathlessLayout.tsx
+├── _pathlessLayout.a.tsx
+├── _pathlessLayout.b.tsx
 
 ```
 
