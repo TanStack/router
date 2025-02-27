@@ -21,19 +21,19 @@ export const Route = createFileRoute('/consistent')({
 
 const cons_getFn1 = createServerFn()
   .validator((d: { username: string }) => d)
-  .handler(async ({ data }) => {
+  .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverGetFn1 = createServerFn()
   .validator((d: { username: string }) => d)
-  .handler(({ data }) => {
+  .handler(async ({ data }) => {
     return cons_getFn1({ data })
   })
 
 const cons_postFn1 = createServerFn({ method: 'POST' })
   .validator((d: { username: string }) => d)
-  .handler(async ({ data }) => {
+  .handler(({ data }) => {
     return { payload: data }
   })
 
@@ -111,9 +111,7 @@ function ConsistentServerFnCalls() {
           )
           cons_postFn1({ data: { username: 'TEST' } }).then(setPostDirectResult)
 
-          cons_postFn1({ data: { username: 'TEST' }, fullResponse: true }).then(
-            setPostDirectResult,
-          )
+          cons_postFn1({ data: { username: 'TEST' } }).then(setPostDirectResult)
         }}
       >
         Test Consistent server function responses

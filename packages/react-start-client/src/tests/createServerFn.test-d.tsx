@@ -1,6 +1,7 @@
-import { expectTypeOf, test } from 'vitest'
+import { describe, expectTypeOf, test } from 'vitest'
 import { createServerFn } from '../createServerFn'
 import { createMiddleware } from '../createMiddleware'
+import type { ServerFnResponseType } from '../createServerFn'
 import type { Constrain, Validator } from '@tanstack/router-core'
 
 test('createServerFn method with autocomplete', () => {
@@ -20,21 +21,23 @@ test('createServerFn without middleware', () => {
       context: undefined
       data: undefined
       signal: AbortSignal
+      response: ServerFnResponseType
     }>()
   })
 })
 
 test('createServerFn with validator', () => {
-  const fnAfterValidator = createServerFn({ method: 'GET' }).validator(
-    (input: { input: string }) => ({
-      a: input.input,
-    }),
-  )
+  const fnAfterValidator = createServerFn({
+    method: 'GET',
+  }).validator((input: { input: string }) => ({
+    a: input.input,
+  }))
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
   expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
       method: 'GET'
@@ -43,18 +46,19 @@ test('createServerFn with validator', () => {
         a: string
       }
       signal: AbortSignal
+      response: ServerFnResponseType
     }>()
   })
 
-  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+  expectTypeOf<Parameters<typeof fn>[0]>().toEqualTypeOf<{
     data: { input: string }
     headers?: HeadersInit
     type?: 'static' | 'dynamic'
-    fullResponse?: boolean
     signal?: AbortSignal
+    response?: ServerFnResponseType | undefined
   }>()
 
-  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
+  expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn with middleware and context', () => {
@@ -105,6 +109,7 @@ test('createServerFn with middleware and context', () => {
       }
       data: undefined
       signal: AbortSignal
+      response: ServerFnResponseType
     }>()
   })
 })
@@ -144,12 +149,13 @@ test('createServerFn with middleware and validator', () => {
           readonly outputC: 'outputC'
         }
         signal: AbortSignal
+        response: ServerFnResponseType
       }>()
 
       return 'data' as const
     })
 
-  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+  expectTypeOf<Parameters<typeof fn>[0]>().toEqualTypeOf<{
     data: {
       readonly inputA: 'inputA'
       readonly inputB: 'inputB'
@@ -157,22 +163,22 @@ test('createServerFn with middleware and validator', () => {
     }
     headers?: HeadersInit
     type?: 'static' | 'dynamic'
-    fullResponse?: boolean
     signal?: AbortSignal
+    response?: ServerFnResponseType
   }>()
 
-  expectTypeOf(fn).returns.resolves.toEqualTypeOf<'data'>()
+  expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<'data'>()
 
   expectTypeOf(() =>
     fn({
-      fullResponse: false,
+      response: 'data',
       data: { inputA: 'inputA', inputB: 'inputB', inputC: 'inputC' },
     }),
   ).returns.resolves.toEqualTypeOf<'data'>()
 
   expectTypeOf(() =>
     fn({
-      fullResponse: true,
+      response: 'full',
       data: { inputA: 'inputA', inputB: 'inputB', inputC: 'inputC' },
     }),
   ).returns.resolves.toEqualTypeOf<{
@@ -255,6 +261,7 @@ test('createServerFn where validator is a primitive', () => {
         context: undefined
         data: 'c'
         signal: AbortSignal
+        response: ServerFnResponseType
       }>()
     })
 })
@@ -268,21 +275,22 @@ test('createServerFn where validator is optional if object is optional', () => {
         context: undefined
         data: 'c' | undefined
         signal: AbortSignal
+        response: ServerFnResponseType
       }>()
     })
 
-  expectTypeOf(fn).parameter(0).toEqualTypeOf<
+  expectTypeOf<Parameters<typeof fn>[0]>().toEqualTypeOf<
     | {
         data?: 'c' | undefined
         headers?: HeadersInit
         type?: 'static' | 'dynamic'
-        fullResponse?: boolean
         signal?: AbortSignal
+        response?: ServerFnResponseType
       }
     | undefined
   >()
 
-  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
+  expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn where data is optional if there is no validator', () => {
@@ -292,21 +300,22 @@ test('createServerFn where data is optional if there is no validator', () => {
       context: undefined
       data: undefined
       signal: AbortSignal
+      response: ServerFnResponseType
     }>()
   })
 
-  expectTypeOf(fn).parameter(0).toEqualTypeOf<
+  expectTypeOf<Parameters<typeof fn>[0]>().toEqualTypeOf<
     | {
         data?: undefined
         headers?: HeadersInit
         type?: 'static' | 'dynamic'
-        fullResponse?: boolean
         signal?: AbortSignal
+        response?: Constrain<ServerFnResponseType, ServerFnResponseType>
       }
     | undefined
   >()
 
-  expectTypeOf(fn).returns.resolves.toEqualTypeOf<void>()
+  expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
 })
 
 test('createServerFn returns Date', () => {
@@ -389,10 +398,50 @@ test('createServerFn can validate FormData', () => {
     >()
 })
 
-test('createServerFn with rawResponse:true', () => {
-  const fn = createServerFn({ rawResponse: true }).handler(() => {
-    return new Response('Hello World')
+describe('response', () => {
+  describe('data', () => {
+    test(`response: ServerFnResponseType is passed into handler`, () => {
+      createServerFn({ response: 'data' }).handler((options) => {
+        expectTypeOf(options.response).toEqualTypeOf<ServerFnResponseType>()
+      })
+    })
+  })
+  describe('full', () => {
+    test(`response: ServerFnResponseType is passed into handler`, () => {
+      createServerFn({ response: 'full' }).handler((options) => {
+        expectTypeOf(options.response).toEqualTypeOf<ServerFnResponseType>()
+      })
+    })
   })
 
-  expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
+  describe('raw', () => {
+    test(`response: 'raw' is passed into handler`, () => {
+      createServerFn({ response: 'raw' }).handler((options) => {
+        expectTypeOf(options.response).toEqualTypeOf<'raw'>()
+      })
+    })
+  })
+  test(`client receives Response when Response is returned`, () => {
+    const fn = createServerFn({ response: 'raw' }).handler(() => {
+      return new Response('Hello World')
+    })
+
+    expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
+  })
+
+  test(`client receives Response when ReadableStream is returned`, () => {
+    const fn = createServerFn({ response: 'raw' }).handler(() => {
+      return new ReadableStream()
+    })
+
+    expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
+  })
+
+  test(`client receives Response when string is returned`, () => {
+    const fn = createServerFn({ response: 'raw' }).handler(() => {
+      return 'hello'
+    })
+
+    expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
+  })
 })

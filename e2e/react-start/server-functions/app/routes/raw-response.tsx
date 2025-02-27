@@ -7,11 +7,9 @@ export const Route = createFileRoute('/raw-response')({
 })
 
 const expectedValue = 'Hello from a server function!'
-export const rawResponseFn = createServerFn({ rawResponse: true }).handler(
-  () => {
-    return new Response(expectedValue)
-  },
-)
+export const rawResponseFn = createServerFn({ response: 'raw' }).handler(() => {
+  return new Response(expectedValue)
+})
 
 function RouteComponent() {
   const [formDataResult, setFormDataResult] = React.useState({})
@@ -28,8 +26,9 @@ function RouteComponent() {
 
       <button
         onClick={async () => {
-          const response = await rawResponseFn({})
+          const response = await rawResponseFn()
           console.log('response', response)
+
           const text = await response.text()
           setFormDataResult(text)
         }}
