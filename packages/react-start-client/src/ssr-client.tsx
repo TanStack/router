@@ -9,7 +9,11 @@ import type {
   MakeRouteMatch,
 } from '@tanstack/react-router'
 
-import type { DeferredPromiseState, Manifest } from '@tanstack/router-core'
+import type {
+  DeferredPromiseState,
+  Manifest,
+  RouteContextOptions,
+} from '@tanstack/router-core'
 
 declare global {
   interface Window {
@@ -122,13 +126,9 @@ export function hydrate(router: AnyRouter) {
       return router.loadRouteChunk(route)
     }),
   )
+  // Right after hydration and before the first render, we need to rehydrate each match
+  // First step is to reyhdrate loaderData and __beforeLoadContext
   matches.forEach((match) => {
-    const route = router.looseRoutesById[match.routeId]!
-
-    // Right after hydration and before the first render, we need to rehydrate each match
-    // This includes rehydrating the loaderData and also using the beforeLoadContext
-    // to reconstruct any context that was serialized on the server
-
     const dehydratedMatch = window.__TSR_SSR__!.matches.find(
       (d) => d.id === match.id,
     )
@@ -136,20 +136,11 @@ export function hydrate(router: AnyRouter) {
     if (dehydratedMatch) {
       Object.assign(match, dehydratedMatch)
 
-      const parentMatch = matches[match.index - 1]
-      const parentContext = parentMatch?.context ?? router.options.context ?? {}
-
       // Handle beforeLoadContext
       if (dehydratedMatch.__beforeLoadContext) {
         match.__beforeLoadContext = router.ssr!.serializer.parse(
           dehydratedMatch.__beforeLoadContext,
         ) as any
-
-        match.context = {
-          ...parentContext,
-          ...match.__routeContext,
-          ...match.__beforeLoadContext,
-        }
       }
 
       // Handle loaderData
@@ -175,6 +166,51 @@ export function hydrate(router: AnyRouter) {
       })
     }
 
+    return match
+  })
+
+  router.__store.setState((s) => {
+    return {
+      ...s,
+      matches,
+    }
+  })
+
+  // Allow the user to handle custom hydration data
+  router.options.hydrate?.(dehydratedData)
+
+  // now that all necessary data is hydrated:
+  // 1) fully reconstruct the route context
+  // 2) execute `head()` and `scripts()` for each match
+  router.state.matches.forEach((match) => {
+    const route = router.looseRoutesById[match.routeId]!
+
+    const parentMatch = router.state.matches[match.index - 1]
+    const parentContext = parentMatch?.context ?? router.options.context ?? {}
+
+    // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
+    // so run it again and merge route context
+    const contextFnContext: RouteContextOptions<any, any, any, any> = {
+      deps: match.loaderDeps,
+      params: match.params,
+      context: parentContext,
+      location: router.state.location,
+      navigate: (opts: any) =>
+        router.navigate({ ...opts, _fromLocation: router.state.location }),
+      buildLocation: router.buildLocation,
+      cause: match.cause,
+      abortController: match.abortController,
+      preload: false,
+      matches,
+    }
+    match.__routeContext = route.options.context?.(contextFnContext) ?? {}
+
+    match.context = {
+      ...parentContext,
+      ...match.__routeContext,
+      ...match.__beforeLoadContext,
+    }
+
     const assetContext = {
       matches: router.state.matches,
       match,
@@ -189,19 +225,8 @@ export function hydrate(router: AnyRouter) {
     match.links = headFnContent?.links
     match.headScripts = headFnContent?.scripts
     match.scripts = scripts
-
-    return match
   })
 
-  router.__store.setState((s) => {
-    return {
-      ...s,
-      matches,
-    }
-  })
-
-  // Allow the user to handle custom hydration data
-  router.options.hydrate?.(dehydratedData)
   return routeChunkPromise
 }
 
