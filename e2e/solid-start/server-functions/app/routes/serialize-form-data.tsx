@@ -72,7 +72,7 @@ export function SerializeFormDataFnCall() {
       </form>
       <div class="overflow-y-auto">
         <pre data-testid="serialize-formdata-form-response">
-          {JSON.stringify(formDataResult)}
+          {JSON.stringify(formDataResult())}
         </pre>
       </div>
     </div>
