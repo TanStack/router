@@ -55,6 +55,9 @@ export async function serverFnFetcher(
     } else {
       url += `?createServerFn`
     }
+    if (first.response === 'raw') {
+      url += `&raw`
+    }
 
     const handlerResponse = await handler(url, {
       method: first.method,

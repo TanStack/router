@@ -75,6 +75,7 @@ async function handleServerRequest({
   }
 
   const isCreateServerFn = 'createServerFn' in search
+  const isRaw = 'raw' in search
 
   if (typeof serverFnId !== 'string') {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
@@ -276,6 +277,9 @@ async function handleServerRequest({
   })()
   event.node.req.removeListener('close', abort)
 
+  if (isRaw) {
+    return response
+  }
   if (process.env.NODE_ENV === 'development')
     console.info(`ServerFn Response: ${response.status}`)
 
