@@ -22,7 +22,6 @@ export type Serializable =
   | undefined
   | Error
   | FormData
-  | Response
   | bigint
 
 export type SerializerStringify<T> = SerializerStringifyBy<T, Serializable>
