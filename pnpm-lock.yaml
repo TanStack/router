@@ -4606,6 +4606,46 @@ importers:
         specifier: ^2.11.2
         version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  examples/solid/basic-solid-query-file-based:
+    dependencies:
+      '@tanstack/solid-query':
+        specifier: ^5.66.0
+        version: 5.66.0(solid-js@1.9.5)
+      '@tanstack/solid-query-devtools':
+        specifier: ^5.66.0
+        version: 5.66.0(@tanstack/solid-query@5.66.0(solid-js@1.9.5))(solid-js@1.9.5)
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.4
+        version: 1.9.5
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
+    devDependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   examples/solid/kitchen-sink-file-based:
     dependencies:
       '@tanstack/router-devtools':
@@ -15915,10 +15955,21 @@ snapshots:
       '@tanstack/solid-query': 5.66.0(solid-js@1.9.4)
       solid-js: 1.9.4
 
+  '@tanstack/solid-query-devtools@5.66.0(@tanstack/solid-query@5.66.0(solid-js@1.9.5))(solid-js@1.9.5)':
+    dependencies:
+      '@tanstack/query-devtools': 5.65.0
+      '@tanstack/solid-query': 5.66.0(solid-js@1.9.5)
+      solid-js: 1.9.5
+
   '@tanstack/solid-query@5.66.0(solid-js@1.9.4)':
     dependencies:
       '@tanstack/query-core': 5.66.0
       solid-js: 1.9.4
+
+  '@tanstack/solid-query@5.66.0(solid-js@1.9.5)':
+    dependencies:
+      '@tanstack/query-core': 5.66.0
+      solid-js: 1.9.5
 
   '@tanstack/solid-store@0.7.0(solid-js@1.9.4)':
     dependencies:
