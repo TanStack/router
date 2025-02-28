@@ -12,10 +12,10 @@ export const Route = createFileRoute('/users')({
         throw new Error('Failed to fetch users')
       })
   },
-  component: UsersComponent,
+  component: UsersLayoutComponent,
 })
 
-function UsersComponent() {
+function UsersLayoutComponent() {
   const users = Route.useLoaderData()
 
   return (

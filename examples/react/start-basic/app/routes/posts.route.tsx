@@ -3,10 +3,10 @@ import { fetchPosts } from '../utils/posts'
 
 export const Route = createFileRoute('/posts')({
   loader: async () => fetchPosts(),
-  component: PostsComponent,
+  component: PostsLayoutComponent,
 })
 
-function PostsComponent() {
+function PostsLayoutComponent() {
   const posts = Route.useLoaderData()
 
   return (
