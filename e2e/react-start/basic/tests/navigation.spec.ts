@@ -45,3 +45,19 @@ test('Navigating to a not-found route', async ({ page }) => {
   await page.getByRole('link', { name: 'Start Over' }).click()
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
 })
+
+test('Should change title on client side navigation', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('link', { name: 'Posts' }).click()
+
+  await expect(page).toHaveTitle('Posts page')
+})
+
+test('Should change title on client side navigation', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('link', { name: 'Posts' }).click()
+
+  await expect(page).toHaveTitle('Posts page')
+})
