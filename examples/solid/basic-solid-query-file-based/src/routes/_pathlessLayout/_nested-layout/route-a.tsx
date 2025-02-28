@@ -1,7 +1,6 @@
-import * as Solid from 'solid-js'
 import { createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/_layout/layout-a')({
+export const Route = createFileRoute('/_pathlessLayout/_nested-layout/route-a')({
   component: LayoutAComponent,
 })
 
