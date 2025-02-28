@@ -25,7 +25,7 @@ import {
 
 export const routes = rootRoute('root.tsx', [
   index('index.tsx'),
-  layout('layout.tsx', [
+  layout('pathlessLayout.tsx', [
     route('/dashboard', 'app/dashboard.tsx', [
       index('app/dashboard-index.tsx'),
       route('/invoices', 'app/dashboard-invoices.tsx', [
@@ -91,7 +91,7 @@ To create virtual file routes, you'll need to import the `@tanstack/virtual-file
 - `rootRoute` - Creates a virtual root route.
 - `route` - Creates a virtual route.
 - `index` - Creates a virtual index route.
-- `layout` - Creates a virtual layout route.
+- `layout` - Creates a virtual pathless layout route.
 - `physical` - Creates a physical virtual route (more on this later).
 
 ## Virtual Root Route
@@ -146,29 +146,29 @@ import { index } from '@tanstack/virtual-file-routes'
 const routes = rootRoute('root.tsx', [index('index.tsx')])
 ```
 
-## Virtual Layout Route
+## Virtual Pathless Route
 
-The `layout` function is used to create a virtual layout route. It takes a file name, an array of children routes, and an optional layout ID. Here's an example of a virtual layout route:
+The `layout` function is used to create a virtual pathless route. It takes a file name, an array of children routes, and an optional pathless ID. Here's an example of a virtual pathless route:
 
 ```tsx
 // routes.ts
 import { layout } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
-  layout('layout.tsx', [
+  layout('pathlessLayout.tsx', [
     // ... children routes
   ]),
 ])
 ```
 
-You can also specify a layout ID to give the layout a unique identifier that is different from the filename:
+You can also specify a pathless ID to give the route a unique identifier that is different from the filename:
 
 ```tsx
 // routes.ts
 import { layout } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('root.tsx', [
-  layout('my-layout-id', 'layout.tsx', [
+  layout('my-pathless-layout-id', 'pathlessLayout.tsx', [
     // ... children routes
   ]),
 ])
@@ -184,7 +184,7 @@ Consider the following file structure:
 /routes
 ├── root.tsx
 ├── index.tsx
-├── layout.tsx
+├── pathless.tsx
 ├── app
 │   ├── dashboard.tsx
 │   ├── dashboard-index.tsx
@@ -210,7 +210,7 @@ Let's use virtual routes to customize our route tree for everything but `posts`,
 export const routes = rootRoute('root.tsx', [
   // Set up your virtual routes as normal
   index('index.tsx'),
-  layout('layout.tsx', [
+  layout('pathlessLayout.tsx', [
     route('/dashboard', 'app/dashboard.tsx', [
       index('app/dashboard-index.tsx'),
       route('/invoices', 'app/dashboard-invoices.tsx', [
@@ -333,22 +333,22 @@ Or you can define the virtual routes directly in the configuration, while much l
       {
         "type": "layout",
         "id": "first",
-        "file": "layout/first-layout.tsx",
+        "file": "layout/first-pathless-layout.tsx",
         "children": [
           {
             "type": "layout",
             "id": "second",
-            "file": "layout/second-layout.tsx",
+            "file": "layout/second-pathless-layout.tsx",
             "children": [
               {
                 "type": "route",
                 "file": "a.tsx",
-                "path": "/layout-a"
+                "path": "/route-a"
               },
               {
                 "type": "route",
                 "file": "b.tsx",
-                "path": "/layout-b"
+                "path": "/route-b"
               }
             ]
           }

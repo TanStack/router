@@ -11,38 +11,26 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as UsersImport } from './routes/users'
 import { Route as RedirectImport } from './routes/redirect'
-import { Route as PostsImport } from './routes/posts'
 import { Route as DeferredImport } from './routes/deferred'
-import { Route as LayoutImport } from './routes/_layout'
+import { Route as PathlessLayoutImport } from './routes/_pathlessLayout'
+import { Route as UsersRouteImport } from './routes/users.route'
+import { Route as PostsRouteImport } from './routes/posts.route'
 import { Route as IndexImport } from './routes/index'
 import { Route as UsersIndexImport } from './routes/users.index'
 import { Route as PostsIndexImport } from './routes/posts.index'
 import { Route as UsersUserIdImport } from './routes/users.$userId'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
+import { Route as PathlessLayoutNestedLayoutImport } from './routes/_pathlessLayout/_nested-layout'
 import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
-import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as PathlessLayoutNestedLayoutRouteBImport } from './routes/_pathlessLayout/_nested-layout/route-b'
+import { Route as PathlessLayoutNestedLayoutRouteAImport } from './routes/_pathlessLayout/_nested-layout/route-a'
 
 // Create/Update Routes
-
-const UsersRoute = UsersImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => rootRoute,
-} as any)
 
 const RedirectRoute = RedirectImport.update({
   id: '/redirect',
   path: '/redirect',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const PostsRoute = PostsImport.update({
-  id: '/posts',
-  path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -52,8 +40,20 @@ const DeferredRoute = DeferredImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const LayoutRoute = LayoutImport.update({
-  id: '/_layout',
+const PathlessLayoutRoute = PathlessLayoutImport.update({
+  id: '/_pathlessLayout',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const UsersRouteRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const PostsRouteRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -66,31 +66,33 @@ const IndexRoute = IndexImport.update({
 const UsersIndexRoute = UsersIndexImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => UsersRoute,
+  getParentRoute: () => UsersRouteRoute,
 } as any)
 
 const PostsIndexRoute = PostsIndexImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => PostsRoute,
+  getParentRoute: () => PostsRouteRoute,
 } as any)
 
 const UsersUserIdRoute = UsersUserIdImport.update({
   id: '/$userId',
   path: '/$userId',
-  getParentRoute: () => UsersRoute,
+  getParentRoute: () => UsersRouteRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
   id: '/$postId',
   path: '/$postId',
-  getParentRoute: () => PostsRoute,
+  getParentRoute: () => PostsRouteRoute,
 } as any)
 
-const LayoutLayout2Route = LayoutLayout2Import.update({
-  id: '/_layout-2',
-  getParentRoute: () => LayoutRoute,
-} as any)
+const PathlessLayoutNestedLayoutRoute = PathlessLayoutNestedLayoutImport.update(
+  {
+    id: '/_nested-layout',
+    getParentRoute: () => PathlessLayoutRoute,
+  } as any,
+)
 
 const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
   id: '/posts_/$postId/deep',
@@ -98,17 +100,19 @@ const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
-  id: '/layout-b',
-  path: '/layout-b',
-  getParentRoute: () => LayoutLayout2Route,
-} as any)
+const PathlessLayoutNestedLayoutRouteBRoute =
+  PathlessLayoutNestedLayoutRouteBImport.update({
+    id: '/route-b',
+    path: '/route-b',
+    getParentRoute: () => PathlessLayoutNestedLayoutRoute,
+  } as any)
 
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
-  id: '/layout-a',
-  path: '/layout-a',
-  getParentRoute: () => LayoutLayout2Route,
-} as any)
+const PathlessLayoutNestedLayoutRouteARoute =
+  PathlessLayoutNestedLayoutRouteAImport.update({
+    id: '/route-a',
+    path: '/route-a',
+    getParentRoute: () => PathlessLayoutNestedLayoutRoute,
+  } as any)
 
 // Populate the FileRoutesByPath interface
 
@@ -121,11 +125,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    '/_layout': {
-      id: '/_layout'
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/_pathlessLayout': {
+      id: '/_pathlessLayout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutImport
+      preLoaderRoute: typeof PathlessLayoutImport
       parentRoute: typeof rootRoute
     }
     '/deferred': {
@@ -135,13 +153,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeferredImport
       parentRoute: typeof rootRoute
     }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsImport
-      parentRoute: typeof rootRoute
-    }
     '/redirect': {
       id: '/redirect'
       path: '/redirect'
@@ -149,61 +160,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectImport
       parentRoute: typeof rootRoute
     }
-    '/users': {
-      id: '/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof UsersImport
-      parentRoute: typeof rootRoute
-    }
-    '/_layout/_layout-2': {
-      id: '/_layout/_layout-2'
+    '/_pathlessLayout/_nested-layout': {
+      id: '/_pathlessLayout/_nested-layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2Import
-      parentRoute: typeof LayoutImport
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutImport
+      parentRoute: typeof PathlessLayoutImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsImport
+      parentRoute: typeof PostsRouteImport
     }
     '/users/$userId': {
       id: '/users/$userId'
       path: '/$userId'
       fullPath: '/users/$userId'
       preLoaderRoute: typeof UsersUserIdImport
-      parentRoute: typeof UsersImport
+      parentRoute: typeof UsersRouteImport
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsImport
+      parentRoute: typeof PostsRouteImport
     }
     '/users/': {
       id: '/users/'
       path: '/'
       fullPath: '/users/'
       preLoaderRoute: typeof UsersIndexImport
-      parentRoute: typeof UsersImport
+      parentRoute: typeof UsersRouteImport
     }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutAImport
-      parentRoute: typeof LayoutLayout2Import
+    '/_pathlessLayout/_nested-layout/route-a': {
+      id: '/_pathlessLayout/_nested-layout/route-a'
+      path: '/route-a'
+      fullPath: '/route-a'
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteAImport
+      parentRoute: typeof PathlessLayoutNestedLayoutImport
     }
-    '/_layout/_layout-2/layout-b': {
-      id: '/_layout/_layout-2/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBImport
-      parentRoute: typeof LayoutLayout2Import
+    '/_pathlessLayout/_nested-layout/route-b': {
+      id: '/_pathlessLayout/_nested-layout/route-b'
+      path: '/route-b'
+      fullPath: '/route-b'
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteBImport
+      parentRoute: typeof PathlessLayoutNestedLayoutImport
     }
     '/posts_/$postId/deep': {
       id: '/posts_/$postId/deep'
@@ -217,100 +221,109 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-interface LayoutLayout2RouteChildren {
-  LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
-  LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
-}
-
-const LayoutLayout2RouteChildren: LayoutLayout2RouteChildren = {
-  LayoutLayout2LayoutARoute: LayoutLayout2LayoutARoute,
-  LayoutLayout2LayoutBRoute: LayoutLayout2LayoutBRoute,
-}
-
-const LayoutLayout2RouteWithChildren = LayoutLayout2Route._addFileChildren(
-  LayoutLayout2RouteChildren,
-)
-
-interface LayoutRouteChildren {
-  LayoutLayout2Route: typeof LayoutLayout2RouteWithChildren
-}
-
-const LayoutRouteChildren: LayoutRouteChildren = {
-  LayoutLayout2Route: LayoutLayout2RouteWithChildren,
-}
-
-const LayoutRouteWithChildren =
-  LayoutRoute._addFileChildren(LayoutRouteChildren)
-
-interface PostsRouteChildren {
+interface PostsRouteRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
   PostsIndexRoute: typeof PostsIndexRoute
 }
 
-const PostsRouteChildren: PostsRouteChildren = {
+const PostsRouteRouteChildren: PostsRouteRouteChildren = {
   PostsPostIdRoute: PostsPostIdRoute,
   PostsIndexRoute: PostsIndexRoute,
 }
 
-const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
+  PostsRouteRouteChildren,
+)
 
-interface UsersRouteChildren {
+interface UsersRouteRouteChildren {
   UsersUserIdRoute: typeof UsersUserIdRoute
   UsersIndexRoute: typeof UsersIndexRoute
 }
 
-const UsersRouteChildren: UsersRouteChildren = {
+const UsersRouteRouteChildren: UsersRouteRouteChildren = {
   UsersUserIdRoute: UsersUserIdRoute,
   UsersIndexRoute: UsersIndexRoute,
 }
 
-const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
+const UsersRouteRouteWithChildren = UsersRouteRoute._addFileChildren(
+  UsersRouteRouteChildren,
+)
+
+interface PathlessLayoutNestedLayoutRouteChildren {
+  PathlessLayoutNestedLayoutRouteARoute: typeof PathlessLayoutNestedLayoutRouteARoute
+  PathlessLayoutNestedLayoutRouteBRoute: typeof PathlessLayoutNestedLayoutRouteBRoute
+}
+
+const PathlessLayoutNestedLayoutRouteChildren: PathlessLayoutNestedLayoutRouteChildren =
+  {
+    PathlessLayoutNestedLayoutRouteARoute:
+      PathlessLayoutNestedLayoutRouteARoute,
+    PathlessLayoutNestedLayoutRouteBRoute:
+      PathlessLayoutNestedLayoutRouteBRoute,
+  }
+
+const PathlessLayoutNestedLayoutRouteWithChildren =
+  PathlessLayoutNestedLayoutRoute._addFileChildren(
+    PathlessLayoutNestedLayoutRouteChildren,
+  )
+
+interface PathlessLayoutRouteChildren {
+  PathlessLayoutNestedLayoutRoute: typeof PathlessLayoutNestedLayoutRouteWithChildren
+}
+
+const PathlessLayoutRouteChildren: PathlessLayoutRouteChildren = {
+  PathlessLayoutNestedLayoutRoute: PathlessLayoutNestedLayoutRouteWithChildren,
+}
+
+const PathlessLayoutRouteWithChildren = PathlessLayoutRoute._addFileChildren(
+  PathlessLayoutRouteChildren,
+)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
+  '/posts': typeof PostsRouteRouteWithChildren
+  '/users': typeof UsersRouteRouteWithChildren
+  '': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
-  '/users': typeof UsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
-  '/layout-a': typeof LayoutLayout2LayoutARoute
-  '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
+  '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
+  '': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts': typeof PostsIndexRoute
   '/users': typeof UsersIndexRoute
-  '/layout-a': typeof LayoutLayout2LayoutARoute
-  '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
+  '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
-  '/_layout': typeof LayoutRouteWithChildren
+  '/posts': typeof PostsRouteRouteWithChildren
+  '/users': typeof UsersRouteRouteWithChildren
+  '/_pathlessLayout': typeof PathlessLayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
-  '/users': typeof UsersRouteWithChildren
-  '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/_pathlessLayout/_nested-layout': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
-  '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
-  '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/_pathlessLayout/_nested-layout/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
+  '/_pathlessLayout/_nested-layout/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
 }
 
@@ -318,17 +331,17 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/posts'
+    | '/users'
     | ''
     | '/deferred'
-    | '/posts'
     | '/redirect'
-    | '/users'
     | '/posts/$postId'
     | '/users/$userId'
     | '/posts/'
     | '/users/'
-    | '/layout-a'
-    | '/layout-b'
+    | '/route-a'
+    | '/route-b'
     | '/posts/$postId/deep'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -340,45 +353,45 @@ export interface FileRouteTypes {
     | '/users/$userId'
     | '/posts'
     | '/users'
-    | '/layout-a'
-    | '/layout-b'
+    | '/route-a'
+    | '/route-b'
     | '/posts/$postId/deep'
   id:
     | '__root__'
     | '/'
-    | '/_layout'
-    | '/deferred'
     | '/posts'
-    | '/redirect'
     | '/users'
-    | '/_layout/_layout-2'
+    | '/_pathlessLayout'
+    | '/deferred'
+    | '/redirect'
+    | '/_pathlessLayout/_nested-layout'
     | '/posts/$postId'
     | '/users/$userId'
     | '/posts/'
     | '/users/'
-    | '/_layout/_layout-2/layout-a'
-    | '/_layout/_layout-2/layout-b'
+    | '/_pathlessLayout/_nested-layout/route-a'
+    | '/_pathlessLayout/_nested-layout/route-b'
     | '/posts_/$postId/deep'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LayoutRoute: typeof LayoutRouteWithChildren
+  PostsRouteRoute: typeof PostsRouteRouteWithChildren
+  UsersRouteRoute: typeof UsersRouteRouteWithChildren
+  PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
-  PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
-  UsersRoute: typeof UsersRouteWithChildren
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LayoutRoute: LayoutRouteWithChildren,
+  PostsRouteRoute: PostsRouteRouteWithChildren,
+  UsersRouteRoute: UsersRouteRouteWithChildren,
+  PathlessLayoutRoute: PathlessLayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
-  PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
-  UsersRoute: UsersRouteWithChildren,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
 
@@ -393,49 +406,49 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/_layout",
-        "/deferred",
         "/posts",
-        "/redirect",
         "/users",
+        "/_pathlessLayout",
+        "/deferred",
+        "/redirect",
         "/posts_/$postId/deep"
       ]
     },
     "/": {
       "filePath": "index.tsx"
     },
-    "/_layout": {
-      "filePath": "_layout.tsx",
-      "children": [
-        "/_layout/_layout-2"
-      ]
-    },
-    "/deferred": {
-      "filePath": "deferred.tsx"
-    },
     "/posts": {
-      "filePath": "posts.tsx",
+      "filePath": "posts.route.tsx",
       "children": [
         "/posts/$postId",
         "/posts/"
       ]
     },
-    "/redirect": {
-      "filePath": "redirect.tsx"
-    },
     "/users": {
-      "filePath": "users.tsx",
+      "filePath": "users.route.tsx",
       "children": [
         "/users/$userId",
         "/users/"
       ]
     },
-    "/_layout/_layout-2": {
-      "filePath": "_layout/_layout-2.tsx",
-      "parent": "/_layout",
+    "/_pathlessLayout": {
+      "filePath": "_pathlessLayout.tsx",
       "children": [
-        "/_layout/_layout-2/layout-a",
-        "/_layout/_layout-2/layout-b"
+        "/_pathlessLayout/_nested-layout"
+      ]
+    },
+    "/deferred": {
+      "filePath": "deferred.tsx"
+    },
+    "/redirect": {
+      "filePath": "redirect.tsx"
+    },
+    "/_pathlessLayout/_nested-layout": {
+      "filePath": "_pathlessLayout/_nested-layout.tsx",
+      "parent": "/_pathlessLayout",
+      "children": [
+        "/_pathlessLayout/_nested-layout/route-a",
+        "/_pathlessLayout/_nested-layout/route-b"
       ]
     },
     "/posts/$postId": {
@@ -454,13 +467,13 @@ export const routeTree = rootRoute
       "filePath": "users.index.tsx",
       "parent": "/users"
     },
-    "/_layout/_layout-2/layout-a": {
-      "filePath": "_layout/_layout-2/layout-a.tsx",
-      "parent": "/_layout/_layout-2"
+    "/_pathlessLayout/_nested-layout/route-a": {
+      "filePath": "_pathlessLayout/_nested-layout/route-a.tsx",
+      "parent": "/_pathlessLayout/_nested-layout"
     },
-    "/_layout/_layout-2/layout-b": {
-      "filePath": "_layout/_layout-2/layout-b.tsx",
-      "parent": "/_layout/_layout-2"
+    "/_pathlessLayout/_nested-layout/route-b": {
+      "filePath": "_pathlessLayout/_nested-layout/route-b.tsx",
+      "parent": "/_pathlessLayout/_nested-layout"
     },
     "/posts_/$postId/deep": {
       "filePath": "posts_.$postId.deep.tsx"

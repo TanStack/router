@@ -48,9 +48,9 @@ Let's take that concept and expand it out to a larger site structure, but with f
 ├── settings/
 │   ├── profile.tsx
 │   ├── notifications.tsx
-├── _layout/
-│   ├── layout-a.tsx
-├── ├── layout-b.tsx
+├── _pathlessLayout/
+│   ├── route-a.tsx
+├── ├── route-b.tsx
 ├── files/
 │   ├── $.tsx
 ```
