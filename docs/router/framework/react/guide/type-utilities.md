@@ -86,7 +86,7 @@ It is also possible to fix `from` for each `Link` options in the array. This wou
 
 ```tsx
 export interface MenuProps<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TItems extends ReadonlyArray<unknown> = ReadonlyArray<unknown>,
   TFrom extends string = string,
 > {
