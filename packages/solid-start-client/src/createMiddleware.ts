@@ -402,13 +402,13 @@ export interface MiddlewareAfterValidator<
       ServerFnResponseType
     >,
     MiddlewareServer<
-    TMiddlewares,
-    TValidator,
-    undefined,
-    undefined,
-    TServerFnResponseType
-  >,
-  MiddlewareClient<TMiddlewares, TValidator, ServerFnResponseType> {}
+      TMiddlewares,
+      TValidator,
+      undefined,
+      undefined,
+      TServerFnResponseType
+    >,
+    MiddlewareClient<TMiddlewares, TValidator, ServerFnResponseType> {}
 
 export interface MiddlewareValidator<
   TMiddlewares,
@@ -491,11 +491,11 @@ export interface MiddlewareAfterClient<
       TServerFnResponseType
     > {}
 
-  export interface MiddlewareClient<
-    TMiddlewares,
-    TValidator,
-    TServerFnResponseType extends ServerFnResponseType,
-  > {
+export interface MiddlewareClient<
+  TMiddlewares,
+  TValidator,
+  TServerFnResponseType extends ServerFnResponseType,
+> {
   client: <TSendServerContext = undefined, TNewClientContext = undefined>(
     client: MiddlewareClientFn<
       TMiddlewares,
@@ -535,35 +535,35 @@ export interface MiddlewareAfterMiddleware<
     MiddlewareClient<TMiddlewares, undefined, TServerFnResponseType>,
     MiddlewareValidator<TMiddlewares, TServerFnResponseType> {}
 
-    export interface Middleware<TServerFnResponseType extends ServerFnResponseType>
-    extends MiddlewareAfterMiddleware<unknown, TServerFnResponseType> {
-    middleware: <const TNewMiddlewares = undefined>(
-      middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-    ) => MiddlewareAfterMiddleware<TNewMiddlewares, TServerFnResponseType>
-  }
+export interface Middleware<TServerFnResponseType extends ServerFnResponseType>
+  extends MiddlewareAfterMiddleware<unknown, TServerFnResponseType> {
+  middleware: <const TNewMiddlewares = undefined>(
+    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
+  ) => MiddlewareAfterMiddleware<TNewMiddlewares, TServerFnResponseType>
+}
 
-  export function createMiddleware(
-    options?: {
-      validateClient?: boolean
-    },
-    __opts?: MiddlewareOptions<
+export function createMiddleware(
+  options?: {
+    validateClient?: boolean
+  },
+  __opts?: MiddlewareOptions<
+    unknown,
+    undefined,
+    undefined,
+    undefined,
+    ServerFnResponseType
+  >,
+): Middleware<ServerFnResponseType> {
+  // const resolvedOptions = (__opts || options) as MiddlewareOptions<
+  const resolvedOptions =
+    __opts ||
+    ((options || {}) as MiddlewareOptions<
       unknown,
       undefined,
       undefined,
       undefined,
       ServerFnResponseType
-    >,
-  ): Middleware<ServerFnResponseType> {
-    // const resolvedOptions = (__opts || options) as MiddlewareOptions<
-    const resolvedOptions =
-      __opts ||
-      ((options || {}) as MiddlewareOptions<
-        unknown,
-        undefined,
-        undefined,
-        undefined,
-        ServerFnResponseType
-      >)
+    >)
 
   return {
     options: resolvedOptions as any,
@@ -591,4 +591,5 @@ export interface MiddlewareAfterMiddleware<
         Object.assign(resolvedOptions, { server }),
       ) as any
     },
-  } as unknown as Middleware<ServerFnResponseType>}
+  } as unknown as Middleware<ServerFnResponseType>
+}

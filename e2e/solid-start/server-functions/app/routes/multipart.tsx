@@ -41,7 +41,7 @@ const multipartFormDataServerFn = createServerFn({ method: 'POST' })
   })
 
 function MultipartServerFnCall() {
-  let formRef: HTMLFormElement | undefined;
+  let formRef: HTMLFormElement | undefined
   const [multipartResult, setMultipartResult] = Solid.createSignal({})
 
   const handleSubmit = (e: any) => {
