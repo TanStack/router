@@ -14,7 +14,7 @@ Routes are hierarchical, and so are their definitions. If you're using file-base
 
 ### Code-based Routing
 
-If you're using the `Route` class directly, you'll need to be aware of how to ensure your routes are typed properly using the `Route`'s `getParentRoute` option. This is because child routes need to be aware of **all** of their parent routes types. Without this, those precious search params you parsed out of your layout route 3 levels up would be lost to the JS void.
+If you're using the `Route` class directly, you'll need to be aware of how to ensure your routes are typed properly using the `Route`'s `getParentRoute` option. This is because child routes need to be aware of **all** of their parent routes types. Without this, those precious search params you parsed out of your _layout_ and _pathless layout_ routes, 3 levels up, would be lost to the JS void.
 
 So, don't forget to pass the parent route to your child routes!
 
