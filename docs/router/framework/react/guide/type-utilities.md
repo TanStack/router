@@ -55,7 +55,7 @@ export interface MenuProps<
 }
 
 export function Menu<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TItems extends ReadonlyArray<unknown>,
 >(props: MenuProps<TRouter, TItems>): React.ReactNode
 export function Menu(props: MenuProps): React.ReactNode {
@@ -86,7 +86,7 @@ It is also possible to fix `from` for each `Link` options in the array. This wou
 
 ```tsx
 export interface MenuProps<
-  TRouter extends RegisteredRouter = RegisteredRouter,
+  TRouter extends RegisteredRouter,
   TItems extends ReadonlyArray<unknown> = ReadonlyArray<unknown>,
   TFrom extends string = string,
 > {
@@ -95,7 +95,7 @@ export interface MenuProps<
 }
 
 export function Menu<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TItems extends ReadonlyArray<unknown>,
   TFrom extends string = string,
 >(props: MenuProps<TRouter, TItems, TFrom>): React.ReactNode
@@ -127,7 +127,7 @@ export function Menu(props: MenuProps): React.ReactNode {
 
 ```tsx
 export async function fetchOrRedirect<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TOptions,
 >(
   url: string,
@@ -167,7 +167,7 @@ export interface UseConditionalNavigateResult {
 }
 
 export function useConditionalNavigate<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TOptions,
 >(
   navigateOptions: ValidateNavigateOptions<TRouter, TOptions>,
