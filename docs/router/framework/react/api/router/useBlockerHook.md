@@ -17,7 +17,7 @@ The `useBlocker` hook accepts a single _required_ argument, an option object:
 - Type: `ShouldBlockFn`
 - This function should return a `boolean` or a `Promise<boolean>` that tells the blocker if it should block the current navigation
 - The function has the argument of type `ShouldBlockFnArgs` passed to it, which tells you information about the current and next route and the action performed
-- Think of this function as telling the router if it should block the navigation, so returning `true` mean that it should block the navgation and `false` that it should be allowed
+- Think of this function as telling the router if it should block the navigation, so returning `true` mean that it should block the navigation and `false` meaning that it should be allowed
 
 ```ts
 interface ShouldBlockFnLocation<...> {

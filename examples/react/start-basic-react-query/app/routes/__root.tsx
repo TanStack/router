@@ -1,9 +1,9 @@
 import {
+  HeadContent,
   Link,
   Outlet,
-  createRootRouteWithContext,
-  HeadContent,
   Scripts,
+  createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -108,12 +108,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Users
           </Link>{' '}
           <Link
-            to="/layout-a"
+            to="/route-a"
             activeProps={{
               className: 'font-bold',
             }}
           >
-            Layout
+            Pathless Layout
           </Link>{' '}
           <Link
             to="/deferred"

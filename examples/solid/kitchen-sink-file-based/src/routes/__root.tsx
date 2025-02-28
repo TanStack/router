@@ -1,4 +1,3 @@
-import * as Solid from 'solid-js'
 import {
   Link,
   Outlet,
@@ -39,8 +38,8 @@ function RootComponent() {
                 ['/', 'Home'],
                 ['/dashboard', 'Dashboard'],
                 ['/expensive', 'Expensive'],
-                ['/layout-a', 'Layout A'],
-                ['/layout-b', 'Layout B'],
+                ['/route-a', 'Pathless Layout A'],
+                ['/route-b', 'Pathless Layout B'],
                 ['/profile', 'Profile'],
                 ['/login', 'Login'],
                 ['/route-group', 'Route Group'],

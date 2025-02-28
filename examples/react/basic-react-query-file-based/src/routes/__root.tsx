@@ -44,12 +44,12 @@ function RootComponent() {
           Posts
         </Link>{' '}
         <Link
-          to="/layout-a"
+          to="/route-a"
           activeProps={{
             className: 'font-bold',
           }}
         >
-          Layout
+          Pathless Layout
         </Link>{' '}
         <Link
           // @ts-expect-error

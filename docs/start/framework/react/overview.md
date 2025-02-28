@@ -13,7 +13,7 @@ What you get with TanStack Router:
 
 - 100% inferred TypeScript support
 - Typesafe navigation
-- Nested Routing and layout routes
+- Nested Routing and pathless layout routes
 - Built-in Route Loaders w/ SWR Caching
 - Designed for client-side data caches (TanStack Query, SWR, etc.)
 - Automatic route prefetching
