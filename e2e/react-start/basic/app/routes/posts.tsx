@@ -4,11 +4,11 @@ import { fetchPosts } from '~/utils/posts'
 
 export const Route = createFileRoute('/posts')({
   head: () => ({
-    meta: [{
-        title:
-          'Posts page',
+    meta: [
+      {
+        title: 'Posts page',
       },
-    ]
+    ],
   }),
   loader: async () => fetchPosts(),
   component: PostsComponent,
