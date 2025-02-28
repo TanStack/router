@@ -4,10 +4,10 @@ import { createMemo } from 'solid-js'
 import { postsQueryOptions } from './posts'
 
 export const Route = createLazyRoute('/posts')({
-  component: PostsComponent,
+  component: PostsLayoutComponent,
 })
 
-function PostsComponent() {
+function PostsLayoutComponent() {
   const postsQuery = createQuery(() => postsQueryOptions)
 
   const posts = createMemo(() => {

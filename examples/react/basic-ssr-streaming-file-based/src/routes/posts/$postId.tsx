@@ -1,6 +1,6 @@
 import { Await, createFileRoute, notFound } from '@tanstack/react-router'
 import * as React from 'react'
-import type { PostType } from '../posts'
+import type { PostType } from './route'
 
 async function fetchPostById(postId: string) {
   console.info(`Fetching post with id ${postId}...`)
