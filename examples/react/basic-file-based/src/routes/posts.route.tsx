@@ -1,17 +1,14 @@
 import * as React from 'react'
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { postsQueryOptions } from '../postsQueryOptions'
+import { fetchPosts } from '../posts'
 
 export const Route = createFileRoute('/posts')({
-  loader: ({ context: { queryClient } }) =>
-    queryClient.ensureQueryData(postsQueryOptions),
-  component: PostsComponent,
+  loader: fetchPosts,
+  component: PostsLayoutComponent,
 })
 
-function PostsComponent() {
-  const postsQuery = useSuspenseQuery(postsQueryOptions)
-  const posts = postsQuery.data
+function PostsLayoutComponent() {
+  const posts = Route.useLoaderData()
 
   return (
     <div className="p-2 flex gap-2">

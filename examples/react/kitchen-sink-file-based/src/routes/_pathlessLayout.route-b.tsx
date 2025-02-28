@@ -1,9 +1,10 @@
+import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_layout/_layout-2/layout-b')({
+export const Route = createFileRoute('/_pathlessLayout/route-b')({
   component: LayoutBComponent,
 })
 
 function LayoutBComponent() {
-  return <div>I'm layout B!</div>
+  return <div>I'm B!</div>
 }
