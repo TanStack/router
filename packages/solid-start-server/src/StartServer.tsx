@@ -4,8 +4,8 @@ import {
   ServerHeadContent,
 } from '@tanstack/solid-router'
 import { Hydration, HydrationScript, NoHydration, ssr } from 'solid-js/web'
+import { MetaProvider } from '@solidjs/meta'
 import type { AnyRouter } from '@tanstack/solid-router'
-import { MetaProvider, Title } from '@solidjs/meta'
 
 const docType = ssr('<!DOCTYPE html>')
 
