@@ -1893,8 +1893,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.0.0
-        version: 1.9.4
+        specifier: ^1.9.5
+        version: 1.9.5
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -1931,7 +1931,7 @@ importers:
         version: 5.7.3
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
@@ -1951,7 +1951,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.0.0
+        specifier: ^1.9.5
         version: 1.9.5
       tailwind-merge:
         specifier: ^2.6.0
@@ -2067,7 +2067,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.0.0
+        specifier: ^1.9.5
         version: 1.9.5
       tailwind-merge:
         specifier: ^2.6.0
@@ -4964,7 +4964,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.0.0
+        specifier: ^1.9.5
         version: 1.9.5
       tailwind-merge:
         specifier: ^2.6.0
@@ -6160,7 +6160,7 @@ importers:
     dependencies:
       '@solidjs/meta':
         specifier: ^0.29.4
-        version: 0.29.4(solid-js@1.9.4)
+        version: 0.29.4(solid-js@1.9.5)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -6196,14 +6196,14 @@ importers:
         specifier: ^0.25.0
         version: 0.25.0
       solid-js:
-        specifier: ^1.0.0
-        version: 1.9.4
+        specifier: ^1.9.5
+        version: 1.9.5
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start-server-functions-client:
     dependencies:
@@ -6231,14 +6231,14 @@ importers:
         version: link:../solid-start-client
     devDependencies:
       solid-js:
-        specifier: ^1.0.0
-        version: 1.9.4
+        specifier: ^1.9.5
+        version: 1.9.5
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start-server-functions-handler:
     dependencies:
@@ -6256,14 +6256,14 @@ importers:
         version: 1.3.3
     devDependencies:
       solid-js:
-        specifier: ^1.0.0
-        version: 1.9.4
+        specifier: ^1.9.5
+        version: 1.9.5
       typescript:
         specifier: ^5.7.2
         version: 5.7.3
       vite-plugin-solid:
         specifier: ^2.11.2
-        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.4)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start-server-functions-ssr:
     dependencies:
