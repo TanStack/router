@@ -3081,7 +3081,7 @@ export function getInitialRouterState(
 }
 
 if (typeof globalThis !== 'undefined') {
-  (globalThis as any).createFileRoute = createFileRouteImpl
+  ;(globalThis as any).createFileRoute = createFileRouteImpl
 } else if (typeof window !== 'undefined') {
-  (window as any).createFileRoute = createFileRouteImpl
+  ;(window as any).createFileRoute = createFileRouteImpl
 }
