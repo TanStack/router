@@ -1,5 +1,5 @@
-import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
-import type { ErrorComponentProps } from '@tanstack/react-router'
+import { ErrorComponent, createFileRoute } from '@tanstack/solid-router'
+import type { ErrorComponentProps } from '@tanstack/solid-router'
 
 import { NotFound } from '~/components/NotFound.js'
 import { fetchPost } from '~/utils/posts.js'
@@ -21,9 +21,9 @@ function PostComponent() {
   const post = Route.useLoaderData()
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-xl font-bold underline">{post.title}</h4>
-      <div className="text-sm">{post.body}</div>
+    <div class="space-y-2">
+      <h4 class="text-xl font-bold underline">{post.title}</h4>
+      <div class="text-sm">{post.body}</div>
     </div>
   )
 }

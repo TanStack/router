@@ -1,5 +1,5 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import { createServerFn, useServerFn } from '@tanstack/react-start'
+import { createFileRoute, redirect } from '@tanstack/solid-router'
+import { createServerFn, useServerFn } from '@tanstack/solid-start'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { useMutation } from '~/hooks/useMutation'
@@ -91,7 +91,7 @@ function SignupComp() {
       afterSubmit={
         signupMutation.data?.error ? (
           <>
-            <div className="text-red-400">{signupMutation.data.message}</div>
+            <div class="text-red-400">{signupMutation.data.message}</div>
           </>
         ) : null
       }

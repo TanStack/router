@@ -1,5 +1,5 @@
-import { useRouter } from '@tanstack/react-router'
-import { useServerFn } from '@tanstack/react-start'
+import { useRouter } from '@tanstack/solid-router'
+import { useServerFn } from '@tanstack/solid-start'
 import { useMutation } from '../hooks/useMutation'
 import { loginFn } from '../routes/_authed'
 import { Auth } from './Auth'
@@ -40,11 +40,11 @@ export function Login() {
       afterSubmit={
         loginMutation.data ? (
           <>
-            <div className="text-red-400">{loginMutation.data.message}</div>
+            <div class="text-red-400">{loginMutation.data.message}</div>
             {loginMutation.data.userNotFound ? (
               <div>
                 <button
-                  className="text-blue-500"
+                  class="text-blue-500"
                   onClick={(e) => {
                     const formData = new FormData(
                       (e.target as HTMLButtonElement).form!,

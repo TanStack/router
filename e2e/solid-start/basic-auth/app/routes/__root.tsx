@@ -4,9 +4,9 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
-} from '@tanstack/react-router'
+} from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/solid-start'
 import * as React from 'react'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
@@ -102,11 +102,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
             activeOptions={{ exact: true }}
           >
@@ -115,15 +115,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link
             to="/posts"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             Posts
           </Link>
-          <div className="ml-auto">
+          <div class="ml-auto">
             {user ? (
               <>
-                <span className="mr-2">{user.email}</span>
+                <span class="mr-2">{user.email}</span>
                 <Link to="/logout">Logout</Link>
               </>
             ) : (
