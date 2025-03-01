@@ -9,3 +9,4 @@ packages:
   - 'e2e/react-router/*'
   - 'e2e/solid-router/*'
   - 'e2e/react-start/*'
+  - 'e2e/solid-start/*'

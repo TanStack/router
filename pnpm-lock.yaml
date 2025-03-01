@@ -1881,6 +1881,232 @@ importers:
         specifier: ^2.11.2
         version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  e2e/solid-start/basic:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:^
+        version: link:../../../packages/solid-start
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.50.1
+        version: 1.50.1
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.13.4
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  e2e/solid-start/scroll-restoration:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:^
+        version: link:../../../packages/solid-start
+      '@tanstack/zod-adapter':
+        specifier: workspace:*
+        version: link:../../../packages/zod-adapter
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.50.1
+        version: 1.50.1
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.13.4
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.6
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  e2e/solid-start/server-functions:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:^
+        version: link:../../../packages/solid-start
+      js-cookie:
+        specifier: ^3.0.5
+        version: 3.0.5
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.50.1
+        version: 1.50.1
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/js-cookie':
+        specifier: ^3.0.6
+        version: 3.0.6
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.13.4
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.6
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  e2e/solid-start/website:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:^
+        version: link:../../../packages/solid-start
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.50.1
+        version: 1.50.1
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.13.4
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.6
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   examples/react/authenticated-routes:
     dependencies:
       '@tanstack/react-router':
@@ -4726,6 +4952,52 @@ importers:
         specifier: ^2.11.2
         version: 2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  examples/solid/start-bare:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:^
+        version: link:../../../packages/solid-start
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.0.8
+        version: 4.0.8(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.13.4
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
+      tailwindcss:
+        specifier: ^4.0.0
+        version: 4.0.8
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.7.3)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   packages/arktype-adapter:
     devDependencies:
       '@tanstack/react-router':
@@ -5677,6 +5949,343 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.24.1
+
+  packages/solid-start:
+    dependencies:
+      '@tanstack/solid-start-api-routes':
+        specifier: workspace:^
+        version: link:../solid-start-api-routes
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+      '@tanstack/solid-start-config':
+        specifier: workspace:^
+        version: link:../solid-start-config
+      '@tanstack/solid-start-router-manifest':
+        specifier: workspace:^
+        version: link:../solid-start-router-manifest
+      '@tanstack/solid-start-server':
+        specifier: workspace:^
+        version: link:../solid-start-server
+      '@tanstack/solid-start-server-functions-client':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-client
+      '@tanstack/solid-start-server-functions-handler':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-handler
+      '@tanstack/solid-start-server-functions-ssr':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-ssr
+      '@tanstack/start-server-functions-server':
+        specifier: workspace:*
+        version: link:../start-server-functions-server
+      solid-js:
+        specifier: '>=1.0.0'
+        version: 1.9.5
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.0
+
+  packages/solid-start-api-routes:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/solid-start-server':
+        specifier: workspace:^
+        version: link:../solid-start-server
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+
+  packages/solid-start-client:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      cookie-es:
+        specifier: ^1.2.2
+        version: 1.2.2
+      jsesc:
+        specifier: ^3.1.0
+        version: 3.1.0
+      solid-js:
+        specifier: '>=1.0.0'
+        version: 1.9.5
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+      tiny-warning:
+        specifier: ^1.0.3
+        version: 1.0.3
+      vinxi:
+        specifier: ^0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+    devDependencies:
+      '@solidjs/testing-library':
+        specifier: ^0.8.10
+        version: 0.8.10(solid-js@1.9.5)
+      '@testing-library/jest-dom':
+        specifier: ^6.6.3
+        version: 6.6.3
+      '@types/jsesc':
+        specifier: ^3.0.3
+        version: 3.0.3
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  packages/solid-start-config:
+    dependencies:
+      '@tanstack/router-generator':
+        specifier: workspace:*
+        version: link:../router-generator
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../router-plugin
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:*
+        version: link:../server-functions-plugin
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      '@tanstack/solid-start-plugin':
+        specifier: workspace:^
+        version: link:../solid-start-plugin
+      '@tanstack/solid-start-server-functions-handler':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-handler
+      import-meta-resolve:
+        specifier: ^4.1.0
+        version: 4.1.0
+      nitropack:
+        specifier: ^2.10.4
+        version: 2.10.4(typescript@5.7.3)
+      ofetch:
+        specifier: ^1.4.1
+        version: 1.4.1
+      solid-js:
+        specifier: '>=1.0.0'
+        version: 1.9.5
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
+
+  packages/solid-start-plugin:
+    dependencies:
+      '@babel/code-frame':
+        specifier: 7.26.2
+        version: 7.26.2
+      '@babel/core':
+        specifier: ^7.26.8
+        version: 7.26.8
+      '@babel/plugin-syntax-jsx':
+        specifier: ^7.25.9
+        version: 7.25.9(@babel/core@7.26.8)
+      '@babel/plugin-syntax-typescript':
+        specifier: ^7.25.9
+        version: 7.25.9(@babel/core@7.26.8)
+      '@babel/template':
+        specifier: ^7.26.8
+        version: 7.26.8
+      '@babel/traverse':
+        specifier: ^7.26.8
+        version: 7.26.8
+      '@babel/types':
+        specifier: ^7.26.8
+        version: 7.26.8
+      '@tanstack/router-utils':
+        specifier: workspace:*
+        version: link:../router-utils
+      babel-dead-code-elimination:
+        specifier: ^1.0.9
+        version: 1.0.9
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+    devDependencies:
+      '@types/babel__code-frame':
+        specifier: ^7.0.6
+        version: 7.0.6
+      '@types/babel__core':
+        specifier: ^7.20.5
+        version: 7.20.5
+      '@types/babel__template':
+        specifier: ^7.4.4
+        version: 7.4.4
+      '@types/babel__traverse':
+        specifier: ^7.20.6
+        version: 7.20.6
+
+  packages/solid-start-router-manifest:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.7.3)(yaml@2.7.0)
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+
+  packages/solid-start-server:
+    dependencies:
+      '@solidjs/meta':
+        specifier: ^0.29.4
+        version: 0.29.4(solid-js@1.9.5)
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../history
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+      h3:
+        specifier: 1.13.0
+        version: 1.13.0
+      isbot:
+        specifier: ^5.1.22
+        version: 5.1.22
+      jsesc:
+        specifier: ^3.1.0
+        version: 3.1.0
+      tiny-warning:
+        specifier: ^1.0.3
+        version: 1.0.3
+      unctx:
+        specifier: ^2.4.1
+        version: 2.4.1
+    devDependencies:
+      '@types/jsesc':
+        specifier: ^3.0.3
+        version: 3.0.3
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.0
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  packages/solid-start-server-functions-client:
+    dependencies:
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:*
+        version: link:../server-functions-plugin
+      '@tanstack/solid-start-server-functions-fetcher':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-fetcher
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+
+  packages/solid-start-server-functions-fetcher:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+    devDependencies:
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  packages/solid-start-server-functions-handler:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+      '@tanstack/solid-start-server':
+        specifier: workspace:^
+        version: link:../solid-start-server
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+    devDependencies:
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  packages/solid-start-server-functions-ssr:
+    dependencies:
+      '@tanstack/server-functions-plugin':
+        specifier: workspace:*
+        version: link:../server-functions-plugin
+      '@tanstack/solid-start-client':
+        specifier: workspace:^
+        version: link:../solid-start-client
+      '@tanstack/solid-start-server':
+        specifier: workspace:^
+        version: link:../solid-start-server
+      '@tanstack/solid-start-server-functions-fetcher':
+        specifier: workspace:^
+        version: link:../solid-start-server-functions-fetcher
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.3
 
   packages/start:
     dependencies:
@@ -13204,6 +13813,16 @@ packages:
 
   vite-plugin-solid@2.11.2:
     resolution: {integrity: sha512-/OXVasW5OIRSFXnqzMgm8X3hPvf+JTbGecjQhmk7QnbDFq4hqdLssuYAWw9GsJGfzUPiMHM3ME2Y2XHPsTWmkw==}
+    peerDependencies:
+      '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
+      solid-js: ^1.7.2
+      vite: 6.1.0
+    peerDependenciesMeta:
+      '@testing-library/jest-dom':
+        optional: true
+
+  vite-plugin-solid@2.11.6:
+    resolution: {integrity: sha512-Sl5CTqJTGyEeOsmdH6BOgalIZlwH3t4/y0RQuFLMGnvWMBvxb4+lq7x3BSiAw6etf0QexfNJW7HSOO/Qf7pigg==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
       solid-js: ^1.7.2
@@ -21431,6 +22050,21 @@ snapshots:
       vite: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
   vite-plugin-solid@2.11.2(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
+    dependencies:
+      '@babel/core': 7.26.8
+      '@types/babel__core': 7.20.5
+      babel-preset-solid: 1.9.3(@babel/core@7.26.8)
+      merge-anything: 5.1.7
+      solid-js: 1.9.5
+      solid-refresh: 0.6.3(solid-js@1.9.5)
+      vite: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vitefu: 1.0.5(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+    optionalDependencies:
+      '@testing-library/jest-dom': 6.6.3
+    transitivePeerDependencies:
+      - supports-color
+
+  vite-plugin-solid@2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)):
     dependencies:
       '@babel/core': 7.26.8
       '@types/babel__core': 7.20.5
