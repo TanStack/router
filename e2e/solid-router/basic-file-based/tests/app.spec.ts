@@ -253,3 +253,11 @@ async function structuralSharingTest(page: Page, enabled: boolean) {
   await page.getByTestId('link').click()
   await checkSearch({ bar: 'b2', foo: 'f2' })
 }
+
+test('Should change title on client side navigation', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('link', { name: 'Posts' }).click()
+
+  await expect(page).toHaveTitle('Posts page')
+})
