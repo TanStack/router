@@ -314,7 +314,7 @@ export async function generator(config: Config, root: string) {
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
     const nonPathRoute = node.routeType === 'layout' && node.isNonPath
     node.isVirtualParentRequired =
-      node.routeType === 'pathless' || nonPathRoute
+      node.routeType === 'pathless-layout' || nonPathRoute
         ? !cleanedPathIsEmpty
         : false
     if (!node.isVirtual && node.isVirtualParentRequired) {
@@ -344,7 +344,7 @@ export async function generator(config: Config, root: string) {
 
         node.parent = parentNode
 
-        if (node.routeType === 'pathless') {
+        if (node.routeType === 'pathless-layout') {
           // since `node.path` is used as the `id` on the route definition, we need to update it
           node.path = determineNodePath(node)
         }
@@ -444,7 +444,7 @@ export async function generator(config: Config, root: string) {
         return
       }
 
-      if (node.routeType === 'pathless' && !node.children?.length) {
+      if (node.routeType === 'pathless-layout' && !node.children?.length) {
         return
       }
 

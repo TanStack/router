@@ -219,7 +219,7 @@ export async function getRouteNodesRecursive(
             filePath,
             variableName,
             routePath,
-            routeType: 'pathless',
+            routeType: 'pathless-layout',
           }
 
           if (node.children !== undefined) {

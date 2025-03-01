@@ -23,7 +23,7 @@ export type RouteType =
   | '__root'
   | 'static'
   | 'layout'
-  | 'pathless'
+  | 'pathless-layout'
   | 'lazy'
   | 'api'
   | 'loader' // @deprecated
