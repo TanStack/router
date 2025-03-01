@@ -2,13 +2,6 @@ import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import { fetchPosts } from '../posts'
 
 export const Route = createFileRoute('/posts')({
-  head: () => ({
-    meta: [
-      {
-        title: 'Posts page',
-      },
-    ],
-  }),
   loader: fetchPosts,
   component: PostsComponent,
 })
