@@ -376,9 +376,10 @@ export async function generator(config: Config, root: string) {
   checkRouteFullPathUniqueness(
     preRouteNodes.filter(
       (d) =>
-        d.routeType !== 'api' &&
-        d.routeType !== 'lazy' &&
-        d.children === undefined,
+        d.children === undefined &&
+        (['api', 'lazy'] satisfies Array<RouteType>).every(
+          (type) => type !== d.routeType,
+        ),
     ),
     config,
   )
