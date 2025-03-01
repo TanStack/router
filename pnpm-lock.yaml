@@ -1883,6 +1883,9 @@ importers:
 
   e2e/solid-start/basic:
     dependencies:
+      '@solidjs/meta':
+        specifier: ^0.29.4
+        version: 0.29.4(solid-js@1.9.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -6213,6 +6216,9 @@ importers:
 
   packages/solid-start-server:
     dependencies:
+      '@solidjs/meta':
+        specifier: ^0.29.4
+        version: 0.29.4(solid-js@1.9.4)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history

@@ -1,4 +1,4 @@
-import { Await, RouterProvider } from '@tanstack/solid-router'
+import { Await, HeadContent, RouterProvider } from '@tanstack/solid-router'
 import { hydrate } from './ssr-client'
 import type { AnyRouter } from '@tanstack/solid-router'
 import type { JSXElement } from 'solid-js'
@@ -25,7 +25,10 @@ export function StartClient(props: { router: AnyRouter }) {
               router={props.router}
               InnerWrap={(props) => (
                 <Dummy>
-                  <Dummy>{props.children}</Dummy>
+                  <Dummy>
+                    <HeadContent />
+                    {props.children}
+                  </Dummy>
                   <Dummy />
                 </Dummy>
               )}

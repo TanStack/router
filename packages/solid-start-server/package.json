@@ -62,6 +62,7 @@
     "node": ">=12"
   },
   "dependencies": {
+    "@solidjs/meta": "^0.29.4",
     "@tanstack/history": "workspace:^",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
@@ -73,11 +74,11 @@
     "unctx": "^2.4.1"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.2",
     "@types/jsesc": "^3.0.3",
     "esbuild": "^0.25.0",
     "solid-js": "^1.0.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite-plugin-solid": "^2.11.2"
   },
   "peerDependencies": {
     "solid-js": "^1.0.0"
