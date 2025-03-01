@@ -26,7 +26,7 @@ export function Login() {
   return (
     <Auth
       actionText="Login"
-      status={loginMutation.status}
+      status={loginMutation.status()}
       onSubmit={(e) => {
         const formData = new FormData(e.target as HTMLFormElement)
 
@@ -40,8 +40,8 @@ export function Login() {
       afterSubmit={
         loginMutation.data ? (
           <>
-            <div class="text-red-400">{loginMutation.data.message}</div>
-            {loginMutation.data.userNotFound ? (
+            <div class="text-red-400">{loginMutation.data()?.message}</div>
+            {loginMutation.data()?.userNotFound ? (
               <div>
                 <button
                   class="text-blue-500"
