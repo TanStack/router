@@ -23,7 +23,7 @@ import {
   fillTemplate,
   getTargetTemplate,
 } from './template'
-import type { GetRouteNodesResult, RouteNode } from './types'
+import type { GetRouteNodesResult, RouteNode, RouteType } from './types'
 import type { Config } from './config'
 
 export const CONSTANTS = {
@@ -222,10 +222,14 @@ export async function generator(config: Config, root: string) {
           )
         } else if (
           node.routeType === 'layout' ||
-          (node.routeType !== 'component' &&
-            node.routeType !== 'errorComponent' &&
-            node.routeType !== 'pendingComponent' &&
-            node.routeType !== 'loader')
+          (
+            [
+              'component',
+              'pendingComponent',
+              'errorComponent',
+              'loader',
+            ] satisfies Array<RouteType>
+          ).every((d) => d !== node.routeType)
         ) {
           replaced = await fillTemplate(
             config,
@@ -270,11 +274,15 @@ export async function generator(config: Config, root: string) {
 
     if (
       !node.isVirtual &&
-      (node.routeType === 'loader' ||
-        node.routeType === 'component' ||
-        node.routeType === 'errorComponent' ||
-        node.routeType === 'pendingComponent' ||
-        node.routeType === 'lazy')
+      (
+        [
+          'lazy',
+          'loader',
+          'component',
+          'pendingComponent',
+          'errorComponent',
+        ] satisfies Array<RouteType>
+      ).some((d) => d === node.routeType)
     ) {
       routePiecesByPath[node.routePath!] =
         routePiecesByPath[node.routePath!] || {}
