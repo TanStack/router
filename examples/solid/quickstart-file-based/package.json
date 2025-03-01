@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.112.0",
+    "@tanstack/solid-router": "^1.112.2",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
