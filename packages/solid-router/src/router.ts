@@ -394,7 +394,7 @@ export class Router<
     if (
       typeof window !== 'undefined' &&
       'CSS' in window &&
-      typeof window.CSS?.supports === 'function'
+      typeof window.CSS.supports === 'function'
     ) {
       this.isViewTransitionTypesSupported = window.CSS.supports(
         'selector(:active-view-transition-type(a)',
@@ -1570,7 +1570,10 @@ export class Router<
                   ] as const
                 ).forEach(([matches, hook]) => {
                   matches.forEach((match) => {
-                    this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                    this.looseRoutesById[match.routeId]!.options[hook]?.(
+                      match,
+                      { location: next },
+                    )
                   })
                 })
               })

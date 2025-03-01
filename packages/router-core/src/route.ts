@@ -1032,6 +1032,7 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    { location }: { location: ParsedLocation<{}> },
   ) => void
   onStay?: (
     match: RouteMatch<
@@ -1048,6 +1049,7 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    { location }: { location: ParsedLocation<{}> },
   ) => void
   onLeave?: (
     match: RouteMatch<
@@ -1064,6 +1066,7 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    { location }: { location: ParsedLocation<{}> },
   ) => void
   headers?: (ctx: {
     loaderData: ResolveLoaderData<TLoaderFn>
