@@ -12,23 +12,23 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
     'idle' | 'pending' | 'success' | 'error'
   >('idle')
 
-  const mutate =  async (variables: TVariables): Promise<TData | undefined> => {
-      setStatus('pending')
-      setSubmittedAt(Date.now())
-      setVariables(variables)
-      //
-      try {
-        const data = await opts.fn(variables)
-        await opts.onSuccess?.({ data })
-        setStatus('success')
-        setError(undefined)
-        setData(data)
-        return data
-      } catch (err: any) {
-        setStatus('error')
-        setError(err)
-      }
+  const mutate = async (variables: TVariables): Promise<TData | undefined> => {
+    setStatus('pending')
+    setSubmittedAt(Date.now())
+    setVariables(variables)
+    //
+    try {
+      const data = await opts.fn(variables)
+      await opts.onSuccess?.({ data })
+      setStatus('success')
+      setError(undefined)
+      setData(data)
+      return data
+    } catch (err: any) {
+      setStatus('error')
+      setError(err)
     }
+  }
 
   return {
     status,

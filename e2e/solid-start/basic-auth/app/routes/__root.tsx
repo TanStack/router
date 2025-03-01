@@ -74,11 +74,7 @@ export const Route = createRootRoute({
     }
   },
   errorComponent: (props) => {
-    return (
-      <p>
-        {props.error.stack}
-      </p>
-    )
+    return <p>{props.error.stack}</p>
   },
   notFoundComponent: () => <NotFound />,
   component: RootDocument,
@@ -89,40 +85,39 @@ function RootDocument() {
 
   return (
     <>
-        <HeadContent />
-    
-        <div class="p-2 flex gap-2 text-lg">
-          <Link
-            to="/"
-            activeProps={{
-              class: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>{' '}
-          <Link
-            to="/posts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Posts
-          </Link>
-          <div class="ml-auto">
-            {context().user ? (
-              <>
-                <span class="mr-2">{context().user?.email}</span>
-                <Link to="/logout">Logout</Link>
-              </>
-            ) : (
-              <Link to="/login">Login</Link>
-            )}
-          </div>
+      <HeadContent />
+
+      <div class="p-2 flex gap-2 text-lg">
+        <Link
+          to="/"
+          activeProps={{
+            class: 'font-bold',
+          }}
+          activeOptions={{ exact: true }}
+        >
+          Home
+        </Link>{' '}
+        <Link
+          to="/posts"
+          activeProps={{
+            class: 'font-bold',
+          }}
+        >
+          Posts
+        </Link>
+        <div class="ml-auto">
+          {context().user ? (
+            <>
+              <span class="mr-2">{context().user?.email}</span>
+              <Link to="/logout">Logout</Link>
+            </>
+          ) : (
+            <Link to="/login">Login</Link>
+          )}
         </div>
-        <hr />
-        <Outlet />
-        </>
-      
+      </div>
+      <hr />
+      <Outlet />
+    </>
   )
 }
