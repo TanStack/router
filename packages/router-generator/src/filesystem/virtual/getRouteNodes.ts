@@ -65,7 +65,7 @@ export async function getRouteNodes(
     fullPath: join(fullDir, virtualRouteConfig.file),
     variableName: 'rootRoute',
     routePath: '/',
-    isRoot: true,
+    routeType: '__root',
   })
 
   const rootRouteNode = allNodes[0]
@@ -150,7 +150,7 @@ export async function getRouteNodesRecursive(
         return { filePath, variableName, fullPath }
       }
       const parentRoutePath = removeTrailingSlash(parent?.routePath ?? '/')
-      const isLayout = node.type === 'layout'
+
       switch (node.type) {
         case 'index': {
           const { filePath, variableName, fullPath } = getFile(node.file)
@@ -160,7 +160,7 @@ export async function getRouteNodesRecursive(
             fullPath,
             variableName,
             routePath,
-            isLayout,
+            routeType: 'static',
           } satisfies RouteNode
         }
 
@@ -176,7 +176,7 @@ export async function getRouteNodesRecursive(
               fullPath,
               variableName,
               routePath,
-              isLayout,
+              routeType: 'static',
             }
           } else {
             routeNode = {
@@ -184,8 +184,8 @@ export async function getRouteNodesRecursive(
               fullPath: '',
               variableName: routePathToVariable(routePath),
               routePath,
-              isLayout,
               isVirtual: true,
+              routeType: 'static',
             }
           }
 
@@ -216,10 +216,10 @@ export async function getRouteNodesRecursive(
 
           const routeNode: RouteNode = {
             fullPath,
-            isLayout,
             filePath,
             variableName,
             routePath,
+            routeType: 'pathless',
           }
 
           if (node.children !== undefined) {
