@@ -636,6 +636,11 @@ export async function generator(config: Config, root: string) {
   }
 }`,
         ]),
+        routeNodes.map((routeNode) => {
+          return `declare module './${getImportPath(routeNode)}' {
+  const createFileRoute: typeof import('@tanstack/react-router').createFileRouteImpl<'${routeNode.routePath}'>
+}`
+        }).join('\n'),
     '// Create and export the route tree',
     routeConfigChildrenText,
     ...(TYPES_DISABLED
