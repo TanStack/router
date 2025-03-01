@@ -1,3 +1,5 @@
+import * as Solid from 'solid-js'
+
 export function Auth({
   actionText,
   onSubmit,
@@ -5,23 +7,23 @@ export function Auth({
   afterSubmit,
 }: {
   actionText: string
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void
+  onSubmit: (e: any) => void
   status: 'pending' | 'idle' | 'success' | 'error'
-  afterSubmit?: React.ReactNode
+  afterSubmit?: Solid.JSX.Element
 }) {
   return (
     <div class="fixed inset-0 bg-white dark:bg-black flex items-start justify-center p-8">
       <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
         <h1 class="text-2xl font-bold mb-4">{actionText}</h1>
         <form
-          onSubmit={(e) => {
+          onSubmit={(e: any) => {
             e.preventDefault()
             onSubmit(e)
           }}
           class="space-y-4"
         >
           <div>
-            <label htmlFor="email" class="block text-xs">
+            <label for="email" class="block text-xs">
               Username
             </label>
             <input
@@ -32,7 +34,7 @@ export function Auth({
             />
           </div>
           <div>
-            <label htmlFor="password" class="block text-xs">
+            <label for="password" class="block text-xs">
               Password
             </label>
             <input

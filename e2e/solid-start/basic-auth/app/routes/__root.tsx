@@ -5,9 +5,8 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/solid-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { createServerFn } from '@tanstack/solid-start'
-import * as React from 'react'
+import * as Solid from 'solid-js'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
@@ -32,7 +31,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        charSet: 'utf-8',
+        charset: 'utf-8',
       },
       {
         name: 'viewport',
@@ -76,32 +75,22 @@ export const Route = createRootRoute({
   },
   errorComponent: (props) => {
     return (
-      <RootDocument>
-        <DefaultCatchBoundary {...props} />
-      </RootDocument>
+      <p>
+        {props.error.stack}
+      </p>
     )
   },
   notFoundComponent: () => <NotFound />,
-  component: RootComponent,
+  component: RootDocument,
 })
 
-function RootComponent() {
-  return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
-  )
-}
-
-function RootDocument({ children }: { children: React.ReactNode }) {
-  const { user } = Route.useRouteContext()
+function RootDocument() {
+  const context = Route.useRouteContext()
 
   return (
-    <html>
-      <head>
+    <>
         <HeadContent />
-      </head>
-      <body>
+    
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -121,9 +110,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Posts
           </Link>
           <div class="ml-auto">
-            {user ? (
+            {context().user ? (
               <>
-                <span class="mr-2">{user.email}</span>
+                <span class="mr-2">{context().user?.email}</span>
                 <Link to="/logout">Logout</Link>
               </>
             ) : (
@@ -132,10 +121,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <hr />
-        {children}
-        <TanStackRouterDevtools position="bottom-right" />
-        <Scripts />
-      </body>
-    </html>
+        <Outlet />
+        </>
+      
   )
 }
