@@ -130,7 +130,7 @@ export async function getRouteNodes(
           // this check needs to happen after the lazy route has been cleaned up
           // since the routePath is used to determine if a route is pathless
           if (determineRouteIsPathlessLayout(routePath, config)) {
-            routeType = 'pathless-layout'
+            routeType = 'pathless_layout'
           }
 
           ;(
@@ -166,7 +166,7 @@ export async function getRouteNodes(
             filePath,
             fullPath,
             routePath,
-            routeType,
+            _fsRouteType: routeType,
             variableName,
           })
         }
@@ -180,7 +180,7 @@ export async function getRouteNodes(
 
   const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
-    rootRouteNode.routeType = '__root'
+    rootRouteNode._fsRouteType = '__root'
   }
 
   return { rootRouteNode, routeNodes }

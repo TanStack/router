@@ -2,7 +2,7 @@ export type RouteNode = {
   filePath: string
   fullPath: string
   variableName: string
-  routeType: RouteType
+  _fsRouteType: RouteType
   routePath?: string
   cleanedPath?: string
   path?: string
@@ -23,7 +23,7 @@ export type RouteType =
   | '__root'
   | 'static'
   | 'layout'
-  | 'pathless-layout'
+  | 'pathless_layout'
   | 'lazy'
   | 'api'
   | 'loader' // @deprecated

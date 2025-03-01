@@ -204,7 +204,7 @@ export async function generator(config: Config, root: string) {
       const tLazyRouteTemplate = ROUTE_TEMPLATE.lazyRoute
 
       if (!routeCode) {
-        if (node.routeType === 'lazy') {
+        if (node._fsRouteType === 'lazy') {
           // Check by default check if the user has a specific lazy route template
           // If not, check if the user has a route template and use that instead
           replaced = await fillTemplate(
@@ -221,7 +221,11 @@ export async function generator(config: Config, root: string) {
             },
           )
         } else if (
-          node.routeType === 'layout' ||
+          // Check if the route is "normal" route
+          (['layout', 'static'] satisfies Array<RouteType>).some(
+            (d) => d === node._fsRouteType,
+          ) ||
+          // Make sure that the route is not a component, pendingComponent, errorComponent or loader
           (
             [
               'component',
@@ -229,7 +233,7 @@ export async function generator(config: Config, root: string) {
               'errorComponent',
               'loader',
             ] satisfies Array<RouteType>
-          ).every((d) => d !== node.routeType)
+          ).every((d) => d !== node._fsRouteType)
         ) {
           replaced = await fillTemplate(
             config,
@@ -256,12 +260,12 @@ export async function generator(config: Config, root: string) {
               'gs',
             ),
             (_, p1, __, ___, p4) =>
-              `${p1}${node.routeType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
+              `${p1}${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
             /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
             (_, __, p2, ___, p4) =>
-              `${node.routeType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
+              `${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
       }
 
@@ -282,19 +286,19 @@ export async function generator(config: Config, root: string) {
           'pendingComponent',
           'errorComponent',
         ] satisfies Array<RouteType>
-      ).some((d) => d === node.routeType)
+      ).some((d) => d === node._fsRouteType)
     ) {
       routePiecesByPath[node.routePath!] =
         routePiecesByPath[node.routePath!] || {}
 
       routePiecesByPath[node.routePath!]![
-        node.routeType === 'lazy'
+        node._fsRouteType === 'lazy'
           ? 'lazy'
-          : node.routeType === 'loader'
+          : node._fsRouteType === 'loader'
             ? 'loader'
-            : node.routeType === 'errorComponent'
+            : node._fsRouteType === 'errorComponent'
               ? 'errorComponent'
-              : node.routeType === 'pendingComponent'
+              : node._fsRouteType === 'pendingComponent'
                 ? 'pendingComponent'
                 : 'component'
       ] = node
@@ -305,16 +309,16 @@ export async function generator(config: Config, root: string) {
         await handleNode({
           ...node,
           isVirtual: true,
-          routeType: 'static',
+          _fsRouteType: 'static',
         })
       }
       return
     }
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
-    const nonPathRoute = node.routeType === 'layout' && node.isNonPath
+    const nonPathRoute = node._fsRouteType === 'layout' && node.isNonPath
     node.isVirtualParentRequired =
-      node.routeType === 'pathless-layout' || nonPathRoute
+      node._fsRouteType === 'pathless_layout' || nonPathRoute
         ? !cleanedPathIsEmpty
         : false
     if (!node.isVirtual && node.isVirtualParentRequired) {
@@ -334,7 +338,7 @@ export async function generator(config: Config, root: string) {
           routePath: parentRoutePath,
           variableName: parentVariableName,
           isVirtual: true,
-          routeType: 'static',
+          _fsRouteType: 'static',
           isVirtualParentRoute: true,
           isVirtualParentRequired: false,
         }
@@ -344,7 +348,7 @@ export async function generator(config: Config, root: string) {
 
         node.parent = parentNode
 
-        if (node.routeType === 'pathless-layout') {
+        if (node._fsRouteType === 'pathless_layout') {
           // since `node.path` is used as the `id` on the route definition, we need to update it
           node.path = determineNodePath(node)
         }
@@ -370,7 +374,7 @@ export async function generator(config: Config, root: string) {
     routeNodes.push(node)
   }
 
-  for (const node of preRouteNodes.filter((d) => d.routeType !== 'api')) {
+  for (const node of preRouteNodes.filter((d) => d._fsRouteType !== 'api')) {
     await handleNode(node)
   }
   checkRouteFullPathUniqueness(
@@ -378,14 +382,14 @@ export async function generator(config: Config, root: string) {
       (d) =>
         d.children === undefined &&
         (['api', 'lazy'] satisfies Array<RouteType>).every(
-          (type) => type !== d.routeType,
+          (type) => type !== d._fsRouteType,
         ),
     ),
     config,
   )
 
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
-    preRouteNodes.filter((d) => d.routeType === 'api'),
+    preRouteNodes.filter((d) => d._fsRouteType === 'api'),
     config,
   )
 
@@ -440,11 +444,11 @@ export async function generator(config: Config, root: string) {
 
   function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
-      if (node.routeType === '__root') {
+      if (node._fsRouteType === '__root') {
         return
       }
 
-      if (node.routeType === 'pathless-layout' && !node.children?.length) {
+      if (node._fsRouteType === 'pathless_layout' && !node.children?.length) {
         return
       }
 
