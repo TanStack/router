@@ -127,10 +127,6 @@ export async function getRouteNodes(
             routePath = routePath.replace(/\/lazy$/, '')
           }
 
-          const isComponent = routeType === 'component'
-          const isErrorComponent = routeType === 'errorComponent'
-          const isPendingComponent = routeType === 'pendingComponent'
-
           // this check needs to happen after the lazy route has been cleaned up
           // since the routePath is used to determine if a route is pathless
           if (determineRouteIsPathless(routePath, config)) {
@@ -170,11 +166,8 @@ export async function getRouteNodes(
             filePath,
             fullPath,
             routePath,
-            variableName,
-            isComponent,
-            isErrorComponent,
-            isPendingComponent,
             routeType,
+            variableName,
           })
         }
       }),

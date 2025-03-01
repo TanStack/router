@@ -222,9 +222,9 @@ export async function generator(config: Config, root: string) {
           )
         } else if (
           node.routeType === 'layout' ||
-          (!node.isComponent &&
-            !node.isErrorComponent &&
-            !node.isPendingComponent &&
+          (node.routeType !== 'component' &&
+            node.routeType !== 'errorComponent' &&
+            node.routeType !== 'pendingComponent' &&
             node.routeType !== 'loader')
         ) {
           replaced = await fillTemplate(
@@ -271,9 +271,9 @@ export async function generator(config: Config, root: string) {
     if (
       !node.isVirtual &&
       (node.routeType === 'loader' ||
-        node.isComponent ||
-        node.isErrorComponent ||
-        node.isPendingComponent ||
+        node.routeType === 'component' ||
+        node.routeType === 'errorComponent' ||
+        node.routeType === 'pendingComponent' ||
         node.routeType === 'lazy')
     ) {
       routePiecesByPath[node.routePath!] =
@@ -284,9 +284,9 @@ export async function generator(config: Config, root: string) {
           ? 'lazy'
           : node.routeType === 'loader'
             ? 'loader'
-            : node.isErrorComponent
+            : node.routeType === 'errorComponent'
               ? 'errorComponent'
-              : node.isPendingComponent
+              : node.routeType === 'pendingComponent'
                 ? 'pendingComponent'
                 : 'component'
       ] = node
@@ -298,9 +298,6 @@ export async function generator(config: Config, root: string) {
           ...node,
           isVirtual: true,
           routeType: 'static',
-          isComponent: false,
-          isErrorComponent: false,
-          isPendingComponent: false,
         })
       }
       return
