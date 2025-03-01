@@ -1,11 +1,26 @@
 import {
+  Asset,
   RouterProvider,
   Scripts,
-  ServerHeadContent,
+  useTags,
 } from '@tanstack/solid-router'
-import { Hydration, HydrationScript, NoHydration, ssr } from 'solid-js/web'
+import { Hydration, HydrationScript, NoHydration, ssr, useAssets } from 'solid-js/web'
 import { MetaProvider } from '@solidjs/meta'
 import type { AnyRouter } from '@tanstack/solid-router'
+
+export function ServerHeadContent() {
+  const tags = useTags()
+  useAssets(() => {
+    return (
+      <MetaProvider>
+        {tags().map((tag) => (
+          <Asset {...tag} />
+        ))}
+      </MetaProvider>
+    )
+  })
+  return null
+}
 
 const docType = ssr('<!DOCTYPE html>')
 
