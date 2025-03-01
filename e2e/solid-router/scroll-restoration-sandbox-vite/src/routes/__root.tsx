@@ -1,4 +1,5 @@
 import {
+  HeadContent,
   Link,
   Outlet,
   createRootRoute,
@@ -14,6 +15,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <Nav type="header" />
       <hr />
       <Outlet />
