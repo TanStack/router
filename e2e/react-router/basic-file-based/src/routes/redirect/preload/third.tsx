@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/redirect/preload/third')({
+export const Route = createFileRoute({
   component: RouteComponent,
 })
 

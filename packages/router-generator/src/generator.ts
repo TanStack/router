@@ -257,7 +257,7 @@ export async function generator(config: Config, root: string) {
           .replace(
             /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
             (_, __, p2, ___, p4) =>
-              `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
+              `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}`,
           )
       }
 
@@ -638,7 +638,7 @@ export async function generator(config: Config, root: string) {
         ]),
         routeNodes.map((routeNode) => {
           return `declare module './${getImportPath(routeNode)}' {
-  const createFileRoute: typeof import('@tanstack/react-router').createFileRouteImpl<'${routeNode.routePath}'>
+  const createFileRoute: ReturnType<typeof import('@tanstack/react-router').createFileRouteImpl<'${routeNode.routePath}'>>
 }`
         }).join('\n'),
     '// Create and export the route tree',
