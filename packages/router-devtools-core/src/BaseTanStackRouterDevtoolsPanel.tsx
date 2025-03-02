@@ -1,11 +1,8 @@
 import React from 'react'
 import { clsx as cx } from 'clsx'
 import { default as invariant } from 'tiny-invariant'
-import {rootRouteId, trimPath} from '@tanstack/router-core'
-import {
-  useRouter,
-  useRouterState,
-} from '@tanstack/react-router'
+import { rootRouteId, trimPath } from '@tanstack/router-core'
+import { useRouter, useRouterState } from '@tanstack/react-router'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
