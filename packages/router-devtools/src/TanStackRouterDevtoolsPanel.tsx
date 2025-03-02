@@ -34,18 +34,22 @@ export interface DevtoolsPanelOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export const TanStackRouterDevtoolsPanel = function TanStackRouterDevtoolsPanel({ ref, ...props }: DevtoolsPanelOptions & { ref?: React.RefObject<HTMLDivElement | null> }) {
-  const { shadowDOMTarget } = props
+export const TanStackRouterDevtoolsPanel =
+  function TanStackRouterDevtoolsPanel({
+    ref,
+    ...props
+  }: DevtoolsPanelOptions & { ref?: React.RefObject<HTMLDivElement | null> }) {
+    const { shadowDOMTarget } = props
 
-  return (
-    <ShadowDomTargetContext value={shadowDOMTarget}>
-      <DevtoolsOnCloseContext
-        value={{
-          onCloseClick: () => {},
-        }}
-      >
-        <BaseTanStackRouterDevtoolsPanel ref={ref} {...props} />
-      </DevtoolsOnCloseContext>
-    </ShadowDomTargetContext>
-  )
-}
+    return (
+      <ShadowDomTargetContext value={shadowDOMTarget}>
+        <DevtoolsOnCloseContext
+          value={{
+            onCloseClick: () => {},
+          }}
+        >
+          <BaseTanStackRouterDevtoolsPanel ref={ref} {...props} />
+        </DevtoolsOnCloseContext>
+      </ShadowDomTargetContext>
+    )
+  }

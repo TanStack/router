@@ -68,34 +68,39 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
     ref?: React.RefObject<HTMLElementTagNameMap[T] | null>
   },
 ) => React.ReactElement {
-  return ({ ref, style, ...rest }: StyledComponent<T> & { ref?: React.RefObject<HTMLElementTagNameMap[T] | null> }) => {
-      const theme = useTheme()
+  return ({
+    ref,
+    style,
+    ...rest
+  }: StyledComponent<T> & {
+    ref?: React.RefObject<HTMLElementTagNameMap[T] | null>
+  }) => {
+    const theme = useTheme()
 
-      const mediaStyles = Object.entries(queries).reduce(
-        (current, [key, value]) => {
-           
-          return useMediaQuery(key)
-            ? {
-                ...current,
-                ...(typeof value === 'function' ? value(rest, theme) : value),
-              }
-            : current
-        },
-        {},
-      )
+    const mediaStyles = Object.entries(queries).reduce(
+      (current, [key, value]) => {
+        return useMediaQuery(key)
+          ? {
+              ...current,
+              ...(typeof value === 'function' ? value(rest, theme) : value),
+            }
+          : current
+      },
+      {},
+    )
 
-      return React.createElement(type, {
-        ...rest,
-        style: {
-          ...(typeof newStyles === 'function'
-            ? newStyles(rest, theme)
-            : newStyles),
-          ...style,
-          ...mediaStyles,
-        },
-        ref,
-      })
-    }
+    return React.createElement(type, {
+      ...rest,
+      style: {
+        ...(typeof newStyles === 'function'
+          ? newStyles(rest, theme)
+          : newStyles),
+        ...style,
+        ...mediaStyles,
+      },
+      ref,
+    })
+  }
 }
 
 export function useIsMounted() {
