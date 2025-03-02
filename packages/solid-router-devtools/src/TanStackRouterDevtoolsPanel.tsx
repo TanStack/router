@@ -11,7 +11,7 @@ export interface DevtoolsPanelOptions {
   /**
    * The standard React class property used to style a component with classes
    */
-  className?: string
+  className?: Solid.Accessor<string>
   /**
    * A boolean variable indicating whether the panel is open or closed
    */
@@ -19,7 +19,7 @@ export interface DevtoolsPanelOptions {
   /**
    * A function that toggles the open and close state of the panel
    */
-  setIsOpen: (isOpen: boolean) => void
+  setIsOpen: (isOpen: {isOpen: boolean}) => void
   /**
    * Handles the opening and closing the devtools panel
    */

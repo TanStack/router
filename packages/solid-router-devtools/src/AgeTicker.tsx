@@ -62,7 +62,7 @@ export function AgeTicker({
     route.options.gcTime ?? router.options.defaultGcTime ?? 30 * 60 * 1000
 
   return (
-    <div class={cx(styles()().ageTicker(age > staleTime))}>
+    <div class={cx(styles().ageTicker(age > staleTime))}>
       <div>{formatTime(age)}</div>
       <div>/</div>
       <div>{formatTime(staleTime)}</div>

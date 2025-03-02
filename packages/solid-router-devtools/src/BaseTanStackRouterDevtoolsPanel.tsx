@@ -26,9 +26,9 @@ function Logo(props: any) {
   const { className, ...rest } = props
   const styles = useStyles()
   return (
-    <button {...rest} class={cx(styles()().logo, className)}>
-      <div class={styles()().tanstackLogo}>TANSTACK</div>
-      <div class={styles()().routerLogo}>TanStack Router v1</div>
+    <button {...rest} class={cx(styles().logo, className ? className() : '')}>
+      <div class={styles().tanstackLogo}>TANSTACK</div>
+      <div class={styles().routerLogo}>TanStack Router v1</div>
     </button>
   )
 }
@@ -82,26 +82,26 @@ function RouteComp({
           }
         }}
         class={cx(
-          styles()().routesRowContainer(route.id === activeId, !!match),
+          styles().routesRowContainer(route.id === activeId, !!match),
         )}
       >
         <div
           class={cx(
-            styles()().matchIndicator(getRouteStatusColor(matches, route)),
+            styles().matchIndicator(getRouteStatusColor(matches, route)),
           )}
         />
-        <div class={cx(styles()().routesRow(!!match))}>
+        <div class={cx(styles().routesRow(!!match))}>
           <div>
-            <code class={styles()().code}>
+            <code class={styles().code}>
               {isRoot ? rootRouteId : route.path || trimPath(route.id)}{' '}
             </code>
-            <code class={styles()().routeParamInfo}>{param()}</code>
+            <code class={styles().routeParamInfo}>{param()}</code>
           </div>
           <AgeTicker match={match} router={router} />
         </div>
       </div>
       {route.children?.length ? (
-        <div class={styles()().nestedRouteRow(!!isRoot)}>
+        <div class={styles().nestedRouteRow(!!isRoot)}>
           {[...(route.children as Array<Route>)]
             .sort((a, b) => {
               return a.rank - b.rank
@@ -185,22 +185,22 @@ export const BaseTanStackRouterDevtoolsPanel =
       <div
         ref={ref}
         class={cx(
-          styles()().devtoolsPanel,
+          styles().devtoolsPanel,
           'TanStackRouterDevtoolsPanel',
-          className,
+          className ? className() : '',
         )}
         {...otherPanelProps}
       >
         {handleDragStart ? (
           <div
-            class={styles()().dragHandle}
+            class={styles().dragHandle}
             onMouseDown={handleDragStart}
           ></div>
         ) : null}
         <button
-          class={styles()().panelCloseBtn}
+          class={styles().panelCloseBtn}
           onClick={(e: any) => {
-            setIsOpen(false)
+            setIsOpen({isOpen:false})
             onCloseClick(e)
           }}
         >
@@ -210,7 +210,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             height="6"
             fill="none"
             viewBox="0 0 10 6"
-            class={styles()().panelCloseBtnIcon}
+            class={styles().panelCloseBtnIcon}
           >
             <path
               stroke="currentColor"
@@ -221,18 +221,18 @@ export const BaseTanStackRouterDevtoolsPanel =
             ></path>
           </svg>
         </button>
-        <div class={styles()().firstContainer}>
-          <div class={styles()().row}>
+        <div class={styles().firstContainer}>
+          <div class={styles().row}>
             <Logo
               aria-hidden
               onClick={(e: any) => {
-                setIsOpen(false)
+                setIsOpen({isOpen:false})
                 onCloseClick(e)
               }}
             />
           </div>
-          <div class={styles()().routerExplorerContainer}>
-            <div class={styles()().routerExplorer}>
+          <div class={styles().routerExplorerContainer}>
+            <div class={styles().routerExplorer}>
               <Explorer
                 label="Router"
                 value={Object.fromEntries(
@@ -280,26 +280,26 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           </div>
         </div>
-        <div class={styles()().secondContainer}>
-          <div class={styles()().matchesContainer}>
-            <div class={styles()().detailsHeader}>
+        <div class={styles().secondContainer}>
+          <div class={styles().matchesContainer}>
+            <div class={styles().detailsHeader}>
               <span>Pathname</span>
               {routerState().location.maskedLocation ? (
-                <div class={styles()().maskedBadgeContainer}>
-                  <span class={styles()().maskedBadge}>masked</span>
+                <div class={styles().maskedBadgeContainer}>
+                  <span class={styles().maskedBadge}>masked</span>
                 </div>
               ) : null}
             </div>
-            <div class={styles()().detailsContent}>
+            <div class={styles().detailsContent}>
               <code>{routerState().location.pathname}</code>
               {routerState().location.maskedLocation ? (
-                <code class={styles()().maskedLocation}>
+                <code class={styles().maskedLocation}>
                   {routerState().location.maskedLocation?.pathname}
                 </code>
               ) : null}
             </div>
-            <div class={styles()().detailsHeader}>
-              <div class={styles()().routeMatchesToggle}>
+            <div class={styles().detailsHeader}>
+              <div class={styles().routeMatchesToggle}>
                 <button
                   type="button"
                   onClick={() => {
@@ -307,7 +307,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   }}
                   disabled={!showMatches()}
                   class={cx(
-                    styles()().routeMatchesToggleBtn(!showMatches(), true),
+                    styles().routeMatchesToggleBtn(!showMatches(), true),
                   )}
                 >
                   Routes
@@ -319,17 +319,17 @@ export const BaseTanStackRouterDevtoolsPanel =
                   }}
                   disabled={showMatches()}
                   class={cx(
-                    styles()().routeMatchesToggleBtn(!!showMatches(), false),
+                    styles().routeMatchesToggleBtn(!!showMatches(), false),
                   )}
                 >
                   Matches
                 </button>
               </div>
-              <div class={styles()().detailsHeaderInfo}>
+              <div class={styles().detailsHeaderInfo}>
                 <div>age / staleTime / gcTime</div>
               </div>
             </div>
-            <div class={cx(styles()().routesContainer)}>
+            <div class={cx(styles().routesContainer)}>
               {!showMatches() ? (
                 <RouteComp
                   router={router}
@@ -351,16 +351,16 @@ export const BaseTanStackRouterDevtoolsPanel =
                         onClick={() =>
                           setActiveId(activeId() === match.id ? '' : match.id)
                         }
-                        class={cx(styles()().matchRow(match === activeMatch()))}
+                        class={cx(styles().matchRow(match === activeMatch()))}
                       >
                         <div
                           class={cx(
-                            styles()().matchIndicator(getStatusColor(match)),
+                            styles().matchIndicator(getStatusColor(match)),
                           )}
                         />
 
                         <code
-                          class={styles()().matchID}
+                          class={styles().matchID}
                         >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
                         <AgeTicker match={match} router={router} />
                       </div>
@@ -371,10 +371,10 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           </div>
           {routerState().cachedMatches.length ? (
-            <div class={styles()().cachedMatchesContainer}>
-              <div class={styles()().detailsHeader}>
+            <div class={styles().cachedMatchesContainer}>
+              <div class={styles().detailsHeader}>
                 <div>Cached Matches</div>
-                <div class={styles()().detailsHeaderInfo}>
+                <div class={styles().detailsHeaderInfo}>
                   age / staleTime / gcTime
                 </div>
               </div>
@@ -387,15 +387,15 @@ export const BaseTanStackRouterDevtoolsPanel =
                       onClick={() =>
                         setActiveId(activeId() === match.id ? '' : match.id)
                       }
-                      class={cx(styles()().matchRow(match === activeMatch()))}
+                      class={cx(styles().matchRow(match === activeMatch()))}
                     >
                       <div
                         class={cx(
-                          styles()().matchIndicator(getStatusColor(match)),
+                          styles().matchIndicator(getStatusColor(match)),
                         )}
                       />
 
-                      <code class={styles()().matchID}>{`${match.id}`}</code>
+                      <code class={styles().matchID}>{`${match.id}`}</code>
 
                       <AgeTicker match={match} router={router} />
                     </div>
@@ -406,12 +406,12 @@ export const BaseTanStackRouterDevtoolsPanel =
           ) : null}
         </div>
         {activeMatch() && activeMatch()?.status ? (
-          <div class={styles()().thirdContainer}>
-            <div class={styles()().detailsHeader}>Match Details</div>
+          <div class={styles().thirdContainer}>
+            <div class={styles().detailsHeader}>Match Details</div>
             <div>
-              <div class={styles()().matchDetails}>
+              <div class={styles().matchDetails}>
                 <div
-                  class={styles()().matchStatus(
+                  class={styles().matchStatus(
                     activeMatch()!.status,
                     activeMatch()!.isFetching,
                   )}
@@ -423,15 +423,15 @@ export const BaseTanStackRouterDevtoolsPanel =
                       : activeMatch()?.status}
                   </div>
                 </div>
-                <div class={styles()().matchDetailsInfoLabel}>
+                <div class={styles().matchDetailsInfoLabel}>
                   <div>ID:</div>
-                  <div class={styles()().matchDetailsInfo}>
+                  <div class={styles().matchDetailsInfo}>
                     <code>{activeMatch()!.id}</code>
                   </div>
                 </div>
-                <div class={styles()().matchDetailsInfoLabel}>
+                <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
-                  <div class={styles()().matchDetailsInfo}>
+                  <div class={styles().matchDetailsInfo}>
                     {routerState().pendingMatches?.find(
                       (d) => d.id === activeMatch()!.id,
                     )
@@ -443,9 +443,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                         : 'Cached'}
                   </div>
                 </div>
-                <div class={styles()().matchDetailsInfoLabel}>
+                <div class={styles().matchDetailsInfoLabel}>
                   <div>Last Updated:</div>
-                  <div class={styles()().matchDetailsInfo}>
+                  <div class={styles().matchDetailsInfo}>
                     {activeMatch()!.updatedAt
                       ? new Date(activeMatch()!.updatedAt).toLocaleTimeString()
                       : 'N/A'}
@@ -455,8 +455,8 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
             {activeMatch()!.loaderData ? (
               <>
-                <div class={styles()().detailsHeader}>Loader Data</div>
-                <div class={styles()().detailsContent}>
+                <div class={styles().detailsHeader}>Loader Data</div>
+                <div class={styles().detailsContent}>
                   <Explorer
                     label="loaderData"
                     value={activeMatch()!.loaderData}
@@ -465,8 +465,8 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </div>
               </>
             ) : null}
-            <div class={styles()().detailsHeader}>Explorer</div>
-            <div class={styles()().detailsContent}>
+            <div class={styles().detailsHeader}>Explorer</div>
+            <div class={styles().detailsContent}>
               <Explorer
                 label="Match"
                 value={activeMatch}
@@ -476,9 +476,9 @@ export const BaseTanStackRouterDevtoolsPanel =
           </div>
         ) : null}
         {hasSearch ? (
-          <div class={styles()().fourthContainer}>
-            <div class={styles()().detailsHeader}>Search Params</div>
-            <div class={styles()().detailsContent}>
+          <div class={styles().fourthContainer}>
+            <div class={styles().detailsHeader}>Search Params</div>
+            <div class={styles().detailsContent}>
               <Explorer
                 value={routerState().location.search}
                 defaultExpanded={Object.keys(

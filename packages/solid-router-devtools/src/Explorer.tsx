@@ -13,14 +13,14 @@ type ExpanderProps = {
 export const Expander = ({ expanded, style = {} }: ExpanderProps) => {
   const styles = useStyles()
   return (
-    <span class={styles()().expander}>
+    <span class={styles().expander}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="12"
         height="12"
         fill="none"
         viewBox="0 0 24 24"
-        class={cx(styles()().expanderIcon(expanded))}
+        class={cx(styles().expanderIcon(expanded))}
       >
         <path
           stroke="currentColor"
@@ -97,33 +97,33 @@ export const DefaultRenderer: Renderer = ({
   }
 
   return (
-    <div class={styles()().entry}>
+    <div class={styles().entry}>
       {subEntryPages.length ? (
         <>
           <button
-            class={styles()().expandButton}
+            class={styles().expandButton}
             onClick={() => toggleExpanded()}
           >
             <Expander expanded={expanded} />
             {label}
-            <span class={styles()().info}>
+            <span class={styles().info}>
               {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
               {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
             </span>
           </button>
           {expanded ? (
             subEntryPages.length === 1 ? (
-              <div class={styles()().subEntries}>
+              <div class={styles().subEntries}>
                 {subEntries.map((entry, index) => handleEntry(entry))}
               </div>
             ) : (
-              <div class={styles()().subEntries}>
+              <div class={styles().subEntries}>
                 {subEntryPages.map((entries, index) => {
                   return (
                     <div>
-                      <div class={styles()().entry}>
+                      <div class={styles().entry}>
                         <button
-                          class={cx(styles()().labelButton, 'labelButton')}
+                          class={cx(styles().labelButton, 'labelButton')}
                           onClick={() =>
                             setExpandedPages((old) =>
                               old.includes(index)
@@ -139,7 +139,7 @@ export const DefaultRenderer: Renderer = ({
                           {index * pageSize + pageSize - 1}]
                         </button>
                         {expandedPages().includes(index) ? (
-                          <div class={styles()().subEntries}>
+                          <div class={styles().subEntries}>
                             {entries.map((entry) => handleEntry(entry))}
                           </div>
                         ) : null}
@@ -158,7 +158,7 @@ export const DefaultRenderer: Renderer = ({
             label={
               <button
                 onClick={refreshValueSnapshot}
-                class={styles()().refreshValueBtn}
+                class={styles().refreshValueBtn}
               >
                 <span>{label}</span> 🔄{' '}
               </button>
@@ -170,7 +170,7 @@ export const DefaultRenderer: Renderer = ({
       ) : (
         <>
           <span>{label}:</span>{' '}
-          <span class={styles()().value}>{displayValue(value)}</span>
+          <span class={styles().value}>{displayValue(value)}</span>
         </>
       )}
     </div>
@@ -360,6 +360,6 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 
 function useStyles() {
   const shadowDomTarget = Solid.useContext(ShadowDomTargetContext)
-  const [_styles] = Solid.createSignal(() => stylesFactory(shadowDomTarget))
+  const [_styles] = Solid.createSignal(stylesFactory(shadowDomTarget))
   return _styles
 }

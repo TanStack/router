@@ -62,12 +62,13 @@
     "node": ">=12"
   },
   "dependencies": {
+    "@solid-primitives/storage": "^4.3.1",
     "clsx": "^2.1.1",
     "goober": "^2.1.16"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.6",
-    "solid-js": "^1.9.5"
+    "solid-js": "^1.9.5",
+    "vite-plugin-solid": "^2.11.6"
   },
   "peerDependencies": {
     "@tanstack/solid-router": "workspace:^",

@@ -24,12 +24,13 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       transform-origin: top;
     `,
     devtoolsPanelContainerVisibility: (isOpen: boolean) => {
+      console.log('isoopen1', isOpen, )
       return css`
         visibility: ${isOpen ? 'visible' : 'hidden'};
       `
     },
-    devtoolsPanelContainerResizing: (isResizing: boolean) => {
-      if (isResizing) {
+    devtoolsPanelContainerResizing: (isResizing: Solid.Accessor<boolean>) => {
+      if (isResizing()) {
         return css`
           transition: none;
         `
@@ -40,6 +41,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       `
     },
     devtoolsPanelContainerAnimation: (isOpen: boolean, height: number) => {
+      console.log('isoopen2', isOpen)
       if (isOpen) {
         return css`
           pointer-events: auto;
@@ -487,7 +489,8 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       return base
     },
     mainCloseBtnAnimation: (isOpen: boolean) => {
-      if (isOpen) {
+      console.log('isOpen', isOpen)
+      if (!isOpen) {
         return css`
           opacity: 1;
           pointer-events: auto;
@@ -584,6 +587,6 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 
 export function useStyles() {
   const shadowDomTarget = Solid.useContext(ShadowDomTargetContext)
-  const [_styles] = Solid.createSignal(() => stylesFactory(shadowDomTarget))
+  const [_styles] = Solid.createSignal(stylesFactory(shadowDomTarget))
   return _styles
 }

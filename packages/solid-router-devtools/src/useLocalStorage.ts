@@ -29,7 +29,7 @@ export default function useLocalStorage<T>(
       // @ts-ignore
       setValue(initialValue)
     }
-  }, [defaultValue, key])
+  })
 
   const setter = (updater: any) => {
     setValue((old) => {

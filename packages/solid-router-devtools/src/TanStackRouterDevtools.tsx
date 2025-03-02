@@ -8,6 +8,8 @@ import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
 import type { AnyRouter } from '@tanstack/solid-router'
 import { Dynamic } from 'solid-js/web'
+import { makePersisted } from '@solid-primitives/storage'
+import { createStore } from 'solid-js/store'
 
 interface DevtoolsOptions {
   /**
@@ -58,6 +60,8 @@ export function TanStackRouterDevtools(
 ): Solid.JSX.Element | null {
   const { shadowDOMTarget } = props
 
+  console.log('props', props)
+
   return (
     <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
       <FloatingTanStackRouterDevtools {...props} />
@@ -75,18 +79,29 @@ function FloatingTanStackRouterDevtools({
   router,
   shadowDOMTarget,
 }: DevtoolsOptions): Solid.JSX.Element | null {
+
+  console.log('toggleButtonProps', toggleButtonProps);
+
+
   const [rootEl, setRootEl] = Solid.createSignal<HTMLDivElement>()
   let panelRef: HTMLDivElement | undefined = undefined
-  const [isOpen, setIsOpen] = useLocalStorage(
-    'tanstackRouterDevtoolsOpen',
-    initialIsOpen,
-  )
+
+  console.log(initialIsOpen, 'initialIsOpen')
+  const [isOpen, setIsOpen, init] = makePersisted(createStore({isOpen: initialIsOpen}), {name: "tanstackRouterDevtoolsOpen"});
+  setIsOpen({isOpen: initialIsOpen})
+
+  Solid.createEffect(() => {
+
+    console.log("IsOpenEffect", isOpen.isOpen)
+
+  })
+
   const [devtoolsHeight, setDevtoolsHeight] = useLocalStorage<number | null>(
     'tanstackRouterDevtoolsHeight',
     null,
   )
-  const [isResolvedOpen, setIsResolvedOpen] = useSafeState(false)
-  const [isResizing, setIsResizing] = useSafeState(false)
+  
+  const [isResizing, setIsResizing] = Solid.createSignal(false)
   const isMounted = useIsMounted()
   const styles = useStyles()
 
@@ -110,9 +125,9 @@ function FloatingTanStackRouterDevtools({
       setDevtoolsHeight(newHeight)
 
       if (newHeight < 70) {
-        setIsOpen(false)
+        setIsOpen({isOpen: false})
       } else {
-        setIsOpen(true)
+        setIsOpen({isOpen: true})
       }
     }
 
@@ -126,14 +141,9 @@ function FloatingTanStackRouterDevtools({
     document.addEventListener('mouseup', unsub)
   }
 
-  const isButtonClosed = isOpen() ?? false
-
+  
   Solid.createEffect(() => {
-    setIsResolvedOpen(isOpen() ?? false)
-  })
-
-  Solid.createEffect(() => {
-    if (isResolvedOpen) {
+    if (isOpen.isOpen) {
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
       const run = () => {
@@ -167,7 +177,7 @@ function FloatingTanStackRouterDevtools({
       }
     }
     return
-  }, [isResolvedOpen, rootEl()?.parentElement])
+  })
 
   Solid.createEffect(() => {
     if (rootEl) {
@@ -175,7 +185,7 @@ function FloatingTanStackRouterDevtools({
       const fontSize = getComputedStyle(el()!).fontSize
       el()?.style.setProperty('--tsrd-font-size', fontSize)
     }
-  }, [rootEl])
+  })
 
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps as {
     style?: Record<string, any>
@@ -198,6 +208,30 @@ function FloatingTanStackRouterDevtools({
 
   const resolvedHeight = devtoolsHeight() ?? 500
 
+  const basePanelStyle = Solid.createMemo( ()=>{
+    console.log('basePanelStyle', isOpen.isOpen)
+    return cx(
+      styles().devtoolsPanelContainer,
+      styles().devtoolsPanelContainerVisibility(!!isOpen.isOpen),
+      styles().devtoolsPanelContainerResizing(isResizing),
+      styles().devtoolsPanelContainerAnimation(
+        !!isOpen.isOpen,
+        resolvedHeight + 16,
+      ),
+    )
+  
+  })
+
+  const buttonStyle = Solid.createMemo(()=>{
+    return cx(
+      styles().mainCloseBtn,
+      styles().mainCloseBtnPosition(position),
+      // @ts-ignore
+      styles().mainCloseBtnAnimation(!!isOpen.isOpen),
+      toggleButtonClassName,
+    )
+  })
+  
   return (
     <Dynamic
       component={Container}
@@ -210,24 +244,17 @@ function FloatingTanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
+        {JSON.stringify(basePanelStyle())}
         <BaseTanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
           router={router}
-          className={cx(
-            styles()().devtoolsPanelContainer,
-            styles()().devtoolsPanelContainerVisibility(!!isOpen()),
-            styles()().devtoolsPanelContainerResizing(isResizing),
-            styles()().devtoolsPanelContainerAnimation(
-              isResolvedOpen,
-              resolvedHeight + 16,
-            ),
-          )}
+          className={basePanelStyle}
           style={{
             height: `${resolvedHeight}px`,
             ...(panelStyle || {}),
           }}
-          isOpen={isResolvedOpen}
+          isOpen={isOpen.isOpen}
           setIsOpen={setIsOpen}
           handleDragStart={(e) => handleDragStart(panelRef, e)}
           shadowDOMTarget={shadowDOMTarget}
@@ -239,27 +266,24 @@ function FloatingTanStackRouterDevtools({
         {...otherToggleButtonProps}
         aria-label="Open TanStack Router Devtools"
         onClick={(e) => {
-          setIsOpen(true)
+          setIsOpen({isOpen:!(isOpen.isOpen)})
+          console.log('isOpen4', isOpen.isOpen)
+
           // @ts-ignore
           onToggleClick && onToggleClick(e)
         }}
-        class={cx(
-          styles()().mainCloseBtn,
-          styles()().mainCloseBtnPosition(position),
-          styles()().mainCloseBtnAnimation(!isButtonClosed),
-          toggleButtonClassName,
-        )}
+        class={buttonStyle()}
       >
-        <div class={styles()().mainCloseBtnIconContainer}>
-          <div class={styles()().mainCloseBtnIconOuter}>
+        <div class={styles().mainCloseBtnIconContainer}>
+          <div class={styles().mainCloseBtnIconOuter}>
             <TanStackLogo />
           </div>
-          <div class={styles()().mainCloseBtnIconInner}>
+          <div class={styles().mainCloseBtnIconInner}>
             <TanStackLogo />
           </div>
         </div>
-        <div class={styles()().mainCloseBtnDivider}>-</div>
-        <div class={styles()().routerLogoCloseButton}>TanStack Router</div>
+        <div class={styles().mainCloseBtnDivider}>-</div>
+        <div class={styles().routerLogoCloseButton}>TanStack Router</div>
       </button>
     </Dynamic>
   )
