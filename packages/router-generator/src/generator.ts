@@ -214,6 +214,7 @@ export async function generator(config: Config, root: string) {
       const tLazyRouteTemplate = ROUTE_TEMPLATE.lazyRoute
 
       if (!routeCode) {
+        // Creating a new lazy route file
         if (node._fsRouteType === 'lazy') {
           // Check by default check if the user has a specific lazy route template
           // If not, check if the user has a route template and use that instead
@@ -231,11 +232,10 @@ export async function generator(config: Config, root: string) {
             },
           )
         } else if (
-          // Check if the route is "normal" route
+          // Creating a new normal route file
           (['layout', 'static'] satisfies Array<FsRouteType>).some(
             (d) => d === node._fsRouteType,
           ) ||
-          // Make sure that the route is not a component, pendingComponent, errorComponent or loader
           (
             [
               'component',
@@ -259,6 +259,7 @@ export async function generator(config: Config, root: string) {
           )
         }
       } else {
+        // Update the existing route file
         replaced = routeCode
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
