@@ -195,7 +195,7 @@ export const BaseTanStackRouterDevtoolsPanel =
         <button
           class={styles().panelCloseBtn}
           onClick={(e: any) => {
-            setIsOpen({ isOpen: false })
+            setIsOpen(false)
             onCloseClick(e)
           }}
         >
@@ -221,7 +221,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <Logo
               aria-hidden
               onClick={(e: any) => {
-                setIsOpen({ isOpen: false })
+                setIsOpen(false)
                 onCloseClick(e)
               }}
             />

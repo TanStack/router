@@ -8,8 +8,6 @@ import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
 import type { AnyRouter } from '@tanstack/solid-router'
 import { Dynamic } from 'solid-js/web'
-import { makePersisted } from '@solid-primitives/storage'
-import { createStore } from 'solid-js/store'
 
 interface DevtoolsOptions {
   /**
@@ -80,9 +78,9 @@ function FloatingTanStackRouterDevtools({
   const [rootEl, setRootEl] = Solid.createSignal<HTMLDivElement>()
   let panelRef: HTMLDivElement | undefined = undefined
 
-  const [isOpen, setIsOpen, init] = makePersisted(
-    createStore({ isOpen: initialIsOpen }),
-    { name: 'tanstackRouterDevtoolsOpen' },
+  const [isOpen, setIsOpen] = useLocalStorage(
+    'tanstackRouterDevtoolsOpen',
+    initialIsOpen,
   )
 
   const [devtoolsHeight, setDevtoolsHeight] = useLocalStorage<number | null>(
@@ -114,9 +112,9 @@ function FloatingTanStackRouterDevtools({
       setDevtoolsHeight(newHeight)
 
       if (newHeight < 70) {
-        setIsOpen({ isOpen: false })
+        setIsOpen(false)
       } else {
-        setIsOpen({ isOpen: true })
+        setIsOpen(true)
       }
     }
 
@@ -131,7 +129,7 @@ function FloatingTanStackRouterDevtools({
   }
 
   Solid.createEffect(() => {
-    if (isOpen.isOpen) {
+    if (isOpen()) {
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
       const run = () => {
@@ -199,10 +197,10 @@ function FloatingTanStackRouterDevtools({
   const basePanelStyle = Solid.createMemo(() => {
     return cx(
       styles().devtoolsPanelContainer,
-      styles().devtoolsPanelContainerVisibility(!!isOpen.isOpen),
+      styles().devtoolsPanelContainerVisibility(!!isOpen()),
       styles().devtoolsPanelContainerResizing(isResizing),
       styles().devtoolsPanelContainerAnimation(
-        !!isOpen.isOpen,
+        !!isOpen(),
         resolvedHeight + 16,
       ),
     )
@@ -213,7 +211,7 @@ function FloatingTanStackRouterDevtools({
       styles().mainCloseBtn,
       styles().mainCloseBtnPosition(position),
       // @ts-ignore
-      styles().mainCloseBtnAnimation(!!isOpen.isOpen),
+      styles().mainCloseBtnAnimation(!!isOpen()),
       toggleButtonClassName,
     )
   })
@@ -239,7 +237,7 @@ function FloatingTanStackRouterDevtools({
             height: `${resolvedHeight}px`,
             ...(panelStyle || {}),
           }}
-          isOpen={isOpen.isOpen}
+          isOpen={isOpen()}
           setIsOpen={setIsOpen}
           handleDragStart={(e) => handleDragStart(panelRef, e)}
           shadowDOMTarget={shadowDOMTarget}
@@ -251,7 +249,7 @@ function FloatingTanStackRouterDevtools({
         {...otherToggleButtonProps}
         aria-label="Open TanStack Router Devtools"
         onClick={(e) => {
-          setIsOpen({ isOpen: !isOpen.isOpen })
+          setIsOpen(!isOpen())
 
           // @ts-ignore
           onToggleClick && onToggleClick(e)
