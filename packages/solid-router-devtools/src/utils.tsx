@@ -55,11 +55,7 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
   type: T,
   newStyles: Styles,
   queries: Record<string, Styles> = {},
-): (
-  props: StyledComponent<T> & {
-    ref?: HTMLElementTagNameMap[T] | undefined
-  },
-) => Solid.JSX.Element {
+) {
   return ({
     ref,
     style,
@@ -67,33 +63,37 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
   }: StyledComponent<T> & {
     ref?: HTMLElementTagNameMap[T] | undefined
   }) => {
-    const theme = useTheme()
 
-    const mediaStyles = Object.entries(queries).reduce(
-      (current, [key, value]) => {
-        return useMediaQuery(key)()
-          ? {
-              ...current,
-              ...(typeof value === 'function' ? value(rest, theme) : value),
-            }
-          : current
-      },
-      {},
-    )
+  const theme = useTheme()
+
+  const mediaStyles = Object.entries(queries).reduce(
+    (current, [key, value]) => {
+      return useMediaQuery(key)
+        ? {
+            ...current,
+            ...(typeof value === 'function' ? value(rest, theme) : value),
+          }
+        : current
+    },
+    {},
+  )
+
+  const baseStyles = typeof newStyles === 'function' ? newStyles(rest, theme) : newStyles
   
+  // Handle style being either a string or an object
+  const combinedStyles = typeof style === 'string' 
+    ? { ...baseStyles, ...mediaStyles, cssText: style }
+    : { ...baseStyles, ...style, ...mediaStyles }
 
-return (
-  <Dynamic
-    component={type}
-    {...rest}
-    style={{
-      ...(typeof newStyles === 'function' ? newStyles(rest, theme) : newStyles),
-      ...style,
-      ...mediaStyles,
-    }}
-    ref={ref}
-  />
-    )
+  return (
+    // @ts-ignore
+    <Dynamic
+      component={type}
+      {...rest}
+      style={combinedStyles}
+      ref={ref}
+    />
+  )
   }
 }
 
@@ -134,6 +134,7 @@ export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
     (value: T) => {
       scheduleMicrotask(() => {
         if (isMounted()) {
+          // @ts-ignore
           setState(value)
         }
       })
