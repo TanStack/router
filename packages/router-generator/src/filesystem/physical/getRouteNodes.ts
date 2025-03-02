@@ -15,7 +15,7 @@ import type {
   VirtualRootRoute,
   VirtualRouteSubtreeConfig,
 } from '@tanstack/virtual-file-routes'
-import type { GetRouteNodesResult, RouteNode, RouteType } from '../../types'
+import type { FsRouteType, GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 
 const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
@@ -121,7 +121,7 @@ export async function getRouteNodes(
 
           const meta = getRouteMeta(routePath, config)
           const variableName = meta.variableName
-          let routeType: RouteType = meta.routeType
+          let routeType: FsRouteType = meta.routeType
 
           if (routeType === 'lazy') {
             routePath = routePath.replace(/\/lazy$/, '')
@@ -139,7 +139,7 @@ export async function getRouteNodes(
               ['errorComponent', 'errorComponent'],
               ['pendingComponent', 'pendingComponent'],
               ['loader', 'loader'],
-            ] satisfies Array<[RouteType, string]>
+            ] satisfies Array<[FsRouteType, string]>
           ).forEach(([matcher, type]) => {
             if (routeType === matcher) {
               logger.warn(
@@ -200,7 +200,7 @@ export function getRouteMeta(
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
   // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath
   routeType: Extract<
-    RouteType,
+    FsRouteType,
     | 'static'
     | 'layout'
     | 'api'
@@ -212,7 +212,7 @@ export function getRouteMeta(
   >
   variableName: string
 } {
-  let routeType: RouteType = 'static'
+  let routeType: FsRouteType = 'static'
 
   if (routePath.endsWith(`/${config.routeToken}`)) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
@@ -250,7 +250,7 @@ export function getRouteMeta(
  */
 function isValidPathlessLayoutRoute(
   normalizedRoutePath: string,
-  routeType: RouteType,
+  routeType: FsRouteType,
   config: Config,
 ): boolean {
   if (routeType === 'lazy') {

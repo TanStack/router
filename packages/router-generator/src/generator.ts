@@ -23,7 +23,7 @@ import {
   fillTemplate,
   getTargetTemplate,
 } from './template'
-import type { GetRouteNodesResult, RouteNode, RouteType } from './types'
+import type { FsRouteType, GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
 export const CONSTANTS = {
@@ -222,7 +222,7 @@ export async function generator(config: Config, root: string) {
           )
         } else if (
           // Check if the route is "normal" route
-          (['layout', 'static'] satisfies Array<RouteType>).some(
+          (['layout', 'static'] satisfies Array<FsRouteType>).some(
             (d) => d === node._fsRouteType,
           ) ||
           // Make sure that the route is not a component, pendingComponent, errorComponent or loader
@@ -232,7 +232,7 @@ export async function generator(config: Config, root: string) {
               'pendingComponent',
               'errorComponent',
               'loader',
-            ] satisfies Array<RouteType>
+            ] satisfies Array<FsRouteType>
           ).every((d) => d !== node._fsRouteType)
         ) {
           replaced = await fillTemplate(
@@ -285,7 +285,7 @@ export async function generator(config: Config, root: string) {
           'component',
           'pendingComponent',
           'errorComponent',
-        ] satisfies Array<RouteType>
+        ] satisfies Array<FsRouteType>
       ).some((d) => d === node._fsRouteType)
     ) {
       routePiecesByPath[node.routePath!] =
@@ -381,7 +381,7 @@ export async function generator(config: Config, root: string) {
     preRouteNodes.filter(
       (d) =>
         d.children === undefined &&
-        (['api', 'lazy'] satisfies Array<RouteType>).every(
+        (['api', 'lazy'] satisfies Array<FsRouteType>).every(
           (type) => type !== d._fsRouteType,
         ),
     ),

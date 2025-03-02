@@ -2,7 +2,7 @@ export type RouteNode = {
   filePath: string
   fullPath: string
   variableName: string
-  _fsRouteType: RouteType
+  _fsRouteType: FsRouteType
   routePath?: string
   cleanedPath?: string
   path?: string
@@ -19,7 +19,7 @@ export interface GetRouteNodesResult {
   routeNodes: Array<RouteNode>
 }
 
-export type RouteType =
+export type FsRouteType =
   | '__root'
   | 'static'
   | 'layout'
