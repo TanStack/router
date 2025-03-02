@@ -1,4 +1,5 @@
-import React from 'react'
+import * as Solid from 'solid-js'
+
 import * as goober from 'goober'
 import { tokens } from './tokens'
 import { ShadowDomTargetContext } from './context'
@@ -582,7 +583,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 }
 
 export function useStyles() {
-  const shadowDomTarget = React.useContext(ShadowDomTargetContext)
-  const [_styles] = React.useState(() => stylesFactory(shadowDomTarget))
+  const shadowDomTarget = Solid.useContext(ShadowDomTargetContext)
+  const [_styles] = Solid.createSignal(() => stylesFactory(shadowDomTarget))
   return _styles
 }
