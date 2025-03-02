@@ -86,7 +86,9 @@ export const DefaultRenderer: Renderer = ({
   pageSize,
   renderer,
 }) => {
-  const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>([])
+  const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>(
+    [],
+  )
   const [valueSnapshot, setValueSnapshot] = Solid.createSignal(undefined)
   const styles = useStyles()
 
@@ -130,7 +132,9 @@ export const DefaultRenderer: Renderer = ({
                             )
                           }
                         >
-                          <Expander expanded={expandedPages().includes(index)} />{' '}
+                          <Expander
+                            expanded={expandedPages().includes(index)}
+                          />{' '}
                           [{index * pageSize} ...{' '}
                           {index * pageSize + pageSize - 1}]
                         </button>

@@ -169,7 +169,9 @@ export const BaseTanStackRouterDevtoolsPanel =
         ...routerState().matches,
         ...routerState().cachedMatches,
       ]
-      return matches.find((d) => d.routeId === activeId() || d.id === activeId())
+      return matches.find(
+        (d) => d.routeId === activeId() || d.id === activeId(),
+      )
     })
 
     const hasSearch = Object.keys(routerState().location.search).length
@@ -197,7 +199,7 @@ export const BaseTanStackRouterDevtoolsPanel =
         ) : null}
         <button
           class={styles()().panelCloseBtn}
-          onClick={(e:any) => {
+          onClick={(e: any) => {
             setIsOpen(false)
             onCloseClick(e)
           }}
@@ -223,7 +225,7 @@ export const BaseTanStackRouterDevtoolsPanel =
           <div class={styles()().row}>
             <Logo
               aria-hidden
-              onClick={(e:any) => {
+              onClick={(e: any) => {
                 setIsOpen(false)
                 onCloseClick(e)
               }}
@@ -415,7 +417,8 @@ export const BaseTanStackRouterDevtoolsPanel =
                   )}
                 >
                   <div>
-                    {activeMatch()!.status === 'success' && activeMatch()!.isFetching
+                    {activeMatch()!.status === 'success' &&
+                    activeMatch()!.isFetching
                       ? 'fetching'
                       : activeMatch()!.status}
                   </div>
@@ -433,7 +436,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                       (d) => d.id === activeMatch()!.id,
                     )
                       ? 'Pending'
-                      : routerState().matches.find((d) => d.id === activeMatch()!.id)
+                      : routerState().matches.find(
+                            (d) => d.id === activeMatch()!.id,
+                          )
                         ? 'Active'
                         : 'Cached'}
                   </div>

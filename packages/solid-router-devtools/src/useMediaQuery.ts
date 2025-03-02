@@ -1,6 +1,8 @@
 import * as Solid from 'solid-js'
 
-export default function useMediaQuery(query: string): Solid.Accessor<boolean | undefined> {
+export default function useMediaQuery(
+  query: string,
+): Solid.Accessor<boolean | undefined> {
   // Keep track of the preference in state, start with the current match
   const [isMatch, setIsMatch] = Solid.createSignal(() => {
     if (typeof window !== 'undefined') {
@@ -23,7 +25,7 @@ export default function useMediaQuery(query: string): Solid.Accessor<boolean | u
 
       // Create our handler
       const onChange = ({ matches }: { matches: boolean }) =>
-        setIsMatch(()=> ()=>matches)
+        setIsMatch(() => () => matches)
 
       // Listen for changes
       matcher.addListener(onChange)

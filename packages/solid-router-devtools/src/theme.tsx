@@ -23,7 +23,11 @@ interface ProviderProps {
 const ThemeContext = Solid.createContext(defaultTheme)
 
 export function ThemeProvider({ children, theme, ...rest }: ProviderProps) {
-  return <ThemeContext.Provider value={theme} {...rest}>{children}</ThemeContext.Provider>
+  return (
+    <ThemeContext.Provider value={theme} {...rest}>
+      {children}
+    </ThemeContext.Provider>
+  )
 }
 
 export function useTheme() {

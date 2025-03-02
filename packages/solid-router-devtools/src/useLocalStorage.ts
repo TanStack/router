@@ -31,21 +31,20 @@ export default function useLocalStorage<T>(
     }
   }, [defaultValue, key])
 
-  const setter = 
-    (updater: any) => {
-      setValue((old) => {
-        let newVal = updater
+  const setter = (updater: any) => {
+    setValue((old) => {
+      let newVal = updater
 
-        if (typeof updater == 'function') {
-          newVal = updater(old)
-        }
-        try {
-          localStorage.setItem(key, JSON.stringify(newVal))
-        } catch {}
+      if (typeof updater == 'function') {
+        newVal = updater(old)
+      }
+      try {
+        localStorage.setItem(key, JSON.stringify(newVal))
+      } catch {}
 
-        return newVal
-      })
-    }
+      return newVal
+    })
+  }
 
   return [value, setter]
 }

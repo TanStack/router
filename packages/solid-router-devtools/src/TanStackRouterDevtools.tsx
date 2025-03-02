@@ -16,15 +16,21 @@ interface DevtoolsOptions {
   /**
    * Use this to add props to the panel. For example, you can add class, style (merge and override default style), etc.
    */
-  panelProps?: Solid.JSX.HTMLAttributes<HTMLDivElement> & { ref?: Solid.Ref<HTMLDivElement> }
+  panelProps?: Solid.JSX.HTMLAttributes<HTMLDivElement> & {
+    ref?: Solid.Ref<HTMLDivElement>
+  }
   /**
    * Use this to add props to the close button. For example, you can add class, style (merge and override default style), onClick (extend default handler), etc.
    */
-  closeButtonProps?: Solid.JSX.ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Solid.Ref<HTMLButtonElement> }
+  closeButtonProps?: Solid.JSX.ButtonHTMLAttributes<HTMLButtonElement> & {
+    ref?: Solid.Ref<HTMLButtonElement>
+  }
   /**
    * Use this to add props to the toggle button. For example, you can add class, style (merge and override default style), onClick (extend default handler), etc.
    */
-  toggleButtonProps?: Solid.JSX.ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Solid.Ref<HTMLButtonElement> }
+  toggleButtonProps?: Solid.JSX.ButtonHTMLAttributes<HTMLButtonElement> & {
+    ref?: Solid.Ref<HTMLButtonElement>
+  }
   /**
    * The position of the TanStack Router logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.
@@ -69,7 +75,7 @@ function FloatingTanStackRouterDevtools({
   shadowDOMTarget,
 }: DevtoolsOptions): Solid.JSX.Element | null {
   const [rootEl, setRootEl] = Solid.createSignal<HTMLDivElement>()
-  let panelRef: HTMLDivElement | undefined = undefined;
+  let panelRef: HTMLDivElement | undefined = undefined
   const [isOpen, setIsOpen] = useLocalStorage(
     'tanstackRouterDevtoolsOpen',
     initialIsOpen,
@@ -132,12 +138,12 @@ function FloatingTanStackRouterDevtools({
       const run = () => {
         const containerHeight = panelRef!.getBoundingClientRect().height
         if (rootEl()?.parentElement) {
-            setRootEl((prev) => {
+          setRootEl((prev) => {
             if (prev?.parentElement) {
-              prev.parentElement.style.paddingBottom = `${containerHeight}px`;
+              prev.parentElement.style.paddingBottom = `${containerHeight}px`
             }
-            return prev;
-            })
+            return prev
+          })
         }
       }
 
@@ -150,12 +156,10 @@ function FloatingTanStackRouterDevtools({
           window.removeEventListener('resize', run)
           if (rootEl()?.parentElement && typeof previousValue === 'string') {
             setRootEl((prev) => {
-
               prev!.parentElement!.style.paddingBottom = previousValue
               return prev
-
             })
-            
+
             // rootEl()?.parentElement?.style.paddingBottom = previousValue
           }
         }
@@ -172,7 +176,9 @@ function FloatingTanStackRouterDevtools({
     }
   }, [rootEl])
 
-  const { style: panelStyle = {}, ...otherPanelProps } = panelProps as { style?: Record<string, any> }
+  const { style: panelStyle = {}, ...otherPanelProps } = panelProps as {
+    style?: Record<string, any>
+  }
 
   const {
     style: closeButtonStyle = {},

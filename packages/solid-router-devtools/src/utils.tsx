@@ -1,4 +1,4 @@
-import { Dynamic } from "solid-js/web"
+import { Dynamic } from 'solid-js/web'
 import * as Solid from 'solid-js'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
@@ -63,37 +63,33 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
   }: StyledComponent<T> & {
     ref?: HTMLElementTagNameMap[T] | undefined
   }) => {
+    const theme = useTheme()
 
-  const theme = useTheme()
+    const mediaStyles = Object.entries(queries).reduce(
+      (current, [key, value]) => {
+        return useMediaQuery(key)
+          ? {
+              ...current,
+              ...(typeof value === 'function' ? value(rest, theme) : value),
+            }
+          : current
+      },
+      {},
+    )
 
-  const mediaStyles = Object.entries(queries).reduce(
-    (current, [key, value]) => {
-      return useMediaQuery(key)
-        ? {
-            ...current,
-            ...(typeof value === 'function' ? value(rest, theme) : value),
-          }
-        : current
-    },
-    {},
-  )
+    const baseStyles =
+      typeof newStyles === 'function' ? newStyles(rest, theme) : newStyles
 
-  const baseStyles = typeof newStyles === 'function' ? newStyles(rest, theme) : newStyles
-  
-  // Handle style being either a string or an object
-  const combinedStyles = typeof style === 'string' 
-    ? { ...baseStyles, ...mediaStyles, cssText: style }
-    : { ...baseStyles, ...style, ...mediaStyles }
+    // Handle style being either a string or an object
+    const combinedStyles =
+      typeof style === 'string'
+        ? { ...baseStyles, ...mediaStyles, cssText: style }
+        : { ...baseStyles, ...style, ...mediaStyles }
 
-  return (
-    // @ts-ignore
-    <Dynamic
-      component={type}
-      {...rest}
-      style={combinedStyles}
-      ref={ref}
-    />
-  )
+    return (
+      // @ts-ignore
+      <Dynamic component={type} {...rest} style={combinedStyles} ref={ref} />
+    )
   }
 }
 
@@ -130,15 +126,14 @@ export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
   const isMounted = useIsMounted()
   const [state, setState] = Solid.createSignal(initialState)
 
-  const safeSetState = 
-    (value: T) => {
-      scheduleMicrotask(() => {
-        if (isMounted()) {
-          // @ts-ignore
-          setState(value)
-        }
-      })
-    }
+  const safeSetState = (value: T) => {
+    scheduleMicrotask(() => {
+      if (isMounted()) {
+        // @ts-ignore
+        setState(value)
+      }
+    })
+  }
 
   return [state(), safeSetState]
 }

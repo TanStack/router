@@ -6,7 +6,9 @@ export const ShadowDomTargetContext = Solid.createContext<
 
 export const DevtoolsOnCloseContext = Solid.createContext<
   | {
-    onCloseClick: (e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element }) => void
+      onCloseClick: (
+        e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element },
+      ) => void
     }
   | undefined
 >(undefined)
