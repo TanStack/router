@@ -1,5 +1,6 @@
 import { render } from 'solid-js/web'
 import {
+  HeadContent,
   Link,
   Outlet,
   RouterProvider,
@@ -20,6 +21,7 @@ const rootRoute = createRootRoute({
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <div class="p-2 flex gap-2 sticky top-0 border-b bg-gray-100 dark:bg-gray-900">
         <Link to="/" class="[&.active]:font-bold">
           Home

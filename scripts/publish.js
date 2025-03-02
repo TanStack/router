@@ -84,6 +84,50 @@ await publish({
       name: '@tanstack/create-start',
       packageDir: 'packages/create-start',
     },
+    // {
+    //   name: '@tanstack/solid-start',
+    //   packageDir: 'packages/solid-start',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-plugin',
+    //   packageDir: 'packages/solid-start-plugin',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-client',
+    //   packageDir: 'packages/solid-start-client',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-server',
+    //   packageDir: 'packages/solid-start-server',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-config',
+    //   packageDir: 'packages/solid-start-config',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-api-routes',
+    //   packageDir: 'packages/solid-start-api-routes',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-server-functions-fetcher',
+    //   packageDir: 'packages/solid-start-server-functions-fetcher',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-server-functions-handler',
+    //   packageDir: 'packages/solid-start-server-functions-handler',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-server-functions-client',
+    //   packageDir: 'packages/solid-start-server-functions-client',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-server-functions-ssr',
+    //   packageDir: 'packages/solid-start-server-functions-ssr',
+    // },
+    // {
+    //   name: '@tanstack/solid-start-router-manifest',
+    //   packageDir: 'packages/solid-start-router-manifest',
+    // },
     {
       name: '@tanstack/react-start',
       packageDir: 'packages/react-start',
