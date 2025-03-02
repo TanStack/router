@@ -1,9 +1,9 @@
 import React from "react"
+import { DevtoolsOnCloseContext, ShadowDomTargetContext } from "./context"
+import { BaseTanStackRouterDevtoolsPanel } from "./BaseTanStackRouterDevtoolsPanel"
 import type {
   AnyRouter,
 } from '@tanstack/react-router'
-import { DevtoolsOnCloseContext, ShadowDomTargetContext } from "./context"
-import { BaseTanStackRouterDevtoolsPanel } from "./BaseTanStackRouterDevtoolsPanel"
 
 export interface DevtoolsPanelOptions {
   /**

@@ -1,12 +1,12 @@
 import { clsx as cx } from 'clsx'
 import React from 'react'
 import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
-import type { AnyRouter } from '@tanstack/react-router'
 import { useIsMounted, useSafeState } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
+import type { AnyRouter } from '@tanstack/react-router'
 
 interface DevtoolsOptions {
   /**

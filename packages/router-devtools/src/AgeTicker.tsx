@@ -1,7 +1,7 @@
-import type { AnyRouteMatch, AnyRouter } from '@tanstack/react-router'
-import { useStyles } from './useStyles'
-import React from 'react'
 import { clsx as cx } from 'clsx'
+import React from 'react'
+import { useStyles } from './useStyles'
+import type { AnyRouteMatch, AnyRouter } from '@tanstack/react-router'
 
 function formatTime(ms: number) {
   const units = ['s', 'min', 'h', 'd']

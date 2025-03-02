@@ -1,7 +1,5 @@
 import React from 'react'
-import { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
-import { useDevtoolsOnClose } from './context'
-import { useStyles } from './useStyles'
+import { clsx as cx } from 'clsx'
 import {
   invariant,
   rootRouteId,
@@ -9,11 +7,13 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
+import { useDevtoolsOnClose } from './context'
+import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
 import Explorer from './Explorer'
-import { clsx as cx } from 'clsx'
 import { getRouteStatusColor, getStatusColor, multiSortBy } from './utils'
 import { AgeTicker } from './AgeTicker'
+import type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
 import type {
   AnyRootRoute,
