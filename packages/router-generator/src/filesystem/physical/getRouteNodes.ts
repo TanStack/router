@@ -121,16 +121,16 @@ export async function getRouteNodes(
 
           const meta = getRouteMeta(routePath, config)
           const variableName = meta.variableName
-          let fsRouteType: FsRouteType = meta.fsRouteType
+          let routeType: FsRouteType = meta.fsRouteType
 
-          if (fsRouteType === 'lazy') {
+          if (routeType === 'lazy') {
             routePath = routePath.replace(/\/lazy$/, '')
           }
 
           // this check needs to happen after the lazy route has been cleaned up
           // since the routePath is used to determine if a route is pathless
-          if (isValidPathlessLayoutRoute(routePath, fsRouteType, config)) {
-            fsRouteType = 'pathless_layout'
+          if (isValidPathlessLayoutRoute(routePath, routeType, config)) {
+            routeType = 'pathless_layout'
           }
 
           ;(
@@ -141,7 +141,7 @@ export async function getRouteNodes(
               ['loader', 'loader'],
             ] satisfies Array<[FsRouteType, string]>
           ).forEach(([matcher, type]) => {
-            if (fsRouteType === matcher) {
+            if (routeType === matcher) {
               logger.warn(
                 `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
               )
@@ -166,8 +166,8 @@ export async function getRouteNodes(
             filePath,
             fullPath,
             routePath,
-            _fsRouteType: fsRouteType,
             variableName,
+            _fsRouteType: routeType,
           })
         }
       }),

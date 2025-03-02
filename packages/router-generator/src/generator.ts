@@ -113,6 +113,16 @@ export async function generator(config: Config, root: string) {
   const routeTree: Array<RouteNode> = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
 
+  // Filtered API Route nodes
+  const onlyAPIRouteNodes = preRouteNodes.filter(
+    (d) => d._fsRouteType === 'api',
+  )
+
+  // Filtered Generator Route nodes
+  const onlyGeneratorRouteNodes = preRouteNodes.filter(
+    (d) => d._fsRouteType !== 'api',
+  )
+
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
   const routeNodes: Array<RouteNode> = []
@@ -316,11 +326,14 @@ export async function generator(config: Config, root: string) {
     }
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
-    const nonPathRoute = node._fsRouteType === 'layout' && node.isNonPath
+    const nonPathRoute =
+      node._fsRouteType === 'pathless_layout' && node.isNonPath
+
     node.isVirtualParentRequired =
       node._fsRouteType === 'pathless_layout' || nonPathRoute
         ? !cleanedPathIsEmpty
         : false
+
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
@@ -338,7 +351,7 @@ export async function generator(config: Config, root: string) {
           routePath: parentRoutePath,
           variableName: parentVariableName,
           isVirtual: true,
-          _fsRouteType: 'static',
+          _fsRouteType: 'layout', // layout since this route will wrap other routes
           isVirtualParentRoute: true,
           isVirtualParentRequired: false,
         }
@@ -374,7 +387,7 @@ export async function generator(config: Config, root: string) {
     routeNodes.push(node)
   }
 
-  for (const node of preRouteNodes.filter((d) => d._fsRouteType !== 'api')) {
+  for (const node of onlyGeneratorRouteNodes) {
     await handleNode(node)
   }
   checkRouteFullPathUniqueness(
@@ -389,7 +402,7 @@ export async function generator(config: Config, root: string) {
   )
 
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
-    preRouteNodes.filter((d) => d._fsRouteType === 'api'),
+    onlyAPIRouteNodes,
     config,
   )
 

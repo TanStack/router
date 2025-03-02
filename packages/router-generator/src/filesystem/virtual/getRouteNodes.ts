@@ -6,6 +6,7 @@ import {
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesPhysical } from '../physical/getRouteNodes'
+import { rootPathId } from '../physical/rootPathId'
 import { virtualRootRouteSchema } from './config'
 import { loadConfigFile } from './loadConfigFile'
 import type {
@@ -64,7 +65,7 @@ export async function getRouteNodes(
     filePath: virtualRouteConfig.file,
     fullPath: join(fullDir, virtualRouteConfig.file),
     variableName: 'rootRoute',
-    routePath: '/',
+    routePath: `/${rootPathId}`,
     _fsRouteType: '__root',
   })
 
@@ -198,6 +199,9 @@ export async function getRouteNodesRecursive(
               routeNode,
             )
             routeNode.children = children
+
+            // If the route has children, it should be a layout
+            routeNode._fsRouteType = 'layout'
           }
           return routeNode
         }
