@@ -24,10 +24,15 @@ type AdditionalOptions = {
   handleRedirects?: boolean
 }
 
-export function routerWithQueryClient<TRouter extends AnyRouter>(
-  router: TRouter['options']['context'] extends { queryClient: QueryClient }
+export type ValidateRouter<TRouter extends AnyRouter> =
+  NonNullable<TRouter['options']['context']> extends {
+    queryClient: QueryClient
+  }
     ? TRouter
-    : never,
+    : never
+
+export function routerWithQueryClient<TRouter extends AnyRouter>(
+  router: ValidateRouter<TRouter>,
   queryClient: QueryClient,
   additionalOpts?: AdditionalOptions,
 ): TRouter {

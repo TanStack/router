@@ -185,6 +185,27 @@ export type {
   BeforeLoadContextOptions,
   ContextOptions,
   RootRouteOptions,
+  AnyRouteWithContext,
+  LazyRouteOptions,
+  AnyRoute,
+  ResolveFullPath,
+  RouteConstraints,
+  RouterState,
+  ListenerFn,
+  BuildNextOptions,
+  AnyRouter,
+  RegisteredRouter,
+  RouterEvents,
+  RouterEvent,
+  RouterListener,
+  MatchRouteOptions,
+  RouteMask,
+  RouterContextOptions,
+  RouterOptions,
+  RouterConstructorOptions,
+  ControllablePromise,
+  InjectedHtmlEntry,
+  RouterErrorSerializer,
 } from '@tanstack/router-core'
 
 export {
@@ -215,7 +236,6 @@ export {
   createLazyRoute,
   createLazyFileRoute,
 } from './fileRoute'
-export type { LazyRouteOptions } from './fileRoute'
 
 export * from './history'
 
@@ -240,11 +260,7 @@ export {
   useChildMatches,
 } from './Matches'
 
-export type {
-  MatchRouteOptions,
-  UseMatchRouteOptions,
-  MakeMatchRouteOptions,
-} from './Matches'
+export type { UseMatchRouteOptions, MakeMatchRouteOptions } from './Matches'
 
 export { matchContext } from './matchContext'
 export { Match, Outlet } from './Match'
@@ -268,18 +284,13 @@ export {
   NotFoundRoute,
 } from './route'
 export type {
-  AnyRoute,
-  RouteConstraints,
   AnyRootRoute,
-  ResolveFullPath,
-  RouteMask,
   SolidNode,
   SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,
   ErrorRouteComponent,
   NotFoundRouteComponent,
-  AnyRouteWithContext,
 } from './route'
 
 export {
@@ -290,23 +301,6 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-} from './router'
-
-export type {
-  AnyRouter,
-  RegisteredRouter,
-  RouterContextOptions,
-  RouterOptions,
-  RouterErrorSerializer,
-  RouterState,
-  ListenerFn,
-  BuildNextOptions,
-  RouterConstructorOptions,
-  RouterEvents,
-  RouterEvent,
-  RouterListener,
-  ControllablePromise,
-  InjectedHtmlEntry,
 } from './router'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'

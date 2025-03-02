@@ -4,9 +4,8 @@ import type * as Solid from 'solid-js'
 import type {
   AnyRouter,
   RegisteredRouter,
-  Router,
   RouterOptions,
-} from './router'
+} from '@tanstack/router-core'
 
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -61,20 +60,18 @@ export type RouterProps<
   RouterOptions<
     TRouter['routeTree'],
     NonNullable<TRouter['options']['trailingSlash']>,
+    false,
     TRouter['history'],
     TDehydrated
   >,
   'context'
 > & {
-  router: Router<
-    TRouter['routeTree'],
-    NonNullable<TRouter['options']['trailingSlash']>,
-    TRouter['history']
-  >
+  router: TRouter
   context?: Partial<
     RouterOptions<
       TRouter['routeTree'],
       NonNullable<TRouter['options']['trailingSlash']>,
+      false,
       TRouter['history'],
       TDehydrated
     >['context']

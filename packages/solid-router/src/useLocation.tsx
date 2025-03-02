@@ -1,6 +1,10 @@
 import { useRouterState } from './useRouterState'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  RouterState,
+} from '@tanstack/router-core'
 import type { Accessor } from 'solid-js'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
 export interface UseLocationBaseOptions<TRouter extends AnyRouter, TSelected> {
   select?: (state: RouterState<TRouter['routeTree']>['location']) => TSelected

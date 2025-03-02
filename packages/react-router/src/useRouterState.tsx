@@ -3,10 +3,14 @@ import { useRef } from 'react'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
+  AnyRouter,
+  RegisteredRouter,
+  RouterState,
+} from '@tanstack/router-core'
+import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
 export type UseRouterStateOptions<
   TRouter extends AnyRouter,

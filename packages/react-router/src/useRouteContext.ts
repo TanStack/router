@@ -1,6 +1,7 @@
 import { useMatch } from './useMatch'
-import type { AnyRouter, RegisteredRouter } from './router'
 import type {
+  AnyRouter,
+  RegisteredRouter,
   UseRouteContextBaseOptions,
   UseRouteContextOptions,
   UseRouteContextResult,

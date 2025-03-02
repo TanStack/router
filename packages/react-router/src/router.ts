@@ -31,509 +31,131 @@ import { isNotFound } from './not-found'
 
 import { setupScrollRestoration } from './scroll-restoration'
 import type * as React from 'react'
-import type {
-  HistoryLocation,
-  HistoryState,
-  ParsedHistoryState,
-  RouterHistory,
-} from '@tanstack/history'
-import type { NoInfer } from '@tanstack/react-store'
+import type { HistoryLocation, RouterHistory } from '@tanstack/history'
 
 import type {
-  AnyContext,
   AnyRedirect,
+  AnyRoute,
   AnyRouteMatch,
+  AnyRouter,
   AnySchema,
   AnyValidator,
   BeforeLoadContextOptions,
   BuildLocationFn,
+  BuildNextOptions,
+  ClearCacheFn,
+  CommitLocationFn,
   CommitLocationOptions,
   ControlledPromise,
+  Router as CoreRouter,
+  EmitFn,
   FullSearchSchema,
+  GetMatchFn,
+  GetMatchRoutesFn,
+  InjectedHtmlEntry,
+  InvalidateFn,
+  LoadFn,
   LoaderFnContext,
-  MakeRemountDepsOptionsUnion,
   MakeRouteMatch,
   MakeRouteMatchUnion,
   Manifest,
+  MatchRouteFn,
+  MatchRoutesFn,
+  MatchRoutesOpts,
+  MatchedRoutesResult,
   NavigateFn,
-  NavigateOptions,
-  NonNullableUpdater,
+  ParseLocationFn,
   ParsedLocation,
   PickAsRequired,
-  Register,
-  ResolveRelativePath,
+  PreloadRouteFn,
   ResolvedRedirect,
-  RouteById,
   RouteContextOptions,
-  RoutePaths,
+  RouterConstructorOptions,
+  RouterEvent,
+  RouterListener,
+  RouterOptions,
+  RouterState,
   RoutesById,
   RoutesByPath,
   SearchMiddleware,
-  SearchParser,
-  SearchSerializer,
   StartSerializer,
-  ToOptions,
+  StartTransitionFn,
+  SubscribeFn,
   TrailingSlashOption,
-  Updater,
+  UpdateFn,
+  UpdateMatchFn,
   ViewTransitionOptions,
 } from '@tanstack/router-core'
 import type {
-  AnyRoute,
   ErrorRouteComponent,
   NotFoundRouteComponent,
-  RootRoute,
   RouteComponent,
-  RouteMask,
 } from './route'
-
-import type { MatchRouteOptions } from './Matches'
 
 import type { NotFoundError } from './not-found'
 
-declare global {
-  interface Window {
-    __TSR_ROUTER__?: AnyRouter
-  }
-}
-
-export type AnyRouter = Router<any, any, any, any, any, any>
-
-export type RegisteredRouter = Register extends {
-  router: infer TRouter extends AnyRouter
-}
-  ? TRouter
-  : AnyRouter
-
-export type InferRouterContext<TRouteTree extends AnyRoute> =
-  TRouteTree extends RootRoute<
-    any,
-    infer TRouterContext extends AnyContext,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any
-  >
-    ? TRouterContext
-    : AnyContext
-
-export type ControllablePromise<T = any> = Promise<T> & {
-  resolve: (value: T) => void
-  reject: (value?: any) => void
-}
-
-export type RouterContextOptions<TRouteTree extends AnyRoute> =
-  AnyContext extends InferRouterContext<TRouteTree>
-    ? {
-        context?: InferRouterContext<TRouteTree>
-      }
-    : {
-        context: InferRouterContext<TRouteTree>
-      }
-
-export type InjectedHtmlEntry = Promise<string>
-
-export interface RouterOptions<
-  TRouteTree extends AnyRoute,
-  TTrailingSlashOption extends TrailingSlashOption,
-  TDefaultStructuralSharingOption extends boolean = false,
-  TRouterHistory extends RouterHistory = RouterHistory,
-  TDehydrated extends Record<string, any> = Record<string, any>,
-> {
-  /**
-   * The history object that will be used to manage the browser history.
-   *
-   * If not provided, a new createBrowserHistory instance will be created and used.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#history-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/history-types)
-   */
-  history?: TRouterHistory
-  /**
-   * A function that will be used to stringify search params when generating links.
-   *
-   * @default defaultStringifySearch
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#stringifysearch-method)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization)
-   */
-  stringifySearch?: SearchSerializer
-  /**
-   * A function that will be used to parse search params when parsing the current location.
-   *
-   * @default defaultParseSearch
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#parsesearch-method)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization)
-   */
-  parseSearch?: SearchParser
-  /**
-   * If `false`, routes will not be preloaded by default in any way.
-   *
-   * If `'intent'`, routes will be preloaded by default when the user hovers over a link or a `touchstart` event is detected on a `<Link>`.
-   *
-   * If `'viewport'`, routes will be preloaded by default when they are within the viewport.
-   *
-   * @default false
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreload-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
-   */
-  defaultPreload?: false | 'intent' | 'viewport' | 'render'
-  /**
-   * The delay in milliseconds that a route must be hovered over or touched before it is preloaded.
-   *
-   * @default 50
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloaddelay-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#preload-delay)
-   */
-  defaultPreloadDelay?: number
-  /**
-   * The default `component` a route should use if no component is provided.
-   *
-   * @default Outlet
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultcomponent-property)
-   */
-  defaultComponent?: RouteComponent
-  /**
-   * The default `errorComponent` a route should use if no error component is provided.
-   *
-   * @default ErrorComponent
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulterrorcomponent-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionserrorcomponent)
-   */
-  defaultErrorComponent?: ErrorRouteComponent
-  /**
-   * The default `pendingComponent` a route should use if no pending component is provided.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingcomponent-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#showing-a-pending-component)
-   */
-  defaultPendingComponent?: RouteComponent
-  /**
-   * The default `pendingMs` a route should use if no pendingMs is provided.
-   *
-   * @default 1000
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingms-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#avoiding-pending-component-flash)
-   */
-  defaultPendingMs?: number
-  /**
-   * The default `pendingMinMs` a route should use if no pendingMinMs is provided.
-   *
-   * @default 500
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingminms-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#avoiding-pending-component-flash)
-   */
-  defaultPendingMinMs?: number
-  /**
-   * The default `staleTime` a route should use if no staleTime is provided. This is the time in milliseconds that a route will be considered fresh.
-   *
-   * @default 0
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultstaletime-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#key-options)
-   */
-  defaultStaleTime?: number
-  /**
-   * The default `preloadStaleTime` a route should use if no preloadStaleTime is provided.
-   *
-   * @default 30_000 `(30 seconds)`
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloadstaletime-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
-   */
-  defaultPreloadStaleTime?: number
-  /**
-   * The default `defaultPreloadGcTime` a route should use if no preloadGcTime is provided.
-   *
-   * @default 1_800_000 `(30 minutes)`
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloadgctime-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
-   */
-  defaultPreloadGcTime?: number
-  /**
-   * The default `onCatch` handler for errors caught by the Router ErrorBoundary
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultoncatch-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
-   */
-  defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
-  /**
-   * If `true`, route navigations will called using `document.startViewTransition()`.
-   *
-   * If the browser does not support this api, this option will be ignored.
-   *
-   * See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultviewtransition-property)
-   */
-  defaultViewTransition?: boolean | ViewTransitionOptions
-  /**
-   * The default `hashScrollIntoView` a route should use if no hashScrollIntoView is provided while navigating
-   *
-   * See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulthashscrollintoview-property)
-   */
-  defaultHashScrollIntoView?: boolean | ScrollIntoViewOptions
-  /**
-   * @default 'fuzzy'
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundmode-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
-   */
-  notFoundMode?: 'root' | 'fuzzy'
-  /**
-   * The default `gcTime` a route should use if no gcTime is provided.
-   *
-   * @default 1_800_000 `(30 minutes)`
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultgctime-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#key-options)
-   */
-  defaultGcTime?: number
-  /**
-   * If `true`, all routes will be matched as case-sensitive.
-   *
-   * @default false
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#casesensitive-property)
-   */
-  caseSensitive?: boolean
-  /**
-   *
-   * The route tree that will be used to configure the router instance.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#routetree-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/routing/route-trees)
-   */
-  routeTree?: TRouteTree
-  /**
-   * The basepath for then entire router. This is useful for mounting a router instance at a subpath.
-   *
-   * @default '/'
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#basepath-property)
-   */
-  basepath?: string
-  /**
-   * The root context that will be provided to all routes in the route tree.
-   *
-   * This can be used to provide a context to all routes in the tree without having to provide it to each route individually.
-   *
-   * Optional or required if the root route was created with [`createRootRouteWithContext()`](https://tanstack.com/router/latest/docs/framework/react/api/router/createRootRouteWithContextFunction).
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#context-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/router-context)
-   */
-  context?: InferRouterContext<TRouteTree>
-  /**
-   * A function that will be called when the router is dehydrated.
-   *
-   * The return value of this function will be serialized and stored in the router's dehydrated state.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#dehydrate-method)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
-   */
-  dehydrate?: () => TDehydrated
-  /**
-   * A function that will be called when the router is hydrated.
-   *
-   * The return value of this function will be serialized and stored in the router's dehydrated state.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#hydrate-method)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
-   */
-  hydrate?: (dehydrated: TDehydrated) => void
-  /**
-   * An array of route masks that will be used to mask routes in the route tree.
-   *
-   * Route masking is when you display a route at a different path than the one it is configured to match, like a modal popup that when shared will unmask to the modal's content instead of the modal's context.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#routemasks-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-masking)
-   */
-  routeMasks?: Array<RouteMask<TRouteTree>>
-  /**
-   * If `true`, route masks will, by default, be removed when the page is reloaded.
-   *
-   * This can be overridden on a per-mask basis by setting the `unmaskOnReload` option on the mask, or on a per-navigation basis by setting the `unmaskOnReload` option in the `Navigate` options.
-   *
-   * @default false
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#unmaskonreload-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/route-masking#unmasking-on-page-reload)
-   */
-  unmaskOnReload?: boolean
-  /**
-   * A component that will be used to wrap the entire router.
-   *
-   * This is useful for providing a context to the entire router.
-   *
-   * Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#wrap-property)
-   */
-  Wrap?: (props: { children: any }) => React.JSX.Element
-  /**
-   * A component that will be used to wrap the inner contents of the router.
-   *
-   * This is useful for providing a context to the inner contents of the router where you also need access to the router context and hooks.
-   *
-   * Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#innerwrap-property)
-   */
-  InnerWrap?: (props: { children: any }) => React.JSX.Element
-  /**
-   * Use `notFoundComponent` instead.
-   *
-   * @deprecated
-   * See https://tanstack.com/router/v1/docs/guide/not-found-errors#migrating-from-notfoundroute for more info.
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundroute-property)
-   */
-  notFoundRoute?: AnyRoute
-  /**
-   * The default `notFoundComponent` a route should use if no notFound component is provided.
-   *
-   * @default NotFound
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultnotfoundcomponent-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#default-router-wide-not-found-handling)
-   */
-  defaultNotFoundComponent?: NotFoundRouteComponent
-  /**
-   * Configures how trailing slashes are treated.
-   *
-   * - `'always'` will add a trailing slash if not present
-   * - `'never'` will remove the trailing slash if present
-   * - `'preserve'` will not modify the trailing slash.
-   *
-   * @default 'never'
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#trailingslash-property)
-   */
-  trailingSlash?: TTrailingSlashOption
-  /**
-   * While usually automatic, sometimes it can be useful to force the router into a server-side state, e.g. when using the router in a non-browser environment that has access to a global.document object.
-   *
-   * @default typeof document !== 'undefined'
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#isserver-property)
-   */
-  isServer?: boolean
-
-  defaultSsr?: boolean
-
-  search?: {
+declare module '@tanstack/router-core' {
+  export interface RouterOptionsExtensions {
     /**
-     * Configures how unknown search params (= not returned by any `validateSearch`) are treated.
+     * The default `component` a route should use if no component is provided.
      *
-     * @default false
-     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#search.strict-property)
+     * @default Outlet
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultcomponent-property)
      */
-    strict?: boolean
+    defaultComponent?: RouteComponent
+    /**
+     * The default `errorComponent` a route should use if no error component is provided.
+     *
+     * @default ErrorComponent
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulterrorcomponent-property)
+     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionserrorcomponent)
+     */
+    defaultErrorComponent?: ErrorRouteComponent
+    /**
+     * The default `pendingComponent` a route should use if no pending component is provided.
+     *
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpendingcomponent-property)
+     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#showing-a-pending-component)
+     */
+    defaultPendingComponent?: RouteComponent
+    /**
+     * The default `notFoundComponent` a route should use if no notFound component is provided.
+     *
+     * @default NotFound
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultnotfoundcomponent-property)
+     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#default-router-wide-not-found-handling)
+     */
+    defaultNotFoundComponent?: NotFoundRouteComponent
+    /**
+     * A component that will be used to wrap the entire router.
+     *
+     * This is useful for providing a context to the entire router.
+     *
+     * Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
+     *
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#wrap-property)
+     */
+    Wrap?: (props: { children: any }) => React.JSX.Element
+    /**
+     * A component that will be used to wrap the inner contents of the router.
+     *
+     * This is useful for providing a context to the inner contents of the router where you also need access to the router context and hooks.
+     *
+     * Only non-DOM-rendering components like providers should be used, anything else will cause a hydration error.
+     *
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#innerwrap-property)
+     */
+    InnerWrap?: (props: { children: any }) => React.JSX.Element
+
+    /**
+     * The default `onCatch` handler for errors caught by the Router ErrorBoundary
+     *
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultoncatch-property)
+     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
+     */
+    defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
   }
-
-  /**
-   * Configures whether structural sharing is enabled by default for fine-grained selectors.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultstructuralsharing-property)
-   */
-  defaultStructuralSharing?: TDefaultStructuralSharingOption
-
-  /**
-   * Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
-   *
-   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#pathparamsallowedcharacters-property)
-   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/path-params#allowed-characters)
-   */
-  pathParamsAllowedCharacters?: Array<
-    ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
-  >
-
-  defaultRemountDeps?: (opts: MakeRemountDepsOptionsUnion<TRouteTree>) => any
-
-  /**
-   * If `true`, scroll restoration will be enabled
-   *
-   * @default false
-   */
-  scrollRestoration?: boolean
-  /**
-   * A function that will be called to get the key for the scroll restoration cache.
-   *
-   * @default (location) => location.href
-   */
-  getScrollRestorationKey?: (location: ParsedLocation) => string
-  /**
-   * The default behavior for scroll restoration.
-   *
-   * @default 'auto'
-   */
-  scrollRestorationBehavior?: ScrollBehavior
-  /**
-   * An array of selectors that will be used to scroll to the top of the page in addition to `window`
-   *
-   * @default ['window']
-   */
-  scrollToTopSelectors?: Array<string>
 }
-
-export interface RouterErrorSerializer<TSerializedError> {
-  serialize: (err: unknown) => TSerializedError
-  deserialize: (err: TSerializedError) => unknown
-}
-
-export interface RouterState<
-  TRouteTree extends AnyRoute = AnyRoute,
-  TRouteMatch = MakeRouteMatchUnion,
-> {
-  status: 'pending' | 'idle'
-  loadedAt: number
-  isLoading: boolean
-  isTransitioning: boolean
-  matches: Array<TRouteMatch>
-  pendingMatches?: Array<TRouteMatch>
-  cachedMatches: Array<TRouteMatch>
-  location: ParsedLocation<FullSearchSchema<TRouteTree>>
-  resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
-  statusCode: number
-  redirect?: ResolvedRedirect
-}
-
-export type ListenerFn<TEvent extends RouterEvent> = (event: TEvent) => void
-
-export interface BuildNextOptions {
-  to?: string | number | null
-  params?: true | Updater<unknown>
-  search?: true | Updater<unknown>
-  hash?: true | Updater<string>
-  state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
-  mask?: {
-    to?: string | number | null
-    params?: true | Updater<unknown>
-    search?: true | Updater<unknown>
-    hash?: true | Updater<string>
-    state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
-    unmaskOnReload?: boolean
-  }
-  from?: string
-  _fromLocation?: ParsedLocation
-  href?: string
-}
-
-export interface MatchedRoutesResult {
-  matchedRoutes: Array<AnyRoute>
-  routeParams: Record<string, string>
-}
-
-export type RouterConstructorOptions<
-  TRouteTree extends AnyRoute,
-  TTrailingSlashOption extends TrailingSlashOption,
-  TDefaultStructuralSharingOption extends boolean,
-  TRouterHistory extends RouterHistory,
-  TDehydrated extends Record<string, any>,
-> = Omit<
-  RouterOptions<
-    TRouteTree,
-    TTrailingSlashOption,
-    TDefaultStructuralSharingOption,
-    TRouterHistory,
-    TDehydrated
-  >,
-  'context'
-> &
-  RouterContextOptions<TRouteTree>
 
 export const componentTypes = [
   'component',
@@ -579,53 +201,12 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
-type NavigationEventInfo = {
-  fromLocation?: ParsedLocation
-  toLocation: ParsedLocation
-  pathChanged: boolean
-  hrefChanged: boolean
-  hashChanged: boolean
-}
-
-export type RouterEvents = {
-  onBeforeNavigate: {
-    type: 'onBeforeNavigate'
-  } & NavigationEventInfo
-  onBeforeLoad: {
-    type: 'onBeforeLoad'
-  } & NavigationEventInfo
-  onLoad: {
-    type: 'onLoad'
-  } & NavigationEventInfo
-  onResolved: {
-    type: 'onResolved'
-  } & NavigationEventInfo
-  onBeforeRouteMount: {
-    type: 'onBeforeRouteMount'
-  } & NavigationEventInfo
-  onInjectedHtml: {
-    type: 'onInjectedHtml'
-    promise: Promise<string>
-  }
-  onRendered: {
-    type: 'onRendered'
-  } & NavigationEventInfo
-}
-
-export type RouterEvent = RouterEvents[keyof RouterEvents]
-
-export type RouterListener<TRouterEvent extends RouterEvent> = {
-  eventType: TRouterEvent['type']
-  fn: ListenerFn<TRouterEvent>
-}
-
 export function createRouter<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
-  TSerializedError extends Record<string, any> = Record<string, any>,
 >(
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
@@ -636,22 +217,20 @@ export function createRouter<
         TRouterHistory,
         TDehydrated
       >,
-) {
+): CoreRouter<
+  TRouteTree,
+  TTrailingSlashOption,
+  TDefaultStructuralSharingOption,
+  TRouterHistory,
+  TDehydrated
+> {
   return new Router<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory,
-    TDehydrated,
-    TSerializedError
+    TDehydrated
   >(options)
-}
-
-type MatchRoutesOpts = {
-  preload?: boolean
-  throwOnError?: boolean
-  _buildLocation?: boolean
-  dest?: BuildNextOptions
 }
 
 export class Router<
@@ -660,8 +239,15 @@ export class Router<
   in out TDefaultStructuralSharingOption extends boolean,
   in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
-  in out TSerializedError extends Record<string, any> = Record<string, any>,
-> {
+> implements
+    CoreRouter<
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >
+{
   // Option-independent properties
   tempLocationKey: string | undefined = `${Math.round(
     Math.random() * 10000000,
@@ -728,17 +314,15 @@ export class Router<
   // These are default implementations that can optionally be overridden
   // by the router provider once rendered. We provide these so that the
   // router can be used in a non-react environment if necessary
-  startReactTransition: (fn: () => void) => void = (fn) => fn()
+  startTransition: StartTransitionFn = (fn) => fn()
 
-  update = (
-    newOptions: RouterConstructorOptions<
-      TRouteTree,
-      TTrailingSlashOption,
-      TDefaultStructuralSharingOption,
-      TRouterHistory,
-      TDehydrated
-    >,
-  ) => {
+  update: UpdateFn<
+    TRouteTree,
+    TTrailingSlashOption,
+    TDefaultStructuralSharingOption,
+    TRouterHistory,
+    TDehydrated
+  > = (newOptions) => {
     if (newOptions.notFoundRoute) {
       console.warn(
         'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/framework/react/guide/not-found-errors#migrating-from-notfoundroute for more info.',
@@ -950,10 +534,7 @@ export class Router<
       })
   }
 
-  subscribe = <TType extends keyof RouterEvents>(
-    eventType: TType,
-    fn: ListenerFn<RouterEvents[TType]>,
-  ) => {
+  subscribe: SubscribeFn = (eventType, fn) => {
     const listener: RouterListener<any> = {
       eventType,
       fn,
@@ -966,7 +547,7 @@ export class Router<
     }
   }
 
-  emit = (routerEvent: RouterEvent) => {
+  emit: EmitFn = (routerEvent) => {
     this.subscribers.forEach((listener) => {
       if (listener.eventType === routerEvent.type) {
         listener.fn(routerEvent)
@@ -974,10 +555,10 @@ export class Router<
     })
   }
 
-  parseLocation = (
-    previousLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>,
-    locationToParse?: HistoryLocation,
-  ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
+  parseLocation: ParseLocationFn<TRouteTree> = (
+    previousLocation,
+    locationToParse,
+  ) => {
     const parse = ({
       pathname,
       search,
@@ -1041,21 +622,11 @@ export class Router<
   ): Array<AnyRouteMatch>;
   ```
 */
-  public matchRoutes(
-    pathname: string,
-    locationSearch: AnySchema,
-    opts?: MatchRoutesOpts,
-  ): Array<AnyRouteMatch>
-  public matchRoutes(
-    next: ParsedLocation,
-    opts?: MatchRoutesOpts,
-  ): Array<AnyRouteMatch>
-
-  public matchRoutes(
+  matchRoutes: MatchRoutesFn = (
     pathnameOrNext: string | ParsedLocation,
     locationSearchOrOpts?: AnySchema | MatchRoutesOpts,
     opts?: MatchRoutesOpts,
-  ) {
+  ) => {
     if (typeof pathnameOrNext === 'string') {
       return this.matchRoutesInternal(
         {
@@ -1381,7 +952,7 @@ export class Router<
     return matches
   }
 
-  getMatchedRoutes = (next: ParsedLocation, dest?: BuildNextOptions) => {
+  getMatchedRoutes: GetMatchRoutesFn = (next, dest) => {
     let routeParams: Record<string, string> = {}
     const trimmedPath = trimPathRight(next.pathname)
     const getMatchedParams = (route: AnyRoute) => {
@@ -1743,11 +1314,11 @@ export class Router<
 
   commitLocationPromise: undefined | ControlledPromise<void>
 
-  commitLocation = ({
+  commitLocation: CommitLocationFn = ({
     viewTransition,
     ignoreBlocker,
     ...next
-  }: ParsedLocation & CommitLocationOptions): Promise<void> => {
+  }) => {
     const isSameState = () => {
       // the following props are ignored but may still be provided when navigating,
       // temporarily add the previous values to the next state so they don't affect
@@ -1887,7 +1458,7 @@ export class Router<
 
   latestLoadPromise: undefined | Promise<void>
 
-  load = async (opts?: { sync?: boolean }): Promise<void> => {
+  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
     this.latestLocation = this.parseLocation(this.latestLocation)
 
     let redirect: ResolvedRedirect | undefined
@@ -1897,7 +1468,7 @@ export class Router<
 
     // eslint-disable-next-line prefer-const
     loadPromise = new Promise<void>((resolve) => {
-      this.startReactTransition(async () => {
+      this.startTransition(async () => {
         try {
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
@@ -2101,10 +1672,7 @@ export class Router<
     }
   }
 
-  updateMatch = (
-    id: string,
-    updater: (match: AnyRouteMatch) => AnyRouteMatch,
-  ) => {
+  updateMatch: UpdateMatchFn = (id, updater) => {
     let updated!: AnyRouteMatch
     const isPending = this.state.pendingMatches?.find((d) => d.id === id)
     const isMatched = this.state.matches.find((d) => d.id === id)
@@ -2130,7 +1698,7 @@ export class Router<
     return updated
   }
 
-  getMatch = (matchId: string) => {
+  getMatch: GetMatchFn = (matchId: string) => {
     return [
       ...this.state.cachedMatches,
       ...(this.state.pendingMatches ?? []),
@@ -2692,12 +2260,17 @@ export class Router<
     return matches
   }
 
-  invalidate = <TRouter extends AnyRouter = typeof this>(opts?: {
-    filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
-    sync?: boolean
-  }) => {
+  invalidate: InvalidateFn<
+    Router<
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >
+  > = (opts) => {
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
-      if (opts?.filter?.(d as MakeRouteMatchUnion<TRouter>) ?? true) {
+      if (opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true) {
         return {
           ...d,
           invalid: true,
@@ -2729,16 +2302,14 @@ export class Router<
     return redirect
   }
 
-  clearCache = <TRouter extends AnyRouter = typeof this>(opts?: {
-    filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
-  }) => {
+  clearCache: ClearCacheFn<this> = (opts) => {
     const filter = opts?.filter
     if (filter !== undefined) {
       this.__store.setState((s) => {
         return {
           ...s,
           cachedMatches: s.cachedMatches.filter(
-            (m) => !filter(m as MakeRouteMatchUnion<TRouter>),
+            (m) => !filter(m as MakeRouteMatchUnion<this>),
           ),
         }
       })
@@ -2805,27 +2376,12 @@ export class Router<
     return route._componentsPromise
   }
 
-  preloadRoute = async <
-    TFrom extends RoutePaths<TRouteTree> | string = string,
-    TTo extends string | undefined = undefined,
-    TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
-    TMaskTo extends string = '',
-  >(
-    opts: NavigateOptions<
-      Router<
-        TRouteTree,
-        TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
-        TRouterHistory,
-        TDehydrated,
-        TSerializedError
-      >,
-      TFrom,
-      TTo,
-      TMaskFrom,
-      TMaskTo
-    >,
-  ): Promise<Array<AnyRouteMatch> | undefined> => {
+  preloadRoute: PreloadRouteFn<
+    TRouteTree,
+    TTrailingSlashOption,
+    TDefaultStructuralSharingOption,
+    TRouterHistory
+  > = async (opts) => {
     const next = this.buildLocation(opts as any)
 
     let matches = this.matchRoutes(next, {
@@ -2891,25 +2447,12 @@ export class Router<
     }
   }
 
-  matchRoute = <
-    TFrom extends RoutePaths<TRouteTree> = '/',
-    TTo extends string | undefined = undefined,
-    TResolved = ResolveRelativePath<TFrom, NoInfer<TTo>>,
-  >(
-    location: ToOptions<
-      Router<
-        TRouteTree,
-        TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
-        TRouterHistory,
-        TDehydrated,
-        TSerializedError
-      >,
-      TFrom,
-      TTo
-    >,
-    opts?: MatchRouteOptions,
-  ): false | RouteById<TRouteTree, TResolved>['types']['allParams'] => {
+  matchRoute: MatchRouteFn<
+    TRouteTree,
+    TTrailingSlashOption,
+    TDefaultStructuralSharingOption,
+    TRouterHistory
+  > = (location, opts) => {
     const matchLocation = {
       ...location,
       to: location.to

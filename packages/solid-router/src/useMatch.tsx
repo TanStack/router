@@ -2,11 +2,12 @@ import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
 import { dummyMatchContext, matchContext } from './matchContext'
-import type { AnyRouter, RegisteredRouter } from './router'
-import type { StrictOrFrom } from './utils'
 import type {
+  AnyRouter,
   MakeRouteMatch,
   MakeRouteMatchUnion,
+  RegisteredRouter,
+  StrictOrFrom,
   ThrowOrOptional,
 } from '@tanstack/router-core'
 

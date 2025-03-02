@@ -1,8 +1,8 @@
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
-
-import type { AnyRouter, RegisteredRouter } from './router'
 import type {
+  AnyRouter,
+  RegisteredRouter,
   UseRouteContextBaseOptions,
   UseRouteContextOptions,
   UseRouteContextResult,

@@ -18,13 +18,13 @@ import {
 
 import { useMatch } from './useMatch'
 import type {
+  AnyRouter,
   Constrain,
   LinkCurrentTargetElement,
   LinkOptions,
+  RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
-
-import type { AnyRouter, RegisteredRouter } from './router'
 import type { ReactNode } from 'react'
 import type {
   ValidateLinkOptions,

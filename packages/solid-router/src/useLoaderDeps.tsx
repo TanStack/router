@@ -1,8 +1,9 @@
 import { useMatch } from './useMatch'
-import type { AnyRouter, RegisteredRouter } from './router'
-import type { StrictOrFrom } from './utils'
 import type {
+  AnyRouter,
+  RegisteredRouter,
   ResolveUseLoaderDeps,
+  StrictOrFrom,
   UseLoaderDepsResult,
 } from '@tanstack/router-core'
 
