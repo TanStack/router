@@ -583,7 +583,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 }
 
 export function useStyles() {
-  const shadowDomTarget = React.useContext(ShadowDomTargetContext)
+  const shadowDomTarget = React.use(ShadowDomTargetContext)
   const [_styles] = React.useState(() => stylesFactory(shadowDomTarget))
   return _styles
 }

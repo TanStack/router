@@ -61,9 +61,9 @@ export function TanStackRouterDevtools(
   const { shadowDOMTarget } = props
 
   return (
-    <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
+    <ShadowDomTargetContext value={shadowDOMTarget}>
       <FloatingTanStackRouterDevtools {...props} />
-    </ShadowDomTargetContext.Provider>
+    </ShadowDomTargetContext>
   )
 }
 
@@ -190,7 +190,7 @@ function FloatingTanStackRouterDevtools({
 
   return (
     <Container ref={setRootEl} className="TanStackRouterDevtools">
-      <DevtoolsOnCloseContext.Provider
+      <DevtoolsOnCloseContext
         value={{
           onCloseClick: onCloseClick ?? (() => {}),
         }}
@@ -217,7 +217,7 @@ function FloatingTanStackRouterDevtools({
           handleDragStart={(e) => handleDragStart(panelRef.current, e)}
           shadowDOMTarget={shadowDOMTarget}
         />
-      </DevtoolsOnCloseContext.Provider>
+      </DevtoolsOnCloseContext>
 
       <button
         type="button"
