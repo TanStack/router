@@ -8,7 +8,7 @@ import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
 import type { AnyRouter } from '@tanstack/react-router'
 
-interface DevtoolsOptions {
+export interface DevtoolsOptions {
   /**
    * Set this true if you want the dev tools to default to being open
    */
