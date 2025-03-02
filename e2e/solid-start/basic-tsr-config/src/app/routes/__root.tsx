@@ -1,8 +1,5 @@
 import * as Solid from 'solid-js'
-import {
-  Outlet,
-  createRootRoute,
-} from '@tanstack/solid-router'
+import { Outlet, createRootRoute } from '@tanstack/solid-router'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,7 +20,5 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
-  return (
-    <Outlet />
-  )
+  return <Outlet />
 }
