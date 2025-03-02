@@ -7,6 +7,7 @@ import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
 import type { AnyRouter } from '@tanstack/solid-router'
+import { Dynamic } from 'solid-js/web'
 
 interface DevtoolsOptions {
   /**
@@ -198,7 +199,7 @@ function FloatingTanStackRouterDevtools({
   const resolvedHeight = devtoolsHeight() ?? 500
 
   return (
-    <Container ref={setRootEl} class="TanStackRouterDevtools">
+    <Dynamic component={Container} ref={setRootEl} class="TanStackRouterDevtools">
       <DevtoolsOnCloseContext.Provider
         value={{
           // @ts-ignore
@@ -256,6 +257,6 @@ function FloatingTanStackRouterDevtools({
         <div class={styles()().mainCloseBtnDivider}>-</div>
         <div class={styles()().routerLogoCloseButton}>TanStack Router</div>
       </button>
-    </Container>
+    </Dynamic>
   )
 }
