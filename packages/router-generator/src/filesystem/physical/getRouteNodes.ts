@@ -121,16 +121,16 @@ export async function getRouteNodes(
 
           const meta = getRouteMeta(routePath, config)
           const variableName = meta.variableName
-          let routeType: FsRouteType = meta.routeType
+          let fsRouteType: FsRouteType = meta.fsRouteType
 
-          if (routeType === 'lazy') {
+          if (fsRouteType === 'lazy') {
             routePath = routePath.replace(/\/lazy$/, '')
           }
 
           // this check needs to happen after the lazy route has been cleaned up
           // since the routePath is used to determine if a route is pathless
-          if (isValidPathlessLayoutRoute(routePath, routeType, config)) {
-            routeType = 'pathless_layout'
+          if (isValidPathlessLayoutRoute(routePath, fsRouteType, config)) {
+            fsRouteType = 'pathless_layout'
           }
 
           ;(
@@ -141,7 +141,7 @@ export async function getRouteNodes(
               ['loader', 'loader'],
             ] satisfies Array<[FsRouteType, string]>
           ).forEach(([matcher, type]) => {
-            if (routeType === matcher) {
+            if (fsRouteType === matcher) {
               logger.warn(
                 `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
               )
@@ -166,7 +166,7 @@ export async function getRouteNodes(
             filePath,
             fullPath,
             routePath,
-            _fsRouteType: routeType,
+            _fsRouteType: fsRouteType,
             variableName,
           })
         }
@@ -199,7 +199,7 @@ export function getRouteMeta(
 ): {
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
   // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath
-  routeType: Extract<
+  fsRouteType: Extract<
     FsRouteType,
     | 'static'
     | 'layout'
@@ -212,34 +212,34 @@ export function getRouteMeta(
   >
   variableName: string
 } {
-  let routeType: FsRouteType = 'static'
+  let fsRouteType: FsRouteType = 'static'
 
   if (routePath.endsWith(`/${config.routeToken}`)) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
-    routeType = 'layout'
+    fsRouteType = 'layout'
   } else if (routePath.startsWith(`${removeTrailingSlash(config.apiBase)}/`)) {
     // api routes, i.e. `/api/foo.ts`
-    routeType = 'api'
+    fsRouteType = 'api'
   } else if (routePath.endsWith('/lazy')) {
     // lazy routes, i.e. `/foo.lazy.tsx`
-    routeType = 'lazy'
+    fsRouteType = 'lazy'
   } else if (routePath.endsWith('/loader')) {
     // loader routes, i.e. `/foo.loader.tsx`
-    routeType = 'loader'
+    fsRouteType = 'loader'
   } else if (routePath.endsWith('/component')) {
     // component routes, i.e. `/foo.component.tsx`
-    routeType = 'component'
+    fsRouteType = 'component'
   } else if (routePath.endsWith('/pendingComponent')) {
     // pending component routes, i.e. `/foo.pendingComponent.tsx`
-    routeType = 'pendingComponent'
+    fsRouteType = 'pendingComponent'
   } else if (routePath.endsWith('/errorComponent')) {
     // error component routes, i.e. `/foo.errorComponent.tsx`
-    routeType = 'errorComponent'
+    fsRouteType = 'errorComponent'
   }
 
   const variableName = routePathToVariable(routePath)
 
-  return { routeType, variableName }
+  return { fsRouteType, variableName }
 }
 
 /**
