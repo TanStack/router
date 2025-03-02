@@ -58,7 +58,8 @@ npm i @tanstack/react-start @tanstack/react-router vinxi
 You'll also need React and the Vite React plugin, so install them too:
 
 ```shell
-npm i react react-dom && npm i -D @vitejs/plugin-react vite-tsconfig-paths
+npm i react react-dom
+npm i -D @vitejs/plugin-react vite-tsconfig-paths
 ```
 
 and some TypeScript:
