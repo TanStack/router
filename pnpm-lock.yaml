@@ -5728,37 +5728,6 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
 
-  packages/router-devtools-core:
-    dependencies:
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../react-router
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      csstype:
-        specifier: ^3.0.10
-        version: 3.1.3
-      goober:
-        specifier: ^2.1.16
-        version: 2.1.16(csstype@3.1.3)
-    devDependencies:
-      '@tanstack/router-core':
-        specifier: workspace:*
-        version: link:../router-core
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-
   packages/router-generator:
     dependencies:
       '@tanstack/react-router':
