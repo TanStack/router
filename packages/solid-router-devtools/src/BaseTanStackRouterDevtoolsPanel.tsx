@@ -81,9 +81,7 @@ function RouteComp({
             setActiveId(activeId === route.id ? '' : route.id)
           }
         }}
-        class={cx(
-          styles().routesRowContainer(route.id === activeId, !!match),
-        )}
+        class={cx(styles().routesRowContainer(route.id === activeId, !!match))}
       >
         <div
           class={cx(
@@ -192,15 +190,12 @@ export const BaseTanStackRouterDevtoolsPanel =
         {...otherPanelProps}
       >
         {handleDragStart ? (
-          <div
-            class={styles().dragHandle}
-            onMouseDown={handleDragStart}
-          ></div>
+          <div class={styles().dragHandle} onMouseDown={handleDragStart}></div>
         ) : null}
         <button
           class={styles().panelCloseBtn}
           onClick={(e: any) => {
-            setIsOpen({isOpen:false})
+            setIsOpen({ isOpen: false })
             onCloseClick(e)
           }}
         >
@@ -226,7 +221,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <Logo
               aria-hidden
               onClick={(e: any) => {
-                setIsOpen({isOpen:false})
+                setIsOpen({ isOpen: false })
                 onCloseClick(e)
               }}
             />

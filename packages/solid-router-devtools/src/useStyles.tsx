@@ -24,7 +24,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       transform-origin: top;
     `,
     devtoolsPanelContainerVisibility: (isOpen: boolean) => {
-      console.log('isoopen1', isOpen, )
+      console.log('isoopen1', isOpen)
       return css`
         visibility: ${isOpen ? 'visible' : 'hidden'};
       `

@@ -79,27 +79,26 @@ function FloatingTanStackRouterDevtools({
   router,
   shadowDOMTarget,
 }: DevtoolsOptions): Solid.JSX.Element | null {
-
-  console.log('toggleButtonProps', toggleButtonProps);
-
+  console.log('toggleButtonProps', toggleButtonProps)
 
   const [rootEl, setRootEl] = Solid.createSignal<HTMLDivElement>()
   let panelRef: HTMLDivElement | undefined = undefined
 
   console.log(initialIsOpen, 'initialIsOpen')
-  const [isOpen, setIsOpen, init] = makePersisted(createStore({isOpen: initialIsOpen}), {name: "tanstackRouterDevtoolsOpen"});
+  const [isOpen, setIsOpen, init] = makePersisted(
+    createStore({ isOpen: initialIsOpen }),
+    { name: 'tanstackRouterDevtoolsOpen' },
+  )
 
   Solid.createEffect(() => {
-
-    console.log("IsOpenEffect", isOpen.isOpen)
-
+    console.log('IsOpenEffect', isOpen.isOpen)
   })
 
   const [devtoolsHeight, setDevtoolsHeight] = useLocalStorage<number | null>(
     'tanstackRouterDevtoolsHeight',
     null,
   )
-  
+
   const [isResizing, setIsResizing] = Solid.createSignal(false)
   const isMounted = useIsMounted()
   const styles = useStyles()
@@ -124,9 +123,9 @@ function FloatingTanStackRouterDevtools({
       setDevtoolsHeight(newHeight)
 
       if (newHeight < 70) {
-        setIsOpen({isOpen: false})
+        setIsOpen({ isOpen: false })
       } else {
-        setIsOpen({isOpen: true})
+        setIsOpen({ isOpen: true })
       }
     }
 
@@ -140,7 +139,6 @@ function FloatingTanStackRouterDevtools({
     document.addEventListener('mouseup', unsub)
   }
 
-  
   Solid.createEffect(() => {
     if (isOpen.isOpen) {
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
@@ -207,7 +205,7 @@ function FloatingTanStackRouterDevtools({
 
   const resolvedHeight = devtoolsHeight() ?? 500
 
-  const basePanelStyle = Solid.createMemo( ()=>{
+  const basePanelStyle = Solid.createMemo(() => {
     console.log('basePanelStyle', isOpen.isOpen)
     return cx(
       styles().devtoolsPanelContainer,
@@ -218,10 +216,9 @@ function FloatingTanStackRouterDevtools({
         resolvedHeight + 16,
       ),
     )
-  
   })
 
-  const buttonStyle = Solid.createMemo(()=>{
+  const buttonStyle = Solid.createMemo(() => {
     return cx(
       styles().mainCloseBtn,
       styles().mainCloseBtnPosition(position),
@@ -230,7 +227,7 @@ function FloatingTanStackRouterDevtools({
       toggleButtonClassName,
     )
   })
-  
+
   return (
     <Dynamic
       component={Container}
@@ -265,7 +262,7 @@ function FloatingTanStackRouterDevtools({
         {...otherToggleButtonProps}
         aria-label="Open TanStack Router Devtools"
         onClick={(e) => {
-          setIsOpen({isOpen:!(isOpen.isOpen)})
+          setIsOpen({ isOpen: !isOpen.isOpen })
           console.log('isOpen4', isOpen.isOpen)
 
           // @ts-ignore
