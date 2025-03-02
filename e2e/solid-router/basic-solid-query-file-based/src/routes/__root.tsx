@@ -1,4 +1,5 @@
 import {
+  HeadContent,
   Link,
   Outlet,
   createRootRouteWithContext,
@@ -24,6 +25,7 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <div class="p-2 flex gap-2 text-lg">
         <Link
           to="/"

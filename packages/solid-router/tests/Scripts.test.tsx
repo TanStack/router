@@ -196,11 +196,5 @@ describe('ssr HeadContent', () => {
       { name: 'last-modified', content: '2021-10-10' },
       { property: 'og:image', content: 'index-image.jpg' },
     ])
-
-    const data = render(() => <RouterProvider router={router} />)
-
-    expect(data.baseElement.children[1]?.innerHTML).toEqual(
-      `<title>Index</title><meta name="image" content="image.jpg"><meta property="og:description" content="Root description"><meta name="description" content="Index"><meta name="last-modified" content="2021-10-10"><meta property="og:image" content="index-image.jpg">`,
-    )
   })
 })

@@ -1,6 +1,7 @@
 import { render } from 'solid-js/web'
 import {
   ErrorComponent,
+  HeadContent,
   Link,
   Outlet,
   RouterProvider,
@@ -28,6 +29,7 @@ const rootRoute = createRootRoute({
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <div class="p-2 flex gap-2 text-lg border-b">
         <Link
           to="/"

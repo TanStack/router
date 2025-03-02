@@ -1,4 +1,5 @@
 import * as Solid from 'solid-js'
+import { MetaProvider } from '@solidjs/meta'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -55,7 +56,7 @@ export const useTags = () => {
     resultMeta.reverse()
 
     return resultMeta
-  }, [routeMeta])
+  })
 
   const links = useRouterState({
     select: (state) =>
@@ -111,17 +112,18 @@ export const useTags = () => {
       })),
   })
 
-  return uniqBy(
-    [
-      ...meta(),
-      ...preloadMeta(),
-      ...links(),
-      ...headScripts(),
-    ] as Array<RouterManagedTag>,
-    (d) => {
-      return JSON.stringify(d)
-    },
-  )
+  return () =>
+    uniqBy(
+      [
+        ...meta(),
+        ...preloadMeta(),
+        ...links(),
+        ...headScripts(),
+      ] as Array<RouterManagedTag>,
+      (d) => {
+        return JSON.stringify(d)
+      },
+    )
 }
 
 /**
@@ -130,7 +132,13 @@ export const useTags = () => {
  */
 export function HeadContent() {
   const tags = useTags()
-  return tags.map((tag) => <Asset {...tag} />)
+  return (
+    <MetaProvider>
+      {tags().map((tag) => (
+        <Asset {...tag} />
+      ))}
+    </MetaProvider>
+  )
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
