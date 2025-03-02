@@ -129,10 +129,7 @@ export async function getRouteNodes(
 
           // this check needs to happen after the lazy route has been cleaned up
           // since the routePath is used to determine if a route is pathless
-          if (
-            routeType !== 'lazy' &&
-            determineRouteIsPathlessLayout(routePath, config)
-          ) {
+          if (isValidPathlessLayoutRoute(routePath, routeType, config)) {
             routeType = 'pathless_layout'
           }
 
@@ -189,6 +186,13 @@ export async function getRouteNodes(
   return { rootRouteNode, routeNodes }
 }
 
+/**
+ * Determines the metadata for a given route path based on the provided configuration.
+ *
+ * @param routePath - The determined initial routePath.
+ * @param config - The user configuration object.
+ * @returns An object containing the type of the route and the variable name derived from the route path.
+ */
 export function getRouteMeta(
   routePath: string,
   config: Config,
@@ -239,15 +243,20 @@ export function getRouteMeta(
 }
 
 /**
- * Used to determine if a route is a pathless layout route
+ * Used to validate if a route is a pathless layout route
  * @param normalizedRoutePath Normalized route path, i.e `/foo/_layout/route.tsx` and `/foo._layout.route.tsx` to `/foo/_layout/route`
  * @param config The `router-generator` configuration object
  * @returns Boolean indicating if the route is a pathless layout route
  */
-function determineRouteIsPathlessLayout(
+function isValidPathlessLayoutRoute(
   normalizedRoutePath: string,
+  routeType: RouteType,
   config: Config,
-) {
+): boolean {
+  if (routeType === 'lazy') {
+    return false
+  }
+
   const segments = normalizedRoutePath.split('/').filter(Boolean)
 
   if (segments.length === 0) {
