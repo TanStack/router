@@ -22,8 +22,9 @@ export type ScrollRestorationOptions = {
 export const storageKey = 'tsr-scroll-restoration-v1_3'
 let sessionsStorage = false
 try {
-  sessionsStorage = typeof window !== 'undefined' && typeof window.sessionStorage === 'object'
-} catch { }
+  sessionsStorage =
+    typeof window !== 'undefined' && typeof window.sessionStorage === 'object'
+} catch {}
 const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
   let timeout: any
   return (...args: Array<any>) => {
