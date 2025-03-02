@@ -23,9 +23,9 @@ interface ProviderProps {
 const ThemeContext = React.createContext(defaultTheme)
 
 export function ThemeProvider({ theme, ...rest }: ProviderProps) {
-  return <ThemeContext value={theme} {...rest} />
+  return <ThemeContext.Provider value={theme} {...rest} />
 }
 
 export function useTheme() {
-  return React.use(ThemeContext)
+  return React.useContext(ThemeContext)
 }

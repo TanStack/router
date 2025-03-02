@@ -12,7 +12,7 @@ export const DevtoolsOnCloseContext = React.createContext<
 >(undefined)
 
 export const useDevtoolsOnClose = () => {
-  const context = React.use(DevtoolsOnCloseContext)
+  const context = React.useContext(DevtoolsOnCloseContext)
   if (!context) {
     throw new Error(
       'useDevtoolsOnClose must be used within a TanStackRouterDevtools component',
