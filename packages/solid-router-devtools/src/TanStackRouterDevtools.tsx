@@ -60,8 +60,6 @@ export function TanStackRouterDevtools(
 ): Solid.JSX.Element | null {
   const { shadowDOMTarget } = props
 
-  console.log('props', props)
-
   return (
     <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
       <FloatingTanStackRouterDevtools {...props} />
@@ -79,20 +77,13 @@ function FloatingTanStackRouterDevtools({
   router,
   shadowDOMTarget,
 }: DevtoolsOptions): Solid.JSX.Element | null {
-  console.log('toggleButtonProps', toggleButtonProps)
-
   const [rootEl, setRootEl] = Solid.createSignal<HTMLDivElement>()
   let panelRef: HTMLDivElement | undefined = undefined
 
-  console.log(initialIsOpen, 'initialIsOpen')
   const [isOpen, setIsOpen, init] = makePersisted(
     createStore({ isOpen: initialIsOpen }),
     { name: 'tanstackRouterDevtoolsOpen' },
   )
-
-  Solid.createEffect(() => {
-    console.log('IsOpenEffect', isOpen.isOpen)
-  })
 
   const [devtoolsHeight, setDevtoolsHeight] = useLocalStorage<number | null>(
     'tanstackRouterDevtoolsHeight',
@@ -206,7 +197,6 @@ function FloatingTanStackRouterDevtools({
   const resolvedHeight = devtoolsHeight() ?? 500
 
   const basePanelStyle = Solid.createMemo(() => {
-    console.log('basePanelStyle', isOpen.isOpen)
     return cx(
       styles().devtoolsPanelContainer,
       styles().devtoolsPanelContainerVisibility(!!isOpen.isOpen),
@@ -240,7 +230,6 @@ function FloatingTanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
-        {JSON.stringify(basePanelStyle())}
         <BaseTanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
@@ -263,7 +252,6 @@ function FloatingTanStackRouterDevtools({
         aria-label="Open TanStack Router Devtools"
         onClick={(e) => {
           setIsOpen({ isOpen: !isOpen.isOpen })
-          console.log('isOpen4', isOpen.isOpen)
 
           // @ts-ignore
           onToggleClick && onToggleClick(e)
