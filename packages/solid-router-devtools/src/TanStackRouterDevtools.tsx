@@ -199,7 +199,11 @@ function FloatingTanStackRouterDevtools({
   const resolvedHeight = devtoolsHeight() ?? 500
 
   return (
-    <Dynamic component={Container} ref={setRootEl} class="TanStackRouterDevtools">
+    <Dynamic
+      component={Container}
+      ref={setRootEl}
+      class="TanStackRouterDevtools"
+    >
       <DevtoolsOnCloseContext.Provider
         value={{
           // @ts-ignore
