@@ -88,7 +88,6 @@ function FloatingTanStackRouterDevtools({
 
   console.log(initialIsOpen, 'initialIsOpen')
   const [isOpen, setIsOpen, init] = makePersisted(createStore({isOpen: initialIsOpen}), {name: "tanstackRouterDevtoolsOpen"});
-  setIsOpen({isOpen: initialIsOpen})
 
   Solid.createEffect(() => {
 
