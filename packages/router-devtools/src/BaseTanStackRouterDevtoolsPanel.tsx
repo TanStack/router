@@ -121,10 +121,7 @@ function RouteComp({
   )
 }
 
-export const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
-  HTMLDivElement,
-  DevtoolsPanelOptions
->(function BaseTanStackRouterDevtoolsPanel(props, ref): React.ReactElement {
+export const BaseTanStackRouterDevtoolsPanel = function BaseTanStackRouterDevtoolsPanel({ ref, ...props }: DevtoolsPanelOptions & { ref?: React.RefObject<HTMLDivElement | null> }): React.ReactElement {
   const {
     isOpen = true,
     setIsOpen,
@@ -485,4 +482,4 @@ export const BaseTanStackRouterDevtoolsPanel = React.forwardRef<
       ) : null}
     </div>
   )
-})
+}

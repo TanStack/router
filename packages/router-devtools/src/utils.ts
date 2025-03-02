@@ -63,14 +63,17 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
   type: T,
   newStyles: Styles,
   queries: Record<string, Styles> = {},
-) {
-  return React.forwardRef<HTMLElementTagNameMap[T], StyledComponent<T>>(
-    ({ style, ...rest }, ref) => {
+): (
+  props: StyledComponent<T> & {
+    ref?: React.RefObject<HTMLElementTagNameMap[T] | null>
+  },
+) => React.ReactElement {
+  return ({ ref, style, ...rest }: StyledComponent<T> & { ref?: React.RefObject<HTMLElementTagNameMap[T] | null> }) => {
       const theme = useTheme()
 
       const mediaStyles = Object.entries(queries).reduce(
         (current, [key, value]) => {
-          // eslint-disable-next-line react-hooks/rules-of-hooks
+           
           return useMediaQuery(key)
             ? {
                 ...current,
@@ -92,8 +95,7 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
         },
         ref,
       })
-    },
-  )
+    }
 }
 
 export function useIsMounted() {
