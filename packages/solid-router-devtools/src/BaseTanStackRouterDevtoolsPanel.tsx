@@ -405,7 +405,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           ) : null}
         </div>
-        {activeMatch ? (
+        {activeMatch() && activeMatch()?.status ? (
           <div class={styles()().thirdContainer}>
             <div class={styles()().detailsHeader}>Match Details</div>
             <div>
@@ -420,7 +420,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                     {activeMatch()!.status === 'success' &&
                     activeMatch()!.isFetching
                       ? 'fetching'
-                      : activeMatch()!.status}
+                      : activeMatch()?.status}
                   </div>
                 </div>
                 <div class={styles()().matchDetailsInfoLabel}>
