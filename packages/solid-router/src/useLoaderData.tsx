@@ -1,9 +1,13 @@
 import { useMatch } from './useMatch'
-import type { Accessor } from 'solid-js'
+import type  { Accessor } from 'solid-js'
+import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { StrictOrFrom } from './utils'
 import type {
   ResolveUseLoaderData,
+  StrictOrFrom,
   UseLoaderDataResult,
 } from '@tanstack/router-core'
 
@@ -12,8 +16,11 @@ export interface UseLoaderDataBaseOptions<
   TFrom,
   TStrict extends boolean,
   TSelected,
+  TStructuralSharing,
 > {
-  select?: (match: ResolveUseLoaderData<TRouter, TFrom, TStrict>) => TSelected
+  select?: (
+    match: ResolveUseLoaderData<TRouter, TFrom, TStrict>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
 export type UseLoaderDataOptions<
@@ -21,14 +28,30 @@ export type UseLoaderDataOptions<
   TFrom extends string | undefined,
   TStrict extends boolean,
   TSelected,
+  TStructuralSharing,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseLoaderDataBaseOptions<TRouter, TFrom, TStrict, TSelected>
+  UseLoaderDataBaseOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    TSelected,
+    TStructuralSharing
+  > &
+  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
 export type UseLoaderDataRoute<out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseLoaderDataBaseOptions<TRouter, TId, true, TSelected>,
+  opts?: UseLoaderDataBaseOptions<
+    TRouter,
+    TId,
+    true,
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => Accessor<UseLoaderDataResult<TRouter, TId, true, TSelected>>
 
 export function useLoaderData<
@@ -36,12 +59,20 @@ export function useLoaderData<
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
-  opts: UseLoaderDataOptions<TRouter, TFrom, TStrict, TSelected>,
+  opts: UseLoaderDataOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    TSelected,
+    TStructuralSharing
+  >,
 ): Accessor<UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
+    structuralSharing: opts.structuralSharing,
     select: (s: any) => {
       return opts.select ? opts.select(s.loaderData) : s.loaderData
     },

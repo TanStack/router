@@ -284,6 +284,68 @@ test('when there are multiple loaders', () => {
     .toHaveProperty('select')
     .exclude<undefined>()
     .returns.toEqualTypeOf<{ func: () => void }>()
+
+    expectTypeOf(
+      useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }>,
+    )
+      .parameter(0)
+      .exclude<undefined>()
+      .toHaveProperty('structuralSharing')
+      .toEqualTypeOf<false | undefined>()
+  
+    expectTypeOf(
+      useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }, true>,
+    )
+      .parameter(0)
+      .exclude<undefined>()
+      .toHaveProperty('select')
+      .exclude<undefined>()
+      .returns.toEqualTypeOf<{ func: 'Function is not serializable' }>()
+  
+    expectTypeOf(
+      useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }, true>,
+    )
+      .parameter(0)
+      .exclude<undefined>()
+      .toHaveProperty('structuralSharing')
+      .toEqualTypeOf<false | undefined>()
+  
+    // eslint-disable-next-line unused-imports/no-unused-vars
+    const routerWithStructuralSharing = createRouter({
+      routeTree,
+      defaultStructuralSharing: true,
+    })
+  
+    expectTypeOf(
+      useLoaderData<
+        typeof routerWithStructuralSharing,
+        '/invoices',
+        true,
+        { func: () => void },
+        true
+      >,
+    )
+      .parameter(0)
+      .exclude<undefined>()
+      .toHaveProperty('select')
+      .exclude<undefined>()
+      .returns.toEqualTypeOf<{
+        func: 'Function is not serializable'
+      }>()
+  
+    expectTypeOf(
+      useLoaderData<
+        typeof routerWithStructuralSharing,
+        '/invoices',
+        true,
+        { func: () => void },
+        true
+      >,
+    )
+      .parameter(0)
+      .exclude<undefined>()
+      .toHaveProperty('structuralSharing')
+      .toEqualTypeOf<false>()
 })
 
 test('when there are multiple loaders of objects and primtives', () => {

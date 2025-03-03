@@ -254,6 +254,18 @@ async function structuralSharingTest(page: Page, enabled: boolean) {
   await checkSearch({ bar: 'b2', foo: 'f2' })
 }
 
+test('structural sharing disabled', async ({ page }) => {
+  await structuralSharingTest(page, false)
+  expect(await getRenderCount(page)).toBeGreaterThan(2)
+})
+
+test('structural sharing enabled', async ({ page }) => {
+  await structuralSharingTest(page, true)
+  expect(await getRenderCount(page)).toBe(2)
+  await page.getByTestId('link').click()
+  expect(await getRenderCount(page)).toBe(2)
+})
+
 test('Should change title on client side navigation', async ({ page }) => {
   await page.goto('/')
 

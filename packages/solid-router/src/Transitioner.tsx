@@ -15,6 +15,7 @@ export function Transitioner() {
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
+    structuralSharing: true,
   })
 
   const previousIsLoading = usePrevious(isLoading)

@@ -180,6 +180,7 @@ export const MatchInner = (props: { matchId: string }): any => {
         match: pick(match, ['id', 'status', 'error']),
       }
     },
+    structuralSharing: true as any,
   })
 
   const route = () => router.routesById[matchState().routeId]!

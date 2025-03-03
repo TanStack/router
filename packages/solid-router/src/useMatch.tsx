@@ -2,11 +2,16 @@ import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
 import { dummyMatchContext, matchContext } from './matchContext'
+import type { Accessor } from 'solid-js'
+import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { StrictOrFrom } from './utils'
 import type {
   MakeRouteMatch,
   MakeRouteMatchUnion,
+  StrictOrFrom,
   ThrowOrOptional,
 } from '@tanstack/router-core'
 
@@ -16,19 +21,29 @@ export interface UseMatchBaseOptions<
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
+  TStructuralSharing extends boolean,
 > {
   select?: (
     match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
-  ) => TSelected
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
   shouldThrow?: TThrow
 }
 
 export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
-) => Solid.Accessor<UseMatchResult<TRouter, TFrom, true, TSelected>>
+  opts?: UseMatchBaseOptions<
+    TRouter,
+    TFrom,
+    true,
+    true,
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+) => Accessor<UseMatchResult<TRouter, TFrom, true, TSelected>>
 
 export type UseMatchOptions<
   TRouter extends AnyRouter,
@@ -36,8 +51,17 @@ export type UseMatchOptions<
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
+  TStructuralSharing extends boolean,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseMatchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
+  UseMatchBaseOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    TThrow,
+    TSelected,
+    TStructuralSharing
+  > &
+  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
 export type UseMatchResult<
   TRouter extends AnyRouter,
@@ -61,17 +85,17 @@ export function useMatch<
   TStrict extends boolean = true,
   TThrow extends boolean = true,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
   opts: UseMatchOptions<
     TRouter,
     TFrom,
     TStrict,
     ThrowConstraint<TStrict, TThrow>,
-    TSelected
+    TSelected,
+    TStructuralSharing
   >,
-): Solid.Accessor<
-  ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
-> {
+): Accessor<ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>> {
   const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
@@ -79,9 +103,8 @@ export function useMatch<
   const matchSelection = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
+        opts.from ? opts.from === d.routeId : d.id === nearestMatchId,
       )
-
       invariant(
         !((opts.shouldThrow ?? true) && !match),
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
@@ -93,6 +116,7 @@ export function useMatch<
 
       return opts.select ? opts.select(match) : match
     },
+    structuralSharing: opts.structuralSharing,
   } as any)
 
   return matchSelection as any

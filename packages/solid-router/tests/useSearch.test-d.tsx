@@ -155,6 +155,156 @@ describe('useSearch', () => {
       .toEqualTypeOf<
         ((search: { page?: number }) => { func: () => void }) | undefined
       >()
+
+      expectTypeOf(
+        useSearch<
+          DefaultRouter,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { func: () => void }
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('structuralSharing')
+        .toEqualTypeOf<false | undefined>()
+  
+      expectTypeOf(
+        useSearch<
+          DefaultRouter,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { func: () => void },
+          true
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('select')
+        .toEqualTypeOf<
+          | ((search: { page?: number }) => {
+              func: 'Function is not serializable'
+            })
+          | undefined
+        >()
+  
+      expectTypeOf(
+        useSearch<
+          DefaultRouter,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { func: () => void },
+          true
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('structuralSharing')
+        .toEqualTypeOf<false | undefined>()
+  
+      expectTypeOf(
+        useSearch<
+          DefaultRouter,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { hi: any },
+          true
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('select')
+        .toEqualTypeOf<
+          | ((search: { page?: number }) => {
+              hi: never
+            })
+          | undefined
+        >()
+  
+      expectTypeOf(
+        useSearch<
+          DefaultRouter,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { hi: any },
+          true
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('structuralSharing')
+        .toEqualTypeOf<false | undefined>()
+  
+      // eslint-disable-next-line unused-imports/no-unused-vars
+      const routerWithStructuralSharing = createRouter({
+        routeTree,
+        defaultStructuralSharing: true,
+      })
+  
+      expectTypeOf(
+        useSearch<
+          typeof routerWithStructuralSharing,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { func: () => void }
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('select')
+        .toEqualTypeOf<
+          | ((search: { page?: number }) => {
+              func: 'Function is not serializable'
+            })
+          | undefined
+        >()
+  
+      expectTypeOf(
+        useSearch<
+          typeof routerWithStructuralSharing,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { date: () => void },
+          true
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('structuralSharing')
+        .toEqualTypeOf<false>()
+  
+      expectTypeOf(
+        useSearch<
+          typeof routerWithStructuralSharing,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { hi: any },
+          true
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('select')
+        .toEqualTypeOf<
+          | ((search: { page?: number }) => {
+              hi: never
+            })
+          | undefined
+        >()
+  
+      expectTypeOf(
+        useSearch<
+          typeof routerWithStructuralSharing,
+          '/invoices',
+          /* strict */ false,
+          /* shouldThrow */ true,
+          { hi: any },
+          true
+        >,
+      )
+        .parameter(0)
+        .toHaveProperty('structuralSharing')
+        .toEqualTypeOf<false>()
   })
 
   test('when there are multiple search params', () => {

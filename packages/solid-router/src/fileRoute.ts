@@ -191,6 +191,7 @@ export class LazyRoute<TRoute extends AnyCoreRoute> {
     return useMatch({
       select: opts?.select,
       from: this.options.id,
+      structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
 
@@ -204,6 +205,7 @@ export class LazyRoute<TRoute extends AnyCoreRoute> {
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
     return useSearch({
       select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
       from: this.options.id,
     } as any) as any
   }
@@ -211,6 +213,7 @@ export class LazyRoute<TRoute extends AnyCoreRoute> {
   useParams: UseParamsRoute<TRoute['id']> = (opts) => {
     return useParams({
       select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
       from: this.options.id,
     } as any) as any
   }

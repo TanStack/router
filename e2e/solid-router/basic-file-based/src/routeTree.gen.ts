@@ -21,6 +21,7 @@ import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as RedirectIndexImport } from './routes/redirect/index'
 import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as StructuralSharingEnabledImport } from './routes/structural-sharing.$enabled'
 import { Route as RedirectTargetImport } from './routes/redirect/$target'
 import { Route as PostsPostIdImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
@@ -97,6 +98,12 @@ const PostsIndexRoute = PostsIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
+} as any)
+
+const StructuralSharingEnabledRoute = StructuralSharingEnabledImport.update({
+  id: '/structural-sharing/$enabled',
+  path: '/structural-sharing/$enabled',
+  getParentRoute: () => rootRoute,
 } as any)
 
 const RedirectTargetRoute = RedirectTargetImport.update({
@@ -317,6 +324,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof RedirectTargetImport
       parentRoute: typeof rootRoute
     }
+    '/structural-sharing/$enabled': {
+      id: '/structural-sharing/$enabled'
+      path: '/structural-sharing/$enabled'
+      fullPath: '/structural-sharing/$enabled'
+      preLoaderRoute: typeof StructuralSharingEnabledImport
+      parentRoute: typeof rootRoute
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
@@ -513,6 +527,7 @@ export interface FileRoutesByFullPath {
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
+  '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
@@ -539,6 +554,7 @@ export interface FileRoutesByTo {
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
@@ -571,6 +587,7 @@ export interface FileRoutesById {
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
+  '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
@@ -601,6 +618,7 @@ export interface FileRouteTypes {
     | '/lazyinside'
     | '/posts/$postId'
     | '/redirect/$target'
+    | '/structural-sharing/$enabled'
     | '/posts/'
     | '/redirect'
     | '/insidelayout'
@@ -626,6 +644,7 @@ export interface FileRouteTypes {
     | '/inside'
     | '/lazyinside'
     | '/posts/$postId'
+    | '/structural-sharing/$enabled'
     | '/posts'
     | '/redirect'
     | '/insidelayout'
@@ -656,6 +675,7 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/redirect/$target'
+    | '/structural-sharing/$enabled'
     | '/posts/'
     | '/redirect/'
     | '/(group)/_layout/insidelayout'
@@ -683,6 +703,7 @@ export interface RootRouteChildren {
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
+  StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   ParamsSingleValueRoute: typeof ParamsSingleValueRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
@@ -701,6 +722,7 @@ const rootRouteChildren: RootRouteChildren = {
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
+  StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   ParamsSingleValueRoute: ParamsSingleValueRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
@@ -728,6 +750,7 @@ export const routeTree = rootRoute
         "/(another-group)/onlyrouteinside",
         "/(group)",
         "/redirect/$target",
+        "/structural-sharing/$enabled",
         "/redirect/",
         "/params/single/$value",
         "/posts_/$postId/edit",
@@ -807,6 +830,9 @@ export const routeTree = rootRoute
         "/redirect/$target/via-loader",
         "/redirect/$target/"
       ]
+    },
+    "/structural-sharing/$enabled": {
+      "filePath": "structural-sharing.$enabled.tsx"
     },
     "/posts/": {
       "filePath": "posts.index.tsx",

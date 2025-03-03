@@ -70,6 +70,7 @@ export const useTags = () => {
             ...link,
           },
         })) as Array<RouterManagedTag>,
+    structuralSharing: true as any,
   })
 
   const preloadMeta = useRouterState({
@@ -94,6 +95,7 @@ export const useTags = () => {
 
       return preloadMeta
     },
+    structuralSharing: true as any,
   })
 
   const headScripts = useRouterState({
@@ -110,6 +112,7 @@ export const useTags = () => {
         },
         children,
       })),
+      structuralSharing: true as any,
   })
 
   return () =>

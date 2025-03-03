@@ -224,7 +224,96 @@ describe('useParams', () => {
           })
         | undefined
       >()
-  })
+      expectTypeOf(
+        useParams<
+          DefaultRouter,
+          '/invoices',
+          /* strict */ true,
+          /* shouldThrow */ true,
+          { func: () => void }
+        >,
+      )
+        .parameter(0)
+        .exclude<undefined>()
+        .toHaveProperty('structuralSharing')
+        .toEqualTypeOf<false | undefined>()
+  
+      expectTypeOf(
+        useParams<
+          DefaultRouter,
+          '/invoices',
+          /* strict */ true,
+          /* shouldThrow */ true,
+          { func: () => void },
+          true
+        >,
+      )
+        .parameter(0)
+        .exclude<undefined>()
+        .toHaveProperty('select')
+        .toEqualTypeOf<
+          | ((search: {}) => {
+              func: 'Function is not serializable'
+            })
+          | undefined
+        >()
+  
+      expectTypeOf(
+        useParams<
+          DefaultRouter,
+          '/invoices',
+          /* strict */ true,
+          /* shouldThrow */ true,
+          { func: () => void },
+          true
+        >,
+      )
+        .parameter(0)
+        .exclude<undefined>()
+        .toHaveProperty('structuralSharing')
+        .toEqualTypeOf<false | undefined>()
+  
+      // eslint-disable-next-line unused-imports/no-unused-vars
+      const routerWithStructuralSharing = createRouter({
+        routeTree,
+        defaultStructuralSharing: true,
+      })
+  
+      expectTypeOf(
+        useParams<
+          typeof routerWithStructuralSharing,
+          '/invoices',
+          /* strict */ true,
+          /* shouldThrow */ true,
+          { func: () => void },
+          true
+        >,
+      )
+        .parameter(0)
+        .exclude<undefined>()
+        .toHaveProperty('select')
+        .toEqualTypeOf<
+          | ((search: {}) => {
+              func: 'Function is not serializable'
+            })
+          | undefined
+        >()
+  
+      expectTypeOf(
+        useParams<
+          typeof routerWithStructuralSharing,
+          '/invoices',
+          /* strict */ true,
+          /* shouldThrow */ true,
+          { func: () => void },
+          true
+        >,
+      )
+        .parameter(0)
+        .exclude<undefined>()
+        .toHaveProperty('structuralSharing')
+        .toEqualTypeOf<false>()
+    })
 
   describe('shouldThrow', () => {
     const rootRoute = createRootRoute()

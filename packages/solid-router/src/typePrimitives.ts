@@ -191,6 +191,15 @@ export type InferSelected<TOptions> = TOptions extends {
   ? TSelected
   : unknown
 
+/**
+ * @internal
+ */
+export type InferStructuralSharing<TOptions> = TOptions extends {
+  structuralSharing: infer TStructuralSharing
+}
+  ? TStructuralSharing
+  : unknown
+
 export type ValidateUseSearchOptions<
   TOptions,
   TRouter extends AnyRouter = RegisteredRouter,
@@ -201,7 +210,8 @@ export type ValidateUseSearchOptions<
     InferFrom<TOptions>,
     InferStrict<TOptions>,
     InferShouldThrow<TOptions>,
-    InferSelected<TOptions>
+    InferSelected<TOptions>,
+    InferStructuralSharing<TOptions>
   >
 >
 
@@ -225,6 +235,7 @@ export type ValidateUseParamsOptions<
     InferFrom<TOptions>,
     InferStrict<TOptions>,
     InferShouldThrow<TOptions>,
+    InferSelected<TOptions>,
     InferSelected<TOptions>
   >
 >

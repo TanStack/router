@@ -8,6 +8,10 @@ import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
 import type {
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
+import type {
   DeepPartial,
   MakeOptionalPathParams,
   MakeOptionalSearchParams,
@@ -111,6 +115,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
   const status = useRouterState({
     select: (s) => s.status,
+    structuralSharing: true as any,
   })
 
   return <
@@ -184,8 +189,14 @@ export function MatchRoute<
   )
 }
 
-export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
-  select?: (matches: Array<MakeRouteMatchUnion<TRouter>>) => TSelected
+export interface UseMatchesBaseOptions<
+  TRouter extends AnyRouter,
+  TSelected,
+  TStructuralSharing,
+> {
+  select?: (
+    matches: Array<MakeRouteMatchUnion<TRouter>>,
+  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
 export type UseMatchesResult<
@@ -196,8 +207,10 @@ export type UseMatchesResult<
 export function useMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   return useRouterState({
     select: (state: RouterState<TRouter['routeTree']>) => {
@@ -206,14 +219,17 @@ export function useMatches<
         ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
         : matches
     },
+    structuralSharing: opts?.structuralSharing,
   } as any) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }
 
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const contextMatchId = Solid.useContext(matchContext)
 
@@ -225,14 +241,17 @@ export function useParentMatches<
       )
       return opts?.select ? opts.select(matches) : matches
     },
+    structuralSharing: opts?.structuralSharing,
   } as any)
 }
 
 export function useChildMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const contextMatchId = Solid.useContext(matchContext)
 

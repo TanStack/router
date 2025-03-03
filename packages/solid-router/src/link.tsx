@@ -130,6 +130,7 @@ export function useLinkProps<
 
   const currentSearch = useRouterState({
     select: (s) => s.location.searchStr,
+    structuralSharing: true as any,
   })
 
   // In the rare event that the user bypasses type-safety and doesn't supply a `from`

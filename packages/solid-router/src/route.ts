@@ -120,6 +120,7 @@ export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
     return useMatch({
       select: opts?.select,
       from: this.id,
+      structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
 
@@ -133,6 +134,7 @@ export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   useSearch: UseSearchRoute<TId> = (opts) => {
     return useSearch({
       select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
@@ -140,6 +142,7 @@ export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   useParams: UseParamsRoute<TId> = (opts) => {
     return useParams({
       select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
@@ -530,6 +533,7 @@ export class Route<
     return useMatch({
       select: opts?.select,
       from: this.id,
+      structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
 
@@ -544,6 +548,7 @@ export class Route<
   useSearch: UseSearchRoute<TId> = (opts) => {
     return useSearch({
       select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
@@ -551,6 +556,7 @@ export class Route<
   useParams: UseParamsRoute<TId> = (opts) => {
     return useParams({
       select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
@@ -828,7 +834,7 @@ export function createRouteMask<
 >(
   opts: {
     routeTree: TRouteTree
-  } & ToMaskOptions<Router<TRouteTree, 'never'>, TFrom, TTo>,
+  } & ToMaskOptions<Router<TRouteTree, 'never', boolean>, TFrom, TTo>,
 ): RouteMask<TRouteTree> {
   return opts as any
 }
