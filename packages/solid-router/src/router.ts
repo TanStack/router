@@ -2287,9 +2287,6 @@ export class Router<
                 try {
                   updateMatch(matchId, (prev) => ({
                     ...prev,
-                    loadPromise: createControlledPromise<void>(() => {
-                      prev.loadPromise?.resolve()
-                    }),
                     beforeLoadPromise: createControlledPromise<void>(),
                   }))
 
