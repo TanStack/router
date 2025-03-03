@@ -575,7 +575,7 @@ test('when creating a child route with optional search params from the root rout
       ((search: { page?: number | undefined }) => number) | undefined
     >()
 
-    expectTypeOf(invoicesRoute.useSearch<typeof router, string>)
+  expectTypeOf(invoicesRoute.useSearch<typeof router, string>)
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
@@ -605,7 +605,6 @@ test('when creating a child route with params from the root route', () => {
     .exclude<undefined>()
     .toHaveProperty('select')
     .toEqualTypeOf<((params: { invoiceId: string }) => number) | undefined>()
-
 
   expectTypeOf(invoicesRoute.useParams<typeof router, string>)
     .parameter(0)
@@ -672,7 +671,6 @@ test('when creating a child route with a param and splat param from the root rou
       ((params: { invoiceId: string; _splat?: string }) => number) | undefined
     >()
 
-  
   expectTypeOf(invoicesRoute.useParams<typeof router, string>)
     .parameter(0)
     .exclude<undefined>()
@@ -890,8 +888,7 @@ test('when creating a child route with params from a parent with params', () => 
       ((params: { invoiceId: string; detailId: string }) => number) | undefined
     >()
 
-  
-    expectTypeOf(detailsRoute.useParams<typeof router, string>)
+  expectTypeOf(detailsRoute.useParams<typeof router, string>)
     .parameter(0)
     .exclude<undefined>()
     .toHaveProperty('structuralSharing')
@@ -935,12 +932,11 @@ test('when creating a child route with search from a parent with search', () => 
       | undefined
     >()
 
-
   expectTypeOf(detailsRoute.useSearch<typeof router, number>)
-  .parameter(0)
-  .exclude<undefined>()
-  .toHaveProperty('structuralSharing')
-  .toEqualTypeOf<boolean | undefined>()
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('structuralSharing')
+    .toEqualTypeOf<boolean | undefined>()
 })
 
 test('when creating a child route with routeContext from a parent with routeContext', () => {

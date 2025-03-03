@@ -35,15 +35,14 @@ export function useRouterState<
     warn: opts?.router === undefined,
   })
   const router = opts?.router || contextRouter
-  let previousResult: ValidateSelected<TRouter, TSelected, TStructuralSharing> | undefined = undefined
+  let previousResult:
+    | ValidateSelected<TRouter, TSelected, TStructuralSharing>
+    | undefined = undefined
 
-  return useStore(router.__store, (state:any) => {
+  return useStore(router.__store, (state: any) => {
     if (opts?.select) {
       if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
-        const newSlice = replaceEqualDeep(
-          previousResult,
-          opts.select(state),
-        )
+        const newSlice = replaceEqualDeep(previousResult, opts.select(state))
         previousResult = newSlice
         return newSlice
       }

@@ -77,10 +77,9 @@ export function useParams<
     TSelected,
     TStructuralSharing
   >,
-): Accessor<ThrowOrOptional<
-  UseParamsResult<TRouter, TFrom, TStrict, TSelected>,
-  TThrow
->> {
+): Accessor<
+  ThrowOrOptional<UseParamsResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,

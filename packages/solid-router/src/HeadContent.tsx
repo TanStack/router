@@ -112,7 +112,7 @@ export const useTags = () => {
         },
         children,
       })),
-      structuralSharing: true as any,
+    structuralSharing: true as any,
   })
 
   return () =>

@@ -95,7 +95,9 @@ export function useMatch<
     TSelected,
     TStructuralSharing
   >,
-): Accessor<ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>> {
+): Accessor<
+  ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+> {
   const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
