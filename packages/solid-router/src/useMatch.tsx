@@ -105,7 +105,7 @@ export function useMatch<
   const matchSelection = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId,
+        opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
       )
       invariant(
         !((opts.shouldThrow ?? true) && !match),
