@@ -1,4 +1,5 @@
 import {
+  HeadContent,
   Link,
   Outlet,
   createRootRoute,
@@ -25,6 +26,7 @@ function RootComponent() {
 
   return (
     <>
+      <HeadContent />
       <div className="flex gap-2 p-2 text-lg border-b">
         <button
           data-testid="back-button"
