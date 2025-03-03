@@ -5,7 +5,6 @@ import './styles.css'
 
 // Set up a Router instance
 const router = createRouter({
-  defaultStructuralSharing: true,
   routeTree,
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
