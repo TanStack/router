@@ -27,6 +27,7 @@ function RootComponent() {
   // test useRouterState doesn't crash client side navigation
   const _state = useRouterState()
 
+  useRouterState()
   return (
     <>
       <HeadContent />

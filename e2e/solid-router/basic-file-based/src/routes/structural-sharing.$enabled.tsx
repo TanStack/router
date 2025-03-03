@@ -4,7 +4,7 @@ import {
   getRouteApi,
   useSearch,
 } from '@tanstack/solid-router'
-import React from 'react'
+import * as Solid from 'solid-js'
 import { z } from 'zod'
 
 const enabledSchema = {
@@ -26,9 +26,9 @@ export const Route = createFileRoute('/structural-sharing/$enabled')({
 })
 
 function useRenderCount() {
-  const count = React.useRef(0)
-  count.current++
-  return count.current
+  let count = 0
+  count++
+  return count
 }
 
 const api = getRouteApi('/structural-sharing/$enabled')
