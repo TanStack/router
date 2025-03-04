@@ -141,12 +141,16 @@ function OnRendered() {
       key={router.state.resolvedLocation?.state.key}
       suppressHydrationWarning
       ref={(el) => {
-        if (el) {
+        if (
+          el &&
+          (prevLocationRef.current === undefined ||
+            prevLocationRef.current.href !==
+              router.state.resolvedLocation?.href)
+        ) {
           router.emit({
             type: 'onRendered',
             ...getLocationChangeInfo(router.state),
           })
-        } else {
           prevLocationRef.current = router.state.resolvedLocation
         }
       }}
