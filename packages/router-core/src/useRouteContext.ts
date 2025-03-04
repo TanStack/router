@@ -6,20 +6,23 @@ export interface UseRouteContextBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
+  TThrow extends boolean,
   TSelected,
 > {
   select?: (
     search: ResolveUseRouteContext<TRouter, TFrom, TStrict>,
   ) => TSelected
+  shouldThrow?: TThrow
 }
 
 export type UseRouteContextOptions<
   TRouter extends AnyRouter,
   TFrom extends string | undefined,
   TStrict extends boolean,
+  TThrow extends boolean,
   TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseRouteContextBaseOptions<TRouter, TFrom, TStrict, TSelected>
+  UseRouteContextBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
 
 export type ResolveUseRouteContext<
   TRouter extends AnyRouter,

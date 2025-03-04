@@ -130,8 +130,12 @@ test('when there is the root context', () => {
     .toEqualTypeOf<((search: { userId?: string }) => unknown) | undefined>()
 
   expectTypeOf(
-    useRouteContext<DefaultRouter, '/invoices', false, number>,
+    useRouteContext<DefaultRouter, '/invoices', false, true, number>,
   ).returns.toEqualTypeOf<number>()
+
+  expectTypeOf(
+    useRouteContext<DefaultRouter, '/invoices', false, false, number>,
+  ).returns.toEqualTypeOf<number | undefined>()
 })
 
 test('when there are multiple contexts', () => {
