@@ -83,7 +83,6 @@ function RouteComp({
         }}
         class={cx(styles().routesRowContainer(route.id === activeId(), !!match()))}
       >
-        {JSON.stringify(styles().routesRowContainer(route.id === activeId(),!!match()))}
         <div
           class={cx(
             styles().matchIndicator(getRouteStatusColor(matches(), route)),
