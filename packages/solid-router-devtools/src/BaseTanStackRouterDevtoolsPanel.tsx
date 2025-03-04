@@ -464,7 +464,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsContent}>
               <Explorer
                 label="Match"
-                value={activeMatch}
+                value={activeMatch()}
                 defaultExpanded={{}}
               />
             </div>
