@@ -5,6 +5,7 @@ import {
   createRootRoute,
   useCanGoBack,
   useRouter,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -23,6 +24,8 @@ export const Route = createRootRoute({
 function RootComponent() {
   const router = useRouter()
   const canGoBack = useCanGoBack()
+  // test useRouterState doesn't crash client side navigation
+  const _state = useRouterState()
 
   return (
     <>

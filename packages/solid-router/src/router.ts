@@ -2290,7 +2290,9 @@ export class Router<
                   updateMatch(matchId, (prev) => ({
                     ...prev,
                     loadPromise: createControlledPromise<void>(() => {
-                      prev.loadPromise?.resolve()
+                      if (prev.loadPromise?.status !== 'resolved') {
+                        prev.loadPromise?.resolve()
+                      }
                     }),
                     beforeLoadPromise: createControlledPromise<void>(),
                   }))
