@@ -16,8 +16,7 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import type { ParsedLocation } from '@tanstack/router-core'
-import type { AnyRoute } from './route'
+import type { AnyRoute, ParsedLocation } from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
   matchId,

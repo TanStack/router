@@ -1,10 +1,12 @@
 import type {
+  AnyRouter,
   Constrain,
   ConstrainLiteral,
   FromPathOption,
   NavigateOptions,
   PathParamOptions,
   Redirect,
+  RegisteredRouter,
   RouteIds,
   SearchParamOptions,
   ToPathOption,
@@ -12,8 +14,6 @@ import type {
   UseSearchResult,
 } from '@tanstack/router-core'
 import type { LinkComponentProps } from './link'
-import type { AnyRouter, RegisteredRouter } from './router'
-
 import type { UseParamsOptions } from './useParams'
 import type { UseSearchOptions } from './useSearch'
 

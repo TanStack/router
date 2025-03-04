@@ -1,8 +1,12 @@
 import { functionalUpdate } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import { ScriptOnce } from './ScriptOnce'
-import type { AnyRouter } from './router'
-import type { NonNullableUpdater, ParsedLocation } from '@tanstack/router-core'
+
+import type {
+  AnyRouter,
+  NonNullableUpdater,
+  ParsedLocation,
+} from '@tanstack/router-core'
 
 export type ScrollRestorationEntry = { scrollX: number; scrollY: number }
 

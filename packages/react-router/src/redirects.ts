@@ -1,9 +1,9 @@
 import type {
   AnyRedirect,
   Redirect,
+  RegisteredRouter,
   ResolvedRedirect,
 } from '@tanstack/router-core'
-import type { RegisteredRouter } from './router'
 
 export function redirect<
   TRouter extends RegisteredRouter,

@@ -1,11 +1,12 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
 import type {
+  AnyRouter,
   FromPathOption,
   NavigateOptions,
+  RegisteredRouter,
   UseNavigateResult,
 } from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter } from './router'
 
 export function useNavigate<
   TRouter extends AnyRouter = RegisteredRouter,

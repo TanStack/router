@@ -17,12 +17,13 @@ import { useIntersectionObserver } from './utils'
 
 import { useMatch } from './useMatch'
 import type {
+  AnyRouter,
   Constrain,
   LinkCurrentTargetElement,
   LinkOptions,
+  RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter } from './router'
 import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,

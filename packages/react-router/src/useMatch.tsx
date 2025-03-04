@@ -6,10 +6,11 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRouter, RegisteredRouter } from './router'
 import type {
+  AnyRouter,
   MakeRouteMatch,
   MakeRouteMatchUnion,
+  RegisteredRouter,
   StrictOrFrom,
   ThrowOrOptional,
 } from '@tanstack/router-core'

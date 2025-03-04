@@ -27,7 +27,7 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startReactTransition = (fn: () => void) => {
+    router.startTransition = (fn: () => void) => {
       setIsTransitioning(true)
       React.startTransition(() => {
         fn()
