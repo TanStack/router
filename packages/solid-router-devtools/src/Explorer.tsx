@@ -111,7 +111,7 @@ export const DefaultRenderer: Renderer = ({
               {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
             </span>
           </button>
-          {expanded() ?? false ? (
+          {(expanded() ?? false) ? (
             subEntryPages.length === 1 ? (
               <div class={styles().subEntries}>
                 {subEntries.map((entry, index) => handleEntry(entry))}
