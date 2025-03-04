@@ -144,10 +144,10 @@ export const BaseTanStackRouterDevtoolsPanel =
     const styles = useStyles()
     const { className, ...otherPanelProps } = panelProps
 
-    const contextRouter = useRouter({ warn: false })
-    const router = userRouter ?? contextRouter
+    
+    const router = Solid.createMemo(() => userRouter ?? useRouter({ warn: false }))
     const routerState = useRouterState({
-      router,
+      router: router(),
     } as any)
 
     invariant(
@@ -178,12 +178,14 @@ export const BaseTanStackRouterDevtoolsPanel =
       )
     })
 
-    const hasSearch = Object.keys(routerState().location.search).length
+    const hasSearch = Solid.createMemo(()=>Object.keys(routerState().location.search).length)
 
-    const explorerState = {
-      ...router,
-      // state: useRouterState(),
-    }
+    const explorerState = Solid.createMemo(() => {
+      return ({
+        ...router(),
+        state: routerState(),
+      })
+    })
 
     return (
       <div
@@ -238,7 +240,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 label="Router"
                 value={Object.fromEntries(
                   multiSortBy(
-                    Object.keys(explorerState),
+                    Object.keys(explorerState()),
                     (
                       [
                         'state',
@@ -250,7 +252,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                       ] as const
                     ).map((d) => (dd) => dd !== d),
                   )
-                    .map((key) => [key, (explorerState as any)[key]])
+                    .map((key) => [key, (explorerState() as any)[key]])
                     .filter(
                       (d) =>
                         typeof d[1] !== 'function' &&
@@ -333,8 +335,8 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={cx(styles().routesContainer)}>
               {!showMatches() ? (
                 <RouteComp
-                  router={router}
-                  route={router.routeTree}
+                  router={router()}
+                  route={router().routeTree}
                   isRoot
                   activeId={activeId}
                   setActiveId={setActiveId}
@@ -363,7 +365,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                         <code
                           class={styles().matchID}
                         >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                        <AgeTicker match={match} router={router} />
+                        <AgeTicker match={match} router={router()} />
                       </div>
                     )
                   })}
@@ -398,7 +400,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
                       <code class={styles().matchID}>{`${match.id}`}</code>
 
-                      <AgeTicker match={match} router={router} />
+                      <AgeTicker match={match} router={router()} />
                     </div>
                   )
                 })}
@@ -476,7 +478,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           </div>
         ) : null}
-        {hasSearch ? (
+        {hasSearch() ? (
           <div class={styles().fourthContainer}>
             <div class={styles().detailsHeader}>Search Params</div>
             <div class={styles().detailsContent}>
