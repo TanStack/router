@@ -22,13 +22,13 @@ describe('createHashHistory', () => {
             expect(history.location.pathname).toBe('/')
             expect(history.location.search).toBe('?search=params')
         })
-        test('both search params and hash present, in that order', () => {
+        test('both hash and search params present, in that order', () => {
             const history = createHashHistory()
             window.history.pushState({}, "", "/#hello?search=params")
             expect(history.location.pathname).toBe('/hello')
             expect(history.location.search).toBe('?search=params')
         })
-        test('both hash and search params present, in that order', () => {
+        test('both search params and hash present, in that order', () => {
             const history = createHashHistory()
             window.history.pushState({}, "", "/?search=params#hello")
             expect(history.location.pathname).toBe('/hello')
