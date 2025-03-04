@@ -50,8 +50,12 @@ function RouteComp({
     router,
   } as any)
   const styles = useStyles()
-  const matches = Solid.createMemo(()=>routerState().pendingMatches || routerState().matches)
-  const match = Solid.createMemo(()=>routerState().matches.find((d) => d.routeId === route.id))
+  const matches = Solid.createMemo(
+    () => routerState().pendingMatches || routerState().matches,
+  )
+  const match = Solid.createMemo(() =>
+    routerState().matches.find((d) => d.routeId === route.id),
+  )
 
   const param = Solid.createMemo(() => {
     try {
@@ -81,7 +85,9 @@ function RouteComp({
             setActiveId(activeId() === route.id ? '' : route.id)
           }
         }}
-        class={cx(styles().routesRowContainer(route.id === activeId(), !!match()))}
+        class={cx(
+          styles().routesRowContainer(route.id === activeId(), !!match()),
+        )}
       >
         <div
           class={cx(
@@ -339,7 +345,6 @@ export const BaseTanStackRouterDevtoolsPanel =
                     ? routerState().pendingMatches
                     : routerState().matches
                   )?.map((match, i) => {
-                    
                     return (
                       <div
                         role="button"
