@@ -12,12 +12,8 @@ describe('createHashHistory', () => {
             ['/?search=params#hello', {pathname: '/hello', search: '?search=params'}, 'both search params and hash present, in that order'],
         ])('check for %s', (...[path, exp, desc]) => {
             test(`onLoad with ${path} (${desc})`, () => {
-                const mockWindow = {
-                    addEventListener: window.addEventListener,
-                    history: window.history,
-                    location: new URL(`https://www.example.com${path}`)
-                }
-                const history = createHashHistory({window: mockWindow})
+                window.history.replaceState({}, "", path)
+                const history = createHashHistory()
                 expect(history.location.pathname).toBe(exp.pathname)
                 expect(history.location.search).toBe(exp.search)
             })
