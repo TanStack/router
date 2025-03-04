@@ -43,20 +43,20 @@ function RouteComp({
   router: AnyRouter
   route: AnyRootRoute | AnyRoute
   isRoot?: boolean
-  activeId: string | undefined
+  activeId: Solid.Accessor<string | undefined>
   setActiveId: (id: string) => void
 }) {
   const routerState = useRouterState({
     router,
   } as any)
   const styles = useStyles()
-  const matches = routerState().pendingMatches || routerState().matches
-  const match = routerState().matches.find((d) => d.routeId === route.id)
+  const matches = Solid.createMemo(()=>routerState().pendingMatches || routerState().matches)
+  const match = Solid.createMemo(()=>routerState().matches.find((d) => d.routeId === route.id))
 
   const param = Solid.createMemo(() => {
     try {
-      if (match?.params) {
-        const p = match.params
+      if (match()?.params) {
+        const p = match()?.params
         const r: string = route.path || trimPath(route.id)
         if (r.startsWith('$')) {
           const trimmed = r.slice(1)
@@ -69,7 +69,7 @@ function RouteComp({
     } catch (error) {
       return ''
     }
-  }, [match, route])
+  })
 
   return (
     <div>
@@ -77,25 +77,26 @@ function RouteComp({
         role="button"
         aria-label={`Open match details for ${route.id}`}
         onClick={() => {
-          if (match) {
-            setActiveId(activeId === route.id ? '' : route.id)
+          if (match()) {
+            setActiveId(activeId() === route.id ? '' : route.id)
           }
         }}
-        class={cx(styles().routesRowContainer(route.id === activeId, !!match))}
+        class={cx(styles().routesRowContainer(route.id === activeId(), !!match()))}
       >
+        {JSON.stringify(styles().routesRowContainer(route.id === activeId(),!!match()))}
         <div
           class={cx(
-            styles().matchIndicator(getRouteStatusColor(matches, route)),
+            styles().matchIndicator(getRouteStatusColor(matches(), route)),
           )}
         />
-        <div class={cx(styles().routesRow(!!match))}>
+        <div class={cx(styles().routesRow(!!match()))}>
           <div>
             <code class={styles().code}>
               {isRoot ? rootRouteId : route.path || trimPath(route.id)}{' '}
             </code>
             <code class={styles().routeParamInfo}>{param()}</code>
           </div>
-          <AgeTicker match={match} router={router} />
+          <AgeTicker match={match()} router={router} />
         </div>
       </div>
       {route.children?.length ? (
@@ -176,7 +177,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const explorerState = {
       ...router,
-      state: router.state,
+      // state: useRouterState(),
     }
 
     return (
@@ -330,7 +331,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   router={router}
                   route={router.routeTree}
                   isRoot
-                  activeId={activeId()}
+                  activeId={activeId}
                   setActiveId={setActiveId}
                 />
               ) : (
@@ -339,6 +340,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                     ? routerState().pendingMatches
                     : routerState().matches
                   )?.map((match, i) => {
+                    
                     return (
                       <div
                         role="button"
