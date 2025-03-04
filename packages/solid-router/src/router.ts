@@ -2292,11 +2292,9 @@ export class Router<
                     const prevLoadPromise = prev.loadPromise
                     return {
                       ...prev,
-                      loadPromise: createControlledPromise<void>(
-                        function demo() {
-                          prevLoadPromise?.resolve()
-                        },
-                      ),
+                      loadPromise: createControlledPromise<void>(() => {
+                        prevLoadPromise?.resolve()
+                      }),
                       beforeLoadPromise: createControlledPromise<void>(),
                     }
                   })
