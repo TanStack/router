@@ -45,7 +45,7 @@ type RendererProps = {
   subEntries: Array<Entry>
   subEntryPages: Array<Array<Entry>>
   type: string
-  expanded: boolean
+  expanded: Solid.Accessor<boolean>
   toggleExpanded: () => void
   pageSize: number
   renderer?: Renderer
@@ -81,7 +81,7 @@ export const DefaultRenderer: Renderer = ({
   subEntries = [],
   subEntryPages = [],
   type,
-  expanded = false,
+  expanded,
   toggleExpanded,
   pageSize,
   renderer,
@@ -104,14 +104,14 @@ export const DefaultRenderer: Renderer = ({
             class={styles().expandButton}
             onClick={() => toggleExpanded()}
           >
-            <Expander expanded={expanded} />
+            <Expander expanded={expanded() ?? false} />
             {label}
             <span class={styles().info}>
               {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
               {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
             </span>
           </button>
-          {expanded ? (
+          {expanded() ?? false ? (
             subEntryPages.length === 1 ? (
               <div class={styles().subEntries}>
                 {subEntries.map((entry, index) => handleEntry(entry))}
@@ -268,7 +268,7 @@ export default function Explorer({
     subEntries,
     subEntryPages,
     value,
-    expanded: expanded(),
+    expanded: expanded,
     toggleExpanded,
     pageSize,
     ...rest,
