@@ -134,7 +134,9 @@ export function hydrate(router: AnyRouter) {
     )
 
     if (dehydratedMatch) {
-      Object.assign(match, dehydratedMatch)
+      Object.assign(match, dehydratedMatch, {
+        dehydrated: true,
+      })
 
       // Handle beforeLoadContext
       if (dehydratedMatch.__beforeLoadContext) {
@@ -158,11 +160,6 @@ export function hydrate(router: AnyRouter) {
       // Handle extracted
       ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
         deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
-      })
-    } else {
-      Object.assign(match, {
-        status: 'success',
-        updatedAt: Date.now(),
       })
     }
 
