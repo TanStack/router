@@ -547,4 +547,23 @@ describe('relative navigation', () => {
 
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
   })
+
+  it('should navigate to a sibling route without from', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      to: '.',
+      params: { slug: 'tkdodo' },
+    })
+
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
 })
