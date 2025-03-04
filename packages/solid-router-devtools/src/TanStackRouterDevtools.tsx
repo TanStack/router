@@ -199,10 +199,7 @@ function FloatingTanStackRouterDevtools({
       styles().devtoolsPanelContainer,
       styles().devtoolsPanelContainerVisibility(!!isOpen()),
       styles().devtoolsPanelContainerResizing(isResizing),
-      styles().devtoolsPanelContainerAnimation(
-        !!isOpen(),
-        resolvedHeight + 16,
-      ),
+      styles().devtoolsPanelContainerAnimation(!!isOpen(), resolvedHeight + 16),
     )
   })
 
