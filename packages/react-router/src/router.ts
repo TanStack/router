@@ -2313,16 +2313,19 @@ export class Router<
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
                 try {
-                  updateMatch(matchId, (prev) => ({
-                    ...prev,
-                    loadPromise: createControlledPromise<void>(() => {
-                      if (prev.loadPromise?.status !== 'resolved') {
-                        prev.loadPromise?.resolve()
-                      }
-                    }),
-                    beforeLoadPromise: createControlledPromise<void>(),
-                  }))
-
+                  updateMatch(matchId, (prev) => {
+                    // explicitly capture the previous loadPromise
+                    const prevLoadPromise = prev.loadPromise
+                    return {
+                      ...prev,
+                      loadPromise: createControlledPromise<void>(
+                        function demo() {
+                          prevLoadPromise?.resolve()
+                        },
+                      ),
+                      beforeLoadPromise: createControlledPromise<void>(),
+                    }
+                  })
                   const abortController = new AbortController()
 
                   let pendingTimeout: ReturnType<typeof setTimeout>
