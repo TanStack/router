@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import {createHashHistory} from '../src'
+import { createHashHistory } from '../src'
 
 describe('createHashHistory', () => {
     describe('parseLocation', () => {
