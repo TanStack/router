@@ -16,7 +16,7 @@ import {
   useLayoutEffect,
 } from './utils'
 
-import { useMatch } from './useMatch'
+import { useMatches } from './Matches'
 import type {
   AnyRouter,
   Constrain,
@@ -105,14 +105,15 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  // In the rare event that the user bypasses type-safety and doesn't supply a `from`
-  // we'll use the current route as the `from` location so relative routing works as expected
-  const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
-
+  // when `from` is not supplied, use the leaf route of the current matches as the `from` location
+  // so relative routing works as expected
+  const from = useMatches({
+    select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
+  })
   // Use it as the default `from` location
   options = {
-    from: parentRouteId,
     ...options,
+    from,
   }
 
   const next = React.useMemo(
