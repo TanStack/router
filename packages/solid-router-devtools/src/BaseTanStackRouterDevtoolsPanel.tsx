@@ -144,8 +144,9 @@ export const BaseTanStackRouterDevtoolsPanel =
     const styles = useStyles()
     const { className, ...otherPanelProps } = panelProps
 
-    
-    const router = Solid.createMemo(() => userRouter ?? useRouter({ warn: false }))
+    const router = Solid.createMemo(
+      () => userRouter ?? useRouter({ warn: false }),
+    )
     const routerState = useRouterState({
       router: router(),
     } as any)
@@ -178,13 +179,15 @@ export const BaseTanStackRouterDevtoolsPanel =
       )
     })
 
-    const hasSearch = Solid.createMemo(()=>Object.keys(routerState().location.search).length)
+    const hasSearch = Solid.createMemo(
+      () => Object.keys(routerState().location.search).length,
+    )
 
     const explorerState = Solid.createMemo(() => {
-      return ({
+      return {
         ...router(),
         state: routerState(),
-      })
+      }
     })
 
     return (
