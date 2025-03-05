@@ -1,7 +1,5 @@
 import * as React from 'react'
 
-import { sleep } from './utils'
-import { useAuthStore } from './stores/use-auth-store'
 import { onAuthStateChanged, type User, type AuthProvider, signInWithPopup, signOut } from 'firebase/auth'
 import { flushSync } from "react-dom";
 import { auth } from './firebase/config';
@@ -18,21 +16,12 @@ export type AuthContextType = {
 const AuthContext = React.createContext<AuthContextType | null>(null)
 
 export function AuthContextProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<User | null>(useAuthStore.getState().user)
+  const [user, setUser] = React.useState<User | null>(auth.currentUser)
   const [isInitialLoading, setIsInitialLoading] = React.useState(true);
   const isAuthenticated = !!user
 
   React.useEffect(() => {
-		const user = useAuthStore.getState().user;
-		if (user) {
-			setUser(user);
-			setIsInitialLoading(false);
-		}
-	}, []);
-
-  React.useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
-			useAuthStore.getState().setUser(user);
 			flushSync(() => {
 				setUser(user);
 				setIsInitialLoading(false);
@@ -51,7 +40,6 @@ export function AuthContextProvider({ children }: { children: React.ReactNode })
 
   const login = React.useCallback(async (provider: AuthProvider) => {
 		const result = await signInWithPopup(auth, provider);
-		useAuthStore.getState().setUser(result.user);
 		flushSync(() => {
 			setUser(result.user);
 			setIsInitialLoading(false);
