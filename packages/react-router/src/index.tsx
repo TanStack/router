@@ -35,8 +35,6 @@ export {
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
-  redirect,
-  isRedirect,
 } from '@tanstack/router-core'
 
 export type {
@@ -262,6 +260,8 @@ export { Match, Outlet } from './Match'
 export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
+
+export { redirect, isRedirect } from './redirects'
 
 export {
   RouteApi,
