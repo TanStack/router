@@ -36,7 +36,7 @@ export {
   retainSearchParams,
   stripSearchParams,
   redirect,
-  isRedirect
+  isRedirect,
 } from '@tanstack/router-core'
 
 export type {
