@@ -43,6 +43,8 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 }
 ```
 
+> [!NOTE] > Enabling `verbatimModuleSyntax` can result in server bundles leaking into client bundles. It is recommended to keep this option disabled.
+
 ## Install Dependencies
 
 TanStack Start is (currently\*) powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
