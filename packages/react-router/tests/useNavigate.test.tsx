@@ -1335,3 +1335,141 @@ test('<Navigate> navigates only once in <StrictMode>', async () => {
   expect(await screen.findByTestId('posts-title')).toBeInTheDocument()
   expect(navigateSpy.mock.calls.length).toBe(1)
 })
+
+test('when on /posts/$postId and navigating to ../ with default `from` /posts', async () => {
+  const rootRoute = createRootRoute()
+
+  const IndexComponent = () => {
+    const navigate = useNavigate()
+    return (
+      <React.Fragment>
+        <h1 data-testid="index-heading">Index</h1>
+        <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+        <button
+          data-testid="index-to-first-post-btn"
+          onClick={() =>
+            navigate({
+              to: '/posts/$postId/details',
+              params: { postId: 'id1' },
+            })
+          }
+        >
+          To first post
+        </button>
+      </React.Fragment>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: IndexComponent,
+  })
+
+  const layoutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_layout',
+    component: () => {
+      return (
+        <>
+          <h1>Layout</h1>
+          <Outlet />
+        </>
+      )
+    },
+  })
+
+  const PostsComponent = () => {
+    const navigate = useNavigate({ from: '/posts' })
+    return (
+      <React.Fragment>
+        <h1>Posts</h1>
+        <button
+          data-testid="btn-to-home"
+          onClick={() => navigate({ to: '../' })}
+        >
+          To Home
+        </button>
+        <Outlet />
+      </React.Fragment>
+    )
+  }
+
+  const postsRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: 'posts',
+    component: PostsComponent,
+  })
+
+  const PostComponent = () => {
+    const params = useParams({ strict: false })
+    return (
+      <React.Fragment>
+        <span>Params: {params.postId}</span>
+        <Outlet />
+      </React.Fragment>
+    )
+  }
+
+  const postRoute = createRoute({
+    getParentRoute: () => postsRoute,
+    path: '$postId',
+    component: PostComponent,
+  })
+
+  const PostIndexComponent = () => {
+    return (
+      <>
+        <h1>Post Index</h1>
+      </>
+    )
+  }
+
+  const postIndexRoute = createRoute({
+    getParentRoute: () => postRoute,
+    path: '/',
+    component: PostIndexComponent,
+  })
+
+  const DetailsComponent = () => {
+    return (
+      <>
+        <h1 data-testid="details-heading">Details!</h1>
+      </>
+    )
+  }
+
+  const detailsRoute = createRoute({
+    getParentRoute: () => postRoute,
+    path: 'details',
+    component: DetailsComponent,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      indexRoute,
+      layoutRoute.addChildren([
+        postsRoute.addChildren([
+          postRoute.addChildren([postIndexRoute, detailsRoute]),
+        ]),
+      ]),
+    ]),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  const postsButton = await screen.findByTestId('index-to-first-post-btn')
+
+  fireEvent.click(postsButton)
+
+  expect(await screen.findByTestId('details-heading')).toBeInTheDocument()
+
+  expect(window.location.pathname).toEqual('/posts/id1/details')
+
+  const homeButton = await screen.findByTestId('btn-to-home')
+
+  fireEvent.click(homeButton)
+
+  expect(await screen.findByTestId('index-heading')).toBeInTheDocument()
+  expect(window.location.pathname).toEqual('/')
+})
