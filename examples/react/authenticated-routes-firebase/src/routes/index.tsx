@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
 function HomeComponent() {
 	return (
 		<div className="p-4 max-w-3xl mx-auto">
-			<h1 className="text-2xl font-bold mb-4">Welcome to TS Router + Firebase + Zustand</h1>
+			<h1 className="text-2xl font-bold mb-4">Welcome to TS Router + Firebase</h1>
 			
 			<section className="mb-6 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
 				<h2 className="text-xl font-semibold mb-2">About This Template</h2>
@@ -27,7 +27,6 @@ function HomeComponent() {
 				<ul className="list-disc list-inside mb-4">
 					<li>TanStack Router for type-safe routing</li>
 					<li>Firebase Client SDK for authentication</li>
-					<li>Zustand for state management</li>
 				</ul>
 				<p>
 					<strong>Project Organization:</strong> Routes under <code>_auth</code> are protected,
