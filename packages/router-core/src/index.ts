@@ -357,3 +357,5 @@ export type { UseLoaderDepsResult, ResolveUseLoaderDeps } from './useLoaderDeps'
 export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 
 export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'
+
+export { redirect, isRedirect, isResolvedRedirect } from './redirect'
