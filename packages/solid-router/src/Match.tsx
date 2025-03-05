@@ -6,13 +6,13 @@ import {
   getLocationChangeInfo,
   pick,
   rootRouteId,
-  isRedirect,
 } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { CatchNotFound, isNotFound } from './not-found'
+import { isRedirect } from './redirects'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'

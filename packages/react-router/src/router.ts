@@ -25,9 +25,8 @@ import {
   trimPath,
   trimPathLeft,
   trimPathRight,
-  isRedirect,
-  isResolvedRedirect,
 } from '@tanstack/router-core'
+import { isRedirect, isResolvedRedirect } from './redirects'
 import { isNotFound } from './not-found'
 
 import { setupScrollRestoration } from './scroll-restoration'
