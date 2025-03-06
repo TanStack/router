@@ -169,25 +169,24 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const activeMatch = Solid.createMemo(() => {
       const matches = [
-        ...(routerState().pendingMatches ?? []),
-        ...routerState().matches,
-        ...routerState().cachedMatches,
+        ...(routerState.pendingMatches ?? []),
+        ...routerState.matches,
+        ...routerState.cachedMatches,
       ]
       return matches.find(
         (d) => d.routeId === activeId() || d.id === activeId(),
       )
     })
 
-    const hasSearch = Solid.createMemo(
-      () => Object.keys(routerState().location.search).length,
-    )
+    const hasSearch = Solid.createMemo(()=>Object.keys(routerState.location.search).length)
 
     const explorerState = Solid.createMemo(() => {
       return ({
         ...router,
-        state: routerState(),
-      }
+        state: routerState,
+      })
     })
+
 
     return (
       <div
@@ -285,21 +284,21 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           </div>
         </div>
-        {/* <div class={styles().secondContainer}>
+        <div class={styles().secondContainer}>
           <div class={styles().matchesContainer}>
             <div class={styles().detailsHeader}>
               <span>Pathname</span>
-              {routerState().location.maskedLocation ? (
+              {routerState.location.maskedLocation ? (
                 <div class={styles().maskedBadgeContainer}>
                   <span class={styles().maskedBadge}>masked</span>
                 </div>
               ) : null}
             </div>
             <div class={styles().detailsContent}>
-              <code>{routerState().location.pathname}</code>
-              {routerState().location.maskedLocation ? (
+              <code>{routerState.location.pathname}</code>
+              {routerState.location.maskedLocation ? (
                 <code class={styles().maskedLocation}>
-                  {routerState().location.maskedLocation?.pathname}
+                  {routerState.location.maskedLocation?.pathname}
                 </code>
               ) : null}
             </div>
@@ -346,9 +345,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                 />
               ) : (
                 <div>
-                  {(routerState().pendingMatches?.length
-                    ? routerState().pendingMatches
-                    : routerState().matches
+                  {(routerState.pendingMatches?.length
+                    ? routerState.pendingMatches
+                    : routerState.matches
                   )?.map((match:any, i:any) => {
                     return (
                       <div
@@ -376,7 +375,7 @@ export const BaseTanStackRouterDevtoolsPanel =
               )}
             </div>
           </div>
-          {routerState().cachedMatches.length ? (
+          {routerState.cachedMatches.length ? (
             <div class={styles().cachedMatchesContainer}>
               <div class={styles().detailsHeader}>
                 <div>Cached Matches</div>
@@ -385,7 +384,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </div>
               </div>
               <div>
-                {routerState().cachedMatches.map((match:any) => {
+                {routerState.cachedMatches.map((match:any) => {
                   return (
                     <div
                       role="button"
@@ -438,11 +437,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {routerState().pendingMatches?.find(
+                    {routerState.pendingMatches?.find(
                       (d:any) => d.id === activeMatch()!.id,
                     )
                       ? 'Pending'
-                      : routerState().matches.find(
+                      : routerState.matches.find(
                             (d:any) => d.id === activeMatch()!.id,
                           )
                         ? 'Active'
@@ -486,9 +485,9 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsHeader}>Search Params</div>
             <div class={styles().detailsContent}>
               <Explorer
-                value={routerState().location.search}
+                value={routerState.location.search}
                 defaultExpanded={Object.keys(
-                  routerState().location.search,
+                  routerState.location.search,
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
@@ -496,7 +495,7 @@ export const BaseTanStackRouterDevtoolsPanel =
               />
             </div>
           </div>
-        ) : null} */}
+        ) : null}
       </div>
     )
   }
