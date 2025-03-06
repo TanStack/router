@@ -228,8 +228,8 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const explorerState = Solid.createMemo(() => {
       return {
-        ...router,
-        state: routerState,
+        ...router(),
+        state: routerState(),
       }
     })
 
