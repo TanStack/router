@@ -135,7 +135,11 @@ function RootComponent() {
       <hr />
       <Outlet />
       {/* Start rendering router matches */}
-      <ReactRouterDevtools position="bottom-right" router={useRouter()} routerState={_state} />
+      <ReactRouterDevtools
+        position="bottom-right"
+        router={useRouter()}
+        routerState={_state}
+      />
     </>
   )
 }

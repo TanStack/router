@@ -58,9 +58,7 @@ export function ReactRouterDevtools(props: DevtoolsOptions) {
   }
 
   const devToolRef = React.useRef<HTMLDivElement>(null)
-  const [devtools] = React.useState(
-    () => new TanStackRouterDevtools(usedProps)
-  )
+  const [devtools] = React.useState(() => new TanStackRouterDevtools(usedProps))
 
   // Update devtools when props change
   useEffect(() => {
@@ -92,7 +90,7 @@ export function ReactRouterDevtools(props: DevtoolsOptions) {
     usedProps.shadowDOMTarget,
   ])
 
-React.useEffect(() => {
+  React.useEffect(() => {
     if (devToolRef.current) {
       devtools.mount(devToolRef.current)
     }
