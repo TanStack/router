@@ -139,18 +139,18 @@ export function useLinkProps<
     select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
   })
 
-  options = {
-    ...(options as any),
+  const _options = () => ({
+    ...options,
     from: from(),
-  }
+  })
 
   const next = Solid.createMemo(() => {
     currentSearch()
-    return router.buildLocation(options as any)
+    return router.buildLocation(_options() as any)
   })
 
   const preload = Solid.createMemo(() => {
-    if (options.reloadDocument) {
+    if (_options().reloadDocument) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -205,7 +205,7 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute(options as any).catch((err: any) => {
+    router.preloadRoute(_options() as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
@@ -287,7 +287,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
-        ...options,
+        ..._options(),
         replace: local.replace,
         resetScroll: local.resetScroll,
         hashScrollIntoView: local.hashScrollIntoView,
@@ -388,7 +388,7 @@ export function useLinkProps<
     const nextLocation = next()
     const maskedLocation = nextLocation?.maskedLocation
 
-    return options.disabled
+    return _options().disabled
       ? undefined
       : maskedLocation
         ? router.history.createHref(maskedLocation.href)
@@ -402,7 +402,7 @@ export function useLinkProps<
     () => {
       return {
         href: href(),
-        ref: mergeRefs(setRef, options.ref),
+        ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
         onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
