@@ -1,13 +1,8 @@
-import {
-  useRouter,
-  useRouterState,
-} from '@tanstack/solid-router'
+import { useRouter, useRouterState } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools-core'
 import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
-import type {
-  AnyRouter,
-  RouterState} from '@tanstack/solid-router';
-import type {Component, JSX} from 'solid-js'
+import type { AnyRouter, RouterState } from '@tanstack/solid-router'
+import type { Component, JSX } from 'solid-js'
 
 interface DevtoolsOptions {
   /**
