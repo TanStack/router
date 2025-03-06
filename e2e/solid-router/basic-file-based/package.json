@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
-    "@tanstack/router-devtools-core": "workspace:^",
+    "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/zod-adapter": "workspace:^",
     "redaxios": "^0.5.1",

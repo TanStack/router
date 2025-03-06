@@ -7,7 +7,7 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
-import { ReactRouterDevtools } from '../../../../../packages/react-router-devtools/src/index'
+import { ReactRouterDevtools } from '@tanstack/react-router-devtools'
 
 export const Route = createRootRoute({
   component: RootComponent,
