@@ -111,22 +111,20 @@ export function useLinkProps<
     select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
   })
   // Use it as the default `from` location
-  options = {
-    ...options,
-    from,
-  }
+  const _options = React.useMemo(() => ({ ...options, from }), [options, from])
 
   const next = React.useMemo(
-    () => router.buildLocation(options as any),
+    () => router.buildLocation(_options as any),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, options, currentSearch],
+    [router, _options, currentSearch],
   )
+
   const preload = React.useMemo(() => {
-    if (options.reloadDocument) {
+    if (_options.reloadDocument) {
       return false
     }
     return userPreload ?? router.options.defaultPreload
-  }, [router.options.defaultPreload, userPreload, options.reloadDocument])
+  }, [router.options.defaultPreload, userPreload, _options.reloadDocument])
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -177,11 +175,11 @@ export function useLinkProps<
   })
 
   const doPreload = React.useCallback(() => {
-    router.preloadRoute(options as any).catch((err) => {
+    router.preloadRoute(_options as any).catch((err) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
-  }, [options, router])
+  }, [_options, router])
 
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
@@ -251,7 +249,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
-        ...options,
+        ..._options,
         replace,
         resetScroll,
         hashScrollIntoView,
