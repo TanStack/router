@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-utils",
-  "version": "1.102.2",
+  "version": "1.112.18",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
