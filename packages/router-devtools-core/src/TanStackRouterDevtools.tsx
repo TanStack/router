@@ -8,7 +8,7 @@ import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPan
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
-import type { AnyRouter } from '@tanstack/solid-router'
+import type { AnyRouter } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
 
 interface DevtoolsOptions {
@@ -19,20 +19,20 @@ interface DevtoolsOptions {
   /**
    * Use this to add props to the panel. For example, you can add class, style (merge and override default style), etc.
    */
-  panelProps?: Solid.JSX.HTMLAttributes<HTMLDivElement> & {
-    ref?: Solid.Ref<HTMLDivElement>
+  panelProps?: any & {
+    ref?: any
   }
   /**
    * Use this to add props to the close button. For example, you can add class, style (merge and override default style), onClick (extend default handler), etc.
    */
-  closeButtonProps?: Solid.JSX.ButtonHTMLAttributes<HTMLButtonElement> & {
-    ref?: Solid.Ref<HTMLButtonElement>
+  closeButtonProps?: any & {
+    ref?: any
   }
   /**
    * Use this to add props to the toggle button. For example, you can add class, style (merge and override default style), onClick (extend default handler), etc.
    */
-  toggleButtonProps?: Solid.JSX.ButtonHTMLAttributes<HTMLButtonElement> & {
-    ref?: Solid.Ref<HTMLButtonElement>
+  toggleButtonProps?: any & {
+    ref?: any
   }
   /**
    * The position of the TanStack Router logo to open and close the devtools panel.
@@ -220,7 +220,7 @@ function FloatingTanStackRouterDevtools({
       const run = () => {
         console.log('panelRef', panelRef)
 
-        const containerHeight = panelRef?.getBoundingClientRect().height
+        const containerHeight = panelRef!.getBoundingClientRect().height
         if (rootEl()?.parentElement) {
           setRootEl((prev) => {
             if (prev?.parentElement) {

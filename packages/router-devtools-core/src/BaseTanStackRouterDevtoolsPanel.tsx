@@ -1,6 +1,10 @@
 import * as Solid from 'solid-js'
 import { clsx as cx } from 'clsx'
-import { invariant, rootRouteId, trimPath } from '@tanstack/solid-router'
+import {default as invariant} from 'tiny-invariant'
+import {
+  rootRouteId,
+  trimPath,
+} from '@tanstack/router-core'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'

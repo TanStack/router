@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 import * as Solid from 'solid-js'
 import { useStyles } from './useStyles'
-import type { AnyRouteMatch, AnyRouter } from '@tanstack/solid-router'
+import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 
 function formatTime(ms: number) {
   const units = ['s', 'min', 'h', 'd']

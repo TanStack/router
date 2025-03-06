@@ -7,7 +7,7 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { ReactRouterDevtools } from '../../../../../packages/react-router-devtools/src/index'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -135,7 +135,7 @@ function RootComponent() {
       <hr />
       <Outlet />
       {/* Start rendering router matches */}
-      <TanStackRouterDevtools position="bottom-right" />
+      <ReactRouterDevtools position="bottom-right" router={useRouter()} routerState={_state} />
     </>
   )
 }

@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
-import type { AnyRouter } from '@tanstack/solid-router'
+import type { AnyRouter } from '@tanstack/router-core'
 
 export interface DevtoolsPanelOptions {
   /**

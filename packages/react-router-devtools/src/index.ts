@@ -1,1 +1,1 @@
-// export { ReactRouterDevtools } from './ReactRouterDevtools'
+export { ReactRouterDevtools } from './ReactRouterDevtools'
