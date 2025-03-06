@@ -71,25 +71,27 @@ function RouteComp({
   activeId,
   setActiveId,
 }: {
-  routerState: Solid.Accessor<RouterState<
-    Route<
-      any,
-      '/',
-      '/',
-      string,
-      '__root__',
-      undefined,
-      {},
-      {},
-      AnyContext,
-      AnyContext,
-      {},
-      undefined,
-      any,
-      FileRouteTypes
-    >,
-    MakeRouteMatchUnion
-  >>
+  routerState: Solid.Accessor<
+    RouterState<
+      Route<
+        any,
+        '/',
+        '/',
+        string,
+        '__root__',
+        undefined,
+        {},
+        {},
+        AnyContext,
+        AnyContext,
+        {},
+        undefined,
+        any,
+        FileRouteTypes
+      >,
+      MakeRouteMatchUnion
+    >
+  >
   router: Solid.Accessor<AnyRouter>
   route: AnyRoute
   isRoot?: boolean

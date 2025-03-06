@@ -50,7 +50,6 @@ interface DevtoolsOptions {
 }
 
 export function ReactRouterDevtools(props: DevtoolsOptions) {
-
   const {
     initialIsOpen,
     panelProps,
@@ -60,22 +59,24 @@ export function ReactRouterDevtools(props: DevtoolsOptions) {
     containerElement,
     shadowDOMTarget,
     router,
-    routerState
+    routerState,
   } = props
 
-
   const devToolRef = React.useRef<HTMLDivElement>(null)
-  const [devtools] = React.useState(() => new TanStackRouterDevtools({
-    initialIsOpen,
-    panelProps,
-    closeButtonProps,
-    toggleButtonProps,
-    position,
-    containerElement,
-    shadowDOMTarget,
-    routerState,
-    router
-  }))
+  const [devtools] = React.useState(
+    () =>
+      new TanStackRouterDevtools({
+        initialIsOpen,
+        panelProps,
+        closeButtonProps,
+        toggleButtonProps,
+        position,
+        containerElement,
+        shadowDOMTarget,
+        routerState,
+        router,
+      }),
+  )
 
   // Update devtools when props change
   useEffect(() => {

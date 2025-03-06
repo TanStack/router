@@ -132,7 +132,7 @@ class TanStackRouterDevtools {
     const shadowDOMTarget = this.#shadowDOMTarget
 
     createEffect(() => {
-      console.log("This is router",  this.#router[0]())
+      console.log('This is router', this.#router[0]())
     })
 
     const dispose = render(
@@ -143,7 +143,6 @@ class TanStackRouterDevtools {
           shadowDOMTarget={shadowDOMTarget}
           router={router}
           routerState={routerState}
-          
         />
       ),
       el,
@@ -166,10 +165,8 @@ class TanStackRouterDevtools {
   }
 
   setRouterState(routerState: any) {
-
-
     console.log('New value', routerState)
-    
+
     this.#routerState[1](routerState)
 
     console.log('Update router state', this.#routerState[0]())
@@ -362,22 +359,22 @@ function FloatingTanStackRouterDevtools({
         }}
       >
         {/* {router() ? ( */}
-          <BaseTanStackRouterDevtoolsPanel
-            ref={panelRef as any}
-            {...otherPanelProps}
-            router={router}
-            routerState={routerState}
-            className={basePanelStyle}
-            style={{
-              height: `${resolvedHeight}px`,
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-              ...(panelStyle || {}),
-            }}
-            isOpen={isResolvedOpen()}
-            setIsOpen={setIsOpen}
-            handleDragStart={(e) => handleDragStart(panelRef, e)}
-            shadowDOMTarget={shadowDOMTarget}
-          />
+        <BaseTanStackRouterDevtoolsPanel
+          ref={panelRef as any}
+          {...otherPanelProps}
+          router={router}
+          routerState={routerState}
+          className={basePanelStyle}
+          style={{
+            height: `${resolvedHeight}px`,
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            ...(panelStyle || {}),
+          }}
+          isOpen={isResolvedOpen()}
+          setIsOpen={setIsOpen}
+          handleDragStart={(e) => handleDragStart(panelRef, e)}
+          shadowDOMTarget={shadowDOMTarget}
+        />
         {/* ) : (
           <p>No router</p>
         )} */}
