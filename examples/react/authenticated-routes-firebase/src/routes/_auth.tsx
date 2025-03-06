@@ -10,7 +10,7 @@ import { useAuth } from '../auth'
 export const Route = createFileRoute('/_auth')({
   beforeLoad: ({ context, location }) => {
     // Check if user is authenticated
-    if (!context.isAuthenticated) {
+    if (!context.auth.isAuthenticated) {
       console.log('User not authenticated, redirecting to login...')
       throw redirect({
         to: '/login',
@@ -50,6 +50,14 @@ function AuthLayout() {
             className="hover:underline data-[status='active']:font-semibold"
           >
             Dashboard
+          </Link>
+        </li>
+        <li>
+        <Link
+            to="/invoices"
+            className="hover:underline data-[status='active']:font-semibold"
+          >
+            Invoices
           </Link>
         </li>
         <li>

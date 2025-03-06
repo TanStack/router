@@ -25,7 +25,7 @@ export const Route = createFileRoute('/login')({
     redirect: z.string().optional().catch(''),
   }),
   beforeLoad: ({ context, search }) => {
-    if (context.user) {
+    if (context.auth.isAuthenticated) {
       throw redirect({ to: search.redirect || fallback })
     }
   },
@@ -58,7 +58,7 @@ function LoginComponent() {
   }
 
   return (
-    <div className="">
+    <div className="flex justify-center items-center min-h-screen">
       <div className="w-full max-w-md px-4 animate-fade-up relative z-10">
         <div className="w-full backdrop-blur-sm bg-card/80 p-8 space-y-8 shadow-md border border-border">
           <div className="space-y-4">

@@ -4,7 +4,7 @@ export const Route = createFileRoute('/')({
   beforeLoad: ({ context }) => {
     // Log for debugging
     console.log('Checking context on index.tsx:', context) // Check if user is authenticated
-    if (context.isAuthenticated) {
+    if (context.auth.isAuthenticated) {
       console.log('User authenticated, proceeding...')
       throw redirect({
         to: '/dashboard',
