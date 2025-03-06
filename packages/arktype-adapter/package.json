@@ -65,7 +65,7 @@
   },
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",
-    "arktype": "^2.0.4",
+    "arktype": "^2.1.7",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "react": "^19.0.0",
