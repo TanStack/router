@@ -1341,26 +1341,26 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
   async function runTest(navigateVia: 'Route' | 'RouteApi') {
     const rootRoute = createRootRoute()
 
-  const IndexComponent = () => {
-    const navigate = useNavigate()
-    return (
-      <>
-        <h1 data-testid="index-heading">Index</h1>
-        <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        <button
-          data-testid="index-to-first-post-btn"
-          onClick={() =>
-            navigate({
-              to: '/posts/$postId/details',
-              params: { postId: 'id1' },
-            })
-          }
-        >
-          To first post
-        </button>
-      </>
-    )
-  }
+    const IndexComponent = () => {
+      const navigate = useNavigate()
+      return (
+        <>
+          <h1 data-testid="index-heading">Index</h1>
+          <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+          <button
+            data-testid="index-to-first-post-btn"
+            onClick={() =>
+              navigate({
+                to: '/posts/$postId/details',
+                params: { postId: 'id1' },
+              })
+            }
+          >
+            To first post
+          </button>
+        </>
+      )
+    }
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
