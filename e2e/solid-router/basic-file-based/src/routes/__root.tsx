@@ -135,7 +135,11 @@ function RootComponent() {
       <hr />
       <Outlet />
       {/* Start rendering router matches */}
-      <SolidRouterDevtools position="bottom-right" router={useRouter()} routerState={_state()} />
+      <SolidRouterDevtools
+        position="bottom-right"
+        router={useRouter()}
+        routerState={_state()}
+      />
     </>
   )
 }

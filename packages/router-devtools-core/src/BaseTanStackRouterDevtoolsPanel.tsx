@@ -1,10 +1,6 @@
 import * as Solid from 'solid-js'
 import { clsx as cx } from 'clsx'
-import {
-  invariant,
-  rootRouteId,
-  trimPath,
-} from '@tanstack/solid-router'
+import { invariant, rootRouteId, trimPath } from '@tanstack/solid-router'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
@@ -13,11 +9,7 @@ import { getRouteStatusColor, getStatusColor, multiSortBy } from './utils'
 import { AgeTicker } from './AgeTicker'
 import type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
-import type {
-  AnyRoute,
-  AnyRouter,
-  Route,
-} from '@tanstack/router-core'
+import type { AnyRoute, AnyRouter, Route } from '@tanstack/router-core'
 import { RouterState } from '@tanstack/router-core'
 import { AnyContext } from '@tanstack/router-core'
 import { MakeRouteMatchUnion } from '@tanstack/router-core'
@@ -42,14 +34,31 @@ function RouteComp({
   activeId,
   setActiveId,
 }: {
-  routerState: RouterState<Route<any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, any, FileRouteTypes>, MakeRouteMatchUnion>
+  routerState: RouterState<
+    Route<
+      any,
+      '/',
+      '/',
+      string,
+      '__root__',
+      undefined,
+      {},
+      {},
+      AnyContext,
+      AnyContext,
+      {},
+      undefined,
+      any,
+      FileRouteTypes
+    >,
+    MakeRouteMatchUnion
+  >
   router: AnyRouter
   route: AnyRoute
   isRoot?: boolean
   activeId: Solid.Accessor<string | undefined>
   setActiveId: (id: string) => void
 }) {
-  
   const styles = useStyles()
   const matches = Solid.createMemo(
     () => routerState.pendingMatches || routerState.matches,
@@ -148,7 +157,6 @@ export const BaseTanStackRouterDevtoolsPanel =
     const { onCloseClick } = useDevtoolsOnClose()
     const styles = useStyles()
     const { className, ...otherPanelProps } = panelProps
-    
 
     invariant(
       router,
@@ -178,15 +186,16 @@ export const BaseTanStackRouterDevtoolsPanel =
       )
     })
 
-    const hasSearch = Solid.createMemo(()=>Object.keys(routerState.location.search).length)
+    const hasSearch = Solid.createMemo(
+      () => Object.keys(routerState.location.search).length,
+    )
 
     const explorerState = Solid.createMemo(() => {
-      return ({
+      return {
         ...router,
         state: routerState,
-      })
+      }
     })
-
 
     return (
       <div
@@ -348,7 +357,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   {(routerState.pendingMatches?.length
                     ? routerState.pendingMatches
                     : routerState.matches
-                  )?.map((match:any, i:any) => {
+                  )?.map((match: any, i: any) => {
                     return (
                       <div
                         role="button"
@@ -384,7 +393,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </div>
               </div>
               <div>
-                {routerState.cachedMatches.map((match:any) => {
+                {routerState.cachedMatches.map((match: any) => {
                   return (
                     <div
                       role="button"
@@ -438,11 +447,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
                     {routerState.pendingMatches?.find(
-                      (d:any) => d.id === activeMatch()!.id,
+                      (d: any) => d.id === activeMatch()!.id,
                     )
                       ? 'Pending'
                       : routerState.matches.find(
-                            (d:any) => d.id === activeMatch()!.id,
+                            (d: any) => d.id === activeMatch()!.id,
                           )
                         ? 'Active'
                         : 'Cached'}

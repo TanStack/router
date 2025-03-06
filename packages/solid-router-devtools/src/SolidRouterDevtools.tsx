@@ -1,4 +1,9 @@
-import { AnyRouter, RouterState, useRouter, useRouterState } from '@tanstack/solid-router'
+import {
+  AnyRouter,
+  RouterState,
+  useRouter,
+  useRouterState,
+} from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '../../../packages/router-devtools-core/src/index'
 import { createEffect, onCleanup, onMount } from 'solid-js'
 import { JSX, createSignal, Component, Show } from 'solid-js'
@@ -76,7 +81,7 @@ export const SolidRouterDevtools: Component<DevtoolsOptions> = (props) => {
   onMount(() => {
     if (devToolRef) {
       devtools().mount(devToolRef)
-      
+
       onCleanup(() => {
         devtools().unmount()
       })

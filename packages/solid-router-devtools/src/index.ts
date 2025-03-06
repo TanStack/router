@@ -1,1 +1,1 @@
-export {SolidRouterDevtools} from './SolidRouterDevtools'
+export { SolidRouterDevtools } from './SolidRouterDevtools'

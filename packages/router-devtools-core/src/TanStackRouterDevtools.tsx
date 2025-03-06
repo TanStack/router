@@ -66,13 +66,8 @@ class TanStackRouterDevtools {
   #dispose?: () => void
 
   constructor(config: DevtoolsOptions) {
-    const {
-      router,
-      routerState,
-      position,
-      initialIsOpen,
-      shadowDOMTarget,
-    } = config
+    const { router, routerState, position, initialIsOpen, shadowDOMTarget } =
+      config
 
     this.#router = createSignal(router)
     this.#routerState = createSignal(routerState)
@@ -92,26 +87,24 @@ class TanStackRouterDevtools {
     const initialIsOpen = this.#initialIsOpen
     const shadowDOMTarget = this.#shadowDOMTarget
 
-
-
-    const dispose = render(() => (
-      <FloatingTanStackRouterDevtools
-
-        position={position}
-        initialIsOpen={initialIsOpen}
-        shadowDOMTarget={shadowDOMTarget}
-
-        {...{
-          get router() {
-            return router()
-          },
-          get routerState() {
-            return routerState()
-          },
-          
-        }}
-      />
-    ), el)
+    const dispose = render(
+      () => (
+        <FloatingTanStackRouterDevtools
+          position={position}
+          initialIsOpen={initialIsOpen}
+          shadowDOMTarget={shadowDOMTarget}
+          {...{
+            get router() {
+              return router()
+            },
+            get routerState() {
+              return routerState()
+            },
+          }}
+        />
+      ),
+      el,
+    )
 
     this.#isMounted = true
     this.#dispose = dispose
@@ -215,7 +208,7 @@ function FloatingTanStackRouterDevtools({
   }
 
   const isButtonClosed = isOpen() ?? false
-  
+
   createEffect(() => {
     setIsResolvedOpen(isOpen() ?? false)
   })
@@ -225,7 +218,6 @@ function FloatingTanStackRouterDevtools({
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
       const run = () => {
-
         console.log('panelRef', panelRef)
 
         const containerHeight = panelRef?.getBoundingClientRect().height
@@ -320,23 +312,25 @@ function FloatingTanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
-        {router ? 
-        <BaseTanStackRouterDevtoolsPanel
-          ref={panelRef as any}
-          {...otherPanelProps}
-          router={router}
-          routerState={routerState}
-          className={basePanelStyle}
-          style={{
-            height: `${resolvedHeight}px`,
-            ...(panelStyle || {}),
-          }}
-          isOpen={isResolvedOpen()}
-          setIsOpen={setIsOpen}
-          handleDragStart={(e) => handleDragStart(panelRef, e)}
-          shadowDOMTarget={shadowDOMTarget}
-        />
-      : <p>No router</p>}
+        {router ? (
+          <BaseTanStackRouterDevtoolsPanel
+            ref={panelRef as any}
+            {...otherPanelProps}
+            router={router}
+            routerState={routerState}
+            className={basePanelStyle}
+            style={{
+              height: `${resolvedHeight}px`,
+              ...(panelStyle || {}),
+            }}
+            isOpen={isResolvedOpen()}
+            setIsOpen={setIsOpen}
+            handleDragStart={(e) => handleDragStart(panelRef, e)}
+            shadowDOMTarget={shadowDOMTarget}
+          />
+        ) : (
+          <p>No router</p>
+        )}
       </DevtoolsOnCloseContext.Provider>
 
       <button

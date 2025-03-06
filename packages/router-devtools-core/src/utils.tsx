@@ -2,10 +2,7 @@ import { Dynamic } from 'solid-js/web'
 import * as Solid from 'solid-js'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
-import type {
-  AnyRoute,
-  AnyRouteMatch,
-} from '@tanstack/router-core'
+import type { AnyRoute, AnyRouteMatch } from '@tanstack/router-core'
 
 import type { Theme } from './theme'
 
