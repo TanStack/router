@@ -1,16 +1,21 @@
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import {
   HeadContent,
-  Link,
   Outlet,
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
-import * as React from 'react'
+import { CacheProvider } from '@emotion/react'
+import { Container, CssBaseline, ThemeProvider } from '@mui/material'
+import createCache from '@emotion/cache'
+import fontsourceVariableRobotoCss from '@fontsource-variable/roboto?url'
+import React from 'react'
+import { theme } from '~/setup/theme'
+import Header from '~/components/Header'
 
 export const Route = createRootRoute({
   head: () => ({
-    links: [],
+    links: [{ rel: 'stylesheet', href: fontsourceVariableRobotoCss }],
   }),
   component: RootComponent,
 })
@@ -23,6 +28,19 @@ function RootComponent() {
   )
 }
 
+function Providers({ children }: { children: React.ReactNode }) {
+  const emotionCache = createCache({ key: 'css' })
+
+  return (
+    <CacheProvider value={emotionCache}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </CacheProvider>
+  )
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html>
@@ -30,12 +48,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
-          <Link to="/">Index</Link>
-          <Link to="/about">About</Link>
-        </div>
+        <Providers>
+          <Header />
 
-        {children}
+          <Container component="main" sx={{ paddingBlock: 4 }}>
+            {children}
+          </Container>
+        </Providers>
+
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>
