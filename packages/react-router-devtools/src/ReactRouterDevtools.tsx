@@ -50,44 +50,61 @@ interface DevtoolsOptions {
 }
 
 export function ReactRouterDevtools(props: DevtoolsOptions) {
-  const usedProps = {
-    ...props,
-    router: props.router,
-    routerState: props.routerState,
-  }
+
+  const {
+    initialIsOpen,
+    panelProps,
+    closeButtonProps,
+    toggleButtonProps,
+    position,
+    containerElement,
+    shadowDOMTarget,
+    router,
+    routerState
+  } = props
+
 
   const devToolRef = React.useRef<HTMLDivElement>(null)
-  const [devtools] = React.useState(() => new TanStackRouterDevtools(usedProps))
+  const [devtools] = React.useState(() => new TanStackRouterDevtools({
+    initialIsOpen,
+    panelProps,
+    closeButtonProps,
+    toggleButtonProps,
+    position,
+    containerElement,
+    shadowDOMTarget,
+    routerState,
+    router
+  }))
 
   // Update devtools when props change
   useEffect(() => {
-    devtools.setRouter(usedProps.router)
-  }, [devtools, usedProps.router])
+    devtools.setRouter(router)
+  }, [devtools, router])
 
   useEffect(() => {
-    console.log('Router state change')
-    devtools.setRouterState(usedProps.routerState)
-  }, [devtools, usedProps.routerState])
+    devtools.setRouterState(routerState)
+  }, [devtools, routerState])
 
   useEffect(() => {
     devtools.setOptions({
-      initialIsOpen: usedProps.initialIsOpen,
-      panelProps: usedProps.panelProps,
-      closeButtonProps: usedProps.closeButtonProps,
-      toggleButtonProps: usedProps.toggleButtonProps,
-      position: usedProps.position,
-      containerElement: usedProps.containerElement,
-      shadowDOMTarget: usedProps.shadowDOMTarget,
+      initialIsOpen: initialIsOpen,
+      panelProps: panelProps,
+      closeButtonProps: closeButtonProps,
+      toggleButtonProps: toggleButtonProps,
+      position: position,
+      containerElement: containerElement,
+      shadowDOMTarget: shadowDOMTarget,
     })
   }, [
     devtools,
-    usedProps.initialIsOpen,
-    usedProps.panelProps,
-    usedProps.closeButtonProps,
-    usedProps.toggleButtonProps,
-    usedProps.position,
-    usedProps.containerElement,
-    usedProps.shadowDOMTarget,
+    initialIsOpen,
+    panelProps,
+    closeButtonProps,
+    toggleButtonProps,
+    position,
+    containerElement,
+    shadowDOMTarget,
   ])
 
   React.useEffect(() => {

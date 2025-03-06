@@ -1,5 +1,5 @@
-import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
-import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
+// import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
+// import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
 import type * as Solid from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
 
@@ -35,22 +35,22 @@ export interface DevtoolsPanelOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export const TanStackRouterDevtoolsPanel =
-  function TanStackRouterDevtoolsPanel({
-    ref,
-    ...props
-  }: DevtoolsPanelOptions & { ref?: HTMLDivElement | undefined }) {
-    const { shadowDOMTarget } = props
+// export const TanStackRouterDevtoolsPanel =
+//   function TanStackRouterDevtoolsPanel({
+//     ref,
+//     ...props
+//   }: DevtoolsPanelOptions & { ref?: HTMLDivElement | undefined }) {
+//     const { shadowDOMTarget } = props
 
-    return (
-      <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
-        <DevtoolsOnCloseContext.Provider
-          value={{
-            onCloseClick: () => {},
-          }}
-        >
-          <BaseTanStackRouterDevtoolsPanel ref={ref} {...props} />
-        </DevtoolsOnCloseContext.Provider>
-      </ShadowDomTargetContext.Provider>
-    )
-  }
+//     return (
+//       <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
+//         <DevtoolsOnCloseContext.Provider
+//           value={{
+//             onCloseClick: () => {},
+//           }}
+//         >
+//           <BaseTanStackRouterDevtoolsPanel ref={ref} {...props} />
+//         </DevtoolsOnCloseContext.Provider>
+//       </ShadowDomTargetContext.Provider>
+//     )
+//   }

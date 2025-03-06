@@ -47,7 +47,7 @@ interface DevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router?: AnyRouter
+  router: AnyRouter
   routerState: any
   /**
    * Use this to attach the devtool's styles to specific element in the DOM.
@@ -55,8 +55,53 @@ interface DevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
+interface FloatingDevtoolsOptions {
+  /**
+   * Set this true if you want the dev tools to default to being open
+   */
+  initialIsOpen?: boolean
+  /**
+   * Use this to add props to the panel. For example, you can add class, style (merge and override default style), etc.
+   */
+  panelProps?: any & {
+    ref?: any
+  }
+  /**
+   * Use this to add props to the close button. For example, you can add class, style (merge and override default style), onClick (extend default handler), etc.
+   */
+  closeButtonProps?: any & {
+    ref?: any
+  }
+  /**
+   * Use this to add props to the toggle button. For example, you can add class, style (merge and override default style), onClick (extend default handler), etc.
+   */
+  toggleButtonProps?: any & {
+    ref?: any
+  }
+  /**
+   * The position of the TanStack Router logo to open and close the devtools panel.
+   * Defaults to 'bottom-left'.
+   */
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  /**
+   * Use this to render the devtools inside a different type of container element for a11y purposes.
+   * Any string which corresponds to a valid intrinsic JSX element is allowed.
+   * Defaults to 'footer'.
+   */
+  containerElement?: string | any
+  /**
+   * A boolean variable indicating if the "lite" version of the library is being used
+   */
+  router: Solid.Accessor<AnyRouter>
+  routerState: Solid.Accessor<any>
+  /**
+   * Use this to attach the devtool's styles to specific element in the DOM.
+   */
+  shadowDOMTarget?: ShadowRoot
+}
+
 class TanStackRouterDevtools {
-  #router: Solid.Signal<AnyRouter | undefined>
+  #router: Solid.Signal<AnyRouter>
   #routerState: Solid.Signal<any>
   #position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   #initialIsOpen: boolean
@@ -86,20 +131,19 @@ class TanStackRouterDevtools {
     const initialIsOpen = this.#initialIsOpen
     const shadowDOMTarget = this.#shadowDOMTarget
 
+    createEffect(() => {
+      console.log("This is router",  this.#router[0]())
+    })
+
     const dispose = render(
       () => (
         <FloatingTanStackRouterDevtools
           position={position}
           initialIsOpen={initialIsOpen}
           shadowDOMTarget={shadowDOMTarget}
-          {...{
-            get router() {
-              return router()
-            },
-            get routerState() {
-              return routerState()
-            },
-          }}
+          router={router}
+          routerState={routerState}
+          
         />
       ),
       el,
@@ -117,12 +161,17 @@ class TanStackRouterDevtools {
     this.#isMounted = false
   }
 
-  setRouter(router: AnyRouter | undefined) {
+  setRouter(router: AnyRouter) {
     this.#router[1](router)
   }
 
   setRouterState(routerState: any) {
+
+
+    console.log('New value', routerState)
+    
     this.#routerState[1](routerState)
+
     console.log('Update router state', this.#routerState[0]())
   }
 
@@ -151,7 +200,7 @@ function FloatingTanStackRouterDevtools({
   router,
   routerState,
   shadowDOMTarget,
-}: DevtoolsOptions): Solid.JSX.Element | null {
+}: FloatingDevtoolsOptions): Solid.JSX.Element | null {
   const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
 
   // eslint-disable-next-line prefer-const
@@ -312,7 +361,7 @@ function FloatingTanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
-        {router ? (
+        {/* {router() ? ( */}
           <BaseTanStackRouterDevtoolsPanel
             ref={panelRef as any}
             {...otherPanelProps}
@@ -329,9 +378,9 @@ function FloatingTanStackRouterDevtools({
             handleDragStart={(e) => handleDragStart(panelRef, e)}
             shadowDOMTarget={shadowDOMTarget}
           />
-        ) : (
+        {/* ) : (
           <p>No router</p>
-        )}
+        )} */}
       </DevtoolsOnCloseContext.Provider>
 
       <button

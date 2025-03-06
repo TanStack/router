@@ -8,7 +8,7 @@ import useLocalStorage from './useLocalStorage'
 import { Explorer } from './Explorer'
 import { getRouteStatusColor, getStatusColor, multiSortBy } from './utils'
 import { AgeTicker } from './AgeTicker'
-import type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
+// import type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
 import type {
   AnyContext,
@@ -19,6 +19,38 @@ import type {
   Route,
   RouterState,
 } from '@tanstack/router-core'
+
+export interface BaseDevtoolsPanelOptions {
+  /**
+   * The standard React style object used to style a component with inline styles
+   */
+  style?: Solid.JSX.CSSProperties
+  /**
+   * The standard React class property used to style a component with classes
+   */
+  className?: Solid.Accessor<string>
+  /**
+   * A boolean variable indicating whether the panel is open or closed
+   */
+  isOpen?: boolean
+  /**
+   * A function that toggles the open and close state of the panel
+   */
+  setIsOpen: (isOpen: boolean) => void
+  /**
+   * Handles the opening and closing the devtools panel
+   */
+  handleDragStart?: (e: any) => void
+  /**
+   * A boolean variable indicating if the "lite" version of the library is being used
+   */
+  router: Solid.Accessor<AnyRouter>
+  routerState: Solid.Accessor<any>
+  /**
+   * Use this to attach the devtool's styles to specific element in the DOM.
+   */
+  shadowDOMTarget?: ShadowRoot
+}
 
 function Logo(props: any) {
   const { className, ...rest } = props
@@ -39,7 +71,7 @@ function RouteComp({
   activeId,
   setActiveId,
 }: {
-  routerState: RouterState<
+  routerState: Solid.Accessor<RouterState<
     Route<
       any,
       '/',
@@ -57,8 +89,8 @@ function RouteComp({
       FileRouteTypes
     >,
     MakeRouteMatchUnion
-  >
-  router: AnyRouter
+  >>
+  router: Solid.Accessor<AnyRouter>
   route: AnyRoute
   isRoot?: boolean
   activeId: Solid.Accessor<string | undefined>
@@ -66,10 +98,10 @@ function RouteComp({
 }) {
   const styles = useStyles()
   const matches = Solid.createMemo(
-    () => routerState.pendingMatches || routerState.matches,
+    () => routerState().pendingMatches || routerState().matches,
   )
   const match = Solid.createMemo(() =>
-    routerState.matches.find((d) => d.routeId === route.id),
+    routerState().matches.find((d) => d.routeId === route.id),
   )
 
   const param = Solid.createMemo(() => {
@@ -145,7 +177,7 @@ export const BaseTanStackRouterDevtoolsPanel =
   function BaseTanStackRouterDevtoolsPanel({
     ref,
     ...props
-  }: DevtoolsPanelOptions & {
+  }: BaseDevtoolsPanelOptions & {
     ref?: HTMLDivElement | undefined
   }): Solid.JSX.Element {
     const {
@@ -181,9 +213,9 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const activeMatch = Solid.createMemo(() => {
       const matches = [
-        ...(routerState.pendingMatches ?? []),
-        ...routerState.matches,
-        ...routerState.cachedMatches,
+        ...(routerState().pendingMatches ?? []),
+        ...routerState().matches,
+        ...routerState().cachedMatches,
       ]
       return matches.find(
         (d) => d.routeId === activeId() || d.id === activeId(),
@@ -191,7 +223,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     })
 
     const hasSearch = Solid.createMemo(
-      () => Object.keys(routerState.location.search).length,
+      () => Object.keys(routerState().location.search).length,
     )
 
     const explorerState = Solid.createMemo(() => {
@@ -301,17 +333,17 @@ export const BaseTanStackRouterDevtoolsPanel =
           <div class={styles().matchesContainer}>
             <div class={styles().detailsHeader}>
               <span>Pathname</span>
-              {routerState.location.maskedLocation ? (
+              {routerState().location.maskedLocation ? (
                 <div class={styles().maskedBadgeContainer}>
                   <span class={styles().maskedBadge}>masked</span>
                 </div>
               ) : null}
             </div>
             <div class={styles().detailsContent}>
-              <code>{routerState.location.pathname}</code>
-              {routerState.location.maskedLocation ? (
+              <code>{routerState().location.pathname}</code>
+              {routerState().location.maskedLocation ? (
                 <code class={styles().maskedLocation}>
-                  {routerState.location.maskedLocation?.pathname}
+                  {routerState().location.maskedLocation?.pathname}
                 </code>
               ) : null}
             </div>
@@ -351,16 +383,16 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <RouteComp
                   routerState={routerState}
                   router={router}
-                  route={router.routeTree}
+                  route={router().routeTree}
                   isRoot
                   activeId={activeId}
                   setActiveId={setActiveId}
                 />
               ) : (
                 <div>
-                  {(routerState.pendingMatches?.length
-                    ? routerState.pendingMatches
-                    : routerState.matches
+                  {(routerState().pendingMatches?.length
+                    ? routerState().pendingMatches
+                    : routerState().matches
                   )?.map((match: any, i: any) => {
                     return (
                       <div
@@ -388,7 +420,7 @@ export const BaseTanStackRouterDevtoolsPanel =
               )}
             </div>
           </div>
-          {routerState.cachedMatches.length ? (
+          {routerState().cachedMatches.length ? (
             <div class={styles().cachedMatchesContainer}>
               <div class={styles().detailsHeader}>
                 <div>Cached Matches</div>
@@ -397,7 +429,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </div>
               </div>
               <div>
-                {routerState.cachedMatches.map((match: any) => {
+                {routerState().cachedMatches.map((match: any) => {
                   return (
                     <div
                       role="button"
@@ -450,11 +482,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {routerState.pendingMatches?.find(
+                    {routerState().pendingMatches?.find(
                       (d: any) => d.id === activeMatch()!.id,
                     )
                       ? 'Pending'
-                      : routerState.matches.find(
+                      : routerState().matches.find(
                             (d: any) => d.id === activeMatch()!.id,
                           )
                         ? 'Active'
@@ -498,9 +530,9 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsHeader}>Search Params</div>
             <div class={styles().detailsContent}>
               <Explorer
-                value={routerState.location.search}
+                value={routerState().location.search}
                 defaultExpanded={Object.keys(
-                  routerState.location.search,
+                  routerState().location.search,
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj

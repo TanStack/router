@@ -1,5 +1,6 @@
 import { clsx as cx } from 'clsx'
 import { useStyles } from './useStyles'
+import type * as Solid from 'solid-js'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 
 function formatTime(ms: number) {
@@ -26,7 +27,7 @@ export function AgeTicker({
   router,
 }: {
   match?: AnyRouteMatch
-  router: AnyRouter
+  router: Solid.Accessor<AnyRouter>
 }) {
   const styles = useStyles()
   // const rerender = React.useReducer(
@@ -48,7 +49,7 @@ export function AgeTicker({
     return null
   }
 
-  const route = router.looseRoutesById[match.routeId]!
+  const route = router().looseRoutesById[match.routeId]!
 
   if (!route.options.loader) {
     return null
@@ -56,9 +57,9 @@ export function AgeTicker({
 
   const age = Date.now() - match.updatedAt
   const staleTime =
-    route.options.staleTime ?? router.options.defaultStaleTime ?? 0
+    route.options.staleTime ?? router().options.defaultStaleTime ?? 0
   const gcTime =
-    route.options.gcTime ?? router.options.defaultGcTime ?? 30 * 60 * 1000
+    route.options.gcTime ?? router().options.defaultGcTime ?? 30 * 60 * 1000
 
   return (
     <div class={cx(styles().ageTicker(age > staleTime))}>
