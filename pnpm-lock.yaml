@@ -5451,6 +5451,9 @@ importers:
 
   packages/react-router-devtools:
     devDependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
       '@tanstack/router-devtools-core':
         specifier: workspace:^
         version: link:../router-devtools-core
@@ -6130,6 +6133,9 @@ importers:
       '@tanstack/router-devtools-core':
         specifier: workspace:^
         version: link:../router-devtools-core
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
       solid-js:
         specifier: ^1.9.5
         version: 1.9.5

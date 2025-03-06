@@ -7,7 +7,7 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/solid-router'
-import { TanStackRouterDevtools } from '../../../../../packages/router-devtools-core/src/index'
+import { SolidRouterDevtools } from '../../../../../packages/solid-router-devtools/src/index'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -135,7 +135,7 @@ function RootComponent() {
       <hr />
       <Outlet />
       {/* Start rendering router matches */}
-      <TanStackRouterDevtools position="bottom-right" router={useRouter} routerState={useRouterState()} />
+      <SolidRouterDevtools position="bottom-right" router={useRouter()} routerState={_state()} />
     </>
   )
 }

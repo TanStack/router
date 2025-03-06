@@ -42,8 +42,8 @@ function RouteComp({
   activeId,
   setActiveId,
 }: {
-  routerState: Solid.Accessor<RouterState<Route<any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, any, FileRouteTypes>, MakeRouteMatchUnion>>
-  router: Solid.Accessor<AnyRouter>
+  routerState: RouterState<Route<any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, any, FileRouteTypes>, MakeRouteMatchUnion>
+  router: AnyRouter
   route: AnyRoute
   isRoot?: boolean
   activeId: Solid.Accessor<string | undefined>
@@ -52,10 +52,10 @@ function RouteComp({
   
   const styles = useStyles()
   const matches = Solid.createMemo(
-    () => routerState().pendingMatches || routerState().matches,
+    () => routerState.pendingMatches || routerState.matches,
   )
   const match = Solid.createMemo(() =>
-    routerState().matches.find((d) => d.routeId === route.id),
+    routerState.matches.find((d) => d.routeId === route.id),
   )
 
   const param = Solid.createMemo(() => {
@@ -104,7 +104,7 @@ function RouteComp({
             </code>
             <code class={styles().routeParamInfo}>{param()}</code>
           </div>
-          <AgeTicker match={match()} router={router()} />
+          <AgeTicker match={match()} router={router} />
         </div>
       </div>
       {route.children?.length ? (
@@ -183,8 +183,8 @@ export const BaseTanStackRouterDevtoolsPanel =
     )
 
     const explorerState = Solid.createMemo(() => {
-      return {
-        ...router(),
+      return ({
+        ...router,
         state: routerState(),
       }
     })
@@ -285,7 +285,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           </div>
         </div>
-        <div class={styles().secondContainer}>
+        {/* <div class={styles().secondContainer}>
           <div class={styles().matchesContainer}>
             <div class={styles().detailsHeader}>
               <span>Pathname</span>
@@ -339,7 +339,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <RouteComp
                   routerState={routerState}
                   router={router}
-                  route={router().routeTree}
+                  route={router.routeTree}
                   isRoot
                   activeId={activeId}
                   setActiveId={setActiveId}
@@ -368,7 +368,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                         <code
                           class={styles().matchID}
                         >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                        <AgeTicker match={match} router={router()} />
+                        <AgeTicker match={match} router={router} />
                       </div>
                     )
                   })}
@@ -403,7 +403,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
                       <code class={styles().matchID}>{`${match.id}`}</code>
 
-                      <AgeTicker match={match} router={router()} />
+                      <AgeTicker match={match} router={router} />
                     </div>
                   )
                 })}
@@ -496,7 +496,7 @@ export const BaseTanStackRouterDevtoolsPanel =
               />
             </div>
           </div>
-        ) : null}
+        ) : null} */}
       </div>
     )
   }

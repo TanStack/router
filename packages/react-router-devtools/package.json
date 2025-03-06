@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@tanstack/router-devtools-core": "workspace:^",
+    "@tanstack/react-router": "workspace:^",
     "@vitejs/plugin-react": "^4.3.4",
     "react": ">=19",
     "react-dom": ">=19"

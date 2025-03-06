@@ -1,5 +1,7 @@
 import { clsx as cx } from 'clsx'
 import * as Solid from 'solid-js'
+import { createSignal, createEffect } from 'solid-js'
+import { render } from 'solid-js/web'
 import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
 import { useIsMounted, useSafeState } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
@@ -46,24 +48,105 @@ interface DevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router: Solid.Accessor<AnyRouter>
-  routerState: Solid.Accessor<any>
+  router?: AnyRouter
+  routerState: any
   /**
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
   shadowDOMTarget?: ShadowRoot
 }
 
-export function TanStackRouterDevtools(
-  props: DevtoolsOptions,
-): Solid.JSX.Element | null {
-  const { shadowDOMTarget } = props
+class TanStackRouterDevtools {
+  #router: Solid.Signal<AnyRouter | undefined>
+  #routerState: Solid.Signal<any>
+  #position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  #initialIsOpen: boolean
+  #shadowDOMTarget?: ShadowRoot
+  #isMounted = false
+  #dispose?: () => void
 
-  return (
-    <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
-      <FloatingTanStackRouterDevtools {...props} />
-    </ShadowDomTargetContext.Provider>
-  )
+  constructor(config: DevtoolsOptions) {
+    const {
+      router,
+      routerState,
+      position,
+      initialIsOpen,
+      shadowDOMTarget,
+    } = config
+
+    this.#router = createSignal(router)
+    this.#routerState = createSignal(routerState)
+    this.#position = position ?? 'bottom-left'
+    this.#initialIsOpen = initialIsOpen ?? false
+    this.#shadowDOMTarget = shadowDOMTarget
+  }
+
+  mount<T extends HTMLElement>(el: T) {
+    if (this.#isMounted) {
+      throw new Error('Devtools is already mounted')
+    }
+
+    const [router] = this.#router
+    const [routerState] = this.#routerState
+    const position = this.#position
+    const initialIsOpen = this.#initialIsOpen
+    const shadowDOMTarget = this.#shadowDOMTarget
+
+
+
+    const dispose = render(() => (
+      <FloatingTanStackRouterDevtools
+
+        position={position}
+        initialIsOpen={initialIsOpen}
+        shadowDOMTarget={shadowDOMTarget}
+
+        {...{
+          get router() {
+            return router()
+          },
+          get routerState() {
+            return routerState()
+          },
+          
+        }}
+      />
+    ), el)
+
+    this.#isMounted = true
+    this.#dispose = dispose
+  }
+
+  unmount() {
+    if (!this.#isMounted) {
+      throw new Error('Devtools is not mounted')
+    }
+    this.#dispose?.()
+    this.#isMounted = false
+  }
+
+  setRouter(router: AnyRouter | undefined) {
+    this.#router[1](router)
+  }
+
+  setRouterState(routerState: any) {
+    this.#routerState[1](routerState)
+    console.log('Update router state', this.#routerState[0]())
+  }
+
+  setOptions(options: Partial<DevtoolsOptions>) {
+    if (options.position !== undefined) {
+      this.#position = options.position
+    }
+
+    if (options.initialIsOpen !== undefined) {
+      this.#initialIsOpen = options.initialIsOpen
+    }
+
+    if (options.shadowDOMTarget !== undefined) {
+      this.#shadowDOMTarget = options.shadowDOMTarget
+    }
+  }
 }
 
 function FloatingTanStackRouterDevtools({
@@ -77,7 +160,7 @@ function FloatingTanStackRouterDevtools({
   routerState,
   shadowDOMTarget,
 }: DevtoolsOptions): Solid.JSX.Element | null {
-  const [rootEl, setRootEl] = Solid.createSignal<HTMLDivElement>()
+  const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
   let panelRef: HTMLDivElement | undefined = undefined
 
   const [isOpen, setIsOpen] = useLocalStorage(
@@ -90,7 +173,8 @@ function FloatingTanStackRouterDevtools({
     null,
   )
 
-  const [isResizing, setIsResizing] = Solid.createSignal(false)
+  const [isResolvedOpen, setIsResolvedOpen] = createSignal(false)
+  const [isResizing, setIsResizing] = createSignal(false)
   const isMounted = useIsMounted()
   const styles = useStyles()
 
@@ -130,12 +214,21 @@ function FloatingTanStackRouterDevtools({
     document.addEventListener('mouseup', unsub)
   }
 
-  Solid.createEffect(() => {
-    if (isOpen()) {
+  const isButtonClosed = isOpen() ?? false
+  
+  createEffect(() => {
+    setIsResolvedOpen(isOpen() ?? false)
+  })
+
+  createEffect(() => {
+    if (isResolvedOpen()) {
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
       const run = () => {
-        const containerHeight = panelRef!.getBoundingClientRect().height
+
+        console.log('panelRef', panelRef)
+
+        const containerHeight = panelRef?.getBoundingClientRect().height
         if (rootEl()?.parentElement) {
           setRootEl((prev) => {
             if (prev?.parentElement) {
@@ -158,8 +251,6 @@ function FloatingTanStackRouterDevtools({
               prev!.parentElement!.style.paddingBottom = previousValue
               return prev
             })
-
-            // rootEl()?.parentElement?.style.paddingBottom = previousValue
           }
         }
       }
@@ -167,11 +258,11 @@ function FloatingTanStackRouterDevtools({
     return
   })
 
-  Solid.createEffect(() => {
-    if (rootEl) {
-      const el = rootEl
-      const fontSize = getComputedStyle(el()!).fontSize
-      el()?.style.setProperty('--tsrd-font-size', fontSize)
+  createEffect(() => {
+    if (rootEl()) {
+      const el = rootEl()
+      const fontSize = getComputedStyle(el!).fontSize
+      el?.style.setProperty('--tsrd-font-size', fontSize)
     }
   })
 
@@ -201,7 +292,10 @@ function FloatingTanStackRouterDevtools({
       styles().devtoolsPanelContainer,
       styles().devtoolsPanelContainerVisibility(!!isOpen()),
       styles().devtoolsPanelContainerResizing(isResizing),
-      styles().devtoolsPanelContainerAnimation(!!isOpen(), resolvedHeight + 16),
+      styles().devtoolsPanelContainerAnimation(
+        isResolvedOpen(),
+        resolvedHeight + 16,
+      ),
     )
   })
 
@@ -209,8 +303,7 @@ function FloatingTanStackRouterDevtools({
     return cx(
       styles().mainCloseBtn,
       styles().mainCloseBtnPosition(position),
-      // @ts-ignore
-      styles().mainCloseBtnAnimation(!!isOpen()),
+      styles().mainCloseBtnAnimation(!isButtonClosed),
       toggleButtonClassName,
     )
   })
@@ -227,6 +320,7 @@ function FloatingTanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
+        {router ? 
         <BaseTanStackRouterDevtoolsPanel
           ref={panelRef as any}
           {...otherPanelProps}
@@ -237,11 +331,12 @@ function FloatingTanStackRouterDevtools({
             height: `${resolvedHeight}px`,
             ...(panelStyle || {}),
           }}
-          isOpen={isOpen()}
+          isOpen={isResolvedOpen()}
           setIsOpen={setIsOpen}
           handleDragStart={(e) => handleDragStart(panelRef, e)}
           shadowDOMTarget={shadowDOMTarget}
         />
+      : <p>No router</p>}
       </DevtoolsOnCloseContext.Provider>
 
       <button
@@ -249,9 +344,7 @@ function FloatingTanStackRouterDevtools({
         {...otherToggleButtonProps}
         aria-label="Open TanStack Router Devtools"
         onClick={(e) => {
-          setIsOpen(!isOpen())
-
-          // @ts-ignore
+          setIsOpen(true)
           onToggleClick && onToggleClick(e)
         }}
         class={buttonStyle()}
@@ -270,3 +363,5 @@ function FloatingTanStackRouterDevtools({
     </Dynamic>
   )
 }
+
+export { TanStackRouterDevtools }
