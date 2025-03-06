@@ -21,7 +21,7 @@ export const boardQueries = {
   detail: (id: string) =>
     queryOptions({
       queryKey: ['boards', 'detail', id],
-      queryFn: () => getBoard(id),
+      queryFn: () => getBoard({ data: id }),
     }),
 }
 
@@ -32,7 +32,7 @@ export function useCreateColumnMutation() {
     onMutate: async (variables) => {
       await queryClient.cancelQueries()
       queryClient.setQueryData(
-        boardQueries.detail(variables.boardId).queryKey,
+        boardQueries.detail(variables.data.boardId).queryKey,
         (board) =>
           board
             ? {
@@ -40,7 +40,7 @@ export function useCreateColumnMutation() {
                 columns: [
                   ...board.columns,
                   {
-                    ...variables,
+                    ...variables.data,
                     order: board.columns.length + 1,
                     id: Math.random() + '',
                   },
@@ -60,12 +60,12 @@ export function useCreateItemMutation() {
     onMutate: async (variables) => {
       await queryClient.cancelQueries()
       queryClient.setQueryData(
-        boardQueries.detail(variables.boardId).queryKey,
+        boardQueries.detail(variables.data.boardId).queryKey,
         (board) =>
           board
             ? {
                 ...board,
-                items: [...board.items, variables],
+                items: [...board.items, variables.data],
               }
             : undefined,
       )
@@ -81,13 +81,13 @@ export function useUpdateCardMutation() {
     onMutate: async (variables) => {
       await queryClient.cancelQueries()
       queryClient.setQueryData(
-        boardQueries.detail(variables.boardId).queryKey,
+        boardQueries.detail(variables.data.boardId).queryKey,
         (board) =>
           board
             ? {
                 ...board,
                 items: board.items.map((i) =>
-                  i.id === variables.id ? variables : i,
+                  i.id === variables.data.id ? variables.data : i,
                 ),
               }
             : undefined,
@@ -105,12 +105,14 @@ export function useDeleteCardMutation() {
       await queryClient.cancelQueries()
 
       queryClient.setQueryData(
-        boardQueries.detail(variables.boardId).queryKey,
+        boardQueries.detail(variables.data.boardId).queryKey,
         (board) =>
           board
             ? {
                 ...board,
-                items: board.items.filter((item) => item.id !== variables.id),
+                items: board.items.filter(
+                  (item) => item.id !== variables.data.id,
+                ),
               }
             : undefined,
       )
@@ -127,16 +129,16 @@ export function useDeleteColumnMutation() {
       await queryClient.cancelQueries()
 
       queryClient.setQueryData(
-        boardQueries.detail(variables.boardId).queryKey,
+        boardQueries.detail(variables.data.boardId).queryKey,
         (board) =>
           board
             ? {
                 ...board,
                 columns: board.columns.filter(
-                  (column) => column.id !== variables.id,
+                  (column) => column.id !== variables.data.id,
                 ),
                 items: board.items.filter(
-                  (item) => item.columnId !== variables.id,
+                  (item) => item.columnId !== variables.data.id,
                 ),
               }
             : undefined,
@@ -160,13 +162,13 @@ export function useUpdateColumnMutation() {
       await queryClient.cancelQueries()
 
       queryClient.setQueryData(
-        boardQueries.detail(variables.boardId).queryKey,
+        boardQueries.detail(variables.data.boardId).queryKey,
         (board) =>
           board
             ? {
                 ...board,
                 columns: board.columns.map((c) =>
-                  c.id === variables.id
+                  c.id === variables.data.id
                     ? {
                         ...c,
                         ...variables,

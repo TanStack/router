@@ -84,11 +84,13 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
         invariant(transfer.title, 'missing transfer.title')
 
         updateCardMutation.mutate({
-          order: (sortedItems[sortedItems.length - 1]?.order ?? 0) + 1,
-          columnId: columnId,
-          boardId,
-          id: transfer.id,
-          title: transfer.title,
+          data: {
+            order: (sortedItems[sortedItems.length - 1]?.order ?? 0) + 1,
+            columnId: columnId,
+            boardId,
+            id: transfer.id,
+            title: transfer.title,
+          },
         })
 
         setAcceptCardDrop(false)
@@ -126,9 +128,11 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
           const moveOrder = (droppedOrder + order) / 2
 
           updateColumnMutation.mutate({
-            boardId,
-            id: transfer.id,
-            order: moveOrder,
+            data: {
+              boardId,
+              id: transfer.id,
+              order: moveOrder,
+            },
           })
 
           setAcceptColumnDrop('none')
@@ -164,8 +168,8 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
               value={
                 // optimistic update
                 updateColumnMutation.isPending &&
-                updateColumnMutation.variables.name
-                  ? updateColumnMutation.variables.name
+                updateColumnMutation.variables.data.name
+                  ? updateColumnMutation.variables.data.name
                   : name
               }
               inputLabel="Edit column name"
@@ -174,9 +178,11 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
               buttonClassName="block rounded-lg text-left w-full border border-transparent py-1 px-2 font-medium text-slate-600"
               onChange={(value) => {
                 updateColumnMutation.mutate({
-                  boardId,
-                  id: columnId,
-                  name: value,
+                  data: {
+                    boardId,
+                    id: columnId,
+                    name: value,
+                  },
                 })
               }}
             />
@@ -230,8 +236,10 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
               event.preventDefault()
 
               deleteColumnMutation.mutate({
-                id: columnId,
-                boardId,
+                data: {
+                  id: columnId,
+                  boardId,
+                },
               })
             }}
           >
