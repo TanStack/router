@@ -28,8 +28,10 @@ export function NewColumn({
         invariant(inputRef.current, 'missing input ref')
 
         newColumnMutation.mutate({
-          boardId,
-          name: inputRef.current.value,
+          data: {
+            boardId,
+            name: inputRef.current.value,
+          },
         })
 
         inputRef.current.value = ''

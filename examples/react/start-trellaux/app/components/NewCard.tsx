@@ -36,7 +36,9 @@ export function NewCard({
         invariant(textAreaRef.current)
         textAreaRef.current.value = ''
 
-        mutate(itemSchema.parse(Object.fromEntries(formData.entries())))
+        mutate({
+          data: itemSchema.parse(Object.fromEntries(formData.entries())),
+        })
       }}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {

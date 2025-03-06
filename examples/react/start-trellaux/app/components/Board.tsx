@@ -57,8 +57,9 @@ export function Board({ boardId }: { boardId: string }) {
         <EditableText
           value={
             // optimistic update
-            updateBoardMutation.isPending && updateBoardMutation.variables.name
-              ? updateBoardMutation.variables.name
+            updateBoardMutation.isPending &&
+            updateBoardMutation.variables.data.name
+              ? updateBoardMutation.variables.data.name
               : board.name
           }
           fieldName="name"
@@ -68,8 +69,10 @@ export function Board({ boardId }: { boardId: string }) {
           inputLabel="Edit board name"
           onChange={(value) => {
             updateBoardMutation.mutate({
-              id: board.id,
-              name: value,
+              data: {
+                id: board.id,
+                name: value,
+              },
             })
           }}
         />
