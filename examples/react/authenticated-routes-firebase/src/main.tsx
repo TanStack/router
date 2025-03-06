@@ -4,7 +4,6 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 
 import { routeTree } from './routeTree.gen'
 import { AuthContextProvider, type AuthContextType, useAuth } from './auth'
-import { Loader2Icon } from 'lucide-react'
 
 import './styles.css'
 
@@ -14,11 +13,7 @@ const router = createRouter({
   defaultPreload: 'intent',
   scrollRestoration: true,
   context: {
-    isAuthenticated: false, // This will be set after we wrap the app in AuthContextProvider
-    isInitialLoading: true, // This will be set after we wrap the app in AuthContextProvider
-    user: null, // This will be set after we wrap the app in AuthContextProvider
-    login: () => Promise.resolve(), // This will be set after we wrap the app in AuthContextProvider
-    logout: () => Promise.resolve(), // This will be set after we wrap the app in AuthContextProvider
+    auth: undefined!, // This will be set after we wrap the app in AuthContextProvider
   },
 })
 
@@ -26,13 +21,7 @@ const router = createRouter({
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
-    context: {
-      isAuthenticated: AuthContextType['isAuthenticated']
-      isInitialLoading: AuthContextType['isInitialLoading']
-      user: AuthContextType['user']
-      login: AuthContextType['login']
-      logout: AuthContextType['logout']
-    }
+    
   }
 }
 
@@ -43,12 +32,12 @@ function InnerApp() {
   if (auth.isInitialLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center p-4">
-        <Loader2Icon className="size-10 animate-spin text-foreground" />
+        <div className="size-10 rounded-full border-4 border-gray-200 border-t-foreground animate-spin" />
       </div>
     )
   }
 
-  return <RouterProvider router={router} context={{ ...auth }} />
+  return <RouterProvider router={router} context={{ auth }} />
 }
 
 function App() {

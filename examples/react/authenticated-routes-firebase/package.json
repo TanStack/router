@@ -14,7 +14,6 @@
     "@tanstack/router-plugin": "^1.112.13",
     "autoprefixer": "^10.4.20",
     "firebase": "^11.4.0",
-    "lucide-react": "^0.477.0",
     "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

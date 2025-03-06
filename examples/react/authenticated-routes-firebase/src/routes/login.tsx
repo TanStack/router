@@ -36,13 +36,12 @@ function LoginComponent() {
   const router = useRouter()
   const { login } = useAuth()
 
-  const handleSignIn = async (provider: 'github' | 'apple' | 'google') => {
+  const handleSignIn = async (provider: 'github') => {
     console.log(`Clicked ${provider} sign in!`)
     try {
       const providers = {
-        google: new GoogleAuthProvider(),
         github: new GithubAuthProvider(),
-        apple: new OAuthProvider('apple'),
+        // Other providers can be allocated here
       }
 
       const typedProvider =
