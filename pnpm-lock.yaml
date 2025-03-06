@@ -5449,6 +5449,21 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
 
+  packages/react-router-devtools:
+    devDependencies:
+      '@tanstack/router-devtools-core':
+        specifier: workspace:^
+        version: link:../router-devtools-core
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+
   packages/react-router-with-query:
     devDependencies:
       '@tanstack/react-query':
@@ -6109,6 +6124,18 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.24.1
+
+  packages/solid-router-devtools:
+    devDependencies:
+      '@tanstack/router-devtools-core':
+        specifier: workspace:^
+        version: link:../router-devtools-core
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      vite-plugin-solid:
+        specifier: ^2.11.6
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start:
     dependencies:
