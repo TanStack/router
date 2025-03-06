@@ -4,7 +4,7 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import type { AuthContextType } from '../auth'
 
 export type MyRouterContext = {
-	auth: AuthContextType
+  auth: AuthContextType
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({

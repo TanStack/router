@@ -53,7 +53,7 @@ function AuthLayout() {
           </Link>
         </li>
         <li>
-        <Link
+          <Link
             to="/invoices"
             className="hover:underline data-[status='active']:font-semibold"
           >
