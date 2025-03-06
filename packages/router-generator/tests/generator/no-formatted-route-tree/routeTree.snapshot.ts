@@ -18,79 +18,96 @@ import { Route as NestedChildImport } from './routes/nested/child'
 // Create/Update Routes
 
 const IndexRoute = IndexImport.update({
-          id: '/',path: '/',getParentRoute: () => rootRoute
-        }as any)
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const NestedIndexRoute = NestedIndexImport.update({
-          id: '/nested/',path: '/nested/',getParentRoute: () => rootRoute
-        }as any)
+  id: '/nested/',
+  path: '/nested/',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const NestedChildRoute = NestedChildImport.update({
-          id: '/nested/child',path: '/nested/child',getParentRoute: () => rootRoute
-        }as any)
+  id: '/nested/child',
+  path: '/nested/child',
+  getParentRoute: () => rootRoute,
+} as any)
 
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
-          id: '/'
-          path: '/'
-          fullPath: '/'
-          preLoaderRoute: typeof IndexImport
-          parentRoute: typeof rootRoute
-        }
-'/nested/child': {
-          id: '/nested/child'
-          path: '/nested/child'
-          fullPath: '/nested/child'
-          preLoaderRoute: typeof NestedChildImport
-          parentRoute: typeof rootRoute
-        }
-'/nested/': {
-          id: '/nested/'
-          path: '/nested'
-          fullPath: '/nested'
-          preLoaderRoute: typeof NestedIndexImport
-          parentRoute: typeof rootRoute
-        }
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/nested/child': {
+      id: '/nested/child'
+      path: '/nested/child'
+      fullPath: '/nested/child'
+      preLoaderRoute: typeof NestedChildImport
+      parentRoute: typeof rootRoute
+    }
+    '/nested/': {
+      id: '/nested/'
+      path: '/nested'
+      fullPath: '/nested'
+      preLoaderRoute: typeof NestedIndexImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
 // Create and export the route tree
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested': typeof NestedIndexRoute
+  '/': typeof IndexRoute
+  '/nested/child': typeof NestedChildRoute
+  '/nested': typeof NestedIndexRoute
 }
 
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested': typeof NestedIndexRoute
+  '/': typeof IndexRoute
+  '/nested/child': typeof NestedChildRoute
+  '/nested': typeof NestedIndexRoute
 }
 
 export interface FileRoutesById {
-  '__root__': typeof rootRoute,
-  '/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested/': typeof NestedIndexRoute
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/nested/child': typeof NestedChildRoute
+  '/nested/': typeof NestedIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'|'/nested/child'|'/nested'
+  fullPaths: '/' | '/nested/child' | '/nested'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'|'/nested/child'|'/nested'
-  id: '__root__'|'/'|'/nested/child'|'/nested/'
+  to: '/' | '/nested/child' | '/nested'
+  id: '__root__' | '/' | '/nested/child' | '/nested/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute,NestedChildRoute: typeof NestedChildRoute,NestedIndexRoute: typeof NestedIndexRoute
+  IndexRoute: typeof IndexRoute
+  NestedChildRoute: typeof NestedChildRoute
+  NestedIndexRoute: typeof NestedIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,NestedChildRoute: NestedChildRoute,NestedIndexRoute: NestedIndexRoute
+  IndexRoute: IndexRoute,
+  NestedChildRoute: NestedChildRoute,
+  NestedIndexRoute: NestedIndexRoute,
 }
 
-export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
-
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* ROUTE_MANIFEST_START
 {
