@@ -46,7 +46,8 @@ interface DevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router?: AnyRouter
+  router: Solid.Accessor<AnyRouter>
+  routerState: Solid.Accessor<any>
   /**
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
@@ -73,6 +74,7 @@ function FloatingTanStackRouterDevtools({
   position = 'bottom-left',
   containerElement: Container = 'footer',
   router,
+  routerState,
   shadowDOMTarget,
 }: DevtoolsOptions): Solid.JSX.Element | null {
   const [rootEl, setRootEl] = Solid.createSignal<HTMLDivElement>()
@@ -229,6 +231,7 @@ function FloatingTanStackRouterDevtools({
           ref={panelRef as any}
           {...otherPanelProps}
           router={router}
+          routerState={routerState}
           className={basePanelStyle}
           style={{
             height: `${resolvedHeight}px`,

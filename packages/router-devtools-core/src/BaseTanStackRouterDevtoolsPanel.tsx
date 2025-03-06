@@ -4,8 +4,6 @@ import {
   invariant,
   rootRouteId,
   trimPath,
-  useRouter,
-  useRouterState,
 } from '@tanstack/solid-router'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
@@ -16,11 +14,14 @@ import { AgeTicker } from './AgeTicker'
 import type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
 import type {
-  AnyRootRoute,
   AnyRoute,
   AnyRouter,
   Route,
-} from '@tanstack/solid-router'
+} from '@tanstack/router-core'
+import { RouterState } from '@tanstack/router-core'
+import { AnyContext } from '@tanstack/router-core'
+import { MakeRouteMatchUnion } from '@tanstack/router-core'
+import { FileRouteTypes } from '@tanstack/router-core'
 
 function Logo(props: any) {
   const { className, ...rest } = props
@@ -34,21 +35,21 @@ function Logo(props: any) {
 }
 
 function RouteComp({
+  routerState,
   router,
   route,
   isRoot,
   activeId,
   setActiveId,
 }: {
-  router: AnyRouter
-  route: AnyRootRoute | AnyRoute
+  routerState: Solid.Accessor<RouterState<Route<any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, any, FileRouteTypes>, MakeRouteMatchUnion>>
+  router: Solid.Accessor<AnyRouter>
+  route: AnyRoute
   isRoot?: boolean
   activeId: Solid.Accessor<string | undefined>
   setActiveId: (id: string) => void
 }) {
-  const routerState = useRouterState({
-    router,
-  } as any)
+  
   const styles = useStyles()
   const matches = Solid.createMemo(
     () => routerState().pendingMatches || routerState().matches,
@@ -64,7 +65,9 @@ function RouteComp({
         const r: string = route.path || trimPath(route.id)
         if (r.startsWith('$')) {
           const trimmed = r.slice(1)
+          // @ts-ignore
           if (p[trimmed]) {
+            // @ts-ignore
             return `(${p[trimmed]})`
           }
         }
@@ -101,17 +104,18 @@ function RouteComp({
             </code>
             <code class={styles().routeParamInfo}>{param()}</code>
           </div>
-          <AgeTicker match={match()} router={router} />
+          <AgeTicker match={match()} router={router()} />
         </div>
       </div>
       {route.children?.length ? (
         <div class={styles().nestedRouteRow(!!isRoot)}>
-          {[...(route.children as Array<Route>)]
+          {[...(route.children as Array<AnyRoute>)]
             .sort((a, b) => {
               return a.rank - b.rank
             })
             .map((r) => (
               <RouteComp
+                routerState={routerState}
                 router={router}
                 route={r}
                 activeId={activeId}
@@ -135,7 +139,8 @@ export const BaseTanStackRouterDevtoolsPanel =
       isOpen = true,
       setIsOpen,
       handleDragStart,
-      router: userRouter,
+      router,
+      routerState,
       shadowDOMTarget,
       ...panelProps
     } = props
@@ -143,13 +148,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const { onCloseClick } = useDevtoolsOnClose()
     const styles = useStyles()
     const { className, ...otherPanelProps } = panelProps
-
-    const router = Solid.createMemo(
-      () => userRouter ?? useRouter({ warn: false }),
-    )
-    const routerState = useRouterState({
-      router: router(),
-    } as any)
+    
 
     invariant(
       router,
@@ -338,7 +337,8 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={cx(styles().routesContainer)}>
               {!showMatches() ? (
                 <RouteComp
-                  router={router()}
+                  routerState={routerState}
+                  router={router}
                   route={router().routeTree}
                   isRoot
                   activeId={activeId}
@@ -349,7 +349,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   {(routerState().pendingMatches?.length
                     ? routerState().pendingMatches
                     : routerState().matches
-                  )?.map((match, i) => {
+                  )?.map((match:any, i:any) => {
                     return (
                       <div
                         role="button"
@@ -385,7 +385,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </div>
               </div>
               <div>
-                {routerState().cachedMatches.map((match) => {
+                {routerState().cachedMatches.map((match:any) => {
                   return (
                     <div
                       role="button"
@@ -439,11 +439,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
                     {routerState().pendingMatches?.find(
-                      (d) => d.id === activeMatch()!.id,
+                      (d:any) => d.id === activeMatch()!.id,
                     )
                       ? 'Pending'
                       : routerState().matches.find(
-                            (d) => d.id === activeMatch()!.id,
+                            (d:any) => d.id === activeMatch()!.id,
                           )
                         ? 'Active'
                         : 'Cached'}

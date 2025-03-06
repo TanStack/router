@@ -1,5 +1,5 @@
 {
-  "name": "@tanstack/solid-router-devtools",
+  "name": "@tanstack/router-devtools-core",
   "version": "1.112.0",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/solid-router-devtools"
+    "directory": "packages/router-devtools-core"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {
@@ -70,7 +70,7 @@
     "vite-plugin-solid": "^2.11.6"
   },
   "peerDependencies": {
-    "@tanstack/solid-router": "workspace:^",
+    "@tanstack/router-core": "workspace:^",
     "csstype": "^3.0.10",
     "solid-js": ">=1.9.5"
   },

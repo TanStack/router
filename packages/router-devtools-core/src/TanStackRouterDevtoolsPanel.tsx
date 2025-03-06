@@ -27,7 +27,8 @@ export interface DevtoolsPanelOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router?: AnyRouter
+  router: Solid.Accessor<AnyRouter>
+  routerState: Solid.Accessor<any>
   /**
    * Use this to attach the devtool's styles to specific element in the DOM.
    */

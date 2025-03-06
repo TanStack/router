@@ -3,10 +3,9 @@ import * as Solid from 'solid-js'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
 import type {
-  AnyRootRoute,
   AnyRoute,
   AnyRouteMatch,
-} from '@tanstack/solid-router'
+} from '@tanstack/router-core'
 
 import type { Theme } from './theme'
 
@@ -40,7 +39,7 @@ export function getStatusColor(match: AnyRouteMatch) {
 
 export function getRouteStatusColor(
   matches: Array<AnyRouteMatch>,
-  route: AnyRoute | AnyRootRoute,
+  route: AnyRoute,
 ) {
   const found = matches.find((d) => d.routeId === route.id)
   if (!found) return 'gray'

@@ -1456,15 +1456,15 @@ importers:
 
   e2e/solid-router/basic-file-based:
     dependencies:
+      '@tanstack/router-devtools-core':
+        specifier: workspace:^
+        version: link:../../../packages/router-devtools-core
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
-      '@tanstack/solid-router-devtools':
-        specifier: workspace:^
-        version: link:../../../packages/solid-router-devtools
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
@@ -5866,6 +5866,28 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
 
+  packages/router-devtools-core:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      csstype:
+        specifier: ^3.0.10
+        version: 3.1.3
+      goober:
+        specifier: ^2.1.16
+        version: 2.1.16(csstype@3.1.3)
+    devDependencies:
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      vite-plugin-solid:
+        specifier: ^2.11.6
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   packages/router-generator:
     dependencies:
       '@tanstack/react-router':
@@ -6087,28 +6109,6 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.24.1
-
-  packages/solid-router-devtools:
-    dependencies:
-      '@tanstack/solid-router':
-        specifier: workspace:^
-        version: link:../solid-router
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      csstype:
-        specifier: ^3.0.10
-        version: 3.1.3
-      goober:
-        specifier: ^2.1.16
-        version: 2.1.16(csstype@3.1.3)
-    devDependencies:
-      solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
-      vite-plugin-solid:
-        specifier: ^2.11.6
-        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start:
     dependencies:
