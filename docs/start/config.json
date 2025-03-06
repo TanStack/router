@@ -115,6 +115,10 @@
             {
               "label": "Trellaux",
               "to": "framework/react/examples/start-trellaux"
+            },
+            {
+              "label": "Material UI",
+              "to": "framework/react/examples/start-material-ui"
             }
           ]
         }
