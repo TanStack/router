@@ -2198,9 +2198,6 @@ importers:
       firebase:
         specifier: ^11.4.0
         version: 11.4.0
-      lucide-react:
-        specifier: ^0.477.0
-        version: 0.477.0(react@19.0.0)
       postcss:
         specifier: ^8.5.1
         version: 8.5.1
@@ -12066,11 +12063,6 @@ packages:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
 
-  lucide-react@0.477.0:
-    resolution: {integrity: sha512-yCf7aYxerFZAbd8jHJxjwe1j7jEMPptjnaOqdYeirFnEy85cNR3/L+o0I875CYFYya+eEVzZSbNuRk8BZPDpVw==}
-    peerDependencies:
-      react: ^19.0.0
-
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
 
@@ -20463,10 +20455,6 @@ snapshots:
   lru-cache@6.0.0:
     dependencies:
       yallist: 4.0.0
-
-  lucide-react@0.477.0(react@19.0.0):
-    dependencies:
-      react: 19.0.0
 
   lunr@2.3.9: {}
 
