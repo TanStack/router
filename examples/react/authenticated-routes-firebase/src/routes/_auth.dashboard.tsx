@@ -8,7 +8,7 @@ export const Route = createFileRoute('/_auth/dashboard')({
 })
 
 function DashboardPage() {
-  const {user} = useAuth()
+  const { user } = useAuth()
 
   return (
     <section className="grid gap-2 p-2">
