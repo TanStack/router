@@ -65,7 +65,7 @@ export function ReactRouterDevtools(props: DevtoolsOptions) {
   }, [devtools, usedProps.router])
 
   useEffect(() => {
-    console.log("Router state change")
+    console.log('Router state change')
     devtools.setRouterState(usedProps.routerState)
   }, [devtools, usedProps.routerState])
 

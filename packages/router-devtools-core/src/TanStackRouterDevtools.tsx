@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 import * as Solid from 'solid-js'
 import { createEffect, createSignal } from 'solid-js'
-import { Dynamic, render  } from 'solid-js/web'
+import { Dynamic, render } from 'solid-js/web'
 import { DevtoolsOnCloseContext } from './context'
 import { useIsMounted } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
@@ -153,7 +153,7 @@ function FloatingTanStackRouterDevtools({
   shadowDOMTarget,
 }: DevtoolsOptions): Solid.JSX.Element | null {
   const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
-  
+
   // eslint-disable-next-line prefer-const
   let panelRef: HTMLDivElement | undefined = undefined
 
