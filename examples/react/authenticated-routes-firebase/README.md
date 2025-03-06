@@ -4,6 +4,7 @@
    1. By default, firebase will configure an accepted domain for localhost...update if necessary!
 2. Enable Authentication in the Firebase console
 3. Add GitHub as an authentication provider:
+
    - Go to **Authentication** > **Sign-in method** > **GitHub**
    - Enable GitHub authentication
    - You'll need to set up OAuth in your GitHub account:
@@ -24,7 +25,7 @@
 
 Copy the .env.example provided and configure with your firebase credentials
 
-```VITE_FIREBASE_API_KEY=
+````VITE_FIREBASE_API_KEY=
 VITE_FIREBASE_AUTH_DOMAIN=
 VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
@@ -37,3 +38,4 @@ To run this example:
 
 - `npm install` or `yarn`
 - `npm start` or `yarn start`
+````

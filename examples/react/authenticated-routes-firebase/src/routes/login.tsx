@@ -9,9 +9,13 @@ import { z } from 'zod'
 
 import { useAuth } from '../auth'
 import { sleep } from '../utils'
-import { siApple, siGithub, siGoogle } from 'simple-icons';
+import { siApple, siGithub, siGoogle } from 'simple-icons'
 
-import { GoogleAuthProvider, GithubAuthProvider, OAuthProvider } from 'firebase/auth'
+import {
+  GoogleAuthProvider,
+  GithubAuthProvider,
+  OAuthProvider,
+} from 'firebase/auth'
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 const fallback = '/dashboard' as const
@@ -21,39 +25,38 @@ export const Route = createFileRoute('/login')({
     redirect: z.string().optional().catch(''),
   }),
   beforeLoad: ({ context, search }) => {
-		if (context.user) {
-			throw redirect({ to: search.redirect || fallback });
-		}
-	},
+    if (context.user) {
+      throw redirect({ to: search.redirect || fallback })
+    }
+  },
   component: LoginComponent,
 })
 
 function LoginComponent() {
-  const router = useRouter();
-	const { login } = useAuth();
+  const router = useRouter()
+  const { login } = useAuth()
 
-	const handleSignIn = async (provider: "github" | "apple" | "google") => {
-		console.log(`Clicked ${provider} sign in!`);
-		try {
-			const providers = {
-				google: new GoogleAuthProvider(),
-				github: new GithubAuthProvider(),
-				apple: new OAuthProvider("apple"),
-			};
+  const handleSignIn = async (provider: 'github' | 'apple' | 'google') => {
+    console.log(`Clicked ${provider} sign in!`)
+    try {
+      const providers = {
+        google: new GoogleAuthProvider(),
+        github: new GithubAuthProvider(),
+        apple: new OAuthProvider('apple'),
+      }
 
-			const typedProvider =
-				providers[provider] ??
-				(() => {
-					throw new Error("Invalid provider");
-				})();
+      const typedProvider =
+        providers[provider] ??
+        (() => {
+          throw new Error('Invalid provider')
+        })()
 
-			await login(typedProvider);
-			router.invalidate(); // This should force the user to route to /dashboard
-		} catch (error) {
-			console.error("Sign in error:", error);
-		}
-	};
-
+      await login(typedProvider)
+      router.invalidate() // This should force the user to route to /dashboard
+    } catch (error) {
+      console.error('Sign in error:', error)
+    }
+  }
 
   return (
     <div className="">
@@ -102,5 +105,5 @@ function LoginComponent() {
         </div>
       </div>
     </div>
-  );
+  )
 }
