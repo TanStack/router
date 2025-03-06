@@ -17,7 +17,7 @@
     "@tanstack/router-plugin": "^1.112.17",
     "@tanstack/valibot-adapter": "^1.112.17",
     "@tanstack/zod-adapter": "^1.112.17",
-    "arktype": "^2.0.4",
+    "arktype": "^2.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "postcss": "^8.5.1",
