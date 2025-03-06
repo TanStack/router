@@ -9,7 +9,7 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.112.16",
+    "@tanstack/solid-router": "^1.112.17",
     "@tanstack/solid-start": "workspace:^",
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
