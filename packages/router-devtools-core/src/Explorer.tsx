@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import * as Solid from 'solid-js'
 import { clsx as cx } from 'clsx'
 import * as goober from 'goober'
@@ -194,7 +195,7 @@ function isIterable(x: any): x is Iterable<unknown> {
   return Symbol.iterator in x
 }
 
-export default function Explorer({
+export function Explorer({
   value,
   defaultExpanded,
   renderer = DefaultRenderer,

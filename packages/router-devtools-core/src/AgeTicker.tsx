@@ -1,5 +1,4 @@
 import { clsx as cx } from 'clsx'
-import * as Solid from 'solid-js'
 import { useStyles } from './useStyles'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 

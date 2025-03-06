@@ -63,6 +63,7 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
 
     const mediaStyles = Object.entries(queries).reduce(
       (current, [key, value]) => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         return useMediaQuery(key)
           ? {
               ...current,
@@ -83,6 +84,7 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
         : { ...baseStyles, ...style, ...mediaStyles }
 
     return (
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       <Dynamic component={type} {...rest} style={combinedStyles} ref={ref} />
     )
@@ -125,6 +127,7 @@ export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
   const safeSetState = (value: T) => {
     scheduleMicrotask(() => {
       if (isMounted()) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         setState(value)
       }

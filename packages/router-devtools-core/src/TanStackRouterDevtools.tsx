@@ -1,15 +1,14 @@
 import { clsx as cx } from 'clsx'
 import * as Solid from 'solid-js'
-import { createSignal, createEffect } from 'solid-js'
-import { render } from 'solid-js/web'
-import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
-import { useIsMounted, useSafeState } from './utils'
+import { createEffect, createSignal } from 'solid-js'
+import { Dynamic, render  } from 'solid-js/web'
+import { DevtoolsOnCloseContext } from './context'
+import { useIsMounted } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
 import type { AnyRouter } from '@tanstack/router-core'
-import { Dynamic } from 'solid-js/web'
 
 interface DevtoolsOptions {
   /**
@@ -154,6 +153,8 @@ function FloatingTanStackRouterDevtools({
   shadowDOMTarget,
 }: DevtoolsOptions): Solid.JSX.Element | null {
   const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
+  
+  // eslint-disable-next-line prefer-const
   let panelRef: HTMLDivElement | undefined = undefined
 
   const [isOpen, setIsOpen] = useLocalStorage(
@@ -275,7 +276,7 @@ function FloatingTanStackRouterDevtools({
   } = toggleButtonProps
 
   // Do not render on the server
-  if (!isMounted) return null
+  if (!isMounted()) return null
 
   const resolvedHeight = devtoolsHeight() ?? 500
 
@@ -308,7 +309,6 @@ function FloatingTanStackRouterDevtools({
     >
       <DevtoolsOnCloseContext.Provider
         value={{
-          // @ts-ignore
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
@@ -321,6 +321,7 @@ function FloatingTanStackRouterDevtools({
             className={basePanelStyle}
             style={{
               height: `${resolvedHeight}px`,
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
               ...(panelStyle || {}),
             }}
             isOpen={isResolvedOpen()}
