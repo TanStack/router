@@ -1,4 +1,3 @@
-import { useRouter, useRouterState } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools-core'
 import React, { Fragment, useEffect } from 'react'
 
@@ -53,8 +52,8 @@ interface DevtoolsOptions {
 export function ReactRouterDevtools(props: DevtoolsOptions) {
   const usedProps = {
     ...props,
-    router: props.router ?? useRouter(),
-    routerState: props.routerState ?? useRouterState(),
+    router: props.router,
+    routerState: props.routerState,
   }
 
   const devToolRef = React.useRef<HTMLDivElement>(null)

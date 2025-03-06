@@ -10,11 +10,15 @@ import { getRouteStatusColor, getStatusColor, multiSortBy } from './utils'
 import { AgeTicker } from './AgeTicker'
 import type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
-import type { AnyRoute, AnyRouter, Route } from '@tanstack/router-core'
-import { RouterState } from '@tanstack/router-core'
-import { AnyContext } from '@tanstack/router-core'
-import { MakeRouteMatchUnion } from '@tanstack/router-core'
-import { FileRouteTypes } from '@tanstack/router-core'
+import type {
+  AnyContext,
+  AnyRoute,
+  AnyRouter,
+  FileRouteTypes,
+  MakeRouteMatchUnion,
+  Route,
+  RouterState,
+} from '@tanstack/router-core'
 
 function Logo(props: any) {
   const { className, ...rest } = props
@@ -75,9 +79,8 @@ function RouteComp({
         const r: string = route.path || trimPath(route.id)
         if (r.startsWith('$')) {
           const trimmed = r.slice(1)
-          // @ts-ignore
+
           if (p[trimmed]) {
-            // @ts-ignore
             return `(${p[trimmed]})`
           }
         }
