@@ -88,22 +88,24 @@ async function handleServerRequest({
   let fnModule: undefined | { [key: string]: any }
 
   if (process.env.NODE_ENV === 'development') {
-    fnModule = await (globalThis as any).viteDevServer.ssrLoadModule(
-      serverFnInfo.extractedFilename,
-    )
+    const serverEnv = (globalThis as any).viteDevServer.environments['server']
+    if (!serverEnv) {
+      throw new Error(`'server' vite dev environment not found`)
+    }
+    fnModule = await serverEnv.runner.import(serverFnInfo.extractedFilename)
   } else {
     fnModule = await serverFnInfo.importer()
   }
 
   if (!fnModule) {
-    console.log('serverFnManifest', serverFnManifest)
+    console.log('serverFnInfo', serverFnInfo)
     throw new Error('Server function module not resolved for ' + serverFnId)
   }
 
   const action = fnModule[serverFnInfo.functionName]
 
   if (!action) {
-    console.log('serverFnManifest', serverFnManifest)
+    console.log('serverFnInfo', serverFnInfo)
     console.log('fnModule', fnModule)
     throw new Error(
       `Server function module export not resolved for serverFn ID: ${serverFnId}`,

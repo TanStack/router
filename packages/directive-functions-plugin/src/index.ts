@@ -90,12 +90,12 @@ export function TanStackDirectiveFunctionsPluginEnv(
     buildStart() {
       root = this.environment.config.root
     },
-    applyToEnvironment(env) {
-      return [
-        opts.environments.client.envName,
-        opts.environments.server.envName,
-      ].includes(env.name)
-    },
+    // applyToEnvironment(env) {
+    //   return [
+    //     opts.environments.client.envName,
+    //     opts.environments.server.envName,
+    //   ].includes(env.name)
+    // },
     transform(code, id) {
       const envOptions = [
         opts.environments.client,
