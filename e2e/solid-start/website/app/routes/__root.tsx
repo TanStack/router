@@ -2,6 +2,7 @@ import { Outlet, createRootRoute } from '@tanstack/solid-router'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -52,6 +53,7 @@ function RootComponent() {
   return (
     <>
       <Outlet />
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }

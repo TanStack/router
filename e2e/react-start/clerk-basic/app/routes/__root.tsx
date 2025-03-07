@@ -13,7 +13,7 @@ import {
   SignedOut,
   UserButton,
 } from '@clerk/tanstack-start'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 import { getAuth } from '@clerk/tanstack-start/server'

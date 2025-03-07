@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
+    "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "js-cookie": "^3.0.5",
     "solid-js": "^1.9.5",
