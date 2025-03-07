@@ -54,28 +54,6 @@
   - 'packages/server-functions-plugin/**/*'
 'package: solid-router':
   - 'packages/solid-router/**/*'
-'package: solid-start':
-  - 'packages/solid-start/**/*'
-'package: solid-start-api-routes':
-  - 'packages/solid-start-api-routes/**/*'
-'package: solid-start-client':
-  - 'packages/solid-start-client/**/*'
-'package: solid-start-config':
-  - 'packages/solid-start-config/**/*'
-'package: solid-start-plugin':
-  - 'packages/solid-start-plugin/**/*'
-'package: solid-start-router-manifest':
-  - 'packages/solid-start-router-manifest/**/*'
-'package: solid-start-server':
-  - 'packages/solid-start-server/**/*'
-'package: solid-start-server-functions-client':
-  - 'packages/solid-start-server-functions-client/**/*'
-'package: solid-start-server-functions-fetcher':
-  - 'packages/solid-start-server-functions-fetcher/**/*'
-'package: solid-start-server-functions-handler':
-  - 'packages/solid-start-server-functions-handler/**/*'
-'package: solid-start-server-functions-ssr':
-  - 'packages/solid-start-server-functions-ssr/**/*'
 'package: start':
   - 'packages/start/**/*'
 'package: start-config':
