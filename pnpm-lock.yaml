@@ -1517,6 +1517,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
