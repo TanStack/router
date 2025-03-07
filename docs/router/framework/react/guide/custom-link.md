@@ -172,10 +172,9 @@ interface MUILinkProps extends LinkProps {
   // Add any additional props you want to pass to the Link
 }
 
-const MUILinkComponent = React.forwardRef<
-  HTMLAnchorElement,
-  MUILinkProps
->((props, ref) => <Link ref={ref} {...props} />)
+const MUILinkComponent = React.forwardRef<HTMLAnchorElement, MUILinkProps>(
+  (props, ref) => <Link ref={ref} {...props} />,
+)
 
 const CreatedLinkComponent = createLink(MUILinkComponent)
 
