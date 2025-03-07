@@ -165,11 +165,7 @@ class TanStackRouterDevtools {
   }
 
   setRouterState(routerState: any) {
-    console.log('New value', routerState)
-
     this.#routerState[1](routerState)
-
-    console.log('Update router state', this.#routerState[0]())
   }
 
   setOptions(options: Partial<DevtoolsOptions>) {
