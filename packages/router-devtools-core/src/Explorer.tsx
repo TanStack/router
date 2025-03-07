@@ -144,7 +144,9 @@ export function Explorer({
     return filterSubEntries ? filterSubEntries(entries) : entries
   })
 
-  const subEntryPages = Solid.createMemo(() => chunkArray(subEntries(), pageSize))
+  const subEntryPages = Solid.createMemo(() =>
+    chunkArray(subEntries(), pageSize),
+  )
 
   const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>(
     [],
