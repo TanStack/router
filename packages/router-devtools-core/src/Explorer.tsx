@@ -98,54 +98,53 @@ export function Explorer({
   const [expanded, setExpanded] = Solid.createSignal(Boolean(defaultExpanded))
   const toggleExpanded = () => setExpanded((old) => !old)
 
-  let type: string = typeof value
-  let subEntries: Array<Property> = []
+  const type = Solid.createMemo(() => typeof value)
+  const subEntries = Solid.createMemo(() => {
+    let entries: Array<Property> = []
 
-  const makeProperty = (sub: { label: string; value: unknown }): Property => {
-    const subDefaultExpanded =
-      defaultExpanded === true
-        ? { [sub.label]: true }
-        : defaultExpanded?.[sub.label]
-    return {
-      ...sub,
-      defaultExpanded: subDefaultExpanded,
+    const makeProperty = (sub: { label: string; value: unknown }): Property => {
+      const subDefaultExpanded =
+        defaultExpanded === true
+          ? { [sub.label]: true }
+          : defaultExpanded?.[sub.label]
+      return {
+        ...sub,
+        defaultExpanded: subDefaultExpanded,
+      }
     }
-  }
 
-  if (Array.isArray(value)) {
-    type = 'array'
-    subEntries = value.map((d, i) =>
-      makeProperty({
-        label: i.toString(),
-        value: d,
-      }),
-    )
-  } else if (
-    value !== null &&
-    typeof value === 'object' &&
-    isIterable(value) &&
-    typeof value[Symbol.iterator] === 'function'
-  ) {
-    type = 'Iterable'
-    subEntries = Array.from(value, (val, i) =>
-      makeProperty({
-        label: i.toString(),
-        value: val,
-      }),
-    )
-  } else if (typeof value === 'object' && value !== null) {
-    type = 'object'
-    subEntries = Object.entries(value).map(([key, val]) =>
-      makeProperty({
-        label: key,
-        value: val,
-      }),
-    )
-  }
+    if (Array.isArray(value)) {
+      entries = value.map((d, i) =>
+        makeProperty({
+          label: i.toString(),
+          value: d,
+        }),
+      )
+    } else if (
+      value !== null &&
+      typeof value === 'object' &&
+      isIterable(value) &&
+      typeof value[Symbol.iterator] === 'function'
+    ) {
+      entries = Array.from(value, (val, i) =>
+        makeProperty({
+          label: i.toString(),
+          value: val,
+        }),
+      )
+    } else if (typeof value === 'object' && value !== null) {
+      entries = Object.entries(value).map(([key, val]) =>
+        makeProperty({
+          label: key,
+          value: val,
+        }),
+      )
+    }
 
-  subEntries = filterSubEntries ? filterSubEntries(subEntries) : subEntries
+    return filterSubEntries ? filterSubEntries(entries) : entries
+  })
 
-  const subEntryPages = chunkArray(subEntries, pageSize)
+  const subEntryPages = Solid.createMemo(() => chunkArray(subEntries(), pageSize))
 
   const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>(
     [],
@@ -168,7 +167,7 @@ export function Explorer({
 
   return (
     <div class={styles().entry}>
-      {subEntryPages.length ? (
+      {subEntryPages().length ? (
         <>
           <button
             class={styles().expandButton}
@@ -178,17 +177,17 @@ export function Explorer({
             {rest.label}
             <span class={styles().info}>
               {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
-              {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
+              {subEntries().length} {subEntries().length > 1 ? `items` : `item`}
             </span>
           </button>
           {(expanded() ?? false) ? (
-            subEntryPages.length === 1 ? (
+            subEntryPages().length === 1 ? (
               <div class={styles().subEntries}>
-                {subEntries.map((entry, index) => handleEntry(entry))}
+                {subEntries().map((entry, index) => handleEntry(entry))}
               </div>
             ) : (
               <div class={styles().subEntries}>
-                {subEntryPages.map((entries, index) => {
+                {subEntryPages().map((entries, index) => {
                   return (
                     <div>
                       <div class={styles().entry}>
@@ -221,7 +220,7 @@ export function Explorer({
             )
           ) : null}
         </>
-      ) : type === 'function' ? (
+      ) : type() === 'function' ? (
         <>
           <Explorer
             label={
