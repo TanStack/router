@@ -78,7 +78,7 @@ export async function generator(config: Config, root: string) {
 
   // Controls whether API Routes are generated for TanStack Start
   const ENABLED_API_ROUTES_GENERATION =
-    config.__enableApiRoutesGeneration ?? false
+    config.__enableAPIRoutesGeneration ?? false
 
   let getRouteNodesResult: GetRouteNodesResult
 

@@ -17,7 +17,7 @@ export const configSchema = z.object({
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
   disableManifestGeneration: z.boolean().optional().default(false),
-  __enableApiRoutesGeneration: z.boolean().optional(), // Internal flag to be turned on for TanStack Start
+  __enableAPIRoutesGeneration: z.boolean().optional(), // Internal flag to be turned on for TanStack Start
   apiBase: z.string().optional().default('/api'),
   routeTreeFileHeader: z
     .array(z.string())

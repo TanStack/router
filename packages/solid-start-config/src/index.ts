@@ -220,7 +220,7 @@ export async function defineConfig(
               target: 'solid',
               enableRouteGeneration: true,
               autoCodeSplitting: true,
-              __enableApiRoutesGeneration: true,
+              __enableAPIRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -285,7 +285,7 @@ export async function defineConfig(
               target: 'solid',
               enableRouteGeneration: false,
               autoCodeSplitting: true,
-              __enableApiRoutesGeneration: true,
+              __enableAPIRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -353,7 +353,7 @@ export async function defineConfig(
               target: 'solid',
               enableRouteGeneration: false,
               autoCodeSplitting: true,
-              __enableApiRoutesGeneration: true,
+              __enableAPIRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -448,7 +448,7 @@ export async function defineConfig(
             target: 'solid',
             enableRouteGeneration: false,
             autoCodeSplitting: true,
-            __enableApiRoutesGeneration: true,
+            __enableAPIRoutesGeneration: true,
             experimental: {
               ...tsrConfig.experimental,
             },
