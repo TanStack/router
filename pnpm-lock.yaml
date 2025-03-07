@@ -967,15 +967,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-router-with-query':
         specifier: workspace:*
         version: link:../../../packages/react-router-with-query
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
