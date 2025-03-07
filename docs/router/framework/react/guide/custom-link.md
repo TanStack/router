@@ -146,26 +146,86 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 ### MUI example
 
-```tsx
-import * as React from 'react'
-import { createLink, LinkComponent } from '@tanstack/react-router'
-import { Button, ButtonProps } from '@mui/material'
+There is an [example](../../../../../examples/react/start-material-ui) available which uses these patterns.
 
-interface MUILinkProps extends Omit<ButtonProps, 'href'> {
-  // Add any additional props you want to pass to the button
+#### Link
+
+If the MUI `Link` should simply behave like the Router `Link`, it can be just wrapped with `createLink`:
+
+```tsx
+import { createLink } from '@tanstack/react-router'
+import { Link } from '@mui/material'
+
+export const CustomLink = createLink(Link)
+```
+
+If the `Link` should be customized this approach can be used:
+
+```tsx
+import React from 'react'
+import { createLink } from '@tanstack/react-router'
+import { Link } from '@mui/material'
+import type { LinkProps } from '@mui/material'
+import type { LinkComponent } from '@tanstack/react-router'
+
+interface MUIButtonLinkProps extends Omit<LinkProps, 'href'> {
+  // Add any additional props you want to pass to the Link
 }
 
-const MUILinkComponent = React.forwardRef<HTMLAnchorElement, MUILinkProps>(
-  (props, ref) => {
-    return <Button component={'a'} ref={ref} {...props} />
-  },
-)
+const MUILinkComponent = React.forwardRef<
+  HTMLAnchorElement,
+  MUIButtonLinkProps
+>((props, ref) => <Link ref={ref} {...props} />)
 
 const CreatedLinkComponent = createLink(MUILinkComponent)
 
 export const CustomLink: LinkComponent<typeof MUILinkComponent> = (props) => {
   return <CreatedLinkComponent preload={'intent'} {...props} />
 }
+
+// Can also be styled
+```
+
+#### Button
+
+```tsx
+import React from 'react'
+import { createLink } from '@tanstack/react-router'
+import { Button } from '@mui/material'
+import type { ButtonProps } from '@mui/material'
+import type { LinkComponent } from '@tanstack/react-router'
+
+interface MUIButtonLinkProps extends Omit<ButtonProps<'a'>, 'href'> {
+  // Add any additional props you want to pass to the Button
+}
+
+const MUIButtonLinkComponent = React.forwardRef<
+  HTMLAnchorElement,
+  MUIButtonLinkProps
+>((props, ref) => <Button ref={ref} component="a" {...props} />)
+
+const CreatedButtonLinkComponent = createLink(MUIButtonLinkComponent)
+
+export const CustomButtonLink: LinkComponent<typeof MUIButtonLinkComponent> = (
+  props,
+) => {
+  return <CreatedButtonLinkComponent preload={'intent'} {...props} />
+}
+```
+
+#### `styled`
+
+Any of these MUI approaches can then be used with `styled`:
+
+```tsx
+import { css, styled } from '@mui/material'
+import { CustomLink } from './CustomLink'
+
+const StyledCustomLink = styled(CustomLink)(
+  ({ theme }) => css`
+    color: ${theme.palette.common.white};
+  `,
+)
 ```
 
 ### Mantine example
