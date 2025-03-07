@@ -1,5 +1,10 @@
 ---
 title: Devtools
 ref: docs/router/framework/react/devtools.md
-replace: { 'react-router-devtools': 'solid-router-devtools', 'React': 'Solid', 'className': 'class' }
+replace:
+  {
+    'react-router-devtools': 'solid-router-devtools',
+    'React': 'Solid',
+    'className': 'class',
+  }
 ---
