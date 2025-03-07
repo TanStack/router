@@ -148,7 +148,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 There is an [example](../examples/start-material-ui) available which uses these patterns.
 
-#### Link
+#### `Link`
 
 If the MUI `Link` should simply behave like the router `Link`, it can be just wrapped with `createLink`:
 
@@ -186,7 +186,7 @@ export const CustomLink: LinkComponent<typeof MUILinkComponent> = (props) => {
 // Can also be styled
 ```
 
-#### Button
+#### `Button`
 
 If a `Button` should be used as a router `Link`, the `component` should be set as `a`:
 
@@ -215,7 +215,7 @@ export const CustomButtonLink: LinkComponent<typeof MUIButtonLinkComponent> = (
 }
 ```
 
-#### `styled`
+#### Usage with `styled`
 
 Any of these MUI approaches can then be used with `styled`:
 
