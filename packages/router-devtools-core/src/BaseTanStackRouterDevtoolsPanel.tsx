@@ -475,13 +475,13 @@ export const BaseTanStackRouterDevtoolsPanel =
               <div class={styles().matchDetails}>
                 <div
                   class={styles().matchStatus(
-                    activeMatch()!.status,
-                    activeMatch()!.isFetching,
+                    activeMatch()?.status,
+                    activeMatch()?.isFetching,
                   )}
                 >
                   <div>
-                    {activeMatch()!.status === 'success' &&
-                    activeMatch()!.isFetching
+                    {activeMatch()?.status === 'success' &&
+                    activeMatch()?.isFetching
                       ? 'fetching'
                       : activeMatch()?.status}
                   </div>
@@ -489,18 +489,18 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>ID:</div>
                   <div class={styles().matchDetailsInfo}>
-                    <code>{activeMatch()!.id}</code>
+                    <code>{activeMatch()?.id}</code>
                   </div>
                 </div>
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
                     {routerState().pendingMatches?.find(
-                      (d: any) => d.id === activeMatch()!.id,
+                      (d: any) => d.id === activeMatch()?.id,
                     )
                       ? 'Pending'
                       : routerState().matches.find(
-                            (d: any) => d.id === activeMatch()!.id,
+                            (d: any) => d.id === activeMatch()?.id,
                           )
                         ? 'Active'
                         : 'Cached'}
@@ -509,8 +509,8 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>Last Updated:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {activeMatch()!.updatedAt
-                      ? new Date(activeMatch()!.updatedAt).toLocaleTimeString()
+                    {activeMatch()?.updatedAt
+                      ? new Date(activeMatch()?.updatedAt).toLocaleTimeString()
                       : 'N/A'}
                   </div>
                 </div>
