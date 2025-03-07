@@ -110,7 +110,7 @@ export function Explorer({
           : defaultExpanded?.[sub.label]
       return {
         ...sub,
-        value: ()=>sub.value,
+        value: () => sub.value,
         defaultExpanded: subDefaultExpanded,
       }
     }
