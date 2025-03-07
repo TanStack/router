@@ -1,10 +1,13 @@
+import path from 'node:path'
 import { createMemoryHistory } from '@tanstack/history'
 import { mergeHeaders } from '@tanstack/react-start-client'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
+import serverFunctionsHandler from './server-functions-handler'
+import { getStartManifest } from './router-manifest'
 import type { HandlerCallback } from './handlerCallback'
 import type { EventHandlerResponse, H3Event } from 'h3'
-import type { AnyRouter, Manifest } from '@tanstack/router-core'
+import type { AnyRouter } from '@tanstack/router-core'
 
 export type CustomizeStartHandler<
   TRouter extends AnyRouter,
@@ -16,10 +19,8 @@ export function createStartHandler<
   TResponse extends EventHandlerResponse = EventHandlerResponse,
 >({
   createRouter,
-  getRouterManifest,
 }: {
   createRouter: () => TRouter
-  getRouterManifest?: () => Manifest | Promise<Manifest>
 }): CustomizeStartHandler<TRouter, TResponse> {
   return (cb) => {
     return eventHandler(async (event) => {
@@ -28,6 +29,18 @@ export function createStartHandler<
       const url = new URL(request.url)
       const href = url.href.replace(url.origin, '')
 
+      if (!process.env.TSS_SERVER_FN_BASE) {
+        throw new Error(
+          'tanstack/react-start-server: TSS_SERVER_FN_BASE must be defined in your environment for createStartHandler()',
+        )
+      }
+
+      if (
+        href.startsWith(path.join('/', process.env.TSS_SERVER_FN_BASE, '/'))
+      ) {
+        return await serverFunctionsHandler(event)
+      }
+
       // Create a history for the router
       const history = createMemoryHistory({
         initialEntries: [href],
@@ -35,7 +48,7 @@ export function createStartHandler<
 
       const router = createRouter()
 
-      attachRouterServerSsrUtils(router, await getRouterManifest?.())
+      attachRouterServerSsrUtils(router, getStartManifest())
 
       // Update the router with the history and context
       router.update({

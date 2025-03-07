@@ -117,6 +117,8 @@ export function compileCodeSplitReferenceRoute(
     runtimeEnv: 'dev' | 'prod'
     codeSplitGroupings: CodeSplitGroupings
     targetFramework: Config['target']
+    filename: string
+    id: string
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -406,6 +408,7 @@ export function compileCodeSplitReferenceRoute(
 export function compileCodeSplitVirtualRoute(
   opts: ParseAstOptions & {
     splitTargets: Array<SplitRouteIdentNodes>
+    filename: string
   },
 ): GeneratorResult {
   const ast = parseAst(opts)

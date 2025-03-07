@@ -34,7 +34,6 @@ overrides:
   '@tanstack/react-start-server': workspace:*
   '@tanstack/react-start-api-routes': workspace:*
   '@tanstack/react-start-server-functions-fetcher': workspace:*
-  '@tanstack/react-start-server-functions-handler': workspace:*
   '@tanstack/react-start-server-functions-client': workspace:*
   '@tanstack/react-start-server-functions-ssr': workspace:*
   '@tanstack/start-server-functions-server': workspace:*
@@ -5699,18 +5698,12 @@ importers:
       '@tanstack/react-start-plugin':
         specifier: workspace:*
         version: link:../react-start-plugin
-      '@tanstack/react-start-router-manifest':
-        specifier: workspace:*
-        version: link:../react-start-router-manifest
       '@tanstack/react-start-server':
         specifier: workspace:*
         version: link:../react-start-server
       '@tanstack/react-start-server-functions-client':
         specifier: workspace:*
         version: link:../react-start-server-functions-client
-      '@tanstack/react-start-server-functions-handler':
-        specifier: workspace:*
-        version: link:../react-start-server-functions-handler
       '@tanstack/react-start-server-functions-ssr':
         specifier: workspace:*
         version: link:../react-start-server-functions-ssr
@@ -5891,6 +5884,9 @@ importers:
       h3:
         specifier: 1.13.0
         version: 1.13.0
+      import-meta-resolve:
+        specifier: ^4.1.0
+        version: 4.1.0
       nitropack:
         specifier: ^2.10.4
         version: 2.10.4(typescript@5.7.3)
@@ -5906,19 +5902,6 @@ importers:
       zod:
         specifier: ^3.24.2
         version: 3.24.2
-
-  packages/react-start-router-manifest:
-    dependencies:
-      '@tanstack/router-core':
-        specifier: workspace:*
-        version: link:../router-core
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-    devDependencies:
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.2
 
   packages/react-start-server:
     dependencies:
@@ -5993,34 +5976,6 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-    devDependencies:
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.2
-
-  packages/react-start-server-functions-handler:
-    dependencies:
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../react-router
-      '@tanstack/react-start-client':
-        specifier: workspace:*
-        version: link:../react-start-client
-      '@tanstack/react-start-server':
-        specifier: workspace:*
-        version: link:../react-start-server
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -6355,7 +6310,7 @@ importers:
         version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       zod:
         specifier: ^3.23.8
-        version: 3.24.1
+        version: 3.24.2
 
   packages/solid-router-devtools:
     dependencies:
@@ -6721,24 +6676,20 @@ importers:
       '@tanstack/react-start-plugin':
         specifier: workspace:*
         version: link:../react-start-plugin
-      '@tanstack/react-start-router-manifest':
-        specifier: workspace:*
-        version: link:../react-start-router-manifest
       '@tanstack/react-start-server':
         specifier: workspace:*
         version: link:../react-start-server
       '@tanstack/react-start-server-functions-client':
         specifier: workspace:*
         version: link:../react-start-server-functions-client
-      '@tanstack/react-start-server-functions-handler':
-        specifier: workspace:*
-        version: link:../react-start-server-functions-handler
       '@tanstack/react-start-server-functions-ssr':
         specifier: workspace:*
         version: link:../react-start-server-functions-ssr
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
+
+  packages/start-plugin: {}
 
   packages/start-server-functions-server:
     dependencies:
@@ -6748,6 +6699,9 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -12051,6 +12005,9 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  import-meta-resolve@4.1.0:
+    resolution: {integrity: sha512-I6fiaX09Xivtk+THaMfAwnA3MVA5Big1WHF1Dfx9hFuvNIWpXnorlkzhcQf6ehrqQiiZECRt1poOAkPmer3ruw==}
+
   imurmurhash@0.1.4:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
     engines: {node: '>=0.8.19'}
@@ -15027,9 +14984,6 @@ packages:
   zip-stream@6.0.1:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
-
-  zod@3.24.1:
-    resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
 
   zod@3.24.2:
     resolution: {integrity: sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ==}
@@ -20751,6 +20705,8 @@ snapshots:
       pkg-dir: 4.2.0
       resolve-cwd: 3.0.0
 
+  import-meta-resolve@4.1.0: {}
+
   imurmurhash@0.1.4: {}
 
   indent-string@4.0.0: {}
@@ -24111,7 +24067,5 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.7.0
-
-  zod@3.24.1: {}
 
   zod@3.24.2: {}

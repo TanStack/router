@@ -17,6 +17,7 @@ const handleClientOnlyCallExpression =
 type CompileOptions = ParseAstOptions & {
   env: 'server' | 'client' | 'ssr'
   dce?: boolean
+  filename: string
 }
 
 type IdentifierConfig = {
@@ -187,7 +188,7 @@ export function compileStartOutput(opts: CompileOptions): GeneratorResult {
 
 function handleCreateServerFnCallExpression(
   path: babel.NodePath<t.CallExpression>,
-  opts: ParseAstOptions,
+  opts: CompileOptions,
 ) {
   // The function is the 'fn' property of the object passed to createServerFn
 
@@ -352,7 +353,7 @@ function handleCreateServerFnCallExpression(
 
 function handleCreateMiddlewareCallExpression(
   path: babel.NodePath<t.CallExpression>,
-  opts: ParseAstOptions,
+  opts: CompileOptions,
 ) {
   const rootCallExpression = getRootCallExpression(path)
 
@@ -427,7 +428,7 @@ function handleCreateMiddlewareCallExpression(
 function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
   return function envOnlyCallExpressionHandler(
     path: babel.NodePath<t.CallExpression>,
-    opts: ParseAstOptions,
+    opts: CompileOptions,
   ) {
     // if (debug)
     //   console.info(`Handling ${env}Only call expression:`, path.toString())

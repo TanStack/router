@@ -10,6 +10,6 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    TanStackStartVitePlugin({}),
+    TanStackStartVitePlugin(),
   ],
 })

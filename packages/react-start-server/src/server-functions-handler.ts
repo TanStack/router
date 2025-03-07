@@ -1,19 +1,13 @@
-import { isNotFound, isRedirect } from '@tanstack/react-router'
-import invariant from 'tiny-invariant'
-import {
-  eventHandler,
-  getEvent,
-  getResponseStatus,
-  toWebRequest,
-} from '@tanstack/react-start-server'
+import { invariant, isNotFound, isRedirect } from '@tanstack/react-router'
 import { startSerializer } from '@tanstack/react-start-client'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
-import type { H3Event } from '@tanstack/react-start-server'
+import { eventHandler, getEvent, getResponseStatus, toWebRequest } from './h3'
+import type { H3Event } from './h3'
 
 // NOTE: This is a dummy export to silence warnings about
 // only having a default export.
-export const dummy = 1
+export const dummy = 2
 
 export default eventHandler(handleServerAction)
 
@@ -94,9 +88,9 @@ async function handleServerRequest({
   let fnModule: undefined | { [key: string]: any }
 
   if (process.env.NODE_ENV === 'development') {
-    fnModule = await (globalThis as any).app
-      .getRouter('server')
-      .internals.devServer.ssrLoadModule(serverFnInfo.extractedFilename)
+    fnModule = await (globalThis as any).viteDevServer.ssrLoadModule(
+      serverFnInfo.extractedFilename,
+    )
   } else {
     fnModule = await serverFnInfo.importer()
   }

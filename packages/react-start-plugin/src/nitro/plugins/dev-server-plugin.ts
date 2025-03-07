@@ -1,10 +1,9 @@
 // SSR dev server, middleware and error page source modified from
 // https://github.com/solidjs/solid-start/blob/main/packages/start/dev/server.js
 
-import { createEvent, sendWebResponse } from 'h3'
-
-import { registerDevServerMiddleware } from '../utils/register-dev-middleware.js'
-import type { Connect, Plugin, ViteDevServer } from 'vite'
+import { createEvent, getHeader, sendWebResponse } from 'h3'
+import { isRunnableDevEnvironment } from 'vite'
+import type { Connect, Environment, Plugin, ViteDevServer } from 'vite'
 import type { TanStackStartOutputConfig } from '../../schema.js'
 
 export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
@@ -25,34 +24,66 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
         },
       }
     },
-    configureServer(viteServer) {
+    configureServer(viteDevServer) {
       if (isTest) {
         return
       }
 
+      ;(globalThis as any).viteDevServer = viteDevServer
+
       return () => {
-        remove_html_middlewares(viteServer.middlewares)
-        registerDevServerMiddleware(options.root, viteServer)
+        remove_html_middlewares(viteDevServer.middlewares)
 
-        viteServer.middlewares.use(async (req, res) => {
+        viteDevServer.middlewares.use(async (req, res) => {
+          const event = createEvent(req, res)
+          const serverEnv = viteDevServer.environments['server'] as Environment
+
           try {
-            const serverEntry = (
-              await viteServer.ssrLoadModule('~start/ssr-entry')
-            )['default']
-
-            const event = createEvent(req, res)
-            const result: string | Response = await serverEntry(event)
-
-            if (result instanceof Response) {
-              sendWebResponse(event, result)
-              return
+            if (!isRunnableDevEnvironment(serverEnv)) {
+              throw new Error('Server environment not found')
             }
-            res.setHeader('Content-Type', 'text/html')
-            res.end(result)
+
+            const serverEntry =
+              await serverEnv.runner.import('~start/ssr-entry')
+
+            const response = await serverEntry['default'](event)
+
+            sendWebResponse(event, response)
           } catch (e) {
-            viteServer.ssrFixStacktrace(e as Error)
-            res.statusCode = 500
-            res.end(`
+            console.error(e)
+            viteDevServer.ssrFixStacktrace(e as Error)
+
+            if (
+              getHeader(event, 'content-type')?.includes('application/json')
+            ) {
+              return sendWebResponse(
+                event,
+                new Response(
+                  JSON.stringify(
+                    {
+                      status: 500,
+                      error: 'Internal Server Error',
+                      message:
+                        'An unexpected error occurred. Please try again later.',
+                      timestamp: new Date().toISOString(),
+                    },
+                    null,
+                    2,
+                  ),
+                  {
+                    status: 500,
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  },
+                ),
+              )
+            }
+
+            sendWebResponse(
+              event,
+              new Response(
+                `
               <!DOCTYPE html>
               <html lang="en">
                 <head>
@@ -68,7 +99,12 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
                 <body>
                 </body>
               </html>
-            `)
+            `,
+                {
+                  status: 500,
+                },
+              ),
+            )
           }
         })
       }

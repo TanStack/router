@@ -33,19 +33,33 @@ import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
 
-export function createFileRoute<
-  TFilePath extends keyof FileRoutesByPath,
-  TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
-  TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
-  TFullPath extends
-    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
->(
-  path: TFilePath,
-): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-    silent: true,
-  }).createRoute
+type RouteInfo = {
+  parentRoute: AnyRoute
+  id: RouteConstraints['TId']
+  path: keyof FileRoutesByPath
+  fullPath: RouteConstraints['TFullPath']
+}
+
+export function createFileRoute<TRouteInfo extends RouteInfo>(): FileRoute<
+  TRouteInfo['path'],
+  TRouteInfo['parentRoute'],
+  TRouteInfo['id'],
+  TRouteInfo['path'],
+  TRouteInfo['fullPath']
+>['createRoute'] {
+  return new FileRoute<
+    TRouteInfo['path'],
+    TRouteInfo['parentRoute'],
+    TRouteInfo['id'],
+    TRouteInfo['path'],
+    TRouteInfo['fullPath']
+  >(
+    // @ts-expect-error
+    undefined,
+    {
+      silent: true,
+    },
+  ).createRoute
 }
 
 /** 

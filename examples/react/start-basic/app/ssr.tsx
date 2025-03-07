@@ -1,12 +1,18 @@
 import {
   createStartHandler,
   defaultStreamHandler,
+  defineEventHandler,
+  getWebRequest,
 } from '@tanstack/react-start/server'
-import { getRouterManifest } from '@tanstack/react-start/router-manifest'
 
 import { createRouter } from './router'
 
-export default createStartHandler({
-  createRouter,
-  getRouterManifest,
-})(defaultStreamHandler)
+export default defineEventHandler((event) => {
+  console.log(getWebRequest(event)?.url)
+
+  const startHandler = createStartHandler({
+    createRouter,
+  })(defaultStreamHandler)
+
+  return startHandler(event)
+})
