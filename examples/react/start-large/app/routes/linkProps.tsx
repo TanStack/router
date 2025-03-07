@@ -40,7 +40,7 @@ function LinkPropsPage() {
   })
 
   return (
-    <React.Fragment>
+    <>
       <MyLink
         from="/search/searchPlaceholder"
         to="../searchPlaceholder"
@@ -68,6 +68,6 @@ function LinkPropsPage() {
         ]}
       />
       <Link {...linkProps} />
-    </React.Fragment>
+    </>
   )
 }

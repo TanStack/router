@@ -27,7 +27,7 @@ import type { FsRouteType, GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
 export const CONSTANTS = {
-  // When changing this, you'll want to update the import in `start/api/index.ts#defaultAPIFileRouteHandler`
+  // When changing this, you'll want to update the import in `react-start-api-routes/src/index.ts#defaultAPIFileRouteHandler`
   APIRouteExportVariable: 'APIRoute',
 }
 
@@ -76,6 +76,10 @@ export async function generator(config: Config, root: string) {
 
   const TYPES_DISABLED = config.disableTypes
 
+  // Controls whether API Routes are generated for TanStack Start
+  const ENABLED_API_ROUTES_GENERATION =
+    config.__enableAPIRoutesGeneration ?? false
+
   let getRouteNodesResult: GetRouteNodesResult
 
   if (config.virtualRouteConfig) {
@@ -114,14 +118,28 @@ export async function generator(config: Config, root: string) {
   const routePiecesByPath: Record<string, RouteSubNode> = {}
 
   // Filtered API Route nodes
-  const onlyAPIRouteNodes = preRouteNodes.filter(
-    (d) => d._fsRouteType === 'api',
-  )
+  const onlyAPIRouteNodes = preRouteNodes.filter((d) => {
+    if (!ENABLED_API_ROUTES_GENERATION) {
+      return false
+    }
+
+    if (d._fsRouteType !== 'api') {
+      return false
+    }
+
+    return true
+  })
 
   // Filtered Generator Route nodes
-  const onlyGeneratorRouteNodes = preRouteNodes.filter(
-    (d) => d._fsRouteType !== 'api',
-  )
+  const onlyGeneratorRouteNodes = preRouteNodes.filter((d) => {
+    if (ENABLED_API_ROUTES_GENERATION) {
+      if (d._fsRouteType === 'api') {
+        return false
+      }
+    }
+
+    return true
+  })
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
@@ -452,8 +470,11 @@ export async function generator(config: Config, root: string) {
     }
   }
 
-  for (const node of startAPIRouteNodes) {
-    await handleAPINode(node)
+  // Handle the API routes for TanStack Start
+  if (ENABLED_API_ROUTES_GENERATION) {
+    for (const node of startAPIRouteNodes) {
+      await handleAPINode(node)
+    }
   }
 
   function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {

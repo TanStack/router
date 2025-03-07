@@ -138,6 +138,10 @@ As a framework, [TanStack Start](/start) supports the concept of API routes. Thi
 
 By default, this value is set to `/api`.
 
+This means that all API routes will be prefixed with `/api`.
+
+This configuration value is only useful if you are using TanStack Start.
+
 > [!IMPORTANT]
 > This default value may conflict with your own project's routing if you planned on having a normal route with the same base path. You can change this value to avoid conflicts.
 

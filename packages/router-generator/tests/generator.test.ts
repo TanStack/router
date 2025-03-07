@@ -128,6 +128,7 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
           'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
         ].join(''),
       }
+      config.__enableAPIRoutesGeneration = true
       break
     default:
       break

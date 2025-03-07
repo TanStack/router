@@ -7,6 +7,7 @@ import { useSearch } from './useSearch'
 import { notFound } from './not-found'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
+import { useRouter } from './useRouter'
 import type {
   AnyContext,
   AnyRoute,
@@ -128,7 +129,8 @@ export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   useNavigate = (): UseNavigateResult<
     RouteTypesById<TRouter, TId>['fullPath']
   > => {
-    return useNavigate({ from: this.id as string })
+    const router = useRouter()
+    return useNavigate({ from: router.routesById[this.id as string].fullPath })
   }
 
   notFound = (opts?: NotFoundError) => {
@@ -516,7 +518,7 @@ export class Route<
   }
 
   useNavigate = (): UseNavigateResult<TFullPath> => {
-    return useNavigate({ from: this.id })
+    return useNavigate({ from: this.fullPath })
   }
 }
 
