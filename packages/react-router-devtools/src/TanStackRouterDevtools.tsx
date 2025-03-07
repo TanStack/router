@@ -1,5 +1,6 @@
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
 import React, { Fragment, useEffect } from 'react'
+import { useRouter, useRouterState } from '@tanstack/react-router'
 
 interface DevtoolsOptions {
   /**
@@ -87,6 +88,12 @@ export function TanStackRouterDevtools(props: DevtoolsOptions) {
     devtools.setRouterState(routerState)
   }, [devtools, routerState])
 
+  const routerContext = useRouter()
+  const routerStateContext = useRouterState()
+
+  const activeRouter = router ?? routerContext
+  const activeRouterState = routerState ?? routerStateContext
+
   useEffect(() => {
     devtools.setOptions({
       initialIsOpen: initialIsOpen,
@@ -107,6 +114,14 @@ export function TanStackRouterDevtools(props: DevtoolsOptions) {
     containerElement,
     shadowDOMTarget,
   ])
+
+  useEffect(() => {
+    devtools.setRouter(activeRouter)
+  }, [devtools, activeRouter])
+
+  useEffect(() => {
+    devtools.setRouterState(activeRouterState)
+  }, [devtools, activeRouterState])
 
   React.useEffect(() => {
     if (devToolRef.current) {

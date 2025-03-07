@@ -135,11 +135,7 @@ function RootComponent() {
       <hr />
       <Outlet />
       {/* Start rendering router matches */}
-      <TanStackRouterDevtools
-        position="bottom-right"
-        router={useRouter()}
-        routerState={_state()}
-      />
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }
