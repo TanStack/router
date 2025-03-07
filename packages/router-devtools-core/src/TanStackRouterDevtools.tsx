@@ -338,7 +338,7 @@ function FloatingTanStackRouterDevtools({
     return cx(
       styles().mainCloseBtn,
       styles().mainCloseBtnPosition(position),
-      styles().mainCloseBtnAnimation(!isButtonClosed),
+      styles().mainCloseBtnAnimation(!!isOpen()),
       toggleButtonClassName,
     )
   })
