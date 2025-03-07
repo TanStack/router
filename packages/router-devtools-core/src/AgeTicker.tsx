@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 import { useStyles } from './useStyles'
-import type * as Solid from 'solid-js'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
+import type { Accessor } from 'solid-js'
 
 function formatTime(ms: number) {
   const units = ['s', 'min', 'h', 'd']
@@ -27,7 +27,7 @@ export function AgeTicker({
   router,
 }: {
   match?: AnyRouteMatch
-  router: Solid.Accessor<AnyRouter>
+  router: Accessor<AnyRouter>
 }) {
   const styles = useStyles()
   // const rerender = React.useReducer(
@@ -35,7 +35,7 @@ export function AgeTicker({
   //   () => ({}),
   // )[1]
 
-  // Solid.createEffect(() => {
+  // createEffect(() => {
   //   const interval = setInterval(() => {
   //     rerender()
   //   }, 1000)

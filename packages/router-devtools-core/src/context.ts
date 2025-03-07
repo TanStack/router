@@ -1,10 +1,10 @@
-import * as Solid from 'solid-js'
+import { createContext, useContext } from 'solid-js'
 
-export const ShadowDomTargetContext = Solid.createContext<
-  ShadowRoot | undefined
->(undefined)
+export const ShadowDomTargetContext = createContext<ShadowRoot | undefined>(
+  undefined,
+)
 
-export const DevtoolsOnCloseContext = Solid.createContext<
+export const DevtoolsOnCloseContext = createContext<
   | {
       onCloseClick: (
         e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element },
@@ -14,7 +14,7 @@ export const DevtoolsOnCloseContext = Solid.createContext<
 >(undefined)
 
 export const useDevtoolsOnClose = () => {
-  const context = Solid.useContext(DevtoolsOnCloseContext)
+  const context = useContext(DevtoolsOnCloseContext)
   if (!context) {
     throw new Error(
       'useDevtoolsOnClose must be used within a TanStackRouterDevtools component',

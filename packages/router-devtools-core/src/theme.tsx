@@ -1,4 +1,5 @@
-import * as Solid from 'solid-js'
+import { createContext, useContext } from 'solid-js'
+import type { JSX } from 'solid-js'
 
 export const defaultTheme = {
   background: '#222222',
@@ -17,10 +18,10 @@ export const defaultTheme = {
 export type Theme = typeof defaultTheme
 interface ProviderProps {
   theme: Theme
-  children?: Solid.JSX.Element
+  children?: JSX.Element
 }
 
-const ThemeContext = Solid.createContext(defaultTheme)
+const ThemeContext = createContext(defaultTheme)
 
 export function ThemeProvider({ children, theme, ...rest }: ProviderProps) {
   return (
@@ -31,5 +32,5 @@ export function ThemeProvider({ children, theme, ...rest }: ProviderProps) {
 }
 
 export function useTheme() {
-  return Solid.useContext(ThemeContext)
+  return useContext(ThemeContext)
 }

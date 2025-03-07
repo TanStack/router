@@ -1,4 +1,5 @@
-import * as Solid from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
+import type { Accessor } from 'solid-js'
 
 const getItem = (key: string): unknown => {
   try {
@@ -15,10 +16,10 @@ const getItem = (key: string): unknown => {
 export default function useLocalStorage<T>(
   key: string,
   defaultValue: T | undefined,
-): [Solid.Accessor<T | undefined>, (newVal: T | ((prevVal: T) => T)) => void] {
-  const [value, setValue] = Solid.createSignal<T>()
+): [Accessor<T | undefined>, (newVal: T | ((prevVal: T) => T)) => void] {
+  const [value, setValue] = createSignal<T>()
 
-  Solid.createEffect(() => {
+  createEffect(() => {
     const initialValue = getItem(key) as T | undefined
 
     if (typeof initialValue === 'undefined' || initialValue === null) {

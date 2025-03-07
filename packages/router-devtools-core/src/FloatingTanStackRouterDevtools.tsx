@@ -1,6 +1,6 @@
 import { clsx as cx } from 'clsx'
-import * as Solid from 'solid-js'
-import { createEffect, createSignal } from 'solid-js'
+
+import { createEffect, createMemo, createSignal } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 
 import { DevtoolsOnCloseContext } from './context'
@@ -9,6 +9,7 @@ import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPan
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
+import type { Accessor, JSX } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
 
 export interface FloatingDevtoolsOptions {
@@ -48,8 +49,8 @@ export interface FloatingDevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router: Solid.Accessor<AnyRouter>
-  routerState: Solid.Accessor<any>
+  router: Accessor<AnyRouter>
+  routerState: Accessor<any>
   /**
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
@@ -66,7 +67,7 @@ export function FloatingTanStackRouterDevtools({
   router,
   routerState,
   shadowDOMTarget,
-}: FloatingDevtoolsOptions): Solid.JSX.Element | null {
+}: FloatingDevtoolsOptions): JSX.Element | null {
   const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
 
   // eslint-disable-next-line prefer-const
@@ -193,7 +194,7 @@ export function FloatingTanStackRouterDevtools({
 
   const resolvedHeight = devtoolsHeight() ?? 500
 
-  const basePanelStyle = Solid.createMemo(() => {
+  const basePanelStyle = createMemo(() => {
     return cx(
       styles().devtoolsPanelContainer,
       styles().devtoolsPanelContainerVisibility(!!isOpen()),
@@ -205,7 +206,7 @@ export function FloatingTanStackRouterDevtools({
     )
   })
 
-  const buttonStyle = Solid.createMemo(() => {
+  const buttonStyle = createMemo(() => {
     return cx(
       styles().mainCloseBtn,
       styles().mainCloseBtnPosition(position),

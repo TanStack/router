@@ -1,7 +1,7 @@
-import * as Solid from 'solid-js'
 import { clsx as cx } from 'clsx'
 import { default as invariant } from 'tiny-invariant'
 import { rootRouteId, trimPath } from '@tanstack/router-core'
+import { createMemo } from 'solid-js'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
@@ -19,16 +19,17 @@ import type {
   Route,
   RouterState,
 } from '@tanstack/router-core'
+import type { Accessor, JSX } from 'solid-js'
 
 export interface BaseDevtoolsPanelOptions {
   /**
    * The standard React style object used to style a component with inline styles
    */
-  style?: Solid.JSX.CSSProperties
+  style?: JSX.CSSProperties
   /**
    * The standard React class property used to style a component with classes
    */
-  className?: Solid.Accessor<string>
+  className?: Accessor<string>
   /**
    * A boolean variable indicating whether the panel is open or closed
    */
@@ -44,8 +45,8 @@ export interface BaseDevtoolsPanelOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router: Solid.Accessor<AnyRouter>
-  routerState: Solid.Accessor<any>
+  router: Accessor<AnyRouter>
+  routerState: Accessor<any>
   /**
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
@@ -71,7 +72,7 @@ function RouteComp({
   activeId,
   setActiveId,
 }: {
-  routerState: Solid.Accessor<
+  routerState: Accessor<
     RouterState<
       Route<
         any,
@@ -92,21 +93,21 @@ function RouteComp({
       MakeRouteMatchUnion
     >
   >
-  router: Solid.Accessor<AnyRouter>
+  router: Accessor<AnyRouter>
   route: AnyRoute
   isRoot?: boolean
-  activeId: Solid.Accessor<string | undefined>
+  activeId: Accessor<string | undefined>
   setActiveId: (id: string) => void
 }) {
   const styles = useStyles()
-  const matches = Solid.createMemo(
+  const matches = createMemo(
     () => routerState().pendingMatches || routerState().matches,
   )
-  const match = Solid.createMemo(() =>
+  const match = createMemo(() =>
     routerState().matches.find((d) => d.routeId === route.id),
   )
 
-  const param = Solid.createMemo(() => {
+  const param = createMemo(() => {
     try {
       if (match()?.params) {
         const p = match()?.params
@@ -181,7 +182,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     ...props
   }: BaseDevtoolsPanelOptions & {
     ref?: HTMLDivElement | undefined
-  }): Solid.JSX.Element {
+  }): JSX.Element {
     const {
       isOpen = true,
       setIsOpen,
@@ -213,7 +214,7 @@ export const BaseTanStackRouterDevtoolsPanel =
       '',
     )
 
-    const activeMatch = Solid.createMemo(() => {
+    const activeMatch = createMemo(() => {
       const matches = [
         ...(routerState().pendingMatches ?? []),
         ...routerState().matches,
@@ -224,18 +225,18 @@ export const BaseTanStackRouterDevtoolsPanel =
       )
     })
 
-    const hasSearch = Solid.createMemo(
+    const hasSearch = createMemo(
       () => Object.keys(routerState().location.search).length,
     )
 
-    const explorerState = Solid.createMemo(() => {
+    const explorerState = createMemo(() => {
       return {
         ...router(),
         state: routerState(),
       }
     })
 
-    const routerExplorerValue = Solid.createMemo(() =>
+    const routerExplorerValue = createMemo(() =>
       Object.fromEntries(
         multiSortBy(
           Object.keys(explorerState()),
@@ -270,13 +271,9 @@ export const BaseTanStackRouterDevtoolsPanel =
           ),
       ),
     )
-    const activeMatchLoaderData = Solid.createMemo(
-      () => activeMatch()?.loaderData,
-    )
-    const activeMatchValue = Solid.createMemo(() => activeMatch())
-    const locationSearchValue = Solid.createMemo(
-      () => routerState().location.search,
-    )
+    const activeMatchLoaderData = createMemo(() => activeMatch()?.loaderData)
+    const activeMatchValue = createMemo(() => activeMatch())
+    const locationSearchValue = createMemo(() => routerState().location.search)
 
     return (
       <div

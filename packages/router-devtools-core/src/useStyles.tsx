@@ -1,8 +1,8 @@
-import * as Solid from 'solid-js'
-
 import * as goober from 'goober'
+import { createSignal, useContext } from 'solid-js'
 import { tokens } from './tokens'
 import { ShadowDomTargetContext } from './context'
+import type { Accessor } from 'solid-js'
 
 const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
   const { colors, font, size, alpha, shadow, border } = tokens
@@ -28,7 +28,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
         visibility: ${isOpen ? 'visible' : 'hidden'};
       `
     },
-    devtoolsPanelContainerResizing: (isResizing: Solid.Accessor<boolean>) => {
+    devtoolsPanelContainerResizing: (isResizing: Accessor<boolean>) => {
       if (isResizing()) {
         return css`
           transition: none;
@@ -583,7 +583,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 }
 
 export function useStyles() {
-  const shadowDomTarget = Solid.useContext(ShadowDomTargetContext)
-  const [_styles] = Solid.createSignal(stylesFactory(shadowDomTarget))
+  const shadowDomTarget = useContext(ShadowDomTargetContext)
+  const [_styles] = createSignal(stylesFactory(shadowDomTarget))
   return _styles
 }

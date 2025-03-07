@@ -1,21 +1,22 @@
 import { Dynamic } from 'solid-js/web'
-import * as Solid from 'solid-js'
+import { createEffect, createRenderEffect, createSignal } from 'solid-js'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
 import type { AnyRoute, AnyRouteMatch } from '@tanstack/router-core'
 
 import type { Theme } from './theme'
+import type { JSX } from 'solid-js'
 
 export const isServer = typeof window === 'undefined'
 
 type StyledComponent<T> = T extends 'button'
-  ? Solid.JSX.ButtonHTMLAttributes<HTMLButtonElement>
+  ? JSX.ButtonHTMLAttributes<HTMLButtonElement>
   : T extends 'input'
-    ? Solid.JSX.InputHTMLAttributes<HTMLInputElement>
+    ? JSX.InputHTMLAttributes<HTMLInputElement>
     : T extends 'select'
-      ? Solid.JSX.SelectHTMLAttributes<HTMLSelectElement>
+      ? JSX.SelectHTMLAttributes<HTMLSelectElement>
       : T extends keyof HTMLElementTagNameMap
-        ? Solid.JSX.HTMLAttributes<HTMLElementTagNameMap[T]>
+        ? JSX.HTMLAttributes<HTMLElementTagNameMap[T]>
         : never
 
 export function getStatusColor(match: AnyRouteMatch) {
@@ -44,8 +45,8 @@ export function getRouteStatusColor(
 }
 
 type Styles =
-  | Solid.JSX.CSSProperties
-  | ((props: Record<string, any>, theme: Theme) => Solid.JSX.CSSProperties)
+  | JSX.CSSProperties
+  | ((props: Record<string, any>, theme: Theme) => JSX.CSSProperties)
 
 export function styled<T extends keyof HTMLElementTagNameMap>(
   type: T,
@@ -92,9 +93,11 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
 }
 
 export function useIsMounted() {
-  const [isMounted, setIsMounted] = Solid.createSignal(false)
+  const [isMounted, setIsMounted] = createSignal(false)
 
-  Solid[isServer ? 'createEffect' : 'createRenderEffect'](() => {
+  const effect = isServer ? createEffect : createRenderEffect
+
+  effect(() => {
     setIsMounted(true)
   })
 
@@ -122,7 +125,7 @@ export const displayValue = (value: unknown) => {
  */
 export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
   const isMounted = useIsMounted()
-  const [state, setState] = Solid.createSignal(initialState)
+  const [state, setState] = createSignal(initialState)
 
   const safeSetState = (value: T) => {
     scheduleMicrotask(() => {

@@ -1,8 +1,7 @@
 import { createSignal, lazy } from 'solid-js'
 import { render } from 'solid-js/web'
-import type * as Solid from 'solid-js'
-
 import type { AnyRouter } from '@tanstack/router-core'
+import type { Signal } from 'solid-js'
 
 interface DevtoolsOptions {
   /**
@@ -50,8 +49,8 @@ interface DevtoolsOptions {
 }
 
 class TanStackRouterDevtoolsCore {
-  #router: Solid.Signal<AnyRouter>
-  #routerState: Solid.Signal<any>
+  #router: Signal<AnyRouter>
+  #routerState: Signal<any>
   #position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   #initialIsOpen: boolean
   #shadowDOMTarget?: ShadowRoot

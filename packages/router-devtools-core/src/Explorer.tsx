@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-import * as Solid from 'solid-js'
 import { clsx as cx } from 'clsx'
 import * as goober from 'goober'
+import { createMemo, createSignal, useContext } from 'solid-js'
 import { tokens } from './tokens'
 import { displayValue } from './utils'
 import { ShadowDomTargetContext } from './context'
+import type { Accessor, JSX } from 'solid-js'
 
 type ExpanderProps = {
   expanded: boolean
-  style?: Solid.JSX.CSSProperties
+  style?: JSX.CSSProperties
 }
 
 export const Expander = ({ expanded, style = {} }: ExpanderProps) => {
@@ -41,12 +42,12 @@ type Entry = {
 
 type RendererProps = {
   handleEntry: HandleEntryFn
-  label?: Solid.JSX.Element
-  value: Solid.Accessor<unknown>
+  label?: JSX.Element
+  value: Accessor<unknown>
   subEntries: Array<Entry>
   subEntryPages: Array<Array<Entry>>
   type: string
-  expanded: Solid.Accessor<boolean>
+  expanded: Accessor<boolean>
   toggleExpanded: () => void
   pageSize: number
   filterSubEntries?: (subEntries: Array<Property>) => Array<Property>
@@ -72,11 +73,11 @@ export function chunkArray<T>(array: Array<T>, size: number): Array<Array<T>> {
   return result
 }
 
-type HandleEntryFn = (entry: Entry) => Solid.JSX.Element
+type HandleEntryFn = (entry: Entry) => JSX.Element
 
 type ExplorerProps = Partial<RendererProps> & {
   defaultExpanded?: true | Record<string, boolean>
-  value: Solid.Accessor<unknown>
+  value: Accessor<unknown>
 }
 
 type Property = {
@@ -96,11 +97,11 @@ export function Explorer({
   filterSubEntries,
   ...rest
 }: ExplorerProps) {
-  const [expanded, setExpanded] = Solid.createSignal(Boolean(defaultExpanded))
+  const [expanded, setExpanded] = createSignal(Boolean(defaultExpanded))
   const toggleExpanded = () => setExpanded((old) => !old)
 
-  const type = Solid.createMemo(() => typeof value())
-  const subEntries = Solid.createMemo(() => {
+  const type = createMemo(() => typeof value())
+  const subEntries = createMemo(() => {
     let entries: Array<Property> = []
 
     const makeProperty = (sub: { label: string; value: unknown }): Property => {
@@ -149,14 +150,10 @@ export function Explorer({
     return filterSubEntries ? filterSubEntries(entries) : entries
   })
 
-  const subEntryPages = Solid.createMemo(() =>
-    chunkArray(subEntries(), pageSize),
-  )
+  const subEntryPages = createMemo(() => chunkArray(subEntries(), pageSize))
 
-  const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>(
-    [],
-  )
-  const [valueSnapshot, setValueSnapshot] = Solid.createSignal(undefined)
+  const [expandedPages, setExpandedPages] = createSignal<Array<number>>([])
+  const [valueSnapshot, setValueSnapshot] = createSignal(undefined)
   const styles = useStyles()
 
   const refreshValueSnapshot = () => {
@@ -336,7 +333,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 }
 
 function useStyles() {
-  const shadowDomTarget = Solid.useContext(ShadowDomTargetContext)
-  const [_styles] = Solid.createSignal(stylesFactory(shadowDomTarget))
+  const shadowDomTarget = useContext(ShadowDomTargetContext)
+  const [_styles] = createSignal(stylesFactory(shadowDomTarget))
   return _styles
 }

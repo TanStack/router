@@ -1,10 +1,11 @@
-import * as Solid from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
+import type { Accessor } from 'solid-js'
 
 export default function useMediaQuery(
   query: string,
-): Solid.Accessor<boolean | undefined> {
+): Accessor<boolean | undefined> {
   // Keep track of the preference in state, start with the current match
-  const [isMatch, setIsMatch] = Solid.createSignal(() => {
+  const [isMatch, setIsMatch] = createSignal(() => {
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       return window.matchMedia && window.matchMedia(query).matches
@@ -13,7 +14,7 @@ export default function useMediaQuery(
   })
 
   // Watch for changes
-  Solid.createEffect(() => {
+  createEffect(() => {
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!window.matchMedia) {

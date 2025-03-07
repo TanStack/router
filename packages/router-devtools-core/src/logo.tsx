@@ -1,7 +1,7 @@
-import * as Solid from 'solid-js'
+import { createUniqueId } from 'solid-js'
 
 export function TanStackLogo() {
-  const id = Solid.createUniqueId()
+  const id = createUniqueId()
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
