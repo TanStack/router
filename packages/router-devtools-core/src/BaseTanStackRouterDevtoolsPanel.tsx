@@ -235,6 +235,49 @@ export const BaseTanStackRouterDevtoolsPanel =
       }
     })
 
+    const routerExplorerValue = Solid.createMemo(() =>
+      Object.fromEntries(
+        multiSortBy(
+          Object.keys(explorerState()),
+          (
+            [
+              'state',
+              'routesById',
+              'routesByPath',
+              'flatRoutes',
+              'options',
+              'manifest',
+            ] as const
+          ).map((d) => (dd) => dd !== d),
+        )
+          .map((key) => [key, (explorerState() as any)[key]])
+          .filter(
+            (d) =>
+              typeof d[1] !== 'function' &&
+              ![
+                '__store',
+                'basepath',
+                'injectedHtml',
+                'subscribers',
+                'latestLoadPromise',
+                'navigateTimeout',
+                'resetNextScroll',
+                'tempLocationKey',
+                'latestLocation',
+                'routeTree',
+                'history',
+              ].includes(d[0]),
+          ),
+      ),
+    )
+    const activeMatchLoaderData = Solid.createMemo(
+      () => activeMatch()?.loaderData,
+    )
+    const activeMatchValue = Solid.createMemo(() => activeMatch())
+    const locationSearchValue = Solid.createMemo(
+      () => routerState().location.search,
+    )
+
     return (
       <div
         ref={ref}
@@ -286,39 +329,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().routerExplorer}>
               <Explorer
                 label="Router"
-                value={Object.fromEntries(
-                  multiSortBy(
-                    Object.keys(explorerState()),
-                    (
-                      [
-                        'state',
-                        'routesById',
-                        'routesByPath',
-                        'flatRoutes',
-                        'options',
-                        'manifest',
-                      ] as const
-                    ).map((d) => (dd) => dd !== d),
-                  )
-                    .map((key) => [key, (explorerState() as any)[key]])
-                    .filter(
-                      (d) =>
-                        typeof d[1] !== 'function' &&
-                        ![
-                          '__store',
-                          'basepath',
-                          'injectedHtml',
-                          'subscribers',
-                          'latestLoadPromise',
-                          'navigateTimeout',
-                          'resetNextScroll',
-                          'tempLocationKey',
-                          'latestLocation',
-                          'routeTree',
-                          'history',
-                        ].includes(d[0]),
-                    ),
-                )}
+                value={routerExplorerValue()}
                 defaultExpanded={{
                   state: {} as any,
                   context: {} as any,
@@ -505,13 +516,13 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </div>
               </div>
             </div>
-            {activeMatch()!.loaderData ? (
+            {activeMatchLoaderData() ? (
               <>
                 <div class={styles().detailsHeader}>Loader Data</div>
                 <div class={styles().detailsContent}>
                   <Explorer
                     label="loaderData"
-                    value={activeMatch()!.loaderData}
+                    value={activeMatchLoaderData()}
                     defaultExpanded={{}}
                   />
                 </div>
@@ -521,7 +532,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsContent}>
               <Explorer
                 label="Match"
-                value={activeMatch()}
+                value={activeMatchValue()}
                 defaultExpanded={{}}
               />
             </div>
@@ -532,7 +543,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsHeader}>Search Params</div>
             <div class={styles().detailsContent}>
               <Explorer
-                value={routerState().location.search}
+                value={locationSearchValue()}
                 defaultExpanded={Object.keys(
                   routerState().location.search,
                 ).reduce((obj: any, next) => {
