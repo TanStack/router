@@ -336,7 +336,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                   options: {} as any,
                 }}
                 filterSubEntries={(subEntries) => {
-                  return subEntries.filter((d: any) => typeof d.value() !== 'function')
+                  return subEntries.filter(
+                    (d: any) => typeof d.value() !== 'function',
+                  )
                 }}
               />
             </div>
