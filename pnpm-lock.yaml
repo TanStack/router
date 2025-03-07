@@ -1919,6 +1919,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
         specifier: workspace:^
         version: link:../../../packages/solid-start
