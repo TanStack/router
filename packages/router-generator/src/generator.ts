@@ -118,14 +118,28 @@ export async function generator(config: Config, root: string) {
   const routePiecesByPath: Record<string, RouteSubNode> = {}
 
   // Filtered API Route nodes
-  const onlyAPIRouteNodes = preRouteNodes.filter(
-    (d) => ENABLED_API_ROUTES_GENERATION && d._fsRouteType === 'api',
-  )
+  const onlyAPIRouteNodes = preRouteNodes.filter((d) => {
+    if (!ENABLED_API_ROUTES_GENERATION) {
+      return false
+    }
+
+    if (d._fsRouteType !== 'api') {
+      return false
+    }
+
+    return true
+  })
 
   // Filtered Generator Route nodes
-  const onlyGeneratorRouteNodes = preRouteNodes.filter(
-    (d) => ENABLED_API_ROUTES_GENERATION && d._fsRouteType !== 'api',
-  )
+  const onlyGeneratorRouteNodes = preRouteNodes.filter((d) => {
+    if (ENABLED_API_ROUTES_GENERATION) {
+      if (d._fsRouteType === 'api') {
+        return false
+      }
+    }
+
+    return true
+  })
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
