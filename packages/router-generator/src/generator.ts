@@ -27,7 +27,7 @@ import type { FsRouteType, GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
 export const CONSTANTS = {
-  // When changing this, you'll want to update the import in `start/api/index.ts#defaultAPIFileRouteHandler`
+  // When changing this, you'll want to update the import in `react-start-api-routes/src/index.ts#defaultAPIFileRouteHandler`
   APIRouteExportVariable: 'APIRoute',
 }
 
@@ -76,6 +76,10 @@ export async function generator(config: Config, root: string) {
 
   const TYPES_DISABLED = config.disableTypes
 
+  // Controls whether API Routes are generated for TanStack Start
+  const ENABLED_API_ROUTES_GENERATION =
+    config.__enableApiRoutesGeneration ?? false
+
   let getRouteNodesResult: GetRouteNodesResult
 
   if (config.virtualRouteConfig) {
@@ -115,12 +119,12 @@ export async function generator(config: Config, root: string) {
 
   // Filtered API Route nodes
   const onlyAPIRouteNodes = preRouteNodes.filter(
-    (d) => d._fsRouteType === 'api',
+    (d) => ENABLED_API_ROUTES_GENERATION && d._fsRouteType === 'api',
   )
 
   // Filtered Generator Route nodes
   const onlyGeneratorRouteNodes = preRouteNodes.filter(
-    (d) => d._fsRouteType !== 'api',
+    (d) => ENABLED_API_ROUTES_GENERATION && d._fsRouteType !== 'api',
   )
 
   // Loop over the flat list of routeNodes and
@@ -452,8 +456,11 @@ export async function generator(config: Config, root: string) {
     }
   }
 
-  for (const node of startAPIRouteNodes) {
-    await handleAPINode(node)
+  // Handle the API routes for TanStack Start
+  if (ENABLED_API_ROUTES_GENERATION) {
+    for (const node of startAPIRouteNodes) {
+      await handleAPINode(node)
+    }
   }
 
   function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
