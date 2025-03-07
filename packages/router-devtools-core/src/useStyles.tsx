@@ -24,7 +24,6 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       transform-origin: top;
     `,
     devtoolsPanelContainerVisibility: (isOpen: boolean) => {
-      console.log('isoopen1', isOpen)
       return css`
         visibility: ${isOpen ? 'visible' : 'hidden'};
       `
@@ -41,7 +40,6 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       `
     },
     devtoolsPanelContainerAnimation: (isOpen: boolean, height: number) => {
-      console.log('isoopen2', isOpen)
       if (isOpen) {
         return css`
           pointer-events: auto;
@@ -489,7 +487,6 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       return base
     },
     mainCloseBtnAnimation: (isOpen: boolean) => {
-      console.log('isOpen', isOpen)
       if (!isOpen) {
         return css`
           opacity: 1;

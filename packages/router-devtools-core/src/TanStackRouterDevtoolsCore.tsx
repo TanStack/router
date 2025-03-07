@@ -131,10 +131,6 @@ class TanStackRouterDevtoolsCore {
     const initialIsOpen = this.#initialIsOpen
     const shadowDOMTarget = this.#shadowDOMTarget
 
-    createEffect(() => {
-      console.log('This is router', this.#router[0]())
-    })
-
     const dispose = render(
       () => (
         <FloatingTanStackRouterDevtools
@@ -261,8 +257,7 @@ function FloatingTanStackRouterDevtools({
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
       const run = () => {
-        console.log('panelRef', panelRef)
-
+        
         const containerHeight = panelRef!.getBoundingClientRect().height
         if (rootEl()?.parentElement) {
           setRootEl((prev) => {
