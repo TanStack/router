@@ -153,10 +153,6 @@ await publish({
       packageDir: 'packages/react-start-server-functions-fetcher',
     },
     {
-      name: '@tanstack/react-start-server-functions-handler',
-      packageDir: 'packages/react-start-server-functions-handler',
-    },
-    {
       name: '@tanstack/react-start-server-functions-client',
       packageDir: 'packages/react-start-server-functions-client',
     },
@@ -167,10 +163,6 @@ await publish({
     {
       name: '@tanstack/start-server-functions-server',
       packageDir: 'packages/start-server-functions-server',
-    },
-    {
-      name: '@tanstack/react-start-router-manifest',
-      packageDir: 'packages/react-start-router-manifest',
     },
     {
       name: '@tanstack/start',

@@ -5,7 +5,7 @@ import type { PluginOption, ResolvedConfig } from 'vite'
 import type { z } from 'zod'
 import type { Manifest } from '@tanstack/react-router'
 
-export function tsrRoutesManifestPlugin(opts: {
+export function tsrManifestPlugin(opts: {
   tsrConfig: z.infer<typeof configSchema>
   clientBase: string
 }): PluginOption {
@@ -13,21 +13,27 @@ export function tsrRoutesManifestPlugin(opts: {
 
   return {
     name: 'tsr-routes-manifest',
+    enforce: 'pre',
+
     configResolved(resolvedConfig) {
       config = resolvedConfig
     },
+    // configEnvironment(env, envConfig) {
+    //   config = envConfig.
+    // },
     resolveId(id) {
-      if (id === 'tsr:routes-manifest') {
+      if (id === 'tsr:start-manifest') {
         return id
       }
       return
     },
     load(id) {
-      if (id === 'tsr:routes-manifest') {
+      if (id === 'tsr:start-manifest') {
         // If we're in development, return a dummy manifest
 
         if (config.command === 'serve') {
           return `export default () => ({
+            entry: "$${process.env.TSS_CLIENT_BASE}/",
             routes: {}
           })`
         }

@@ -30,8 +30,6 @@
   - 'packages/react-start-server-functions-client/**/*'
 'package: react-start-server-functions-fetcher':
   - 'packages/react-start-server-functions-fetcher/**/*'
-'package: react-start-server-functions-handler':
-  - 'packages/react-start-server-functions-handler/**/*'
 'package: react-start-server-functions-ssr':
   - 'packages/react-start-server-functions-ssr/**/*'
 'package: router-cli':

@@ -40,6 +40,8 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   }) => string
   replacer: ReplacerFn
   // devSplitImporter: string
+  filename: string
+  root: string
 }
 
 function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
@@ -230,6 +232,8 @@ export function findDirectives(
     directiveLabel: string
     replacer?: ReplacerFn
     directiveSplitParam: string
+    filename: string
+    root: string
   },
 ): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}

@@ -1,5 +1,6 @@
+import path from 'node:path'
 // @ts-expect-error
-import tsrGetManifest from 'tsr:routes-manifest'
+import tsrStartManifest from 'tsr:start-manifest'
 import type { Manifest } from '@tanstack/router-core'
 
 function sanitizeBase(base: string) {
@@ -7,15 +8,16 @@ function sanitizeBase(base: string) {
 }
 
 /**
- * @description Returns the full, unfiltered router manifest. This includes relationships
- * between routes, assets, and preloads and is NOT what you want to serialize and
- * send to the client.
+ * @description Returns the router manifest that should be sent to the client.
+ * This includes only the assets and preloads for the current route and any
+ * special assets that are needed for the client. It does not include relationships
+ * between routes or any other data that is not needed for the client.
  */
-export function getFullRouterManifest() {
-  const routerManifest = tsrGetManifest() as Manifest
+export function getStartManifest() {
+  const startManifest = tsrStartManifest() as Manifest
 
-  const rootRoute = (routerManifest.routes.__root__ =
-    routerManifest.routes.__root__ || {})
+  const rootRoute = (startManifest.routes.__root__ =
+    startManifest.routes.__root__ || {})
 
   rootRoute.assets = rootRoute.assets || []
 
@@ -29,7 +31,7 @@ export function getFullRouterManifest() {
         'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
       )
     }
-    script = `import RefreshRuntime from "/${CLIENT_BASE}/@react-refresh";
+    script = `import RefreshRuntime from "${path.join('/', '@react-refresh')}";
     RefreshRuntime.injectIntoGlobalHook(window)
     window.$RefreshReg$ = () => {}
     window.$RefreshSig$ = () => (type) => type
@@ -45,33 +47,29 @@ export function getFullRouterManifest() {
   //   invariant(importPath, 'Could not find client entry in vinxi manifest')
   // }
 
-  // rootRoute.assets.push({
-  //   tag: 'script',
-  //   attrs: {
-  //     type: 'module',
-  //     suppressHydrationWarning: true,
-  //     async: true,
-  //   },
-  //   children: `${script}import("${importPath}")`,
-  // })
+  if (!process.env.TSS_CLIENT_ENTRY) {
+    throw new Error(
+      'tanstack/start-router-manifest: TSS_CLIENT_ENTRY must be defined in your environment for getStartManifest()',
+    )
+  }
 
-  return routerManifest
-}
-
-/**
- * @description Returns the router manifest that should be sent to the client.
- * This includes only the assets and preloads for the current route and any
- * special assets that are needed for the client. It does not include relationships
- * between routes or any other data that is not needed for the client.
- */
-export function getRouterManifest() {
-  const routerManifest = getFullRouterManifest()
+  rootRoute.assets.push({
+    tag: 'script',
+    attrs: {
+      type: 'module',
+      suppressHydrationWarning: true,
+      async: true,
+    },
+    children: `${script};\nimport(${JSON.stringify(
+      path.join('/', process.env.TSS_CLIENT_ENTRY),
+    )})`,
+  })
 
   // Strip out anything that isn't needed for the client
   return {
-    ...routerManifest,
+    ...startManifest,
     routes: Object.fromEntries(
-      Object.entries(routerManifest.routes).map(([k, v]: any) => {
+      Object.entries(startManifest.routes).map(([k, v]: any) => {
         const { preloads, assets } = v
         return [
           k,
