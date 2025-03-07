@@ -15,7 +15,7 @@
     "@sentry/tracing": "^7.120.3",
     "@sentry/vite-plugin": "^3.1.2",
     "@tanstack/react-router": "workspace:^",
-    "@tanstack/router-devtools": "workspace:^",
+    "@tanstack/react-router-devtools": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",

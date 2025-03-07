@@ -4,7 +4,7 @@ import {
   Outlet,
   createRootRoute,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   component: RootComponent,

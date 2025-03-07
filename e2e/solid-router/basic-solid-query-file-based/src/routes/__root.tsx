@@ -4,7 +4,7 @@ import {
   Outlet,
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import type { QueryClient } from '@tanstack/solid-query'
 

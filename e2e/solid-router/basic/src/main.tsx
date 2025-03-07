@@ -9,7 +9,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import './styles.css'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
@@ -73,7 +73,7 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }
