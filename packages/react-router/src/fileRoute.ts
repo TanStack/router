@@ -7,6 +7,7 @@ import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
+import { useRouter } from './useRouter'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
@@ -214,7 +215,8 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useNavigate = () => {
-    return useNavigate({ from: this.options.id })
+    const router = useRouter()
+    return useNavigate({ from: router.routesById[this.options.id].fullPath })
   }
 }
 
