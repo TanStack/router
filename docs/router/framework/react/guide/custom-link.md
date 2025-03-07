@@ -150,7 +150,7 @@ There is an [example](../examples/start-material-ui) available which uses these 
 
 #### Link
 
-If the MUI `Link` should simply behave like the Router `Link`, it can be just wrapped with `createLink`:
+If the MUI `Link` should simply behave like the router `Link`, it can be just wrapped with `createLink`:
 
 ```tsx
 import { createLink } from '@tanstack/react-router'
@@ -187,6 +187,8 @@ export const CustomLink: LinkComponent<typeof MUILinkComponent> = (props) => {
 ```
 
 #### Button
+
+If a `Button` should be used as a router `Link`, the `component` should be set as `a`:
 
 ```tsx
 import React from 'react'
