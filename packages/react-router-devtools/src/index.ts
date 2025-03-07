@@ -6,4 +6,3 @@ export const TanStackRouterDevtools: (typeof Devtools)['TanStackRouterDevtools']
         return null
       }
     : Devtools.TanStackRouterDevtools
-

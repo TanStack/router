@@ -50,7 +50,9 @@ interface DevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export function TanStackRouterDevtools(props: DevtoolsOptions): React.ReactElement | null {
+export function TanStackRouterDevtools(
+  props: DevtoolsOptions,
+): React.ReactElement | null {
   const {
     initialIsOpen,
     panelProps,
