@@ -147,7 +147,9 @@ export function Explorer({
 
   const subEntryPages = chunkArray(subEntries, pageSize)
 
-  const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>([])
+  const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>(
+    [],
+  )
   const [valueSnapshot, setValueSnapshot] = Solid.createSignal(undefined)
   const styles = useStyles()
 
