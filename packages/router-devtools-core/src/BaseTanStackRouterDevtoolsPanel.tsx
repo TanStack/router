@@ -178,7 +178,6 @@ function RouteComp({
 
 export const BaseTanStackRouterDevtoolsPanel =
   function BaseTanStackRouterDevtoolsPanel({
-    
     ...props
   }: BaseDevtoolsPanelOptions): JSX.Element {
     const {
@@ -275,7 +274,6 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     return (
       <div
-        
         class={cx(
           styles().devtoolsPanel,
           'TanStackRouterDevtoolsPanel',
