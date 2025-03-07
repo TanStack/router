@@ -146,7 +146,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 ### MUI example
 
-There is an [example](../../../../../examples/react/start-material-ui) available which uses these patterns.
+There is an [example](../examples/start-material-ui) available which uses these patterns.
 
 #### Link
 
