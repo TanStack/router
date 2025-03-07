@@ -49,7 +49,6 @@ type RendererProps = {
   expanded: Solid.Accessor<boolean>
   toggleExpanded: () => void
   pageSize: number
-  renderer?: Renderer
   filterSubEntries?: (subEntries: Array<Property>) => Array<Property>
 }
 
@@ -73,115 +72,9 @@ export function chunkArray<T>(array: Array<T>, size: number): Array<Array<T>> {
   return result
 }
 
-type Renderer = (props: RendererProps) => Solid.JSX.Element
-
-export const DefaultRenderer: Renderer = ({
-  handleEntry,
-  label,
-  value,
-  subEntries = [],
-  subEntryPages = [],
-  type,
-  expanded,
-  toggleExpanded,
-  pageSize,
-  renderer,
-}) => {
-  const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>(
-    [],
-  )
-  const [valueSnapshot, setValueSnapshot] = Solid.createSignal(undefined)
-  const styles = useStyles()
-
-  const refreshValueSnapshot = () => {
-    setValueSnapshot((value as () => any)())
-  }
-
-  return (
-    <div class={styles().entry}>
-      {subEntryPages.length ? (
-        <>
-          <button
-            class={styles().expandButton}
-            onClick={() => toggleExpanded()}
-          >
-            <Expander expanded={expanded() ?? false} />
-            {label}
-            <span class={styles().info}>
-              {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
-              {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
-            </span>
-          </button>
-          {(expanded() ?? false) ? (
-            subEntryPages.length === 1 ? (
-              <div class={styles().subEntries}>
-                {subEntries.map((entry, index) => handleEntry(entry))}
-              </div>
-            ) : (
-              <div class={styles().subEntries}>
-                {subEntryPages.map((entries, index) => {
-                  return (
-                    <div>
-                      <div class={styles().entry}>
-                        <button
-                          class={cx(styles().labelButton, 'labelButton')}
-                          onClick={() =>
-                            setExpandedPages((old) =>
-                              old.includes(index)
-                                ? old.filter((d) => d !== index)
-                                : [...old, index],
-                            )
-                          }
-                        >
-                          <Expander
-                            expanded={expandedPages().includes(index)}
-                          />{' '}
-                          [{index * pageSize} ...{' '}
-                          {index * pageSize + pageSize - 1}]
-                        </button>
-                        {expandedPages().includes(index) ? (
-                          <div class={styles().subEntries}>
-                            {entries.map((entry) => handleEntry(entry))}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          ) : null}
-        </>
-      ) : type === 'function' ? (
-        <>
-          <Explorer
-            renderer={renderer}
-            label={
-              <button
-                onClick={refreshValueSnapshot}
-                class={styles().refreshValueBtn}
-              >
-                <span>{label}</span> 🔄{' '}
-              </button>
-            }
-            value={valueSnapshot}
-            defaultExpanded={{}}
-          />
-        </>
-      ) : (
-        <>
-          <span>{label}:</span>{' '}
-          <span class={styles().value}>{displayValue(value)}</span>
-        </>
-      )}
-    </div>
-  )
-}
-
 type HandleEntryFn = (entry: Entry) => Solid.JSX.Element
 
 type ExplorerProps = Partial<RendererProps> & {
-  renderer?: Renderer
   defaultExpanded?: true | Record<string, boolean>
 }
 
@@ -198,7 +91,6 @@ function isIterable(x: any): x is Iterable<unknown> {
 export function Explorer({
   value,
   defaultExpanded,
-  renderer = DefaultRenderer,
   pageSize = 100,
   filterSubEntries,
   ...rest
@@ -255,25 +147,101 @@ export function Explorer({
 
   const subEntryPages = chunkArray(subEntries, pageSize)
 
-  return renderer({
-    handleEntry: (entry) => (
-      <Explorer
-        value={value}
-        renderer={renderer}
-        filterSubEntries={filterSubEntries}
-        {...rest}
-        {...entry}
-      />
-    ),
-    type,
-    subEntries,
-    subEntryPages,
-    value,
-    expanded: expanded,
-    toggleExpanded,
-    pageSize,
-    ...rest,
-  })
+  const [expandedPages, setExpandedPages] = Solid.createSignal<Array<number>>([])
+  const [valueSnapshot, setValueSnapshot] = Solid.createSignal(undefined)
+  const styles = useStyles()
+
+  const refreshValueSnapshot = () => {
+    setValueSnapshot((value as () => any)())
+  }
+
+  const handleEntry = (entry: Entry) => (
+    <Explorer
+      value={value}
+      filterSubEntries={filterSubEntries}
+      {...rest}
+      {...entry}
+    />
+  )
+
+  return (
+    <div class={styles().entry}>
+      {subEntryPages.length ? (
+        <>
+          <button
+            class={styles().expandButton}
+            onClick={() => toggleExpanded()}
+          >
+            <Expander expanded={expanded() ?? false} />
+            {rest.label}
+            <span class={styles().info}>
+              {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
+              {subEntries.length} {subEntries.length > 1 ? `items` : `item`}
+            </span>
+          </button>
+          {(expanded() ?? false) ? (
+            subEntryPages.length === 1 ? (
+              <div class={styles().subEntries}>
+                {subEntries.map((entry, index) => handleEntry(entry))}
+              </div>
+            ) : (
+              <div class={styles().subEntries}>
+                {subEntryPages.map((entries, index) => {
+                  return (
+                    <div>
+                      <div class={styles().entry}>
+                        <button
+                          class={cx(styles().labelButton, 'labelButton')}
+                          onClick={() =>
+                            setExpandedPages((old) =>
+                              old.includes(index)
+                                ? old.filter((d) => d !== index)
+                                : [...old, index],
+                            )
+                          }
+                        >
+                          <Expander
+                            expanded={expandedPages().includes(index)}
+                          />{' '}
+                          [{index * pageSize} ...{' '}
+                          {index * pageSize + pageSize - 1}]
+                        </button>
+                        {expandedPages().includes(index) ? (
+                          <div class={styles().subEntries}>
+                            {entries.map((entry) => handleEntry(entry))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          ) : null}
+        </>
+      ) : type === 'function' ? (
+        <>
+          <Explorer
+            label={
+              <button
+                onClick={refreshValueSnapshot}
+                class={styles().refreshValueBtn}
+              >
+                <span>{rest.label}</span> 🔄{' '}
+              </button>
+            }
+            value={valueSnapshot}
+            defaultExpanded={{}}
+          />
+        </>
+      ) : (
+        <>
+          <span>{rest.label}:</span>{' '}
+          <span class={styles().value}>{displayValue(value)}</span>
+        </>
+      )}
+    </div>
+  )
 }
 
 const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
