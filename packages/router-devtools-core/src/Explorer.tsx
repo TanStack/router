@@ -42,7 +42,7 @@ type Entry = {
 type RendererProps = {
   handleEntry: HandleEntryFn
   label?: Solid.JSX.Element
-  value: unknown
+  value: Solid.Accessor<unknown>
   subEntries: Array<Entry>
   subEntryPages: Array<Array<Entry>>
   type: string
@@ -76,6 +76,7 @@ type HandleEntryFn = (entry: Entry) => Solid.JSX.Element
 
 type ExplorerProps = Partial<RendererProps> & {
   defaultExpanded?: true | Record<string, boolean>
+  value: Solid.Accessor<unknown>
 }
 
 type Property = {
@@ -98,7 +99,7 @@ export function Explorer({
   const [expanded, setExpanded] = Solid.createSignal(Boolean(defaultExpanded))
   const toggleExpanded = () => setExpanded((old) => !old)
 
-  const type = Solid.createMemo(() => typeof value)
+  const type = Solid.createMemo(() => typeof value())
   const subEntries = Solid.createMemo(() => {
     let entries: Array<Property> = []
 
@@ -109,31 +110,35 @@ export function Explorer({
           : defaultExpanded?.[sub.label]
       return {
         ...sub,
+        value: ()=>sub.value,
         defaultExpanded: subDefaultExpanded,
       }
     }
 
-    if (Array.isArray(value)) {
-      entries = value.map((d, i) =>
+    if (Array.isArray(value())) {
+      // any[]
+      entries = (value() as Array<any>).map((d, i) =>
         makeProperty({
           label: i.toString(),
           value: d,
         }),
       )
     } else if (
-      value !== null &&
-      typeof value === 'object' &&
-      isIterable(value) &&
-      typeof value[Symbol.iterator] === 'function'
+      value() !== null &&
+      typeof value() === 'object' &&
+      isIterable(value()) &&
+      typeof (value() as Iterable<unknown>)[Symbol.iterator] === 'function'
     ) {
-      entries = Array.from(value, (val, i) =>
+      // Iterable<unknown>
+      entries = Array.from(value() as Iterable<unknown>, (val, i) =>
         makeProperty({
           label: i.toString(),
           value: val,
         }),
       )
-    } else if (typeof value === 'object' && value !== null) {
-      entries = Object.entries(value).map(([key, val]) =>
+    } else if (typeof value() === 'object' && value() !== null) {
+      // object
+      entries = Object.entries(value() as object).map(([key, val]) =>
         makeProperty({
           label: key,
           value: val,
@@ -155,7 +160,7 @@ export function Explorer({
   const styles = useStyles()
 
   const refreshValueSnapshot = () => {
-    setValueSnapshot((value as () => any)())
+    setValueSnapshot((value() as () => any)())
   }
 
   const handleEntry = (entry: Entry) => (
@@ -240,7 +245,7 @@ export function Explorer({
       ) : (
         <>
           <span>{rest.label}:</span>{' '}
-          <span class={styles().value}>{displayValue(value)}</span>
+          <span class={styles().value}>{displayValue(value())}</span>
         </>
       )}
     </div>

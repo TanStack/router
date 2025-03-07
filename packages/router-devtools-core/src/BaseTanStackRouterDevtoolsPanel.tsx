@@ -329,7 +329,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().routerExplorer}>
               <Explorer
                 label="Router"
-                value={routerExplorerValue()}
+                value={routerExplorerValue}
                 defaultExpanded={{
                   state: {} as any,
                   context: {} as any,
@@ -522,7 +522,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().detailsContent}>
                   <Explorer
                     label="loaderData"
-                    value={activeMatchLoaderData()}
+                    value={activeMatchLoaderData}
                     defaultExpanded={{}}
                   />
                 </div>
@@ -532,7 +532,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsContent}>
               <Explorer
                 label="Match"
-                value={activeMatchValue()}
+                value={activeMatchValue}
                 defaultExpanded={{}}
               />
             </div>
@@ -543,7 +543,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsHeader}>Search Params</div>
             <div class={styles().detailsContent}>
               <Explorer
-                value={locationSearchValue()}
+                value={locationSearchValue}
                 defaultExpanded={Object.keys(
                   routerState().location.search,
                 ).reduce((obj: any, next) => {
