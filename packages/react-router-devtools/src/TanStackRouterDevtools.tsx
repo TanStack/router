@@ -1,6 +1,7 @@
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
-import React, { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useRouter, useRouterState } from '@tanstack/react-router'
+import type React from 'react'
 
 interface DevtoolsOptions {
   /**
@@ -65,8 +66,8 @@ export function TanStackRouterDevtools(
     routerState,
   } = props
 
-  const devToolRef = React.useRef<HTMLDivElement>(null)
-  const [devtools] = React.useState(
+  const devToolRef = useRef<HTMLDivElement>(null)
+  const [devtools] = useState(
     () =>
       new TanStackRouterDevtoolsCore({
         initialIsOpen,
@@ -81,6 +82,12 @@ export function TanStackRouterDevtools(
       }),
   )
 
+  const routerContext = useRouter()
+  const routerStateContext = useRouterState()
+
+  const activeRouter = router ?? routerContext
+  const activeRouterState = routerState ?? routerStateContext
+
   // Update devtools when props change
   useEffect(() => {
     devtools.setRouter(router)
@@ -89,12 +96,6 @@ export function TanStackRouterDevtools(
   useEffect(() => {
     devtools.setRouterState(routerState)
   }, [devtools, routerState])
-
-  const routerContext = useRouter()
-  const routerStateContext = useRouterState()
-
-  const activeRouter = router ?? routerContext
-  const activeRouterState = routerState ?? routerStateContext
 
   useEffect(() => {
     devtools.setOptions({
@@ -125,7 +126,7 @@ export function TanStackRouterDevtools(
     devtools.setRouterState(activeRouterState)
   }, [devtools, activeRouterState])
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (devToolRef.current) {
       devtools.mount(devToolRef.current)
     }
