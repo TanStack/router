@@ -35,7 +35,6 @@ overrides:
   '@tanstack/react-start-server-functions-client': workspace:*
   '@tanstack/react-start-server-functions-ssr': workspace:*
   '@tanstack/start-server-functions-server': workspace:*
-  '@tanstack/start': workspace:*
   '@tanstack/react-start-router-manifest': workspace:*
   '@tanstack/react-start-config': workspace:*
   '@tanstack/react-start-plugin': workspace:*
@@ -832,7 +831,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-devtools
       '@tanstack/start':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../packages/start
       react:
         specifier: ^19.0.0
