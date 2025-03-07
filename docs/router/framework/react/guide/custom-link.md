@@ -168,13 +168,13 @@ import { Link } from '@mui/material'
 import type { LinkProps } from '@mui/material'
 import type { LinkComponent } from '@tanstack/react-router'
 
-interface MUIButtonLinkProps extends Omit<LinkProps, 'href'> {
+interface MUILinkProps extends LinkProps {
   // Add any additional props you want to pass to the Link
 }
 
 const MUILinkComponent = React.forwardRef<
   HTMLAnchorElement,
-  MUIButtonLinkProps
+  MUILinkProps
 >((props, ref) => <Link ref={ref} {...props} />)
 
 const CreatedLinkComponent = createLink(MUILinkComponent)
@@ -197,7 +197,7 @@ import { Button } from '@mui/material'
 import type { ButtonProps } from '@mui/material'
 import type { LinkComponent } from '@tanstack/react-router'
 
-interface MUIButtonLinkProps extends Omit<ButtonProps<'a'>, 'href'> {
+interface MUIButtonLinkProps extends ButtonProps<'a'> {
   // Add any additional props you want to pass to the Button
 }
 

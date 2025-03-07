@@ -4,7 +4,7 @@ import { Button } from '@mui/material'
 import type { ButtonProps } from '@mui/material'
 import type { LinkComponent } from '@tanstack/react-router'
 
-interface MUIButtonLinkProps extends Omit<ButtonProps<'a'>, 'href'> {
+interface MUIButtonLinkProps extends ButtonProps<'a'> {
   // Add any additional props you want to pass to the Button
 }
 
