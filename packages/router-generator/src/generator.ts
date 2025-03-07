@@ -141,19 +141,6 @@ export async function generator(config: Config, root: string) {
     return true
   })
 
-  console.info(
-    '[router-generator]: ENABLED_API_ROUTES_GENERATION',
-    ENABLED_API_ROUTES_GENERATION,
-  )
-  console.info(
-    '[router-generator]: onlyAPIRouteNodes.length',
-    onlyAPIRouteNodes.length,
-  )
-  console.log(
-    '[router-generator]: onlyGeneratorRouteNodes',
-    onlyGeneratorRouteNodes,
-  )
-
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
   const routeNodes: Array<RouteNode> = []
