@@ -43,7 +43,7 @@ interface DevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export const TanStackRouterDevtools: Component<DevtoolsOptions> = (props) => {
+export const TanStackRouterDevtools: Component<DevtoolsOptions> = (props): JSX.Element | null => {
   const usedProps = {
     ...props,
     router: props.router ?? useRouter(),
