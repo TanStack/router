@@ -775,12 +775,12 @@ export async function generator(config: Config, root: string) {
   // Write the route tree file, if it has changed
   const routeTreeWriteResult = await writeIfDifferent(
     path.resolve(config.generatedRouteTree),
-    config.disableRouteTreeFormatting
-      ? existingRouteTreeContent
-      : await format(existingRouteTreeContent, config),
-    config.disableRouteTreeFormatting
-      ? routeConfigFileContent
-      : await format(routeConfigFileContent, config),
+    config.enableRouteTreeFormatting
+      ? await format(existingRouteTreeContent, config)
+      : existingRouteTreeContent,
+    config.enableRouteTreeFormatting
+      ? await format(routeConfigFileContent, config)
+      : routeConfigFileContent,
     {
       beforeWrite: () => {
         logger.log(`🟡 Updating ${config.generatedRouteTree}`)

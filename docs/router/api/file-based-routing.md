@@ -204,8 +204,8 @@ This option allows you to disable the generation of the manifest.
 
 By default, this value is set to `false`.
 
-### `disableRouteTreeFormatting`
+### `enableRouteTreeFormatting`
 
-This option turns off the formatting function on the generated route tree file, which can be time-consuming for large projects.
+This option turns on the formatting function on the generated route tree file, which can be time-consuming for large projects.
 
-By default, this value is set to `false`.
+By default, this value is set to `true`.
