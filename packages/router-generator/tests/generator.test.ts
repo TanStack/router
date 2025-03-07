@@ -71,6 +71,9 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'no-manifest':
       config.disableManifestGeneration = true
       break
+    case 'no-formatted-route-tree':
+      config.enableRouteTreeFormatting = false
+      break
     case 'custom-tokens':
       config.indexToken = '_1nd3x'
       config.routeToken = '_r0ut3_'
