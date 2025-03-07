@@ -206,6 +206,6 @@ By default, this value is set to `false`.
 
 ### `disableRouteTreeFormatting`
 
-This options turns off formatting of the generated route tree which can be time-consuming for large project.
+This option turns off the formatting function on the generated route tree file, which can be time-consuming for large projects.
 
 By default, this value is set to `false`.
