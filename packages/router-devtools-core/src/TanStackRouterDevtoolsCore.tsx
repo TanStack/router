@@ -257,7 +257,6 @@ function FloatingTanStackRouterDevtools({
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
       const run = () => {
-        
         const containerHeight = panelRef!.getBoundingClientRect().height
         if (rootEl()?.parentElement) {
           setRootEl((prev) => {
