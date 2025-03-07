@@ -100,7 +100,7 @@ interface FloatingDevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-class TanStackRouterDevtools {
+class TanStackRouterDevtoolsCore {
   #router: Solid.Signal<AnyRouter>
   #routerState: Solid.Signal<any>
   #position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
@@ -401,4 +401,4 @@ function FloatingTanStackRouterDevtools({
   )
 }
 
-export { TanStackRouterDevtools }
+export { TanStackRouterDevtoolsCore }

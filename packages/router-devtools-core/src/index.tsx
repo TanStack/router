@@ -1,2 +1,2 @@
-export { TanStackRouterDevtools } from './TanStackRouterDevtools'
+export { TanStackRouterDevtoolsCore } from './TanStackRouterDevtoolsCore'
 // export { TanStackRouterDevtoolsPanel } from './TanStackRouterDevtoolsPanel'

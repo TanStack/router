@@ -1,4 +1,4 @@
-import { TanStackRouterDevtools } from '@tanstack/router-devtools-core'
+import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
 import React, { Fragment, useEffect } from 'react'
 
 interface DevtoolsOptions {
@@ -49,7 +49,7 @@ interface DevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export function ReactRouterDevtools(props: DevtoolsOptions) {
+export function TanStackRouterDevtools(props: DevtoolsOptions) {
   const {
     initialIsOpen,
     panelProps,
@@ -65,7 +65,7 @@ export function ReactRouterDevtools(props: DevtoolsOptions) {
   const devToolRef = React.useRef<HTMLDivElement>(null)
   const [devtools] = React.useState(
     () =>
-      new TanStackRouterDevtools({
+      new TanStackRouterDevtoolsCore({
         initialIsOpen,
         panelProps,
         closeButtonProps,
