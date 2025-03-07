@@ -1,17 +1,20 @@
-import { useState } from 'react'
-import { Button, Stack } from '@mui/material'
+import { Stack } from '@mui/material'
+import { useSearch } from '@tanstack/react-router'
+import { CustomButtonLink } from '~/components/CustomButtonLink'
 
-export default function Counter() {
-  const [count, setCount] = useState(0)
+export function Counter() {
+  const { count = 0 } = useSearch({ from: '/' })
+
   return (
     <Stack>
-      <Button
+      <CustomButtonLink
         variant="contained"
         size="large"
-        onClick={() => setCount(count + 1)}
+        to={'/'}
+        search={{ count: count + 1 }}
       >
         Clicks: {count}
-      </Button>
+      </CustomButtonLink>
     </Stack>
   )
 }

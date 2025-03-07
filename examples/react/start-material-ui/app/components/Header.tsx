@@ -1,13 +1,13 @@
 import { AppBar, Box, Toolbar, css, styled } from '@mui/material'
-import RouterLink from '~/components/RouterLink'
+import { CustomLink } from './CustomLink'
 
-const StyledRouterLink = styled(RouterLink)(
+const StyledRouterLink = styled(CustomLink)(
   ({ theme }) => css`
     color: ${theme.palette.common.white};
   `,
 )
 
-export default function Header() {
+export function Header() {
   return (
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">

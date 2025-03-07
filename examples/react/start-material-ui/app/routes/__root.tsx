@@ -11,7 +11,7 @@ import createCache from '@emotion/cache'
 import fontsourceVariableRobotoCss from '@fontsource-variable/roboto?url'
 import React from 'react'
 import { theme } from '~/setup/theme'
-import Header from '~/components/Header'
+import { Header } from '~/components/Header'
 
 export const Route = createRootRoute({
   head: () => ({
