@@ -178,11 +178,9 @@ function RouteComp({
 
 export const BaseTanStackRouterDevtoolsPanel =
   function BaseTanStackRouterDevtoolsPanel({
-    ref,
+    
     ...props
-  }: BaseDevtoolsPanelOptions & {
-    ref?: HTMLDivElement | undefined
-  }): JSX.Element {
+  }: BaseDevtoolsPanelOptions): JSX.Element {
     const {
       isOpen = true,
       setIsOpen,
@@ -277,7 +275,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     return (
       <div
-        ref={ref}
+        
         class={cx(
           styles().devtoolsPanel,
           'TanStackRouterDevtoolsPanel',
