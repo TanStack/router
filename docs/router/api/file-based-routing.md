@@ -25,7 +25,7 @@ The following options are available for configuring the file-based routing:
 - [`routeTreeFileHeader`](#routetreefileheader)
 - [`routeTreeFileFooter`](#routetreefilefooter)
 - [`disableManifestGeneration`](#disablemanifestgeneration)
-- [`disableGeneratedRouteTreeFormatting`](#disablegeneratedroutetreeformatting)
+- [`disableRouteTreeFormatting`](#disablegeneratedroutetreeformatting)
 
 > [!WARNING]
 > Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the **File Naming Conventions** guide, or you may run into unexpected behavior.
@@ -204,7 +204,7 @@ This option allows you to disable the generation of the manifest.
 
 By default, this value is set to `false`.
 
-### `disableGeneratedRouteTreeFormatting`
+### `disableRouteTreeFormatting`
 
 This options turns off formatting of the generated route tree which can be time-consuming for large project.
 

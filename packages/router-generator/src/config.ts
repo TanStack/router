@@ -17,7 +17,7 @@ export const configSchema = z.object({
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
   disableManifestGeneration: z.boolean().optional().default(false),
-  disableGeneratedRouteTreeFormatting: z.boolean().optional().default(false),
+  disableRouteTreeFormatting: z.boolean().optional().default(false),
   apiBase: z.string().optional().default('/api'),
   routeTreeFileHeader: z
     .array(z.string())
