@@ -217,6 +217,7 @@ export async function defineConfig(
               ...tsrConfig,
               enableRouteGeneration: true,
               autoCodeSplitting: true,
+              __enableApiRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -280,6 +281,7 @@ export async function defineConfig(
               ...tsrConfig,
               enableRouteGeneration: false,
               autoCodeSplitting: true,
+              __enableApiRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -346,6 +348,7 @@ export async function defineConfig(
               ...tsrConfig,
               enableRouteGeneration: false,
               autoCodeSplitting: true,
+              __enableApiRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -439,6 +442,7 @@ export async function defineConfig(
             ...tsrConfig,
             enableRouteGeneration: false,
             autoCodeSplitting: true,
+            __enableApiRoutesGeneration: true,
             experimental: {
               ...tsrConfig.experimental,
             },
