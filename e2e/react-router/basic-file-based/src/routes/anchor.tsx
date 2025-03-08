@@ -6,7 +6,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/anchor')({
+export const Route = createFileRoute({
   component: AnchorComponent,
 })
 

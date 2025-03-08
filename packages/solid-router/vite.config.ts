@@ -21,5 +21,14 @@ export default mergeConfig(
   tanstackViteConfig({
     entry: './src/index.tsx',
     srcDir: './src',
+    beforeWriteDeclarationFile: (filePath, content) => {
+      if (filePath.includes('index.d.ts')) {
+        return content.replace(
+          `createFileRouteImpl as createFileRoute`,
+          `createFileRouteGlobal as createFileRoute`,
+        )
+      }
+      return content
+    },
   }),
 )

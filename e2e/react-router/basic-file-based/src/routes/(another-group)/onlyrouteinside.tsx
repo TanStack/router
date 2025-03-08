@@ -4,7 +4,7 @@ import { zodValidator } from '@tanstack/zod-adapter'
 
 const routeApi = getRouteApi('/(another-group)/onlyrouteinside')
 
-export const Route = createFileRoute('/(another-group)/onlyrouteinside')({
+export const Route = createFileRoute({
   validateSearch: zodValidator(z.object({ hello: z.string().optional() })),
   component: () => {
     const searchViaHook = useSearch({

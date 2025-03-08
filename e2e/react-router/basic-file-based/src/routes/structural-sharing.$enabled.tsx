@@ -17,7 +17,7 @@ const enabledSchema = {
   }, z.boolean()),
 }
 
-export const Route = createFileRoute('/structural-sharing/$enabled')({
+export const Route = createFileRoute({
   component: RouteComponent,
   params: {
     parse: (p) => z.object(enabledSchema).parse(p),

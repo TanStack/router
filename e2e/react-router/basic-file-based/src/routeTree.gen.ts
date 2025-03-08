@@ -432,6 +432,152 @@ declare module '@tanstack/react-router' {
   }
 }
 
+declare module './routes/index' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/'>
+  >
+}
+declare module './routes/_layout' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/_layout'>
+  >
+}
+declare module './routes/anchor' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/anchor'>
+  >
+}
+declare module './routes/editing-a' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/editing-a'>
+  >
+}
+declare module './routes/editing-b' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/editing-b'>
+  >
+}
+declare module './routes/posts' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/posts'>
+  >
+}
+declare module './routes/(another-group)/onlyrouteinside' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/(another-group)/onlyrouteinside'>
+  >
+}
+declare module './routes/(group)' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)'>
+  >
+}
+declare module './routes/(group)/_layout' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/_layout'>
+  >
+}
+declare module './routes/(group)/inside' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/inside'>
+  >
+}
+declare module './routes/(group)/lazyinside' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/lazyinside'>
+  >
+}
+declare module './routes/_layout/_layout-2' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/_layout/_layout-2'>
+  >
+}
+declare module './routes/posts.$postId' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/posts/$postId'>
+  >
+}
+declare module './routes/redirect/$target' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/$target'>
+  >
+}
+declare module './routes/structural-sharing.$enabled' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/structural-sharing/$enabled'>
+  >
+}
+declare module './routes/posts.index' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/posts/'>
+  >
+}
+declare module './routes/redirect/index' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/'>
+  >
+}
+declare module './routes/(group)/_layout.insidelayout' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/_layout/insidelayout'>
+  >
+}
+declare module './routes/(group)/subfolder/inside' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/subfolder/inside'>
+  >
+}
+declare module './routes/_layout/_layout-2/layout-a' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/_layout/_layout-2/layout-a'>
+  >
+}
+declare module './routes/_layout/_layout-2/layout-b' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/_layout/_layout-2/layout-b'>
+  >
+}
+declare module './routes/params.single.$value' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/params/single/$value'>
+  >
+}
+declare module './routes/posts_.$postId.edit' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/posts_/$postId/edit'>
+  >
+}
+declare module './routes/redirect/$target/via-beforeLoad' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/$target/via-beforeLoad'>
+  >
+}
+declare module './routes/redirect/$target/via-loader' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/$target/via-loader'>
+  >
+}
+declare module './routes/redirect/preload/first' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/preload/first'>
+  >
+}
+declare module './routes/redirect/preload/second' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/preload/second'>
+  >
+}
+declare module './routes/redirect/preload/third' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/preload/third'>
+  >
+}
+declare module './routes/redirect/$target/index' {
+  const createFileRoute: ReturnType<
+    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/$target/'>
+  >
+}
+
 // Create and export the route tree
 
 interface LayoutLayout2RouteChildren {
