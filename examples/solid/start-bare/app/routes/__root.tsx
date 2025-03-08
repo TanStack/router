@@ -10,7 +10,6 @@ export const Route = createRootRoute({
   component: RootDocument,
 })
 
-
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <>

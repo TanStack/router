@@ -65,7 +65,7 @@ function RootComponent() {
       <hr />
       <Outlet />
       <SolidQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools position='bottom-right' />
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }
