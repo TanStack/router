@@ -38,7 +38,7 @@ export interface DevtoolsPanelOptions {
 export const TanStackRouterDevtoolsPanel: Component<DevtoolsPanelOptions> = (
   props,
 ): JSX.Element | null => {
-  const activeRouter = props.router ?? useRouter();
+  const activeRouter = props.router ?? useRouter()
   const activeRouterState = useRouterState({ router: activeRouter })
 
   const usedProps = {
@@ -48,7 +48,9 @@ export const TanStackRouterDevtoolsPanel: Component<DevtoolsPanelOptions> = (
   }
 
   let devToolRef: HTMLDivElement | undefined
-  const [devtools] = createSignal(new TanStackRouterDevtoolsPanelCore(usedProps))
+  const [devtools] = createSignal(
+    new TanStackRouterDevtoolsPanelCore(usedProps),
+  )
 
   // Update devtools when props change
   createEffect(() => {
