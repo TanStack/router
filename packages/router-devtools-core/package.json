@@ -34,7 +34,7 @@
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
     "test:types:ts58": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build"
+    "build": "vite build && tsc -p tsconfig.build.json"
   },
   "type": "module",
   "types": "./dist/esm/index.d.ts",
@@ -43,8 +43,8 @@
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
+        "types": "./dist/source/index.d.ts",
+        "default": "./dist/source/index.jsx"
       },
       "require": {
         "types": "./dist/cjs/index.d.cts",
