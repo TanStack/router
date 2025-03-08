@@ -1,6 +1,7 @@
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useRouter, useRouterState } from '@tanstack/react-router'
+import type { AnyRouter } from '@tanstack/react-router'
 import type React from 'react'
 
 interface DevtoolsOptions {
@@ -43,8 +44,7 @@ interface DevtoolsOptions {
   /**
    * A boolean variable indicating if the "lite" version of the library is being used
    */
-  router?: any
-  routerState?: any
+  router?: AnyRouter
   /**
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
@@ -62,9 +62,13 @@ export function TanStackRouterDevtools(
     position,
     containerElement,
     shadowDOMTarget,
-    router,
-    routerState,
+    router: propsRouter,
   } = props
+
+  const hookRouter = useRouter({ warn: propsRouter !== undefined })
+  const activeRouter = propsRouter ?? hookRouter
+
+  const activeRouterState = useRouterState({ router: activeRouter })
 
   const devToolRef = useRef<HTMLDivElement>(null)
   const [devtools] = useState(
@@ -77,25 +81,19 @@ export function TanStackRouterDevtools(
         position,
         containerElement,
         shadowDOMTarget,
-        routerState,
-        router,
+        router: activeRouter,
+        routerState: activeRouterState,
       }),
   )
 
-  const routerContext = useRouter()
-  const routerStateContext = useRouterState()
-
-  const activeRouter = router ?? routerContext
-  const activeRouterState = routerState ?? routerStateContext
-
   // Update devtools when props change
   useEffect(() => {
-    devtools.setRouter(router)
-  }, [devtools, router])
+    devtools.setRouter(activeRouter)
+  }, [devtools, activeRouter])
 
   useEffect(() => {
-    devtools.setRouterState(routerState)
-  }, [devtools, routerState])
+    devtools.setRouterState(activeRouterState)
+  }, [devtools, activeRouterState])
 
   useEffect(() => {
     devtools.setOptions({
@@ -117,14 +115,6 @@ export function TanStackRouterDevtools(
     containerElement,
     shadowDOMTarget,
   ])
-
-  useEffect(() => {
-    devtools.setRouter(activeRouter)
-  }, [devtools, activeRouter])
-
-  useEffect(() => {
-    devtools.setRouterState(activeRouterState)
-  }, [devtools, activeRouterState])
 
   useEffect(() => {
     if (devToolRef.current) {
