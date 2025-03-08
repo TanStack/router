@@ -18,6 +18,9 @@ overrides:
   '@tanstack/react-router': workspace:*
   '@tanstack/router-cli': workspace:*
   '@tanstack/router-devtools': workspace:*
+  '@tanstack/router-devtools-core': workspace:^
+  '@tanstack/react-router-devtools': workspace:^
+  '@tanstack/solid-router-devtools': workspace:^
   '@tanstack/router-generator': workspace:*
   '@tanstack/virtual-file-routes': workspace:*
   '@tanstack/router-plugin': workspace:*
@@ -145,9 +148,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -191,9 +194,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -234,9 +237,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -292,9 +295,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -399,9 +402,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -451,12 +454,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-virtual':
         specifier: ^3.13.0
         version: 3.13.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -500,9 +503,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -555,9 +558,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -610,9 +613,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -662,9 +665,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -717,9 +720,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -781,9 +784,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -827,9 +830,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/start':
         specifier: workspace:^
         version: link:../../../packages/start
@@ -897,12 +900,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       prisma:
         specifier: ^5.22.0
         version: 5.22.0
@@ -967,15 +970,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-router-with-query':
         specifier: workspace:*
         version: link:../../../packages/react-router-with-query
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1034,12 +1037,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1123,12 +1126,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1184,12 +1187,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
@@ -1254,12 +1257,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
@@ -1327,12 +1330,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1391,6 +1394,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -1428,6 +1434,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
@@ -1462,6 +1471,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
@@ -1508,6 +1520,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -1542,6 +1557,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-virtual':
         specifier: ^3.13.0
         version: 3.13.0(solid-js@1.9.5)
@@ -1585,6 +1603,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -1628,6 +1649,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -1668,6 +1692,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
@@ -1711,6 +1738,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
@@ -1751,6 +1781,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -1794,6 +1827,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -1837,15 +1873,15 @@ importers:
 
   e2e/solid-router/scroll-restoration-sandbox-vite:
     dependencies:
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
@@ -1886,6 +1922,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
         specifier: workspace:^
         version: link:../../../packages/solid-start
@@ -1941,6 +1980,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
         specifier: workspace:^
         version: link:../../../packages/solid-start
@@ -1966,6 +2008,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
         specifier: workspace:^
         version: link:../../../packages/solid-start
@@ -2024,6 +2069,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
         specifier: workspace:^
         version: link:../../../packages/solid-start
@@ -2085,6 +2133,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
         specifier: workspace:^
         version: link:../../../packages/solid-start
@@ -2137,9 +2188,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2186,9 +2237,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2241,9 +2292,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -2287,9 +2338,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -2328,14 +2379,60 @@ importers:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
+  examples/react/basic-devtools-panel:
+    dependencies:
+      '@tanstack/react-query-devtools':
+        specifier: ^5.67.2
+        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+
   examples/react/basic-file-based:
     dependencies:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2377,6 +2474,49 @@ importers:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
+  examples/react/basic-non-nested-devtools:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+
   examples/react/basic-react-query:
     dependencies:
       '@tanstack/react-query':
@@ -2388,9 +2528,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -2437,9 +2577,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2486,12 +2626,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2556,12 +2696,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2629,9 +2769,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2681,9 +2821,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2733,9 +2873,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -2779,9 +2919,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -2828,9 +2968,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2886,9 +3026,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -2941,9 +3081,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2996,9 +3136,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -3051,9 +3191,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -3097,9 +3237,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -3140,9 +3280,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -3180,9 +3320,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -3214,9 +3354,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -3263,9 +3403,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -3306,9 +3446,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -3358,9 +3498,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -3414,9 +3554,9 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../../../packages/react-router-devtools
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
@@ -3558,9 +3698,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -3601,9 +3741,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -3654,9 +3794,9 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../../../packages/react-router-devtools
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
@@ -3777,9 +3917,9 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../../../packages/react-router-devtools
       '@types/react':
         specifier: ^19.0.8
         version: 19.0.8
@@ -3887,12 +4027,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-virtual':
         specifier: ^3.13.0
         version: 3.13.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -3936,9 +4076,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -4000,12 +4140,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4046,12 +4186,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4101,12 +4241,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       prisma:
         specifier: ^5.22.0
         version: 5.22.0
@@ -4162,15 +4302,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-router-with-query':
         specifier: workspace:*
         version: link:../../../packages/react-router-with-query
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4220,12 +4360,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4269,12 +4409,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4324,12 +4464,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4385,15 +4525,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-router-with-query':
         specifier: workspace:*
         version: link:../../../packages/react-router-with-query
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
@@ -4458,6 +4598,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -4492,12 +4635,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4565,12 +4708,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4611,12 +4754,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -4660,15 +4803,15 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-router-with-query':
         specifier: workspace:*
         version: link:../../../packages/react-router-with-query
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       ky:
         specifier: ^1.7.4
         version: 1.7.4
@@ -4727,9 +4870,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -4776,12 +4919,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -4837,12 +4980,12 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/router-devtools
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -4890,11 +5033,88 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  examples/solid/basic:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: ^1.112.18
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.3(@types/react@19.0.8)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
+  examples/solid/basic-devtools-panel:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: ^1.112.18
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vite-plugin-solid:
+        specifier: ^2.11.6
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   examples/solid/basic-file-based:
     dependencies:
       '@tanstack/solid-router':
         specifier: ^1.112.18
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -4927,6 +5147,46 @@ importers:
         specifier: ^2.11.2
         version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  examples/solid/basic-non-nested-devtools:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: ^1.112.18
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.1)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.1
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.3(@types/react@19.0.8)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
+      vite:
+        specifier: 6.1.0
+        version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   examples/solid/basic-solid-query:
     dependencies:
       '@tanstack/solid-query':
@@ -4938,6 +5198,9 @@ importers:
       '@tanstack/solid-router':
         specifier: ^1.112.18
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -4978,6 +5241,9 @@ importers:
       '@tanstack/solid-router':
         specifier: ^1.112.18
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -5015,6 +5281,9 @@ importers:
       '@tanstack/solid-router':
         specifier: ^1.112.18
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -5055,6 +5324,9 @@ importers:
       '@tanstack/solid-router':
         specifier: ^1.112.18
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -5092,6 +5364,9 @@ importers:
       '@tanstack/solid-router':
         specifier: ^1.112.18
         version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
         specifier: workspace:^
         version: link:../../../packages/solid-start
@@ -5445,6 +5720,25 @@ importers:
       zod:
         specifier: ^3.24.1
         version: 3.24.1
+
+  packages/react-router-devtools:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
+      '@tanstack/router-devtools-core':
+        specifier: workspace:^
+        version: link:../router-devtools-core
+    devDependencies:
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.3.4(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
 
   packages/react-router-with-query:
     devDependencies:
@@ -5843,6 +6137,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../react-router-devtools
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -5862,6 +6159,31 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
+
+  packages/router-devtools-core:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      csstype:
+        specifier: ^3.0.10
+        version: 3.1.3
+      goober:
+        specifier: ^2.1.16
+        version: 2.1.16(csstype@3.1.3)
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+    devDependencies:
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      vite-plugin-solid:
+        specifier: ^2.11.6
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/router-generator:
     dependencies:
@@ -6084,6 +6406,22 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.24.1
+
+  packages/solid-router-devtools:
+    dependencies:
+      '@tanstack/router-devtools-core':
+        specifier: workspace:^
+        version: link:../router-devtools-core
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../solid-router
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+    devDependencies:
+      vite-plugin-solid:
+        specifier: ^2.11.6
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   packages/solid-start:
     dependencies:
@@ -9428,8 +9766,17 @@ packages:
   '@tanstack/query-devtools@5.65.0':
     resolution: {integrity: sha512-g5y7zc07U9D3esMdqUfTEVu9kMHoIaVBsD0+M3LPdAdD710RpTcLiNvJY1JkYXqkq9+NV+CQoemVNpQPBXVsJg==}
 
+  '@tanstack/query-devtools@5.67.2':
+    resolution: {integrity: sha512-O4QXFFd7xqp6EX7sdvc9tsVO8nm4lpWBqwpgjpVLW5g7IeOY6VnS/xvs/YzbRhBVkKTMaJMOUGU7NhSX+YGoNg==}
+
   '@tanstack/react-query-devtools@5.66.0':
     resolution: {integrity: sha512-uB57wA2YZaQ2fPcFW0E9O1zAGDGSbRKRx84uMk/86VyU9jWVxvJ3Uzp+zNm+nZJYsuekCIo2opTdgNuvM3cKgA==}
+    peerDependencies:
+      '@tanstack/react-query': 5.66.0
+      react: ^19.0.0
+
+  '@tanstack/react-query-devtools@5.67.2':
+    resolution: {integrity: sha512-cmj2DxBc+/9btQ66n5xI8wTtAma2BLVa403K7zIYiguzJ/kV201jnGensYqJeu1Rd8uRMLLRM74jLVMLDWNRJA==}
     peerDependencies:
       '@tanstack/react-query': 5.66.0
       react: ^19.0.0
@@ -17655,9 +18002,17 @@ snapshots:
 
   '@tanstack/query-devtools@5.65.0': {}
 
+  '@tanstack/query-devtools@5.67.2': {}
+
   '@tanstack/react-query-devtools@5.66.0(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@tanstack/query-devtools': 5.65.0
+      '@tanstack/react-query': 5.66.0(react@19.0.0)
+      react: 19.0.0
+
+  '@tanstack/react-query-devtools@5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@tanstack/query-devtools': 5.67.2
       '@tanstack/react-query': 5.66.0(react@19.0.0)
       react: 19.0.0
 

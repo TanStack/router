@@ -6,6 +6,7 @@ import {
 } from '@tanstack/solid-router'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import type { QueryClient } from '@tanstack/solid-query'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -64,6 +65,7 @@ function RootComponent() {
       <hr />
       <Outlet />
       <SolidQueryDevtools buttonPosition="top-right" />
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }

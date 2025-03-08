@@ -20,6 +20,7 @@ import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import { createEffect, createMemo } from 'solid-js'
 import { NotFoundError, postQueryOptions, postsQueryOptions } from './posts'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -78,7 +79,7 @@ function RootComponent() {
       <hr />
       <Outlet />
       <SolidQueryDevtools buttonPosition="top-right" />
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }

@@ -9,7 +9,7 @@ import {
   createRouter,
   useElementScrollRestoration,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createVirtualizer } from '@tanstack/solid-virtual'
 import './styles.css'
 import { createRenderEffect } from 'solid-js'
@@ -37,7 +37,7 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
-      {/* <TanStackRouterDevtools /> */}
+      <TanStackRouterDevtools />
     </>
   )
 }

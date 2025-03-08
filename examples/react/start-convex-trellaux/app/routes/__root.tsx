@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import * as React from 'react'
 import { Toaster } from 'react-hot-toast'
 import type { QueryClient } from '@tanstack/react-query'

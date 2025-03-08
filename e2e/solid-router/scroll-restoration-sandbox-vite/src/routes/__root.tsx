@@ -6,7 +6,7 @@ import {
   linkOptions,
 } from '@tanstack/solid-router'
 import { Dynamic } from 'solid-js/web'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -21,7 +21,7 @@ function RootComponent() {
       <Outlet />
       <hr />
       <Nav type="footer" />
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }

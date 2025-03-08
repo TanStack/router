@@ -45,6 +45,18 @@ await publish({
       packageDir: 'packages/router-devtools',
     },
     {
+      name: '@tanstack/solid-router-devtools',
+      packageDir: 'packages/solid-router-devtools',
+    },
+    {
+      name: '@tanstack/react-router-devtools',
+      packageDir: 'packages/react-router-devtools',
+    },
+    {
+      name: '@tanstack/router-devtools-core',
+      packageDir: 'packages/router-devtools-core',
+    },
+    {
       name: '@tanstack/router-generator',
       packageDir: 'packages/router-generator',
     },

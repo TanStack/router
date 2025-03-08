@@ -8,7 +8,7 @@ import {
 import type { QueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import appCss from '~/styles.css?url'
-
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 export interface Context {
   queryClient: QueryClient
 }
@@ -48,6 +48,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body>
         {children}
+        <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>
     </html>

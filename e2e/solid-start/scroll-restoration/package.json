@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
+    "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "@tanstack/zod-adapter": "workspace:^",
     "solid-js": "^1.9.5",

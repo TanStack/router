@@ -1,4 +1,4 @@
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
   Link,
   Outlet,

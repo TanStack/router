@@ -12,6 +12,7 @@ import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 import { Dynamic } from 'solid-js/web'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -67,6 +68,7 @@ function RootComponent() {
       <Outlet />
       <hr />
       <Nav type="footer" />
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }
