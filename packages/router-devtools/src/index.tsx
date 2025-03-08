@@ -3,4 +3,3 @@ console.warn(
 )
 
 export { TanStackRouterDevtoolsInProd as TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-export { TanStackRouterDevtoolsPanel } from './TanStackRouterDevtoolsPanel'
