@@ -558,5 +558,4 @@ export const BaseTanStackRouterDevtoolsPanel =
     )
   }
 
-
-  export default BaseTanStackRouterDevtoolsPanel;
+export default BaseTanStackRouterDevtoolsPanel
