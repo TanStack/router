@@ -7,10 +7,10 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import * as React from 'react'
-import { DefaultCatchBoundary } from 'src/components/DefaultCatchBoundary'
-import { NotFound } from 'src/components/NotFound'
-import { seo } from 'src/utils/seo'
+import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
+import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
+import { seo } from '~/utils/seo'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -104,12 +104,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Users
           </Link>{' '}
           <Link
-            to="/layout-a"
+            to="/route-a"
             activeProps={{
               className: 'font-bold',
             }}
           >
-            Layout
+            Pathless Layout
           </Link>{' '}
           <Link
             to="/deferred"
