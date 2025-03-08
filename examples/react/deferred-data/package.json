@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.112.18",
-    "@tanstack/router-devtools": "^1.112.18",
+    "@tanstack/react-router-devtools": "^1.112.18",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
