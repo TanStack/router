@@ -90,6 +90,7 @@ function App() {
 }
 ```
 
+
 ## Floating Mode
 
 Floating Mode will mount the devtools as a fixed, floating element in your app and provide a toggle in the corner of the screen to show and hide the devtools. This toggle state will be stored and remembered in localStorage across reloads.
@@ -108,6 +109,25 @@ function App() {
   )
 }
 ```
+
+## Fixed Mode
+
+To control the position of the devtools, import the `TanStackRouterDevtoolsPanel`:
+
+```js
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+```
+
+It can then be attached to provided shadow DOM target:
+
+```js
+<TanStackRouterDevtoolsPanel
+  shadowDOMTarget={shadowContainer}
+  router={router}
+/>
+```
+
+Click [here](https://tanstack.com/router/latest/docs/framework/react/examples/basic-devtools-panel) to see a live example of this in StackBlitz.
 
 ### Options
 
