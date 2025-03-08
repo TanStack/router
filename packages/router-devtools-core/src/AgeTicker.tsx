@@ -30,20 +30,6 @@ export function AgeTicker({
   router: Accessor<AnyRouter>
 }) {
   const styles = useStyles()
-  // const rerender = React.useReducer(
-  //   () => ({}),
-  //   () => ({}),
-  // )[1]
-
-  // createEffect(() => {
-  //   const interval = setInterval(() => {
-  //     rerender()
-  //   }, 1000)
-
-  //   return () => {
-  //     clearInterval(interval)
-  //   }
-  // }, [rerender])
 
   if (!match) {
     return null
