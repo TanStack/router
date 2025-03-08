@@ -90,7 +90,6 @@ function App() {
 }
 ```
 
-
 ## Floating Mode
 
 Floating Mode will mount the devtools as a fixed, floating element in your app and provide a toggle in the corner of the screen to show and hide the devtools. This toggle state will be stored and remembered in localStorage across reloads.
