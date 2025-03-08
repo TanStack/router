@@ -1,7 +1,7 @@
 import { useRouter, useRouterState } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
 import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
-import type { AnyRouter, RouterState } from '@tanstack/solid-router'
+import type { AnyRouter } from '@tanstack/solid-router'
 import type { Component, JSX } from 'solid-js'
 
 interface DevtoolsOptions {
@@ -33,10 +33,9 @@ interface DevtoolsOptions {
    */
   containerElement?: string | any
   /**
-   * A boolean variable indicating if the "lite" version of the library is being used
+   * The router instance to use for the devtools.
    */
   router?: AnyRouter
-  routerState?: RouterState<any>
   /**
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
@@ -46,10 +45,13 @@ interface DevtoolsOptions {
 export const TanStackRouterDevtools: Component<DevtoolsOptions> = (
   props,
 ): JSX.Element | null => {
+  const activeRouter = props.router ?? useRouter()
+  const activeRouterState = useRouterState({ router: activeRouter })
+
   const usedProps = {
     ...props,
-    router: props.router ?? useRouter(),
-    routerState: props.routerState ?? useRouterState(),
+    router: activeRouter,
+    routerState: activeRouterState,
   }
 
   let devToolRef: HTMLDivElement | undefined
