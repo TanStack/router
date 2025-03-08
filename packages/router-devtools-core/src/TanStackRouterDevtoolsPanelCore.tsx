@@ -21,7 +21,7 @@ interface TanStackRouterDevtoolsPanelCoreOptions {
   /**
    * A function that toggles the open and close state of the panel
    */
-  setIsOpen: (isOpen: boolean) => void
+  setIsOpen?: (isOpen: boolean) => void
   /**
    * Handles the opening and closing the devtools panel
    */
@@ -43,7 +43,7 @@ class TanStackRouterDevtoolsPanelCore {
   #routerState: any
   #shadowDOMTarget?: ShadowRoot
   #isMounted = false
-  #setIsOpen: (isOpen: boolean) => void
+  #setIsOpen?: (isOpen: boolean) => void
   #dispose?: () => void
 
   constructor(config: TanStackRouterDevtoolsPanelCoreOptions) {

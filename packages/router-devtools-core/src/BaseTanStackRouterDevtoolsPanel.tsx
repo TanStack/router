@@ -37,7 +37,7 @@ export interface BaseDevtoolsPanelOptions {
   /**
    * A function that toggles the open and close state of the panel
    */
-  setIsOpen: (isOpen: boolean) => void
+  setIsOpen?: (isOpen: boolean) => void
   /**
    * Handles the opening and closing the devtools panel
    */
@@ -287,7 +287,10 @@ export const BaseTanStackRouterDevtoolsPanel =
         <button
           class={styles().panelCloseBtn}
           onClick={(e: any) => {
-            setIsOpen(false)
+
+            if (setIsOpen) {
+              setIsOpen(false)
+            }
             onCloseClick(e)
           }}
         >
@@ -313,7 +316,9 @@ export const BaseTanStackRouterDevtoolsPanel =
             <Logo
               aria-hidden
               onClick={(e: any) => {
-                setIsOpen(false)
+                if (setIsOpen) {
+                  setIsOpen(false)
+                }
                 onCloseClick(e)
               }}
             />

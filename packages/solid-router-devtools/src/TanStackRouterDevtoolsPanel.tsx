@@ -20,7 +20,7 @@ export interface DevtoolsPanelOptions {
   /**
    * A function that toggles the open and close state of the panel
    */
-  setIsOpen: (isOpen: boolean) => void
+  setIsOpen?: (isOpen: boolean) => void
   /**
    * Handles the opening and closing the devtools panel
    */
