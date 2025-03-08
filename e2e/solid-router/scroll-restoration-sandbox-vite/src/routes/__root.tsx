@@ -21,7 +21,7 @@ function RootComponent() {
       <Outlet />
       <hr />
       <Nav type="footer" />
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }

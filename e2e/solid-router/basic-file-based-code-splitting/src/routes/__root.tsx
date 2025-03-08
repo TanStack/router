@@ -79,7 +79,7 @@ function RootComponent() {
       </Link>
       <Outlet />
       {/* Start rendering router matches */}
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }
