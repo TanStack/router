@@ -42,7 +42,7 @@ interface DevtoolsOptions {
    */
   containerElement?: string | any
   /**
-   * A boolean variable indicating if the "lite" version of the library is being used
+   * The router instance to use for the devtools.
    */
   router?: AnyRouter
   /**
