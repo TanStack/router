@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-react-example-basic",
+  "name": "tanstack-router-react-example-basic-non-nested-devtools",
   "private": true,
   "type": "module",
   "scripts": {
