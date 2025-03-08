@@ -68,7 +68,7 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-start-client": "workspace:^",
     "h3": "1.13.0",
-    "isbot": "^5.1.22",
+    "isbot": "^5.1.23",
     "jsesc": "^3.1.0",
     "tiny-warning": "^1.0.3",
     "unctx": "^2.4.1"
@@ -78,7 +78,7 @@
     "esbuild": "^0.25.0",
     "solid-js": "^1.9.5",
     "typescript": "^5.7.2",
-    "vite-plugin-solid": "^2.11.2"
+    "vite-plugin-solid": "^2.11.6"
   },
   "peerDependencies": {
     "solid-js": "^1.0.0"
