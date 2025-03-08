@@ -49,17 +49,18 @@ export type UseSearchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
+  TThrow extends boolean = true,
 >(
   opts?: UseSearchBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected,
     TStructuralSharing
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-) => UseSearchResult<TRouter, TFrom, true, TSelected>
+) => ThrowOrOptional<UseSearchResult<TRouter, TFrom, true, TSelected>, TThrow>
 
 export function useSearch<
   TRouter extends AnyRouter = RegisteredRouter,
