@@ -71,7 +71,9 @@ class TanStackRouterDevtoolsPanelCore {
       if (this.#Component) {
         BaseTanStackRouterDevtoolsPanel = this.#Component
       } else {
-        BaseTanStackRouterDevtoolsPanel = lazy(() => import('./BaseTanStackRouterDevtoolsPanel'))
+        BaseTanStackRouterDevtoolsPanel = lazy(
+          () => import('./BaseTanStackRouterDevtoolsPanel'),
+        )
         this.#Component = BaseTanStackRouterDevtoolsPanel
       }
 

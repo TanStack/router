@@ -1,5 +1,5 @@
 import { TanStackRouterDevtools as NotPanel } from './TanStackRouterDevtools'
-import {TanStackRouterDevtoolsPanel as Panel} from './TanStackRouterDevtoolsPanel'
+import { TanStackRouterDevtoolsPanel as Panel } from './TanStackRouterDevtoolsPanel'
 
 export const TanStackRouterDevtools: typeof NotPanel =
   process.env.NODE_ENV !== 'development'
