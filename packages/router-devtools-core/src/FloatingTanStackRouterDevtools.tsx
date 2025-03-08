@@ -192,7 +192,7 @@ export function FloatingTanStackRouterDevtools({
   // Do not render on the server
   if (!isMounted()) return null
 
-  const resolvedHeight = createMemo(()=>devtoolsHeight() ?? 500)
+  const resolvedHeight = createMemo(() => devtoolsHeight() ?? 500)
 
   const basePanelClass = createMemo(() => {
     return cx(

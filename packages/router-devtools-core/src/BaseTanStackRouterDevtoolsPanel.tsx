@@ -279,7 +279,7 @@ export const BaseTanStackRouterDevtoolsPanel =
           'TanStackRouterDevtoolsPanel',
           className ? className() : '',
         )}
-        style={style ? style(): ''}
+        style={style ? style() : ''}
         {...otherPanelProps}
       >
         {handleDragStart ? (
