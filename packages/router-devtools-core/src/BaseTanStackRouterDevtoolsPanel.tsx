@@ -25,7 +25,7 @@ export interface BaseDevtoolsPanelOptions {
   /**
    * The standard React style object used to style a component with inline styles
    */
-  style?: JSX.CSSProperties
+  style?: Accessor<JSX.CSSProperties>
   /**
    * The standard React class property used to style a component with classes
    */
@@ -192,7 +192,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const { onCloseClick } = useDevtoolsOnClose()
     const styles = useStyles()
-    const { className, ...otherPanelProps } = panelProps
+    const { className, style, ...otherPanelProps } = panelProps
 
     invariant(
       router,
@@ -279,6 +279,7 @@ export const BaseTanStackRouterDevtoolsPanel =
           'TanStackRouterDevtoolsPanel',
           className ? className() : '',
         )}
+        style={style ? style(): ''}
         {...otherPanelProps}
       >
         {handleDragStart ? (

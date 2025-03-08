@@ -192,18 +192,26 @@ export function FloatingTanStackRouterDevtools({
   // Do not render on the server
   if (!isMounted()) return null
 
-  const resolvedHeight = devtoolsHeight() ?? 500
+  const resolvedHeight = createMemo(()=>devtoolsHeight() ?? 500)
 
-  const basePanelStyle = createMemo(() => {
+  const basePanelClass = createMemo(() => {
     return cx(
       styles().devtoolsPanelContainer,
       styles().devtoolsPanelContainerVisibility(!!isOpen()),
       styles().devtoolsPanelContainerResizing(isResizing),
       styles().devtoolsPanelContainerAnimation(
         isResolvedOpen(),
-        resolvedHeight + 16,
+        resolvedHeight() + 16,
       ),
     )
+  })
+
+  const basePanelStyle = createMemo(() => {
+    return {
+      height: `${resolvedHeight()}px`,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      ...(panelStyle || {}),
+    }
   })
 
   const buttonStyle = createMemo(() => {
@@ -232,12 +240,8 @@ export function FloatingTanStackRouterDevtools({
           {...otherPanelProps}
           router={router}
           routerState={routerState}
-          className={basePanelStyle}
-          style={{
-            height: `${resolvedHeight}px`,
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            ...(panelStyle || {}),
-          }}
+          className={basePanelClass}
+          style={basePanelStyle}
           isOpen={isResolvedOpen()}
           setIsOpen={setIsOpen}
           handleDragStart={(e) => handleDragStart(panelRef, e)}
