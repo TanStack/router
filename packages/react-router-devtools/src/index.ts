@@ -1,22 +1,20 @@
-import * as Devtools from './TanStackRouterDevtools'
-import * as DevtoolsPanel from './TanStackRouterDevtoolsPanel'
+import { TanStackRouterDevtools as NotPanel } from './TanStackRouterDevtools'
+import {TanStackRouterDevtoolsPanel as Panel} from './TanStackRouterDevtoolsPanel'
 
-export const TanStackRouterDevtools: (typeof Devtools)['TanStackRouterDevtools'] =
+export const TanStackRouterDevtools: typeof NotPanel =
   process.env.NODE_ENV !== 'development'
     ? function () {
         return null
       }
-    : Devtools.TanStackRouterDevtools
+    : NotPanel
 
-export const TanStackRouterDevtoolsInProd: (typeof Devtools)['TanStackRouterDevtools'] =
-  Devtools.TanStackRouterDevtools
+export const TanStackRouterDevtoolsInProd: typeof NotPanel = NotPanel
 
-export const TanStackRouterDevtoolsPanel: (typeof DevtoolsPanel)['TanStackRouterDevtoolsPanel'] =
+export const TanStackRouterDevtoolsPanel: typeof Panel =
   process.env.NODE_ENV !== 'development'
     ? function () {
         return null
       }
-    : DevtoolsPanel.TanStackRouterDevtoolsPanel
+    : Panel
 
-export const TanStackRouterDevtoolsPanelInProd: (typeof DevtoolsPanel)['TanStackRouterDevtoolsPanel'] =
-  DevtoolsPanel.TanStackRouterDevtoolsPanel
+export const TanStackRouterDevtoolsPanelInProd: typeof Panel = Panel

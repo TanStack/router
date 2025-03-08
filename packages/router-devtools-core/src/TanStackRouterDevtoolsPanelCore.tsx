@@ -1,6 +1,5 @@
 import { render } from 'solid-js/web'
-import { createSignal } from 'solid-js'
-import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
+import { createSignal, lazy } from 'solid-js'
 import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
 import type { JSX } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
@@ -45,6 +44,7 @@ class TanStackRouterDevtoolsPanelCore {
   #isMounted = false
   #setIsOpen?: (isOpen: boolean) => void
   #dispose?: () => void
+  #Component: any
 
   constructor(config: TanStackRouterDevtoolsPanelCoreOptions) {
     const { router, routerState, shadowDOMTarget, setIsOpen } = config
@@ -65,6 +65,15 @@ class TanStackRouterDevtoolsPanelCore {
       const [routerState] = this.#routerState
       const shadowDOMTarget = this.#shadowDOMTarget
       const setIsOpen = this.#setIsOpen
+
+      let BaseTanStackRouterDevtoolsPanel
+
+      if (this.#Component) {
+        BaseTanStackRouterDevtoolsPanel = this.#Component
+      } else {
+        BaseTanStackRouterDevtoolsPanel = lazy(() => import('./BaseTanStackRouterDevtoolsPanel'))
+        this.#Component = BaseTanStackRouterDevtoolsPanel
+      }
 
       return (
         <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
