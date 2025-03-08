@@ -120,6 +120,7 @@ export function TanStackStartVitePlugin(
     TanStackRouterVite({
       ...options.tsr,
       enableRouteGeneration: true,
+      __enableAPIRoutesGeneration: true,
       autoCodeSplitting: true,
     }),
     viteReact(options.react),
