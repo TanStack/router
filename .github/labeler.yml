@@ -24,8 +24,6 @@
   - 'packages/react-start-client/**/*'
 'package: react-start-plugin':
   - 'packages/react-start-plugin/**/*'
-'package: react-start-router-manifest':
-  - 'packages/react-start-router-manifest/**/*'
 'package: react-start-server':
   - 'packages/react-start-server/**/*'
 'package: react-start-server-functions-client':

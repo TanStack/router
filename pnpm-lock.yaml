@@ -6688,8 +6688,6 @@ importers:
         specifier: workspace:*
         version: link:../start-server-functions-server
 
-  packages/start-plugin: {}
-
   packages/start-server-functions-server:
     dependencies:
       '@tanstack/server-functions-plugin':
