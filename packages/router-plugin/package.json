@@ -104,12 +104,12 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@babel/core": "^7.26.8",
+    "@babel/core": "^7.26.9",
     "@babel/plugin-syntax-jsx": "^7.25.9",
     "@babel/plugin-syntax-typescript": "^7.25.9",
-    "@babel/template": "^7.26.8",
-    "@babel/traverse": "^7.26.8",
-    "@babel/types": "^7.26.8",
+    "@babel/template": "^7.26.9",
+    "@babel/traverse": "^7.26.9",
+    "@babel/types": "^7.26.9",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-utils": "workspace:^",
@@ -120,7 +120,7 @@
     "babel-dead-code-elimination": "^1.0.9",
     "chokidar": "^3.6.0",
     "unplugin": "^2.1.2",
-    "zod": "^3.24.1"
+    "zod": "^3.24.2"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2",
