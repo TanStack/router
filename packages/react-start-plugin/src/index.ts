@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import { createNitro } from 'nitropack'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
@@ -93,6 +94,49 @@ export function TanStackStartVitePlugin(
         }
 
         return config
+      },
+      resolveId(id) {
+        if (
+          [
+            '/~start/default-server-entry',
+            '/~start/default-client-entry',
+          ].includes(id)
+        ) {
+          return `${id}.tsx`
+        }
+
+        return null
+      },
+      load(id) {
+        const routerImportPath = JSON.stringify(
+          path.resolve(options.root, options.tsr.srcDirectory, 'router'),
+        )
+
+        if (id === '/~start/default-client-entry.tsx') {
+          return `
+import { hydrateRoot } from 'react-dom/client'
+import { StartClient } from '@tanstack/react-start'
+import { createRouter } from ${routerImportPath}
+
+const router = createRouter()
+
+hydrateRoot(document, <StartClient router={router} />)
+`
+        }
+
+        if (id === '/~start/default-server-entry.tsx') {
+          console.log('routerImportPath', routerImportPath)
+          return `
+import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
+import { createRouter } from ${routerImportPath}
+
+export default createStartHandler({
+  createRouter,
+})(defaultStreamHandler)
+`
+        }
+
+        return null
       },
     },
     TanStackStartCompilerPlugin(),

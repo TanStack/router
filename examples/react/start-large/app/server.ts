@@ -1,4 +1,4 @@
-// @ts-nocheck
+// src/server.tsx
 
 import {
   createStartHandler,

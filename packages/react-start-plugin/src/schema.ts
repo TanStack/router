@@ -35,7 +35,7 @@ const viteReactSchema = z.custom<ViteReactOptions>()
 const routersSchema = z.object({
   ssr: z
     .object({
-      entry: z.string().optional().default('ssr.tsx'),
+      entry: z.string().optional(),
       // middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
@@ -43,7 +43,7 @@ const routersSchema = z.object({
     .default({}),
   client: z
     .object({
-      entry: z.string().optional().default('client.tsx'),
+      entry: z.string().optional(),
       base: z.string().optional().default('/_build'),
       vite: viteSchema.optional(),
     })
@@ -56,15 +56,6 @@ const routersSchema = z.object({
         .string()
         .optional()
         .default('global-middleware.ts'),
-      // middleware: z.string().optional(),
-      vite: viteSchema.optional(),
-    })
-    .optional()
-    .default({}),
-  api: z
-    .object({
-      base: z.string().optional().default('/api'),
-      entry: z.string().optional().default('api.ts'),
       // middleware: z.string().optional(),
       vite: viteSchema.optional(),
     })
@@ -84,8 +75,7 @@ const sitemapSchema = z.object({
 })
 
 const tsrConfig = configSchema.partial().extend({
-  // Normally these are `./src/___`, but we're using `./app/___` for Start stuff
-  appDirectory: z.string().optional().default('app'),
+  srcDirectory: z.string().optional().default('src'),
 })
 
 const TanStackStartOptionsSchema = z
@@ -104,20 +94,38 @@ const TanStackStartOptionsSchema = z
 export function getTanStackStartOptions(opts?: TanStackStartInputConfig) {
   const options = TanStackStartOptionsSchema.parse(opts)
 
-  const appDirectory = options.tsr.appDirectory
+  const srcDirectory = options.tsr.srcDirectory
+
   const routesDirectory =
-    options.tsr.routesDirectory ?? path.join(appDirectory, 'routes')
+    options.tsr.routesDirectory ?? path.join(srcDirectory, 'routes')
+
   const generatedRouteTree =
     options.tsr.generatedRouteTree ??
-    path.join(appDirectory, 'routeTree.gen.ts')
-  const clientEntryPath = path.join(appDirectory, options.routers.client.entry)
-  const ssrEntryPath = path.join(appDirectory, options.routers.ssr.entry)
-  const apiEntryPath = path.join(appDirectory, options.routers.api.entry)
-  const globalMiddlewareEntryPath = path.join(
-    appDirectory,
-    options.routers.server.globalMiddlewareEntry,
-  )
-  const hasApiEntry = existsSync(apiEntryPath)
+    path.join(srcDirectory, 'routeTree.gen.ts')
+
+  const clientEntryPath = (() => {
+    if (options.routers.client.entry) {
+      return path.join(srcDirectory, options.routers.client.entry)
+    }
+
+    if (existsSync(path.join(srcDirectory, 'client.tsx'))) {
+      return path.join(srcDirectory, 'client.tsx')
+    }
+
+    return '/~start/default-client-entry'
+  })()
+
+  const serverEntryPath = (() => {
+    if (options.routers.ssr.entry) {
+      return path.join(srcDirectory, options.routers.ssr.entry)
+    }
+
+    if (existsSync(path.join(srcDirectory, 'server.tsx'))) {
+      return path.join(srcDirectory, 'server.tsx')
+    }
+
+    return '/~start/default-server-entry'
+  })()
 
   return {
     ...options,
@@ -130,10 +138,7 @@ export function getTanStackStartOptions(opts?: TanStackStartInputConfig) {
       }),
     },
     clientEntryPath,
-    ssrEntryPath,
-    apiEntryPath,
-    globalMiddlewareEntryPath,
-    hasApiEntry,
+    serverEntryPath,
   }
 }
 

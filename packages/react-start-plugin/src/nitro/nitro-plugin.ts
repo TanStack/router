@@ -5,7 +5,7 @@ import { getRollupConfig } from 'nitropack/rollup'
 
 import { createNitro } from 'nitropack'
 import { buildSitemap } from './build-sitemap.js'
-import { devServerPlugin } from './plugins/dev-server-plugin.js'
+import { devServerPlugin } from './dev-server-plugin.js'
 import type { NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../schema.js'
 
@@ -36,8 +36,8 @@ export function nitroPlugin(
           preset: buildPreset,
           compatibilityDate: '2024-11-19',
           logLevel: options.server.logLevel || 0,
-          srcDir: normalizePath(options.tsr.appDirectory),
-          renderer: filePrefix + normalizePath(options.ssrEntryPath),
+          srcDir: normalizePath(options.tsr.srcDirectory),
+          // renderer: filePrefix + normalizePath(options.ssrEntryPath),
         }
 
         const nitro = await createNitro({

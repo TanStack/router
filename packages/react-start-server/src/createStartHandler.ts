@@ -35,11 +35,20 @@ export function createStartHandler<
         )
       }
 
+      // Handle server functions
       if (
         href.startsWith(path.join('/', process.env.TSS_SERVER_FN_BASE, '/'))
       ) {
         return await serverFunctionsHandler(event)
       }
+
+      // Handle API routes
+      // handleApiRoutes(event)
+      // if (event.handled) {
+      //   return
+      // }
+
+      // If no API routes returned, then fallback to SSR on the router
 
       // Create a history for the router
       const history = createMemoryHistory({

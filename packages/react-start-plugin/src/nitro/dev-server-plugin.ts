@@ -4,7 +4,7 @@
 import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
 import type { Connect, Environment, Plugin, ViteDevServer } from 'vite'
-import type { TanStackStartOutputConfig } from '../../schema.js'
+import type { TanStackStartOutputConfig } from '../schema.js'
 
 export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
   // let config: UserConfig
@@ -19,7 +19,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
       return {
         resolve: {
           alias: {
-            '~start/ssr-entry': options.ssrEntryPath,
+            '/~start/ssr-entry': options.serverEntryPath,
           },
         },
       }
@@ -44,7 +44,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
             }
 
             const serverEntry =
-              await serverEnv.runner.import('~start/ssr-entry')
+              await serverEnv.runner.import('/~start/ssr-entry')
 
             const response = await serverEntry['default'](event)
 

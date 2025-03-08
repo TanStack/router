@@ -1,3 +1,5 @@
+// src/server.tsx
+
 import {
   createStartHandler,
   defaultStreamHandler,

@@ -13,6 +13,7 @@ import {
   defaultContentType as _defaultContentType,
   defineEventHandler as _defineEventHandler,
   deleteCookie as _deleteCookie,
+  eventHandler as _eventHandler,
   fetchWithEvent as _fetchWithEvent,
   getCookie as _getCookie,
   getHeader as _getHeader,
@@ -151,7 +152,6 @@ export {
   defineResponseMiddleware,
   dynamicEventHandler,
   defineWebSocket,
-  eventHandler,
   splitCookiesString,
   fromNodeMiddleware,
   fromPlainHandler,
@@ -226,6 +226,12 @@ export {
 
 export function defineEventHandler(handler: EventHandler) {
   return _defineEventHandler((event) => {
+    return runWithEvent(event, () => handler(event))
+  })
+}
+
+export function eventHandler(handler: EventHandler) {
+  return _eventHandler((event) => {
     return runWithEvent(event, () => handler(event))
   })
 }

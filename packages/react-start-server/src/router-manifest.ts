@@ -61,7 +61,7 @@ export function getStartManifest() {
       async: true,
     },
     children: `${script};\nimport(${JSON.stringify(
-      path.join('/', process.env.TSS_CLIENT_ENTRY),
+      process.env.TSS_CLIENT_ENTRY,
     )})`,
   })
 
