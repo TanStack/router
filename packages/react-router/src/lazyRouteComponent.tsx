@@ -7,16 +7,24 @@ import type { AsyncRouteComponent } from './route'
 // If this happens, the old version in the user's browser would have an outdated
 // URL to the lazy module.
 // In that case, we want to attempt one window refresh to get the latest.
-function isModuleNotFoundError(error: any): boolean {
+function getModuleNotFoundErrorKey(
+  error: any,
+  importerName?: string,
+): string | false {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // safari: "Importing a module script failed."
   if (typeof error?.message !== 'string') return false
-  return (
+  if (
     error.message.startsWith('Failed to fetch dynamically imported module') ||
-    error.message.startsWith('error loading dynamically imported module') ||
-    error.message.startsWith('Importing a module script failed')
+    error.message.startsWith('error loading dynamically imported module')
   )
+    // Use error.message as key because it contains the module path that failed.
+    return error.message
+
+  if (error.message.startsWith('Importing a module script failed'))
+    return importerName ?? error.message
+  return false
 }
 
 export function ClientOnly({
@@ -45,6 +53,7 @@ export function lazyRouteComponent<
   importer: () => Promise<T>,
   exportName?: TKey,
   ssr?: () => boolean,
+  importerName?: string,
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
@@ -69,7 +78,8 @@ export function lazyRouteComponent<
           // there's nothing we want to do about module not found during preload.
           // Record the error, the rest is handled during the render path.
           error = err
-          if (isModuleNotFoundError(error)) {
+          const key = getModuleNotFoundErrorKey(err, importerName)
+          if (key) {
             if (
               error instanceof Error &&
               typeof window !== 'undefined' &&
@@ -78,8 +88,7 @@ export function lazyRouteComponent<
               // Again, we want to reload one time on module not found error and not enter
               // a reload loop if there is some other issue besides an old deploy.
               // That's why we store our reload attempt in sessionStorage.
-              // Use error.message as key because it contains the module path that failed.
-              const storageKey = `tanstack_router_reload:${error.message}`
+              const storageKey = `tanstack_router_reload:${key}`
               if (!sessionStorage.getItem(storageKey)) {
                 sessionStorage.setItem(storageKey, '1')
                 reload = true
