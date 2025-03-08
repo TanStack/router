@@ -287,7 +287,6 @@ export const BaseTanStackRouterDevtoolsPanel =
         <button
           class={styles().panelCloseBtn}
           onClick={(e: any) => {
-
             if (setIsOpen) {
               setIsOpen(false)
             }
