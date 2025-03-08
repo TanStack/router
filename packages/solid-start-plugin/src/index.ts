@@ -86,13 +86,13 @@ export function createTanStackStartPlugin(opts: TanStackStartViteOptions): {
 export function TanStackStartServerFnsAndMiddleware(opts: {
   env: 'server' | 'ssr' | 'client'
 }): Plugin {
-  let ROOT: string = process.cwd()
+  // let ROOT: string = process.cwd()
 
   return {
     name: 'vite-plugin-tanstack-start-create-server-fn',
     enforce: 'pre',
-    configResolved: (config) => {
-      ROOT = config.root
+    configResolved: (_config) => {
+      // ROOT = config.root
     },
     transform(code, id) {
       const url = pathToFileURL(id)
@@ -114,7 +114,6 @@ export function TanStackStartServerFnsAndMiddleware(opts: {
 
       const compiled = compileStartOutput({
         code,
-        root: ROOT,
         filename: id,
         env: opts.env,
       })
