@@ -72,7 +72,6 @@
   },
   "peerDependencies": {
     "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-router-devtools": "workspace:^",
     "csstype": "^3.0.10",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0"
