@@ -15,8 +15,12 @@ import type {
   ResolvePromiseState,
   SsrMatch,
 } from '@tanstack/solid-start-client'
-import type { AnyRouteMatch, AnyRouter } from '@tanstack/solid-router'
-import type { DeferredPromise, Manifest } from '@tanstack/router-core'
+import type {
+  AnyRouteMatch,
+  AnyRouter,
+  DeferredPromise,
+  Manifest,
+} from '@tanstack/router-core'
 
 export type ServerExtractedEntry =
   | ServerExtractedStream

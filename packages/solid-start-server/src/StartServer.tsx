@@ -7,7 +7,7 @@ import {
   useAssets,
 } from 'solid-js/web'
 import { MetaProvider } from '@solidjs/meta'
-import type { AnyRouter } from '@tanstack/solid-router'
+import type { AnyRouter } from '@tanstack/router-core'
 
 export function ServerHeadContent() {
   const tags = useTags()

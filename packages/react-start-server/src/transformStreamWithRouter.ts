@@ -1,7 +1,7 @@
 import { ReadableStream } from 'node:stream/web'
 import { Readable } from 'node:stream'
-import { createControlledPromise } from '@tanstack/react-router'
-import type { AnyRouter } from '@tanstack/react-router'
+import { createControlledPromise } from '@tanstack/router-core'
+import type { AnyRouter } from '@tanstack/router-core'
 
 export function transformReadableStreamWithRouter(
   router: AnyRouter,

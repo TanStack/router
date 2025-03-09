@@ -1,5 +1,5 @@
 import type { EventHandlerResponse } from 'h3'
-import type { AnyRouter } from '@tanstack/solid-router'
+import type { AnyRouter } from '@tanstack/router-core'
 
 export interface HandlerCallback<
   TRouter extends AnyRouter,
