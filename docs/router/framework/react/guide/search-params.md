@@ -348,7 +348,7 @@ const productSearchSchema = S.standardSchemaV1(
       }),
     ),
   }),
-);
+)
 
 export const Route = createFileRoute('/shop/products/')({
   validateSearch: productSearchSchema,
