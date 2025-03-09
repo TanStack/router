@@ -6,11 +6,8 @@ import { startSerializer } from './serializer'
 import type {
   AnyRouter,
   ControllablePromise,
-  MakeRouteMatch,
-} from '@tanstack/solid-router'
-
-import type {
   DeferredPromiseState,
+  MakeRouteMatch,
   Manifest,
   RouteContextOptions,
 } from '@tanstack/router-core'

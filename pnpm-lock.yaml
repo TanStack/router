@@ -5868,6 +5868,9 @@ importers:
       '@tanstack/react-start-server-functions-handler':
         specifier: workspace:*
         version: link:../react-start-server-functions-handler
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
@@ -6521,6 +6524,9 @@ importers:
 
   packages/solid-start-config:
     dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator

@@ -1,4 +1,4 @@
-import type { ControllablePromise } from '@tanstack/solid-router'
+import type { ControllablePromise } from '@tanstack/router-core'
 import type { StartSsrGlobal } from '@tanstack/solid-start-client'
 
 const __TSR_SSR__: StartSsrGlobal = {

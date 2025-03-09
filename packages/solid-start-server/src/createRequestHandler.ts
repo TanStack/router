@@ -2,8 +2,7 @@ import { createMemoryHistory } from '@tanstack/history'
 import { mergeHeaders } from '@tanstack/solid-start-client'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'
-import type { AnyRouter } from '@tanstack/solid-router'
-import type { Manifest } from '@tanstack/router-core'
+import type { AnyRouter, Manifest } from '@tanstack/router-core'
 
 export type RequestHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,

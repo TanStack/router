@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
+    "@tanstack/router-core": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/server-functions-plugin": "workspace:^",

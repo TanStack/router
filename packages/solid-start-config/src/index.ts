@@ -28,7 +28,7 @@ import type {
   TanStackStartOutputConfig,
 } from './schema.js'
 import type { App as VinxiApp } from 'vinxi'
-import type { Manifest } from '@tanstack/solid-router'
+import type { Manifest } from '@tanstack/router-core'
 import type * as vite from 'vite'
 
 export type {

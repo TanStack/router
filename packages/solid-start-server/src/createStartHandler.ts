@@ -4,8 +4,7 @@ import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'
 import type { EventHandlerResponse, H3Event } from 'h3'
-import type { AnyRouter } from '@tanstack/solid-router'
-import type { Manifest } from '@tanstack/router-core'
+import type { AnyRouter, Manifest } from '@tanstack/router-core'
 
 export type CustomizeStartHandler<
   TRouter extends AnyRouter,
