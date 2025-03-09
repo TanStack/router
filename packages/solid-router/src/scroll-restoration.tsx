@@ -145,7 +145,6 @@ export function restoreScroll(
     // Which means we've never seen this location before,
     // we need to check if there is a hash in the URL.
     // If there is, we need to scroll it's ID into view.
-    // const hash = window.location.hash.split('#')[1]
     const hash = routerHistory.location.hash.split('#')[1]
 
     if (hash) {
