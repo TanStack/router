@@ -7,7 +7,7 @@ const config = defineConfig({
     typecheck: { enabled: true },
     name: packageJson.name,
     watch: false,
-    environment: 'jsdom'
+    environment: 'jsdom',
   },
 })
 

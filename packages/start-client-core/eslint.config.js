@@ -5,13 +5,10 @@ import rootConfig from '../../eslint.config.js'
 export default [
   ...rootConfig,
   {
-    // ...pluginReact.configs.recommended,
     files: ['**/*.{ts,tsx}'],
   },
   {
-    plugins: {
-      // 'react-hooks': pluginReactHooks,
-    },
+    plugins: {},
     rules: {},
   },
   {
