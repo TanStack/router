@@ -1,4 +1,4 @@
-// app/routes/__root.tsx
+// src/routes/__root.tsx
 import {
   HeadContent,
   Outlet,
