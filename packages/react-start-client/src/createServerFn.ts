@@ -1,6 +1,7 @@
 import { default as invariant } from 'tiny-invariant'
 import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/react-router'
+import { normalizeValidatorIssues } from '@tanstack/router-core'
 import { mergeHeaders } from './headers'
 import { globalMiddleware } from './registerGlobalMiddleware'
 import { startSerializer } from './serializer'
@@ -802,8 +803,10 @@ function execValidator(validator: AnyValidator, input: unknown): unknown {
     if (result instanceof Promise)
       throw new Error('Async validation not supported')
 
-    if (result.issues)
-      throw new Error(JSON.stringify(result.issues, undefined, 2))
+    if (result.issues) {
+      const issues = normalizeValidatorIssues(result.issues)
+      throw new Error(JSON.stringify(issues, undefined, 2))
+    }
 
     return result.value
   }

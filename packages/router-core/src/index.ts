@@ -312,6 +312,7 @@ export type {
   StrictOrFrom,
 } from './utils'
 
+export { normalizeValidatorIssues } from './validators'
 export type {
   StandardSchemaValidatorProps,
   StandardSchemaValidator,
