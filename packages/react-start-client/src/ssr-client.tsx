@@ -2,7 +2,7 @@ import { isPlainObject } from '@tanstack/router-core'
 
 import invariant from 'tiny-invariant'
 
-import { startSerializer } from './serializer'
+import { startSerializer } from '@tanstack/start-client-core'
 import type {
   AnyRouter,
   ControllablePromise,
