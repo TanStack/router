@@ -27,6 +27,13 @@ export interface AnyStandardSchemaValidateFailure {
 
 export interface AnyStandardSchemaValidateIssue {
   readonly message: string
+  readonly path?:
+    | ReadonlyArray<PropertyKey | AnyStandardSchemaValidatePathSegment>
+    | undefined
+}
+
+export interface AnyStandardSchemaValidatePathSegment {
+  readonly key: PropertyKey
 }
 
 export interface AnyStandardSchemaValidateInput {
@@ -119,3 +126,59 @@ export type ResolveValidatorOutput<TValidator> = unknown extends TValidator
       : TValidator extends AnyValidatorObj
         ? ResolveValidatorOutputFn<TValidator['parse']>
         : ResolveValidatorOutputFn<TValidator>
+
+/**
+ * Creates and returns the dot path of an issue if possible.
+ *
+ * @param issue The issue to get the dot path from.
+ *
+ * @returns The dot path or null.
+ */
+function getDotPath(issue: AnyStandardSchemaValidateIssue): string | null {
+  if (issue.path?.length) {
+    let dotPath = ''
+    for (const item of issue.path) {
+      const key = typeof item === 'object' ? item.key : item
+      if (typeof key === 'string' || typeof key === 'number') {
+        if (dotPath) {
+          dotPath += `.${key}`
+        } else {
+          dotPath += key
+        }
+      } else {
+        return null
+      }
+    }
+    return dotPath
+  }
+  return null
+}
+
+/**
+ * Extract spec-guaranteed issue's fields from validation results.
+ *
+ * @param issues Standard Schema validation issues.
+ *
+ * @returns Normalized issues, with root issues and issues by path.
+ */
+export function normalizeValidatorIssues(
+  issues: ReadonlyArray<AnyStandardSchemaValidateIssue>,
+) {
+  const pathlessIssues: Array<string> = []
+  const issueMap: Record<string, Array<string>> = {}
+
+  for (const issue of issues) {
+    const dotPath = getDotPath(issue)
+    if (dotPath) {
+      if (issueMap[dotPath]) {
+        issueMap[dotPath].push(issue.message)
+      } else {
+        issueMap[dotPath] = [issue.message]
+      }
+    } else {
+      pathlessIssues.push(issue.message)
+    }
+  }
+
+  return { root: pathlessIssues, issues: issueMap }
+}
