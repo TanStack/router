@@ -58,7 +58,6 @@ export { json } from './json'
 export { Meta } from './Meta'
 export { Scripts } from './Scripts'
 export { StartClient } from './StartClient'
-export { mergeHeaders } from './headers'
 export { renderRsc } from './renderRSC'
 export { useServerFn } from './useServerFn'
 export {
@@ -71,4 +70,3 @@ export {
   type ClientExtractedStream,
   type ResolvePromiseState,
 } from './ssr-client'
-export { startSerializer } from './serializer'

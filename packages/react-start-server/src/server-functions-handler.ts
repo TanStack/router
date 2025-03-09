@@ -1,5 +1,5 @@
 import { invariant, isNotFound, isRedirect } from '@tanstack/react-router'
-import { startSerializer } from '@tanstack/react-start-client'
+import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
 import { eventHandler, getEvent, getResponseStatus, toWebRequest } from './h3'

@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { createMemoryHistory } from '@tanstack/history'
-import { mergeHeaders } from '@tanstack/react-start-client'
+import { mergeHeaders } from '@tanstack/start-client-core'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import serverFunctionsHandler from './server-functions-handler'

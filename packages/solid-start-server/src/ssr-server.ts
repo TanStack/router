@@ -7,7 +7,7 @@ import {
   pick,
 } from '@tanstack/router-core'
 import jsesc from 'jsesc'
-import { startSerializer } from '@tanstack/solid-start-client'
+import { startSerializer } from '@tanstack/start-client-core'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import type {
   ClientExtractedBaseEntry,

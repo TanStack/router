@@ -141,6 +141,10 @@ await publish({
     //   packageDir: 'packages/solid-start-router-manifest',
     // },
     {
+      name: '@tanstack/start-client-core',
+      packageDir: 'packages/start-client-core',
+    },
+    {
       name: '@tanstack/react-start',
       packageDir: 'packages/react-start',
     },
