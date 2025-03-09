@@ -7,6 +7,7 @@ import type {
   NonNullableUpdater,
   ParsedLocation,
 } from '@tanstack/router-core'
+import type { RouterHistory } from '@tanstack/history'
 
 export type ScrollRestorationEntry = { scrollX: number; scrollY: number }
 
@@ -52,6 +53,7 @@ export const scrollRestorationCache: ScrollRestorationCache = sessionsStorage
         // update.
         set: (updater) => (
           (scrollRestorationCache.state =
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             functionalUpdate(updater, scrollRestorationCache.state) ||
             scrollRestorationCache.state),
           window.sessionStorage.setItem(
@@ -92,6 +94,7 @@ let ignoreScroll = false
 // toString() it into a script tag to execute as early as possible in the browser
 // during SSR. Additionally, we also call it from within the router lifecycle
 export function restoreScroll(
+  routerHistory: RouterHistory,
   storageKey: string,
   key?: string,
   behavior?: ScrollToOptions['behavior'],
@@ -142,7 +145,8 @@ export function restoreScroll(
     // Which means we've never seen this location before,
     // we need to check if there is a hash in the URL.
     // If there is, we need to scroll it's ID into view.
-    const hash = window.location.hash.split('#')[1]
+    // const hash = window.location.hash.split('#')[1]
+    const hash = routerHistory.location.hash.split('#')[1]
 
     if (hash) {
       const hashScrollIntoViewOptions =
@@ -304,6 +308,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     }
 
     restoreScroll(
+      router.history,
       storageKey,
       cacheKey,
       router.options.scrollRestorationBehavior,
