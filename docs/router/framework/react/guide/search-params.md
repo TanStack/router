@@ -316,6 +316,45 @@ export const Route = createFileRoute('/shop/products/')({
 })
 ```
 
+## Effect/Schema
+
+When using [Effect/Schema](https://effect.website/docs/schema/introduction/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [Effect/Schema](https://effect.website/docs/schema/standard-schema/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { Schema as S } from 'effect'
+
+const productSearchSchema = S.standardSchemaV1(
+  S.Struct({
+    page: S.NumberFromString.pipe(
+      S.optional,
+      S.withDefaults({
+        constructor: () => 1,
+        decoding: () => 1,
+      }),
+    ),
+    filter: S.String.pipe(
+      S.optional,
+      S.withDefaults({
+        constructor: () => '',
+        decoding: () => '',
+      }),
+    ),
+    sort: S.Literal('newest', 'oldest', 'price').pipe(
+      S.optional,
+      S.withDefaults({
+        constructor: () => 'newest' as const,
+        decoding: () => 'newest' as const,
+      }),
+    ),
+  }),
+);
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: productSearchSchema,
+})
+```
+
 ## Reading Search Params
 
 Once your search params have been validated and typed, you're finally ready to start reading and writing to them. There are a few ways to do this in TanStack Router, so let's check them out.
