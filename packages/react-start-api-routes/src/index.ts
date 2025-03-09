@@ -334,6 +334,13 @@ export const defaultAPIFileRouteHandler: StartAPIHandlerCallback = async ({
     return new Response('Not found', { status: 404 })
   }
 
+  // Writing the matched route path to the request allows observability tools to group requests by the parameterized route.
+  Object.defineProperty(request, '_matchedRoutePath', {
+    value: match.routePath,
+    writable: true,
+    configurable: true,
+  });
+
   // The action is the route file that we need to import
   // which contains the possible handlers for the incoming request
   let action: APIRouteReturnType | undefined = undefined
