@@ -1,4 +1,4 @@
-// app/ssr.tsx
+// src/ssr.tsx
 /// <reference types="vinxi/types/server" />
 import {
   createStartHandler,
