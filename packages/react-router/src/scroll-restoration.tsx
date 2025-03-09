@@ -97,7 +97,6 @@ export function restoreScroll(
   behavior: ScrollToOptions['behavior'] | undefined,
   shouldScrollRestoration: boolean | undefined,
   scrollToTopSelectors: Array<string> | undefined,
-  toHash: string,
 ) {
   let byKey: ScrollRestorationByKey
 
@@ -143,7 +142,7 @@ export function restoreScroll(
     // Which means we've never seen this location before,
     // we need to check if there is a hash in the URL.
     // If there is, we need to scroll it's ID into view.
-    const hash = toHash.split('#')[1]
+    const hash = window.location.hash.split('#')[1]
 
     if (hash) {
       const hashScrollIntoViewOptions =
@@ -304,15 +303,12 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       return
     }
 
-    const hash = event.toLocation.hash || ''
-
     restoreScroll(
       storageKey,
       cacheKey,
       router.options.scrollRestorationBehavior || undefined,
       router.isScrollRestoring || undefined,
       router.options.scrollToTopSelectors || undefined,
-      hash,
     )
 
     if (router.isScrollRestoring) {
