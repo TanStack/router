@@ -6,7 +6,7 @@ import {
   getResponseStatus,
   toWebRequest,
 } from '@tanstack/react-start-server'
-import { startSerializer } from '@tanstack/react-start-client'
+import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
 import type { H3Event } from '@tanstack/react-start-server'

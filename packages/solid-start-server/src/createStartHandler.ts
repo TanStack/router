@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { mergeHeaders } from '@tanstack/solid-start-client'
+import { mergeHeaders } from '@tanstack/start-client-core'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'

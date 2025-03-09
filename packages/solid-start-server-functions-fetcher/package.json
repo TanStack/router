@@ -64,7 +64,8 @@
   "dependencies": {
     "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-start-client": "workspace:^"
+    "@tanstack/solid-start-client": "workspace:^",
+    "@tanstack/start-client-core": "workspace:^"
   },
   "devDependencies": {
     "vite-plugin-solid": "^2.11.2",

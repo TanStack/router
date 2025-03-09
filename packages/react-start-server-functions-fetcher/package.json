@@ -64,7 +64,8 @@
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-core": "workspace:^",
-    "@tanstack/react-start-client": "workspace:^"
+    "@tanstack/react-start-client": "workspace:^",
+    "@tanstack/start-client-core": "workspace:^"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

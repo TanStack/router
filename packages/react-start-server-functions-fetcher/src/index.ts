@@ -1,6 +1,6 @@
 import { isNotFound, isRedirect } from '@tanstack/react-router'
 import { encode, isPlainObject } from '@tanstack/router-core'
-import { startSerializer } from '@tanstack/react-start-client'
+import { startSerializer } from '@tanstack/start-client-core'
 import type { MiddlewareClientFnOptions } from '@tanstack/react-start-client'
 
 export async function serverFnFetcher(
