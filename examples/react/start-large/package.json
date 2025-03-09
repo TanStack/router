@@ -7,7 +7,7 @@
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
-    "gen": "node ./app/createRoutes.mjs",
+    "gen": "node ./src/createRoutes.mjs",
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
