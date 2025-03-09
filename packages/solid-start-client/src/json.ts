@@ -1,4 +1,4 @@
-import { mergeHeaders } from './headers'
+import { mergeHeaders } from '@tanstack/start-client-core'
 import type { JsonResponse } from './createServerFn'
 
 export function json<TData>(
