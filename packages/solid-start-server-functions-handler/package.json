@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-start-client": "workspace:^",
+    "@tanstack/start-client-core": "workspace:^",
     "@tanstack/solid-start-server": "workspace:^",
     "tiny-invariant": "^1.3.3"
   },

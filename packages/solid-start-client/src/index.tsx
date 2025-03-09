@@ -71,4 +71,3 @@ export {
   type ClientExtractedStream,
   type ResolvePromiseState,
 } from './ssr-client'
-export { startSerializer } from './serializer'

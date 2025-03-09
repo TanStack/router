@@ -1,9 +1,8 @@
 import { default as invariant } from 'tiny-invariant'
 import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/solid-router'
-import { mergeHeaders } from '@tanstack/start-client-core'
+import { mergeHeaders, startSerializer } from '@tanstack/start-client-core'
 import { globalMiddleware } from './registerGlobalMiddleware'
-import { startSerializer } from './serializer'
 import type { Readable } from 'node:stream'
 import type {
   AnyValidator,

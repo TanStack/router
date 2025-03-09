@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { startSerializer as tf } from '../serializer'
+import { startSerializer as tf } from '@tanstack/start-client-core'
 
 describe('transformer.stringify', () => {
   it('should stringify dates', () => {

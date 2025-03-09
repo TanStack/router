@@ -1,6 +1,6 @@
 import { isNotFound, isRedirect } from '@tanstack/solid-router'
 import { encode, isPlainObject } from '@tanstack/router-core'
-import { startSerializer } from '@tanstack/solid-start-client'
+import { startSerializer } from '@tanstack/start-client-core'
 import type { MiddlewareClientFnOptions } from '@tanstack/solid-start-client'
 
 export async function serverFnFetcher(
