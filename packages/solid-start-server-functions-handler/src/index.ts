@@ -5,11 +5,11 @@ import {
   getEvent,
   getResponseStatus,
   toWebRequest,
-} from '@tanstack/solid-start-server'
+} from '@tanstack/start-server-core'
 import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
-import type { H3Event } from '@tanstack/solid-start-server'
+import type { H3Event } from '@tanstack/start-server-core'
 
 // NOTE: This is a dummy export to silence warnings about
 // only having a default export.

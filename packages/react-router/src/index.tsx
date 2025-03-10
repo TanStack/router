@@ -333,7 +333,6 @@ export type { NotFoundError } from '@tanstack/router-core'
 export * from './typePrimitives'
 
 export { ScriptOnce } from './ScriptOnce'
-
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'
