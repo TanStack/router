@@ -32,9 +32,7 @@ export {
   type ServerFnCtx,
   type ServerFnResponseType,
 } from './createServerFn'
-export {
-  type JsonResponse,
-} from '@tanstack/start-client-core'
+export { type JsonResponse } from '@tanstack/start-client-core'
 export {
   createMiddleware,
   type IntersectAllValidatorInputs,

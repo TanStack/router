@@ -19,7 +19,5 @@ export {
   type IsomorphicFnBase,
 } from './createIsomorphicFn'
 export { serverOnly, clientOnly } from './envOnly'
-export {
-  type JsonResponse,
-} from './createServerFn'
+export { type JsonResponse } from './createServerFn'
 export { json } from './json'
