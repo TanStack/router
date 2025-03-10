@@ -5,7 +5,7 @@ import {
   hashKey,
   hydrate,
 } from '@tanstack/react-query'
-import { isRedirect } from '@tanstack/react-router'
+import { isRedirect } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/react-router'
 import type {
   QueryClient,
