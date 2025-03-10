@@ -2,7 +2,12 @@ import { invariant, isNotFound, isRedirect } from '@tanstack/react-router'
 import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
-import { eventHandler, getEvent, getResponseStatus, toWebRequest } from '@tanstack/start-server-core'
+import {
+  eventHandler,
+  getEvent,
+  getResponseStatus,
+  toWebRequest,
+} from '@tanstack/start-server-core'
 import type { H3Event } from '@tanstack/start-server-core'
 
 // NOTE: This is a dummy export to silence warnings about
