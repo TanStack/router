@@ -5866,9 +5866,6 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
-      '@tanstack/react-start-client':
-        specifier: workspace:*
-        version: link:../react-start-client
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -5928,9 +5925,6 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
-      '@tanstack/react-start-client':
-        specifier: workspace:*
-        version: link:../react-start-client
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -5953,9 +5947,6 @@ importers:
 
   packages/react-start-server-functions-ssr:
     dependencies:
-      '@tanstack/react-start-client':
-        specifier: workspace:*
-        version: link:../react-start-client
       '@tanstack/react-start-server':
         specifier: workspace:*
         version: link:../react-start-server
@@ -6515,9 +6506,6 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../solid-router
-      '@tanstack/solid-start-client':
-        specifier: workspace:^
-        version: link:../solid-start-client
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
@@ -6574,9 +6562,6 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../solid-router
-      '@tanstack/solid-start-client':
-        specifier: workspace:^
-        version: link:../solid-start-client
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
@@ -6621,9 +6606,6 @@ importers:
       '@tanstack/server-functions-plugin':
         specifier: workspace:*
         version: link:../server-functions-plugin
-      '@tanstack/solid-start-client':
-        specifier: workspace:^
-        version: link:../solid-start-client
       '@tanstack/solid-start-server':
         specifier: workspace:^
         version: link:../solid-start-server
@@ -6676,6 +6658,9 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
+      tiny-warning:
+        specifier: ^1.0.3
+        version: 1.0.3
 
   packages/start-server-functions-server:
     dependencies:

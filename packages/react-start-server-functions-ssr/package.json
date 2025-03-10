@@ -62,7 +62,6 @@
   },
   "dependencies": {
     "@tanstack/server-functions-plugin": "workspace:^",
-    "@tanstack/react-start-client": "workspace:^",
     "@tanstack/react-start-server": "workspace:^",
     "@tanstack/react-start-server-functions-fetcher": "workspace:^",
     "@tanstack/start-client-core": "workspace:^",
