@@ -3,7 +3,7 @@ import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
 import { fetchPost } from '../posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/posts/$postId')({
+export const Route = createFileRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: PostErrorComponent,
   notFoundComponent: () => {
