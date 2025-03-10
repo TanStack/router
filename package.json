@@ -96,7 +96,7 @@
       "@tanstack/react-start": "workspace:*",
       "@tanstack/react-start-client": "workspace:*",
       "@tanstack/react-start-server": "workspace:*",
-      "@tanstack/react-start-api-routes": "workspace:*",
+      "@tanstack/start-api-routes": "workspace:*",
       "@tanstack/react-start-server-functions-fetcher": "workspace:*",
       "@tanstack/react-start-server-functions-handler": "workspace:*",
       "@tanstack/react-start-server-functions-client": "workspace:*",

@@ -1,13 +1,13 @@
 {
-  "name": "@tanstack/solid-start-api-routes",
-  "version": "1.111.3",
-  "description": "Modern and scalable routing for React applications",
+  "name": "@tanstack/start-api-routes",
+  "version": "1.114.5",
+  "description": "Modern and scalable routing for applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/start"
+    "directory": "packages/start-api-routes"
   },
   "homepage": "https://tanstack.com/start",
   "funding": {
@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:^",
-    "@tanstack/solid-start-server": "workspace:^",
+    "@tanstack/start-server-core": "workspace:^",
     "vinxi": "0.5.3"
   },
   "devDependencies": {

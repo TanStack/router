@@ -393,7 +393,7 @@ export async function defineConfig(
     '@tanstack/start-server-functions-server',
     '@tanstack/react-start-router-manifest',
     '@tanstack/start-config',
-    '@tanstack/react-start-api-routes',
+    '@tanstack/start-api-routes',
     '@tanstack/server-functions-plugin',
     'tsr:routes-manifest',
     'tsr:server-fn-manifest',

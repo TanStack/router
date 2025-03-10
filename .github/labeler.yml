@@ -18,8 +18,8 @@
   - 'packages/react-router-with-query/**/*'
 'package: react-start':
   - 'packages/react-start/**/*'
-'package: react-start-api-routes':
-  - 'packages/react-start-api-routes/**/*'
+'package: start-api-routes':
+  - 'packages/start-api-routes/**/*'
 'package: react-start-client':
   - 'packages/react-start-client/**/*'
 'package: react-start-config':
@@ -62,8 +62,6 @@
   - 'packages/solid-router-devtools/**/*'
 'package: solid-start':
   - 'packages/solid-start/**/*'
-'package: solid-start-api-routes':
-  - 'packages/solid-start-api-routes/**/*'
 'package: solid-start-client':
   - 'packages/solid-start-client/**/*'
 'package: solid-start-config':
