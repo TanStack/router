@@ -4,5 +4,5 @@
     "jsx": "react-jsx",
     "module": "esnext"
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["src", "tests", "vite.config.ts", "../start-server-core/src/router-manifest.ts", "../start-server-core/src/h3.ts"]
 }

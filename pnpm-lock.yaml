@@ -6669,6 +6669,43 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
 
+  packages/start-server-core:
+    dependencies:
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../history
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
+      h3:
+        specifier: 1.13.0
+        version: 1.13.0
+      isbot:
+        specifier: ^5.1.22
+        version: 5.1.22
+      jsesc:
+        specifier: ^3.1.0
+        version: 3.1.0
+      tiny-warning:
+        specifier: ^1.0.3
+        version: 1.0.3
+      unctx:
+        specifier: ^2.4.1
+        version: 2.4.1
+    devDependencies:
+      '@types/jsesc':
+        specifier: ^3.0.3
+        version: 3.0.3
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
+
   packages/start-server-functions-server:
     dependencies:
       '@tanstack/server-functions-plugin':
