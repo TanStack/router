@@ -9,8 +9,7 @@ export default [
   },
   {
     plugins: {},
-    rules: {
-    },
+    rules: {},
   },
   {
     files: ['**/__tests__/**'],
