@@ -1,11 +1,23 @@
 /// <reference types="vinxi/types/client" />
+export { mergeHeaders } from '@tanstack/start-client-core'
+export { startSerializer } from '@tanstack/start-client-core'
+export {
+  type DehydratedRouter,
+  type ClientExtractedBaseEntry,
+  type StartSsrGlobal,
+  type ClientExtractedEntry,
+  type SsrMatch,
+  type ClientExtractedPromise,
+  type ClientExtractedStream,
+  type ResolvePromiseState,
+} from '@tanstack/start-client-core'
 export {
   createIsomorphicFn,
   type IsomorphicFn,
   type ServerOnlyFn,
   type ClientOnlyFn,
   type IsomorphicFnBase,
-} from './createIsomorphicFn'
+} from '@tanstack/start-client-core'
 export {
   createServerFn,
   type JsonResponse,

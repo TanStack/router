@@ -11,3 +11,10 @@ export {
   type ResolvePromiseState,
   hydrate,
 } from './ssr-client'
+export {
+  createIsomorphicFn,
+  type IsomorphicFn,
+  type ServerOnlyFn,
+  type ClientOnlyFn,
+  type IsomorphicFnBase,
+} from './createIsomorphicFn'
