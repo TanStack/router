@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.114.7",
-    "@tanstack/react-router-devtools": "^1.114.7",
+    "@tanstack/react-router-devtools": "^1.114.11",
     "@tanstack/router-plugin": "^1.114.7",
     "@tanstack/virtual-file-routes": "^1.114.6",
     "react": "^19.0.0",
