@@ -368,14 +368,14 @@ export type StaticCachedResult = {
 
 export type ServerFnStaticCache = {
   getItem: (
-    ctx: MiddlewareResult,
+    ctx: ServerFnMiddlewareResult,
   ) => StaticCachedResult | Promise<StaticCachedResult | undefined>
   setItem: (
-    ctx: MiddlewareResult,
+    ctx: ServerFnMiddlewareResult,
     response: StaticCachedResult,
   ) => Promise<void>
   fetchItem: (
-    ctx: MiddlewareResult,
+    ctx: ServerFnMiddlewareResult,
   ) => StaticCachedResult | Promise<StaticCachedResult | undefined>
 }
 
@@ -399,7 +399,7 @@ export function createServerFnStaticCache(
 }
 
 setServerFnStaticCache(() => {
-  const getStaticCacheUrl = (options: MiddlewareResult, hash: string) => {
+  const getStaticCacheUrl = (options: ServerFnMiddlewareResult, hash: string) => {
     return `/__tsr/staticServerFnCache/${options.functionId}__${hash}.json`
   }
 
@@ -543,7 +543,7 @@ export function flattenMiddlewares(
   return flattened
 }
 
-export type MiddlewareOptions = {
+export type ServerFnMiddlewareOptions = {
   method: Method
   response?: ServerFnResponseType
   data: any
@@ -555,28 +555,28 @@ export type MiddlewareOptions = {
   functionId: string
 }
 
-export type MiddlewareResult = MiddlewareOptions & {
+export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
   result?: unknown
   error?: unknown
   type: ServerFnTypeOrTypeFn<any, any, any, any>
 }
 
-export type NextFn = (ctx: MiddlewareResult) => Promise<MiddlewareResult>
+export type NextFn = (ctx: ServerFnMiddlewareResult) => Promise<ServerFnMiddlewareResult>
 
 export type MiddlewareFn = (
-  ctx: MiddlewareOptions & {
+  ctx: ServerFnMiddlewareOptions & {
     next: NextFn
   },
-) => Promise<MiddlewareResult>
+) => Promise<ServerFnMiddlewareResult>
 
 export const applyMiddleware = async (
   middlewareFn: MiddlewareFn,
-  ctx: MiddlewareOptions,
+  ctx: ServerFnMiddlewareOptions,
   nextFn: NextFn,
 ) => {
   return middlewareFn({
     ...ctx,
-    next: (async (userCtx: MiddlewareResult | undefined = {} as any) => {
+    next: (async (userCtx: ServerFnMiddlewareResult | undefined = {} as any) => {
       // Return the next middleware
       return nextFn({
         ...ctx,

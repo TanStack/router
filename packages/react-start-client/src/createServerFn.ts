@@ -15,12 +15,12 @@ import type {
   CompiledFetcherFnOptions,
   Method,
   MiddlewareFn,
-  MiddlewareOptions,
-  MiddlewareResult,
   NextFn,
   ServerFn,
   ServerFnBaseOptions,
   ServerFnBuilder,
+  ServerFnMiddlewareOptions,
+  ServerFnMiddlewareResult,
   ServerFnResponseType,
   ServerFnType,
   StaticCachedResult,
@@ -219,8 +219,8 @@ export function createServerFn<
 async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
-  opts: MiddlewareOptions,
-): Promise<MiddlewareResult> {
+  opts: ServerFnMiddlewareOptions,
+): Promise<ServerFnMiddlewareResult> {
   const flattenedMiddlewares = flattenMiddlewares([
     ...globalMiddleware,
     ...middlewares,
