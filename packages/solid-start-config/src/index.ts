@@ -398,7 +398,7 @@ export async function defineConfig(
     '@tanstack/start-server-functions-server',
     '@tanstack/solid-start-router-manifest',
     '@tanstack/solid-start-config',
-    '@tanstack/solid-start-api-routes',
+    '@tanstack/start-api-routes',
     '@tanstack/server-functions-plugin',
     'tsr:routes-manifest',
     'tsr:server-fn-manifest',

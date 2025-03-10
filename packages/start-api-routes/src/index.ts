@@ -1,4 +1,4 @@
-import { eventHandler, toWebRequest } from '@tanstack/solid-start-server'
+import { eventHandler, toWebRequest } from '@tanstack/start-server-core'
 import vinxiFileRoutes from 'vinxi/routes'
 import type { ResolveParams } from '@tanstack/router-core'
 
