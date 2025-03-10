@@ -18,7 +18,7 @@ export {
   type ClientOnlyFn,
   type IsomorphicFnBase,
 } from '@tanstack/start-client-core'
-export { createServerFn } from './createServerFn'
+export { createServerFn } from '@tanstack/start-client-core'
 export {
   type ServerFn as FetchFn,
   type ServerFnCtx as FetchFnCtx,
