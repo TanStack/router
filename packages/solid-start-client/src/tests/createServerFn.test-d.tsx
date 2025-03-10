@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest'
+import { createMiddleware } from '@tanstack/start-client-core'
 import { createServerFn } from '../createServerFn'
-import { createMiddleware } from '../createMiddleware'
 import type { Constrain, Validator } from '@tanstack/router-core'
 
 test('createServerFn method with autocomplete', () => {
