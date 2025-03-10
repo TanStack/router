@@ -11,9 +11,7 @@ import {
   clearResponseHeaders as _clearResponseHeaders,
   clearSession as _clearSession,
   defaultContentType as _defaultContentType,
-  defineEventHandler as _defineEventHandler,
   deleteCookie as _deleteCookie,
-  eventHandler as _eventHandler,
   fetchWithEvent as _fetchWithEvent,
   getCookie as _getCookie,
   getHeader as _getHeader,
@@ -68,17 +66,14 @@ import {
   useSession as _useSession,
   writeEarlyHints as _writeEarlyHints,
 } from 'h3'
-
+import { getContext as getUnctxContext } from 'unctx'
 import type {
   Encoding,
-  EventHandler,
   HTTPHeaderName,
   InferEventInput,
   _RequestMiddleware,
   _ResponseMiddleware,
 } from 'h3'
-
-const eventStorage = new AsyncLocalStorage()
 
 function _setContext(event: H3Event, key: string, value: any) {
   event.context[key] = value
@@ -145,6 +140,7 @@ export {
   createAppEventHandler,
   createEvent,
   createRouter,
+  defineEventHandler,
   defineLazyEventHandler,
   defineNodeListener,
   defineNodeMiddleware,
@@ -152,6 +148,7 @@ export {
   defineResponseMiddleware,
   dynamicEventHandler,
   defineWebSocket,
+  eventHandler,
   splitCookiesString,
   fromNodeMiddleware,
   fromPlainHandler,
@@ -224,33 +221,8 @@ export {
   type _ResponseMiddleware,
 } from 'h3'
 
-export function defineEventHandler(handler: EventHandler) {
-  return _defineEventHandler((event) => {
-    return runWithEvent(event, () => handler(event))
-  })
-}
-
-export function eventHandler(handler: EventHandler) {
-  return _eventHandler((event) => {
-    return runWithEvent(event, () => handler(event))
-  })
-}
-
-export async function runWithEvent<T>(
-  event: H3Event,
-  fn: () => T | Promise<T>,
-): Promise<T> {
-  return eventStorage.run(event, fn)
-}
-
-export function getEvent() {
-  const event = eventStorage.getStore() as H3Event | undefined
-  if (!event) {
-    throw new Error(
-      `No HTTPEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.`,
-    )
-  }
-  return event
+function getHTTPEvent() {
+  return getEvent()
 }
 
 export const HTTPEventSymbol = Symbol('$HTTPEvent')
@@ -290,7 +262,12 @@ function createWrapperFunction<TFn extends (...args: Array<any>) => any>(
   return function (...args: Array<any>) {
     const event = args[0]
     if (!isEvent(event)) {
-      args.unshift(getEvent())
+      if (!(globalThis as any).app.config.server.experimental?.asyncContext) {
+        throw new Error(
+          'AsyncLocalStorage was not enabled. Use the `server.experimental.asyncContext: true` option in your app configuration to enable it. Or, pass the instance of HTTPEvent that you have as the first argument to the function.',
+        )
+      }
+      args.unshift(getHTTPEvent())
     } else {
       args[0] =
         event instanceof H3Event || (event as any).__is_event__
@@ -486,5 +463,37 @@ export const readValidatedBody: PrependOverload<
 export const removeResponseHeader = createWrapperFunction(_removeResponseHeader)
 export const getContext = createWrapperFunction(_getContext)
 export const setContext = createWrapperFunction(_setContext)
+
 export const clearResponseHeaders = createWrapperFunction(_clearResponseHeaders)
+
 export const getWebRequest = createWrapperFunction(toWebRequest)
+
+export { createApp as createServer } from 'h3'
+
+function getNitroAsyncContext() {
+  const nitroAsyncContext = getUnctxContext('nitro-app', {
+    asyncContext: (globalThis as any).app.config.server.experimental
+      ?.asyncContext
+      ? true
+      : false,
+    AsyncLocalStorage,
+  })
+
+  return nitroAsyncContext
+}
+
+export function getEvent() {
+  const event = (getNitroAsyncContext().use() as any).event as
+    | H3Event
+    | undefined
+  if (!event) {
+    throw new Error(
+      `No HTTPEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.`,
+    )
+  }
+  return event
+}
+
+export async function handleHTTPEvent(event: H3Event) {
+  return await (globalThis as any).$handle(event)
+}
