@@ -2,8 +2,8 @@ import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
 import { createServerFn } from '@tanstack/react-start'
 import type { ErrorComponentProps } from '@tanstack/react-router'
-import type { User } from 'src/utils/users'
-import { NotFound } from 'src/components/NotFound'
+import type { User } from '~/utils/users'
+import { NotFound } from '~/components/NotFound'
 
 const fetchUser = createServerFn({ method: 'GET', type: 'static' })
   .validator((d: string) => d)

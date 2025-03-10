@@ -5,7 +5,7 @@ import {
   ListItems,
   MyLink,
   useCustomNavigate,
-} from 'src/typePrimitives'
+} from '~/typePrimitives'
 
 export const Route = createFileRoute('/linkProps')({
   component: LinkPropsPage,

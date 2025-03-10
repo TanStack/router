@@ -1,9 +1,9 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
-import { hashPassword, prismaClient } from 'src/utils/prisma'
-import { useMutation } from 'src/hooks/useMutation'
-import { Auth } from 'src/components/Auth'
-import { useAppSession } from 'src/utils/session'
+import { hashPassword, prismaClient } from '~/utils/prisma'
+import { useMutation } from '~/hooks/useMutation'
+import { Auth } from '~/components/Auth'
+import { useAppSession } from '~/utils/session'
 
 export const signupFn = createServerFn()
   .validator(

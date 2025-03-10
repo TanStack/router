@@ -2,7 +2,7 @@ import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { fetchPost } from '../utils/posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
-import { NotFound } from 'src/components/NotFound'
+import { NotFound } from '~/components/NotFound'
 
 const renderPost = createServerFn({ method: 'GET' })
   .validator((postId: string) => postId)
