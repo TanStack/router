@@ -27,7 +27,6 @@ export interface JsonResponse<TData> extends Response {
   json: () => Promise<TData>
 }
 
-
 export type CompiledFetcherFnOptions = {
   method: Method
   data: unknown
@@ -603,7 +602,10 @@ export const applyMiddleware = async (
   } as any)
 }
 
-export function execValidator(validator: AnyValidator, input: unknown): unknown {
+export function execValidator(
+  validator: AnyValidator,
+  input: unknown,
+): unknown {
   if (validator == null) return {}
 
   if ('~standard' in validator) {
