@@ -1,4 +1,4 @@
-import { serverFnFetcher } from '@tanstack/react-start-server-functions-fetcher'
+import { serverFnFetcher } from '@tanstack/start-server-functions-fetcher'
 import type { CreateRpcFn } from '@tanstack/server-functions-plugin'
 
 function sanitizeBase(base: string) {

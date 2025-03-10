@@ -311,7 +311,7 @@ export async function defineConfig(
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative(
-          '@tanstack/solid-start-server-functions-handler',
+          '@tanstack/start-server-functions-handler',
         ),
         plugins: () => {
           const routerType = 'server'
@@ -391,10 +391,10 @@ export async function defineConfig(
     '@tanstack/solid-start/server',
     '@tanstack/solid-start-client',
     '@tanstack/solid-start-server',
-    '@tanstack/solid-start-server-functions-fetcher',
-    '@tanstack/solid-start-server-functions-handler',
-    '@tanstack/solid-start-server-functions-client',
-    '@tanstack/solid-start-server-functions-ssr',
+    '@tanstack/start-server-functions-fetcher',
+    '@tanstack/start-server-functions-handler',
+    '@tanstack/start-server-functions-client',
+    '@tanstack/start-server-functions-ssr',
     '@tanstack/start-server-functions-server',
     '@tanstack/solid-start-router-manifest',
     '@tanstack/solid-start-config',

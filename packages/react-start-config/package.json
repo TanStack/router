@@ -56,7 +56,7 @@
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/server-functions-plugin": "workspace:^",
     "@tanstack/react-start-plugin": "workspace:^",
-    "@tanstack/react-start-server-functions-handler": "workspace:^",
+    "@tanstack/start-server-functions-handler": "workspace:^",
     "@vitejs/plugin-react": "^4.3.4",
     "import-meta-resolve": "^4.1.0",
     "nitropack": "^2.10.4",
