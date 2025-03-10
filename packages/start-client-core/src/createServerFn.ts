@@ -399,7 +399,10 @@ export function createServerFnStaticCache(
 }
 
 setServerFnStaticCache(() => {
-  const getStaticCacheUrl = (options: ServerFnMiddlewareResult, hash: string) => {
+  const getStaticCacheUrl = (
+    options: ServerFnMiddlewareResult,
+    hash: string,
+  ) => {
     return `/__tsr/staticServerFnCache/${options.functionId}__${hash}.json`
   }
 
@@ -561,7 +564,9 @@ export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
   type: ServerFnTypeOrTypeFn<any, any, any, any>
 }
 
-export type NextFn = (ctx: ServerFnMiddlewareResult) => Promise<ServerFnMiddlewareResult>
+export type NextFn = (
+  ctx: ServerFnMiddlewareResult,
+) => Promise<ServerFnMiddlewareResult>
 
 export type MiddlewareFn = (
   ctx: ServerFnMiddlewareOptions & {
@@ -576,7 +581,9 @@ export const applyMiddleware = async (
 ) => {
   return middlewareFn({
     ...ctx,
-    next: (async (userCtx: ServerFnMiddlewareResult | undefined = {} as any) => {
+    next: (async (
+      userCtx: ServerFnMiddlewareResult | undefined = {} as any,
+    ) => {
       // Return the next middleware
       return nextFn({
         ...ctx,
