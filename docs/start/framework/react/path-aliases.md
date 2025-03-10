@@ -12,7 +12,7 @@ By default, TanStack Start does not include path aliases. However, you can easil
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "~/*": ["src/*"]
+      "~/*": ["./src/*"]
     }
   }
 }
