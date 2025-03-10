@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { serverFnFetcher } from '@tanstack/solid-start-server-functions-fetcher'
+import { serverFnFetcher } from '@tanstack/start-server-functions-fetcher'
 import { mergeHeaders } from '@tanstack/start-client-core'
 import { getEvent, getHeaders } from '@tanstack/start-server-core'
 import type { CreateRpcFn } from '@tanstack/server-functions-plugin'

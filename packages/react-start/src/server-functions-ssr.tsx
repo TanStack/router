@@ -1,1 +1,1 @@
-export * from '@tanstack/react-start-server-functions-ssr'
+export * from '@tanstack/start-server-functions-ssr'

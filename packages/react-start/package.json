@@ -147,10 +147,10 @@
     "@tanstack/react-start-server": "workspace:^",
     "@tanstack/react-start-config": "workspace:^",
     "@tanstack/react-start-router-manifest": "workspace:^",
-    "@tanstack/react-start-server-functions-client": "workspace:^",
+    "@tanstack/start-server-functions-client": "workspace:^",
     "@tanstack/start-server-functions-server": "workspace:^",
-    "@tanstack/react-start-server-functions-handler": "workspace:^",
-    "@tanstack/react-start-server-functions-ssr": "workspace:^",
+    "@tanstack/start-server-functions-handler": "workspace:^",
+    "@tanstack/start-server-functions-ssr": "workspace:^",
     "@tanstack/start-api-routes": "workspace:^"
   },
   "peerDependencies": {

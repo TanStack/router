@@ -1,1 +1,1 @@
-export * from '@tanstack/react-start-server-functions-client'
+export * from '@tanstack/start-server-functions-client'

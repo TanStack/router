@@ -56,7 +56,7 @@
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/server-functions-plugin": "workspace:^",
     "@tanstack/solid-start-plugin": "workspace:^",
-    "@tanstack/solid-start-server-functions-handler": "workspace:^",
+    "@tanstack/start-server-functions-handler": "workspace:^",
     "vite-plugin-solid": "^2.11.2",
     "import-meta-resolve": "^4.1.0",
     "nitropack": "^2.10.4",

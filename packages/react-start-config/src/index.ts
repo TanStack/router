@@ -307,7 +307,7 @@ export async function defineConfig(
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative(
-          '@tanstack/react-start-server-functions-handler',
+          '@tanstack/start-server-functions-handler',
         ),
         plugins: () => {
           const routerType = 'server'
@@ -386,10 +386,10 @@ export async function defineConfig(
     '@tanstack/react-start/server',
     '@tanstack/react-start-client',
     '@tanstack/react-start-server',
-    '@tanstack/react-start-server-functions-fetcher',
-    '@tanstack/react-start-server-functions-handler',
-    '@tanstack/react-start-server-functions-client',
-    '@tanstack/react-start-server-functions-ssr',
+    '@tanstack/start-server-functions-fetcher',
+    '@tanstack/start-server-functions-handler',
+    '@tanstack/start-server-functions-client',
+    '@tanstack/start-server-functions-ssr',
     '@tanstack/start-server-functions-server',
     '@tanstack/react-start-router-manifest',
     '@tanstack/react-start-config',
