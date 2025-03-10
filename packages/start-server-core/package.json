@@ -1,13 +1,13 @@
 {
-  "name": "@tanstack/solid-start-server",
-  "version": "1.109.2",
+  "name": "@tanstack/start-server-core",
+  "version": "1.114.4",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/solid-start-server"
+    "directory": "packages/start-server-core"
   },
   "homepage": "https://tanstack.com/start",
   "funding": {
@@ -62,26 +62,18 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@solidjs/meta": "^0.29.4",
     "@tanstack/history": "workspace:^",
     "@tanstack/router-core": "workspace:^",
-    "@tanstack/solid-router": "workspace:^",
     "@tanstack/start-client-core": "workspace:^",
-    "@tanstack/start-server-core": "workspace:^",
+    "tiny-warning": "^1.0.3",
     "h3": "1.13.0",
     "isbot": "^5.1.22",
     "jsesc": "^3.1.0",
-    "tiny-warning": "^1.0.3",
     "unctx": "^2.4.1"
   },
   "devDependencies": {
     "@types/jsesc": "^3.0.3",
     "esbuild": "^0.25.0",
-    "solid-js": "^1.9.5",
-    "typescript": "^5.7.2",
-    "vite-plugin-solid": "^2.11.2"
-  },
-  "peerDependencies": {
-    "solid-js": "^1.0.0"
+    "typescript": "^5.7.2"
   }
 }

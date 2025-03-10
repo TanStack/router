@@ -66,6 +66,7 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/start-client-core": "workspace:^",
+    "@tanstack/start-server-core": "workspace:^",
     "tiny-warning": "^1.0.3",
     "h3": "1.13.0",
     "isbot": "^5.1.22",
