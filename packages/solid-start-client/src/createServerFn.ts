@@ -23,10 +23,7 @@ import type {
   MiddlewareClientFnResult,
   MiddlewareServerFnResult,
 } from './createMiddleware'
-
-export interface JsonResponse<TData> extends Response {
-  json: () => Promise<TData>
-}
+import type { JsonResponse } from '@tanstack/start-client-core'
 
 export type CompiledFetcherFnOptions = {
   method: Method
