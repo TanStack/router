@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js/web'
+import { defineHandlerCallback } from '@tanstack/start-server-core'
 import { StartServer } from './StartServer'
-import { defineHandlerCallback } from './handlerCallback'
 
 export const defaultRenderHandler = defineHandlerCallback(
   async ({ router, responseHeaders }) => {

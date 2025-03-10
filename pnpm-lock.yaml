@@ -39,6 +39,7 @@ overrides:
   '@tanstack/start-server-functions-server': workspace:*
   '@tanstack/react-start-plugin': workspace:*
   '@tanstack/start-client-core': workspace:*
+  '@tanstack/start-server-core': workspace:*
   '@tanstack/eslint-plugin-router': workspace:*
   '@tanstack/server-functions-plugin': workspace:*
   '@tanstack/directive-functions-plugin': workspace:*
@@ -5872,6 +5873,9 @@ importers:
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
+      '@tanstack/start-server-core':
+        specifier: workspace:*
+        version: link:../start-server-core
       h3:
         specifier: 1.13.0
         version: 1.13.0
@@ -6509,6 +6513,9 @@ importers:
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
+      '@tanstack/start-server-core':
+        specifier: workspace:*
+        version: link:../start-server-core
       h3:
         specifier: 1.13.0
         version: 1.13.0

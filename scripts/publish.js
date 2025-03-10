@@ -145,6 +145,10 @@ await publish({
       packageDir: 'packages/start-client-core',
     },
     {
+      name: '@tanstack/start-server-core',
+      packageDir: 'packages/start-server-core',
+    },
+    {
       name: '@tanstack/react-start',
       packageDir: 'packages/react-start',
     },

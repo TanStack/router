@@ -103,6 +103,7 @@
       "@tanstack/start-server-functions-server": "workspace:*",
       "@tanstack/react-start-plugin": "workspace:*",
       "@tanstack/start-client-core": "workspace:*",
+      "@tanstack/start-server-core": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
       "@tanstack/directive-functions-plugin": "workspace:*",
