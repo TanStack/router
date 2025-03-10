@@ -8,10 +8,8 @@ export default [
     files: ['**/*.{ts,tsx}'],
   },
   {
-    plugins: {
-    },
-    rules: {
-    },
+    plugins: {},
+    rules: {},
   },
   {
     files: ['**/__tests__/**'],
