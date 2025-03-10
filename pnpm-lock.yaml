@@ -32,7 +32,7 @@ overrides:
   '@tanstack/react-start': workspace:*
   '@tanstack/react-start-client': workspace:*
   '@tanstack/react-start-server': workspace:*
-  '@tanstack/react-start-api-routes': workspace:*
+  '@tanstack/start-api-routes': workspace:*
   '@tanstack/react-start-server-functions-fetcher': workspace:*
   '@tanstack/react-start-server-functions-client': workspace:*
   '@tanstack/react-start-server-functions-ssr': workspace:*
@@ -5690,9 +5690,6 @@ importers:
 
   packages/react-start:
     dependencies:
-      '@tanstack/react-start-api-routes':
-        specifier: workspace:*
-        version: link:../react-start-api-routes
       '@tanstack/react-start-client':
         specifier: workspace:*
         version: link:../react-start-client
@@ -5708,6 +5705,9 @@ importers:
       '@tanstack/react-start-server-functions-ssr':
         specifier: workspace:*
         version: link:../react-start-server-functions-ssr
+      '@tanstack/start-api-routes':
+        specifier: workspace:*
+        version: link:../start-api-routes
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
@@ -6289,9 +6289,6 @@ importers:
 
   packages/solid-start:
     dependencies:
-      '@tanstack/solid-start-api-routes':
-        specifier: workspace:^
-        version: link:../solid-start-api-routes
       '@tanstack/solid-start-client':
         specifier: workspace:^
         version: link:../solid-start-client
@@ -6313,6 +6310,9 @@ importers:
       '@tanstack/solid-start-server-functions-ssr':
         specifier: workspace:^
         version: link:../solid-start-server-functions-ssr
+      '@tanstack/start-api-routes':
+        specifier: workspace:*
+        version: link:../start-api-routes
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
@@ -6326,22 +6326,6 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.0
-
-  packages/solid-start-api-routes:
-    dependencies:
-      '@tanstack/router-core':
-        specifier: workspace:*
-        version: link:../router-core
-      '@tanstack/solid-start-server':
-        specifier: workspace:^
-        version: link:../solid-start-server
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
-    devDependencies:
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.2
 
   packages/solid-start-client:
     dependencies:
@@ -6632,9 +6616,6 @@ importers:
 
   packages/start:
     dependencies:
-      '@tanstack/react-start-api-routes':
-        specifier: workspace:*
-        version: link:../react-start-api-routes
       '@tanstack/react-start-client':
         specifier: workspace:*
         version: link:../react-start-client
@@ -6653,6 +6634,22 @@ importers:
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
+
+  packages/start-api-routes:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/start-server-core':
+        specifier: workspace:*
+        version: link:../start-server-core
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
 
   packages/start-client-core:
     dependencies:

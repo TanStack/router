@@ -117,10 +117,6 @@ await publish({
     //   packageDir: 'packages/solid-start-config',
     // },
     // {
-    //   name: '@tanstack/solid-start-api-routes',
-    //   packageDir: 'packages/solid-start-api-routes',
-    // },
-    // {
     //   name: '@tanstack/solid-start-server-functions-fetcher',
     //   packageDir: 'packages/solid-start-server-functions-fetcher',
     // },
@@ -165,8 +161,8 @@ await publish({
       packageDir: 'packages/react-start-server',
     },
     {
-      name: '@tanstack/react-start-api-routes',
-      packageDir: 'packages/react-start-api-routes',
+      name: '@tanstack/start-api-routes',
+      packageDir: 'packages/start-api-routes',
     },
     {
       name: '@tanstack/react-start-server-functions-fetcher',

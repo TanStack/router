@@ -32,7 +32,7 @@ export default mergeConfig(
       '@tanstack/solid-start-server-functions-client',
       '@tanstack/start-server-functions-server',
       '@tanstack/solid-start-server-functions-ssr',
-      '@tanstack/solid-start-api-routes',
+      '@tanstack/start-api-routes',
     ],
   }),
 )
