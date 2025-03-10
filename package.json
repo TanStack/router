@@ -43,7 +43,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitest/browser": "^3.0.6",
     "@vitest/ui": "^3.0.6",
-    "eslint": "^9.20.0",
+    "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "jsdom": "^25.0.1",
