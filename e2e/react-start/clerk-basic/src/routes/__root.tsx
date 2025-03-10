@@ -18,8 +18,8 @@ import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 import { getAuth } from '@clerk/tanstack-start/server'
 import { getWebRequest } from '@tanstack/react-start/server'
-import { DefaultCatchBoundary } from 'src/components/DefaultCatchBoundary.js'
-import { NotFound } from 'src/components/NotFound.js'
+import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
+import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
 const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {

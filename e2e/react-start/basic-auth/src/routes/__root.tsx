@@ -9,11 +9,11 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 
-import { DefaultCatchBoundary } from 'src/components/DefaultCatchBoundary.js'
-import { NotFound } from 'src/components/NotFound.js'
+import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
+import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
-import { seo } from 'src/utils/seo.js'
-import { useAppSession } from 'src/utils/session.js'
+import { seo } from '~/utils/seo.js'
+import { useAppSession } from '~/utils/session.js'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   // We need to auth on the server so we have access to secure cookies
