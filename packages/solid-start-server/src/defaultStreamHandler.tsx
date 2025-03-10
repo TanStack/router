@@ -1,11 +1,12 @@
 import { isbot } from 'isbot'
 import * as Solid from 'solid-js/web'
 
+import {
+  defineHandlerCallback,
+  transformReadableStreamWithRouter,
+} from '@tanstack/start-server-core'
+
 import { StartServer } from './StartServer'
-
-import { transformReadableStreamWithRouter } from './transformStreamWithRouter'
-
-import { defineHandlerCallback } from './handlerCallback'
 import type { ReadableStream } from 'node:stream/web'
 
 export const defaultStreamHandler = defineHandlerCallback(
