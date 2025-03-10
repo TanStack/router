@@ -1,5 +1,5 @@
 import type { ControllablePromise } from '@tanstack/router-core'
-import type { StartSsrGlobal } from '@tanstack/solid-start-client'
+import type { StartSsrGlobal } from '@tanstack/start-client-core'
 
 const __TSR_SSR__: StartSsrGlobal = {
   matches: [],

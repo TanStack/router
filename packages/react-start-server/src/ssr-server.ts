@@ -14,7 +14,7 @@ import type {
   DehydratedRouter,
   ResolvePromiseState,
   SsrMatch,
-} from '@tanstack/react-start-client'
+} from '@tanstack/start-client-core'
 import type {
   AnyRouteMatch,
   AnyRouter,
