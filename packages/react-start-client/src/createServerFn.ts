@@ -1,4 +1,4 @@
-import { isNotFound, isRedirect } from '@tanstack/react-router'
+import { isNotFound, isRedirect } from '@tanstack/router-core'
 import {
   applyMiddleware,
   execValidator,

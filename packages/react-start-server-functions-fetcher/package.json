@@ -62,7 +62,6 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/start-client-core": "workspace:^"
   },

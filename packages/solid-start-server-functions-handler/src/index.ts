@@ -1,4 +1,4 @@
-import { isNotFound, isRedirect } from '@tanstack/solid-router'
+import { isNotFound, isRedirect } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import {
   eventHandler,
