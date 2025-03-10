@@ -26,8 +26,8 @@ import {
   trimPathLeft,
   trimPathRight,
 } from '@tanstack/router-core'
-import { isRedirect, isResolvedRedirect } from './redirects'
-import { isNotFound } from './not-found'
+import { isRedirect, isResolvedRedirect } from '@tanstack/router-core'
+import { isNotFound } from '@tanstack/router-core'
 
 import { setupScrollRestoration } from './scroll-restoration'
 import type * as React from 'react'
@@ -92,7 +92,7 @@ import type {
   RouteComponent,
 } from './route'
 
-import type { NotFoundError } from './not-found'
+import type { NotFoundError } from '@tanstack/router-core'
 
 declare module '@tanstack/router-core' {
   export interface RouterOptionsExtensions {
