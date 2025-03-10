@@ -1,1 +1,1 @@
-export * from '@tanstack/solid-start-server-functions-ssr'
+export * from '@tanstack/start-server-functions-ssr'

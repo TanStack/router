@@ -117,22 +117,6 @@ await publish({
     //   packageDir: 'packages/solid-start-config',
     // },
     // {
-    //   name: '@tanstack/solid-start-server-functions-fetcher',
-    //   packageDir: 'packages/solid-start-server-functions-fetcher',
-    // },
-    // {
-    //   name: '@tanstack/solid-start-server-functions-handler',
-    //   packageDir: 'packages/solid-start-server-functions-handler',
-    // },
-    // {
-    //   name: '@tanstack/solid-start-server-functions-client',
-    //   packageDir: 'packages/solid-start-server-functions-client',
-    // },
-    // {
-    //   name: '@tanstack/solid-start-server-functions-ssr',
-    //   packageDir: 'packages/solid-start-server-functions-ssr',
-    // },
-    // {
     //   name: '@tanstack/solid-start-router-manifest',
     //   packageDir: 'packages/solid-start-router-manifest',
     // },
@@ -165,16 +149,16 @@ await publish({
       packageDir: 'packages/start-api-routes',
     },
     {
-      name: '@tanstack/react-start-server-functions-fetcher',
-      packageDir: 'packages/react-start-server-functions-fetcher',
+      name: '@tanstack/start-server-functions-fetcher',
+      packageDir: 'packages/start-server-functions-fetcher',
     },
     {
-      name: '@tanstack/react-start-server-functions-client',
-      packageDir: 'packages/react-start-server-functions-client',
+      name: '@tanstack/start-server-functions-client',
+      packageDir: 'packages/start-server-functions-client',
     },
     {
-      name: '@tanstack/react-start-server-functions-ssr',
-      packageDir: 'packages/react-start-server-functions-ssr',
+      name: '@tanstack/start-server-functions-ssr',
+      packageDir: 'packages/start-server-functions-ssr',
     },
     {
       name: '@tanstack/start-server-functions-server',

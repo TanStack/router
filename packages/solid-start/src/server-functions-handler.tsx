@@ -1,1 +1,1 @@
-export * from '@tanstack/solid-start-server-functions-handler'
+export * from '@tanstack/start-server-functions-handler'

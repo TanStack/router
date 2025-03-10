@@ -4,14 +4,15 @@ import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  isNotFound,
+  isRedirect,
   pick,
   rootRouteId,
 } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { CatchNotFound, isNotFound } from './not-found'
-import { isRedirect } from './redirects'
+import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'

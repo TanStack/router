@@ -14,6 +14,9 @@ import {
   functionalUpdate,
   getLocationChangeInfo,
   interpolatePath,
+  isNotFound,
+  isRedirect,
+  isResolvedRedirect,
   joinPaths,
   last,
   matchPathname,
@@ -26,8 +29,6 @@ import {
   trimPathLeft,
   trimPathRight,
 } from '@tanstack/router-core'
-import { isRedirect, isResolvedRedirect } from './redirects'
-import { isNotFound } from './not-found'
 
 import { setupScrollRestoration } from './scroll-restoration'
 import type * as React from 'react'
@@ -64,6 +65,7 @@ import type {
   MatchRoutesOpts,
   MatchedRoutesResult,
   NavigateFn,
+  NotFoundError,
   ParseLocationFn,
   ParsedLocation,
   PickAsRequired,
@@ -91,8 +93,6 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
-
-import type { NotFoundError } from './not-found'
 
 declare module '@tanstack/router-core' {
   export interface RouterOptionsExtensions {

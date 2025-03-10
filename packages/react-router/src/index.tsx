@@ -261,7 +261,7 @@ export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
-export { redirect, isRedirect } from './redirects'
+export { redirect, isRedirect } from '@tanstack/router-core'
 
 export {
   RouteApi,
@@ -326,18 +326,13 @@ export {
   useStableCallback,
 } from './utils'
 
-export {
-  notFound,
-  isNotFound,
-  CatchNotFound,
-  DefaultGlobalNotFound,
-} from './not-found'
-export type { NotFoundError } from './not-found'
+export { CatchNotFound, DefaultGlobalNotFound } from './not-found'
+export { notFound, isNotFound } from '@tanstack/router-core'
+export type { NotFoundError } from '@tanstack/router-core'
 
 export * from './typePrimitives'
 
 export { ScriptOnce } from './ScriptOnce'
-
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'
