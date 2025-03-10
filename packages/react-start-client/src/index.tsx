@@ -19,7 +19,6 @@ export {
 } from '@tanstack/start-client-core'
 export {
   createServerFn,
-  type JsonResponse,
   type ServerFn as FetchFn,
   type ServerFnCtx as FetchFnCtx,
   type CompiledFetcherFnOptions,
@@ -32,6 +31,7 @@ export {
   type ServerFnCtx,
   type ServerFnResponseType,
 } from './createServerFn'
+export { type JsonResponse } from '@tanstack/start-client-core'
 export {
   createMiddleware,
   type IntersectAllValidatorInputs,
@@ -65,8 +65,8 @@ export {
   registerGlobalMiddleware,
   globalMiddleware,
 } from './registerGlobalMiddleware'
-export { serverOnly, clientOnly } from './envOnly'
-export { json } from './json'
+export { serverOnly, clientOnly } from '@tanstack/start-client-core'
+export { json } from '@tanstack/start-client-core'
 export { Meta } from './Meta'
 export { Scripts } from './Scripts'
 export { StartClient } from './StartClient'
