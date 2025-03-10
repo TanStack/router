@@ -1,5 +1,10 @@
 import invariant from 'tiny-invariant'
-import { joinPaths, notFound, rootRouteId, trimPathLeft } from '@tanstack/router-core'
+import {
+  joinPaths,
+  notFound,
+  rootRouteId,
+  trimPathLeft,
+} from '@tanstack/router-core'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
