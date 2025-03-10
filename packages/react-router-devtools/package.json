@@ -61,6 +61,10 @@
   "engines": {
     "node": ">=12"
   },
+  "dependencies": {
+    "@tanstack/router-devtools-core": "workspace:^",
+    "solid-js": "^1.9.5"
+  },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "react": ">=19",
