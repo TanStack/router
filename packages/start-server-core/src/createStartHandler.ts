@@ -2,13 +2,10 @@ import path from 'node:path'
 import { createMemoryHistory } from '@tanstack/history'
 import { mergeHeaders } from '@tanstack/start-client-core'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
-import {
-  attachRouterServerSsrUtils,
-  dehydrateRouter,
-  getStartManifest,
-} from '@tanstack/start-server-core'
 import serverFunctionsHandler from './server-functions-handler'
-import type { HandlerCallback } from '@tanstack/start-server-core'
+import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
+import { getStartManifest } from './router-manifest'
+import type { HandlerCallback } from './handlerCallback'
 import type { EventHandlerResponse, H3Event } from 'h3'
 import type { AnyRouter } from '@tanstack/router-core'
 

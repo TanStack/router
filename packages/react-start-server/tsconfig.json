@@ -4,5 +4,10 @@
     "jsx": "react-jsx",
     "module": "esnext"
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "../start-server-core/src/server-functions-handler.ts"
+  ]
 }

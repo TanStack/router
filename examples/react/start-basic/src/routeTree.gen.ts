@@ -16,7 +16,6 @@ import { Route as RedirectImport } from './routes/redirect'
 import { Route as PostsImport } from './routes/posts'
 import { Route as DeferredImport } from './routes/deferred'
 import { Route as PathlessLayoutImport } from './routes/_pathlessLayout'
-import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as UsersIndexImport } from './routes/users.index'
 import { Route as PostsIndexImport } from './routes/posts.index'
@@ -55,11 +54,6 @@ const DeferredRoute = DeferredImport.update({
 
 const PathlessLayoutRoute = PathlessLayoutImport.update({
   id: '/_pathlessLayout',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const LayoutRoute = LayoutImport.update({
-  id: '/_layout',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -129,13 +123,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
     '/_pathlessLayout': {
@@ -321,7 +308,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
-  '/_layout': typeof LayoutRoute
   '/_pathlessLayout': typeof PathlessLayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/posts': typeof PostsRouteWithChildren
@@ -369,7 +355,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/_layout'
     | '/_pathlessLayout'
     | '/deferred'
     | '/posts'
@@ -388,7 +373,6 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LayoutRoute: typeof LayoutRoute
   PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
   PostsRoute: typeof PostsRouteWithChildren
@@ -399,7 +383,6 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LayoutRoute: LayoutRoute,
   PathlessLayoutRoute: PathlessLayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
   PostsRoute: PostsRouteWithChildren,
@@ -419,7 +402,6 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/_layout",
         "/_pathlessLayout",
         "/deferred",
         "/posts",
@@ -430,9 +412,6 @@ export const routeTree = rootRoute
     },
     "/": {
       "filePath": "index.tsx"
-    },
-    "/_layout": {
-      "filePath": "_layout.tsx"
     },
     "/_pathlessLayout": {
       "filePath": "_pathlessLayout.tsx",

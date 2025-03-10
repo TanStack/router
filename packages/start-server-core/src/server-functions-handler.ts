@@ -1,19 +1,10 @@
-
 import { isNotFound, isRedirect } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
-
-import {
-  eventHandler,
-  getEvent,
-  getResponseStatus,
-  toWebRequest,
-} from '@tanstack/start-server-core'
-
 import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
 import _serverFnManifest from 'tsr:server-fn-manifest'
-
-import type { H3Event } from '@tanstack/start-server-core'
+import { eventHandler, getEvent, getResponseStatus, toWebRequest } from './h3'
+import type { H3Event } from './h3'
 
 // NOTE: This is a dummy export to silence warnings about
 // only having a default export.
