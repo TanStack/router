@@ -62,7 +62,6 @@
   },
   "dependencies": {
     "@tanstack/server-functions-plugin": "workspace:^",
-    "@tanstack/solid-start-client": "workspace:^",
     "@tanstack/solid-start-server": "workspace:^",
     "@tanstack/solid-start-server-functions-fetcher": "workspace:^",
     "@tanstack/start-client-core": "workspace:^",
