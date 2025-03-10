@@ -64,7 +64,6 @@
   "dependencies": {
     "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-start-client": "workspace:^",
     "@tanstack/start-client-core": "workspace:^"
   },
   "devDependencies": {
