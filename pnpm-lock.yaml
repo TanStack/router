@@ -5725,19 +5725,6 @@ importers:
         specifier: ^0.25.0
         version: 0.25.0
 
-  packages/react-start-api-routes:
-    dependencies:
-      '@tanstack/react-start-server':
-        specifier: workspace:*
-        version: link:../react-start-server
-      '@tanstack/router-core':
-        specifier: workspace:*
-        version: link:../router-core
-    devDependencies:
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.2
-
   packages/react-start-client:
     dependencies:
       '@tanstack/react-router':
@@ -6631,6 +6618,9 @@ importers:
       '@tanstack/react-start-server-functions-ssr':
         specifier: workspace:*
         version: link:../react-start-server-functions-ssr
+      '@tanstack/start-api-routes':
+        specifier: workspace:*
+        version: link:../start-api-routes
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
@@ -6643,9 +6633,6 @@ importers:
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
-      vinxi:
-        specifier: 0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       typescript:
         specifier: ^5.7.2
