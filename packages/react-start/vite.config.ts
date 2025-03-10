@@ -28,7 +28,7 @@ export default mergeConfig(
       '@tanstack/react-start-client',
       '@tanstack/react-start-server',
       '@tanstack/react-start-config',
-      '@tanstack/react-start-router-manifest',
+      '@tanstack/start-router-manifest',
       '@tanstack/react-start-server-functions-client',
       '@tanstack/start-server-functions-server',
       '@tanstack/react-start-server-functions-ssr',

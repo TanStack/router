@@ -146,7 +146,7 @@
     "@tanstack/solid-start-client": "workspace:^",
     "@tanstack/solid-start-server": "workspace:^",
     "@tanstack/solid-start-config": "workspace:^",
-    "@tanstack/solid-start-router-manifest": "workspace:^",
+    "@tanstack/start-router-manifest": "workspace:^",
     "@tanstack/solid-start-server-functions-client": "workspace:^",
     "@tanstack/start-server-functions-server": "workspace:^",
     "@tanstack/solid-start-server-functions-handler": "workspace:^",

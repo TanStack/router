@@ -136,10 +136,6 @@ await publish({
     //   name: '@tanstack/solid-start-server-functions-ssr',
     //   packageDir: 'packages/solid-start-server-functions-ssr',
     // },
-    // {
-    //   name: '@tanstack/solid-start-router-manifest',
-    //   packageDir: 'packages/solid-start-router-manifest',
-    // },
     {
       name: '@tanstack/start-client-core',
       packageDir: 'packages/start-client-core',
@@ -193,8 +189,8 @@ await publish({
       packageDir: 'packages/start-server-functions-server',
     },
     {
-      name: '@tanstack/react-start-router-manifest',
-      packageDir: 'packages/react-start-router-manifest',
+      name: '@tanstack/start-router-manifest',
+      packageDir: 'packages/start-router-manifest',
     },
     {
       name: '@tanstack/start',

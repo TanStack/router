@@ -1,1 +1,1 @@
-export * from '@tanstack/solid-start-router-manifest'
+export * from '@tanstack/start-router-manifest'
