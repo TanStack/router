@@ -1,9 +1,9 @@
 import * as React from 'react'
+import { isNotFound } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import type { ErrorInfo } from 'react'
 import type { NotFoundError } from '@tanstack/router-core'
-import { isNotFound } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => React.ReactElement

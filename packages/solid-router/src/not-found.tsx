@@ -1,8 +1,8 @@
+import { isNotFound } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import type * as Solid from 'solid-js'
 import type { NotFoundError } from '@tanstack/router-core'
-import { isNotFound } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Solid.JSX.Element

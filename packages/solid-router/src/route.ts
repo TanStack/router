@@ -1,10 +1,9 @@
 import invariant from 'tiny-invariant'
-import { joinPaths, rootRouteId, trimPathLeft } from '@tanstack/router-core'
+import { joinPaths, notFound, rootRouteId, trimPathLeft } from '@tanstack/router-core'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
-import { notFound } from '@tanstack/router-core'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
@@ -17,6 +16,7 @@ import type {
   LazyRoute as CoreLazyRoute,
   Route as CoreRoute,
   ErrorComponentProps,
+  NotFoundError,
   NotFoundRouteProps,
   RegisteredRouter,
   ResolveFullPath,
@@ -48,7 +48,6 @@ import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type * as Solid from 'solid-js'
-import type { NotFoundError } from '@tanstack/router-core'
 import type { UseRouteContextRoute } from './useRouteContext'
 
 declare module '@tanstack/router-core' {
