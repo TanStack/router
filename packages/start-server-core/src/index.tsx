@@ -11,4 +11,6 @@ export { getStartManifest } from './router-manifest'
 export { defineHandlerCallback } from './handlerCallback'
 export type { HandlerCallback } from './handlerCallback'
 
+export { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
+
 export * from './h3'
