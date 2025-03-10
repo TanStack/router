@@ -20,6 +20,8 @@ export {
 } from '@tanstack/start-client-core'
 export {
   createServerFn,
+} from './createServerFn'
+export {
   type ServerFn as FetchFn,
   type ServerFnCtx as FetchFnCtx,
   type CompiledFetcherFnOptions,
@@ -31,7 +33,7 @@ export {
   type ServerFn,
   type ServerFnCtx,
   type ServerFnResponseType,
-} from './createServerFn'
+} from '@tanstack/start-client-core'
 export { type JsonResponse } from '@tanstack/start-client-core'
 export {
   createMiddleware,
@@ -61,11 +63,11 @@ export {
   type MiddlewareServerFnOptions,
   type MiddlewareServerNextFn,
   type ServerResultWithContext,
-} from './createMiddleware'
+} from '@tanstack/start-client-core'
 export {
   registerGlobalMiddleware,
   globalMiddleware,
-} from './registerGlobalMiddleware'
+} from '@tanstack/start-client-core'
 export { serverOnly, clientOnly } from '@tanstack/start-client-core'
 export { json } from '@tanstack/start-client-core'
 export { Meta } from './Meta'
