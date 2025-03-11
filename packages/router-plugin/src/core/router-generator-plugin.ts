@@ -85,8 +85,19 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         ROOT = config.root
         userConfig = getConfig(options, ROOT)
 
+        if (config.command === 'serve') {
+          await run(generate)
+        }
+      },
+      async buildStart() {
+        if (this.environment.name === 'server') {
+          // When building in environment mode, we only need to generate routes
+          // for the client environment
+          return
+        }
         await run(generate)
       },
+      sharedDuringBuild: true,
     },
     async rspack(compiler) {
       userConfig = getConfig(options, ROOT)

@@ -9,7 +9,7 @@ import { devServerPlugin } from './dev-server-plugin.js'
 import type { NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../schema.js'
 
-import type { PluginOption } from 'vite'
+import type { EnvironmentOptions, PluginOption } from 'vite'
 
 export type {
   TanStackStartInputConfig,
@@ -26,6 +26,9 @@ export function nitroPlugin(
     devServerPlugin(options),
     {
       name: 'tanstack-vite-plugin-nitro',
+      configResolved(config) {
+        // console.log(config.environments)
+      },
       async config() {
         const buildPreset =
           process.env['BUILD_PRESET'] ??
@@ -50,21 +53,41 @@ export function nitroPlugin(
 
         const nitroRollupOptions = getRollupConfig(nitro)
 
-        return {
-          environments: {
-            server: {
-              build: {
-                ssr: true,
-                rollupOptions: {
-                  ...nitroRollupOptions,
-                  plugins: nitroRollupOptions.plugins as Array<PluginOption>,
-                },
+        const clientOptions: EnvironmentOptions = {
+          build: {
+            rollupOptions: {
+              input: {
+                main: options.clientEntryPath,
               },
             },
           },
+        }
+
+        const serverOptions: EnvironmentOptions = {
+          build: {
+            ssr: true,
+            sourcemap: true,
+            rollupOptions: {
+              ...nitroRollupOptions,
+              output: {
+                ...nitroRollupOptions.output,
+                sourcemap: undefined,
+              },
+              // plugins: nitroRollupOptions.plugins as Array<PluginOption>,
+            },
+          },
+        }
+
+        // console.log('serverOptions', serverOptions.build?.rollupOptions)
+
+        return {
+          environments: {
+            client: clientOptions,
+            server: serverOptions,
+          },
           builder: {
             sharedPlugins: true,
-            buildApp: async (builder) => {
+            async buildApp(builder) {
               if (!builder.environments['client']) {
                 throw new Error('Client environment not found')
               }
@@ -73,8 +96,17 @@ export function nitroPlugin(
                 throw new Error('SSR environment not found')
               }
 
+              console.log(
+                builder.environments['server'].config.build.rollupOptions,
+              )
+
+              console.log('\n\nBuilding client...')
               await builder.build(builder.environments['client'])
+
+              console.log('\n\nBuilding server...')
               await builder.build(builder.environments['server'])
+
+              console.log('\n\nBuilding index.html...')
 
               if (nitroConfig.prerender?.routes?.length && options.sitemap) {
                 console.log('Building Sitemap...')
@@ -87,7 +119,7 @@ export function nitroPlugin(
               }
 
               console.log(
-                `\n\nThe 'tanstack-platform' server has been successfully built.`,
+                `\n\n✅ Client and server bundles successfully built.`,
               )
             },
           },
