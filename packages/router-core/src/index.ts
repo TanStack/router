@@ -372,4 +372,7 @@ export {
   setupScrollRestoration,
 } from './scroll-restoration'
 
-export type { ScrollRestorationOptions, ScrollRestorationEntry } from './scroll-restoration'
+export type {
+  ScrollRestorationOptions,
+  ScrollRestorationEntry,
+} from './scroll-restoration'
