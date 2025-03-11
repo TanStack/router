@@ -339,7 +339,7 @@ export const defaultAPIFileRouteHandler: StartAPIHandlerCallback = async ({
     value: match.routePath,
     writable: true,
     configurable: true,
-  });
+  })
 
   // The action is the route file that we need to import
   // which contains the possible handlers for the incoming request
