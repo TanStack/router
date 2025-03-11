@@ -25,11 +25,11 @@ import {
   replaceEqualDeep,
   resolvePath,
   rootRouteId,
+  setupScrollRestoration,
   trimPath,
   trimPathLeft,
   trimPathRight,
 } from '@tanstack/router-core'
-import { setupScrollRestoration } from './scroll-restoration'
 import type * as Solid from 'solid-js'
 import type { HistoryLocation, RouterHistory } from '@tanstack/history'
 

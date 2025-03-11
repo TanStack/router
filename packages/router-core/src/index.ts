@@ -362,3 +362,17 @@ export { redirect, isRedirect, isResolvedRedirect } from './redirect'
 
 export type { NotFoundError } from './not-found'
 export { isNotFound, notFound } from './not-found'
+
+export {
+  defaultGetScrollRestorationKey,
+  restoreScroll,
+  storageKey,
+  getCssSelector,
+  scrollRestorationCache,
+  setupScrollRestoration,
+} from './scroll-restoration'
+
+export type {
+  ScrollRestorationOptions,
+  ScrollRestorationEntry,
+} from './scroll-restoration'
