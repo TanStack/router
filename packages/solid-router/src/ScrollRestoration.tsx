@@ -1,15 +1,11 @@
-import { useRouter } from './useRouter'
 import {
   defaultGetScrollRestorationKey,
   getCssSelector,
   scrollRestorationCache,
   setupScrollRestoration,
 } from '@tanstack/router-core'
-import type {
-  ScrollRestorationOptions,
-  ScrollRestorationEntry,
-} from '@tanstack/router-core'
-import type { ParsedLocation } from '@tanstack/router-core'
+import { useRouter } from './useRouter'
+import type { ParsedLocation, ScrollRestorationEntry, ScrollRestorationOptions  } from '@tanstack/router-core'
 
 function useScrollRestoration() {
   const router = useRouter()
