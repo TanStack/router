@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { z } from 'zod'
@@ -11,6 +11,7 @@ import {
   createRoute,
   createRouteMask,
   createRouter,
+  getRouteApi,
   useNavigate,
   useParams,
 } from '../src'
@@ -1301,4 +1302,154 @@ test('when setting search params with 2 parallel navigate calls', async () => {
   const search = new URLSearchParams(window.location.search)
   expect(search.get('param1')).toEqual('foo')
   expect(search.get('param2')).toEqual('bar')
+})
+
+describe('when on /posts/$postId and navigating to ../ with default `from` /posts', () => {
+  async function runTest(navigateVia: 'Route' | 'RouteApi') {
+    const rootRoute = createRootRoute()
+
+    const IndexComponent = () => {
+      const navigate = useNavigate()
+      return (
+        <>
+          <h1 data-testid="index-heading">Index</h1>
+          <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+          <button
+            data-testid="index-to-first-post-btn"
+            onClick={() =>
+              navigate({
+                to: '/posts/$postId/details',
+                params: { postId: 'id1' },
+              })
+            }
+          >
+            To first post
+          </button>
+        </>
+      )
+    }
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      component: () => {
+        return (
+          <>
+            <h1>Layout</h1>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      const routeNavigate = postsRoute.useNavigate()
+      const routeApiNavigate = getRouteApi('/_layout/posts').useNavigate()
+      return (
+        <>
+          <h1>Posts</h1>
+          <button
+            data-testid="btn-to-home"
+            onClick={() => {
+              if (navigateVia === 'Route') {
+                routeNavigate({ to: '../' })
+              } else {
+                routeApiNavigate({ to: '../' })
+              }
+            }}
+          >
+            To Home
+          </button>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span>Params: {params().postId}</span>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+    })
+
+    const PostIndexComponent = () => {
+      return (
+        <>
+          <h1>Post Index</h1>
+        </>
+      )
+    }
+
+    const postIndexRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: '/',
+      component: PostIndexComponent,
+    })
+
+    const DetailsComponent = () => {
+      return (
+        <>
+          <h1 data-testid="details-heading">Details!</h1>
+        </>
+      )
+    }
+
+    const detailsRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'details',
+      component: DetailsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        layoutRoute.addChildren([
+          postsRoute.addChildren([
+            postRoute.addChildren([postIndexRoute, detailsRoute]),
+          ]),
+        ]),
+      ]),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const postsButton = await screen.findByTestId('index-to-first-post-btn')
+
+    fireEvent.click(postsButton)
+
+    expect(await screen.findByTestId('details-heading')).toBeInTheDocument()
+
+    expect(window.location.pathname).toEqual('/posts/id1/details')
+
+    const homeButton = await screen.findByTestId('btn-to-home')
+
+    fireEvent.click(homeButton)
+
+    expect(await screen.findByTestId('index-heading')).toBeInTheDocument()
+    expect(window.location.pathname).toEqual('/')
+  }
+
+  test('Route', () => runTest('Route'))
+  test('RouteApi', () => runTest('RouteApi'))
 })

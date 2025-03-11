@@ -1,34 +1,47 @@
 import invariant from 'tiny-invariant'
-import { joinPaths, rootRouteId, trimPathLeft } from '@tanstack/router-core'
+import {
+  joinPaths,
+  notFound,
+  rootRouteId,
+  trimPathLeft,
+} from '@tanstack/router-core'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
-import { notFound } from './not-found'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
+import { useRouter } from './useRouter'
 import type {
   AnyContext,
-  AnySchema,
+  AnyRoute,
+  AnyRouter,
   Constrain,
   ConstrainLiteral,
-  RootRoute as CoreRootRoute,
+  LazyRoute as CoreLazyRoute,
   Route as CoreRoute,
   ErrorComponentProps,
+  NotFoundError,
   NotFoundRouteProps,
+  RegisteredRouter,
   ResolveFullPath,
   ResolveId,
   ResolveParams,
   RootRouteId,
   RootRouteOptions,
-  RouteById,
-  RouteContext,
+  RouteAddChildrenFn,
+  RouteAddFileChildrenFn,
+  RouteAddFileTypesFn,
+  RouteConstraints,
   RouteIds,
+  RouteLazyFn,
   RouteLoaderFn,
+  RouteMask,
   RouteOptions,
   RoutePathOptionsIntersection,
-  RoutePaths,
   RouteTypes,
+  RouteTypesById,
+  Router,
   ToMaskOptions,
   TrimPathRight,
   UpdatableRouteOptions,
@@ -40,10 +53,6 @@ import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type * as React from 'react'
-import type {} from './Matches'
-import type { AnyRouter, RegisteredRouter, Router } from './router'
-import type { NotFoundError } from './not-found'
-import type { LazyRoute } from './fileRoute'
 import type { UseRouteContextRoute } from './useRouteContext'
 
 declare module '@tanstack/router-core' {
@@ -53,48 +62,20 @@ declare module '@tanstack/router-core' {
     notFoundComponent?: NotFoundRouteComponent
     pendingComponent?: RouteComponent
   }
+
+  export interface RouteExtensions<
+    TId extends string,
+    TFullPath extends string,
+  > {
+    useMatch: UseMatchRoute<TId>
+    useRouteContext: UseRouteContextRoute<TId>
+    useSearch: UseSearchRoute<TId>
+    useParams: UseParamsRoute<TId>
+    useLoaderDeps: UseLoaderDepsRoute<TId>
+    useLoaderData: UseLoaderDataRoute<TId>
+    useNavigate: () => UseNavigateResult<TFullPath>
+  }
 }
-
-export interface AnyRoute
-  extends Route<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any
-  > {}
-
-export type RouteConstraints = {
-  TParentRoute: AnyRoute
-  TPath: string
-  TFullPath: string
-  TCustomId: string
-  TId: string
-  TSearchSchema: AnySchema
-  TFullSearchSchema: AnySchema
-  TParams: Record<string, any>
-  TAllParams: Record<string, any>
-  TParentContext: AnyContext
-  TRouteContext: RouteContext
-  TAllContext: AnyContext
-  TRouterContext: AnyContext
-  TChildren: unknown
-  TRouteTree: AnyRoute
-}
-
-export type RouteTypesById<TRouter extends AnyRouter, TId> = RouteById<
-  TRouter['routeTree'],
-  TId
->['types']
 
 export function getRouteApi<
   const TId,
@@ -157,7 +138,8 @@ export class RouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   useNavigate = (): UseNavigateResult<
     RouteTypesById<TRouter, TId>['fullPath']
   > => {
-    return useNavigate({ from: this.id as string })
+    const router = useRouter()
+    return useNavigate({ from: router.routesById[this.id as string].fullPath })
   }
 
   notFound = (opts?: NotFoundError) => {
@@ -205,7 +187,7 @@ export class Route<
       TFileRouteTypes
     >
 {
-  isRoot: TParentRoute extends Route<any> ? true : false
+  isRoot: TParentRoute extends AnyRoute ? true : false
   options: RouteOptions<
     TParentRoute,
     TId,
@@ -270,7 +252,7 @@ export class Route<
   children?: TChildren
   originalIndex?: number
   rank!: number
-  lazyFn?: () => Promise<LazyRoute<any>>
+  lazyFn?: () => Promise<CoreLazyRoute>
   _lazyPromise?: Promise<void>
   _componentsPromise?: Promise<Array<void>>
 
@@ -391,12 +373,7 @@ export class Route<
     this._ssr = options?.ssr ?? opts.defaultSsr ?? true
   }
 
-  addChildren<const TNewChildren>(
-    children: Constrain<
-      TNewChildren,
-      ReadonlyArray<AnyRoute> | Record<string, AnyRoute>
-    >,
-  ): Route<
+  addChildren: RouteAddChildrenFn<
     TParentRoute,
     TPath,
     TFullPath,
@@ -409,30 +386,12 @@ export class Route<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TNewChildren,
     TFileRouteTypes
-  > {
-    return this._addFileChildren(children) as Route<
-      TParentRoute,
-      TPath,
-      TFullPath,
-      TCustomId,
-      TId,
-      TSearchValidator,
-      TParams,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      TLoaderDeps,
-      TLoaderFn,
-      TNewChildren,
-      TFileRouteTypes
-    >
+  > = (children) => {
+    return this._addFileChildren(children) as any
   }
 
-  _addFileChildren<const TNewChildren>(
-    children: TNewChildren,
-  ): Route<
+  _addFileChildren: RouteAddFileChildrenFn<
     TParentRoute,
     TPath,
     TFullPath,
@@ -445,9 +404,8 @@ export class Route<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TNewChildren,
     TFileRouteTypes
-  > {
+  > = (children) => {
     if (Array.isArray(children)) {
       this.children = children as TChildren
     }
@@ -456,22 +414,25 @@ export class Route<
       this.children = Object.values(children) as TChildren
     }
 
-    return this as unknown as Route<
-      TParentRoute,
-      TPath,
-      TFullPath,
-      TCustomId,
-      TId,
-      TSearchValidator,
-      TParams,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      TLoaderDeps,
-      TLoaderFn,
-      TNewChildren,
-      TFileRouteTypes
-    >
+    return this as any
+  }
+
+  _addFileTypes: RouteAddFileTypesFn<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren
+  > = () => {
+    return this as any
   }
 
   updateLoader = <TNewLoaderFn>(options: {
@@ -525,7 +486,7 @@ export class Route<
     return this
   }
 
-  lazy = (lazyFn: () => Promise<LazyRoute<any>>): this => {
+  lazy: RouteLazyFn<this> = (lazyFn) => {
     this.lazyFn = lazyFn
     return this
   }
@@ -573,7 +534,7 @@ export class Route<
   }
 
   useNavigate = (): UseNavigateResult<TFullPath> => {
-    return useNavigate({ from: this.id })
+    return useNavigate({ from: this.fullPath })
   }
 }
 
@@ -612,7 +573,22 @@ export function createRoute<
     TRouteContextFn,
     TBeforeLoadFn
   >,
-) {
+): CoreRoute<
+  TParentRoute,
+  TPath,
+  TFullPath,
+  TCustomId,
+  TId,
+  TSearchValidator,
+  TParams,
+  AnyContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren,
+  unknown
+> {
   return new Route<
     TParentRoute,
     TPath,
@@ -666,43 +642,30 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TSearchValidator = undefined,
-    in out TRouterContext = {},
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-  >
-  extends Route<
-    any, // TParentRoute
-    '/', // TPath
-    '/', // TFullPath
-    string, // TCustomId
-    RootRouteId, // TId
-    TSearchValidator, // TSearchValidator
-    {}, // TParams
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren, // TChildren
-    TFileRouteTypes
-  >
-  implements
-    CoreRootRoute<
-      TSearchValidator,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      TLoaderDeps,
-      TLoaderFn,
-      TChildren,
-      TFileRouteTypes
-    >
-{
+  in out TSearchValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+> extends Route<
+  any, // TParentRoute
+  '/', // TPath
+  '/', // TFullPath
+  string, // TCustomId
+  RootRouteId, // TId
+  TSearchValidator, // TSearchValidator
+  {}, // TParams
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren, // TChildren
+  TFileRouteTypes
+> {
   /**
    * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
    */
@@ -717,72 +680,6 @@ export class RootRoute<
     >,
   ) {
     super(options as any)
-  }
-
-  addChildren<const TNewChildren>(
-    children: Constrain<
-      TNewChildren,
-      ReadonlyArray<AnyRoute> | Record<string, AnyRoute>
-    >,
-  ): RootRoute<
-    TSearchValidator,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TNewChildren,
-    TFileRouteTypes
-  > {
-    super.addChildren(children)
-    return this as unknown as RootRoute<
-      TSearchValidator,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      TLoaderDeps,
-      TLoaderFn,
-      TNewChildren,
-      TFileRouteTypes
-    >
-  }
-
-  _addFileChildren<const TNewChildren>(
-    children: TNewChildren,
-  ): RootRoute<
-    TSearchValidator,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TNewChildren,
-    TFileRouteTypes
-  > {
-    super._addFileChildren(children)
-    return this as unknown as RootRoute<
-      TSearchValidator,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      TLoaderDeps,
-      TLoaderFn,
-      TNewChildren,
-      TFileRouteTypes
-    >
-  }
-
-  _addFileTypes<TFileRouteTypes>(): RootRoute<
-    TSearchValidator,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren,
-    TFileRouteTypes
-  > {
-    return this as any
   }
 }
 
@@ -811,17 +708,6 @@ export function createRootRoute<
     TLoaderDeps,
     TLoaderFn
   >(options)
-}
-
-export type RouteMask<TRouteTree extends AnyRoute> = {
-  routeTree: TRouteTree
-  from: RoutePaths<TRouteTree>
-  to?: any
-  params?: any
-  search?: any
-  hash?: any
-  state?: any
-  unmaskOnReload?: boolean
 }
 
 export function createRouteMask<

@@ -8,9 +8,9 @@ If you're feeling impatient and prefer to skip all of our wonderful documentatio
 
 File based route generation (through Vite, and other supported bundlers) is the recommended way to use TanStack Router as it provides the best experience, performance, and ergonomics for the least amount of effort.
 
-### Manual Setup
+### Setup
 
-Alternatively, you can manually setup the project using the following steps:
+You can setup the project using the following steps:
 
 #### Install TanStack Router, Vite Plugin
 

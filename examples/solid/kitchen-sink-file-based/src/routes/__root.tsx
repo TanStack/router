@@ -1,4 +1,5 @@
 import {
+  HeadContent,
   Link,
   Outlet,
   createRootRouteWithContext,
@@ -22,6 +23,7 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <div class={`min-h-screen flex flex-col`}>
         <div class={`flex items-center border-b gap-2`}>
           <h1 class={`text-3xl p-2`}>Kitchen Sink</h1>

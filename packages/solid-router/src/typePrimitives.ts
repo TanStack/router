@@ -1,14 +1,15 @@
 import type { LinkComponentProps } from './link'
-import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsOptions } from './useParams'
 import type { UseSearchOptions } from './useSearch'
 import type {
+  AnyRouter,
   Constrain,
   ConstrainLiteral,
   FromPathOption,
   NavigateOptions,
   PathParamOptions,
   Redirect,
+  RegisteredRouter,
   RouteIds,
   SearchParamOptions,
   ToPathOption,

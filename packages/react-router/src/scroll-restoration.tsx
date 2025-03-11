@@ -1,8 +1,11 @@
 import { functionalUpdate } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import { ScriptOnce } from './ScriptOnce'
-import type { AnyRouter } from './router'
-import type { NonNullableUpdater, ParsedLocation } from '@tanstack/router-core'
+import type {
+  AnyRouter,
+  NonNullableUpdater,
+  ParsedLocation,
+} from '@tanstack/router-core'
 
 export type ScrollRestorationEntry = { scrollX: number; scrollY: number }
 
@@ -20,7 +23,11 @@ export type ScrollRestorationOptions = {
 }
 
 export const storageKey = 'tsr-scroll-restoration-v1_3'
-const sessionsStorage = typeof window !== 'undefined' && window.sessionStorage
+let sessionsStorage = false
+try {
+  sessionsStorage =
+    typeof window !== 'undefined' && typeof window.sessionStorage === 'object'
+} catch {}
 const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
   let timeout: any
   return (...args: Array<any>) => {
@@ -86,10 +93,10 @@ let ignoreScroll = false
 // during SSR. Additionally, we also call it from within the router lifecycle
 export function restoreScroll(
   storageKey: string,
-  key?: string,
-  behavior?: ScrollToOptions['behavior'],
-  shouldScrollRestoration?: boolean,
-  scrollToTopSelectors?: Array<string>,
+  key: string | undefined,
+  behavior: ScrollToOptions['behavior'] | undefined,
+  shouldScrollRestoration: boolean | undefined,
+  scrollToTopSelectors: Array<string> | undefined,
 ) {
   let byKey: ScrollRestorationByKey
 
@@ -299,9 +306,9 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     restoreScroll(
       storageKey,
       cacheKey,
-      router.options.scrollRestorationBehavior,
-      router.isScrollRestoring,
-      router.options.scrollToTopSelectors,
+      router.options.scrollRestorationBehavior || undefined,
+      router.isScrollRestoring || undefined,
+      router.options.scrollToTopSelectors || undefined,
     )
 
     if (router.isScrollRestoring) {

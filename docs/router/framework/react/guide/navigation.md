@@ -70,6 +70,18 @@ export type NavigateOptions<
 > = ToOptions<TRouteTree, TFrom, TTo> & {
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
+  // `resetScroll` is a boolean that determines whether scroll position will be reset to 0,0 after the location is committed to browser history.
+  resetScroll?: boolean
+  // `hashScrollIntoView` is a boolean or object that determines whether an id matching the hash will be scrolled into view after the location is committed to history.
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
+  // `viewTransition` is either a boolean or function that determines if and how the browser will call document.startViewTransition() when navigating.
+  viewTransition?: boolean | ViewTransitionOptions
+  // `ignoreBlocker` is a boolean that determines if navigation should ignore any blockers that might prevent it.
+  ignoreBlocker?: boolean
+  // `reloadDocument` is a boolean that determines if navigation to a route inside of router will trigger a full page load instead of the traditional SPA navigation.
+  reloadDocument?: boolean
+  // `href` is a string that can be used in place of `to` to navigate to a full built href, e.g. pointing to an external target.
+  href?: string
 }
 ```
 

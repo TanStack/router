@@ -205,3 +205,10 @@ export type MakeRouteMatchUnion<
       TRoute['types']['loaderDeps']
     >
   : never
+
+export interface MatchRouteOptions {
+  pending?: boolean
+  caseSensitive?: boolean
+  includeSearch?: boolean
+  fuzzy?: boolean
+}

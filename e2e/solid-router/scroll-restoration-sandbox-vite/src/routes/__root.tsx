@@ -1,11 +1,12 @@
 import {
+  HeadContent,
   Link,
   Outlet,
   createRootRoute,
   linkOptions,
 } from '@tanstack/solid-router'
 import { Dynamic } from 'solid-js/web'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -14,12 +15,13 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <Nav type="header" />
       <hr />
       <Outlet />
       <hr />
       <Nav type="footer" />
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }

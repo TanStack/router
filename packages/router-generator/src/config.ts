@@ -17,6 +17,8 @@ export const configSchema = z.object({
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
   disableManifestGeneration: z.boolean().optional().default(false),
+  enableRouteTreeFormatting: z.boolean().optional().default(true),
+  __enableAPIRoutesGeneration: z.boolean().optional(), // Internal flag to be turned on for TanStack Start
   apiBase: z.string().optional().default('/api'),
   routeTreeFileHeader: z
     .array(z.string())
@@ -42,7 +44,7 @@ export const configSchema = z.object({
     .optional(),
   experimental: z
     .object({
-      // TODO: Remove this option in the next major release (v2).
+      // TODO: This has been made stable and is now "autoCodeSplitting". Remove in next major version.
       enableCodeSplitting: z.boolean().optional(),
     })
     .optional(),

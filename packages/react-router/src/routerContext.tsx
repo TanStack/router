@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { AnyRouter, Router } from './router'
+import type { AnyRouter, Router } from '@tanstack/router-core'
 
 declare global {
   interface Window {

@@ -4,9 +4,8 @@ import { getRouterContext } from './routerContext'
 import type {
   AnyRouter,
   RegisteredRouter,
-  Router,
   RouterOptions,
-} from './router'
+} from '@tanstack/router-core'
 
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -67,12 +66,7 @@ export type RouterProps<
   >,
   'context'
 > & {
-  router: Router<
-    TRouter['routeTree'],
-    NonNullable<TRouter['options']['trailingSlash']>,
-    NonNullable<TRouter['options']['defaultStructuralSharing']>,
-    TRouter['history']
-  >
+  router: TRouter
   context?: Partial<
     RouterOptions<
       TRouter['routeTree'],

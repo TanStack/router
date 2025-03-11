@@ -1,5 +1,6 @@
 import { render } from 'solid-js/web'
 import {
+  HeadContent,
   Link,
   Outlet,
   RouterProvider,
@@ -8,7 +9,7 @@ import {
   createRouter,
   useElementScrollRestoration,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createVirtualizer } from '@tanstack/solid-virtual'
 import './styles.css'
 import { createRenderEffect } from 'solid-js'
@@ -20,6 +21,7 @@ const rootRoute = createRootRoute({
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <div class="p-2 flex gap-2 sticky top-0 border-b bg-gray-100 dark:bg-gray-900">
         <Link to="/" class="[&.active]:font-bold">
           Home
@@ -35,7 +37,7 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
-      {/* <TanStackRouterDevtools /> */}
+      <TanStackRouterDevtools />
     </>
   )
 }

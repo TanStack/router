@@ -38,6 +38,7 @@ export {
 } from '@tanstack/router-core'
 
 export type {
+  AnyRoute,
   StartSerializer,
   Serializable,
   SerializerParse,
@@ -154,7 +155,6 @@ export {
   createLazyRoute,
   createLazyFileRoute,
 } from './fileRoute'
-export type { LazyRouteOptions } from './fileRoute'
 
 export * from './history'
 
@@ -215,6 +215,24 @@ export type {
   UpdatableRouteOptions,
   RouteLoaderFn,
   LoaderFnContext,
+  LazyRouteOptions,
+  AnyRouter,
+  RegisteredRouter,
+  RouterContextOptions,
+  ControllablePromise,
+  InjectedHtmlEntry,
+  RouterOptions,
+  RouterErrorSerializer,
+  RouterState,
+  ListenerFn,
+  BuildNextOptions,
+  RouterConstructorOptions,
+  RouterEvents,
+  RouterEvent,
+  RouterListener,
+  RouteConstraints,
+  RouteMask,
+  MatchRouteOptions,
 } from '@tanstack/router-core'
 export type {
   UseLinkPropsOptions,
@@ -234,11 +252,7 @@ export {
   useChildMatches,
 } from './Matches'
 
-export type {
-  MatchRouteOptions,
-  UseMatchRouteOptions,
-  MakeMatchRouteOptions,
-} from './Matches'
+export type { UseMatchRouteOptions, MakeMatchRouteOptions } from './Matches'
 
 export { matchContext } from './matchContext'
 export { Match, Outlet } from './Match'
@@ -247,7 +261,7 @@ export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
-export { redirect, isRedirect } from './redirects'
+export { redirect, isRedirect } from '@tanstack/router-core'
 
 export {
   RouteApi,
@@ -262,10 +276,7 @@ export {
   NotFoundRoute,
 } from './route'
 export type {
-  AnyRoute,
-  RouteConstraints,
   AnyRootRoute,
-  RouteMask,
   ReactNode,
   SyncRouteComponent,
   AsyncRouteComponent,
@@ -282,23 +293,6 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-} from './router'
-
-export type {
-  AnyRouter,
-  RegisteredRouter,
-  RouterContextOptions,
-  RouterOptions,
-  RouterErrorSerializer,
-  RouterState,
-  ListenerFn,
-  BuildNextOptions,
-  RouterConstructorOptions,
-  RouterEvents,
-  RouterEvent,
-  RouterListener,
-  ControllablePromise,
-  InjectedHtmlEntry,
 } from './router'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
@@ -332,18 +326,13 @@ export {
   useStableCallback,
 } from './utils'
 
-export {
-  notFound,
-  isNotFound,
-  CatchNotFound,
-  DefaultGlobalNotFound,
-} from './not-found'
-export type { NotFoundError } from './not-found'
+export { CatchNotFound, DefaultGlobalNotFound } from './not-found'
+export { notFound, isNotFound } from '@tanstack/router-core'
+export type { NotFoundError } from '@tanstack/router-core'
 
 export * from './typePrimitives'
 
 export { ScriptOnce } from './ScriptOnce'
-
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'

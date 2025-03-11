@@ -1,11 +1,12 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
 import type {
+  AnyRouter,
   FromPathOption,
   NavigateOptions,
+  RegisteredRouter,
   UseNavigateResult,
 } from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter } from './router'
 
 export function useNavigate<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -16,24 +17,9 @@ export function useNavigate<
   const { navigate } = useRouter()
 
   return ((options: NavigateOptions) => {
-    return navigate({ ...options })
+    return navigate({ from: _defaultOpts?.from, ...options })
   }) as UseNavigateResult<TDefaultFrom>
 }
-
-// NOTE: I don't know of anyone using this. It's undocumented, so let's wait until someone needs it
-// export function typedNavigate<
-//   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-//   TDefaultFrom extends RoutePaths<TRouteTree> = '/',
-// >(navigate: (opts: NavigateOptions<any>) => Promise<void>) {
-//   return navigate as <
-//     TFrom extends RoutePaths<TRouteTree> = TDefaultFrom,
-//     TTo extends string = '',
-//     TMaskFrom extends RoutePaths<TRouteTree> = '/',
-//     TMaskTo extends string = '',
-//   >(
-//     opts?: NavigateOptions<TRouteTree, TFrom, TTo, TMaskFrom, TMaskTo>,
-//   ) => Promise<void>
-// } //
 
 export function Navigate<
   TRouter extends AnyRouter = RegisteredRouter,

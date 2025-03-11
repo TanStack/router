@@ -62,7 +62,7 @@ export function createTanStackStartPlugin(opts: TanStackStartViteOptions): {
             }
           }
         }
-        return code
+        return null
       },
     }
   }

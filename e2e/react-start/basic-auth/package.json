@@ -14,7 +14,7 @@
   "dependencies": {
     "@prisma/client": "5.22.0",
     "@tanstack/react-router": "workspace:^",
-    "@tanstack/router-devtools": "workspace:^",
+    "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/react-start": "workspace:^",
     "prisma": "^5.22.0",
     "react": "^19.0.0",

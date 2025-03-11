@@ -27,7 +27,7 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startSolidTransition = (fn: () => void) => {
+    router.startTransition = (fn: () => void) => {
       setIsTransitioning(true)
       fn()
       setIsTransitioning(false)

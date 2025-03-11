@@ -1,3 +1,4 @@
+import type { LazyRoute } from './fileRoute'
 import type { NavigateOptions, ParsePathParams } from './link'
 import type { ParsedLocation } from './location'
 import type {
@@ -7,7 +8,7 @@ import type {
   RouteMatch,
 } from './Matches'
 import type { RootRouteId } from './root'
-import type { ParseRoute } from './routeInfo'
+import type { ParseRoute, RouteById, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
@@ -371,15 +372,17 @@ export interface RemountDepsOptions<
 
 export type MakeRemountDepsOptionsUnion<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
-  TRoute extends AnyRoute = ParseRoute<TRouteTree>,
-> = TRoute extends any
-  ? RemountDepsOptions<
-      TRoute['id'],
-      TRoute['types']['fullSearchSchema'],
-      TRoute['types']['allParams'],
-      TRoute['types']['loaderDeps']
-    >
-  : never
+> =
+  ParseRoute<TRouteTree> extends infer TRoute extends AnyRoute
+    ? TRoute extends any
+      ? RemountDepsOptions<
+          TRoute['id'],
+          TRoute['types']['fullSearchSchema'],
+          TRoute['types']['allParams'],
+          TRoute['types']['loaderDeps']
+        >
+      : never
+    : never
 
 export interface RouteTypes<
   in out TParentRoute extends AnyRoute,
@@ -435,6 +438,112 @@ export type ResolveFullPath<
   TPrefixed = RoutePrefix<TParentRoute['fullPath'], TPath>,
 > = TPrefixed extends RootRouteId ? '/' : TPrefixed
 
+export interface RouteExtensions<TId, TFullPath> {}
+
+export type RouteLazyFn<TRoute extends AnyRoute> = (
+  lazyFn: () => Promise<LazyRoute>,
+) => TRoute
+
+export type RouteAddChildrenFn<
+  in out TParentRoute extends AnyRoute,
+  in out TPath extends string,
+  in out TFullPath extends string,
+  in out TCustomId extends string,
+  in out TId extends string,
+  in out TSearchValidator,
+  in out TParams,
+  in out TRouterContext,
+  in out TRouteContextFn,
+  in out TBeforeLoadFn,
+  in out TLoaderDeps extends Record<string, any>,
+  in out TLoaderFn,
+  in out TFileRouteTypes,
+> = <const TNewChildren>(
+  children: Constrain<
+    TNewChildren,
+    ReadonlyArray<AnyRoute> | Record<string, AnyRoute>
+  >,
+) => Route<
+  TParentRoute,
+  TPath,
+  TFullPath,
+  TCustomId,
+  TId,
+  TSearchValidator,
+  TParams,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TNewChildren,
+  TFileRouteTypes
+>
+
+export type RouteAddFileChildrenFn<
+  in out TParentRoute extends AnyRoute,
+  in out TPath extends string,
+  in out TFullPath extends string,
+  in out TCustomId extends string,
+  in out TId extends string,
+  in out TSearchValidator,
+  in out TParams,
+  in out TRouterContext,
+  in out TRouteContextFn,
+  in out TBeforeLoadFn,
+  in out TLoaderDeps extends Record<string, any>,
+  in out TLoaderFn,
+  in out TFileRouteTypes,
+> = <const TNewChildren>(
+  children: TNewChildren,
+) => Route<
+  TParentRoute,
+  TPath,
+  TFullPath,
+  TCustomId,
+  TId,
+  TSearchValidator,
+  TParams,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TNewChildren,
+  TFileRouteTypes
+>
+
+export type RouteAddFileTypesFn<
+  TParentRoute extends AnyRoute,
+  TPath extends string,
+  TFullPath extends string,
+  TCustomId extends string,
+  TId extends string,
+  TSearchValidator,
+  TParams,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps extends Record<string, any>,
+  TLoaderFn,
+  TChildren,
+> = <TNewFileRouteTypes>() => Route<
+  TParentRoute,
+  TPath,
+  TFullPath,
+  TCustomId,
+  TId,
+  TSearchValidator,
+  TParams,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren,
+  TNewFileRouteTypes
+>
+
 export interface Route<
   in out TParentRoute extends AnyRoute,
   in out TPath extends string,
@@ -446,14 +555,16 @@ export interface Route<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TBeforeLoadFn,
-  in out TLoaderDeps,
+  in out TLoaderDeps extends Record<string, any>,
   in out TLoaderFn,
   in out TChildren,
   in out TFileRouteTypes,
-> {
+> extends RouteExtensions<TId, TFullPath> {
   fullPath: TFullPath
   path: TPath
   id: TId
+  parentRoute: TParentRoute
+  children?: TChildren
   types: RouteTypes<
     TParentRoute,
     TPath,
@@ -469,6 +580,87 @@ export interface Route<
     TLoaderFn,
     TChildren,
     TFileRouteTypes
+  >
+  options: RouteOptions<
+    TParentRoute,
+    TId,
+    TCustomId,
+    TFullPath,
+    TPath,
+    TSearchValidator,
+    TParams,
+    TLoaderDeps,
+    TLoaderFn,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn
+  >
+  isRoot: TParentRoute extends AnyRoute ? true : false
+  _componentsPromise?: Promise<Array<void>>
+  lazyFn?: () => Promise<LazyRoute>
+  _lazyPromise?: Promise<void>
+  rank: number
+  to: TrimPathRight<TFullPath>
+  init: (opts: { originalIndex: number; defaultSsr?: boolean }) => void
+  update: (
+    options: UpdatableRouteOptions<
+      TParentRoute,
+      TCustomId,
+      TFullPath,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >,
+  ) => this
+  lazy: RouteLazyFn<this>
+  addChildren: RouteAddChildrenFn<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TFileRouteTypes
+  >
+  _addFileChildren: RouteAddFileChildrenFn<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TFileRouteTypes
+  >
+  _addFileTypes: RouteAddFileTypesFn<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren
   >
 }
 
@@ -488,32 +680,6 @@ export type AnyRoute = Route<
   any,
   any
 >
-
-export interface RootRoute<
-  in out TSearchValidator,
-  in out TRouterContext,
-  in out TRouteContextFn,
-  in out TBeforeLoadFn,
-  in out TLoaderDeps extends Record<string, any>,
-  in out TLoaderFn,
-  in out TChildren,
-  in out TFileRouteTypes,
-> extends Route<
-    any, // TParentRoute
-    '/', // TPath
-    '/', // TFullPath
-    string, // TCustomId
-    RootRouteId, // TId
-    TSearchValidator, // TSearchValidator
-    {}, // TParams
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren, // TChildren
-    TFileRouteTypes
-  > {}
 
 export type AnyRouteWithContext<TContext> = AnyRoute & {
   types: { allContext: TContext }
@@ -799,7 +965,8 @@ export interface DefaultUpdatableRouteOptionsExtensions {
   pendingComponent?: unknown
 }
 
-export interface UpdatableRouteOptionsExtensions {}
+export interface UpdatableRouteOptionsExtensions
+  extends DefaultUpdatableRouteOptionsExtensions {}
 
 export interface UpdatableRouteOptions<
   in out TParentRoute extends AnyRoute,
@@ -1029,6 +1196,40 @@ export type RootRouteOptions<
   | 'stringifyParams'
   | 'params'
 >
+
+export type RouteConstraints = {
+  TParentRoute: AnyRoute
+  TPath: string
+  TFullPath: string
+  TCustomId: string
+  TId: string
+  TSearchSchema: AnySchema
+  TFullSearchSchema: AnySchema
+  TParams: Record<string, any>
+  TAllParams: Record<string, any>
+  TParentContext: AnyContext
+  TRouteContext: RouteContext
+  TAllContext: AnyContext
+  TRouterContext: AnyContext
+  TChildren: unknown
+  TRouteTree: AnyRoute
+}
+
+export type RouteTypesById<TRouter extends AnyRouter, TId> = RouteById<
+  TRouter['routeTree'],
+  TId
+>['types']
+
+export type RouteMask<TRouteTree extends AnyRoute> = {
+  routeTree: TRouteTree
+  from: RoutePaths<TRouteTree>
+  to?: any
+  params?: any
+  search?: any
+  hash?: any
+  state?: any
+  unmaskOnReload?: boolean
+}
 
 /**
  * @deprecated Use `ErrorComponentProps` instead.

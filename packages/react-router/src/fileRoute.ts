@@ -7,24 +7,24 @@ import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
+import { useRouter } from './useRouter'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
-
-import type { AnyRoute, Route, RouteConstraints } from './route'
-import type { RegisteredRouter } from './router'
 import type {
   AnyContext,
-  AnyRoute as AnyCoreRoute,
-  AnyPathParams,
+  AnyRoute,
   AnyRouter,
-  AnyValidator,
   Constrain,
   ConstrainLiteral,
   FileBaseRouteOptions,
   FileRoutesByPath,
+  LazyRouteOptions,
+  RegisteredRouter,
   ResolveParams,
+  Route,
   RouteById,
+  RouteConstraints,
   RouteIds,
   RouteLoaderFn,
   UpdatableRouteOptions,
@@ -115,7 +115,8 @@ export class FileRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TChildren
+    TChildren,
+    unknown
   > => {
     warning(
       this.silent,
@@ -158,23 +159,7 @@ export function FileRouteLoader<
   return (loaderFn) => loaderFn as any
 }
 
-export type LazyRouteOptions = Pick<
-  UpdatableRouteOptions<
-    AnyRoute,
-    string,
-    string,
-    AnyPathParams,
-    AnyValidator,
-    {},
-    AnyContext,
-    AnyContext,
-    AnyContext,
-    AnyContext
-  >,
-  'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
->
-
-export class LazyRoute<TRoute extends AnyCoreRoute> {
+export class LazyRoute<TRoute extends AnyRoute> {
   options: {
     id: string
   } & LazyRouteOptions
@@ -230,14 +215,15 @@ export class LazyRoute<TRoute extends AnyCoreRoute> {
   }
 
   useNavigate = () => {
-    return useNavigate({ from: this.options.id })
+    const router = useRouter()
+    return useNavigate({ from: router.routesById[this.options.id].fullPath })
   }
 }
 
 export function createLazyRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   TId extends string = string,
-  TRoute extends AnyCoreRoute = RouteById<TRouter['routeTree'], TId>,
+  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
 >(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
   return (opts: LazyRouteOptions) => {
     return new LazyRoute<TRoute>({
