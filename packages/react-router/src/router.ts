@@ -27,7 +27,8 @@ import {
   rootRouteId,
   setupScrollRestoration,
   trimPath,
-  trimPathLeft, trimPathRight 
+  trimPathLeft,
+  trimPathRight,
 } from '@tanstack/router-core'
 
 import type * as React from 'react'

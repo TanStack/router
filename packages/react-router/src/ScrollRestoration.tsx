@@ -7,7 +7,8 @@ import {
 import { useRouter } from './useRouter'
 import type {
   ParsedLocation,
-  ScrollRestorationEntry, ScrollRestorationOptions 
+  ScrollRestorationEntry,
+  ScrollRestorationOptions,
 } from '@tanstack/router-core'
 
 function useScrollRestoration() {
