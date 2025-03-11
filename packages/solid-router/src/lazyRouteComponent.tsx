@@ -104,11 +104,12 @@ export function lazyRouteComponent<
     if (ssr?.() === false) {
       return (
         <ClientOnly fallback={<Outlet />}>
-          <Dynamic component={compResource()} {...props} />
+          <Dynamic component={compResource} {...props} />
         </ClientOnly>
       )
     }
-    return <Dynamic component={compResource()} {...props} />
+
+    return <Dynamic component={compResource} {...props} />
   }
 
   ;(lazyComp as any).preload = load
