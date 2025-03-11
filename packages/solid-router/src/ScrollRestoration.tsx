@@ -32,11 +32,11 @@ export function useElementScrollRestoration(
   options: (
     | {
         id: string
-        getElement?: () => Element | undefined | null
+        getElement?: () => Window | Element | undefined | null
       }
     | {
         id?: string
-        getElement: () => Element | undefined | null
+        getElement: () => Window | Element | undefined | null
       }
   ) & {
     getKey?: (location: ParsedLocation) => string
@@ -56,7 +56,8 @@ export function useElementScrollRestoration(
     if (!element) {
       return
     }
-    elementSelector = getCssSelector(element)
+    elementSelector =
+      element instanceof Window ? 'window' : getCssSelector(element)
   }
 
   const restoreKey = getKey(router.latestLocation)
