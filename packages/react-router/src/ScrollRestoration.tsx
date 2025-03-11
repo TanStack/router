@@ -5,7 +5,10 @@ import {
   scrollRestorationCache,
   setupScrollRestoration,
 } from '@tanstack/router-core'
-import type { ScrollRestorationOptions, ScrollRestorationEntry } from '@tanstack/router-core'
+import type {
+  ScrollRestorationOptions,
+  ScrollRestorationEntry,
+} from '@tanstack/router-core'
 import type { ParsedLocation } from '@tanstack/router-core'
 
 function useScrollRestoration() {
@@ -41,7 +44,7 @@ export function useElementScrollRestoration(
   ) & {
     getKey?: (location: ParsedLocation) => string
   },
-): ScrollRestorationEntry {
+): ScrollRestorationEntry | undefined {
   useScrollRestoration()
 
   const router = useRouter()

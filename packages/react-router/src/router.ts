@@ -30,7 +30,7 @@ import {
   trimPathRight,
 } from '@tanstack/router-core'
 
-import { setupScrollRestoration } from './scroll-restoration'
+import { setupScrollRestoration } from '@tanstack/router-core'
 import type * as React from 'react'
 import type { HistoryLocation, RouterHistory } from '@tanstack/history'
 
