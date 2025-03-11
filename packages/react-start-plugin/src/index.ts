@@ -6,7 +6,7 @@ import viteReact from '@vitejs/plugin-react'
 import { mergeConfig } from 'vite'
 import { getTanStackStartOptions } from './schema.js'
 import { nitroPlugin } from './nitro/nitro-plugin.js'
-import { tsrManifestPlugin } from './routesManifestPlugin.js'
+import { startManifestPlugin } from './routesManifestPlugin.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
 import type { PluginOption } from 'vite'
 import type { TanStackStartInputConfig } from './schema.js'
@@ -15,6 +15,8 @@ export type {
   TanStackStartInputConfig,
   TanStackStartOutputConfig,
 } from './schema.js'
+
+export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig,
@@ -25,7 +27,7 @@ export function TanStackStartVitePlugin(
     {
       name: 'tss-vite-config-client',
       ...options.vite,
-      async config(config) {
+      async config() {
         // Create a dummy nitro app to get the resolved public output path
         const dummyNitroApp = await createNitro({
           preset: options.server.preset,
@@ -35,20 +37,32 @@ export function TanStackStartVitePlugin(
         const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
         await dummyNitroApp.close()
 
-        config.environments = {
-          ...(config.environments ?? {}),
-          server: {
-            ...(config.environments?.server ?? {}),
+        return {
+          environments: {
+            client: {
+              build: {
+                manifest: true,
+                rollupOptions: {
+                  input: {
+                    main: options.clientEntryPath,
+                  },
+                  output: {
+                    dir: clientDistDir,
+                  },
+                  external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
+                },
+              },
+            },
+            server: {},
           },
-        }
-
-        return mergeConfig(config, {
           resolve: {
             noExternal: [
               '@tanstack/start',
               '@tanstack/start/server',
               '@tanstack/start-client',
+              '@tanstack/start-client-core',
               '@tanstack/start-server',
+              '@tanstack/start-server-core',
               '@tanstack/start-server-functions-fetcher',
               '@tanstack/start-server-functions-client',
               '@tanstack/start-server-functions-ssr',
@@ -59,11 +73,18 @@ export function TanStackStartVitePlugin(
               '@tanstack/server-functions-plugin',
               'tsr:start-manifest',
               'tsr:server-fn-manifest',
+              'use-sync-external-store',
+              'use-sync-external-store/shim/with-selector',
             ],
           },
           optimizeDeps: {
             entries: [],
             ...(options.vite?.optimizeDeps || {}),
+            include: [
+              'use-sync-external-store',
+              'use-sync-external-store/shim/with-selector',
+              ...(options.vite?.optimizeDeps?.include || []),
+            ],
           },
           /* prettier-ignore */
           define: {
@@ -74,18 +95,10 @@ export function TanStackStartVitePlugin(
             ...injectDefineEnv('TSS_SERVER_FN_BASE', options.routers.server.base),
             ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
           },
-        })
+        }
       },
       configEnvironment(env, config) {
         if (env === 'server') {
-          config = mergeConfig(config, {
-            plugins: [],
-          })
-
-          config = mergeConfig(
-            mergeConfig(config, options.vite || {}),
-            options.routers.server.vite || {},
-          )
         } else {
           config = mergeConfig(
             mergeConfig(config, options.vite || {}),
@@ -125,7 +138,6 @@ hydrateRoot(document, <StartClient router={router} />)
         }
 
         if (id === '/~start/default-server-entry.tsx') {
-          console.log('routerImportPath', routerImportPath)
           return `
 import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
 import { createRouter } from ${routerImportPath}
@@ -157,10 +169,7 @@ export default createStartHandler({
           `createServerRpc('${d.functionId}', '${options.routers.server.base}', ${d.fn})`,
       },
     }),
-    tsrManifestPlugin({
-      clientBase: options.routers.client.base,
-      tsrConfig: options.tsr,
-    }),
+    startManifestPlugin(options),
     TanStackRouterVite({
       ...options.tsr,
       enableRouteGeneration: true,

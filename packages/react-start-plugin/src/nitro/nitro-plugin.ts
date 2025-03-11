@@ -1,15 +1,16 @@
-import { resolve } from 'node:path'
 import { platform } from 'node:os'
+import { promises as fsp } from 'node:fs'
+import path from 'node:path'
+import { copyPublicAssets, createNitro, prepare } from 'nitropack'
+import { version } from 'nitropack/meta'
 import { normalizePath } from 'vite'
+
 import { getRollupConfig } from 'nitropack/rollup'
-
-import { createNitro } from 'nitropack'
-import { buildSitemap } from './build-sitemap.js'
+import { clientDistDir } from '../index.js'
 import { devServerPlugin } from './dev-server-plugin.js'
-import type { NitroConfig } from 'nitropack'
+import type { PluginOption } from 'vite'
+import type { Nitro, NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../schema.js'
-
-import type { EnvironmentOptions, PluginOption } from 'vite'
 
 export type {
   TanStackStartInputConfig,
@@ -22,69 +23,68 @@ const filePrefix = isWindows ? 'file:///' : ''
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
 ): Array<PluginOption> {
+  let nitro: Nitro
+  let nitroRollupOptions: ReturnType<typeof getRollupConfig>
+
+  const buildPreset =
+    process.env['BUILD_PRESET'] ?? (options.server.preset as string | undefined)
+
+  const nitroConfig: NitroConfig = {
+    compatibilityDate: '2024-11-19',
+    logLevel: options.server.logLevel || 0,
+    srcDir: normalizePath(options.tsr.srcDirectory),
+    ...options.server,
+    preset: buildPreset,
+    publicAssets: [
+      {
+        dir: clientDistDir,
+      },
+    ],
+    typescript: {
+      generateTsConfig: false,
+    },
+    prerender: {
+      ...options.server.prerender,
+      routes: ['/', ...(options.server.prerender?.routes || [])],
+    },
+    renderer: options.serverEntryPath,
+  }
+
   return [
     devServerPlugin(options),
     {
       name: 'tanstack-vite-plugin-nitro',
-      configResolved(config) {
+      configResolved() {
         // console.log(config.environments)
       },
-      async config() {
-        const buildPreset =
-          process.env['BUILD_PRESET'] ??
-          (options.server.preset as string | undefined)
-
-        const nitroConfig: NitroConfig = {
-          ...options.server,
-          preset: buildPreset,
-          compatibilityDate: '2024-11-19',
-          logLevel: options.server.logLevel || 0,
-          srcDir: normalizePath(options.tsr.srcDirectory),
-          // renderer: filePrefix + normalizePath(options.ssrEntryPath),
-        }
-
-        const nitro = await createNitro({
+      async configEnvironment(name) {
+        nitro = await createNitro({
           dev: false,
           ...nitroConfig,
-          typescript: {
-            generateTsConfig: false,
-          },
         })
 
-        const nitroRollupOptions = getRollupConfig(nitro)
+        nitroRollupOptions = getRollupConfig(nitro)
 
-        const clientOptions: EnvironmentOptions = {
-          build: {
-            rollupOptions: {
-              input: {
-                main: options.clientEntryPath,
+        if (name === 'server') {
+          return {
+            build: {
+              ssr: true,
+              sourcemap: true,
+              rollupOptions: {
+                ...nitroRollupOptions,
+                output: {
+                  ...nitroRollupOptions.output,
+                  sourcemap: undefined,
+                },
               },
             },
-          },
+          }
         }
 
-        const serverOptions: EnvironmentOptions = {
-          build: {
-            ssr: true,
-            sourcemap: true,
-            rollupOptions: {
-              ...nitroRollupOptions,
-              output: {
-                ...nitroRollupOptions.output,
-                sourcemap: undefined,
-              },
-              // plugins: nitroRollupOptions.plugins as Array<PluginOption>,
-            },
-          },
-        }
-
-        // console.log('serverOptions', serverOptions.build?.rollupOptions)
-
+        return null
+      },
+      config() {
         return {
-          environments: {
-            client: clientOptions,
-            server: serverOptions,
-          },
           builder: {
             sharedPlugins: true,
             async buildApp(builder) {
@@ -96,35 +96,96 @@ export function nitroPlugin(
                 throw new Error('SSR environment not found')
               }
 
-              console.log(
-                builder.environments['server'].config.build.rollupOptions,
-              )
-
-              console.log('\n\nBuilding client...')
               await builder.build(builder.environments['client'])
+              await prepare(nitro)
+              await copyPublicAssets(nitro)
 
-              console.log('\n\nBuilding server...')
+              // if (
+              //   nitroConfig.prerender?.routes &&
+              //   nitroConfig.prerender.routes.length > 0
+              // ) {
+              //   console.log(`Prerendering static pages...`)
+              //   await prerender(nitro)
+              // }
+
               await builder.build(builder.environments['server'])
 
-              console.log('\n\nBuilding index.html...')
+              const buildInfoPath = path.resolve(
+                nitro.options.output.dir,
+                'nitro.json',
+              )
 
-              if (nitroConfig.prerender?.routes?.length && options.sitemap) {
-                console.log('Building Sitemap...')
-                // sitemap needs to be built after all directories are built
-                await buildSitemap({
-                  host: options.sitemap.host,
-                  routes: nitroConfig.prerender.routes,
-                  outputDir: resolve(options.root, 'dist/public'),
-                })
+              const presetsWithConfig = [
+                'awsAmplify',
+                'awsLambda',
+                'azure',
+                'cloudflare',
+                'firebase',
+                'netlify',
+                'vercel',
+              ]
+
+              const buildInfo = {
+                date: /* @__PURE__ */ new Date().toJSON(),
+                preset: nitro.options.preset,
+                framework: nitro.options.framework,
+                versions: {
+                  nitro: version,
+                },
+                commands: {
+                  preview: nitro.options.commands.preview,
+                  deploy: nitro.options.commands.deploy,
+                },
+                config: {
+                  ...Object.fromEntries(
+                    presetsWithConfig.map((key) => [
+                      key,
+                      (nitro.options as any)[key],
+                    ]),
+                  ),
+                },
               }
 
-              console.log(
-                `\n\n✅ Client and server bundles successfully built.`,
+              await fsp.writeFile(
+                buildInfoPath,
+                JSON.stringify(buildInfo, null, 2),
               )
+
+              await nitro.close()
+
+              // if (nitroConfig.prerender?.routes?.length && options.sitemap) {
+              //   console.log('Building Sitemap...')
+              //   // sitemap needs to be built after all directories are built
+              //   await buildSitemap({
+              //     host: options.sitemap.host,
+              //     routes: nitroConfig.prerender.routes,
+              //     outputDir: resolve(options.root, 'dist/public'),
+              //   })
+              // }
+
+              // console.log(
+              //   `\n\n✅ Client and server bundles successfully built.`,
+              // )
             },
           },
         }
       },
+      // async buildStart() {
+      //   await Promise.all(
+      //     [
+      //       nitro.options.output.dir,
+      //       nitro.options.output.serverDir,
+      //       nitro.options.output.publicDir,
+      //     ].map((dir) => {
+      //       if (dir) {
+      //         return promises.mkdir(dir, {
+      //           recursive: true,
+      //         })
+      //       }
+      //       return
+      //     }),
+      //   )
+      // },
     },
   ]
 }

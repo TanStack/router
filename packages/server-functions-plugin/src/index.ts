@@ -40,7 +40,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
 } {
   const ROOT = process.cwd()
   const manifestFilename =
-    'node_modules/.tanstack-start/server-functions-manifest.json'
+    'node_modules/.tanstack-start/server/server-functions-manifest.json'
 
   globalThis.TSR_directiveFnsById = {}
 
@@ -95,7 +95,9 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
           // build.
 
           // Ensure the manifest directory exists
-          mkdirSync(path.dirname(manifestFilename), { recursive: true })
+          mkdirSync(path.join(ROOT, path.dirname(manifestFilename)), {
+            recursive: true,
+          })
 
           // Write the manifest to disk
           writeFileSync(
@@ -200,9 +202,21 @@ export function TanStackServerFnPluginEnv(opts: {
     replacer: ReplacerFn
   }
 }): Array<Plugin> {
+  opts = {
+    ...opts,
+    client: {
+      ...opts.client,
+      envName: opts.client.envName || 'client',
+    },
+    server: {
+      ...opts.server,
+      envName: opts.server.envName || 'server',
+    },
+  }
+
   const root = process.cwd()
   const manifestFilename =
-    'node_modules/.tanstack-start/server-functions-manifest.json'
+    'node_modules/.tanstack-start/server/server-functions-manifest.json'
 
   globalThis.TSR_directiveFnsById = {}
 
@@ -261,7 +275,7 @@ export function TanStackServerFnPluginEnv(opts: {
       applyToEnvironment(environment) {
         return environment.name === opts.client.envName
       },
-      generateBundle() {
+      buildEnd() {
         // In production, we create a manifest so we can
         // access it later in the server build, which likely does not run in the
         // same vite build environment. This is essentially a
@@ -269,7 +283,9 @@ export function TanStackServerFnPluginEnv(opts: {
         // build.
 
         // Ensure the manifest directory exists
-        mkdirSync(path.dirname(manifestFilename), { recursive: true })
+        mkdirSync(path.join(root, path.dirname(manifestFilename)), {
+          recursive: true,
+        })
 
         // Write the manifest to disk
         writeFileSync(

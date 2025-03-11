@@ -81,13 +81,13 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       })
     },
     vite: {
-      async configResolved(config) {
+      configResolved(config) {
         ROOT = config.root
         userConfig = getConfig(options, ROOT)
 
-        if (config.command === 'serve') {
-          await run(generate)
-        }
+        // if (config.command === 'serve') {
+        //   await run(generate)
+        // }
       },
       async buildStart() {
         if (this.environment.name === 'server') {

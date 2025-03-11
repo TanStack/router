@@ -1,14 +1,12 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import type { configSchema } from '@tanstack/router-generator'
 import type { PluginOption, ResolvedConfig } from 'vite'
-import type { z } from 'zod'
 import type { Manifest } from '@tanstack/react-router'
+import type { TanStackStartOutputConfig } from './schema'
 
-export function tsrManifestPlugin(opts: {
-  tsrConfig: z.infer<typeof configSchema>
-  clientBase: string
-}): PluginOption {
+export function startManifestPlugin(
+  opts: TanStackStartOutputConfig,
+): PluginOption {
   let config: ResolvedConfig
 
   return {
@@ -39,8 +37,8 @@ export function tsrManifestPlugin(opts: {
         }
 
         const clientViteManifestPath = path.resolve(
-          config.build.outDir,
-          `../client/${opts.clientBase}/.vite/manifest.json`,
+          opts.root,
+          'node_modules/.tanstack-start/client-dist/.vite/manifest.json',
         )
 
         type ViteManifest = Record<
@@ -62,7 +60,7 @@ export function tsrManifestPlugin(opts: {
           )
         }
 
-        const routeTreePath = path.resolve(opts.tsrConfig.generatedRouteTree)
+        const routeTreePath = path.resolve(opts.tsr.generatedRouteTree)
 
         let routeTreeContent: string
         try {
@@ -88,7 +86,7 @@ export function tsrManifestPlugin(opts: {
         let entryFile:
           | {
               file: string
-              imports: Array<string>
+              imports?: Array<string>
             }
           | undefined
 
@@ -108,15 +106,15 @@ export function tsrManifestPlugin(opts: {
         Object.entries(routes).forEach(([k, v]) => {
           const file =
             filesByRouteFilePath[
-              path.join(opts.tsrConfig.routesDirectory, v.filePath as string)
+              path.join(opts.tsr.routesDirectory, v.filePath as string)
             ]
 
-          if (file) {
+          if (file?.imports.length) {
             const preloads = file.imports.map((d) =>
-              path.join(opts.clientBase, manifest[d]!.file),
+              path.join(opts.routers.client.base, manifest[d]!.file),
             )
 
-            preloads.unshift(path.join(opts.clientBase, file.file))
+            preloads.unshift(path.join(opts.routers.client.base, file.file))
 
             routes[k] = {
               ...v,
@@ -127,10 +125,10 @@ export function tsrManifestPlugin(opts: {
 
         if (entryFile) {
           routes.__root__!.preloads = [
-            path.join(opts.clientBase, entryFile.file),
-            ...entryFile.imports.map((d) =>
-              path.join(opts.clientBase, manifest[d]!.file),
-            ),
+            path.join(opts.routers.client.base, entryFile.file),
+            ...(entryFile.imports?.map((d) =>
+              path.join(opts.routers.client.base, manifest[d]!.file),
+            ) || []),
           ]
         }
 
