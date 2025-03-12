@@ -498,12 +498,12 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 
 ## Returning Raw Response objects
 
-To return a raw Response object, simply return a Response object from the server function:
+To return a raw Response object, return a Response object from the server function and set `response: 'raw'`:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 
-export const getServerTime = createServerFn({ method: 'GET' }).handler(
+export const getServerTime = createServerFn({ method: 'GET', response: 'raw' }).handler(
   async () => {
     // Read a file from s3
     return fetch('https://example.com/time.txt')
@@ -511,7 +511,7 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 )
 ```
 
-For more advanced control over responses, especially with streaming data, you can use the `response: 'raw'` option:
+The response: 'raw' option also allows for streaming responses among other things:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
