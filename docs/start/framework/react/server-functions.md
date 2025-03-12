@@ -60,7 +60,7 @@ When creating a server function, you can provide configuration options to custom
 import { createServerFn } from '@tanstack/react-start'
 
 export const getData = createServerFn({
-  method: 'GET',    // HTTP method to use
+  method: 'GET', // HTTP method to use
   response: 'data', // Response handling mode
 }).handler(async () => {
   // Function implementation
@@ -503,12 +503,13 @@ To return a raw Response object, return a Response object from the server functi
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 
-export const getServerTime = createServerFn({ method: 'GET', response: 'raw' }).handler(
-  async () => {
-    // Read a file from s3
-    return fetch('https://example.com/time.txt')
-  },
-)
+export const getServerTime = createServerFn({
+  method: 'GET',
+  response: 'raw',
+}).handler(async () => {
+  // Read a file from s3
+  return fetch('https://example.com/time.txt')
+})
 ```
 
 The response: 'raw' option also allows for streaming responses among other things:
@@ -516,55 +517,60 @@ The response: 'raw' option also allows for streaming responses among other thing
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 
-export const streamEvents = createServerFn({ 
+export const streamEvents = createServerFn({
   method: 'GET',
-  response: 'raw'
+  response: 'raw',
 }).handler(async ({ signal }) => {
   // Create a ReadableStream to send chunks of data
   const stream = new ReadableStream({
     async start(controller) {
       // Send initial response immediately
-      controller.enqueue(new TextEncoder().encode('Connection established\n'));
-      
-      let count = 0;
+      controller.enqueue(new TextEncoder().encode('Connection established\n'))
+
+      let count = 0
       const interval = setInterval(() => {
         // Check if the client disconnected
         if (signal.aborted) {
-          clearInterval(interval);
-          controller.close();
-          return;
+          clearInterval(interval)
+          controller.close()
+          return
         }
-        
+
         // Send a data chunk
-        controller.enqueue(new TextEncoder().encode(`Event ${++count}: ${new Date().toISOString()}\n`));
-        
+        controller.enqueue(
+          new TextEncoder().encode(
+            `Event ${++count}: ${new Date().toISOString()}\n`,
+          ),
+        )
+
         // End after 10 events
         if (count >= 10) {
-          clearInterval(interval);
-          controller.close();
+          clearInterval(interval)
+          controller.close()
         }
-      }, 1000);
-      
+      }, 1000)
+
       // Ensure we clean up if the request is aborted
       signal.addEventListener('abort', () => {
-        clearInterval(interval);
-        controller.close();
-      });
-    }
-  });
-  
+        clearInterval(interval)
+        controller.close()
+      })
+    },
+  })
+
   // Return a streaming response
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
-    }
-  });
-});
+      Connection: 'keep-alive',
+    },
+  })
+})
 ```
 
 The `response: 'raw'` option is particularly useful for:
+
 - Streaming APIs where data is sent incrementally
 - Server-sent events
 - Long-polling responses
