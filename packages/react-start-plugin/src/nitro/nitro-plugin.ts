@@ -30,9 +30,9 @@ export function nitroPlugin(
     process.env['START_TARGET'] ?? (options.target as string | undefined)
 
   const nitroConfig: NitroConfig = {
+    dev: false,
     compatibilityDate: '2024-11-19',
     srcDir: normalizePath(options.tsr.srcDirectory),
-    ...options.nitro,
     preset: buildPreset,
     publicAssets: [
       {
@@ -51,10 +51,7 @@ export function nitroPlugin(
     {
       name: 'tanstack-vite-plugin-nitro',
       async configEnvironment(name) {
-        nitro = await createNitro({
-          dev: false,
-          ...nitroConfig,
-        })
+        nitro = await createNitro(nitroConfig)
 
         nitroRollupOptions = getRollupConfig(nitro)
 

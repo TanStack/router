@@ -32,10 +32,6 @@ const TanStackStartOptionsSchema = z
   .object({
     root: z.string().optional().default(process.cwd()),
     target: z.custom<NitroConfig['preset']>().optional(),
-    nitro: z
-      .custom<Omit<NitroConfig, 'prerender' | 'preset'>>()
-      .optional()
-      .default({}),
     react: viteReactSchema.optional(),
     tsr: tsrConfig.optional().default({}),
     client: z
