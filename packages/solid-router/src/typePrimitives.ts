@@ -4,14 +4,14 @@ import type { UseSearchOptions } from './useSearch'
 import type {
   AnyRouter,
   Constrain,
-  RegisteredRouter,
   InferFrom,
-  InferTo,
-  InferMaskTo,
   InferMaskFrom,
-  InferStrict,
-  InferShouldThrow,
+  InferMaskTo,
   InferSelected,
+  InferShouldThrow,
+  InferStrict,
+  InferTo,
+  RegisteredRouter,
 } from '@tanstack/router-core'
 
 export type ValidateLinkOptions<

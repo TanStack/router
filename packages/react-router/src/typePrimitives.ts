@@ -1,14 +1,14 @@
 import type {
   AnyRouter,
   Constrain,
-  RegisteredRouter,
   InferFrom,
-  InferTo,
-  InferMaskTo,
   InferMaskFrom,
-  InferStrict,
-  InferShouldThrow,
+  InferMaskTo,
   InferSelected,
+  InferShouldThrow,
+  InferStrict,
+  InferTo,
+  RegisteredRouter,
 } from '@tanstack/router-core'
 import type { LinkComponentProps } from './link'
 import type { UseParamsOptions } from './useParams'
