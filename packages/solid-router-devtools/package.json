@@ -74,7 +74,6 @@
   },
   "peerDependencies": {
     "solid-js": "^1.9.5",
-    "@tanstack/solid-router": "workspace:^",
-    "@tanstack/router-devtools-core": "workspace:^"
+    "@tanstack/solid-router": "workspace:^"
   }
 }
