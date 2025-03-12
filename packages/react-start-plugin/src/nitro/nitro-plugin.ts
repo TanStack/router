@@ -37,7 +37,7 @@ export function nitroPlugin(
     preset: buildPreset,
     publicAssets: [
       {
-        dir: clientDistDir,
+        dir: path.resolve(options.root, clientDistDir),
       },
     ],
     typescript: {

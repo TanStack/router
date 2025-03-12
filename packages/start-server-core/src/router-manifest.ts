@@ -21,23 +21,6 @@ export function getStartManifest() {
 
   rootRoute.assets = rootRoute.assets || []
 
-  let script = ''
-  // Always fake that HMR is ready
-  if (process.env.NODE_ENV === 'development') {
-    const CLIENT_BASE = sanitizeBase(process.env.TSS_CLIENT_BASE || '')
-
-    if (!CLIENT_BASE) {
-      throw new Error(
-        'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
-      )
-    }
-    script = `import RefreshRuntime from "${path.join('/', '@react-refresh')}";
-    RefreshRuntime.injectIntoGlobalHook(window)
-    window.$RefreshReg$ = () => {}
-    window.$RefreshSig$ = () => (type) => type
-    window.__vite_plugin_react_preamble_installed__ = true;`
-  }
-
   // Get the entry for the client from vinxi
   // const vinxiClientManifest = getManifest('client')
 
@@ -47,26 +30,41 @@ export function getStartManifest() {
   //   invariant(importPath, 'Could not find client entry in vinxi manifest')
   // }
 
-  if (!process.env.TSS_CLIENT_ENTRY) {
+  if (process.env.NODE_ENV === 'development' && !process.env.TSS_CLIENT_ENTRY) {
     throw new Error(
       'tanstack/start-router-manifest: TSS_CLIENT_ENTRY must be defined in your environment for getStartManifest()',
     )
   }
 
-  rootRoute.assets.push({
-    tag: 'script',
-    attrs: {
-      type: 'module',
-      suppressHydrationWarning: true,
-      async: true,
-    },
-    children: `${script};\nimport(${JSON.stringify(
-      process.env.TSS_CLIENT_ENTRY,
-    )})`,
-  })
+  if (process.env.NODE_ENV === 'development') {
+    // Always fake that HMR is ready
+    // const CLIENT_BASE = sanitizeBase(process.env.TSS_CLIENT_BASE || '')
 
-  // Strip out anything that isn't needed for the client
-  return {
+    // if (!CLIENT_BASE) {
+    //   throw new Error(
+    //     'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
+    //   )
+    // }
+
+    const script = `import RefreshRuntime from "${path.join('/', '@react-refresh')}";
+    RefreshRuntime.injectIntoGlobalHook(window)
+    window.$RefreshReg$ = () => {}
+    window.$RefreshSig$ = () => (type) => type
+    window.__vite_plugin_react_preamble_installed__ = true;
+    import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
+
+    rootRoute.assets.push({
+      tag: 'script',
+      attrs: {
+        type: 'module',
+        suppressHydrationWarning: true,
+        async: true,
+      },
+      children: script,
+    })
+  }
+
+  const manifest = {
     ...startManifest,
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]: any) => {
@@ -81,4 +79,7 @@ export function getStartManifest() {
       }),
     ),
   }
+
+  // Strip out anything that isn't needed for the client
+  return manifest
 }

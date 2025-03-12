@@ -46,7 +46,7 @@ export function startManifestPlugin(
           {
             file: string
             isEntry: boolean
-            imports: Array<string>
+            imports?: Array<string>
           }
         >
 
@@ -102,19 +102,26 @@ export function startManifestPlugin(
           }, {}),
         )
 
+        const routesDirectoryFromRoot = path.relative(
+          opts.root,
+          opts.tsr.routesDirectory,
+        )
+
         // Add preloads to the routes from the vite manifest
         Object.entries(routes).forEach(([k, v]) => {
           const file =
             filesByRouteFilePath[
-              path.join(opts.tsr.routesDirectory, v.filePath as string)
+              path.join(routesDirectoryFromRoot, v.filePath as string)
             ]
 
-          if (file?.imports.length) {
-            const preloads = file.imports.map((d) =>
-              path.join(opts.routers.client.base, manifest[d]!.file),
+          if (file) {
+            const preloads = (file.imports ?? []).map((d) =>
+              path.join('/', manifest[d]!.file),
             )
 
-            preloads.unshift(path.join(opts.routers.client.base, file.file))
+            if (file.file) {
+              preloads.unshift(path.join('/', file.file))
+            }
 
             routes[k] = {
               ...v,
@@ -125,10 +132,20 @@ export function startManifestPlugin(
 
         if (entryFile) {
           routes.__root__!.preloads = [
-            path.join(opts.routers.client.base, entryFile.file),
+            path.join('/', entryFile.file),
             ...(entryFile.imports?.map((d) =>
-              path.join(opts.routers.client.base, manifest[d]!.file),
+              path.join('/', manifest[d]!.file),
             ) || []),
+          ]
+          routes.__root__!.assets = [
+            ...(routes.__root__!.assets || []),
+            {
+              tag: 'script',
+              attrs: {
+                src: path.join('/', entryFile.file),
+                type: 'module',
+              },
+            },
           ]
         }
 
@@ -160,12 +177,6 @@ export function startManifestPlugin(
 
         const routesManifest = {
           routes,
-        }
-
-        if (process.env.TSR_VITE_DEBUG) {
-          console.info(
-            'Routes Manifest: \n' + JSON.stringify(routesManifest, null, 2),
-          )
         }
 
         return `export default () => (${JSON.stringify(routesManifest)})`

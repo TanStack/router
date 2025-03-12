@@ -47,7 +47,7 @@ export function TanStackStartVitePlugin(
                     main: options.clientEntryPath,
                   },
                   output: {
-                    dir: clientDistDir,
+                    dir: path.resolve(options.root, clientDistDir),
                   },
                   external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
