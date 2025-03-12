@@ -27,13 +27,12 @@ export function nitroPlugin(
   let nitroRollupOptions: ReturnType<typeof getRollupConfig>
 
   const buildPreset =
-    process.env['BUILD_PRESET'] ?? (options.server.preset as string | undefined)
+    process.env['START_TARGET'] ?? (options.target as string | undefined)
 
   const nitroConfig: NitroConfig = {
     compatibilityDate: '2024-11-19',
-    logLevel: options.server.logLevel || 0,
     srcDir: normalizePath(options.tsr.srcDirectory),
-    ...options.server,
+    ...options.nitro,
     preset: buildPreset,
     publicAssets: [
       {
@@ -44,8 +43,8 @@ export function nitroPlugin(
       generateTsConfig: false,
     },
     prerender: {
-      ...options.server.prerender,
-      routes: ['/', ...(options.server.prerender?.routes || [])],
+      ...options.prerender,
+      routes: options.prerender.routes || [],
     },
     renderer: options.serverEntryPath,
   }
