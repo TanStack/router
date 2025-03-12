@@ -347,6 +347,11 @@ export type StrictOrFrom<
       strict?: TStrict
     }
 
+export type ThrowConstraint<
+  TStrict extends boolean,
+  TThrow extends boolean,
+> = TStrict extends false ? (TThrow extends true ? never : TThrow) : TThrow
+
 export type ControlledPromise<T> = Promise<T> & {
   resolve: (value: T) => void
   reject: (value: any) => void

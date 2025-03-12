@@ -297,6 +297,7 @@ export type {
   NonNullableUpdater,
   StringLiteral,
   ThrowOrOptional,
+  ThrowConstraint,
   ControlledPromise,
   ExtractObjects,
   PartialMergeAllObject,
@@ -376,3 +377,24 @@ export type {
   ScrollRestorationOptions,
   ScrollRestorationEntry,
 } from './scroll-restoration'
+
+export type {
+  ValidateFromPath,
+  ValidateToPath,
+  ValidateSearch,
+  ValidateParams,
+  InferFrom,
+  InferTo,
+  InferMaskTo,
+  InferMaskFrom,
+  ValidateNavigateOptions,
+  ValidateNavigateOptionsArray,
+  ValidateRedirectOptions,
+  ValidateRedirectOptionsArray,
+  ValidateId,
+  InferStrict,
+  InferShouldThrow,
+  InferSelected,
+  ValidateUseSearchResult,
+  ValidateUseParamsResult,
+} from './typePrimitives'

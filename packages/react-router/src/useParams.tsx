@@ -1,5 +1,4 @@
 import { useMatch } from './useMatch'
-import type { ThrowConstraint } from './useMatch'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -9,6 +8,7 @@ import type {
   RegisteredRouter,
   ResolveUseParams,
   StrictOrFrom,
+  ThrowConstraint,
   ThrowOrOptional,
   UseParamsResult,
 } from '@tanstack/router-core'
