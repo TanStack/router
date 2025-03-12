@@ -376,3 +376,13 @@ export type {
   ScrollRestorationOptions,
   ScrollRestorationEntry,
 } from './scroll-restoration'
+
+export type {
+  InferFrom,
+  InferTo,
+  InferMaskTo,
+  InferMaskFrom,
+  InferStrict,
+  InferShouldThrow,
+  InferSelected,
+} from './typePrimitives'
