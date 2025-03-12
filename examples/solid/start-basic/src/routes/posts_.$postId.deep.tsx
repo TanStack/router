@@ -16,10 +16,7 @@ function PostDeepComponent() {
 
   return (
     <div class="p-2 space-y-2">
-      <Link
-        to="/posts"
-        class="block py-1 text-blue-800 hover:text-blue-600"
-      >
+      <Link to="/posts" class="block py-1 text-blue-800 hover:text-blue-600">
         ← All Posts
       </Link>
       <h4 class="text-xl font-bold underline">{post().title}</h4>
