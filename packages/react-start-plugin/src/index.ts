@@ -73,18 +73,12 @@ export function TanStackStartVitePlugin(
               '@tanstack/server-functions-plugin',
               'tsr:start-manifest',
               'tsr:server-fn-manifest',
-              'use-sync-external-store',
-              'use-sync-external-store/shim/with-selector',
             ],
           },
           optimizeDeps: {
             entries: [],
             ...(options.vite?.optimizeDeps || {}),
-            include: [
-              'use-sync-external-store',
-              'use-sync-external-store/shim/with-selector',
-              ...(options.vite?.optimizeDeps?.include || []),
-            ],
+            include: [...(options.vite?.optimizeDeps?.include || [])],
           },
           /* prettier-ignore */
           define: {

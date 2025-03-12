@@ -8,7 +8,7 @@ import { normalizePath } from 'vite'
 import { getRollupConfig } from 'nitropack/rollup'
 import { clientDistDir } from '../index.js'
 import { devServerPlugin } from './dev-server-plugin.js'
-import type { PluginOption } from 'vite'
+import type { EnvironmentOptions, PluginOption } from 'vite'
 import type { Nitro, NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../schema.js'
 
@@ -54,9 +54,6 @@ export function nitroPlugin(
     devServerPlugin(options),
     {
       name: 'tanstack-vite-plugin-nitro',
-      configResolved() {
-        // console.log(config.environments)
-      },
       async configEnvironment(name) {
         nitro = await createNitro({
           dev: false,
@@ -68,6 +65,9 @@ export function nitroPlugin(
         if (name === 'server') {
           return {
             build: {
+              commonjsOptions: {
+                include: [],
+              },
               ssr: true,
               sourcemap: true,
               rollupOptions: {
@@ -78,7 +78,7 @@ export function nitroPlugin(
                 },
               },
             },
-          }
+          } satisfies EnvironmentOptions
         }
 
         return null
