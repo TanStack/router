@@ -42,10 +42,7 @@ export function nitroPlugin(
     typescript: {
       generateTsConfig: false,
     },
-    prerender: {
-      ...options.prerender,
-      routes: options.prerender.routes || [],
-    },
+    prerender: undefined,
     renderer: options.serverEntryPath,
   }
 
@@ -99,13 +96,14 @@ export function nitroPlugin(
               await prepare(nitro)
               await copyPublicAssets(nitro)
 
-              // if (
-              //   nitroConfig.prerender?.routes &&
-              //   nitroConfig.prerender.routes.length > 0
-              // ) {
-              //   console.log(`Prerendering static pages...`)
-              //   await prerender(nitro)
-              // }
+              if (
+                options.prerender.routes &&
+                options.prerender.routes.length > 0
+              ) {
+                console.log('Prerendering is not implemented yet.')
+                // console.log(`Prerendering static pages...`)
+                // await prerender(nitro)
+              }
 
               await builder.build(builder.environments['server'])
 
