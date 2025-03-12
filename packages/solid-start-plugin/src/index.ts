@@ -158,7 +158,7 @@ export default createStartHandler({
       __enableAPIRoutesGeneration: true,
       autoCodeSplitting: true,
     }),
-    viteSolid(options.solid),
+    viteSolid({ ...options.solid, ssr: true }),
     nitroPlugin(options),
   ]
 }
