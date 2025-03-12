@@ -116,7 +116,7 @@ export function createServerFn<
 
       // We want to make sure the new function has the same
       // properties as the original function
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
       return Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
           // Start by executing the client-side middleware chain
@@ -242,7 +242,6 @@ async function executeMiddleware(
       ctx.data = await execValidator(nextMiddleware.options.validator, ctx.data)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const middlewareFn = (
       env === 'client'
         ? nextMiddleware.options.client

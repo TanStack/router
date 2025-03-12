@@ -335,7 +335,33 @@ export { CatchNotFound, DefaultGlobalNotFound } from './not-found'
 export { notFound, isNotFound } from '@tanstack/router-core'
 export type { NotFoundError } from '@tanstack/router-core'
 
-export * from './typePrimitives'
+export type {
+  ValidateLinkOptions,
+  ValidateUseSearchOptions,
+  ValidateUseParamsOptions,
+  ValidateLinkOptionsArray,
+} from './typePrimitives'
+
+export type {
+  ValidateFromPath,
+  ValidateToPath,
+  ValidateSearch,
+  ValidateParams,
+  InferFrom,
+  InferTo,
+  InferMaskTo,
+  InferMaskFrom,
+  ValidateNavigateOptions,
+  ValidateNavigateOptionsArray,
+  ValidateRedirectOptions,
+  ValidateRedirectOptionsArray,
+  ValidateId,
+  InferStrict,
+  InferShouldThrow,
+  InferSelected,
+  ValidateUseSearchResult,
+  ValidateUseParamsResult,
+} from '@tanstack/router-core'
 
 export { ScriptOnce } from './ScriptOnce'
 
