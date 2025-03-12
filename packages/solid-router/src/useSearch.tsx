@@ -1,11 +1,11 @@
 import { useMatch } from './useMatch'
-import type { ThrowConstraint } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
   AnyRouter,
   RegisteredRouter,
   ResolveUseSearch,
   StrictOrFrom,
+  ThrowConstraint,
   ThrowOrOptional,
   UseSearchResult,
 } from '@tanstack/router-core'

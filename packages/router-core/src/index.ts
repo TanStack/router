@@ -297,6 +297,7 @@ export type {
   NonNullableUpdater,
   StringLiteral,
   ThrowOrOptional,
+  ThrowConstraint,
   ControlledPromise,
   ExtractObjects,
   PartialMergeAllObject,
