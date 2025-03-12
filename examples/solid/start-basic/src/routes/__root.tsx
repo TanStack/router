@@ -72,11 +72,8 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
-    <html>
-      <head>
+      <>
         <HeadContent />
-      </head>
-      <body>
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -133,7 +130,6 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
         {children}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </body>
-    </html>
+      </>
   )
 }
