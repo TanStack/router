@@ -1,9 +1,8 @@
 import path from 'node:path'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
-import { createNitro } from 'nitropack'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import viteSolid from 'vite-plugin-solid'
-import { mergeConfig } from 'vite'
+import { createNitro } from 'nitropack'
 import { getTanStackStartOptions } from './schema.js'
 import { nitroPlugin } from './nitro/nitro-plugin.js'
 import { startManifestPlugin } from './routesManifestPlugin.js'
@@ -26,16 +25,19 @@ export function TanStackStartVitePlugin(
   return [
     {
       name: 'tss-vite-config-client',
-      ...options.vite,
       async config() {
-        // Create a dummy nitro app to get the resolved public output path
-        const dummyNitroApp = await createNitro({
-          preset: options.server.preset,
-          compatibilityDate: '2024-12-01',
-        })
+        const nitroOutputPublicDir = await (async () => {
+          // Create a dummy nitro app to get the resolved public output path
+          const dummyNitroApp = await createNitro({
+            preset: options.target,
+            compatibilityDate: '2024-12-01',
+          })
 
-        const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
-        await dummyNitroApp.close()
+          const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
+          await dummyNitroApp.close()
+
+          return nitroOutputPublicDir
+        })()
 
         return {
           environments: {
@@ -75,32 +77,15 @@ export function TanStackStartVitePlugin(
               'tsr:server-fn-manifest',
             ],
           },
-          optimizeDeps: {
-            entries: [],
-            ...(options.vite?.optimizeDeps || {}),
-            include: [...(options.vite?.optimizeDeps?.include || [])],
-          },
           /* prettier-ignore */
           define: {
-            ...(options.vite?.define || {}),
-            ...injectDefineEnv('TSS_PUBLIC_BASE', options.routers.public.base),
-            ...injectDefineEnv('TSS_CLIENT_BASE', options.routers.client.base),
+            ...injectDefineEnv('TSS_PUBLIC_BASE', options.public.base),
+            ...injectDefineEnv('TSS_CLIENT_BASE', options.client.base),
             ...injectDefineEnv('TSS_CLIENT_ENTRY', options.clientEntryPath),
-            ...injectDefineEnv('TSS_SERVER_FN_BASE', options.routers.server.base),
+            ...injectDefineEnv('TSS_SERVER_FN_BASE', options.serverFns.base),
             ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
           },
         }
-      },
-      configEnvironment(env, config) {
-        if (env === 'server') {
-        } else {
-          config = mergeConfig(
-            mergeConfig(config, options.vite || {}),
-            options.routers.client.vite || {},
-          )
-        }
-
-        return config
       },
       resolveId(id) {
         if (
@@ -156,13 +141,13 @@ export default createStartHandler({
         getRuntimeCode: () =>
           `import { createClientRpc } from '@tanstack/solid-start/server-functions-client'`,
         replacer: (d) =>
-          `createClientRpc('${d.functionId}', '${options.routers.server.base}')`,
+          `createClientRpc('${d.functionId}', '${options.serverFns.base}')`,
       },
       server: {
         getRuntimeCode: () =>
           `import { createServerRpc } from '@tanstack/solid-start/server-functions-server'`,
         replacer: (d) =>
-          `createServerRpc('${d.functionId}', '${options.routers.server.base}', ${d.fn})`,
+          `createServerRpc('${d.functionId}', '${options.serverFns.base}', ${d.fn})`,
       },
     }),
     startManifestPlugin(options),

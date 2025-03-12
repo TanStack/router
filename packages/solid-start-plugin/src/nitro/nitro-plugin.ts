@@ -27,13 +27,12 @@ export function nitroPlugin(
   let nitroRollupOptions: ReturnType<typeof getRollupConfig>
 
   const buildPreset =
-    process.env['BUILD_PRESET'] ?? (options.server.preset as string | undefined)
+    process.env['START_TARGET'] ?? (options.target as string | undefined)
 
   const nitroConfig: NitroConfig = {
+    dev: false,
     compatibilityDate: '2024-11-19',
-    logLevel: options.server.logLevel || 0,
     srcDir: normalizePath(options.tsr.srcDirectory),
-    ...options.server,
     preset: buildPreset,
     publicAssets: [
       {
@@ -43,10 +42,7 @@ export function nitroPlugin(
     typescript: {
       generateTsConfig: false,
     },
-    prerender: {
-      ...options.server.prerender,
-      routes: ['/', ...(options.server.prerender?.routes || [])],
-    },
+    prerender: undefined,
     renderer: options.serverEntryPath,
   }
 
@@ -55,10 +51,7 @@ export function nitroPlugin(
     {
       name: 'tanstack-vite-plugin-nitro',
       async configEnvironment(name) {
-        nitro = await createNitro({
-          dev: false,
-          ...nitroConfig,
-        })
+        nitro = await createNitro(nitroConfig)
 
         nitroRollupOptions = getRollupConfig(nitro)
 
@@ -100,13 +93,14 @@ export function nitroPlugin(
               await prepare(nitro)
               await copyPublicAssets(nitro)
 
-              // if (
-              //   nitroConfig.prerender?.routes &&
-              //   nitroConfig.prerender.routes.length > 0
-              // ) {
-              //   console.log(`Prerendering static pages...`)
-              //   await prerender(nitro)
-              // }
+              if (
+                options.prerender.routes &&
+                options.prerender.routes.length > 0
+              ) {
+                console.log('Prerendering is not implemented yet.')
+                // console.log(`Prerendering static pages...`)
+                // await prerender(nitro)
+              }
 
               await builder.build(builder.environments['server'])
 

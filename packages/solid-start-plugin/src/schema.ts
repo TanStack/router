@@ -2,73 +2,23 @@ import path from 'node:path'
 import { existsSync } from 'node:fs'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-generator'
-import type { UserConfig } from 'vite'
 import type { NitroConfig } from 'nitropack'
 import type { Options as ViteSolidOptions } from 'vite-plugin-solid'
 
-type HTTPSOptions = {
-  cert?: string
-  key?: string
-  pfx?: string
-  passphrase?: string
-  validityDays?: number
-  domains?: Array<string>
-}
+// type HTTPSOptions = {
+//   cert?: string
+//   key?: string
+//   pfx?: string
+//   passphrase?: string
+//   validityDays?: number
+//   domains?: Array<string>
+// }
 
-type ServerOptions = NitroConfig & {
-  https?: boolean | HTTPSOptions
-}
-
-export const serverSchema = z.custom<ServerOptions>().and(
-  z.object({
-    preset: z
-      .custom<ServerOptions['preset']>()
-      .optional()
-      .default('node-server'),
-  }),
-)
-
-const viteSchema = z.custom<UserConfig>()
+// type ServerOptions = NitroConfig & {
+//   https?: boolean | HTTPSOptions
+// }
 
 const viteSolidSchema = z.custom<ViteSolidOptions>()
-
-const routersSchema = z.object({
-  ssr: z
-    .object({
-      entry: z.string().optional(),
-      // middleware: z.string().optional(),
-      vite: viteSchema.optional(),
-    })
-    .optional()
-    .default({}),
-  client: z
-    .object({
-      entry: z.string().optional(),
-      base: z.string().optional().default('/_build'),
-      vite: viteSchema.optional(),
-    })
-    .optional()
-    .default({}),
-  server: z
-    .object({
-      base: z.string().optional().default('/_server'),
-      globalMiddlewareEntry: z
-        .string()
-        .optional()
-        .default('global-middleware.ts'),
-      // middleware: z.string().optional(),
-      vite: viteSchema.optional(),
-    })
-    .optional()
-    .default({}),
-  public: z
-    .object({
-      dir: z.string().optional().default('public'),
-      base: z.string().optional().default('/'),
-    })
-    .optional()
-    .default({}),
-})
 
 const sitemapSchema = z.object({
   host: z.string(),
@@ -81,12 +31,43 @@ const tsrConfig = configSchema.partial().extend({
 const TanStackStartOptionsSchema = z
   .object({
     root: z.string().optional().default(process.cwd()),
+    target: z.custom<NitroConfig['preset']>().optional(),
     solid: viteSolidSchema.optional(),
-    vite: viteSchema.optional(),
     tsr: tsrConfig.optional().default({}),
-    routers: routersSchema.optional().default({}),
-    server: serverSchema.optional().default({}),
+    client: z
+      .object({
+        entry: z.string().optional(),
+        base: z.string().optional().default('/_build'),
+      })
+      .optional()
+      .default({}),
+    server: z
+      .object({
+        entry: z.string().optional(),
+      })
+      .optional()
+      .default({}),
+    serverFns: z
+      .object({
+        base: z.string().optional().default('/_server'),
+      })
+      .optional()
+      .default({}),
+    public: z
+      .object({
+        dir: z.string().optional().default('public'),
+        base: z.string().optional().default('/'),
+      })
+      .optional()
+      .default({}),
     sitemap: sitemapSchema.optional(),
+    prerender: z
+      .object({
+        enabled: z.boolean().optional(),
+        routes: z.array(z.string()).optional(),
+      })
+      .optional()
+      .default({}),
   })
   .optional()
   .default({})
@@ -104,8 +85,8 @@ export function getTanStackStartOptions(opts?: TanStackStartInputConfig) {
     path.join(srcDirectory, 'routeTree.gen.ts')
 
   const clientEntryPath = (() => {
-    if (options.routers.client.entry) {
-      return path.join(srcDirectory, options.routers.client.entry)
+    if (options.client.entry) {
+      return path.join(srcDirectory, options.client.entry)
     }
 
     if (existsSync(path.join(srcDirectory, 'client.tsx'))) {
@@ -116,8 +97,8 @@ export function getTanStackStartOptions(opts?: TanStackStartInputConfig) {
   })()
 
   const serverEntryPath = (() => {
-    if (options.routers.ssr.entry) {
-      return path.join(srcDirectory, options.routers.ssr.entry)
+    if (options.server.entry) {
+      return path.join(srcDirectory, options.server.entry)
     }
 
     if (existsSync(path.join(srcDirectory, 'server.tsx'))) {
