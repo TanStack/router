@@ -1,11 +1,6 @@
-import path from 'node:path'
 // @ts-expect-error
 import tsrStartManifest from 'tsr:start-manifest'
 import type { Manifest } from '@tanstack/router-core'
-
-function sanitizeBase(base: string) {
-  return base.replace(/^\/|\/$/g, '')
-}
 
 /**
  * @description Returns the router manifest that should be sent to the client.
@@ -46,12 +41,7 @@ export function getStartManifest() {
     //   )
     // }
 
-    const script = `import RefreshRuntime from "${path.join('/', '@react-refresh')}";
-    RefreshRuntime.injectIntoGlobalHook(window)
-    window.$RefreshReg$ = () => {}
-    window.$RefreshSig$ = () => (type) => type
-    window.__vite_plugin_react_preamble_installed__ = true;
-    import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
+    const script = `import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
 
     rootRoute.assets.push({
       tag: 'script',

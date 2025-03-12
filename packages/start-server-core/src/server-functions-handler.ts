@@ -10,7 +10,7 @@ import type { H3Event } from './h3'
 // only having a default export.
 export const dummy = 2
 
-export default eventHandler(handleServerAction)
+export const serverFunctionsHandler = eventHandler(handleServerAction)
 
 const serverFnManifest = _serverFnManifest as Record<
   string,
