@@ -102,6 +102,9 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
             `,
                 {
                   status: 500,
+                  headers: {
+                    'Content-Type': 'text/html',
+                  },
                 },
               ),
             )
