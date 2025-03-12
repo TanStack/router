@@ -151,6 +151,7 @@ export default createStartHandler({
     startManifestPlugin(options),
     TanStackRouterVite({
       ...options.tsr,
+      target: 'react',
       enableRouteGeneration: true,
       __enableAPIRoutesGeneration: true,
       autoCodeSplitting: true,
