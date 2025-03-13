@@ -3,6 +3,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { useRouter, useRouterState } from '@tanstack/react-router'
 import type { AnyRouter } from '@tanstack/react-router'
 import type React from 'react'
+import type { JSX } from 'solid-js'
 
 interface DevtoolsOptions {
   /**
@@ -12,24 +13,15 @@ interface DevtoolsOptions {
   /**
    * Use this to add props to the panel. For example, you can add className, style (merge and override default style), etc.
    */
-  panelProps?: React.DetailedHTMLProps<
-    React.HTMLAttributes<HTMLDivElement>,
-    HTMLDivElement
-  >
+  panelProps?: JSX.HTMLAttributes<HTMLDivElement>
   /**
    * Use this to add props to the close button. For example, you can add className, style (merge and override default style), onClick (extend default handler), etc.
    */
-  closeButtonProps?: React.DetailedHTMLProps<
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
-    HTMLButtonElement
-  >
+  closeButtonProps?: JSX.ButtonHTMLAttributes<HTMLButtonElement>
   /**
    * Use this to add props to the toggle button. For example, you can add className, style (merge and override default style), onClick (extend default handler), etc.
    */
-  toggleButtonProps?: React.DetailedHTMLProps<
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
-    HTMLButtonElement
-  >
+  toggleButtonProps?: JSX.ButtonHTMLAttributes<HTMLButtonElement>
   /**
    * The position of the TanStack Router logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.

@@ -54,19 +54,25 @@ class TanStackRouterDevtoolsCore {
   #position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   #initialIsOpen: boolean
   #shadowDOMTarget?: ShadowRoot
+
+  #panelProps: any
+  #closeButtonProps: any
+  #toggleButtonProps: any
+
   #isMounted = false
   #Component: any
   #dispose?: () => void
 
   constructor(config: DevtoolsOptions) {
-    const { router, routerState, position, initialIsOpen, shadowDOMTarget } =
-      config
+    this.#router = createSignal(config.router)
+    this.#routerState = createSignal(config.routerState)
+    this.#position = config.position ?? 'bottom-left'
+    this.#initialIsOpen = config.initialIsOpen ?? false
+    this.#shadowDOMTarget = config.shadowDOMTarget
 
-    this.#router = createSignal(router)
-    this.#routerState = createSignal(routerState)
-    this.#position = position ?? 'bottom-left'
-    this.#initialIsOpen = initialIsOpen ?? false
-    this.#shadowDOMTarget = shadowDOMTarget
+    this.#panelProps = config.panelProps
+    this.#closeButtonProps = config.closeButtonProps
+    this.#toggleButtonProps = config.toggleButtonProps
   }
 
   mount<T extends HTMLElement>(el: T) {
@@ -80,6 +86,10 @@ class TanStackRouterDevtoolsCore {
       const position = this.#position
       const initialIsOpen = this.#initialIsOpen
       const shadowDOMTarget = this.#shadowDOMTarget
+
+      const panelProps = this.#panelProps
+      const closeButtonProps = this.#closeButtonProps
+      const toggleButtonProps = this.#toggleButtonProps
 
       let Devtools
 
@@ -97,6 +107,9 @@ class TanStackRouterDevtoolsCore {
           shadowDOMTarget={shadowDOMTarget}
           router={router}
           routerState={routerState}
+          panelProps={panelProps}
+          closeButtonProps={closeButtonProps}
+          toggleButtonProps={toggleButtonProps}
         />
       )
     }, el)
