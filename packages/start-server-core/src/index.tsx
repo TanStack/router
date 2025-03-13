@@ -3,7 +3,7 @@ export {
   transformPipeableStreamWithRouter,
 } from './transformStreamWithRouter'
 
-export { getStartResponseHeaders } from './createStartHandler'
+export { getStartResponseHeaders, createStartHandler } from './createStartHandler'
 export type { CustomizeStartHandler } from './createStartHandler'
 export { createRequestHandler } from './createRequestHandler'
 

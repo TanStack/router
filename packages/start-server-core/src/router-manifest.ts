@@ -27,7 +27,7 @@ export function getStartManifest() {
 
   if (process.env.NODE_ENV === 'development' && !process.env.TSS_CLIENT_ENTRY) {
     throw new Error(
-      'tanstack/start-router-manifest: TSS_CLIENT_ENTRY must be defined in your environment for getStartManifest()',
+      'tanstack/start-server-core: TSS_CLIENT_ENTRY must be defined in your environment for getStartManifest()',
     )
   }
 
