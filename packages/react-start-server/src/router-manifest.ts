@@ -32,7 +32,7 @@ export function getStartManifest() {
   }
 
   if (process.env.NODE_ENV === 'development') {
-    const entryScript = `import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
+    const script = `import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
 
     rootRoute.assets.push({
       tag: 'script',
@@ -41,7 +41,7 @@ export function getStartManifest() {
         suppressHydrationWarning: true,
         async: true,
       },
-      children: entryScript,
+      children: script,
     })
   }
 
