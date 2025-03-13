@@ -1,8 +1,7 @@
 import path from 'node:path'
 import { createMemoryHistory } from '@tanstack/history'
 import { eventHandler, toWebRequest } from 'h3'
-import { attachRouterServerSsrUtils, dehydrateRouter, getStartResponseHeaders, serverFunctionsHandler } from '@tanstack/start-server-core'
-import { getStartManifest } from './router-manifest'
+import { attachRouterServerSsrUtils, dehydrateRouter, getStartManifest, getStartResponseHeaders, serverFunctionsHandler } from '@tanstack/start-server-core'
 import type { EventHandlerResponse } from 'h3'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { CustomizeStartHandler } from '@tanstack/start-server-core';
