@@ -5837,9 +5837,9 @@ importers:
       '@babel/types':
         specifier: ^7.26.8
         version: 7.26.8
-      '@tanstack/react-router':
+      '@tanstack/router-core':
         specifier: workspace:*
-        version: link:../react-router
+        version: link:../router-core
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
@@ -6372,6 +6372,9 @@ importers:
       '@babel/types':
         specifier: ^7.26.8
         version: 7.26.8
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
@@ -6384,9 +6387,6 @@ importers:
       '@tanstack/server-functions-plugin':
         specifier: workspace:*
         version: link:../server-functions-plugin
-      '@tanstack/solid-router':
-        specifier: workspace:^
-        version: link:../solid-router
       '@types/babel__code-frame':
         specifier: ^7.0.6
         version: 7.0.6
