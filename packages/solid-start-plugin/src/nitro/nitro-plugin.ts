@@ -1,13 +1,15 @@
 import { platform } from 'node:os'
-import { promises as fsp } from 'node:fs'
+
 import path from 'node:path'
-import { copyPublicAssets, createNitro, prepare } from 'nitropack'
-import { version } from 'nitropack/meta'
+import { createNitro } from 'nitropack'
+
 import { normalizePath } from 'vite'
 
 import { getRollupConfig } from 'nitropack/rollup'
 import { clientDistDir } from '../index.js'
+import { prerender } from '../prerender.js'
 import { devServerPlugin } from './dev-server-plugin.js'
+import { buildNitroEnvironment } from './build-nitro.js'
 import type { EnvironmentOptions, PluginOption } from 'vite'
 import type { Nitro, NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../schema.js'
@@ -81,71 +83,38 @@ export function nitroPlugin(
           builder: {
             sharedPlugins: true,
             async buildApp(builder) {
-              if (!builder.environments['client']) {
+              const clientEnv = builder.environments['client']
+              const serverEnv = builder.environments['server']
+
+              if (!clientEnv) {
                 throw new Error('Client environment not found')
               }
 
-              if (!builder.environments['server']) {
+              if (!serverEnv) {
                 throw new Error('SSR environment not found')
               }
 
-              await builder.build(builder.environments['client'])
-              await prepare(nitro)
-              await copyPublicAssets(nitro)
+              await builder.build(clientEnv)
+              await buildNitroEnvironment(nitro, () => builder.build(serverEnv))
+
 
               if (
-                options.prerender.routes &&
-                options.prerender.routes.length > 0
+                // If prerender is enabled
+                options.prerender?.enabled ||
+                // or if any page specifically has prerender set but not disabled
+                options.pages?.some(
+                  (d) =>
+                    typeof d === 'object' &&
+                    d.prerender &&
+                    !d.prerender.enabled,
+                )
               ) {
-                console.log('Prerendering is not implemented yet.')
-                // console.log(`Prerendering static pages...`)
-                // await prerender(nitro)
+                await prerender({
+                  options,
+                  nitro,
+                  builder,
+                })
               }
-
-              await builder.build(builder.environments['server'])
-
-              const buildInfoPath = path.resolve(
-                nitro.options.output.dir,
-                'nitro.json',
-              )
-
-              const presetsWithConfig = [
-                'awsAmplify',
-                'awsLambda',
-                'azure',
-                'cloudflare',
-                'firebase',
-                'netlify',
-                'vercel',
-              ]
-
-              const buildInfo = {
-                date: /* @__PURE__ */ new Date().toJSON(),
-                preset: nitro.options.preset,
-                framework: nitro.options.framework,
-                versions: {
-                  nitro: version,
-                },
-                commands: {
-                  preview: nitro.options.commands.preview,
-                  deploy: nitro.options.commands.deploy,
-                },
-                config: {
-                  ...Object.fromEntries(
-                    presetsWithConfig.map((key) => [
-                      key,
-                      (nitro.options as any)[key],
-                    ]),
-                  ),
-                },
-              }
-
-              await fsp.writeFile(
-                buildInfoPath,
-                JSON.stringify(buildInfo, null, 2),
-              )
-
-              await nitro.close()
 
               // if (nitroConfig.prerender?.routes?.length && options.sitemap) {
               //   console.log('Building Sitemap...')

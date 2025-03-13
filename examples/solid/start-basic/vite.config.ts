@@ -11,8 +11,8 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     TanStackStartVitePlugin({
-      server: {
-        // preset: 'netlify',
+      prerender: {
+        enabled: true,
       },
     }),
   ],

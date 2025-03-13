@@ -38,6 +38,7 @@ overrides:
   '@tanstack/start-server-functions-ssr': workspace:*
   '@tanstack/start-server-functions-server': workspace:*
   '@tanstack/react-start-plugin': workspace:*
+  '@tanstack/start-plugin-core': workspace:*
   '@tanstack/start-client-core': workspace:*
   '@tanstack/start-server-core': workspace:*
   '@tanstack/eslint-plugin-router': workspace:*
@@ -5853,7 +5854,7 @@ importers:
         specifier: workspace:*
         version: link:../server-functions-plugin
       '@tanstack/start-plugin-core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../start-plugin-core
       '@types/babel__code-frame':
         specifier: ^7.0.6
@@ -6391,7 +6392,7 @@ importers:
         specifier: workspace:*
         version: link:../server-functions-plugin
       '@tanstack/start-plugin-core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../start-plugin-core
       '@types/babel__code-frame':
         specifier: ^7.0.6
@@ -6411,6 +6412,9 @@ importers:
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3
+      get-port:
+        specifier: ^7.1.0
+        version: 7.1.0
       h3:
         specifier: 1.13.0
         version: 1.13.0
@@ -6423,6 +6427,9 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
+      ufo:
+        specifier: ^1.5.4
+        version: 1.5.4
       vite:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)

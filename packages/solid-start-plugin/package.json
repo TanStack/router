@@ -85,10 +85,12 @@
     "vite-plugin-solid": "^2.11.6",
     "babel-dead-code-elimination": "^1.0.9",
     "fast-glob": "^3.3.3",
+    "get-port": "^7.1.0",
     "h3": "1.13.0",
     "import-meta-resolve": "^4.1.0",
     "nitropack": "^2.10.4",
     "tiny-invariant": "^1.3.3",
+    "ufo": "^1.5.4",
     "vite": "6.1.0",
     "xmlbuilder2": "^3.1.1",
     "zod": "^3.24.2"
