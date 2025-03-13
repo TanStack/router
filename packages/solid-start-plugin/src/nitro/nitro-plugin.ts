@@ -97,7 +97,6 @@ export function nitroPlugin(
               await builder.build(clientEnv)
               await buildNitroEnvironment(nitro, () => builder.build(serverEnv))
 
-
               if (options.prerender?.enabled) {
                 await prerender({
                   options,
