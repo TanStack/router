@@ -16,7 +16,7 @@
     "@mui/material": "6.4.7",
     "@tanstack/react-router": "^1.114.17",
     "@tanstack/react-start": "^1.114.19",
-    "@tanstack/react-router-devtools": "^1.114.18",
+    "@tanstack/react-router-devtools": "^1.114.20",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vinxi": "0.5.3",

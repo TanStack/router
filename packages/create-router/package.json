@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/create-router",
-  "version": "1.114.18",
+  "version": "1.114.20",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",

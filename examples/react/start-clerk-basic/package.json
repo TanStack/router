@@ -11,7 +11,7 @@
   "dependencies": {
     "@clerk/tanstack-start": "0.11.0",
     "@tanstack/react-router": "^1.114.17",
-    "@tanstack/react-router-devtools": "^1.114.18",
+    "@tanstack/react-router-devtools": "^1.114.20",
     "@tanstack/react-start": "^1.114.19",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
