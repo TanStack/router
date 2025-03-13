@@ -11,7 +11,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
   let isTest = false
 
   return {
-    name: 'startjs-dev-ssr-plugin',
+    name: 'start-dev-ssr-plugin',
     config(userConfig, { mode }) {
       // config = userConfig
       isTest = isTest ? isTest : mode === 'test'

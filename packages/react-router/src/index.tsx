@@ -359,6 +359,11 @@ export type {
   ValidateUseParamsResult,
 } from '@tanstack/router-core'
 
+export {
+  __internal_devHtmlUtils,
+  type ExtractedHtmlTagInfo,
+} from '@tanstack/router-core'
+
 export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
