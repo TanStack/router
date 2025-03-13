@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { PluginOption, ResolvedConfig } from 'vite'
-import type { Manifest } from '@tanstack/solid-router'
+import type { Manifest } from '@tanstack/router-core'
 import type { TanStackStartOutputConfig } from './schema'
 
 export function startManifestPlugin(

@@ -3,8 +3,8 @@
 
 import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
-import { __internal_devHtmlUtils } from '@tanstack/react-router'
-import type { ExtractedHtmlTagInfo } from '@tanstack/react-router'
+import { __internal_devHtmlUtils } from '@tanstack/router-core'
+import type { ExtractedHtmlTagInfo } from '@tanstack/router-core'
 import type { Connect, Environment, Plugin, ViteDevServer } from 'vite'
 import type { TanStackStartOutputConfig } from '../schema.js'
 

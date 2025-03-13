@@ -72,7 +72,7 @@
     "@babel/template": "^7.26.8",
     "@babel/traverse": "^7.26.8",
     "@babel/types": "^7.26.8",
-    "@tanstack/solid-router": "workspace:^",
+    "@tanstack/router-core": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/router-utils": "workspace:^",
