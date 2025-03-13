@@ -20,7 +20,7 @@ import type { Options as ViteSolidOptions } from 'vite-plugin-solid'
 
 const viteSolidSchema = z.custom<ViteSolidOptions>()
 
-const sitemapPageOptionsSchema = z.object({
+const pageSitemapOptionsSchema = z.object({
   exclude: z.boolean().optional(),
   priority: z.number().min(0).max(1).optional(),
   changefreq: z
@@ -60,10 +60,11 @@ const tsrConfig = configSchema.partial().extend({
   srcDirectory: z.string().optional().default('src'),
 })
 
-const pageSitemapOptionsSchema = z.union([
-  z.boolean(),
-  sitemapPageOptionsSchema,
-])
+const pageBaseSchema = z.object({
+  path: z.string(),
+  sitemap: pageSitemapOptionsSchema.optional(),
+  fromCrawl: z.boolean().optional(),
+})
 
 export const pagePrerenderOptionsSchema = z.object({
   enabled: z.boolean().optional(),
@@ -71,12 +72,19 @@ export const pagePrerenderOptionsSchema = z.object({
   crawlLinks: z.boolean().optional(),
   retryCount: z.number().optional(),
   retryDelay: z.number().optional(),
+  onSuccess: z
+    .function()
+    .args(
+      z.object({
+        page: pageBaseSchema,
+        html: z.string(),
+      }),
+    )
+    .returns(z.any()),
 })
 
-export const pageSchema = z.object({
-  path: z.string(),
+export const pageSchema = pageBaseSchema.extend({
   prerender: pagePrerenderOptionsSchema.optional(),
-  sitemap: pageSitemapOptionsSchema.optional(),
 })
 
 export type Page = z.infer<typeof pageSchema>
@@ -113,14 +121,15 @@ const TanStackStartOptionsSchema = z
       })
       .optional()
       .default({}),
-    pages: z.array(z.union([z.string(), pageSchema])).optional(),
-    sitemap: pagePrerenderOptionsSchema.optional().and(
-      z
-        .object({
-          host: z.string().optional(),
-        })
-        .optional(),
-    ),
+    pages: z
+      .array(z.union([z.string(), pageSchema]))
+      .optional()
+      .default([]),
+    sitemap: pagePrerenderOptionsSchema
+      .extend({
+        host: z.string().optional(),
+      })
+      .optional(),
     prerender: z
       .object({
         enabled: z.boolean().optional(),
