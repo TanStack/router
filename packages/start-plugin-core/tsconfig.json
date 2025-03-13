@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["src", "vite.config.ts", "tests"],
+  "exclude": ["tests/**/test-files/**", "tests/**/snapshots/**"],
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist/esm",
+    "target": "esnext",
+    "noEmit": false
+  }
+}
