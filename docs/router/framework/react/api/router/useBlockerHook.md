@@ -74,7 +74,7 @@ An object with the controls to allow manual blocking and unblocking of navigatio
 - `current` - When status is `blocked`, a type narrrowable object that contains information about the current location
 - `action` - When status is `blocked`, a `HistoryAction` string that shows the action that triggered the navigation
 - `proceed` - When status is `blocked`, a function that allows navigation to continue
-- `reset` - When status is `blocked`, a function that cancels navigation (`status` will be be reset to `'idle'`)
+- `reset` - When status is `blocked`, a function that cancels navigation (`status` will be reset to `'idle'`)
 
 or
 
