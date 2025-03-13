@@ -65,24 +65,21 @@ const pageSitemapOptionsSchema = z.union([
   sitemapPageOptionsSchema,
 ])
 
-const pagePrerenderOptionsSchema = z.object({
+export const pagePrerenderOptionsSchema = z.object({
   enabled: z.boolean().optional(),
-  autoSubfolderIndex: z.boolean().optional().default(true),
-  interval: z.number().optional().default(0),
-  failOnError: z.boolean().optional().default(false),
-  crawlLinks: z.boolean().optional().default(false),
-  filterLinks: z
-    .function()
-    .args(
-      z.object({
-        url: z.string(),
-      }),
-    )
-    .returns(z.any())
-    .optional(),
-  retry: z.number().optional().default(3),
-  retryDelay: z.number().optional().default(500),
+  autoSubfolderIndex: z.boolean().optional(),
+  crawlLinks: z.boolean().optional(),
+  retryCount: z.number().optional(),
+  retryDelay: z.number().optional(),
 })
+
+export const pageSchema = z.object({
+  path: z.string(),
+  prerender: pagePrerenderOptionsSchema.optional(),
+  sitemap: pageSitemapOptionsSchema.optional(),
+})
+
+export type Page = z.infer<typeof pageSchema>
 
 const TanStackStartOptionsSchema = z
   .object({
@@ -116,18 +113,7 @@ const TanStackStartOptionsSchema = z
       })
       .optional()
       .default({}),
-    pages: z
-      .array(
-        z.union([
-          z.string(),
-          z.object({
-            path: z.string(),
-            prerender: pagePrerenderOptionsSchema.optional(),
-            sitemap: pageSitemapOptionsSchema.optional(),
-          }),
-        ]),
-      )
-      .optional(),
+    pages: z.array(z.union([z.string(), pageSchema])).optional(),
     sitemap: pagePrerenderOptionsSchema.optional().and(
       z
         .object({
@@ -138,7 +124,9 @@ const TanStackStartOptionsSchema = z
     prerender: z
       .object({
         enabled: z.boolean().optional(),
-        concurrency: z.number().optional().default(1),
+        concurrency: z.number().optional(),
+        filter: z.function().args(pageSchema).returns(z.any()).optional(),
+        failOnError: z.boolean().optional(),
       })
       .and(pagePrerenderOptionsSchema.optional())
       .optional(),
