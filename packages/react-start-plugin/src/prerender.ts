@@ -22,7 +22,7 @@ export async function prerender({
   console.info('Prendering pages...')
 
   // If prerender is enabled but no pages are provided, default to prerendering the root page
-  if (options.prerender?.enabled && !options.pages?.length) {
+  if (options.prerender?.enabled && !options.pages.length) {
     options.pages = [
       {
         path: '/',
@@ -126,7 +126,7 @@ export async function prerender({
     console.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
 
-    options.pages?.forEach((_page) => {
+    options.pages.forEach((_page) => {
       let page = _page as Page
 
       if (typeof _page === 'string') {
@@ -142,13 +142,14 @@ export async function prerender({
 
     function addCrawlPageTask(page: Page) {
       // Was the page already seen?
-      const wasSeen = seen.has(page.path)
+      if (seen.has(page.path)) return
 
       // Add the page to the seen set
       seen.add(page.path)
 
-      // If seen, skip
-      if (wasSeen) return
+      if (page.fromCrawl) {
+        options.pages.push(page)
+      }
 
       // If not enabled, skip
       if (!(page.prerender?.enabled ?? true)) return
@@ -211,11 +212,17 @@ export async function prerender({
 
           await fsp.writeFile(filepath, html)
 
+          const newPage = await prerenderOptions.onSuccess?.({ page, html })
+
+          if (newPage) {
+            Object.assign(page, newPage)
+          }
+
           // Find new links
           if (prerenderOptions.crawlLinks ?? true) {
             const links = extractLinks(html)
             for (const link of links) {
-              addCrawlPageTask({ path: link })
+              addCrawlPageTask({ path: link, fromCrawl: true })
             }
           }
         } catch (error) {
