@@ -9,7 +9,10 @@ export type CustomizeStartHandler<
   TResponse extends EventHandlerResponse = EventHandlerResponse,
 > = (cb: HandlerCallback<TRouter, TResponse>) => ReturnType<typeof eventHandler>
 
-export function getStartResponseHeaders(opts: { event: H3Event; router: AnyRouter }) {
+export function getStartResponseHeaders(opts: {
+  event: H3Event
+  router: AnyRouter
+}) {
   let headers = mergeHeaders(
     getResponseHeaders(opts.event),
     (opts.event as any).___ssrRpcResponseHeaders,
