@@ -57,7 +57,7 @@ export function TanStackRouterDevtools(
     router: propsRouter,
   } = props
 
-  const hookRouter = useRouter({ warn: propsRouter !== undefined })
+  const hookRouter = useRouter({ warn: false })
   const activeRouter = propsRouter ?? hookRouter
 
   const activeRouterState = useRouterState({ router: activeRouter })
