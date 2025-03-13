@@ -98,17 +98,7 @@ export function nitroPlugin(
               await buildNitroEnvironment(nitro, () => builder.build(serverEnv))
 
 
-              if (
-                // If prerender is enabled
-                options.prerender?.enabled ||
-                // or if any page specifically has prerender set but not disabled
-                options.pages?.some(
-                  (d) =>
-                    typeof d === 'object' &&
-                    d.prerender &&
-                    !d.prerender.enabled,
-                )
-              ) {
+              if (options.prerender?.enabled) {
                 await prerender({
                   options,
                   nitro,

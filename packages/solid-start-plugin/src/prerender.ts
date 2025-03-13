@@ -5,17 +5,10 @@ import { getRollupConfig } from 'nitropack/rollup'
 import { createNitro } from 'nitropack'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { buildNitroEnvironment } from './nitro/build-nitro.js'
-import { createPool } from './createPool.js'
-import type { fork } from 'node:child_process'
+import { Queue } from './Queue.js'
 import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
-import type { TanStackStartOutputConfig } from './schema.js'
-
-interface ServerProcess {
-  process: ReturnType<typeof fork>
-  port: number
-  baseUrl: string
-}
+import type { Page, TanStackStartOutputConfig } from './schema.js'
 
 export async function prerender({
   options,
@@ -27,6 +20,15 @@ export async function prerender({
   builder: ViteBuilder
 }) {
   console.info('Prendering pages...')
+
+  // If prerender is enabled but no pages are provided, default to prerendering the root page
+  if (options.prerender?.enabled && !options.pages?.length) {
+    options.pages = [
+      {
+        path: '/',
+      },
+    ]
+  }
 
   const serverEnv = builder.environments['server']
 
@@ -86,7 +88,7 @@ export async function prerender({
 
   try {
     // Crawl all pages
-    const pages = await crawlPages()
+    const pages = await prerenderPages()
 
     console.info(`Prerendered ${pages.length} pages:`)
     pages.forEach((page) => {
@@ -117,59 +119,82 @@ export async function prerender({
     return links
   }
 
-  async function crawlPages() {
+  async function prerenderPages() {
     const seen = new Set<string>()
     const retriesByPath = new Map<string, number>()
-    const initialPages = new Set<string>(['/'])
-    const concurrency = os.cpus().length
+    const concurrency = options.prerender?.concurrency ?? os.cpus().length
     console.info(`Concurrency: ${concurrency}`)
-    const pool = createPool({ concurrency })
+    const queue = new Queue({ concurrency })
 
-    for (const pathname of initialPages) {
-      if (seen.has(pathname)) continue
-      pool.add(crawlPageTask(pathname))
-    }
+    options.pages?.forEach((_page) => {
+      let page = _page as Page
 
-    await pool.start()
+      if (typeof _page === 'string') {
+        page = { path: _page }
+      }
+
+      addCrawlPageTask(page)
+    })
+
+    await queue.start()
 
     return Array.from(seen)
 
-    function crawlPageTask(pathname: string) {
-      seen.add(pathname)
-      return async () => {
-        console.info(`Crawling: ${pathname}`)
-        const retries = retriesByPath.get(pathname) || 0
+    function addCrawlPageTask(page: Page) {
+      // Was the page already seen?
+      const wasSeen = seen.has(page.path)
+
+      // Add the page to the seen set
+      seen.add(page.path)
+
+      // If seen, skip
+      if (wasSeen) return
+
+      // If not enabled, skip
+      if (!(page.prerender?.enabled ?? true)) return
+
+      // If there is a filter link, check if the page should be prerendered
+      if (options.prerender?.filter && !options.prerender.filter(page)) return
+
+      // Resolve the merged default and page-specific prerender options
+      const prerenderOptions = {
+        ...options.prerender,
+        ...page.prerender,
+      }
+
+      // Add the task
+      queue.add(async () => {
+        console.info(`Crawling: ${page.path}`)
+        const retries = retriesByPath.get(page.path) || 0
         try {
           // Fetch the route
-          const encodedRoute = encodeURI(pathname)
+          const encodedRoute = encodeURI(page.path)
 
           const res = await localFetch<Response>(
             withBase(encodedRoute, nodeNitro.options.baseURL),
             {
               headers: { 'x-nitro-prerender': encodedRoute },
-              retry: nodeNitro.options.prerender.retry,
-              retryDelay: nodeNitro.options.prerender.retryDelay,
             },
           )
 
           if (!res.ok) {
-            throw new Error(`Failed to fetch ${pathname}: ${res.statusText}`)
+            throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`)
           }
 
           // Guess route type and populate fileName
           const contentType = res.headers.get('content-type') || ''
           const isImplicitHTML =
-            !pathname.endsWith('.html') && contentType.includes('html')
+            !page.path.endsWith('.html') && contentType.includes('html')
           // &&
           // !JsonSigRx.test(dataBuff.subarray(0, 32).toString('utf8'))
-          const routeWithIndex = pathname.endsWith('/')
-            ? pathname + 'index'
-            : pathname
+          const routeWithIndex = page.path.endsWith('/')
+            ? page.path + 'index'
+            : page.path
 
           const htmlPath =
-            pathname.endsWith('/') || nitro.options.prerender.autoSubfolderIndex
-              ? joinURL(pathname, 'index.html')
-              : pathname + '.html'
+            page.path.endsWith('/') || prerenderOptions.autoSubfolderIndex
+              ? joinURL(page.path, 'index.html')
+              : page.path + '.html'
 
           const filename = withoutBase(
             isImplicitHTML ? htmlPath : routeWithIndex,
@@ -187,23 +212,25 @@ export async function prerender({
           await fsp.writeFile(filepath, html)
 
           // Find new links
-          const links = extractLinks(html)
-          for (const link of links) {
-            if (!seen.has(link)) {
-              pool.add(crawlPageTask(link))
+          if (prerenderOptions.crawlLinks ?? true) {
+            const links = extractLinks(html)
+            for (const link of links) {
+              addCrawlPageTask({ path: link })
             }
           }
         } catch (error) {
-          if (retries < 3) {
-            console.warn(`Encountered error, retrying: ${pathname} in 500ms`)
-            await new Promise((resolve) => setTimeout(resolve, 500))
-            retriesByPath.set(pathname, retries + 1)
-            pool.add(crawlPageTask(pathname))
+          if (retries < (prerenderOptions.retryCount ?? 0)) {
+            console.warn(`Encountered error, retrying: ${page.path} in 500ms`)
+            await new Promise((resolve) =>
+              setTimeout(resolve, prerenderOptions.retryDelay),
+            )
+            retriesByPath.set(page.path, retries + 1)
+            addCrawlPageTask(page)
           } else {
             throw error
           }
         }
-      }
+      })
     }
   }
 }
