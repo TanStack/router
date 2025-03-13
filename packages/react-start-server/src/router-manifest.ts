@@ -1,4 +1,3 @@
-// import path from 'node:path'
 // @ts-expect-error
 import tsrStartManifest from 'tsr:start-manifest'
 import type { Manifest } from '@tanstack/router-core'
@@ -33,22 +32,7 @@ export function getStartManifest() {
   }
 
   if (process.env.NODE_ENV === 'development') {
-    // Always fake that HMR is ready
-    // const CLIENT_BASE = sanitizeBase(process.env.TSS_CLIENT_BASE || '')
-
-    // if (!CLIENT_BASE) {
-    //   throw new Error(
-    //     'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
-    //   )
-    // }
-
     const entryScript = `import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
-    // const entryScript = `import RefreshRuntime from "${path.join('/', '@react-refresh')}";
-    // RefreshRuntime.injectIntoGlobalHook(window)
-    // window.$RefreshReg$ = () => {}
-    // window.$RefreshSig$ = () => (type) => type
-    // window.__vite_plugin_react_preamble_installed__ = true;
-    // import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
 
     rootRoute.assets.push({
       tag: 'script',
