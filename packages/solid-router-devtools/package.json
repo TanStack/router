@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-router-devtools",
-  "version": "1.114.17",
+  "version": "1.114.18",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -74,7 +74,6 @@
   },
   "peerDependencies": {
     "solid-js": "^1.9.5",
-    "@tanstack/solid-router": "workspace:^",
-    "@tanstack/router-devtools-core": "workspace:^"
+    "@tanstack/solid-router": "workspace:^"
   }
 }

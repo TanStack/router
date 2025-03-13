@@ -7,6 +7,7 @@ import type { ViteUserConfig } from 'vitest/config'
 const config = defineConfig({
   plugins: [minifyScriptPlugin()] as ViteUserConfig['plugins'],
   test: {
+    include: ['**/*.{test-d,test,spec}.?(c|m)[jt]s?(x)'],
     name: packageJson.name,
     watch: false,
     environment: 'jsdom',

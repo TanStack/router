@@ -101,7 +101,38 @@ When `resetScroll` is set to `false`, the scroll position for the next navigatio
 
 Most of the time, you won't need to do anything special to get scroll restoration to work. However, there are some cases where you may need to manually control scroll restoration. The most common example is **virtualized lists**.
 
-To manually control scroll restoration, you can use the `useElementScrollRestoration` hook and the `data-scroll-restoration-id` DOM attribute:
+To manually control scroll restoration for virtualized lists within the whole browser window:
+
+[//]: # 'VirtualizedWindowScrollRestorationExample'
+
+```tsx
+function Component() {
+  const scrollEntry = useElementScrollRestoration({
+    getElement: () => window,
+  })
+
+  // Let's use TanStack Virtual to virtualize some content!
+  const virtualizer = useWindowVirtualizer({
+    count: 10000,
+    estimateSize: () => 100,
+    // We pass the scrollY from the scroll restoration entry to the virtualizer
+    // as the initial offset
+    initialOffset: scrollEntry?.scrollY,
+  })
+
+  return (
+    <div>
+      {virtualizer.getVirtualItems().map(item => (
+        ...
+      ))}
+    </div>
+  )
+}
+```
+
+[//]: # 'VirtualizedWindowScrollRestorationExample'
+
+To manually control scroll restoration for a specific element, you can use the `useElementScrollRestoration` hook and the `data-scroll-restoration-id` DOM attribute:
 
 [//]: # 'ManualRestorationExample'
 

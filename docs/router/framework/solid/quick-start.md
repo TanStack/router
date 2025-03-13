@@ -8,9 +8,25 @@ If you're feeling impatient and prefer to skip all of our wonderful documentatio
 
 File based route generation (through Vite, and other supported bundlers) is the recommended way to use TanStack Router as it provides the best experience, performance, and ergonomics for the least amount of effort.
 
-### Setup
+### Scaffolding Your First TanStack Router Project
 
-You can setup the project using the following steps:
+```sh
+npm create tsrouter-app@latest my-app --template file-router --framework solid
+# or
+pnpm create tsrouter-app@latest my-app --template file-router --framework solid
+# or
+yarn create tsrouter-app@latest my-app --template file-router --framework solid
+# or
+bun create tsrouter-app@latest my-app --template file-router --framework solid
+# or
+deno run -A npm:create-tsrouter-app@latest my-app --template file-router --framework solid
+```
+
+Follow the prompts to scaffold a full TanStack Router project.
+
+### Manual Setup
+
+Alternatively, you can manually setup the project using the following steps:
 
 #### Install TanStack Router, Vite Plugin
 

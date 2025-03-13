@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router-devtools",
-  "version": "1.114.17",
+  "version": "1.114.18",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -71,7 +71,6 @@
     "react-dom": ">=19"
   },
   "peerDependencies": {
-    "@tanstack/router-devtools-core": "workspace:^",
     "@tanstack/react-router": "workspace:^",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0"
