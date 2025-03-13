@@ -3,6 +3,7 @@
 
 import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
+import { __internal_devHtmlUtils } from '@tanstack/react-router'
 import type { Connect, Environment, Plugin, ViteDevServer } from 'vite'
 import type { TanStackStartOutputConfig } from '../schema.js'
 
@@ -45,6 +46,24 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
 
             const serverEntry =
               await serverEnv.runner.import('/~start/ssr-entry')
+
+            const html = `<html><head></head><body></body></html>`
+            const transformedHtml = await viteDevServer.transformIndexHtml(
+              req.url || '/',
+              html,
+            )
+
+            const headContent = transformedHtml.substring(
+              transformedHtml.indexOf('<head>') + 6,
+              transformedHtml.indexOf('</head>'),
+            )
+            const headScripts = __internal_devHtmlUtils.extractHtmlTagInfo(
+              'script',
+              headContent,
+            )
+
+            // @ts-expect-error
+            globalThis.TSS_INJECTED_HEAD_SCRIPTS = JSON.stringify(headScripts)
 
             const response = await serverEntry['default'](event)
 

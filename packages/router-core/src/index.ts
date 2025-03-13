@@ -398,3 +398,5 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+
+export { type ExtractedHtmlTagInfo, __internal_devHtmlUtils } from './dev-html'

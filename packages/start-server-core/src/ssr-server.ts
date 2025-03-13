@@ -1,6 +1,7 @@
 import { default as warning } from 'tiny-warning'
 import {
   TSR_DEFERRED_PROMISE,
+  __internal_devHtmlUtils,
   defer,
   isPlainArray,
   isPlainObject,
@@ -19,6 +20,7 @@ import type {
   AnyRouteMatch,
   AnyRouter,
   DeferredPromise,
+  ExtractedHtmlTagInfo,
   Manifest,
 } from '@tanstack/router-core'
 
@@ -49,6 +51,24 @@ export function attachRouterServerSsrUtils(
     manifest,
     serializer: startSerializer,
   }
+
+  // @ts-expect-error
+  const INJECTED_HEAD_SCRIPTS = globalThis.TSS_INJECTED_HEAD_SCRIPTS as
+    | string
+    | undefined
+
+  // const EARLY_INJECTED_HTML: Array<InjectedHtmlEntry> = []
+
+  // if (INJECTED_HEAD_SCRIPTS) {
+  //   const headScripts = JSON.parse(
+  //     INJECTED_HEAD_SCRIPTS,
+  //   ) as Array<ExtractedHtmlTagInfo>
+
+  //   for (const tagInfo of headScripts) {
+  //     const htmlTag = __internal_devHtmlUtils.buildHtmlTag('script', tagInfo)
+  //     EARLY_INJECTED_HTML.push(Promise.resolve(htmlTag))
+  //   }
+  // }
 
   router.serverSsr = {
     injectedHtml: [],
@@ -99,6 +119,17 @@ ${jsesc(script, { quotes: 'backtick' })}\`)`
   router.serverSsr.injectScript(() => minifiedTsrBootStrapScript, {
     logScript: false,
   })
+
+  if (INJECTED_HEAD_SCRIPTS) {
+    const headScripts = JSON.parse(
+      INJECTED_HEAD_SCRIPTS,
+    ) as Array<ExtractedHtmlTagInfo>
+
+    for (const tagInfo of headScripts) {
+      const htmlTag = __internal_devHtmlUtils.buildHtmlTag('script', tagInfo)
+      router.serverSsr.injectHtml(() => htmlTag)
+    }
+  }
 }
 
 export function dehydrateRouter(router: AnyRouter) {
