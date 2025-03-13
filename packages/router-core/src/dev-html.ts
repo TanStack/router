@@ -1,5 +1,5 @@
 export interface ExtractedHtmlTagInfo {
-  attributes: Record<string, string | boolean>
+  attributes: Record<string, string>
   content: string
 }
 
@@ -29,7 +29,7 @@ function extractHtmlTagInfo(
     const content = match[2] || ''
 
     // Parse attributes
-    const attributes: Record<string, string | boolean> = {}
+    const attributes: Record<string, string> = {}
     const attributeRegex = /(\w+)(?:=(?:"([^"]*)"|'([^']*)'|([^\s>]*))?)?/g
     let attrMatch
 
@@ -39,26 +39,18 @@ function extractHtmlTagInfo(
         continue
       }
 
-      // Check if this is a boolean attribute (no value or empty string)
+      // Check if this is a valueless attribute (no value or empty string)
       if (
         attrMatch[2] === undefined &&
         attrMatch[3] === undefined &&
         attrMatch[4] === undefined
       ) {
-        // Boolean attribute with no value, like <script async>
-        attributes[attrName] = true
+        // Valueless attribute with no value, like <script async>
+        attributes[attrName] = ''
       } else {
         // Process attribute with value
         const attrValue = attrMatch[2] || attrMatch[3] || attrMatch[4] || ''
-
-        // Convert string 'true'/'false' to boolean values
-        if (attrValue.toLowerCase() === 'true') {
-          attributes[attrName] = true
-        } else if (attrValue.toLowerCase() === 'false') {
-          attributes[attrName] = false
-        } else {
-          attributes[attrName] = attrValue
-        }
+        attributes[attrName] = attrValue
       }
     }
 
@@ -83,13 +75,9 @@ function buildHtmlTag(tagName: string, tagInfo: ExtractedHtmlTagInfo): string {
 
   // Add attributes
   for (const [key, value] of Object.entries(tagInfo.attributes)) {
-    if (typeof value === 'boolean') {
-      // For boolean attributes
-      if (value === true) {
-        // Boolean true attributes just include the attribute name
-        htmlTag += ` ${key}`
-      }
-      // Boolean false attributes are omitted entirely
+    if (value === '') {
+      // Valueless attributes just include the attribute name
+      htmlTag += ` ${key}`
     } else {
       // For string attributes, add with quotes
       htmlTag += ` ${key}='${escapeAttributeValue(value)}'`
@@ -146,6 +134,9 @@ function isSelfClosingTag(tagName: string): boolean {
   return selfClosingTags.includes(tagName.toLowerCase())
 }
 
+/**
+ * @internal
+ */
 export const __internal_devHtmlUtils = {
   extractHtmlTagInfo,
   buildHtmlTag,
