@@ -104,12 +104,12 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@babel/core": "^7.26.8",
+    "@babel/core": "^7.26.10",
     "@babel/plugin-syntax-jsx": "^7.25.9",
     "@babel/plugin-syntax-typescript": "^7.25.9",
-    "@babel/template": "^7.26.8",
-    "@babel/traverse": "^7.26.8",
-    "@babel/types": "^7.26.8",
+    "@babel/template": "^7.26.9",
+    "@babel/traverse": "^7.26.10",
+    "@babel/types": "^7.26.10",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
     "@tanstack/router-utils": "workspace:^",
