@@ -40,7 +40,7 @@ The easiest way to use integrate and external caching/data library into Router i
 >
 > - No "flash of loading" states
 > - No waterfall data fetching, caused by component based fetching
-> - Better for SEO. If you data is available at render time, it will be indexed by search engines.
+> - Better for SEO. If your data is available at render time, it will be indexed by search engines.
 
 Here is a naive illustration (don't do this) of using a Route's `loader` option to seed the cache for some data:
 
