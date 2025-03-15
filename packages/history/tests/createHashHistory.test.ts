@@ -7,7 +7,7 @@ describe('createHashHistory', () => {
     describe.each([
       ['/', { pathname: '/', search: '' }, 'neither search params nor hash'],
       [
-        '/#hello',
+        '/#/hello',
         { pathname: '/hello', search: '' },
         'hash present, no search params',
       ],
@@ -17,12 +17,12 @@ describe('createHashHistory', () => {
         'search params present, no hash',
       ],
       [
-        '/#hello?search=params',
+        '/#/hello?search=params',
         { pathname: '/hello', search: '?search=params' },
         'both hash and search params present, in that order',
       ],
       [
-        '/?search=params#hello',
+        '/?search=params#/hello',
         { pathname: '/hello', search: '?search=params' },
         'both search params and hash present, in that order',
       ],
