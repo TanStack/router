@@ -250,7 +250,7 @@ export interface NavigateOptionProps {
    * If `ViewTransitionOptions`, route navigations will be called using `document.startViewTransition({update, types})`
    * where `types` will be the strings array passed with `ViewTransitionOptions["types"]`.
    * If the browser does not support viewTransition types, the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
-   * 
+   *
    * If the browser does not support this api, this option will be ignored.
    * @default false
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#viewtransition)
