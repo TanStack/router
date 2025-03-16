@@ -216,21 +216,64 @@ export type NavigateOptions<
   TMaskTo extends string = '.',
 > = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & NavigateOptionProps
 
+/**
+ * The NavigateOptions type is used to describe the options that can be used when describing a navigation action in TanStack Router.
+ * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType)
+ */
 export interface NavigateOptionProps {
-  // if set to `true`, the router will scroll the element with an id matching the hash into view with default ScrollIntoViewOptions.
-  // if set to `false`, the router will not scroll the element with an id matching the hash into view.
-  // if set to `ScrollIntoViewOptions`, the router will scroll the element with an id matching the hash into view with the provided options.
+  /**
+   * If set to `true`, the router will scroll the element with an id matching the hash into view with default `ScrollIntoViewOptions`.
+   * If set to `false`, the router will not scroll the element with an id matching the hash into view.
+   * If set to `ScrollIntoViewOptions`, the router will scroll the element with an id matching the hash into view with the provided options.
+   * @default true
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#hashscrollintoview)
+   * @see [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView)
+   */
   hashScrollIntoView?: boolean | ScrollIntoViewOptions
-  // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
+  /**
+   * `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
+   * @default false
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#replace)
+   */
   replace?: boolean
+  /**
+   * Defaults to `true` so that the scroll position will be reset to 0,0 after the location is committed to the browser history.
+   * If `false`, the scroll position will not be reset to 0,0 after the location is committed to history.
+   * @default true
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#resetscroll)
+   */
   resetScroll?: boolean
   /** @deprecated All navigations now use startTransition under the hood */
   startTransition?: boolean
-  // if set to `true`, the router will wrap the resulting navigation in a document.startViewTransition() call.
-  // if set to `ViewTransitionOptions`, the router will pass the `types` field to document.startViewTransition({update: fn, types: viewTransition.types}) call
+  /**
+   * If set to `true`, the router will wrap the resulting navigation in a `document.startViewTransition()` call.
+   * If `ViewTransitionOptions`, route navigations will be called using `document.startViewTransition({update, types})`
+   * where `types` will be the strings array passed with `ViewTransitionOptions["types"]`.
+   * If the browser does not support viewTransition types, the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
+   * 
+   * If the browser does not support this api, this option will be ignored.
+   * @default false
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#viewtransition)
+   * @see [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition)
+   * @see [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types)
+   */
   viewTransition?: boolean | ViewTransitionOptions
+  /**
+   * If `true`, navigation will ignore any blockers that might prevent it.
+   * @default false
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#ignoreblocker)
+   */
   ignoreBlocker?: boolean
+  /**
+   * If `true`, navigation to a route inside of router will trigger a full page load instead of the traditional SPA navigation.
+   * @default false
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#reloaddocument)
+   */
   reloadDocument?: boolean
+  /**
+   * This can be used instead of `to` to navigate to a fully built href, e.g. pointing to an external target.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#href)
+   */
   href?: string
 }
 
@@ -495,10 +538,30 @@ export type FromPathOption<TRouter extends AnyRouter, TFrom> = ConstrainLiteral<
   RoutePaths<TRouter['routeTree']>
 >
 
+/**
+ * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/navigation#active-options)
+ */
 export interface ActiveOptions {
+  /**
+   * If true, the link will be active if the current route matches the `to` route path exactly (no children routes)
+   * @default false
+   */
   exact?: boolean
+  /**
+   * If true, the link will only be active if the current URL hash matches the `hash` prop
+   * @default false
+   */
   includeHash?: boolean
+  /**
+   * If true, the link will only be active if the current URL search params inclusively match the `search` prop
+   * @default true
+   */
   includeSearch?: boolean
+  /**
+   * This modifies the `includeSearch` behavior.
+   * If true,  properties in `search` that are explicitly `undefined` must NOT be present in the current URL search params for the link to be active.
+   * @default false
+   */
   explicitUndefined?: boolean
 }
 
