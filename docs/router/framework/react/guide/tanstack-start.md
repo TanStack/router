@@ -55,7 +55,7 @@ TanStack Start is powered by the following packages and need to be installed as 
 To install them, run:
 
 ```shell
-npm i @tanstack/start @tanstack/react-router vinxi
+npm i @tanstack/react-start @tanstack/react-router vinxi
 ```
 
 You'll also need React and the Vite React plugin, so install their dependencies as well:
