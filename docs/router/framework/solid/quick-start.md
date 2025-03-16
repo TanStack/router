@@ -28,22 +28,22 @@ Follow the prompts to scaffold a full TanStack Router project.
 
 Alternatively, you can manually setup the project using the following steps:
 
-#### Install TanStack Router, Vite Plugin
+#### Install TanStack Router, Vite Plugin, and the Router Devtools
 
 ```sh
 npm install @tanstack/solid-router
-npm install -D @tanstack/router-plugin
+npm install -D @tanstack/router-plugin @tanstack/solid-router-devtools
 # or
 pnpm add @tanstack/solid-router
-pnpm add -D @tanstack/router-plugin
+pnpm add -D @tanstack/router-plugin @tanstack/solid-router-devtools
 # or
 yarn add @tanstack/solid-router
-yarn add -D @tanstack/router-plugin
+yarn add -D @tanstack/router-plugin @tanstack/solid-router-devtools
 # or
 bun add @tanstack/solid-router
-bun add -D @tanstack/router-plugin
+bun add -D @tanstack/router-plugin @tanstack/solid-router-devtools
 # or
-deno add npm:@tanstack/solid-router npm:@tanstack/router-plugin
+deno add npm:@tanstack/solid-router npm:@tanstack/router-plugin @tanstack/solid-router-devtools
 ```
 
 #### Configure the Vite Plugin
@@ -78,6 +78,7 @@ Create the following files:
 
 ```tsx
 import { createRootRoute, Link, Outlet } from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   component: () => (
@@ -92,6 +93,7 @@ export const Route = createRootRoute({
       </div>
       <hr />
       <Outlet />
+      <TanStackRouterDevtools />
     </>
   ),
 })
@@ -176,6 +178,7 @@ import {
   createRoute,
   createRootRoute,
 } from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -190,6 +193,7 @@ const rootRoute = createRootRoute({
       </div>
       <hr />
       <Outlet />
+      <TanStackRouterDevtools />
     </>
   ),
 })

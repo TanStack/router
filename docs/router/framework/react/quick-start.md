@@ -32,18 +32,18 @@ Alternatively, you can manually setup the project using the following steps:
 
 ```sh
 npm install @tanstack/react-router
-npm install -D @tanstack/router-plugin @tanstack/router-devtools
+npm install -D @tanstack/router-plugin @tanstack/react-router-devtools
 # or
 pnpm add @tanstack/react-router
-pnpm add -D @tanstack/router-plugin @tanstack/router-devtools
+pnpm add -D @tanstack/router-plugin @tanstack/react-router-devtools
 # or
 yarn add @tanstack/react-router
-yarn add -D @tanstack/router-plugin @tanstack/router-devtools
+yarn add -D @tanstack/router-plugin @tanstack/react-router-devtools
 # or
 bun add @tanstack/react-router
-bun add -D @tanstack/router-plugin @tanstack/router-devtools
+bun add -D @tanstack/router-plugin @tanstack/react-router-devtools
 # or
-deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/router-devtools
+deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/react-router-devtools
 ```
 
 #### Configure the Vite Plugin
@@ -78,7 +78,7 @@ Create the following files:
 
 ```tsx
 import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 export const Route = createRootRoute({
   component: () => (
@@ -185,7 +185,7 @@ import {
   createRoute,
   createRootRoute,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 const rootRoute = createRootRoute({
   component: () => (
