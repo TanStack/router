@@ -1,13 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { linkOptions } from '@tanstack/react-router'
-
-function toValue(input: string) {
-  const value = process.env.VITE_APP_HISTORY === 'hash' ? `/#${input}` : input
-  return value
-}
+import { toRuntimePath } from '@tanstack/router-e2e-utils'
 
 test('Smoke - Renders home', async ({ page }) => {
-  await page.goto(toValue('/'))
+  await page.goto(toRuntimePath('/'))
   await expect(
     page.getByRole('heading', { name: 'Welcome Home!' }),
   ).toBeVisible()
@@ -24,7 +20,7 @@ test('Smoke - Renders home', async ({ page }) => {
   test(`On navigate to ${options.to} (from the header), scroll should be at top`, async ({
     page,
   }) => {
-    await page.goto(toValue('/'))
+    await page.goto(toRuntimePath('/'))
     await page.getByRole('link', { name: `Head-${options.to}` }).click()
     await expect(page.getByTestId('at-the-top')).toBeInViewport()
   })
@@ -33,7 +29,7 @@ test('Smoke - Renders home', async ({ page }) => {
   test(`On navigate via index page tests to ${options.to}, scroll should resolve at the bottom`, async ({
     page,
   }) => {
-    await page.goto(toValue('/'))
+    await page.goto(toRuntimePath('/'))
     await page
       .getByRole('link', { name: `${options.to}#at-the-bottom` })
       .click()
@@ -48,7 +44,7 @@ test('Smoke - Renders home', async ({ page }) => {
     if ('search' in options) {
       url = `${url}?where=${options.search.where}`
     }
-    await page.goto(toValue(`${url}#at-the-bottom`))
+    await page.goto(toRuntimePath(`${url}#at-the-bottom`))
     await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
   })
 })
