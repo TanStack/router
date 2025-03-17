@@ -24,7 +24,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
 
 - [Basic](../examples/start-basic) (start-basic)
 - [Basic + Auth](../examples/start-basic-auth) (start-basic-auth)
-- [Basic + Counter](../examples/start-basic-counter) (start-basic-counter)
+- [Basic + Counter](../examples/start-counter) (start-basic-counter)
 - [Basic + React Query](../examples/start-basic-react-query) (start-basic-react-query)
 - [Clerk Auth](../examples/start-clerk-basic) (start-clerk-basic)
 - [Convex + Trellaux](../examples/start-convex-trellaux) (start-convex-trellaux)
