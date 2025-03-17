@@ -14,6 +14,7 @@ const router = createRouter({
   Using defaultViewTransition would prevent the need to
   manually add `viewTransition: true` to every navigation
   */
+  // defaultViewTransition: true
 })
 
 // Register things for typesafety
