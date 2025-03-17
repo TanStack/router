@@ -29,13 +29,14 @@ export function createServerFn<
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType = 'data',
   TResponse = unknown,
-  TMiddlewares = undefined,
+  const TMiddlewares = undefined,
   TValidator = undefined,
 >(
   options?: {
     method?: TMethod
     response?: TServerFnResponseType
     type?: ServerFnType
+    middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
   },
   __opts?: ServerFnBaseOptions<
     TMethod,
@@ -44,7 +45,7 @@ export function createServerFn<
     TMiddlewares,
     TValidator
   >,
-): ServerFnBuilder<TMethod, TServerFnResponseType> {
+): ServerFnBuilder<TMethod, TServerFnResponseType, TMiddlewares> {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
     TMethod,
     ServerFnResponseType,
@@ -59,15 +60,6 @@ export function createServerFn<
 
   return {
     options: resolvedOptions as any,
-    middleware: (middleware) => {
-      return createServerFn<
-        TMethod,
-        ServerFnResponseType,
-        TResponse,
-        TMiddlewares,
-        TValidator
-      >(undefined, Object.assign(resolvedOptions, { middleware })) as any
-    },
     validator: (validator) => {
       return createServerFn<
         TMethod,
@@ -398,6 +390,7 @@ export type ServerFnReturnType<
 > = TServerFnResponseType extends 'raw'
   ? RawResponse | Promise<RawResponse>
   : Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
+
 export type ServerFn<
   TMethod,
   TServerFnResponseType extends ServerFnResponseType,
@@ -473,30 +466,6 @@ export type ConstrainValidator<TValidator> = unknown extends TValidator
   ? TValidator
   : Constrain<TValidator, ValidatorSerializerStringify<TValidator>>
 
-export interface ServerFnMiddleware<
-  TMethod extends Method,
-  TServerFnResponseType extends ServerFnResponseType,
-  TValidator,
-> {
-  middleware: <const TNewMiddlewares = undefined>(
-    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => ServerFnAfterMiddleware<
-    TMethod,
-    TServerFnResponseType,
-    TNewMiddlewares,
-    TValidator
-  >
-}
-
-export interface ServerFnAfterMiddleware<
-  TMethod extends Method,
-  TServerFnResponseType extends ServerFnResponseType,
-  TMiddlewares,
-  TValidator,
-> extends ServerFnValidator<TMethod, TServerFnResponseType, TMiddlewares>,
-    ServerFnTyper<TMethod, TServerFnResponseType, TMiddlewares, TValidator>,
-    ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, TValidator> {}
-
 export type ValidatorFn<
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
@@ -523,8 +492,12 @@ export interface ServerFnAfterValidator<
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
-> extends ServerFnMiddleware<TMethod, TServerFnResponseType, TValidator>,
-    ServerFnTyper<TMethod, TServerFnResponseType, TMiddlewares, TValidator>,
+> extends ServerFnTyper<
+      TMethod,
+      TServerFnResponseType,
+      TMiddlewares,
+      TValidator
+    >,
     ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, TValidator> {}
 
 // Typer
@@ -598,15 +571,15 @@ export interface ServerFnHandler<
 export interface ServerFnBuilder<
   TMethod extends Method = 'GET',
   TServerFnResponseType extends ServerFnResponseType = 'data',
-> extends ServerFnMiddleware<TMethod, TServerFnResponseType, undefined>,
-    ServerFnValidator<TMethod, TServerFnResponseType, undefined>,
-    ServerFnTyper<TMethod, TServerFnResponseType, undefined, undefined>,
-    ServerFnHandler<TMethod, TServerFnResponseType, undefined, undefined> {
+  TMiddlewares = undefined,
+> extends ServerFnValidator<TMethod, TServerFnResponseType, TMiddlewares>,
+    ServerFnTyper<TMethod, TServerFnResponseType, TMiddlewares, undefined>,
+    ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, undefined> {
   options: ServerFnBaseOptions<
     TMethod,
     TServerFnResponseType,
     unknown,
-    undefined,
+    TMiddlewares,
     undefined
   >
 }

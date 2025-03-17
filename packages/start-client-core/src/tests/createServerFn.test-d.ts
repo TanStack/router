@@ -11,7 +11,6 @@ test('createServerFn method with autocomplete', () => {
 
 test('createServerFn without middleware', () => {
   expectTypeOf(createServerFn()).toHaveProperty('handler')
-  expectTypeOf(createServerFn()).toHaveProperty('middleware')
   expectTypeOf(createServerFn()).toHaveProperty('validator')
 
   createServerFn({ method: 'GET' }).handler((options) => {
@@ -33,7 +32,6 @@ test('createServerFn with validator', () => {
   }))
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
-  expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
   expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
   const fn = fnAfterValidator.handler((options) => {
@@ -87,13 +85,13 @@ test('createServerFn with middleware and context', () => {
       return next({ context: { d: 'd' } as const })
     })
 
-  const fnWithMiddleware = createServerFn({ method: 'GET' }).middleware([
-    middleware4,
-  ])
+  const fnWithMiddleware = createServerFn({
+    method: 'GET',
+    middleware: [middleware4],
+  })
 
   expectTypeOf(fnWithMiddleware).toHaveProperty('handler')
   expectTypeOf(fnWithMiddleware).toHaveProperty('validator')
-  expectTypeOf(fnWithMiddleware).not.toHaveProperty('middleware')
 
   fnWithMiddleware.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -129,8 +127,11 @@ describe('createServerFn with middleware and validator', () => {
   const middleware3 = createMiddleware().middleware([middleware1, middleware2])
 
   test(`response: 'data'`, () => {
-    const fn = createServerFn({ method: 'GET', response: 'data' })
-      .middleware([middleware3])
+    const fn = createServerFn({
+      method: 'GET',
+      response: 'data',
+      middleware: [middleware3],
+    })
       .validator(
         (input: { readonly inputC: 'inputC' }) =>
           ({
@@ -173,8 +174,11 @@ describe('createServerFn with middleware and validator', () => {
   })
 
   test(`response: 'full'`, () => {
-    const fn = createServerFn({ method: 'GET', response: 'full' })
-      .middleware([middleware3])
+    const fn = createServerFn({
+      method: 'GET',
+      response: 'full',
+      middleware: [middleware3],
+    })
       .validator(
         (input: { readonly inputC: 'inputC' }) =>
           ({
@@ -268,8 +272,10 @@ test('createServerFn overrides properties', () => {
       return next({ sendContext: newContext, context: newContext })
     })
 
-  createServerFn()
-    .middleware([middleware2])
+  createServerFn({
+    method: 'GET',
+    middleware: [middleware2],
+  })
     .validator(
       () =>
         ({

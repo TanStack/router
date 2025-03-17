@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
-import type { User } from '~/utils/users'
-import { DEPLOY_URL } from '~/utils/users'
-import { NotFound } from '~/components/NotFound'
-import { UserErrorComponent } from '~/components/UserError'
+import { DEPLOY_URL } from 'src/utils/users'
+import { NotFound } from 'src/components/NotFound'
+import { UserErrorComponent } from 'src/components/UserError'
+import { json } from '@tanstack/react-start'
+import type { User } from 'src/utils/users'
 
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
@@ -19,7 +20,26 @@ export const Route = createFileRoute('/users/$userId')({
   notFoundComponent: () => {
     return <NotFound>User not found</NotFound>
   },
+  serverMiddleware: [],
 })
+  .server()
+  .get(async ({ request, params }) => {
+    console.info(`Fetching users by id=${params.userId}... @`, request.url)
+    try {
+      const res = await axios.get<User>(
+        'https://jsonplaceholder.typicode.com/users/' + params.userId,
+      )
+
+      return json({
+        id: res.data.id,
+        name: res.data.name,
+        email: res.data.email,
+      })
+    } catch (e) {
+      console.error(e)
+      return json({ error: 'User not found' }, { status: 404 })
+    }
+  })
 
 function UserComponent() {
   const user = Route.useLoaderData()

@@ -7,10 +7,9 @@ This guide will help you learn the basics behind how TanStack Start works, regar
 
 ## Dependencies
 
-TanStack Start is powered by [Vite](https://vite.dev/), [Nitro](https://nitro.unjs.io/) and [TanStack Router](https://tanstack.com/router).
+TanStack Start is powered by [Vite](https://vite.dev/) and [TanStack Router](https://tanstack.com/router).
 
 - **TanStack Router**: A router for building web applications.
-- **Nitro**: A framework for building server applications.
 - **Vite**: A build tool for bundling your application.
 
 ## It all "Starts" with the Router
