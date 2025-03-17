@@ -12,6 +12,7 @@ body {
   @apply bg-gray-50 text-gray-950 dark:bg-gray-900 dark:text-gray-200;
 }
 
+/* Slide Left Transition */
 html:active-view-transition-type(slide-left) {
   &::view-transition-old(main-content) {
     animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-out-left;
@@ -21,16 +22,6 @@ html:active-view-transition-type(slide-left) {
   }
 }
 
-html:active-view-transition-type(slide-right) {
-  &::view-transition-old(main-content) {
-    animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-out-right;
-  }
-  &::view-transition-new(main-content) {
-    animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-in-right;
-  }
-}
-
-/* Slide Transition */
 @keyframes slide-out-left {
   from {
     transform: translateX(0);
@@ -46,6 +37,16 @@ html:active-view-transition-type(slide-right) {
   }
   to {
     transform: translateX(0);
+  }
+}
+
+/* Slide Right Transition */
+html:active-view-transition-type(slide-right) {
+  &::view-transition-old(main-content) {
+    animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-out-right;
+  }
+  &::view-transition-new(main-content) {
+    animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-in-right;
   }
 }
 
@@ -67,6 +68,7 @@ html:active-view-transition-type(slide-right) {
   }
 }
 
+/* Warp/Rotate Transition */
 html:active-view-transition-type(warp) {
   &::view-transition-old(post) {
     animation: 400ms ease-out both warp-out;
@@ -77,7 +79,6 @@ html:active-view-transition-type(warp) {
   }
 }
 
-/* Warp/Rotate Transition */
 @keyframes warp-out {
   from {
     opacity: 1;

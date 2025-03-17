@@ -12,6 +12,7 @@ function Home() {
       <div className="flex justify-center mt-4">
         <Link
           to={'/how-it-works'}
+          // see styles.css for 'slide-left' transition
           viewTransition={{ types: ['slide-left'] }}
           className="font-bold"
         >

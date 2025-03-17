@@ -24,6 +24,7 @@ function PostsLayoutComponent() {
                   }}
                   className="block py-1 text-blue-600 hover:opacity-75"
                   activeProps={{ className: 'font-bold underline' }}
+                  // see styles.css for 'warp' transition
                   viewTransition={{ types: ['warp'] }}
                 >
                   <div>{post.title.substring(0, 20)}</div>

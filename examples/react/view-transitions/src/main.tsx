@@ -10,6 +10,10 @@ const router = createRouter({
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
   scrollRestoration: true,
+  /* 
+  Using defaultViewTransition would prevent the need to
+  manually add `viewTransition: true` to every navigation
+  */
 })
 
 // Register things for typesafety

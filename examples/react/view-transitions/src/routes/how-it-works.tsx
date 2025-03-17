@@ -11,6 +11,7 @@ function RouteComponent() {
       <div className="flex justify-center gap-10 mt-4">
         <Link
           to={'/'}
+          // see styles.css for 'slide-right' transition
           viewTransition={{ types: ['slide-right'] }}
           className="font-bold"
         >
@@ -18,6 +19,7 @@ function RouteComponent() {
         </Link>
         <Link
           to={'/explore'}
+          // see styles.css for 'slide-left' transition
           viewTransition={{ types: ['slide-left'] }}
           className="font-bold"
         >
