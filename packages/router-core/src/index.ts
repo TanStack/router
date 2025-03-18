@@ -199,7 +199,16 @@ export type {
   RouteAddFileTypesFn,
 } from './route'
 
-export { defaultSerializeError, getLocationChangeInfo } from './router'
+export {
+  defaultSerializeError,
+  getLocationChangeInfo,
+  RouterCore,
+  componentTypes,
+  lazyFn,
+  SearchParamError,
+  PathParamError,
+  getInitialRouterState,
+} from './router'
 export type {
   ViewTransitionOptions,
   ExtractedBaseEntry,
@@ -220,7 +229,6 @@ export type {
   RouterEvents,
   MatchRoutesOpts,
   RouterOptionsExtensions,
-  Router,
   DefaultRemountDepsFn,
   PreloadRouteFn,
   MatchRouteFn,

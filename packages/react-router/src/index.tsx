@@ -285,15 +285,15 @@ export type {
   NotFoundRouteComponent,
 } from './route'
 
+export { createRouter, Router } from './router'
+
 export {
   componentTypes,
-  createRouter,
-  Router,
   lazyFn,
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-} from './router'
+} from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'
