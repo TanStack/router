@@ -102,7 +102,7 @@ response?: 'data' | 'full' | 'raw'
 
 ## Accepting Parameters
 
-Server functions accept a single parameter, which can be a variety of types:
+Server functions accept a single parameter named `'data'`, which can be a variety of types:
 
 - Standard JavaScript types
   - `string`
