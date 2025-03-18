@@ -161,13 +161,26 @@ export function useLinkProps<
   const isActive = useRouterState({
     select: (s) => {
       // First check path matching
-      if (!isLinkActive(s.location, next().pathname, router.basepath, local.activeOptions)) {
+      if (
+        !isLinkActive(
+          s.location,
+          next().pathname,
+          router.basepath,
+          local.activeOptions,
+        )
+      ) {
         return false
       }
 
       // Then check search params if needed
       if (local.activeOptions?.includeSearch ?? true) {
-        if (!doSearchParamsMatch(s.location.search, next().search, local.activeOptions)) {
+        if (
+          !doSearchParamsMatch(
+            s.location.search,
+            next().search,
+            local.activeOptions,
+          )
+        ) {
           return false
         }
       }
@@ -176,7 +189,7 @@ export function useLinkProps<
       if (local.activeOptions?.includeHash) {
         return s.location.hash === next().hash
       }
-      
+
       return true
     },
   })
@@ -282,7 +295,13 @@ export function useLinkProps<
   const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
-    linkEventUtils.handlePreloadIntent(e, !!local.disabled, !!preload(), preloadDelay(), doPreload)
+    linkEventUtils.handlePreloadIntent(
+      e,
+      !!local.disabled,
+      !!preload(),
+      preloadDelay(),
+      doPreload,
+    )
   }
 
   const handleLeave = (e: MouseEvent) => {

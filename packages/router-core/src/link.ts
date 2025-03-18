@@ -620,11 +620,11 @@ export const linkEventUtils = {
    * Handling mouseenter/hover on links
    */
   handlePreloadIntent: (
-    e: MouseEvent, 
-    disabled: boolean, 
+    e: MouseEvent,
+    disabled: boolean,
     preload: boolean | string,
     preloadDelay: number,
-    doPreload: () => void
+    doPreload: () => void,
   ) => {
     if (disabled) return
 
@@ -647,7 +647,7 @@ export const linkEventUtils = {
    */
   handlePreloadIntentExit: (e: MouseEvent, disabled: boolean) => {
     if (disabled) return
-    
+
     const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
@@ -659,29 +659,37 @@ export const linkEventUtils = {
   /**
    * Handling focus/touchstart on links
    */
-  handleFocusOrTouch: (disabled: boolean, preload: boolean | string, doPreload: () => void) => {
+  handleFocusOrTouch: (
+    disabled: boolean,
+    preload: boolean | string,
+    doPreload: () => void,
+  ) => {
     if (disabled) return
     if (preload) {
       doPreload()
     }
-  }
+  },
 }
 
 /**
  * Determine if a link is active
  */
 export function isLinkActive(
-  currentLocation: { pathname: string; search: Record<string, any>; hash: string },
+  currentLocation: {
+    pathname: string
+    search: Record<string, any>
+    hash: string
+  },
   nextPath: string,
   basepath: string,
-  activeOptions?: ActiveOptions
+  activeOptions?: ActiveOptions,
 ) {
   // Check for exact path match if specified
   if (activeOptions?.exact) {
     const testExact = exactPathTest(
       currentLocation.pathname,
       nextPath,
-      basepath
+      basepath,
     )
     if (!testExact) {
       return false
@@ -690,15 +698,12 @@ export function isLinkActive(
     // Otherwise check for fuzzy path match (path is a prefix)
     const currentPathSplit = removeTrailingSlash(
       currentLocation.pathname,
-      basepath
+      basepath,
     ).split('/')
-    const nextPathSplit = removeTrailingSlash(
-      nextPath,
-      basepath
-    ).split('/')
+    const nextPathSplit = removeTrailingSlash(nextPath, basepath).split('/')
 
     const pathIsFuzzyEqual = nextPathSplit.every(
-      (d: string, i: number) => d === currentPathSplit[i]
+      (d: string, i: number) => d === currentPathSplit[i],
     )
     if (!pathIsFuzzyEqual) {
       return false
@@ -714,7 +719,7 @@ export function isLinkActive(
 export function doSearchParamsMatch(
   currentSearch: Record<string, any>,
   nextSearch: Record<string, any>,
-  activeOptions?: ActiveOptions
+  activeOptions?: ActiveOptions,
 ) {
   return deepEqual(currentSearch, nextSearch, {
     partial: !activeOptions?.exact,
