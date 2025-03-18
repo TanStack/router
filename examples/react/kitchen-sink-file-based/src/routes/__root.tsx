@@ -50,7 +50,7 @@ function RootComponent() {
               return (
                 <div key={to}>
                   <Link
-          to={to}
+                    to={to}
                     activeOptions={
                       {
                         // If the route points to the root of it's parent,

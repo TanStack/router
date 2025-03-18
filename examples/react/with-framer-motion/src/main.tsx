@@ -132,7 +132,7 @@ const postsLayoutRoute = createRoute({
               return (
                 <li key={post.id} className="whitespace-nowrap">
                   <Link
-          to={postRoute.to}
+                    to={postRoute.to}
                     params={{
                       postId: post.id,
                     }}
