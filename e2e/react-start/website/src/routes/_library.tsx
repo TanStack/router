@@ -34,7 +34,7 @@ function Layout() {
         <div className="p-4">
           <p className="mb-1 border-b">Libraries</p>
           <ul>
-            {libraries.map((library: any) => (
+            {libraries.map((library) => (
               <li key={library}>
                 <Link
                   to="/$project"

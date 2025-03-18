@@ -41,7 +41,7 @@ function InvoiceComponent() {
 
   Solid.createEffect(() => {
     navigate({
-      search: (old: any) => ({
+      search: (old) => ({
         ...old,
         notes: notes() ? notes() : undefined,
       }),
@@ -71,7 +71,7 @@ function InvoiceComponent() {
       <div>
         <Link
           from={Route.fullPath}
-          search={(old: any) => ({
+          search={(old) => ({
             ...old,
             showNotes: old.showNotes ? undefined : true,
           })}

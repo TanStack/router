@@ -50,7 +50,7 @@ function Home() {
         promise={promise}
         children={(promiseData) => (
           <div className="p-2" data-testid="promise-data">
-            {promiseData as any}
+            {promiseData}
             <div data-testid="stream-data">
               {streamData.map((d) => (
                 <div key={d}>{d}</div>

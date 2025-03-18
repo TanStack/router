@@ -166,7 +166,7 @@ function PostsComponent() {
                     }}
                     pending
                   >
-                    {(match: any) => {
+                    {(match) => {
                       return <Spinner show={!!match} wait="delay-0" />
                     }}
                   </MatchRoute>
@@ -217,11 +217,11 @@ function PostComponent() {
         key={post.id}
       >
         <Await promise={commentsPromise}>
-          {(comments: any) => {
+          {(comments) => {
             return (
               <div className="space-y-2">
                 <h5 className="text-lg font-bold underline">Comments</h5>
-                {comments.map((comment: any) => {
+                {comments.map((comment) => {
                   return (
                     <div key={comment.id}>
                       <h6 className="text-md font-bold">{comment.name}</h6>

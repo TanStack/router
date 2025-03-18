@@ -213,7 +213,7 @@ function InvoicesLayoutComponent() {
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
-        {invoices.map((invoice: any) => {
+        {invoices.map((invoice) => {
           return (
             <div key={invoice.id}>
               <Link
@@ -237,7 +237,7 @@ function InvoicesLayoutComponent() {
                     }}
                     pending
                   >
-                    {(match: any) => <Spinner show={!!match} wait="delay-50" />}
+                    {(match) => <Spinner show={!!match} wait="delay-50" />}
                   </MatchRoute>
                   {/* )} */}
                 </pre>
@@ -343,7 +343,7 @@ function InvoiceComponent() {
   const [notes, setNotes] = React.useState(search.notes ?? '')
   React.useEffect(() => {
     navigate({
-      search: (old: any) => ({
+      search: (old) => ({
         ...old,
         notes: notes ? notes : undefined,
       }),
@@ -373,7 +373,7 @@ function InvoiceComponent() {
       />
       <div>
         <Link
-          search={(old: any) => ({
+          search={(old) => ({
             ...old,
             showNotes: old.showNotes ? undefined : true,
           })}
@@ -478,14 +478,14 @@ function UsersLayoutComponent() {
   const filteredUsers = React.useMemo(() => {
     if (!filterBy) return sortedUsers
 
-    return sortedUsers.filter((user: any) =>
+    return sortedUsers.filter((user) =>
       user.name.toLowerCase().includes(filterBy.toLowerCase()),
     )
   }, [sortedUsers, filterBy])
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
-      search: (old: any) => {
+      search: (old) => {
         return {
           ...old,
           usersView: {
@@ -499,7 +499,7 @@ function UsersLayoutComponent() {
 
   React.useEffect(() => {
     navigate({
-      search: (old: any) => {
+      search: (old) => {
         return {
           ...old,
           usersView: {
@@ -536,7 +536,7 @@ function UsersLayoutComponent() {
             className="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {filteredUsers.map((user: any) => {
+        {filteredUsers.map((user) => {
           return (
             <div key={user.id}>
               <Link
@@ -556,7 +556,7 @@ function UsersLayoutComponent() {
                     }}
                     pending
                   >
-                    {(match: any) => <Spinner show={!!match} wait="delay-50" />}
+                    {(match) => <Spinner show={!!match} wait="delay-50" />}
                   </MatchRoute>
                 </pre>
               </Link>

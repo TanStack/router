@@ -18,7 +18,7 @@ function InvoicesRoute() {
       <div className="col-span-1 py-2 pl-2 pr-4 md:border-r">
         <p className="mb-2">Choose an invoice from the list below.</p>
         <ol className="grid gap-2">
-          {invoices.map((invoice: any) => (
+          {invoices.map((invoice) => (
             <li key={invoice.id}>
               <Link
                 to="/invoices/$invoiceId"

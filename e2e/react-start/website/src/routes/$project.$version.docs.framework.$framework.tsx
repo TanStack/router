@@ -41,7 +41,7 @@ function Page() {
         <div className="p-4">
           <p className="mb-1 border-b">Version</p>
           <ul>
-            {project.versions.map((version: any) => (
+            {project.versions.map((version) => (
               <li key={version}>
                 <Link
                   from="/$project/$version/docs/framework/$framework"
@@ -59,7 +59,7 @@ function Page() {
         <div className="p-4">
           <p className="mb-1 border-b">Framework</p>
           <ul>
-            {project.frameworks.map((framework: any) => (
+            {project.frameworks.map((framework) => (
               <li key={framework}>
                 <Link
                   from="/$project/$version/docs/framework/$framework"
@@ -77,7 +77,7 @@ function Page() {
         <div className="p-4">
           <p className="mb-1 border-b">Content</p>
           <ul>
-            {documents.map((doc: any) => (
+            {documents.map((doc) => (
               <li key={doc.id}>
                 <Link
                   from="/$project/$version/docs/framework/$framework"
@@ -94,7 +94,7 @@ function Page() {
         <div className="p-4">
           <p className="mb-1 border-b">Examples</p>
           <ul>
-            {project.examples.map((example: any) => (
+            {project.examples.map((example) => (
               <li key={example}>
                 <Link
                   from="/$project/$version/docs/framework/$framework"

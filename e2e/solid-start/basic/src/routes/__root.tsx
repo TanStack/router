@@ -1,9 +1,9 @@
 import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
 
-import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
+import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -108,6 +108,7 @@ function RootComponent() {
           redirect
         </Link>{' '}
         <Link
+          // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
             class: 'font-bold',

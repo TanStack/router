@@ -55,6 +55,7 @@ function RootComponent() {
           Pathless Layout
         </Link>{' '}
         <Link
+          // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
             className: 'font-bold',
