@@ -1,12 +1,8 @@
 import { RouterCore } from '@tanstack/router-core'
-
-import { batch } from '@tanstack/solid-store'
 import type { RouterHistory } from '@tanstack/history'
-
 import type {
   AnyRoute,
   RouterConstructorOptions,
-  StartTransitionFn,
   TrailingSlashOption,
 } from '@tanstack/router-core'
 import type {
@@ -85,12 +81,12 @@ export function createRouter<
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
     : RouterConstructorOptions<
-        TRouteTree,
-        TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
-        TRouterHistory,
-        TDehydrated
-      >,
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
 ): Router<
   TRouteTree,
   TTrailingSlashOption,
@@ -130,10 +126,6 @@ export class Router<
     >,
   ) {
     super(options)
-  }
 
-  // Solid-specific implementations
-  startTransition: StartTransitionFn = (fn) => {
-    batch(fn)
   }
 }

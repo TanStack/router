@@ -3,7 +3,6 @@ import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
   RouterConstructorOptions,
-  StartTransitionFn,
   TrailingSlashOption,
 } from '@tanstack/router-core'
 
@@ -131,17 +130,5 @@ export class Router<
     >,
   ) {
     super(options)
-  }
-
-  // React-specific implementations
-  startTransition: StartTransitionFn = (fn) => {
-    if (
-      typeof window !== 'undefined' &&
-      (window as any).__reactTransitionStarting
-    ) {
-      ;(window as any).__reactTransitionStarting(fn)
-    } else {
-      fn()
-    }
   }
 }
