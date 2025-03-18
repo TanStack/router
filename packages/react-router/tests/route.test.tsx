@@ -192,6 +192,27 @@ describe('onEnter event', () => {
 
     expect(fn).toHaveBeenCalledWith({ foo: 'bar' })
   })
+
+  it('should have location defined in router.load()', async () => {
+    const fn = vi.fn()
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return <h1>Index</h1>
+      },
+      onEnter: (_, { location: { href, pathname } }) => {
+        fn({ href, pathname })
+      },
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+
+    await router.load()
+
+    expect(fn).toHaveBeenCalledWith({ href: '/', pathname: '/' })
+  })
 })
 
 describe('route.head', () => {

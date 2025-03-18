@@ -245,19 +245,19 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 ### `onEnter` property
 
-- Type: `(match: RouteMatch) => void`
+- Type: `(match: RouteMatch, { location }: { location: ParsedLocation<{}> }) => void`
 - Optional
 - A function that will be called when a route is matched and loaded after not being matched in the previous location.
 
 ### `onStay` property
 
-- Type: `(match: RouteMatch) => void`
+- Type: `(match: RouteMatch, { location }: { location: ParsedLocation<{}> }) => void`
 - Optional
 - A function that will be called when a route is matched and loaded after being matched in the previous location.
 
 ### `onLeave` property
 
-- Type: `(match: RouteMatch) => void`
+- Type: `(match: RouteMatch, { location }: { location: ParsedLocation<{}> }) => void`
 - Optional
 - A function that will be called when a route is no longer matched after being matched in the previous location.
 

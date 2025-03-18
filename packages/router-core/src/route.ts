@@ -12,7 +12,12 @@ import type {
   RouteMatch,
 } from './Matches'
 import type { RootRouteId } from './root'
-import type { ParseRoute, RouteById, RoutePaths } from './routeInfo'
+import type {
+  FullSearchSchema,
+  ParseRoute,
+  RouteById,
+  RoutePaths,
+} from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
@@ -1036,6 +1041,13 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    {
+      location,
+    }: {
+      location: ParsedLocation<
+        ResolveFullSearchSchema<TParentRoute, TSearchValidator>
+      >
+    },
   ) => void
   onStay?: (
     match: RouteMatch<
@@ -1052,6 +1064,13 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    {
+      location,
+    }: {
+      location: ParsedLocation<
+        ResolveFullSearchSchema<TParentRoute, TSearchValidator>
+      >
+    },
   ) => void
   onLeave?: (
     match: RouteMatch<
@@ -1068,6 +1087,7 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    { location }: { location: ParsedLocation<FullSearchSchema<TRouteTree>> },
   ) => void
   headers?: (ctx: {
     loaderData: ResolveLoaderData<TLoaderFn>
