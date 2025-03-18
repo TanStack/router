@@ -149,8 +149,7 @@ export { CatchBoundary, ErrorComponent } from './CatchBoundary'
 
 export {
   FileRoute,
-  createFileRouteImpl,
-  createFileRouteImpl as createFileRoute,
+  createFileRoute,
   FileRouteLoader,
   LazyRoute,
   createLazyRoute,

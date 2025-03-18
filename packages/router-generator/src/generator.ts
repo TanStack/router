@@ -285,11 +285,51 @@ export async function generator(config: Config, root: string) {
           )
           .replace(
             new RegExp(
-              `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*['"]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"])`,
+              `(import\\s*\\{)(.*)(create(Lazy)?FileRoute)(.*)(\\}\\s*from\\s*['"]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"])`,
               'gs',
             ),
-            (_, p1, __, ___, p4) =>
-              `${p1}${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
+            (_, p1, p2, ___, ____, p5, p6) => {
+              const beforeCreateFileRoute = () => {
+                if (!p2) return ''
+
+                let trimmed = p2.trim()
+
+                if (trimmed.endsWith(',')) {
+                  trimmed = trimmed.slice(0, -1)
+                }
+
+                return trimmed
+              }
+
+              const afterCreateFileRoute = () => {
+                if (!p5) return ''
+
+                let trimmed = p5.trim()
+
+                if (trimmed.startsWith(',')) {
+                  trimmed = trimmed.slice(1)
+                }
+
+                return trimmed
+              }
+
+              const newImport = () => {
+                const before = beforeCreateFileRoute()
+                const after = afterCreateFileRoute()
+
+                if (!before) return after
+
+                if (!after) return before
+
+                return `${before},${after}`
+              }
+
+              const middle = newImport()
+
+              if (middle === '') return ''
+
+              return `${p1} ${newImport()} ${p6}`
+            },
           )
           .replace(
             /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
@@ -688,7 +728,7 @@ export async function generator(config: Config, root: string) {
     routeNodes
       .map((routeNode) => {
         return `declare module './${getImportPath(routeNode)}' {
-  const createFileRoute: ReturnType<typeof import('@tanstack/react-router').createFileRouteImpl<'${routeNode.routePath}'>>
+  const createFileRoute: ReturnType<typeof import('@tanstack/react-router').createFileRoute<'${routeNode.routePath}'>>
 }`
       })
       .join('\n'),
