@@ -41,7 +41,9 @@ function InvoicesComponent() {
                       }}
                       pending
                     >
-                      {(match: any) => <Spinner show={!!match} wait="delay-50" />}
+                      {(match: any) => (
+                        <Spinner show={!!match} wait="delay-50" />
+                      )}
                     </MatchRoute>
                   </pre>
                 </Link>
