@@ -50,7 +50,9 @@ function Deferred() {
       <Suspense fallback={<div>Loading stuff...</div>}>
         <Await
           promise={deferredStuff}
-          children={(data) => <h3 data-testid="deferred-stuff">{data as any}</h3>}
+          children={(data) => (
+            <h3 data-testid="deferred-stuff">{data as any}</h3>
+          )}
         />
       </Suspense>
       <div>Count: {count}</div>

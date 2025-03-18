@@ -81,12 +81,12 @@ export function createRouter<
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
     : RouterConstructorOptions<
-      TRouteTree,
-      TTrailingSlashOption,
-      TDefaultStructuralSharingOption,
-      TRouterHistory,
-      TDehydrated
-    >,
+        TRouteTree,
+        TTrailingSlashOption,
+        TDefaultStructuralSharingOption,
+        TRouterHistory,
+        TDehydrated
+      >,
 ): Router<
   TRouteTree,
   TTrailingSlashOption,
@@ -126,6 +126,5 @@ export class Router<
     >,
   ) {
     super(options)
-
   }
 }

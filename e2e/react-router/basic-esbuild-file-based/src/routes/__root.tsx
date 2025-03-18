@@ -64,7 +64,7 @@ function RootComponent() {
           Lazy Inside Group
         </Link>{' '}
         <Link
-                  to="/this-route-does-not-exist"
+          to="/this-route-does-not-exist"
           activeProps={{
             className: 'font-bold',
           }}
