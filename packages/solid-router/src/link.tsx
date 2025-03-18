@@ -3,11 +3,12 @@ import * as Solid from 'solid-js'
 import { mergeRefs } from '@solid-primitives/refs'
 
 import {
-  deepEqual,
-  exactPathTest,
+  doSearchParamsMatch,
   functionalUpdate,
+  isCtrlEvent,
+  isLinkActive,
+  linkEventUtils,
   preloadWarning,
-  removeTrailingSlash,
 } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
 import { useRouterState } from './useRouterState'
@@ -19,7 +20,6 @@ import { useMatches } from './Matches'
 import type {
   AnyRouter,
   Constrain,
-  LinkCurrentTargetElement,
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
@@ -160,46 +160,23 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
-      if (local.activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next().pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        ).split('/')
-        const nextPathSplit = removeTrailingSlash(
-          next()?.pathname,
-          router.basepath,
-        )?.split('/')
-
-        const pathIsFuzzyEqual = nextPathSplit?.every(
-          (d, i) => d === currentPathSplit[i],
-        )
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+      // First check path matching
+      if (!isLinkActive(s.location, next().pathname, router.basepath, local.activeOptions)) {
+        return false
       }
 
+      // Then check search params if needed
       if (local.activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next().search, {
-          partial: !local.activeOptions?.exact,
-          ignoreUndefined: !local.activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
+        if (!doSearchParamsMatch(s.location.search, next().search, local.activeOptions)) {
           return false
         }
       }
 
+      // Finally check hash if enabled
       if (local.activeOptions?.includeHash) {
         return s.location.hash === next().hash
       }
+      
       return true
     },
   })
@@ -298,40 +275,18 @@ export function useLinkProps<
     }
   }
 
-  // The click handler
   const handleFocus = (_: MouseEvent) => {
-    if (local.disabled) return
-    if (preload()) {
-      doPreload()
-    }
+    linkEventUtils.handleFocusOrTouch(!!local.disabled, !!preload(), doPreload)
   }
 
   const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
-    if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
-
-    if (preload()) {
-      if (eventTarget.preloadTimeout) {
-        return
-      }
-
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
-        doPreload()
-      }, preloadDelay())
-    }
+    linkEventUtils.handlePreloadIntent(e, !!local.disabled, !!preload(), preloadDelay(), doPreload)
   }
 
   const handleLeave = (e: MouseEvent) => {
-    if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
-
-    if (eventTarget.preloadTimeout) {
-      clearTimeout(eventTarget.preloadTimeout)
-      eventTarget.preloadTimeout = null
-    }
+    linkEventUtils.handlePreloadIntentExit(e, !!local.disabled)
   }
 
   /** Call a JSX.EventHandlerUnion with the event. */
@@ -386,13 +341,13 @@ export function useLinkProps<
 
   const href = Solid.createMemo(() => {
     const nextLocation = next()
-    const maskedLocation = nextLocation?.maskedLocation
+    const maskedLocation = nextLocation.maskedLocation
 
     return _options().disabled
       ? undefined
       : maskedLocation
         ? router.history.createHref(maskedLocation.href)
-        : router.history.createHref(nextLocation?.href)
+        : router.history.createHref(nextLocation.href)
   })
 
   return Solid.mergeProps(
@@ -547,10 +502,6 @@ export const Link: LinkComponent<'a'> = (props: any) => {
       {children}
     </Dynamic>
   )
-}
-
-function isCtrlEvent(e: MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
 }
 
 export type LinkOptionsFnOptions<

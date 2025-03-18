@@ -1,11 +1,12 @@
 import * as React from 'react'
 import { flushSync } from 'react-dom'
 import {
-  deepEqual,
-  exactPathTest,
+  doSearchParamsMatch,
   functionalUpdate,
+  isCtrlEvent,
+  isLinkActive,
+  linkEventUtils,
   preloadWarning,
-  removeTrailingSlash,
 } from '@tanstack/router-core'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -20,7 +21,6 @@ import { useMatches } from './Matches'
 import type {
   AnyRouter,
   Constrain,
-  LinkCurrentTargetElement,
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
@@ -115,7 +115,6 @@ export function useLinkProps<
 
   const next = React.useMemo(
     () => router.buildLocation(_options as any),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [router, _options, currentSearch],
   )
 
@@ -130,46 +129,23 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
-      if (activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        ).split('/')
-        const nextPathSplit = removeTrailingSlash(
-          next.pathname,
-          router.basepath,
-        ).split('/')
-
-        const pathIsFuzzyEqual = nextPathSplit.every(
-          (d, i) => d === currentPathSplit[i],
-        )
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+      // First check path matching
+      if (!isLinkActive(s.location, next.pathname, router.basepath, activeOptions)) {
+        return false
       }
 
+      // Then check search params if needed
       if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
+        if (!doSearchParamsMatch(s.location.search, next.search, activeOptions)) {
           return false
         }
       }
 
+      // Finally check hash if enabled
       if (activeOptions?.includeHash) {
         return s.location.hash === next.hash
       }
+      
       return true
     },
   })
@@ -260,40 +236,18 @@ export function useLinkProps<
     }
   }
 
-  // The click handler
   const handleFocus = (_: MouseEvent) => {
-    if (disabled) return
-    if (preload) {
-      doPreload()
-    }
+    linkEventUtils.handleFocusOrTouch(!!disabled, !!preload, doPreload)
   }
 
   const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
-    if (disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
-
-    if (preload) {
-      if (eventTarget.preloadTimeout) {
-        return
-      }
-
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
-        doPreload()
-      }, preloadDelay)
-    }
+    linkEventUtils.handlePreloadIntent(e, !!disabled, !!preload, preloadDelay, doPreload)
   }
 
   const handleLeave = (e: MouseEvent) => {
-    if (disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
-
-    if (eventTarget.preloadTimeout) {
-      clearTimeout(eventTarget.preloadTimeout)
-      eventTarget.preloadTimeout = null
-    }
+    linkEventUtils.handlePreloadIntentExit(e, !!disabled)
   }
 
   const composeHandlers =
@@ -502,10 +456,6 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     )
   },
 ) as any
-
-function isCtrlEvent(e: MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
 
 export type LinkOptionsFnOptions<
   TOptions,

@@ -1,3 +1,5 @@
+import { deepEqual } from './utils'
+import { exactPathTest, removeTrailingSlash } from './path'
 import type { HistoryState, ParsedHistoryState } from '@tanstack/history'
 import type {
   AllParams,
@@ -608,3 +610,114 @@ export type LinkCurrentTargetElement = {
 }
 
 export const preloadWarning = 'Error preloading route! ☝️'
+
+export function isCtrlEvent(e: MouseEvent) {
+  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+export const linkEventUtils = {
+  /**
+   * Handling mouseenter/hover on links
+   */
+  handlePreloadIntent: (
+    e: MouseEvent, 
+    disabled: boolean, 
+    preload: boolean | string,
+    preloadDelay: number,
+    doPreload: () => void
+  ) => {
+    if (disabled) return
+
+    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+
+    if (preload) {
+      if (eventTarget.preloadTimeout) {
+        return
+      }
+
+      eventTarget.preloadTimeout = setTimeout(() => {
+        eventTarget.preloadTimeout = null
+        doPreload()
+      }, preloadDelay)
+    }
+  },
+
+  /**
+   * Handling mouseleave on links
+   */
+  handlePreloadIntentExit: (e: MouseEvent, disabled: boolean) => {
+    if (disabled) return
+    
+    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+
+    if (eventTarget.preloadTimeout) {
+      clearTimeout(eventTarget.preloadTimeout)
+      eventTarget.preloadTimeout = null
+    }
+  },
+
+  /**
+   * Handling focus/touchstart on links
+   */
+  handleFocusOrTouch: (disabled: boolean, preload: boolean | string, doPreload: () => void) => {
+    if (disabled) return
+    if (preload) {
+      doPreload()
+    }
+  }
+}
+
+/**
+ * Determine if a link is active
+ */
+export function isLinkActive(
+  currentLocation: { pathname: string; search: Record<string, any>; hash: string },
+  nextPath: string,
+  basepath: string,
+  activeOptions?: ActiveOptions
+) {
+  // Check for exact path match if specified
+  if (activeOptions?.exact) {
+    const testExact = exactPathTest(
+      currentLocation.pathname,
+      nextPath,
+      basepath
+    )
+    if (!testExact) {
+      return false
+    }
+  } else {
+    // Otherwise check for fuzzy path match (path is a prefix)
+    const currentPathSplit = removeTrailingSlash(
+      currentLocation.pathname,
+      basepath
+    ).split('/')
+    const nextPathSplit = removeTrailingSlash(
+      nextPath,
+      basepath
+    ).split('/')
+
+    const pathIsFuzzyEqual = nextPathSplit.every(
+      (d: string, i: number) => d === currentPathSplit[i]
+    )
+    if (!pathIsFuzzyEqual) {
+      return false
+    }
+  }
+
+  return true
+}
+
+/**
+ * Determine if search params match for active link state
+ */
+export function doSearchParamsMatch(
+  currentSearch: Record<string, any>,
+  nextSearch: Record<string, any>,
+  activeOptions?: ActiveOptions
+) {
+  return deepEqual(currentSearch, nextSearch, {
+    partial: !activeOptions?.exact,
+    ignoreUndefined: !activeOptions?.explicitUndefined,
+  })
+}

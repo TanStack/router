@@ -1,6 +1,6 @@
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
-export { preloadWarning } from './link'
+export { preloadWarning, isCtrlEvent, isLinkActive, doSearchParamsMatch, linkEventUtils } from './link'
 export type {
   IsRequiredParams,
   ParsePathParams,
