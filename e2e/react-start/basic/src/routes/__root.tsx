@@ -146,7 +146,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             redirect
           </Link>{' '}
           <Link
-            // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{
               className: 'font-bold',

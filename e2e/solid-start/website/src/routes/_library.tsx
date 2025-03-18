@@ -34,7 +34,7 @@ function Layout() {
         <div class="p-4">
           <p class="mb-1 border-b">Libraries</p>
           <ul>
-            {loaderData().libraries.map((library) => (
+            {loaderData().libraries.map((library: any) => (
               <li>
                 <Link
                   to="/$project"

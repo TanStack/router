@@ -108,7 +108,6 @@ function RootComponent() {
           redirect
         </Link>{' '}
         <Link
-          // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
             class: 'font-bold',

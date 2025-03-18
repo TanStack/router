@@ -9,7 +9,7 @@ import { NotFound } from './components/NotFound'
 // definitely end up in a more streamlined API in the future. This is just
 // to show what's possible with the current APIs.
 
-export function createRouter() {
+export function createRouter(): ReturnType<typeof routerWithQueryClient> {
   const queryClient = new QueryClient()
 
   return routerWithQueryClient(
