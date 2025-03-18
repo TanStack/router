@@ -275,6 +275,10 @@ const UsersRouteChildren: UsersRouteChildren = {
 
 const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
 
+declare module './routes/users.$userId.tsx' {
+  var createServerFileRoute: boolean
+}
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof PathlessLayoutNestedLayoutRouteWithChildren

@@ -3,10 +3,30 @@ import axios from 'redaxios'
 import { DEPLOY_URL } from 'src/utils/users'
 import { NotFound } from 'src/components/NotFound'
 import { UserErrorComponent } from 'src/components/UserError'
-import { json } from '@tanstack/react-start'
+import { createServerFileRoute } from '@tanstack/react-start'
 import type { User } from 'src/utils/users'
 
-export const Route = createFileRoute('/users/$userId')({
+export const ServerRoute = createServerFileRoute<'/test'>({
+  middleware: [],
+  methods: {
+    GET: {
+      middleware: [],
+      validator: () => {},
+      handler: (ctx) => ctx.pathname,
+    },
+    // .createGet({
+    //   middleware: [],
+    // })
+    // .handler(async (ctx) => {
+    //   ctx.pathname // How do we get the pathname here?
+    //   return new Response('Hello')
+    // }),
+    // PUT: methods.createPut().validator().handler(),
+    // POST: function postHandler() {},
+  },
+})
+
+export const Route = createFileRoute({
   loader: async ({ params: { userId } }) => {
     return await axios
       .get<User>(DEPLOY_URL + '/api/users/' + userId)
@@ -20,26 +40,7 @@ export const Route = createFileRoute('/users/$userId')({
   notFoundComponent: () => {
     return <NotFound>User not found</NotFound>
   },
-  serverMiddleware: [],
 })
-  .server()
-  .get(async ({ request, params }) => {
-    console.info(`Fetching users by id=${params.userId}... @`, request.url)
-    try {
-      const res = await axios.get<User>(
-        'https://jsonplaceholder.typicode.com/users/' + params.userId,
-      )
-
-      return json({
-        id: res.data.id,
-        name: res.data.name,
-        email: res.data.email,
-      })
-    } catch (e) {
-      console.error(e)
-      return json({ error: 'User not found' }, { status: 404 })
-    }
-  })
 
 function UserComponent() {
   const user = Route.useLoaderData()

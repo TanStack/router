@@ -84,9 +84,9 @@ export {
   flattenMiddlewares,
   serverFnStaticCache,
 } from './createServerFn'
-export { HTTP_API_METHODS } from './route'
+export { createServerFileRoute, methods } from './serverRoute'
 export type {
   HTTP_API_METHOD,
   RouteServerOptions,
   StartAPIMethodCallback,
-} from './route'
+} from './serverRoute'
