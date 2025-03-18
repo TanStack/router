@@ -19,7 +19,7 @@ function InvoicesComponent() {
   return (
     <div className="flex-1 flex">
       <div className="divide-y w-48">
-        {invoices.map((invoice) => {
+        {invoices.map((invoice: any) => {
           return (
             <div key={invoice.id}>
               <Link
@@ -40,7 +40,7 @@ function InvoicesComponent() {
                     }}
                     pending
                   >
-                    {(match) => <Spinner show={!!match} wait="delay-50" />}
+                    {(match: any) => <Spinner show={!!match} wait="delay-50" />}
                   </MatchRoute>
                 </pre>
               </Link>
