@@ -45,5 +45,7 @@ export function ListItems<
   TFrom extends string,
 >(options: ListItemsProps<TRouter, TOptions, TFrom>): React.ReactNode
 export function ListItems(options: ListItemsProps) {
-  return options.items.map((item: any) => <Link {...item} from={options.from} />)
+  return options.items.map((item: any) => (
+    <Link {...item} from={options.from} />
+  ))
 }
