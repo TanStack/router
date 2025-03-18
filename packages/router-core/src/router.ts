@@ -729,6 +729,30 @@ export function getLocationChangeInfo(routerState: {
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
+export type CreateRouterFn = <
+  TRouteTree extends AnyRoute,
+  TTrailingSlashOption extends TrailingSlashOption = 'never',
+  TDefaultStructuralSharingOption extends boolean = false,
+  TRouterHistory extends RouterHistory = RouterHistory,
+  TDehydrated extends Record<string, any> = Record<string, any>,
+>(
+  options: undefined extends number
+    ? 'strictNullChecks must be enabled in tsconfig.json'
+    : RouterConstructorOptions<
+        TRouteTree,
+        TTrailingSlashOption,
+        TDefaultStructuralSharingOption,
+        TRouterHistory,
+        TDehydrated
+      >,
+) => RouterCore<
+  TRouteTree,
+  TTrailingSlashOption,
+  TDefaultStructuralSharingOption,
+  TRouterHistory,
+  TDehydrated
+>
+
 export class RouterCore<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,

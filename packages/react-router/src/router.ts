@@ -2,6 +2,7 @@ import { RouterCore } from '@tanstack/router-core'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
+  CreateRouterFn,
   RouterConstructorOptions,
   TrailingSlashOption,
 } from '@tanstack/router-core'
@@ -75,44 +76,16 @@ declare module '@tanstack/router-core' {
   }
 }
 
-export function createRouter<
-  TRouteTree extends AnyRoute,
-  TTrailingSlashOption extends TrailingSlashOption = 'never',
-  TDefaultStructuralSharingOption extends boolean = false,
-  TRouterHistory extends RouterHistory = RouterHistory,
-  TDehydrated extends Record<string, any> = Record<string, any>,
->(
-  options: undefined extends number
-    ? 'strictNullChecks must be enabled in tsconfig.json'
-    : RouterConstructorOptions<
-        TRouteTree,
-        TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
-        TRouterHistory,
-        TDehydrated
-      >,
-): Router<
-  TRouteTree,
-  TTrailingSlashOption,
-  TDefaultStructuralSharingOption,
-  TRouterHistory,
-  TDehydrated
-> {
-  return new Router<
-    TRouteTree,
-    TTrailingSlashOption,
-    TDefaultStructuralSharingOption,
-    TRouterHistory,
-    TDehydrated
-  >(options)
+export const createRouter: CreateRouterFn = (options) => {
+  return new Router(options)
 }
 
 export class Router<
-  TRouteTree extends AnyRoute,
-  TTrailingSlashOption extends TrailingSlashOption = 'never',
-  TDefaultStructuralSharingOption extends boolean = false,
-  TRouterHistory extends RouterHistory = RouterHistory,
-  TDehydrated extends Record<string, any> = Record<string, any>,
+  in out TRouteTree extends AnyRoute,
+  in out TTrailingSlashOption extends TrailingSlashOption = 'never',
+  in out TDefaultStructuralSharingOption extends boolean = false,
+  in out TRouterHistory extends RouterHistory = RouterHistory,
+  in out TDehydrated extends Record<string, any> = Record<string, any>,
 > extends RouterCore<
   TRouteTree,
   TTrailingSlashOption,

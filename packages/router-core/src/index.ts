@@ -254,6 +254,7 @@ export type {
   LoadRouteChunkFn,
   ServerSrr,
   ClearCacheFn,
+  CreateRouterFn,
 } from './router'
 
 export type {
