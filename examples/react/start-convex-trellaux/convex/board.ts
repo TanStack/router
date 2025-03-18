@@ -177,7 +177,7 @@ export const updateBoard = mutation({
   args: updateBoardSchema,
   handler: async (ctx, boardUpdate) => {
     const board = await ensureBoardExists(ctx, boardUpdate.id)
-    await ctx.db.patch(board._id, board)
+    await ctx.db.patch(board._id, boardUpdate)
   },
 })
 
