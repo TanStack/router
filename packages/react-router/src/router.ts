@@ -31,6 +31,7 @@ import {
   trimPathRight,
 } from '@tanstack/router-core'
 
+import { createFileRouteImpl } from './fileRoute'
 import type * as React from 'react'
 import type { HistoryLocation, RouterHistory } from '@tanstack/history'
 
@@ -2625,4 +2626,10 @@ export function getInitialRouterState(
     cachedMatches: [],
     statusCode: 200,
   }
+}
+
+if (typeof globalThis !== 'undefined') {
+  ;(globalThis as any).createFileRoute = createFileRouteImpl
+} else if (typeof window !== 'undefined') {
+  ;(window as any).createFileRoute = createFileRouteImpl
 }

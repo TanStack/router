@@ -33,7 +33,11 @@ import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
 
-export function createFileRoute<
+export interface createFileRouteGlobal {
+  (x: any): void
+}
+
+export function createFileRouteImpl<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
   TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
@@ -41,7 +45,7 @@ export function createFileRoute<
   TFullPath extends
     RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
 >(
-  path: TFilePath,
+  path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
@@ -63,7 +67,7 @@ export class FileRoute<
   silent?: boolean
 
   constructor(
-    public path: TFilePath,
+    public path?: TFilePath,
     _opts?: { silent: boolean },
   ) {
     this.silent = _opts?.silent
