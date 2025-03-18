@@ -115,6 +115,7 @@ export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
+export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {
   AnyPathParams,
   SearchSchemaInput,
@@ -182,10 +183,10 @@ export type {
   RouteLoaderFn,
   LoaderFnContext,
   RouteContextFn,
-  RouteContextOptions,
   BeforeLoadFn,
-  BeforeLoadContextOptions,
   ContextOptions,
+  RouteContextOptions,
+  BeforeLoadContextOptions,
   RootRouteOptions,
   UpdatableRouteOptionsExtensions,
   RouteConstraints,
@@ -198,7 +199,16 @@ export type {
   RouteAddFileTypesFn,
 } from './route'
 
-export { defaultSerializeError, getLocationChangeInfo } from './router'
+export {
+  defaultSerializeError,
+  getLocationChangeInfo,
+  RouterCore,
+  componentTypes,
+  lazyFn,
+  SearchParamError,
+  PathParamError,
+  getInitialRouterState,
+} from './router'
 export type {
   ViewTransitionOptions,
   ExtractedBaseEntry,
@@ -219,7 +229,6 @@ export type {
   RouterEvents,
   MatchRoutesOpts,
   RouterOptionsExtensions,
-  Router,
   DefaultRemountDepsFn,
   PreloadRouteFn,
   MatchRouteFn,
@@ -245,6 +254,7 @@ export type {
   LoadRouteChunkFn,
   ServerSrr,
   ClearCacheFn,
+  CreateRouterFn,
 } from './router'
 
 export type {

@@ -519,6 +519,10 @@
               "to": "framework/react/examples/navigation-blocking"
             },
             {
+              "label": "View Transitions",
+              "to": "framework/react/examples/view-transitions"
+            },
+            {
               "label": "With tRPC",
               "to": "framework/react/examples/with-trpc"
             },
