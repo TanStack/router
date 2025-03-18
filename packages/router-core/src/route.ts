@@ -1,4 +1,8 @@
+import { joinPaths, trimPathLeft } from './path'
+import { notFound } from './not-found'
+import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
+import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ParsePathParams } from './link'
 import type { ParsedLocation } from './location'
 import type {
@@ -1248,6 +1252,370 @@ export type ErrorComponentProps = {
 export type NotFoundRouteProps = {
   // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
   data: unknown
+}
+
+export class BaseRoute<
+  in out TParentRoute extends AnyRoute = AnyRoute,
+  in out TPath extends string = '/',
+  in out TFullPath extends string = ResolveFullPath<TParentRoute, TPath>,
+  in out TCustomId extends string = string,
+  in out TId extends string = ResolveId<TParentRoute, TCustomId, TPath>,
+  in out TSearchValidator = undefined,
+  in out TParams = ResolveParams<TPath>,
+  in out TRouterContext = AnyContext,
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+> implements
+    Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+{
+  isRoot: TParentRoute extends AnyRoute ? true : false
+  options: RouteOptions<
+    TParentRoute,
+    TId,
+    TCustomId,
+    TFullPath,
+    TPath,
+    TSearchValidator,
+    TParams,
+    TLoaderDeps,
+    TLoaderFn,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn
+  >
+
+  // The following properties are set up in this.init()
+  parentRoute!: TParentRoute
+  private _id!: TId
+  private _path!: TPath
+  private _fullPath!: TFullPath
+  private _to!: TrimPathRight<TFullPath>
+  private _ssr!: boolean
+
+  public get to() {
+    return this._to
+  }
+
+  public get id() {
+    return this._id
+  }
+
+  public get path() {
+    return this._path
+  }
+
+  public get fullPath() {
+    return this._fullPath
+  }
+
+  public get ssr() {
+    return this._ssr
+  }
+
+  // Optional
+  children?: TChildren
+  originalIndex?: number
+  rank!: number
+  lazyFn?: () => Promise<LazyRoute>
+  _lazyPromise?: Promise<void>
+  _componentsPromise?: Promise<Array<void>>
+
+  constructor(
+    options?: RouteOptions<
+      TParentRoute,
+      TId,
+      TCustomId,
+      TFullPath,
+      TPath,
+      TSearchValidator,
+      TParams,
+      TLoaderDeps,
+      TLoaderFn,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >,
+  ) {
+    this.options = (options as any) || {}
+    this.isRoot = !options?.getParentRoute as any
+
+    if ((options as any)?.id && (options as any)?.path) {
+      throw new Error(`Route cannot have both an 'id' and a 'path' option.`)
+    }
+  }
+
+  types!: RouteTypes<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes
+  >
+
+  init = (opts: { originalIndex: number; defaultSsr?: boolean }): void => {
+    this.originalIndex = opts.originalIndex
+
+    const options = this.options as
+      | (RouteOptions<
+          TParentRoute,
+          TId,
+          TCustomId,
+          TFullPath,
+          TPath,
+          TSearchValidator,
+          TParams,
+          TLoaderDeps,
+          TLoaderFn,
+          TRouterContext,
+          TRouteContextFn,
+          TBeforeLoadFn
+        > &
+          RoutePathOptionsIntersection<TCustomId, TPath>)
+      | undefined
+
+    const isRoot = !options?.path && !options?.id
+
+    this.parentRoute = this.options.getParentRoute?.()
+
+    if (isRoot) {
+      this._path = rootRouteId as TPath
+    } else if (!this.parentRoute) {
+      throw new Error(
+        `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
+      )
+    }
+
+    let path: undefined | string = isRoot ? rootRouteId : options?.path
+
+    // If the path is anything other than an index path, trim it up
+    if (path && path !== '/') {
+      path = trimPathLeft(path)
+    }
+
+    const customId = options?.id || path
+
+    // Strip the parentId prefix from the first level of children
+    let id = isRoot
+      ? rootRouteId
+      : joinPaths([
+          this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id,
+          customId,
+        ])
+
+    if (path === rootRouteId) {
+      path = '/'
+    }
+
+    if (id !== rootRouteId) {
+      id = joinPaths(['/', id])
+    }
+
+    const fullPath =
+      id === rootRouteId ? '/' : joinPaths([this.parentRoute.fullPath, path])
+
+    this._path = path as TPath
+    this._id = id as TId
+    this._fullPath = fullPath as TFullPath
+    this._to = fullPath as TrimPathRight<TFullPath>
+    this._ssr = options?.ssr ?? opts.defaultSsr ?? true
+  }
+
+  addChildren: RouteAddChildrenFn<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TFileRouteTypes
+  > = (children) => {
+    return this._addFileChildren(children) as any
+  }
+
+  _addFileChildren: RouteAddFileChildrenFn<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TFileRouteTypes
+  > = (children) => {
+    if (Array.isArray(children)) {
+      this.children = children as TChildren
+    }
+
+    if (typeof children === 'object' && children !== null) {
+      this.children = Object.values(children) as TChildren
+    }
+
+    return this as any
+  }
+
+  _addFileTypes: RouteAddFileTypesFn<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren
+  > = () => {
+    return this as any
+  }
+
+  updateLoader = <TNewLoaderFn>(options: {
+    loader: Constrain<
+      TNewLoaderFn,
+      RouteLoaderFn<
+        TParentRoute,
+        TCustomId,
+        TParams,
+        TLoaderDeps,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn
+      >
+    >
+  }) => {
+    Object.assign(this.options, options)
+    return this as unknown as BaseRoute<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TNewLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+  }
+
+  update = (
+    options: UpdatableRouteOptions<
+      TParentRoute,
+      TCustomId,
+      TFullPath,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >,
+  ): this => {
+    Object.assign(this.options, options)
+    return this
+  }
+
+  lazy: RouteLazyFn<this> = (lazyFn) => {
+    this.lazyFn = lazyFn
+    return this
+  }
+}
+
+export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
+  id: TId
+
+  constructor({ id }: { id: TId }) {
+    this.id = id as any
+  }
+
+  notFound = (opts?: NotFoundError) => {
+    return notFound({ routeId: this.id as string, ...opts })
+  }
+}
+
+export class BaseRootRoute<
+  in out TSearchValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+> extends BaseRoute<
+  any, // TParentRoute
+  '/', // TPath
+  '/', // TFullPath
+  string, // TCustomId
+  RootRouteId, // TId
+  TSearchValidator, // TSearchValidator
+  {}, // TParams
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren, // TChildren
+  TFileRouteTypes
+> {
+  constructor(
+    options?: RootRouteOptions<
+      TSearchValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn
+    >,
+  ) {
+    super(options as any)
+  }
 }
 
 //
