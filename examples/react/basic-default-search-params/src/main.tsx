@@ -117,7 +117,7 @@ function PostsLayoutComponent() {
   return (
     <div className="p-2 flex gap-2">
       <div className="list-disc bg-gray-800/70 rounded-lg divide-y divide-green-500/30">
-        {posts.map((post, index) => {
+        {posts.map((post: any, index: number) => {
           return (
             <div key={post.id} className="whitespace-nowrap">
               <Link

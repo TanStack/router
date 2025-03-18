@@ -40,7 +40,7 @@ function InvoiceComponent() {
 
   React.useEffect(() => {
     navigate({
-      search: (old) => ({
+      search: (old: any) => ({
         ...old,
         notes: notes ? notes : undefined,
       }),
@@ -72,7 +72,7 @@ function InvoiceComponent() {
         <Link
           from={Route.fullPath}
           params={true}
-          search={(old) => ({
+          search={(old: any) => ({
             ...old,
             showNotes: old.showNotes ? undefined : true,
           })}

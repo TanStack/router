@@ -6,7 +6,6 @@ import {
   createFileRoute,
   retainSearchParams,
   useNavigate,
-  useRouterState,
 } from '@tanstack/solid-router'
 import { z } from 'zod'
 import { createMemo } from 'solid-js'
@@ -57,7 +56,7 @@ function UsersComponent() {
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
-      search: (old) => {
+      search: (old: any) => {
         return {
           ...old,
           usersView: {
@@ -71,7 +70,7 @@ function UsersComponent() {
 
   Solid.createEffect(() => {
     navigate({
-      search: (old) => {
+      search: (old: any) => {
         return {
           ...old,
           usersView: {
@@ -129,7 +128,7 @@ function UsersComponent() {
                       }}
                       pending
                     >
-                      {(match) => <Spinner show={!!match} wait="delay-50" />}
+                      {(match: any) => <Spinner show={!!match} wait="delay-50" />}
                     </MatchRoute>
                   </pre>
                 </Link>

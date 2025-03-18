@@ -324,7 +324,7 @@ function InvoicesLayoutComponent() {
                     }}
                     pending
                   >
-                    {(match) => <Spinner show={!!match} wait="delay-50" />}
+                    {(match: any) => <Spinner show={!!match} wait="delay-50" />}
                   </MatchRoute>
                   {/* )} */}
                 </pre>
@@ -438,7 +438,7 @@ function InvoiceComponent() {
 
   React.useEffect(() => {
     navigate({
-      search: (old) => ({
+      search: (old: any) => ({
         ...old,
         notes: notes ? notes : undefined,
       }),
@@ -468,7 +468,7 @@ function InvoiceComponent() {
       />
       <div>
         <Link
-          search={(old) => ({
+          search={(old: any) => ({
             ...old,
             showNotes: old.showNotes ? undefined : true,
           })}
@@ -569,7 +569,7 @@ function UsersComponent() {
 
     return !sortBy
       ? users
-      : [...users].sort((a, b) => {
+      : [...users].sort((a: any, b: any) => {
           return a[sortBy] > b[sortBy] ? 1 : -1
         })
   }, [users, sortBy])
@@ -584,7 +584,7 @@ function UsersComponent() {
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
-      search: (old) => {
+      search: (old: any) => {
         return {
           ...old,
           usersView: {
@@ -598,7 +598,7 @@ function UsersComponent() {
 
   React.useEffect(() => {
     navigate({
-      search: (old) => {
+      search: (old: any) => {
         return {
           ...old,
           usersView: {
@@ -655,7 +655,7 @@ function UsersComponent() {
                     }}
                     pending
                   >
-                    {(match) => <Spinner show={!!match} wait="delay-50" />}
+                    {(match: any) => <Spinner show={!!match} wait="delay-50" />}
                   </MatchRoute>
                 </pre>
               </Link>

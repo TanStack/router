@@ -53,7 +53,7 @@ function UsersComponent() {
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
-      search: (old) => {
+      search: (old: any) => {
         return {
           ...old,
           usersView: {
@@ -67,7 +67,7 @@ function UsersComponent() {
 
   React.useEffect(() => {
     navigate({
-      search: (old) => {
+      search: (old: any) => {
         return {
           ...old,
           usersView: {
@@ -104,7 +104,7 @@ function UsersComponent() {
             className="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {users.map((user) => {
+        {users.map((user: any) => {
           return (
             <div key={user.id}>
               <Link
@@ -124,7 +124,7 @@ function UsersComponent() {
                     }}
                     pending
                   >
-                    {(match) => <Spinner show={!!match} wait="delay-50" />}
+                    {(match: any) => <Spinner show={!!match} wait="delay-50" />}
                   </MatchRoute>
                 </pre>
               </Link>
