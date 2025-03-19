@@ -125,6 +125,7 @@ export type {
   FileRoutesByPath,
   RouteById,
   RootRouteOptions,
+  CreateFileRoute,
 } from '@tanstack/router-core'
 
 export {

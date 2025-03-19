@@ -728,7 +728,7 @@ export async function generator(config: Config, root: string) {
     routeNodes
       .map((routeNode) => {
         return `declare module './${getImportPath(routeNode)}' {
-  const createFileRoute: ReturnType<typeof import('@tanstack/react-router').createFileRoute<'${routeNode.routePath}'>>
+  const createFileRoute: import('@tanstack/react-router').CreateFileRoute<'${routeNode.routePath}'>
 }`
       })
       .join('\n'),

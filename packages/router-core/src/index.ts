@@ -60,6 +60,7 @@ export type {
   InferFileRouteTypes,
   FileRouteTypes,
   FileRoutesByPath,
+  CreateFileRoute,
   LazyRoute,
   LazyRouteOptions,
 } from './fileRoute'
