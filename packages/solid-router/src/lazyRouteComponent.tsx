@@ -96,19 +96,22 @@ export function lazyRouteComponent<
       throw error
     }
 
-    const [compResource] = createResource(load, {
-      initialValue: comp,
-      ssrLoadFrom: 'initial',
-    })
+    if (!comp) {
+      const [compResource] = createResource(load, {
+        initialValue: comp,
+        ssrLoadFrom: 'initial',
+      })
+      return <>{compResource()}</>
+    }
 
     if (ssr?.() === false) {
       return (
         <ClientOnly fallback={<Outlet />}>
-          <Dynamic component={compResource()} {...props} />
+          <Dynamic component={comp} {...props} />
         </ClientOnly>
       )
     }
-    return <Dynamic component={compResource()} {...props} />
+    return <Dynamic component={comp} {...props} />
   }
 
   ;(lazyComp as any).preload = load
