@@ -15,6 +15,10 @@ export const ServerRoute = createServerFileRoute<'/test'>()({
         return new Response('Hello')
       },
     },
+    POST: (ctx) => {
+      ctx.pathname
+      return new Response('Hello')
+    },
     // .createGet({
     //   middleware: [],
     // })

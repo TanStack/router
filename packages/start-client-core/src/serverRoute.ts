@@ -36,13 +36,13 @@ export interface RouteServerMethodsRecord<
   TOptions,
   THead,
 > {
-  GET?: Constrain<TGet, RouteServerMethodRecord<TPath>>
-  POST?: Constrain<TPost, RouteServerMethodRecord<TPath>>
-  PUT?: Constrain<TPut, RouteServerMethodRecord<TPath>>
-  PATCH?: Constrain<TPatch, RouteServerMethodRecord<TPath>>
-  DELETE?: Constrain<TDelete, RouteServerMethodRecord<TPath>>
-  OPTIONS?: Constrain<TOptions, RouteServerMethodRecord<TPath>>
-  HEAD?: Constrain<THead, RouteServerMethodRecord<TPath>>
+  GET?: Constrain<TGet, RouteServerMethodOption<TPath>>
+  POST?: Constrain<TPost, RouteServerMethodOption<TPath>>
+  PUT?: Constrain<TPut, RouteServerMethodOption<TPath>>
+  PATCH?: Constrain<TPatch, RouteServerMethodOption<TPath>>
+  DELETE?: Constrain<TDelete, RouteServerMethodOption<TPath>>
+  OPTIONS?: Constrain<TOptions, RouteServerMethodOption<TPath>>
+  HEAD?: Constrain<THead, RouteServerMethodOption<TPath>>
 }
 
 export interface RouteServerOptions<
