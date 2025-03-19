@@ -725,17 +725,13 @@ export async function generator(config: Config, root: string) {
   }
 }`,
         ]),
-    ...(TYPES_DISABLED
-      ? []
-      : [
-          routeNodes
-            .map((routeNode) => {
-              return `declare module './${getImportPath(routeNode)}' {
-    const createFileRoute: import('${ROUTE_TEMPLATE.fullPkg}').CreateFileRoute<'${routeNode.routePath}'>
-  }`
-            })
-            .join('\n'),
-        ]),
+      routeNodes
+        .map((routeNode) => {
+          return `declare module './${getImportPath(routeNode)}' {
+const createFileRoute: import('${ROUTE_TEMPLATE.fullPkg}').CreateFileRoute<'${routeNode.routePath}'>
+}`
+        })
+        .join('\n'),
     '// Create and export the route tree',
     routeConfigChildrenText,
     ...(TYPES_DISABLED
