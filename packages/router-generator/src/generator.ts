@@ -605,6 +605,7 @@ export async function generator(config: Config, root: string) {
       : '',
     '// Import Routes',
     [
+      `import type { FileRoutesByPath, CreateFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
       `import { Route as rootRoute } from './${getImportPath(rootRouteNode)}'`,
       ...sortedRouteNodes
         .filter((d) => !d.isVirtual)
@@ -728,7 +729,13 @@ export async function generator(config: Config, root: string) {
     routeNodes
       .map((routeNode) => {
         return `declare module './${getImportPath(routeNode)}' {
-  const createFileRoute: import('@tanstack/react-router').CreateFileRoute<'${routeNode.routePath}'>
+  const createFileRoute: CreateFileRoute<
+    '${routeNode.routePath}',
+    FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
+    FileRoutesByPath['${routeNode.routePath}']['id'],
+    FileRoutesByPath['${routeNode.routePath}']['path'],
+    FileRoutesByPath['${routeNode.routePath}']['fullPath']
+  >
 }`
       })
       .join('\n'),

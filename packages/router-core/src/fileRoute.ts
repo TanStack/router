@@ -32,34 +32,30 @@ export interface FileRoutesByPath {
   // }
 }
 
-export type CreateFileRoute<
-  TFilePath extends keyof FileRoutesByPath,
-  TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
-  TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
-  TFullPath extends
-    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
-> = <
+export interface FileRouteOptions<
+  TFilePath extends string,
+  TParentRoute extends AnyRoute,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
-  TChildren = unknown,
->(
-  options?: FileBaseRouteOptions<
-    TParentRoute,
-    TId,
-    TPath,
-    TSearchValidator,
-    TParams,
-    TLoaderDeps,
-    TLoaderFn,
-    AnyContext,
-    TRouteContextFn,
-    TBeforeLoadFn
-  > &
+> extends FileBaseRouteOptions<
+      TParentRoute,
+      TId,
+      TPath,
+      TSearchValidator,
+      TParams,
+      TLoaderDeps,
+      TLoaderFn,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >,
     UpdatableRouteOptions<
       TParentRoute,
       TId,
@@ -71,7 +67,35 @@ export type CreateFileRoute<
       AnyContext,
       TRouteContextFn,
       TBeforeLoadFn
-    >,
+    > {}
+
+export type CreateFileRoute<
+  TFilePath extends string,
+  TParentRoute extends AnyRoute,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+> = <
+  TSearchValidator = undefined,
+  TParams = ResolveParams<TPath>,
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderFn = undefined,
+>(
+  options?: FileRouteOptions<
+    TFilePath,
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    TSearchValidator,
+    TParams,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn
+  >,
 ) => Route<
   TParentRoute,
   TPath,
@@ -85,7 +109,7 @@ export type CreateFileRoute<
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
-  TChildren,
+  unknown,
   unknown
 >
 
