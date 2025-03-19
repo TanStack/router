@@ -12,6 +12,7 @@ import {
 } from '../src'
 import type { LinkProps } from '../src'
 import type * as Vue from 'vue'
+import { ParentProps } from '../src/utils'
 
 const createRouterRenderer = (routesCount: number) => (children: Vue.VNode) => {
   const rootRoute = createRootRoute()
@@ -37,7 +38,7 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-}: Vue.PropsWithChildren<LinkProps>) => {
+}: ParentProps<LinkProps>) => {
   const href = interpolatePath({ path: to, params }).interpolatedPath
   return <a href={href}>{children}</a>
 }
@@ -45,7 +46,7 @@ const InterpolatePathLink = ({
 const BuildLocationLink = ({
   children,
   ...props
-}: Vue.PropsWithChildren<LinkProps>) => {
+}: ParentProps<LinkProps>) => {
   const router = useRouter()
   const { href } = router.buildLocation(props)
   return <a href={href}>{children}</a>
