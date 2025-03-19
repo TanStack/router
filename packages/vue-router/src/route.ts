@@ -425,7 +425,7 @@ export function createRouteMask<
   return opts as any
 }
 
-export type SolidNode = Vue.VNode
+export type VueNode = Vue.VNode
 
 export type SyncRouteComponent<TProps> = (props: TProps) => Vue.VNode
 

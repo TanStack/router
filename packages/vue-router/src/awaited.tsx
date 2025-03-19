@@ -2,7 +2,6 @@ import * as Vue from 'vue'
 
 import { TSR_DEFERRED_PROMISE, defer } from '@tanstack/router-core'
 import type { DeferredPromise } from '@tanstack/router-core'
-import type { SolidNode } from './route'
 
 export type AwaitOptions<T> = {
   promise: Promise<T>
@@ -26,19 +25,30 @@ export function useAwaited<T>({
 
 export function Await<T>(
   props: AwaitOptions<T> & {
-    fallback?: SolidNode
-    children: (result: T) => SolidNode
+    fallback?: Vue.VNode
+    children: (result: T) => Vue.VNode
   },
 ) {
-  const [resource] = Vue.createResource(() => props.promise)
+  const data = Vue.ref<T | null>(null)
+  const error = Vue.ref<Error | null>(null)
+  const pending = Vue.ref(true)
 
-  return (
-    <>
-      Ï
-      <template v-if={resource()}>
-        {(data) => props.children(data.value)}
-      </template>
-      <template v-else={props.fallback}></template>
-    </>
-  )
+  Vue.watchEffect(async () => {
+    pending.value = true
+    try {
+      data.value = await props.promise
+    } catch (err) {
+      error.value = err as Error
+    } finally {
+      pending.value = false
+    }
+  })
+
+  const inner = Vue.computed(() => {
+    if (error.value) throw error.value
+    if (pending.value) return props.fallback
+    return props.children(data.value as T)
+  })
+
+  return () => inner.value
 }

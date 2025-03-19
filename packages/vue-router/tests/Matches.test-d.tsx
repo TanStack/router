@@ -227,10 +227,10 @@ test('when filtering useMatches by loaderData with an array', () => {
     .toEqualTypeOf<'loaderData.0.id' | 'loaderData.0.comment'>
 
   expectTypeOf(
-    matches.filter((match: any) => isMatch(match, 'loaderData.5.id')),
+    matches.filter((match) => isMatch(match, 'loaderData.5.id')),
   ).toEqualTypeOf<Array<InvoicesMatch>>()
 
   expectTypeOf(
-    matches.filter((match: any) => isMatch(match, 'loaderData.0.comment')),
+    matches.filter((match) => isMatch(match, 'loaderData.0.comment')),
   ).toEqualTypeOf<Array<CommentsMatch>>()
 })

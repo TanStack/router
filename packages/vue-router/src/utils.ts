@@ -3,7 +3,7 @@ import * as Vue from 'vue'
 export const useLayoutEffect =
   typeof window !== 'undefined' ? Vue.effect : Vue.effect
 
-export const usePrevious = (fn: { value: boolean }) => {
+export const usePrevious = (fn: ()=> boolean ) => {
   return Vue.computed(
     (
       prev: { current: boolean | null; previous: boolean | null } = {
@@ -11,7 +11,7 @@ export const usePrevious = (fn: { value: boolean }) => {
         previous: null,
       },
     ) => {
-      const current = fn.value
+      const current = fn()
 
       if (prev.current !== current) {
         prev.previous = prev.current
@@ -76,4 +76,27 @@ export function useIntersectionObserver<T extends Element>(
   })
 
   return () => observerRef
+}
+
+export function splitProps<T extends Record<string, any>>(props: T, keys: Array<keyof T>) {
+  // Get the specified props
+  const selectedProps = Vue.computed(() => {
+    return Object.fromEntries(
+      keys.map(key => [key, props[key]])
+    )
+  })
+  
+  // Get remaining props as attrs
+  const remainingAttrs = Vue.computed(() => {
+    const attrs = Vue.useAttrs()
+    return Object.fromEntries(
+      Object.entries(attrs).filter(([key]) => !keys.includes(key as keyof T))
+    )
+  })
+  
+  return [selectedProps, remainingAttrs]
+}
+
+export type ParentProps<T = {}> = T & {
+  children?: Vue.VNode | Array<Vue.VNode> | string
 }

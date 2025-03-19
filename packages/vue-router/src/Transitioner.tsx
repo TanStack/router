@@ -17,7 +17,7 @@ export function Transitioner() {
     select: (s) => s.matches.some((d) => d.status === 'pending'),
   })
 
-  const previousIsLoading = usePrevious(isLoading.value)
+  const previousIsLoading = usePrevious(()=>isLoading.value)
 
   const isAnyPending = () =>
     isLoading.value || isTransitioning.value || hasPendingMatches.value
@@ -36,7 +36,7 @@ export function Transitioner() {
 
   // Subscribe to location changes
   // and try to load the new location
-  Vue.onMount(() => {
+  Vue.onMounted(() => {
     const unsub = router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
@@ -55,14 +55,14 @@ export function Transitioner() {
       router.commitLocation({ ...nextLocation, replace: true })
     }
 
-    Vue.onCleanup(() => {
+    Vue.onUnmounted(() => {
       unsub()
     })
   })
 
   // Try to load the initial location
-  Vue.createRenderEffect(() => {
-    Vue.untrack(() => {
+  Vue.effect(() => {
+    () => {
       if (
         (typeof window !== 'undefined' && router.clientSsr) ||
         (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
@@ -78,40 +78,36 @@ export function Transitioner() {
         }
       }
       tryLoad()
-    })
+    }
   })
 
-  Vue.createRenderEffect(
-    Vue.on([previousIsLoading, isLoading], ([previousIsLoading, isLoading]) => {
-      if (previousIsLoading.previous && !isLoading) {
+  Vue.effect(
+    () => {
+      if (previousIsLoading.value.previous && !isLoading.value) {
         router.emit({
           type: 'onLoad',
           ...getLocationChangeInfo(router.state),
         })
       }
-    }),
+    }
   )
-  Vue.createRenderEffect(
-    Vue.on(
-      [isPagePending, previousIsPagePending],
-      ([isPagePending, previousIsPagePending]) => {
+  Vue.effect(
+    () => {
         // emit onBeforeRouteMount
-        if (previousIsPagePending.previous && !isPagePending) {
+        if (previousIsPagePending.value.previous && !isPagePending()) {
           router.emit({
             type: 'onBeforeRouteMount',
             ...getLocationChangeInfo(router.state),
           })
         }
       },
-    ),
+    
   )
 
-  Vue.createRenderEffect(
-    Vue.on(
-      [isAnyPending, previousIsAnyPending],
-      ([isAnyPending, previousIsAnyPending]) => {
+  Vue.effect(
+      () => {
         // The router was pending and now it's not
-        if (previousIsAnyPending.previous && !isAnyPending) {
+        if (previousIsAnyPending.value.previous && !isAnyPending()) {
           router.emit({
             type: 'onResolved',
             ...getLocationChangeInfo(router.state),
@@ -142,7 +138,7 @@ export function Transitioner() {
           }
         }
       },
-    ),
+    
   )
 
   return null

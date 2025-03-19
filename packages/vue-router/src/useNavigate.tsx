@@ -30,7 +30,7 @@ export function Navigate<
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
 
-  Vue.onMount(() => {
+  Vue.onMounted(() => {
     navigate({
       ...props,
     })

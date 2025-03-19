@@ -1,5 +1,4 @@
 import * as Vue from 'vue'
-
 import { mergeRefs } from '@solid-primitives/refs'
 
 import {
@@ -10,10 +9,11 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
+
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
-import { useIntersectionObserver } from './utils'
+import { splitProps, useIntersectionObserver } from './utils'
 
 import { useMatches } from './Matches'
 import type {
@@ -42,7 +42,7 @@ export function useLinkProps<
   const isTransitioning = Vue.ref(false)
   let hasRenderFetched = false
 
-  const [local, rest] = Vue.splitProps(
+  const [local, rest] = splitProps(
     Vue.mergeProps(
       {
         activeProps: () => ({ class: 'active' }),
@@ -141,11 +141,11 @@ export function useLinkProps<
 
   const _options = () => ({
     ...options,
-    from: from(),
+    from: from.value,
   })
 
   const next = Vue.computed(() => {
-    currentSearch()
+    currentSearch.value
     return router.buildLocation(_options() as any)
   })
 
@@ -153,17 +153,17 @@ export function useLinkProps<
     if (_options().reloadDocument) {
       return false
     }
-    return local.preload ?? router.options.defaultPreload
+    return local?.value.preload ?? router.options.defaultPreload
   })
   const preloadDelay = () =>
-    local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
+    local?.value.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const isActive = useRouterState({
     select: (s) => {
-      if (local.activeOptions?.exact) {
+      if (local?.value.activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
-          next().pathname,
+          next.value.pathname,
           router.basepath,
         )
         if (!testExact) {
@@ -175,7 +175,7 @@ export function useLinkProps<
           router.basepath,
         ).split('/')
         const nextPathSplit = removeTrailingSlash(
-          next()?.pathname,
+          next.value?.pathname,
           router.basepath,
         )?.split('/')
 
@@ -187,18 +187,18 @@ export function useLinkProps<
         }
       }
 
-      if (local.activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next().search, {
-          partial: !local.activeOptions?.exact,
-          ignoreUndefined: !local.activeOptions?.explicitUndefined,
+      if (local?.value.activeOptions?.includeSearch ?? true) {
+        const searchTest = deepEqual(s.location.search, next.value.search, {
+          partial: !local?.value.activeOptions?.exact,
+          ignoreUndefined: !local?.value.activeOptions?.explicitUndefined,
         })
         if (!searchTest) {
           return false
         }
       }
 
-      if (local.activeOptions?.includeHash) {
-        return s.location.hash === next().hash
+      if (local?.value.activeOptions?.includeHash) {
+        return s.location.hash === next.value.hash
       }
       return true
     },
@@ -224,32 +224,32 @@ export function useLinkProps<
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!local.disabled || !(preload() === 'viewport') },
+    { disabled: !!local?.value.disabled || !(preload.value === 'viewport') },
   )
 
   Vue.effect(() => {
     if (hasRenderFetched) {
       return
     }
-    if (!local.disabled && preload() === 'render') {
+    if (!local?.value.disabled && preload.value === 'render') {
       doPreload()
       hasRenderFetched = true
     }
   })
 
-  if (type() === 'external') {
+  if (type.value === 'external') {
     return Vue.mergeProps(
       propsSafeToSpread,
       {
         ref,
         get type() {
-          return type()
+          return type.value
         },
         get href() {
-          return local.to
+          return local?.value.to
         },
       },
-      Vue.splitProps(local, [
+      splitProps(local, [
         'children',
         'target',
         'disabled',
@@ -269,10 +269,10 @@ export function useLinkProps<
   // The click handler
   const handleClick = (e: MouseEvent) => {
     if (
-      !local.disabled &&
+      !local?.value.disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!local.target || local.target === '_self') &&
+      (!local?.value.target || local?.value.target === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
@@ -288,20 +288,20 @@ export function useLinkProps<
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
         ..._options(),
-        replace: local.replace,
-        resetScroll: local.resetScroll,
-        hashScrollIntoView: local.hashScrollIntoView,
-        startTransition: local.startTransition,
-        viewTransition: local.viewTransition,
-        ignoreBlocker: local.ignoreBlocker,
+        replace: local?.value.replace,
+        resetScroll: local?.value.resetScroll,
+        hashScrollIntoView: local?.value.hashScrollIntoView,
+        startTransition: local?.value.startTransition,
+        viewTransition: local?.value.viewTransition,
+        ignoreBlocker: local?.value.ignoreBlocker,
       } as any)
     }
   }
 
   // The click handler
   const handleFocus = (_: MouseEvent) => {
-    if (local.disabled) return
-    if (preload()) {
+    if (local?.value.disabled) return
+    if (preload.value) {
       doPreload()
     }
   }
@@ -309,10 +309,10 @@ export function useLinkProps<
   const handleTouchStart = handleFocus
 
   const handleEnter = (e: MouseEvent) => {
-    if (local.disabled) return
+    if (local?.value.disabled) return
     const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
-    if (preload()) {
+    if (preload.value) {
       if (eventTarget.preloadTimeout) {
         return
       }
@@ -325,7 +325,7 @@ export function useLinkProps<
   }
 
   const handleLeave = (e: MouseEvent) => {
-    if (local.disabled) return
+    if (local?.value.disabled) return
     const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
@@ -364,26 +364,26 @@ export function useLinkProps<
   const resolvedActiveProps: () => Omit<Vue.ComponentProps<'a'>, 'style'> & {
     style?: Vue.JSX.CSSProperties
   } = () =>
-    isActive() ? (functionalUpdate(local.activeProps as any, {}) ?? {}) : {}
+    isActive.value ? (functionalUpdate(local?.value.activeProps as any, {}) ?? {}) : {}
 
   // Get the inactive props
   const resolvedInactiveProps: () => Omit<Vue.ComponentProps<'a'>, 'style'> & {
     style?: Vue.JSX.CSSProperties
-  } = () => (isActive() ? {} : functionalUpdate(local.inactiveProps, {}))
+  } = () => (isActive.value ? {} : functionalUpdate(local?.value.inactiveProps, {}))
 
   const resolvedClassName = () =>
-    [local.class, resolvedActiveProps().class, resolvedInactiveProps().class]
+    [local?.value.class, resolvedActiveProps().class, resolvedInactiveProps().class]
       .filter(Boolean)
       .join(' ')
 
   const resolvedStyle = () => ({
-    ...local.style,
+    ...local?.value.style,
     ...resolvedActiveProps().style,
     ...resolvedInactiveProps().style,
   })
 
   const href = Vue.computed(() => {
-    const nextLocation = next()
+    const nextLocation = next.value
     const maskedLocation = nextLocation?.maskedLocation
 
     return _options().disabled
@@ -399,28 +399,28 @@ export function useLinkProps<
     resolvedInactiveProps,
     () => {
       return {
-        href: href(),
+        href: href.value,
         ref: mergeRefs(setRef, _options().ref),
-        onClick: composeEventHandlers([local.onClick, handleClick]),
-        onFocus: composeEventHandlers([local.onFocus, handleFocus]),
-        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
-        onMouseOver: composeEventHandlers([local.onMouseOver, handleEnter]),
-        onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
-        onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
+        onClick: composeEventHandlers([local?.value.onClick, handleClick]),
+        onFocus: composeEventHandlers([local?.value.onFocus, handleFocus]),
+        onMouseEnter: composeEventHandlers([local?.value.onMouseEnter, handleEnter]),
+        onMouseOver: composeEventHandlers([local?.value.onMouseOver, handleEnter]),
+        onMouseLeave: composeEventHandlers([local?.value.onMouseLeave, handleLeave]),
+        onMouseOut: composeEventHandlers([local?.value.onMouseOut, handleLeave]),
         onTouchStart: composeEventHandlers([
-          local.onTouchStart,
+          local?.value.onTouchStart,
           handleTouchStart,
         ]),
-        disabled: !!local.disabled,
-        target: local.target,
+        disabled: !!local?.value.disabled,
+        target: local?.value.target,
         ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
         ...(resolvedClassName() && { class: resolvedClassName() }),
-        ...(local.disabled && {
+        ...(local?.value.disabled && {
           role: 'link',
           'aria-disabled': true,
         }),
-        ...(isActive() && { 'data-status': 'active', 'aria-current': 'page' }),
-        ...(isTransitioning() && { 'data-transitioning': 'transitioning' }),
+        ...(isActive.value && { 'data-status': 'active', 'aria-current': 'page' }),
+        ...(isTransitioning.value && { 'data-transitioning': 'transitioning' }),
       }
     },
   ) as any
@@ -521,24 +521,24 @@ export function createLink<const TComp>(
 }
 
 export const Link: LinkComponent<'a'> = (props: any) => {
-  const [local, rest] = Vue.splitProps(props, ['_asChild'])
+  const [local, rest] = splitProps(props, ['_asChild'])
 
-  const [_, linkProps] = Vue.splitProps(useLinkProps(rest as unknown as any), [
+  const [_, linkProps] = splitProps(useLinkProps(rest as unknown as any), [
     'type',
     'children',
   ])
 
   const children = () =>
-    typeof rest.children === 'function'
-      ? rest.children({
+    typeof rest?.value.children === 'function'
+      ? rest?.value.children({
           get isActive() {
             return (linkProps as any)['data-status'] === 'active'
           },
         })
-      : rest.children
+      : rest?.value.children
 
   return (
-    <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>
+    <Dynamic component={local?.value._asChild ? local.value._asChild : 'a'} {...linkProps}>
       {children}
     </Dynamic>
   )

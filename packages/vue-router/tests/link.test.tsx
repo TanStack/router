@@ -29,11 +29,13 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { splitProps } from '../src/utils'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
   sleep,
 } from './utils'
+import type { ParentProps} from '../src/utils';
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -2803,7 +2805,7 @@ describe('Link', () => {
     const LoginComponent = () => {
       const status = Vue.ref<'idle' | 'success' | 'error'>('idle')
 
-      Vue.onMount(() => {
+      Vue.onMounted(() => {
         const onLoad = async () => {
           try {
             await router.preloadRoute({
@@ -3974,18 +3976,18 @@ describe('createLink', () => {
 
   it('should pass activeProps and inactiveProps to the custom link', async () => {
     const Button: Vue.Component<
-      Vue.ParentProps<{
+      ParentProps<{
         active?: boolean
         foo?: boolean
         overrideMeIfYouWant: string
       }>
     > = (props) => {
-      const [local, rest] = Vue.splitProps(props, ['active', 'foo', 'children'])
+      const [local, rest] = splitProps(props, ['active', 'foo', 'children'])
 
       return (
-        <button {...rest}>
-          active: {local.active ? 'yes' : 'no'} - foo:{' '}
-          {local.foo ? 'yes' : 'no'} - {local.children}
+        <button {...rest?.value}>
+          active: {local?.value.active ? 'yes' : 'no'} - foo:{' '}
+          {local?.value.foo ? 'yes' : 'no'} - {local?.value.children}
         </button>
       )
     }
