@@ -1,0 +1,81 @@
+{
+  "name": "@tanstack/vue-router",
+  "version": "1.0.0",
+  "description": "Modern and scalable routing for Vue applications",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/vue-router"
+  },
+  "homepage": "https://tanstack.com/router",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "vue",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint",
+    "test:types": "tsc -p tsconfig.legacy.json",
+    "test:unit": "vitest",
+    "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
+    "test:perf": "vitest bench",
+    "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
+    "build": "vite build && tsc -p tsconfig.build.json"
+  },
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
+  "dependencies": {
+    "@tanstack/history": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/vue-store": "^0.7.0",
+    "jsesc": "^3.0.2",
+    "tiny-invariant": "^1.3.3",
+    "tiny-warning": "^1.0.3"
+  },
+  "devDependencies": {
+    "@testing-library/vue": "^8.1.0",
+    "@types/jsesc": "^3.0.3",
+    "combinate": "^1.1.11",
+    "vue": "^3.3.0",
+    "zod": "^3.23.8",
+    "@vitejs/plugin-vue": "^5.2.3"
+  },
+  "peerDependencies": {
+    "vue": "^3.3.0"
+  }
+}
