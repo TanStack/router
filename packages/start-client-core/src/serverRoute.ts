@@ -1,5 +1,9 @@
-import type { Middleware } from './createMiddleware'
-import type { ResolveParams } from '@tanstack/router-core'
+import type { AnyMiddleware, Middleware } from './createMiddleware'
+import type {
+  AnyValidator,
+  Constrain,
+  ResolveParams,
+} from '@tanstack/router-core'
 
 export const HTTP_API_METHODS = [
   'GET',
@@ -12,8 +16,55 @@ export const HTTP_API_METHODS = [
 ] as const
 export type HTTP_API_METHOD = (typeof HTTP_API_METHODS)[number]
 
-export interface RouteServerOptions<TPath extends string> {
-  methods: Partial<Record<HTTP_API_METHOD, StartAPIMethodCallback<TPath>>>
+export interface RouteServerMethodRecord<TPath extends string> {
+  validator?: AnyValidator
+  middleware?: ReadonlyArray<AnyMiddleware>
+  handler?: StartAPIMethodCallback<TPath>
+}
+
+export type RouteServerMethodOption<TPath extends string> =
+  | StartAPIMethodCallback<TPath>
+  | RouteServerMethodRecord<TPath>
+
+export interface RouteServerMethodsRecord<
+  TPath extends string,
+  TGet,
+  TPost,
+  TPut,
+  TPatch,
+  TDelete,
+  TOptions,
+  THead,
+> {
+  GET?: Constrain<TGet, RouteServerMethodRecord<TPath>>
+  POST?: Constrain<TPost, RouteServerMethodRecord<TPath>>
+  PUT?: Constrain<TPut, RouteServerMethodRecord<TPath>>
+  PATCH?: Constrain<TPatch, RouteServerMethodRecord<TPath>>
+  DELETE?: Constrain<TDelete, RouteServerMethodRecord<TPath>>
+  OPTIONS?: Constrain<TOptions, RouteServerMethodRecord<TPath>>
+  HEAD?: Constrain<THead, RouteServerMethodRecord<TPath>>
+}
+
+export interface RouteServerOptions<
+  TPath extends string,
+  TGet,
+  TPost,
+  TPut,
+  TPatch,
+  TDelete,
+  TOptions,
+  THead,
+> {
+  methods: RouteServerMethodsRecord<
+    TPath,
+    TGet,
+    TPost,
+    TPut,
+    TPatch,
+    TDelete,
+    TOptions,
+    THead
+  >
 }
 
 export interface RouteServerVerbOptions<
@@ -26,12 +77,30 @@ export interface RouteServerVerbOptions<
 
 export type StartAPIMethodCallback<TPath extends string> = (ctx: {
   request: Request
+  pathname: TPath
   params: ResolveParams<TPath>
 }) => Response | Promise<Response>
 
-export function createServerFileRoute<TPath extends string>(
-  opts: RouteServerOptions<TPath>,
-): ServerRoute {
+export function createServerFileRoute<TPath extends string>(): <
+  TGet,
+  TPost,
+  TPut,
+  TPatch,
+  TDelete,
+  TOptions,
+  THead,
+>(
+  opts: RouteServerOptions<
+    TPath,
+    TGet,
+    TPut,
+    TPost,
+    TPatch,
+    TDelete,
+    TOptions,
+    THead
+  >,
+) => ServerRoute {
   return undefined as any
 }
 

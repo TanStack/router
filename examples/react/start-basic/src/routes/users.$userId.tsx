@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
 import { DEPLOY_URL } from 'src/utils/users'
 import { NotFound } from 'src/components/NotFound'
@@ -6,13 +5,15 @@ import { UserErrorComponent } from 'src/components/UserError'
 import { createServerFileRoute } from '@tanstack/react-start'
 import type { User } from 'src/utils/users'
 
-export const ServerRoute = createServerFileRoute<'/test'>({
-  middleware: [],
+export const ServerRoute = createServerFileRoute<'/test'>()({
   methods: {
     GET: {
       middleware: [],
       validator: () => {},
-      handler: (ctx) => ctx.pathname,
+      handler: (ctx) => {
+        ctx.pathname
+        return new Response('Hello')
+      },
     },
     // .createGet({
     //   middleware: [],
