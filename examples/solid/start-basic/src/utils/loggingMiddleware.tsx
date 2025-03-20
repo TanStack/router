@@ -25,17 +25,17 @@ const preLogMiddleware = createMiddleware()
     })
   })
 
-export const logMiddleware = createMiddleware({
-  middleware: [preLogMiddleware],
-}).client(async (ctx) => {
-  const res = await ctx.next()
+export const logMiddleware = createMiddleware()
+  .middleware([preLogMiddleware])
+  .client(async (ctx) => {
+    const res = await ctx.next()
 
-  const now = new Date()
-  console.log('Client Req/Res:', {
-    duration: now.getTime() - res.context.clientTime.getTime(),
-    durationToServer: res.context.durationToServer,
-    durationFromServer: now.getTime() - res.context.serverTime.getTime(),
+    const now = new Date()
+    console.log('Client Req/Res:', {
+      duration: now.getTime() - res.context.clientTime.getTime(),
+      durationToServer: res.context.durationToServer,
+      durationFromServer: now.getTime() - res.context.serverTime.getTime(),
+    })
+
+    return res
   })
-
-  return res
-})

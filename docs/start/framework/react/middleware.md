@@ -40,11 +40,11 @@ Once you've defined your middleware, you can use it in combination with the `cre
 import { createServerFn } from '@tanstack/react-start'
 import { loggingMiddleware } from './middleware'
 
-const fn = createServerFn({
-  middleware: [loggingMiddleware],
-}).handler(async () => {
-  // ...
-})
+const fn = createServerFn()
+  .middleware([loggingMiddleware])
+  .handler(async () => {
+    // ...
+  })
 ```
 
 ## Middleware Methods
@@ -63,9 +63,10 @@ The `middleware` method is used to dependency middleware to the chain that will 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const loggingMiddleware = createMiddleware({
-  middleware: [authMiddleware, loggingMiddleware],
-})
+const loggingMiddleware = createMiddleware().middleware([
+  authMiddleware,
+  loggingMiddleware,
+])
 ```
 
 Type-safe context and payload validation are also inherited from parent middlewares!
@@ -249,15 +250,15 @@ const serverTimer = createMiddleware().server(async ({ next }) => {
   })
 })
 
-const requestLogger = createMiddleware({
-  middleware: [serverTimer],
-}).client(async ({ next }) => {
-  const result = await next()
-  // Woah! We have the time from the server!
-  console.log('Time from the server:', result.context.timeFromServer)
+const requestLogger = createMiddleware()
+  .middleware([serverTimer])
+  .client(async ({ next }) => {
+    const result = await next()
+    // Woah! We have the time from the server!
+    console.log('Time from the server:', result.context.timeFromServer)
 
-  return result
-})
+    return result
+  })
 ```
 
 ## Reading/Modifying the Server Response
@@ -335,12 +336,12 @@ Here's an example of how this works:
 ```tsx
 import { authMiddleware } from './authMiddleware'
 
-const fn = createServerFn({
-  middleware: [authMiddleware],
-}).handler(async ({ context }) => {
-  console.log(context.user)
-  // ...
-})
+const fn = createServerFn()
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    console.log(context.user)
+    // ...
+  })
 ```
 
 ## Middleware Execution Order
@@ -374,31 +375,31 @@ const a = createMiddleware().server(async ({ next }) => {
   return next()
 })
 
-const b = createMiddleware({
-  middleware: [a],
-}).server(async ({ next }) => {
-  console.log('b')
-  return next()
-})
+const b = createMiddleware()
+  .middleware([a])
+  .server(async ({ next }) => {
+    console.log('b')
+    return next()
+  })
 
-const c = createMiddleware({
-  middleware: [b],
-}).server(async ({ next }) => {
-  console.log('c')
-  return next()
-})
+const c = createMiddleware()
+  .middleware()
+  .server(async ({ next }) => {
+    console.log('c')
+    return next()
+  })
 
-const d = createMiddleware({
-  middleware: [b, c],
-}).server(async () => {
-  console.log('d')
-})
+const d = createMiddleware()
+  .middleware([b, c])
+  .server(async () => {
+    console.log('d')
+  })
 
-const fn = createServerFn({
-  middleware: [d],
-}).server(async () => {
-  console.log('fn')
-})
+const fn = createServerFn()
+  .middleware([d])
+  .server(async () => {
+    console.log('fn')
+  })
 ```
 
 ## Environment Tree Shaking

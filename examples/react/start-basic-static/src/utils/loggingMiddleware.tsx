@@ -1,7 +1,7 @@
 import { createMiddleware } from '@tanstack/react-start'
 
-export const logMiddleware = createMiddleware({
-  middleware: [
+export const logMiddleware = createMiddleware()
+  .middleware([
     createMiddleware()
       .client(async (ctx) => {
         const clientTime = new Date()
@@ -26,17 +26,17 @@ export const logMiddleware = createMiddleware({
           },
         })
       }),
-  ],
-}).client(async (options) => {
-  const result = await options.next()
+  ])
+  .client(async (options) => {
+    const result = await options.next()
 
-  const now = new Date()
+    const now = new Date()
 
-  console.log('Client Req/Res:', {
-    duration: result.context.clientTime.getTime() - now.getTime(),
-    durationToServer: result.context.durationToServer,
-    durationFromServer: now.getTime() - result.context.serverTime.getTime(),
+    console.log('Client Req/Res:', {
+      duration: result.context.clientTime.getTime() - now.getTime(),
+      durationToServer: result.context.durationToServer,
+      durationFromServer: now.getTime() - result.context.serverTime.getTime(),
+    })
+
+    return result
   })
-
-  return result
-})

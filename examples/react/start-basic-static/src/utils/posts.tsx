@@ -9,11 +9,8 @@ export type PostType = {
   body: string
 }
 
-export const fetchPost = createServerFn({
-  method: 'GET',
-  type: 'static',
-  middleware: [logMiddleware],
-})
+export const fetchPost = createServerFn({ method: 'GET', type: 'static' })
+  .middleware([logMiddleware])
   .validator((d: string) => d)
   .handler(async ({ data }) => {
     console.info(`Fetching post with id ${data}...`)
@@ -30,13 +27,11 @@ export const fetchPost = createServerFn({
     return post
   })
 
-export const fetchPosts = createServerFn({
-  method: 'GET',
-  type: 'static',
-  middleware: [logMiddleware],
-}).handler(async () => {
-  console.info('Fetching posts...')
-  return axios
-    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
-})
+export const fetchPosts = createServerFn({ method: 'GET', type: 'static' })
+  .middleware([logMiddleware])
+  .handler(async () => {
+    console.info('Fetching posts...')
+    return axios
+      .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
+      .then((r) => r.data.slice(0, 10))
+  })

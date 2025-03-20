@@ -513,7 +513,7 @@ export interface MiddlewareClient<
   >
 }
 
-export interface Middleware<
+export interface MiddlewareAfterMiddleware<
   TMiddlewares,
   TServerFnResponseType extends ServerFnResponseType,
 > extends MiddlewareWithTypes<
@@ -535,24 +535,30 @@ export interface Middleware<
     MiddlewareClient<TMiddlewares, undefined, TServerFnResponseType>,
     MiddlewareValidator<TMiddlewares, TServerFnResponseType> {}
 
-export function createMiddleware<const TMiddleware>(
+export interface Middleware<TServerFnResponseType extends ServerFnResponseType>
+  extends MiddlewareAfterMiddleware<unknown, TServerFnResponseType> {
+  middleware: <const TNewMiddlewares = undefined>(
+    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
+  ) => MiddlewareAfterMiddleware<TNewMiddlewares, TServerFnResponseType>
+}
+
+export function createMiddleware(
   options?: {
     validateClient?: boolean
-    middleware?: Constrain<TMiddleware, ReadonlyArray<AnyMiddleware>>
   },
   __opts?: MiddlewareOptions<
-    TMiddleware,
+    unknown,
     undefined,
     undefined,
     undefined,
     ServerFnResponseType
   >,
-): Middleware<TMiddleware, ServerFnResponseType> {
+): Middleware<ServerFnResponseType> {
   // const resolvedOptions = (__opts || options) as MiddlewareOptions<
   const resolvedOptions =
     __opts ||
     ((options || {}) as MiddlewareOptions<
-      TMiddleware,
+      unknown,
       undefined,
       undefined,
       undefined,
@@ -561,6 +567,12 @@ export function createMiddleware<const TMiddleware>(
 
   return {
     options: resolvedOptions as any,
+    middleware: (middleware: any) => {
+      return createMiddleware(
+        undefined,
+        Object.assign(resolvedOptions, { middleware }),
+      ) as any
+    },
     validator: (validator: any) => {
       return createMiddleware(
         undefined,
@@ -579,5 +591,5 @@ export function createMiddleware<const TMiddleware>(
         Object.assign(resolvedOptions, { server }),
       ) as any
     },
-  } as unknown as Middleware<TMiddleware, ServerFnResponseType>
+  } as unknown as Middleware<ServerFnResponseType>
 }
