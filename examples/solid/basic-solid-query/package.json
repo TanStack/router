@@ -11,8 +11,8 @@
   "dependencies": {
     "@tanstack/solid-query": "^5.66.0",
     "@tanstack/solid-query-devtools": "^5.66.0",
-    "@tanstack/solid-router": "^1.114.25",
-    "@tanstack/solid-router-devtools": "^1.114.25",
+    "@tanstack/solid-router": "^1.114.26",
+    "@tanstack/solid-router-devtools": "^1.114.26",
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
     "postcss": "^8.5.1",
