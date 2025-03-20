@@ -32,15 +32,15 @@ const middleware = createMiddleware()
     })
   })
 
-const fn = createServerFn()
-  .middleware([middleware])
-  .handler(() => {
-    const result = v.parse(loaderResult, {
-      searchPlaceholder: 0,
-    })
-
-    return result
+const fn = createServerFn({
+  middleware: [middleware],
+}).handler(() => {
+  const result = v.parse(loaderResult, {
+    searchPlaceholder: 0,
   })
+
+  return result
+})
 
 export const Route = createFileRoute('/search/searchPlaceholder')({
   component: SearchComponent,

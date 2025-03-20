@@ -31,11 +31,11 @@ const middleware = createMiddleware()
     })
   })
 
-const fn = createServerFn()
-  .middleware([middleware])
-  .handler(() => {
-    return v.parse(loaderResult, {})
-  })
+const fn = createServerFn({
+  middleware: [middleware],
+}).handler(() => {
+  return v.parse(loaderResult, {})
+})
 
 const paramsQueryOptions = queryOptions({
   queryKey: ['paramsPlaceholder'],

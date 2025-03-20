@@ -736,6 +736,13 @@ export async function generator(config: Config, root: string) {
     FileRoutesByPath['${routeNode.routePath}']['path'],
     FileRoutesByPath['${routeNode.routePath}']['fullPath']
   >
+  const createServerFileRoute: CreateServerFileRoute<
+    '${routeNode.routePath}',
+    ServerFileRoutesByPath['${routeNode.routePath}']['parentRoute'],
+    ServerFileRoutesByPath['${routeNode.routePath}']['id'],
+    ServerFileRoutesByPath['${routeNode.routePath}']['path'],
+    ServerFileRoutesByPath['${routeNode.routePath}']['fullPath']
+  >
 }`
       })
       .join('\n'),

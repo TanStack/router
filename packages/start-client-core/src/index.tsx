@@ -32,7 +32,6 @@ export {
   type MiddlewareValidator,
   type MiddlewareServer,
   type MiddlewareAfterClient,
-  type MiddlewareAfterMiddleware,
   type MiddlewareAfterServer,
   type Middleware,
   type MiddlewareClientFnOptions,

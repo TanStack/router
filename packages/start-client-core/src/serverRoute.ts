@@ -105,7 +105,7 @@ export function createServerFileRoute<TPath extends string>(): <
 }
 
 export interface ServerRouteOptions<TPath extends string> {
-  middleware: Array<Middleware<any>>
+  middleware: Array<Middleware<any, any>>
   methods: {
     GET: MethodOption<TPath, 'GET'>
     POST: MethodOption<TPath, 'POST'>
@@ -122,7 +122,7 @@ export interface ServerRoute {}
 export type MethodOption<
   TPath extends string,
   TVerb extends HTTP_API_METHOD,
-> = Method<TPath, TVerb, Middleware<any>>
+> = Method<TPath, TVerb, Middleware<any, any>>
 // MethodAfterHandler<TPath, TVerb>
 
 export type Method<
@@ -155,7 +155,7 @@ export interface MethodBase<
   TPath extends string,
   TVerb extends HTTP_API_METHOD,
 > {
-  middleware: Array<Middleware<any>>
+  middleware: Array<Middleware<any, any>>
   validator: (validator: unknown) => MethodAfterValidator<TPath, TVerb>
   handler: (
     handler: MethodHandlerFn<TPath, TVerb>,
@@ -201,5 +201,5 @@ export interface MethodOptions<
   TPath extends string,
   TVerb extends HTTP_API_METHOD,
 > {
-  middleware: Array<Middleware<any>>
+  middleware: Array<Middleware<any, any>>
 }

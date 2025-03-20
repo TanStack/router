@@ -1,40 +1,34 @@
 import axios from 'redaxios'
-import { DEPLOY_URL } from 'src/utils/users'
 import { NotFound } from 'src/components/NotFound'
 import { UserErrorComponent } from 'src/components/UserError'
-import { createServerFileRoute } from '@tanstack/react-start'
+import { json } from '@tanstack/react-start'
 import type { User } from 'src/utils/users'
 
-export const ServerRoute = createServerFileRoute<'/test'>()({
-  methods: {
-    GET: {
-      middleware: [],
-      validator: () => {},
-      handler: (ctx) => {
-        ctx.pathname
-        return new Response('Hello')
-      },
-    },
-    POST: (ctx) => {
-      ctx.pathname
-      return new Response('Hello')
-    },
-    // .createGet({
-    //   middleware: [],
-    // })
-    // .handler(async (ctx) => {
-    //   ctx.pathname // How do we get the pathname here?
-    //   return new Response('Hello')
-    // }),
-    // PUT: methods.createPut().validator().handler(),
-    // POST: function postHandler() {},
+export const ServerRoute = createServerFileRoute().methods({
+  GET: async ({ params, request }) => {
+    console.info(`Fetching users by id=${params.userId}... @`, request.url)
+    try {
+      const res = await axios.get<User>(
+        'https://jsonplaceholder.typicode.com/users/' + params.userId,
+      )
+
+      return json({
+        id: res.data.id,
+        name: res.data.name,
+        email: res.data.email,
+      })
+    } catch (e) {
+      console.error(e)
+      return json({ error: 'User not found' }, { status: 404 })
+    }
   },
 })
 
 export const Route = createFileRoute({
   loader: async ({ params: { userId } }) => {
-    return await axios
-      .get<User>(DEPLOY_URL + '/api/users/' + userId)
+    return (await axios.get)<typeof ServerRoute.get.return>(
+      '/api/users/' + userId,
+    )
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch user')

@@ -513,7 +513,7 @@ export interface MiddlewareClient<
   >
 }
 
-export interface MiddlewareAfterMiddleware<
+export interface Middleware<
   TMiddlewares,
   TServerFnResponseType extends ServerFnResponseType,
 > extends MiddlewareWithTypes<
@@ -535,30 +535,24 @@ export interface MiddlewareAfterMiddleware<
     MiddlewareClient<TMiddlewares, undefined, TServerFnResponseType>,
     MiddlewareValidator<TMiddlewares, TServerFnResponseType> {}
 
-export interface Middleware<TServerFnResponseType extends ServerFnResponseType>
-  extends MiddlewareAfterMiddleware<unknown, TServerFnResponseType> {
-  middleware: <const TNewMiddlewares = undefined>(
-    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
-  ) => MiddlewareAfterMiddleware<TNewMiddlewares, TServerFnResponseType>
-}
-
-export function createMiddleware(
+export function createMiddleware<const TMiddleware>(
   options?: {
     validateClient?: boolean
+    middleware?: Constrain<TMiddleware, ReadonlyArray<AnyMiddleware>>
   },
   __opts?: MiddlewareOptions<
-    unknown,
+    TMiddleware,
     undefined,
     undefined,
     undefined,
     ServerFnResponseType
   >,
-): Middleware<ServerFnResponseType> {
+): Middleware<TMiddleware, ServerFnResponseType> {
   // const resolvedOptions = (__opts || options) as MiddlewareOptions<
   const resolvedOptions =
     __opts ||
     ((options || {}) as MiddlewareOptions<
-      unknown,
+      TMiddleware,
       undefined,
       undefined,
       undefined,
@@ -567,12 +561,6 @@ export function createMiddleware(
 
   return {
     options: resolvedOptions as any,
-    middleware: (middleware: any) => {
-      return createMiddleware(
-        undefined,
-        Object.assign(resolvedOptions, { middleware }),
-      ) as any
-    },
     validator: (validator: any) => {
       return createMiddleware(
         undefined,
@@ -591,5 +579,5 @@ export function createMiddleware(
         Object.assign(resolvedOptions, { server }),
       ) as any
     },
-  } as unknown as Middleware<ServerFnResponseType>
+  } as unknown as Middleware<TMiddleware, ServerFnResponseType>
 }

@@ -10,8 +10,8 @@ test('createServerFn method with autocomplete', () => {
 })
 
 test('createServerFn without middleware', () => {
+  expectTypeOf(createServerFn()).toHaveProperty('type')
   expectTypeOf(createServerFn()).toHaveProperty('handler')
-  expectTypeOf(createServerFn()).toHaveProperty('validator')
 
   createServerFn({ method: 'GET' }).handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -27,9 +27,10 @@ test('createServerFn without middleware', () => {
 test('createServerFn with validator', () => {
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).validator((input: { input: string }) => ({
-    a: input.input,
-  }))
+    validator: (input: { input: string }) => ({
+      a: input.input,
+    }),
+  })
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
@@ -65,14 +66,15 @@ test('createServerFn with middleware and context', () => {
     return next({ context: { b: 'b' } as const })
   })
 
-  const middleware3 = createMiddleware()
-    .middleware([middleware1, middleware2])
-    .client(({ next }) => {
-      return next({ context: { c: 'c' } as const })
-    })
+  const middleware3 = createMiddleware({
+    middleware: [middleware1, middleware2],
+  }).client(({ next }) => {
+    return next({ context: { c: 'c' } as const })
+  })
 
-  const middleware4 = createMiddleware()
-    .middleware([middleware3])
+  const middleware4 = createMiddleware({
+    middleware: [middleware3],
+  })
     .client(({ context, next }) => {
       return next({ sendContext: context })
     })
@@ -90,8 +92,8 @@ test('createServerFn with middleware and context', () => {
     middleware: [middleware4],
   })
 
+  expectTypeOf(fnWithMiddleware).toHaveProperty('type')
   expectTypeOf(fnWithMiddleware).toHaveProperty('handler')
-  expectTypeOf(fnWithMiddleware).toHaveProperty('validator')
 
   fnWithMiddleware.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -124,35 +126,34 @@ describe('createServerFn with middleware and validator', () => {
       }) as const,
   )
 
-  const middleware3 = createMiddleware().middleware([middleware1, middleware2])
+  const middleware3 = createMiddleware({
+    middleware: [middleware1, middleware2],
+  })
 
   test(`response: 'data'`, () => {
     const fn = createServerFn({
       method: 'GET',
       response: 'data',
       middleware: [middleware3],
-    })
-      .validator(
-        (input: { readonly inputC: 'inputC' }) =>
-          ({
-            outputC: 'outputC',
-          }) as const,
-      )
-      .handler((options) => {
-        expectTypeOf(options).toEqualTypeOf<{
-          method: 'GET'
-          context: undefined
-          data: {
-            readonly outputA: 'outputA'
-            readonly outputB: 'outputB'
-            readonly outputC: 'outputC'
-          }
-          signal: AbortSignal
-          response: 'data'
-        }>()
+      validator: (input: { readonly inputC: 'inputC' }) =>
+        ({
+          outputC: 'outputC',
+        }) as const,
+    }).handler((options) => {
+      expectTypeOf(options).toEqualTypeOf<{
+        method: 'GET'
+        context: undefined
+        data: {
+          readonly outputA: 'outputA'
+          readonly outputB: 'outputB'
+          readonly outputC: 'outputC'
+        }
+        signal: AbortSignal
+        response: 'data'
+      }>()
 
-        return 'some-data' as const
-      })
+      return 'some-data' as const
+    })
 
     expectTypeOf(fn).parameter(0).toEqualTypeOf<{
       data: {
@@ -178,28 +179,25 @@ describe('createServerFn with middleware and validator', () => {
       method: 'GET',
       response: 'full',
       middleware: [middleware3],
-    })
-      .validator(
-        (input: { readonly inputC: 'inputC' }) =>
-          ({
-            outputC: 'outputC',
-          }) as const,
-      )
-      .handler((options) => {
-        expectTypeOf(options).toEqualTypeOf<{
-          method: 'GET'
-          context: undefined
-          data: {
-            readonly outputA: 'outputA'
-            readonly outputB: 'outputB'
-            readonly outputC: 'outputC'
-          }
-          signal: AbortSignal
-          response: 'full'
-        }>()
+      validator: (input: { readonly inputC: 'inputC' }) =>
+        ({
+          outputC: 'outputC',
+        }) as const,
+    }).handler((options) => {
+      expectTypeOf(options).toEqualTypeOf<{
+        method: 'GET'
+        context: undefined
+        data: {
+          readonly outputA: 'outputA'
+          readonly outputB: 'outputB'
+          readonly outputC: 'outputC'
+        }
+        signal: AbortSignal
+        response: 'full'
+      }>()
 
-        return 'some-data' as const
-      })
+      return 'some-data' as const
+    })
 
     expectTypeOf(fn).parameter(0).toEqualTypeOf<{
       data: {
@@ -249,8 +247,9 @@ test('createServerFn overrides properties', () => {
       return next({ sendContext: newContext, context: newContext })
     })
 
-  const middleware2 = createMiddleware()
-    .middleware([middleware1])
+  const middleware2 = createMiddleware({
+    middleware: [middleware1],
+  })
     .validator(
       () =>
         ({
@@ -275,25 +274,18 @@ test('createServerFn overrides properties', () => {
   createServerFn({
     method: 'GET',
     middleware: [middleware2],
+    validator: () => ({ input: 'c' }) as const,
+  }).handler(({ data, context }) => {
+    expectTypeOf(data).toEqualTypeOf<{
+      readonly input: 'c'
+    }>()
+    expectTypeOf(context).toEqualTypeOf<{ readonly context: 'bb' }>()
   })
-    .validator(
-      () =>
-        ({
-          input: 'c',
-        }) as const,
-    )
-    .handler(({ data, context }) => {
-      expectTypeOf(data).toEqualTypeOf<{
-        readonly input: 'c'
-      }>()
-      expectTypeOf(context).toEqualTypeOf<{ readonly context: 'bb' }>()
-    })
 })
 
 test('createServerFn where validator is a primitive', () => {
-  createServerFn({ method: 'GET' })
-    .validator(() => 'c' as const)
-    .handler((options) => {
+  createServerFn({ method: 'GET', validator: () => 'c' as const }).handler(
+    (options) => {
       expectTypeOf(options).toEqualTypeOf<{
         method: 'GET'
         context: undefined
@@ -301,21 +293,23 @@ test('createServerFn where validator is a primitive', () => {
         signal: AbortSignal
         response: 'data'
       }>()
-    })
+    },
+  )
 })
 
 test('createServerFn where validator is optional if object is optional', () => {
-  const fn = createServerFn({ method: 'GET' })
-    .validator((input: 'c' | undefined) => input)
-    .handler((options) => {
-      expectTypeOf(options).toEqualTypeOf<{
-        method: 'GET'
-        context: undefined
-        data: 'c' | undefined
-        signal: AbortSignal
-        response: 'data'
-      }>()
-    })
+  const fn = createServerFn({
+    method: 'GET',
+    validator: (input: 'c' | undefined) => input,
+  }).handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: undefined
+      data: 'c' | undefined
+      signal: AbortSignal
+      response: 'data'
+    }>()
+  })
 
   expectTypeOf(fn).parameter(0).toEqualTypeOf<
     | {
@@ -477,9 +471,10 @@ describe('response', () => {
 })
 
 test('createServerFn can be used as a mutation function', () => {
-  const serverFn = createServerFn()
-    .validator((data: number) => data)
-    .handler(() => 'foo')
+  const serverFn = createServerFn({
+    method: 'GET',
+    validator: (data: number) => data,
+  }).handler(() => 'foo')
 
   type MutationFunction<TData = unknown, TVariables = unknown> = (
     variables: TVariables,
