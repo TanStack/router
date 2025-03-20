@@ -135,6 +135,9 @@ Once configuration is done, we'll have a file tree that looks like the following
 This is the file that will dictate the behavior of TanStack Router used within Start. Here, you can configure everything
 from the default [preloading functionality](../guide/preloading.md) to [caching staleness](../guide/data-loading.md).
 
+> [!NOTE]
+> You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
+
 ```tsx
 // app/router.tsx
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
@@ -155,9 +158,6 @@ declare module '@tanstack/react-router' {
   }
 }
 ```
-
-> `routeTree.gen.ts` is not a file you're expected to have at this point.
-> It will be generated when you run TanStack Start (via `npm run dev` or `npm run start`) for the first time.
 
 ## The Server Entry Point
 
