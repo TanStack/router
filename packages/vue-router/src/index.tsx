@@ -285,7 +285,7 @@ export {
 } from './route'
 export type {
   AnyRootRoute,
-  SolidNode,
+  VueNode,
   SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,

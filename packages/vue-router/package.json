@@ -27,7 +27,7 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint",
     "test:types": "tsc -p tsconfig.legacy.json",
-    "test:unit": "vitest",
+    "test:unit": "vitest --ui --watch",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:perf": "vitest bench",
     "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",

@@ -1,3 +1,5 @@
+/** @jsxImportSource vue */
+
 import * as Vue from 'vue'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test } from 'vitest'
@@ -27,11 +29,11 @@ test('when navigating to /posts', async () => {
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-      </>
+      </template>
     )
   }
 
@@ -46,9 +48,9 @@ test('when navigating to /posts', async () => {
     path: '/posts',
     component: () => {
       return (
-        <>
+        <template>
           <h1>Posts</h1>
-        </>
+        </template>
       )
     },
   })
@@ -75,7 +77,7 @@ test('when navigating from /posts to ./$postId', async () => {
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -85,7 +87,7 @@ test('when navigating from /posts to ./$postId', async () => {
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -97,10 +99,10 @@ test('when navigating from /posts to ./$postId', async () => {
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -113,7 +115,7 @@ test('when navigating from /posts to ./$postId', async () => {
   const PostsIndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Posts Index</h1>
         <button
           onClick={() =>
@@ -126,7 +128,7 @@ test('when navigating from /posts to ./$postId', async () => {
         >
           To the first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -140,10 +142,10 @@ test('when navigating from /posts to ./$postId', async () => {
     const params = useParams({ strict: false })
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
-      </>
+      </template>
     )
   }
 
@@ -185,7 +187,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -195,7 +197,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -207,10 +209,10 @@ test('when navigating from /posts to ../posts/$postId', async () => {
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -223,7 +225,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
   const PostsIndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Posts Index</h1>
         <button
           onClick={() =>
@@ -236,7 +238,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
         >
           To the first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -250,10 +252,10 @@ test('when navigating from /posts to ../posts/$postId', async () => {
     const navigate = useNavigate()
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
-      </>
+      </template>
     )
   }
 
@@ -293,7 +295,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -306,7 +308,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -321,20 +323,20 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
     id: '_layout',
     component: () => {
       return (
-        <>
+        <template>
           <h1>Layout</h1>
           <Outlet />
-        </>
+        </template>
       )
     },
   })
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -347,10 +349,10 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -363,7 +365,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
   const DetailsComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Details!</h1>
         <button
           onClick={() =>
@@ -372,7 +374,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
         >
           To Information
         </button>
-      </>
+      </template>
     )
   }
 
@@ -384,9 +386,9 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
 
   const InformationComponent = () => {
     return (
-      <>
+      <template>
         <h1>Information</h1>
-      </>
+      </template>
     )
   }
 
@@ -438,7 +440,7 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -451,7 +453,7 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -466,20 +468,20 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
     id: '_layout',
     component: () => {
       return (
-        <>
+        <template>
           <h1>Layout</h1>
           <Outlet />
-        </>
+        </template>
       )
     },
   })
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -492,10 +494,10 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -508,14 +510,14 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
   const DetailsComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Details!</h1>
         <button
           onClick={() => navigate({ from: '/posts/$postId', to: './info' })}
         >
           To Information
         </button>
-      </>
+      </template>
     )
   }
 
@@ -527,9 +529,9 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
 
   const InformationComponent = () => {
     return (
-      <>
+      <template>
         <h1>Information</h1>
-      </>
+      </template>
     )
   }
 
@@ -581,7 +583,7 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -594,7 +596,7 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -609,20 +611,20 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
     id: '_layout',
     component: () => {
       return (
-        <>
+        <template>
           <h1>Layout</h1>
           <Outlet />
-        </>
+        </template>
       )
     },
   })
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -635,10 +637,10 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -651,14 +653,14 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
   const DetailsComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Details!</h1>
         <button
           onClick={() => navigate({ from: '/posts/$postId', to: '../$postId' })}
         >
           To Post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -670,9 +672,9 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
 
   const InformationComponent = () => {
     return (
-      <>
+      <template>
         <h1>Information</h1>
-      </>
+      </template>
     )
   }
 
@@ -722,7 +724,7 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -735,7 +737,7 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -750,20 +752,20 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
     id: '_layout',
     component: () => {
       return (
-        <>
+        <template>
           <h1>Layout</h1>
           <Outlet />
-        </>
+        </template>
       )
     },
   })
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -776,10 +778,10 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -798,14 +800,14 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
   const DetailsComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Details!</h1>
         <button
           onClick={() => navigate({ from: '/posts/$postId', to: '../$postId' })}
         >
           To Post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -817,9 +819,9 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
 
   const InformationComponent = () => {
     return (
-      <>
+      <template>
         <h1>Information</h1>
-      </>
+      </template>
     )
   }
 
@@ -873,7 +875,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button
@@ -886,7 +888,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -901,20 +903,20 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
     id: '_layout',
     component: () => {
       return (
-        <>
+        <template>
           <h1>Layout</h1>
           <Outlet />
-        </>
+        </template>
       )
     },
   })
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -927,10 +929,10 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -945,7 +947,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
     const error = Vue.ref<unknown>(null)
 
     return (
-      <>
+      <template>
         <h1>Details!</h1>
         <button
           onClick={() => {
@@ -963,7 +965,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
           To Invoices
         </button>
         <span>Something went wrong!</span>
-      </>
+      </template>
     )
   }
 
@@ -975,9 +977,9 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
 
   const InformationComponent = () => {
     return (
-      <>
+      <template>
         <h1>Information</h1>
-      </>
+      </template>
     )
   }
 
@@ -991,19 +993,19 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
     getParentRoute: () => rootRoute,
     path: 'invoices',
     component: () => (
-      <>
+      <template>
         <h1>Invoices!</h1>
         <Outlet />
-      </>
+      </template>
     ),
   })
 
   const InvoiceComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>invoiceId: {params.value.invoiceId}</span>
-      </>
+      </template>
     )
   }
 
@@ -1048,7 +1050,7 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button
           onClick={() =>
@@ -1057,7 +1059,7 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -1069,10 +1071,10 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -1085,10 +1087,10 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -1100,9 +1102,9 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
 
   const InformationComponent = () => {
     return (
-      <>
+      <template>
         <h1>Information</h1>
-      </>
+      </template>
     )
   }
 
@@ -1147,7 +1149,7 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
   const IndexComponent = () => {
     const navigate = useNavigate()
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button
           onClick={() =>
@@ -1160,7 +1162,7 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
         >
           To first post
         </button>
-      </>
+      </template>
     )
   }
 
@@ -1172,10 +1174,10 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
 
   const PostsComponent = () => {
     return (
-      <>
+      <template>
         <h1>Posts</h1>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -1188,10 +1190,10 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
   const PostComponent = () => {
     const params = useParams({ strict: false })
     return (
-      <>
+      <template>
         <span>Params: {params.value.postId}</span>
         <Outlet />
-      </>
+      </template>
     )
   }
 
@@ -1203,9 +1205,9 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
 
   const InformationComponent = () => {
     return (
-      <>
+      <template>
         <h1>Information</h1>
-      </>
+      </template>
     )
   }
 
@@ -1245,7 +1247,7 @@ test('when setting search params with 2 parallel navigate calls', async () => {
     const search = indexRoute.useSearch()
 
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <div data-testid="param1">{search.value.param1}</div>
         <div data-testid="param2">{search.value.param2}</div>
@@ -1264,7 +1266,7 @@ test('when setting search params with 2 parallel navigate calls', async () => {
         >
           search
         </button>
-      </>
+      </template>
     )
   }
 
@@ -1312,7 +1314,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
     const IndexComponent = () => {
       const navigate = useNavigate()
       return (
-        <>
+        <template>
           <h1 data-testid="index-heading">Index</h1>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
           <button
@@ -1326,7 +1328,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
           >
             To first post
           </button>
-        </>
+        </template>
       )
     }
 
@@ -1341,10 +1343,10 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
       id: '_layout',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Layout</h1>
             <Outlet />
-          </>
+          </template>
         )
       },
     })
@@ -1353,7 +1355,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
       const routeNavigate = postsRoute.useNavigate()
       const routeApiNavigate = getRouteApi('/_layout/posts').useNavigate()
       return (
-        <>
+        <template>
           <h1>Posts</h1>
           <button
             data-testid="btn-to-home"
@@ -1368,7 +1370,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
             To Home
           </button>
           <Outlet />
-        </>
+        </template>
       )
     }
 
@@ -1381,10 +1383,10 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <>
+        <template>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </>
+        </template>
       )
     }
 
@@ -1396,9 +1398,9 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
 
     const PostIndexComponent = () => {
       return (
-        <>
+        <template>
           <h1>Post Index</h1>
-        </>
+        </template>
       )
     }
 
@@ -1410,9 +1412,9 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
 
     const DetailsComponent = () => {
       return (
-        <>
+        <template>
           <h1 data-testid="details-heading">Details!</h1>
-        </>
+        </template>
       )
     }
 

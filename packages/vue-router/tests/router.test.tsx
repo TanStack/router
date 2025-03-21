@@ -53,12 +53,12 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     component: () => {
       const search = rootRoute.useSearch()
       return (
-        <>
+        <template>
           <div data-testid="search-root">
             {search.value.root ?? '$undefined'}
           </div>
           <Outlet />
-        </>
+        </template>
       )
     },
   })
@@ -168,11 +168,11 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     component: () => {
       const search = searchRoute.useSearch()
       return (
-        <>
+        <template>
           <div data-testid="search-search">
             {search.value.search ?? '$undefined'}
           </div>
-        </>
+        </template>
       )
     },
   })
@@ -186,7 +186,7 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     path: '/',
     component: () => {
       return (
-        <>
+        <template>
           <Link
             data-testid="link-without-params"
             to="/searchWithDefault/check"
@@ -215,7 +215,7 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
           >
             with both params
           </Link>
-        </>
+        </template>
       )
     },
   })
@@ -230,12 +230,12 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     component: () => {
       const search = searchWithDefaultCheckRoute.useSearch()
       return (
-        <>
+        <template>
           <div data-testid="search-default">{search.value.default}</div>
           <div data-testid="search-optional">
             {search.value.optional ?? '$undefined'}
           </div>
-        </>
+        </template>
       )
     },
   })
@@ -258,11 +258,11 @@ function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
     path: 'linksToItself',
     component: () => {
       return (
-        <>
+        <template>
           <Link to="/linksToItself" data-testid="link">
             Click me
           </Link>
-        </>
+        </template>
       )
     },
   })
@@ -1247,7 +1247,7 @@ describe('search params in URL', () => {
           validateSearch,
           errorComponent: ({ error }) => {
             errorSpy = error
-            return <></>
+            return <template></template>
           },
         })
 
@@ -1267,7 +1267,7 @@ describe('search params in URL', () => {
           validateSearch,
           errorComponent: ({ error }) => {
             errorSpy = error
-            return <></>
+            return <template></template>
           },
         })
 
@@ -1360,14 +1360,14 @@ const createHistoryRouter = () => {
     const navigate = useNavigate()
 
     return (
-      <>
+      <template>
         <h1>Index</h1>
         <button onClick={() => navigate({ to: '/' })}>Index</button>
         <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
         <button onClick={() => navigate({ to: '/posts', replace: true })}>
           Replace
         </button>
-      </>
+      </template>
     )
   }
 
@@ -1384,10 +1384,10 @@ const createHistoryRouter = () => {
       const navigate = useNavigate()
 
       return (
-        <>
+        <template>
           <h1>Posts</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
-        </>
+        </template>
       )
     },
   })
@@ -1550,12 +1550,12 @@ describe('does not strip search params if search validation fails', () => {
       component: () => {
         const search = rootRoute.useSearch()
         return (
-          <>
+          <template>
             <div data-testid="search-index">
               {search.value.index ?? '$undefined'}
             </div>
             <Outlet />
-          </>
+          </template>
         )
       },
     })

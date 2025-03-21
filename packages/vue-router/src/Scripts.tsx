@@ -51,15 +51,15 @@ export const Scripts = () => {
   })
 
   const allScripts = [
-    ...scripts().scripts,
-    ...assetScripts(),
+    ...scripts.value.scripts,
+    ...assetScripts.value,
   ] as Array<RouterManagedTag>
 
   return (
-    <>
+    <template>
       {allScripts.map((asset, i) => (
         <Asset {...asset} />
       ))}
-    </>
+    </template>
   )
 }

@@ -5,7 +5,7 @@ import type {
   HistoryAction,
   HistoryLocation,
 } from '@tanstack/history'
-import type { SolidNode } from './route'
+import type { VueNode } from './route'
 import type {
   AnyRoute,
   AnyRouter,
@@ -174,7 +174,7 @@ export function useBlocker(
     reset: undefined,
   })
 
-  Vue.effect(() => {
+  Vue.watchEffect((onCleanup) => {
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
       function getLocation(
         location: HistoryLocation,
@@ -233,12 +233,21 @@ export function useBlocker(
       return canNavigateAsync
     }
 
-    return disabled
-      ? undefined
-      : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
+    if (disabled) {
+      return
+    }
+    
+    const unsubscribe = history.block({ 
+      blockerFn: blockerFnComposed, 
+      enableBeforeUnload 
+    })
+    
+    onCleanup(() => {
+      if (unsubscribe) unsubscribe()
+    })
   })
 
-  return resolver
+  return withResolver ? resolver : undefined
 }
 
 const _resolvePromptBlockerArgs = (
@@ -280,17 +289,20 @@ export function Block(opts: PromptProps | LegacyPromptProps): Vue.VNode {
   const args = _resolvePromptBlockerArgs(rest)
 
   const resolver = useBlocker(args)
-  return children
-    ? typeof children === 'function'
-      ? children(resolver as any)
-      : children
-    : null
+  
+  if (!children) {
+    return Vue.h(Vue.Fragment, null)
+  }
+  
+  return typeof children === 'function'
+    ? children(resolver as any)
+    : children
 }
 
 type LegacyPromptProps = {
   blockerFn?: LegacyBlockerFn
   condition?: boolean | any
-  children?: SolidNode | ((params: BlockerResolver) => SolidNode)
+  children?: Vue.VNode | ((params: BlockerResolver) => Vue.VNode)
 }
 
 type PromptProps<
@@ -298,5 +310,5 @@ type PromptProps<
   TWithResolver extends boolean = boolean,
   TParams = TWithResolver extends true ? BlockerResolver<TRouter> : void,
 > = UseBlockerOpts<TRouter, TWithResolver> & {
-  children?: SolidNode | ((params: TParams) => SolidNode)
+  children?: Vue.VNode | ((params: TParams) => Vue.VNode)
 }

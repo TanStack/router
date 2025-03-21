@@ -1,8 +1,9 @@
+import * as Vue from 'vue'
 import { isNotFound } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
-import type * as Vue from 'vue'
 import type { NotFoundError } from '@tanstack/router-core'
+import type { ErrorComponentProps } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Vue.VNode
@@ -14,29 +15,42 @@ export function CatchNotFound(props: {
     select: (s) => `not-found-${s.location.pathname}-${s.status}`,
   })
 
-  return (
-    <CatchBoundary
-      getResetKey={() => resetKey()}
-      onCatch={(error) => {
-        if (isNotFound(error)) {
-          props.onCatch?.(error)
-        } else {
-          throw error
+  // Create a function that returns a VNode to match the SyncRouteComponent signature
+  const errorComponentFn = (componentProps: ErrorComponentProps) => {
+    const error = componentProps.error
+    
+    if (isNotFound(error)) {
+      // If a fallback is provided, use it
+      if (props.fallback) {
+        return props.fallback(error as NotFoundError)
+      }
+      // Otherwise return a default not found message
+      return Vue.h('p', null, 'Not Found')
+    } else {
+      // Re-throw non-NotFound errors
+      throw error
+    }
+  }
+
+  return Vue.h(CatchBoundary, {
+    getResetKey: () => resetKey.value,
+    onCatch: (error: Error) => {
+      if (isNotFound(error)) {
+        if (props.onCatch) {
+          props.onCatch(error)
         }
-      }}
-      errorComponent={({ error }: { error: Error }) => {
-        if (isNotFound(error)) {
-          return props.fallback?.(error)
-        } else {
-          throw error
-        }
-      }}
-    >
-      {props.children}
-    </CatchBoundary>
-  )
+      } else {
+        throw error
+      }
+    },
+    errorComponent: errorComponentFn,
+    children: props.children
+  })
 }
 
-export function DefaultGlobalNotFound() {
-  return <p>Not Found</p>
-}
+export const DefaultGlobalNotFound = Vue.defineComponent({
+  name: 'DefaultGlobalNotFound',
+  setup() {
+    return () => Vue.h('p', null, 'Not Found')
+  }
+})

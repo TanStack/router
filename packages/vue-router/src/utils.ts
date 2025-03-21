@@ -56,7 +56,7 @@ export function useIntersectionObserver<T extends Element>(
 ): Vue.Ref<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =
     typeof IntersectionObserver === 'function'
-  let observerRef: IntersectionObserver | null = null
+  const observerRef = Vue.ref<IntersectionObserver | null>(null)
 
   Vue.effect(() => {
     const r = ref.value
@@ -64,18 +64,18 @@ export function useIntersectionObserver<T extends Element>(
       return
     }
 
-    observerRef = new IntersectionObserver(([entry]) => {
+    observerRef.value = new IntersectionObserver(([entry]) => {
       callback(entry)
     }, intersectionObserverOptions)
 
-    observerRef.observe(r)
+    observerRef.value.observe(r)
 
-    Vue.onCleanup(() => {
-      observerRef?.disconnect()
+    Vue.onScopeDispose(() => {
+      observerRef.value?.disconnect()
     })
   })
 
-  return () => observerRef
+  return observerRef
 }
 
 export function splitProps<T extends Record<string, any>>(props: T, keys: Array<keyof T>) {
