@@ -46,8 +46,8 @@
               "to": "framework/react/middleware"
             },
             {
-              "label": "API Routes",
-              "to": "framework/react/api-routes"
+              "label": "Server Routes",
+              "to": "framework/react/server-routes"
             },
             {
               "label": "SSR",

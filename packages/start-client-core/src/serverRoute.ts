@@ -26,7 +26,7 @@ export type ServerRouteMethodRecordValue<
   TVerb extends ServerRouteVerb,
   TMiddlewares,
 > =
-  | ServerRouteMethod<TPath, TVerb, TMiddlewares, undefined>
+  | ServerRouteMethodHandlerFn<TPath, TVerb, TMiddlewares, undefined>
   | AnyRouteMethodsBuilder
 
 export interface ServerRouteMethodsRecord<TPath extends string, TMiddlewares> {

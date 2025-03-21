@@ -10,19 +10,17 @@ test('createServerFileRoute with methods with no middleware', () => {
   expectTypeOf(serverFileRoute).toHaveProperty('middleware')
 
   serverFileRoute.methods({
-    GET: {
-      handler: async (ctx) => {
-        expectTypeOf(ctx).toEqualTypeOf<{
-          context: undefined
-          params: { detailId: string }
-          pathname: '$detailId'
-          request: Request
-        }>()
+    GET: async (ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<{
+        context: undefined
+        params: { detailId: string }
+        pathname: '$detailId'
+        request: Request
+      }>()
 
-        return json({
-          test: 'test',
-        })
-      },
+      return json({
+        test: 'hi',
+      })
     },
   })
 
@@ -52,19 +50,17 @@ test('createServerFileRoute with methods and route middleware context', () => {
   ])
 
   serverFileRoute.methods({
-    GET: {
-      handler: async (ctx) => {
-        expectTypeOf(ctx).toEqualTypeOf<{
-          context: { a: string }
-          params: { detailId: string }
-          pathname: '$detailId'
-          request: Request
-        }>()
+    GET: async (ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<{
+        context: { a: string }
+        params: { detailId: string }
+        pathname: '$detailId'
+        request: Request
+      }>()
 
-        return json({
-          test: 'test',
-        })
-      },
+      return json({
+        test: 'hi',
+      })
     },
   })
 
