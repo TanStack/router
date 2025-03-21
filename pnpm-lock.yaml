@@ -9218,6 +9218,9 @@ importers:
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
+      '@tanstack/vue-router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router-devtools
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.1)
@@ -10246,6 +10249,25 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.57
+
+  packages/vue-router-devtools:
+    dependencies:
+      '@tanstack/router-devtools-core':
+        specifier: workspace:^
+        version: link:../router-devtools-core
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../vue-router
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+    devDependencies:
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^4.1.2
+        version: 4.1.2(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(vue@3.5.13(typescript@5.8.2))
+      vue:
+        specifier: ^3.5.13
+        version: 3.5.13(typescript@5.8.2)
 
   packages/zod-adapter:
     devDependencies:
