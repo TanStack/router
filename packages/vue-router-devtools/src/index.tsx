@@ -1,10 +1,18 @@
 import { TanStackRouterDevtools as DevToolsComponent } from './TanStackRouterDevtools'
+import { TanStackRouterDevtoolsPanel as DevToolsPanelComponent } from './TanStackRouterDevtoolsPanel'
 import { defineComponent, h } from 'vue'
-// import * as DevtoolsPanel from './TanStackRouterDevtoolsPanel'
 
 // Create a null component for production
 const NullDevToolsComponent = defineComponent({
   name: 'NullTanStackRouterDevtools',
+  setup() {
+    return () => null
+  }
+})
+
+// Create a null panel component for production
+const NullDevToolsPanelComponent = defineComponent({
+  name: 'NullTanStackRouterDevtoolsPanel',
   setup() {
     return () => null
   }
@@ -21,13 +29,11 @@ export const TanStackRouterDevtoolsInProd = DevToolsComponent
 
 // Re-export interfaces
 export type { DevtoolsOptions } from './TanStackRouterDevtools'
+export type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
-// export const TanStackRouterDevtoolsPanel: (typeof DevtoolsPanel)['TanStackRouterDevtoolsPanel'] =
-//   process.env.NODE_ENV !== 'development'
-//     ? function () {
-//         return null
-//       }
-//     : DevtoolsPanel.TanStackRouterDevtoolsPanel
+export const TanStackRouterDevtoolsPanel =
+  process.env.NODE_ENV === 'development'
+    ? DevToolsPanelComponent
+    : NullDevToolsPanelComponent
 
-// export const TanStackRouterDevtoolsPanelInProd: (typeof DevtoolsPanel)['TanStackRouterDevtoolsPanel'] =
-//   DevtoolsPanel.TanStackRouterDevtoolsPanel
+export const TanStackRouterDevtoolsPanelInProd = DevToolsPanelComponent
