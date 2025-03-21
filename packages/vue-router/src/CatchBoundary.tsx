@@ -14,6 +14,7 @@ const VueErrorBoundary = Vue.defineComponent({
     onError: Function,
     resetKey: [String, Number]
   },
+  emits: ['catch'],
   setup(props, { slots }) {
     const error = Vue.ref<Error | null>(null)
     const resetFn = Vue.ref<(() => void) | null>(null)
