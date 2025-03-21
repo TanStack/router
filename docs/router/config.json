@@ -44,6 +44,10 @@
             {
               "label": "Decisions on DX",
               "to": "framework/react/decisions-on-dx"
+            },
+            {
+              "label": "Frequently Asked Questions",
+              "to": "framework/react/faq"
             }
           ]
         },
@@ -69,6 +73,10 @@
             {
               "label": "Decisions on DX",
               "to": "framework/solid/decisions-on-dx"
+            },
+            {
+              "label": "Frequently Asked Questions",
+              "to": "framework/solid/faq"
             }
           ]
         }
