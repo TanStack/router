@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import * as Vue from 'vue'
 import {
   ErrorComponent,
   Link,
@@ -8,7 +9,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/vue-router'
-// import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import type { ErrorComponentProps } from '@tanstack/vue-router'
 import './styles.css'
@@ -65,7 +66,7 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
   )
 }
