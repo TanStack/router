@@ -201,6 +201,34 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+function validateState(validateState: AnyValidator, input: unknown): unknown {
+  if (validateState == null) return {}
+
+  if ('~standard' in validateState) {
+    const result = validateState['~standard'].validate(input)
+
+    if (result instanceof Promise)
+      throw new Error('Async validation not supported')
+
+    if (result.issues)
+      throw new Error(JSON.stringify(result.issues, undefined, 2), {
+        cause: result,
+      })
+
+    return result.value
+  }
+
+  if ('parse' in validateState) {
+    return validateState.parse(input)
+  }
+
+  if (typeof validateState === 'function') {
+    return validateState(input)
+  }
+
+  return {}
+}
+
 export function createRouter<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
@@ -1244,6 +1272,26 @@ export class Router<
             : {}
 
       nextState = replaceEqualDeep(this.latestLocation.state, nextState)
+
+      if (opts._includeValidateState) {
+        let validatedState = {}
+        matchedRoutesResult?.matchedRoutes.forEach((route) => {
+          try {
+            if (route.options.validateState) {
+              validatedState = {
+                ...validatedState,
+                ...(validateState(route.options.validateState, {
+                  ...validatedState,
+                  ...nextState,
+                }) ?? {}),
+              }
+            }
+          } catch {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        })
+        nextState = validatedState
+      }
 
       return {
         pathname,
