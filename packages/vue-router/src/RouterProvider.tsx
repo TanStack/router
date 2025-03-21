@@ -79,7 +79,20 @@ export const RouterProvider = Vue.defineComponent({
       )
     }
   }
-})
+}) as {
+  new <TRouter extends AnyRouter = RegisteredRouter>(): Vue.ComponentOptions & {
+    $props: { router: TRouter } & Omit<
+      RouterOptions<
+        TRouter['routeTree'],
+        NonNullable<TRouter['options']['trailingSlash']>,
+        false,
+        TRouter['history'],
+        Record<string, any>
+      >,
+      'context'
+    >
+  }
+}
 
 export type RouterProps<
   TRouter extends AnyRouter = RegisteredRouter,
