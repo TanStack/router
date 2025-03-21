@@ -1,64 +1,51 @@
 import * as Vue from 'vue'
 import type { AnyRouter } from '@tanstack/router-core'
 
-// Symbol for router injection key
-export const RouterSymbol = Symbol('TanStackRouter')
+// Create a router context symbol
+export const RouterSymbol = Symbol('TanStackRouter') as Vue.InjectionKey<AnyRouter>
 
 declare global {
   interface Window {
-    __TSR_ROUTER_CONTEXT__?: {
-      provide: (router: AnyRouter) => void
-      inject: () => AnyRouter
-    }
+    __TSR_ROUTER_CONTEXT__?: Vue.InjectionKey<AnyRouter>
   }
 }
 
-// Default router factory to use when no router is provided
-const EMPTY_ROUTER = null as unknown as AnyRouter
-
 /**
- * Provides a router instance to all child components
+ * Gets the router context, handling server-side rendering
+ * and ensuring a single instance across the application
  */
-export function provideRouter(router: AnyRouter) {
-  Vue.provide(RouterSymbol, router)
+export function getRouterContext(): Vue.InjectionKey<AnyRouter> {
+  if (typeof document === 'undefined') {
+    // For SSR, return the symbol directly
+    return RouterSymbol
+  }
+
+  // In the browser, check if we have a cached context
+  if (window.__TSR_ROUTER_CONTEXT__) {
+    return window.__TSR_ROUTER_CONTEXT__
+  }
+
+  // Create and cache the context
+  window.__TSR_ROUTER_CONTEXT__ = RouterSymbol
+  return RouterSymbol
 }
 
 /**
- * Retrieves the router instance from the component tree
+ * Provides the router to all child components
+ */
+export function provideRouter(router: AnyRouter): void {
+  Vue.provide(getRouterContext(), router)
+}
+
+/**
+ * Injects the router from the component tree
  */
 export function injectRouter(): AnyRouter {
-  const router = Vue.inject<AnyRouter | null>(RouterSymbol, null)
+  const router = Vue.inject<AnyRouter | null>(getRouterContext(), null)
   if (!router) {
     throw new Error(
       'No TanStack Router found in component tree. Did you forget to add a RouterProvider component?'
     )
   }
   return router
-}
-
-/**
- * Gets the router provider/injector, handling server-side rendering
- * and ensuring a single instance across the application
- */
-export function getRouterContext() {
-  if (typeof document === 'undefined') {
-    // Server-side context
-    return {
-      provide: provideRouter,
-      inject: injectRouter
-    }
-  }
-
-  // Check if we already have a context in the window
-  if (window.__TSR_ROUTER_CONTEXT__) {
-    return window.__TSR_ROUTER_CONTEXT__
-  }
-
-  // Create and store the context
-  window.__TSR_ROUTER_CONTEXT__ = {
-    provide: provideRouter,
-    inject: injectRouter
-  }
-
-  return window.__TSR_ROUTER_CONTEXT__
 }

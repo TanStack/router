@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { Matches } from './Matches'
-import { getRouterContext } from './routerContext'
+import { getRouterContext, provideRouter } from './routerContext'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -31,11 +31,8 @@ export const RouterContextProvider = Vue.defineComponent({
       },
     } as any)
 
-    // Get router context with provide/inject methods
-    const routerContext = getRouterContext()
-    
     // Provide router to all child components
-    routerContext.provide(router)
+    provideRouter(router)
     
     return () => {
       // Get child content

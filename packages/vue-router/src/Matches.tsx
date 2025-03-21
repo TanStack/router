@@ -37,6 +37,17 @@ declare module '@tanstack/router-core' {
   }
 }
 
+// Create a component that renders both the Transitioner and MatchesInner
+const MatchesContent = Vue.defineComponent({
+  name: 'MatchesContent',
+  setup() {
+    return () => Vue.h(Vue.Fragment, null, [
+      Vue.h(Transitioner),
+      Vue.h(MatchesInner)
+    ])
+  }
+})
+
 export const Matches = Vue.defineComponent({
   name: 'Matches',
   setup() {
@@ -49,15 +60,9 @@ export const Matches = Vue.defineComponent({
 
       // Do not render a root Suspense during SSR or hydrating from SSR
       const inner = router?.isServer || (typeof document !== 'undefined' && router?.clientSsr)
-        ? Vue.h(SafeFragment, null, [
-            Vue.h(Transitioner),
-            Vue.h(MatchesInner)
-          ])
+        ? Vue.h(MatchesContent)
         : Vue.h(Vue.Suspense, { fallback: pendingElement }, {
-            default: () => [
-              Vue.h(Transitioner),
-              Vue.h(MatchesInner)
-            ]
+            default: () => Vue.h(MatchesContent)
           })
 
       return router?.options?.InnerWrap 
