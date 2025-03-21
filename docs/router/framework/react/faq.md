@@ -14,7 +14,7 @@ You should commit this file into git so that other developers can use it to buil
 
 No, the root route is always rendered as it is the entry point of your application.
 
-If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./routing/routing-concepts.md) to conditionally render the content.
+If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
 
 You can restrict access to these routes using a conditional check in the `beforeLoad` function of the route.
 
