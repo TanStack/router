@@ -4,65 +4,70 @@ import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
 
-export function Transitioner() {
-  const router = useRouter()
-  let mountLoadForRouter = { router, mounted: false }
-  const isLoading = useRouterState({
-    select: ({ isLoading }) => isLoading,
-  })
-
-  const isTransitioning = Vue.ref(false)
-  // Track pending state changes
-  const hasPendingMatches = useRouterState({
-    select: (s) => s.matches.some((d) => d.status === 'pending'),
-  })
-
-  const previousIsLoading = usePrevious(()=>isLoading.value)
-
-  const isAnyPending = () =>
-    isLoading.value || isTransitioning.value || hasPendingMatches.value
-  const previousIsAnyPending = usePrevious(isAnyPending)
-
-  const isPagePending = () => isLoading.value || hasPendingMatches.value
-  const previousIsPagePending = usePrevious(isPagePending)
-
-  if (!router.isServer) {
-    router.startTransition = (fn: () => void) => {
-      isTransitioning.value = true
-      fn()
-      isTransitioning.value = false
-    }
-  }
-
-  // Subscribe to location changes
-  // and try to load the new location
-  Vue.onMounted(() => {
-    const unsub = router.history.subscribe(router.load)
-
-    const nextLocation = router.buildLocation({
-      to: router.latestLocation.pathname,
-      search: true,
-      params: true,
-      hash: true,
-      state: true,
-      _includeValidateSearch: true,
+export const Transitioner = Vue.defineComponent({
+  name: 'Transitioner',
+  setup() {
+    const router = useRouter()
+    let mountLoadForRouter = { router, mounted: false }
+    const isLoading = useRouterState({
+      select: ({ isLoading }) => isLoading,
     })
 
-    if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
-    ) {
-      router.commitLocation({ ...nextLocation, replace: true })
+    const isTransitioning = Vue.ref(false)
+    // Track pending state changes
+    const hasPendingMatches = useRouterState({
+      select: (s) => s.matches.some((d) => d.status === 'pending'),
+    })
+
+    const previousIsLoading = usePrevious(()=>isLoading.value)
+
+    const isAnyPending = () =>
+      isLoading.value || isTransitioning.value || hasPendingMatches.value
+    const previousIsAnyPending = usePrevious(isAnyPending)
+
+    const isPagePending = () => isLoading.value || hasPendingMatches.value
+    const previousIsPagePending = usePrevious(isPagePending)
+
+    if (!router.isServer) {
+      router.startTransition = (fn: () => void) => {
+        isTransitioning.value = true
+        fn()
+        isTransitioning.value = false
+      }
     }
+
+    // Subscribe to location changes
+    // and try to load the new location
+    let unsubscribe: (() => void) | undefined
+    
+    Vue.onMounted(() => {
+      unsubscribe = router.history.subscribe(router.load)
+
+      const nextLocation = router.buildLocation({
+        to: router.latestLocation.pathname,
+        search: true,
+        params: true,
+        hash: true,
+        state: true,
+        _includeValidateSearch: true,
+      })
+
+      if (
+        trimPathRight(router.latestLocation.href) !==
+        trimPathRight(nextLocation.href)
+      ) {
+        router.commitLocation({ ...nextLocation, replace: true })
+      }
+    })
 
     Vue.onUnmounted(() => {
-      unsub()
+      if (unsubscribe) {
+        unsubscribe()
+      }
     })
-  })
 
-  // Try to load the initial location
-  Vue.effect(() => {
-    () => {
+    // Try to load the initial location
+    Vue.onMounted(() => {
       if (
         (typeof window !== 'undefined' && router.clientSsr) ||
         (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
@@ -78,36 +83,39 @@ export function Transitioner() {
         }
       }
       tryLoad()
-    }
-  })
+    })
 
-  Vue.effect(
-    () => {
-      if (previousIsLoading.value.previous && !isLoading.value) {
-        router.emit({
-          type: 'onLoad',
-          ...getLocationChangeInfo(router.state),
-        })
+    // Setup watchers for emitting events
+    Vue.watch(
+      () => isLoading.value,
+      (newValue, oldValue) => {
+        if (oldValue && !newValue) {
+          router.emit({
+            type: 'onLoad',
+            ...getLocationChangeInfo(router.state),
+          })
+        }
       }
-    }
-  )
-  Vue.effect(
-    () => {
+    )
+    
+    Vue.watch(
+      isPagePending,
+      (newValue, oldValue) => {
         // emit onBeforeRouteMount
-        if (previousIsPagePending.value.previous && !isPagePending()) {
+        if (oldValue && !newValue) {
           router.emit({
             type: 'onBeforeRouteMount',
             ...getLocationChangeInfo(router.state),
           })
         }
-      },
-    
-  )
+      }
+    )
 
-  Vue.effect(
-      () => {
+    Vue.watch(
+      isAnyPending,
+      (newValue, oldValue) => {
         // The router was pending and now it's not
-        if (previousIsAnyPending.value.previous && !isAnyPending()) {
+        if (oldValue && !newValue) {
           router.emit({
             type: 'onResolved',
             ...getLocationChangeInfo(router.state),
@@ -137,9 +145,9 @@ export function Transitioner() {
             }
           }
         }
-      },
-    
-  )
+      }
+    )
 
-  return null
-}
+    return () => null
+  }
+})
