@@ -1,5 +1,5 @@
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
-import { defineComponent, ref, onMounted, onBeforeUnmount, watch, h } from 'vue'
+import { defineComponent, ref, onMounted, onBeforeUnmount, watch, h, markRaw, nextTick } from 'vue'
 // Import JSX from 'solid-js' since the props will be passed to Solid components
 import type { JSX } from 'solid-js'
 
@@ -64,44 +64,81 @@ export const TanStackRouterDevtools = /*#__PURE__*/ defineComponent<DevtoolsOpti
   ],
   setup(props) {
     const devToolRef = ref<HTMLDivElement | null>(null)
-    const devtools = ref<TanStackRouterDevtoolsCore | null>(null)
+    // Don't store the devtools instance in a ref to avoid Vue's reactivity
+    let devtools: TanStackRouterDevtoolsCore | null = null
+    
+    // Helper function to safely get router state
+    const getRouterState = () => {
+      if (!props.router) return null
+      
+      // Try to access router state safely
+      try {
+        return props.routerState || (props.router.state 
+          ? markRaw(props.router.state) 
+          : null)
+      } catch (e) {
+        console.warn('Failed to access router state:', e)
+        return null
+      }
+    }
     
     // Initialize devtools
     onMounted(() => {
-      devtools.value = new TanStackRouterDevtoolsCore({
-        initialIsOpen: props.initialIsOpen,
-        panelProps: props.panelProps,
-        closeButtonProps: props.closeButtonProps,
-        toggleButtonProps: props.toggleButtonProps,
-        position: props.position,
-        containerElement: props.containerElement,
-        router: props.router,
-        routerState: props.routerState,
-        shadowDOMTarget: props.shadowDOMTarget,
+      // Delay initialization to ensure router is ready
+      nextTick(() => {
+        if (!props.router) {
+          console.warn('TanStackRouterDevtools: No router provided')
+          return
+        }
+        
+        // Get router state safely
+        const routerState = getRouterState()
+        
+        // Create a raw instance that's not tracked by Vue's reactivity
+        devtools = markRaw(new TanStackRouterDevtoolsCore({
+          initialIsOpen: props.initialIsOpen,
+          panelProps: props.panelProps,
+          closeButtonProps: props.closeButtonProps,
+          toggleButtonProps: props.toggleButtonProps,
+          position: props.position,
+          containerElement: props.containerElement,
+          router: markRaw(props.router),
+          routerState: routerState,
+          shadowDOMTarget: props.shadowDOMTarget,
+        }))
+        
+        if (devToolRef.value) {
+          devtools.mount(devToolRef.value)
+        }
       })
-      
-      if (devToolRef.value) {
-        devtools.value.mount(devToolRef.value)
-      }
     })
     
     // Cleanup on unmount
     onBeforeUnmount(() => {
-      if (devtools.value) {
-        devtools.value.unmount()
+      if (devtools) {
+        devtools.unmount()
+        devtools = null
       }
     })
     
     // Watch for changes to props and update devtools
     watch(() => props.router, (newRouter) => {
-      if (devtools.value && newRouter) {
-        devtools.value.setRouter(newRouter)
+      if (devtools && newRouter) {
+        // Pass raw router instance to avoid Vue's reactivity
+        devtools.setRouter(markRaw(newRouter))
+        
+        // Update router state as well when router changes
+        const routerState = getRouterState()
+        if (routerState) {
+          devtools.setRouterState(routerState)
+        }
       }
     }, { immediate: true })
     
     watch(() => props.routerState, (newRouterState) => {
-      if (devtools.value && newRouterState) {
-        devtools.value.setRouterState(newRouterState)
+      if (devtools && newRouterState) {
+        // Pass raw router state to avoid Vue's reactivity
+        devtools.setRouterState(markRaw(newRouterState))
       }
     }, { immediate: true })
     
@@ -114,8 +151,9 @@ export const TanStackRouterDevtools = /*#__PURE__*/ defineComponent<DevtoolsOpti
       containerElement: props.containerElement,
       shadowDOMTarget: props.shadowDOMTarget,
     }), (newOptions) => {
-      if (devtools.value) {
-        devtools.value.setOptions(newOptions)
+      if (devtools) {
+        // Pass raw options to avoid Vue's reactivity
+        devtools.setOptions(markRaw(newOptions))
       }
     }, { deep: true })
     

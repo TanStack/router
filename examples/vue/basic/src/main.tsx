@@ -66,6 +66,7 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
+
       <TanStackRouterDevtools router={router} position="bottom-right" />
     </>
   )
