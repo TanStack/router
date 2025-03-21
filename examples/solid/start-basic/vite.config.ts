@@ -11,9 +11,7 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     TanStackStartVitePlugin({
-      prerender: {
-        enabled: true,
-      },
+      
     }),
   ],
 })

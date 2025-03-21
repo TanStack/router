@@ -1,14 +1,34 @@
-import { createFileRoute } from '@tanstack/solid-router'
 import axios from 'redaxios'
-import type { User } from '~/utils/users'
-import { DEPLOY_URL } from '~/utils/users'
-import { NotFound } from '~/components/NotFound'
-import { UserErrorComponent } from '~/components/UserError'
+import { NotFound } from 'src/components/NotFound'
+import { UserErrorComponent } from 'src/components/UserError'
+import { json } from '@tanstack/solid-start'
+import type { User } from 'src/utils/users'
 
-export const Route = createFileRoute('/users/$userId')({
+export const ServerRoute = createServerFileRoute().methods({
+  GET: async ({ params, request }) => {
+    console.info(`Fetching users by id=${params.userId}... @`, request.url)
+    try {
+      const res = await axios.get<User>(
+        'https://jsonplaceholder.typicode.com/users/' + params.userId,
+      )
+
+      return json({
+        id: res.data.id,
+        name: res.data.name,
+        email: res.data.email,
+      })
+    } catch (e) {
+      console.error(e)
+      return json({ error: 'User not found' }, { status: 404 })
+    }
+  },
+})
+
+export const Route = createFileRoute({
   loader: async ({ params: { userId } }) => {
-    return await axios
-      .get<User>(DEPLOY_URL + '/api/users/' + userId)
+    return (await axios.get)<typeof ServerRoute.get.return>(
+      '/api/users/' + userId,
+    )
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch user')
