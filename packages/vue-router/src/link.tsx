@@ -472,7 +472,7 @@ export type ActiveLinkOptions<
 type ActiveLinkProps<TComp> = Partial<
   HTMLAttributes & {
     [key: `data-${string}`]: unknown
-    additionalProps?: number
+    additionalProps?: number 
   }
 >
 
@@ -510,7 +510,7 @@ export interface LinkPropsChildren {
 interface LinkComponentPropsBase<TComp> {
   // Props specific to different component types
   [key: string]: any
-  additionalProps?: number
+  additionalProps: number
 }
 
 export type LinkComponentProps<
