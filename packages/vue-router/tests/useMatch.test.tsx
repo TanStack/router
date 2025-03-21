@@ -32,10 +32,10 @@ describe('useMatch', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => (
-        <>
+        <template>
           <h1>IndexTitle</h1>
           <Link to="/posts">Posts</Link>
-        </>
+        </template>
       ),
     })
 

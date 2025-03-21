@@ -1,3 +1,8 @@
+/** @jsxImportSource vue */
+/** @jsx preserve */
+
+
+
 import { beforeEach, describe, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import {
@@ -33,12 +38,12 @@ describe('useCanGoBack', () => {
       )
 
       return (
-        <>
+        <template>
           <button onClick={() => router.history.back()}>Back</button>
           <Link to="/">Home</Link>
           <Link to="/about">About</Link>
           <Outlet />
-        </>
+        </template>
       )
     }
 

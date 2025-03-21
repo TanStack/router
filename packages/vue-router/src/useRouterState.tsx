@@ -5,7 +5,7 @@ import type {
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
-import type * as Vue from 'vue'
+import * as Vue from 'vue'
 
 export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
   router?: TRouter
@@ -27,6 +27,11 @@ export function useRouterState<
     warn: opts?.router === undefined,
   })
   const router = opts?.router || contextRouter
+  
+  // Return a safe default if router is undefined
+  if (!router || !router.__store) {
+    return Vue.ref(undefined) as Vue.Ref<UseRouterStateResult<TRouter, TSelected>>
+  }
 
   return useStore(router.__store, (state) => {
     if (opts?.select) return opts.select(state)

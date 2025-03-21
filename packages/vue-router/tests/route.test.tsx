@@ -73,11 +73,11 @@ describe('throws invariant exception when trying to access properties before `cr
     const IndexComponent = () => {
       const navigate = useNavigate()
       return (
-        <>
+        <template>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </>
+        </template>
       )
     }
 
@@ -92,9 +92,9 @@ describe('throws invariant exception when trying to access properties before `cr
       path: '/posts',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Posts</h1>
-          </>
+          </template>
         )
       },
     })

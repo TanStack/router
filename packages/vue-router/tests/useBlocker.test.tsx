@@ -27,11 +27,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => false })
 
       return (
-        <>
+        <template>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </>
+        </template>
       )
     }
 
@@ -46,9 +46,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Posts</h1>
-          </>
+          </template>
         )
       },
     })
@@ -79,11 +79,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => true, disabled: true })
 
       return (
-        <>
+        <template>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </>
+        </template>
       )
     }
 
@@ -98,9 +98,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Posts</h1>
-          </>
+          </template>
         )
       },
     })
@@ -131,11 +131,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => true })
 
       return (
-        <>
+        <template>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </>
+        </template>
       )
     }
 
@@ -150,9 +150,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Posts</h1>
-          </>
+          </template>
         )
       },
     })
@@ -185,13 +185,13 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn })
 
       return (
-        <>
+        <template>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts', replace: true })}>
             Posts
           </button>
-        </>
+        </template>
       )
     }
 
@@ -206,9 +206,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Posts</h1>
-          </>
+          </template>
         )
       },
     })
@@ -259,7 +259,7 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn })
 
       return (
-        <>
+        <template>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button
@@ -273,7 +273,7 @@ describe('useBlocker', () => {
           >
             Posts
           </button>
-        </>
+        </template>
       )
     }
 
@@ -292,9 +292,9 @@ describe('useBlocker', () => {
       path: '/posts/$postId',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Posts</h1>
-          </>
+          </template>
         )
       },
     })
@@ -350,14 +350,14 @@ describe('useBlocker', () => {
       })
 
       return (
-        <>
+        <template>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
           <button onClick={() => navigate({ to: '/invoices' })}>
             Invoices
           </button>
-        </>
+        </template>
       )
     }
 
@@ -372,9 +372,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Posts</h1>
-          </>
+          </template>
         )
       },
     })
@@ -384,9 +384,9 @@ describe('useBlocker', () => {
       path: '/invoices',
       component: () => {
         return (
-          <>
+          <template>
             <h1>Invoices</h1>
-          </>
+          </template>
         )
       },
     })

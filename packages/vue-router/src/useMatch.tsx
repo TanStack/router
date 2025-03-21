@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
-import { dummyMatchContext, matchContext } from './matchContext'
+import { dummyMatchContext, matchContext, injectMatch, injectDummyMatch } from './matchContext'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -69,14 +69,12 @@ export function useMatch<
 ): Vue.Ref<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  const nearestMatchId = Vue.inject(
-    opts.from ? dummyMatchContext : matchContext,
-  )
+  const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
 
   const matchSelection = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
+        opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value
       )
 
       invariant(

@@ -1,7 +1,5 @@
-import { Dynamic, isServer } from 'solid-js/web'
-import { createResource } from 'solid-js'
+import * as Vue from 'vue'
 import { Outlet } from './Match'
-import type * as Vue from 'vue'
 import type { AsyncRouteComponent } from './route'
 
 // If the load fails due to module not found, it may mean a new version of
@@ -10,18 +8,46 @@ import type { AsyncRouteComponent } from './route'
 // URL to the lazy module.
 // In that case, we want to attempt one window refresh to get the latest.
 function isModuleNotFoundError(error: any): boolean {
+  // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
+  // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
+  // safari: "Importing a module script failed."
+  if (typeof error?.message !== 'string') return false
   return (
-    typeof error?.message === 'string' &&
-    /Failed to fetch dynamically imported module/.test(error.message)
+    error.message.startsWith('Failed to fetch dynamically imported module') ||
+    error.message.startsWith('error loading dynamically imported module') ||
+    error.message.startsWith('Importing a module script failed')
   )
 }
 
-export function ClientOnly(props: Vue.ParentProps<{ fallback?: Vue.VNode }>) {
-  return useHydrated() ? <>{props.children}</> : <>{props.fallback}</>
+export function ClientOnly(props: {
+  children?: any;
+  fallback?: Vue.VNode;
+}) {
+  const hydrated = useHydrated()
+  
+  return () => {
+    if (hydrated.value) {
+      return props.children
+    }
+    return props.fallback || null
+  }
 }
 
 export function useHydrated() {
-  return isServer
+  // Only hydrate on client-side, never on server
+  const hydrated = Vue.ref(false)
+
+  // If on server, return false
+  if (typeof window === 'undefined') {
+    return Vue.computed(() => false)
+  }
+
+  // On client, set to true once mounted
+  Vue.onMounted(() => {
+    hydrated.value = true
+  })
+
+  return hydrated
 }
 
 export function lazyRouteComponent<
@@ -35,14 +61,18 @@ export function lazyRouteComponent<
   ? AsyncRouteComponent<TProps>
   : never {
   let loadPromise: Promise<any> | undefined
-  let comp: T[TKey] | T['default']
-  let error: any
+  let comp: T[TKey] | T['default'] | null = null
+  let error: any = null
+  let attemptedReload = false
 
   const load = () => {
+    // If we're on the server and SSR is disabled for this component
     if (typeof document === 'undefined' && ssr?.() === false) {
       comp = (() => null) as any
       return Promise.resolve(comp)
     }
+
+    // Use existing promise or create new one
     if (!loadPromise) {
       loadPromise = importer()
         .then((res) => {
@@ -52,63 +82,87 @@ export function lazyRouteComponent<
         })
         .catch((err) => {
           error = err
+          loadPromise = undefined
+          
+          // If it's a module not found error, we'll try to handle it in the component
+          if (isModuleNotFoundError(error)) {
+            return null
+          }
+          
+          throw err
         })
     }
 
     return loadPromise
   }
 
-  const lazyComp = function Lazy(props: any) {
-    // Now that we're out of preload and into actual render path,
-    // throw the error if it was a module not found error during preload
-    if (error) {
-      if (isModuleNotFoundError(error)) {
-        // We don't want an error thrown from preload in this case, because
-        // there's nothing we want to do about module not found during preload.
-        // Record the error, recover the promise with a null return,
-        // and we will attempt module not found resolution during the render path.
-
-        if (
-          error instanceof Error &&
-          typeof window !== 'undefined' &&
-          typeof sessionStorage !== 'undefined'
-        ) {
-          // Again, we want to reload one time on module not found error and not enter
-          // a reload loop if there is some other issue besides an old deploy.
-          // That's why we store our reload attempt in sessionStorage.
-          // Use error.message as key because it contains the module path that failed.
-          const storageKey = `tanstack_router_reload:${error.message}`
-          if (!sessionStorage.getItem(storageKey)) {
-            sessionStorage.setItem(storageKey, '1')
-            window.location.reload()
-
-            // Return empty component while we wait for window to reload
-            return {
-              default: () => null,
-            }
-          }
+  // Create a lazy component wrapper
+  const lazyComp = function LazyComponent(props: any) {
+    // Create refs to track component state
+    const component = Vue.ref<any>(comp)
+    const errorState = Vue.ref<any>(error)
+    const loading = Vue.ref(!component.value && !errorState.value)
+    
+    // Setup effect to load the component when this component is used
+    Vue.onMounted(() => {
+      if (!component.value && !errorState.value) {
+        loading.value = true
+        
+        load()
+          .then((result) => {
+            component.value = result
+            loading.value = false
+          })
+          .catch((err) => {
+            errorState.value = err
+            loading.value = false
+          })
+      }
+    })
+    
+    // Handle module not found error with reload attempt
+    if (errorState.value && isModuleNotFoundError(errorState.value) && !attemptedReload) {
+      if (
+        typeof window !== 'undefined' &&
+        typeof sessionStorage !== 'undefined'
+      ) {
+        // Try to reload once on module not found error
+        const storageKey = `tanstack_router_reload:${errorState.value.message}`
+        if (!sessionStorage.getItem(storageKey)) {
+          sessionStorage.setItem(storageKey, '1')
+          attemptedReload = true
+          window.location.reload()
+          return () => null // Return empty while reloading
         }
       }
-
-      // Otherwise, just throw the error
-      throw error
     }
-
-    const [compResource] = createResource(load, {
-      initialValue: comp,
-      ssrLoadFrom: 'initial',
-    })
-
-    if (ssr?.() === false) {
-      return (
-        <ClientOnly fallback={<Outlet />}>
-          <Dynamic component={compResource()} {...props} />
-        </ClientOnly>
-      )
+    
+    // If we have a non-module-not-found error, throw it
+    if (errorState.value && !isModuleNotFoundError(errorState.value)) {
+      throw errorState.value
     }
-    return <Dynamic component={compResource()} {...props} />
+    
+    // Return a render function
+    return () => {
+      // If we're still loading or don't have a component yet, use a suspense pattern
+      if (loading.value || !component.value) {
+        return Vue.h('div', null) // Empty div while loading
+      }
+      
+      // If SSR is disabled for this component
+      if (ssr?.() === false) {
+        return Vue.h(ClientOnly, {
+          fallback: Vue.h(Outlet),
+          children: Vue.h(component.value, props)
+        })
+      }
+      
+      // Regular render with the loaded component
+      return Vue.h(component.value, props)
+    }
   }
 
+  // Add preload method
   ;(lazyComp as any).preload = load
 
   return lazyComp as any

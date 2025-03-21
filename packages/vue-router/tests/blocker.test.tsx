@@ -36,7 +36,7 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
       const navigate = useNavigate()
       useBlocker({ disabled, shouldBlockFn: _mockBlockerFn })
       return (
-        <>
+        <template>
           <h1>Index</h1>
           <Link to="/posts" ignoreBlocker={ignoreBlocker}>
             link to posts
@@ -45,7 +45,7 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
           <button onClick={() => navigate({ to: '/posts', ignoreBlocker })}>
             button
           </button>
-        </>
+        </template>
       )
     },
   })
@@ -54,9 +54,9 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
     getParentRoute: () => rootRoute,
     path: '/posts',
     component: () => (
-      <>
+      <template>
         <h1>Posts</h1>
-      </>
+      </template>
     ),
   })
 
@@ -67,9 +67,9 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
       throw redirect({ to: '/bar' })
     },
     component: () => (
-      <>
+      <template>
         <h1>Foo</h1>
-      </>
+      </template>
     ),
   })
 
@@ -77,9 +77,9 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
     getParentRoute: () => rootRoute,
     path: '/bar',
     component: () => (
-      <>
+      <template>
         <h1>Bar</h1>
-      </>
+      </template>
     ),
   })
 

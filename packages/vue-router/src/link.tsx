@@ -1,6 +1,4 @@
 import * as Vue from 'vue'
-import { mergeRefs } from '@solid-primitives/refs'
-
 import {
   deepEqual,
   exactPathTest,
@@ -8,14 +6,12 @@ import {
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
-import { Dynamic } from 'solid-js/web'
 
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-
-import { splitProps, useIntersectionObserver } from './utils'
-
+import { useIntersectionObserver } from './utils'
 import { useMatches } from './Matches'
+
 import type {
   AnyRouter,
   Constrain,
@@ -29,6 +25,26 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
+// Type definitions to replace missing Vue JSX types
+type EventHandler<E = Event> = (e: E) => void
+interface HTMLAttributes {
+  class?: string
+  style?: Record<string, string | number>
+  onClick?: EventHandler<MouseEvent>
+  onFocus?: EventHandler<FocusEvent>
+  onMouseEnter?: EventHandler<MouseEvent>
+  onMouseLeave?: EventHandler<MouseEvent>
+  onMouseOver?: EventHandler<MouseEvent>
+  onMouseOut?: EventHandler<MouseEvent>
+  onTouchStart?: EventHandler<TouchEvent>
+  [key: string]: any
+}
+
+interface StyledProps {
+  class?: string
+  style?: Record<string, string | number>
+}
+
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -37,130 +53,102 @@ export function useLinkProps<
   TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-): Vue.ComponentProps<'a'> {
+): HTMLAttributes {
   const router = useRouter()
   const isTransitioning = Vue.ref(false)
   let hasRenderFetched = false
 
-  const [local, rest] = splitProps(
-    Vue.mergeProps(
-      {
-        activeProps: () => ({ class: 'active' }),
-        inactiveProps: () => ({}),
-      },
-      options,
-    ),
-    [
-      'activeProps',
-      'inactiveProps',
-      'activeOptions',
-      'to',
-      'preload',
-      'preloadDelay',
-      'hashScrollIntoView',
-      'replace',
-      'startTransition',
-      'resetScroll',
-      'viewTransition',
-      'children',
-      'target',
-      'disabled',
-      'style',
-      'class',
-      'onClick',
-      'onFocus',
-      'onMouseEnter',
-      'onMouseLeave',
-      'onMouseOver',
-      'onMouseOut',
-      'onTouchStart',
-      'ignoreBlocker',
-    ],
-  )
-
-  // const {
-  //   // custom props
-  //   activeProps = () => ({ class: 'active' }),
-  //   inactiveProps = () => ({}),
-  //   activeOptions,
-  //   to,
-  //   preload: userPreload,
-  //   preloadDelay: userPreloadDelay,
-  //   hashScrollIntoView,
-  //   replace,
-  //   startTransition,
-  //   resetScroll,
-  //   viewTransition,
-  //   // element props
-  //   children,
-  //   target,
-  //   disabled,
-  //   style,
-  //   class,
-  //   onClick,
-  //   onFocus,
-  //   onMouseEnter,
-  //   onMouseLeave,
-  //   onTouchStart,
-  //   ignoreBlocker,
-  //   ...rest
-  // } = options
-
-  const [_, propsSafeToSpread] = Vue.splitProps(rest, [
-    'params',
-    'search',
-    'hash',
-    'state',
-    'mask',
-    'reloadDocument',
-  ])
-
-  // If this link simply reloads the current route,
-  // make sure it has a new key so it will trigger a data refresh
-
-  // If this `to` is a valid external URL, return
-  // null for LinkUtils
-
-  const type: Vue.Ref<'internal' | 'external'> = () => {
-    try {
-      new URL(`${local.to}`)
-      return 'external'
-    } catch {}
-    return 'internal'
+  // Ensure router is defined before proceeding
+  if (!router) {
+    console.warn('useRouter must be used inside a <RouterProvider> component!')
+    return {}
   }
+
+  // Extract link-specific props and leave the rest
+  const activeProps = options.activeProps || (() => ({ class: 'active' }))
+  const inactiveProps = options.inactiveProps || (() => ({}))
+  const activeOptions = options.activeOptions
+  const to = options.to
+  const preloadOption = options.preload
+  const preloadDelayOption = options.preloadDelay
+  const hashScrollIntoView = options.hashScrollIntoView
+  const replace = options.replace
+  const startTransition = options.startTransition
+  const resetScroll = options.resetScroll
+  const viewTransition = options.viewTransition
+  const children = options.children
+  const target = options.target
+  const disabled = options.disabled
+  const styleOption = options.style
+  const classOption = options.class
+  const onClick = options.onClick
+  const onFocus = options.onFocus
+  const onMouseEnter = options.onMouseEnter
+  const onMouseLeave = options.onMouseLeave
+  const onMouseOver = options.onMouseOver
+  const onMouseOut = options.onMouseOut
+  const onTouchStart = options.onTouchStart
+  const ignoreBlocker = options.ignoreBlocker
+
+  // Create safe props that can be spread
+  const propsSafeToSpread: Record<string, any> = {}
+  for (const key in options) {
+    if (![
+      'activeProps', 'inactiveProps', 'activeOptions', 'to', 'preload',
+      'preloadDelay', 'hashScrollIntoView', 'replace', 'startTransition',
+      'resetScroll', 'viewTransition', 'children', 'target', 'disabled',
+      'style', 'class', 'onClick', 'onFocus', 'onMouseEnter', 'onMouseLeave',
+      'onMouseOver', 'onMouseOut', 'onTouchStart', 'ignoreBlocker',
+      'params', 'search', 'hash', 'state', 'mask', 'reloadDocument'
+    ].includes(key)) {
+      propsSafeToSpread[key] = options[key]
+    }
+  }
+
+  // Determine if the link is external or internal
+  const type = Vue.computed(() => {
+    try {
+      new URL(`${to}`)
+      return 'external'
+    } catch {
+      return 'internal'
+    }
+  })
 
   const currentSearch = useRouterState({
     select: (s) => s.location.searchStr,
   })
 
   // when `from` is not supplied, use the leaf route of the current matches as the `from` location
-  // so relative routing works as expected
   const from = useMatches({
     select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
   })
 
-  const _options = () => ({
+  const _options = Vue.computed(() => ({
     ...options,
     from: from.value,
-  })
+  }))
 
   const next = Vue.computed(() => {
+    // Depend on search to rebuild when search changes
     currentSearch.value
-    return router.buildLocation(_options() as any)
+    return router.buildLocation(_options.value as any)
   })
 
   const preload = Vue.computed(() => {
-    if (_options().reloadDocument) {
+    if (_options.value.reloadDocument) {
       return false
     }
-    return local?.value.preload ?? router.options.defaultPreload
+    return preloadOption ?? router.options.defaultPreload
   })
-  const preloadDelay = () =>
-    local?.value.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
+  
+  const preloadDelay = Vue.computed(() => 
+    preloadDelayOption ?? router.options.defaultPreloadDelay ?? 0
+  )
 
   const isActive = useRouterState({
     select: (s) => {
-      if (local?.value.activeOptions?.exact) {
+      if (activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
           next.value.pathname,
@@ -187,17 +175,17 @@ export function useLinkProps<
         }
       }
 
-      if (local?.value.activeOptions?.includeSearch ?? true) {
+      if (activeOptions?.includeSearch ?? true) {
         const searchTest = deepEqual(s.location.search, next.value.search, {
-          partial: !local?.value.activeOptions?.exact,
-          ignoreUndefined: !local?.value.activeOptions?.explicitUndefined,
+          partial: !activeOptions?.exact,
+          ignoreUndefined: !activeOptions?.explicitUndefined,
         })
         if (!searchTest) {
           return false
         }
       }
 
-      if (local?.value.activeOptions?.includeHash) {
+      if (activeOptions?.includeHash) {
         return s.location.hash === next.value.hash
       }
       return true
@@ -205,7 +193,7 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute(_options() as any).catch((err: any) => {
+    router.preloadRoute(_options.value as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
@@ -224,92 +212,101 @@ export function useLinkProps<
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!local?.value.disabled || !(preload.value === 'viewport') },
+    { disabled: !!disabled || !(preload.value === 'viewport') },
   )
 
   Vue.effect(() => {
     if (hasRenderFetched) {
       return
     }
-    if (!local?.value.disabled && preload.value === 'render') {
+    if (!disabled && preload.value === 'render') {
       doPreload()
       hasRenderFetched = true
     }
   })
 
   if (type.value === 'external') {
-    return Vue.mergeProps(
-      propsSafeToSpread,
-      {
-        ref,
-        get type() {
-          return type.value
-        },
-        get href() {
-          return local?.value.to
-        },
-      },
-      splitProps(local, [
-        'children',
-        'target',
-        'disabled',
-        'style',
-        'class',
-        'onClick',
-        'onFocus',
-        'onMouseEnter',
-        'onMouseLeave',
-        'onMouseOut',
-        'onMouseOver',
-        'onTouchStart',
-      ])[0],
-    ) as any
+    // External links just have simple props
+    const externalProps: HTMLAttributes = {
+      ...propsSafeToSpread,
+      ref,
+      href: to,
+      target,
+      disabled,
+      style: styleOption,
+      class: classOption,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseLeave,
+      onMouseOver,
+      onMouseOut,
+      onTouchStart,
+    }
+    
+    // Remove undefined values
+    Object.keys(externalProps).forEach(key => {
+      if (externalProps[key] === undefined) {
+        delete externalProps[key]
+      }
+    })
+    
+    return externalProps
   }
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
     if (
-      !local?.value.disabled &&
+      !disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!local?.value.target || local?.value.target === '_self') &&
+      (!target || target === '_self') &&
       e.button === 0
     ) {
+      // Don't prevent default or handle navigation if reloadDocument is true
+      if (_options.value.reloadDocument) {
+        return;
+      }
+      
       e.preventDefault()
 
-      setIsTransitioning(true)
+      isTransitioning.value = true
 
       const unsub = router.subscribe('onResolved', () => {
         unsub()
-        setIsTransitioning(false)
+        isTransitioning.value = false
       })
 
       // All is well? Navigate!
-      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
-        ..._options(),
-        replace: local?.value.replace,
-        resetScroll: local?.value.resetScroll,
-        hashScrollIntoView: local?.value.hashScrollIntoView,
-        startTransition: local?.value.startTransition,
-        viewTransition: local?.value.viewTransition,
-        ignoreBlocker: local?.value.ignoreBlocker,
+        ..._options.value,
+        replace,
+        resetScroll,
+        hashScrollIntoView,
+        startTransition,
+        viewTransition,
+        ignoreBlocker,
       } as any)
     }
   }
 
-  // The click handler
-  const handleFocus = (_: MouseEvent) => {
-    if (local?.value.disabled) return
+  // The focus handler
+  const handleFocus = (_: FocusEvent) => {
+    if (disabled) return
     if (preload.value) {
       doPreload()
     }
   }
 
-  const handleTouchStart = handleFocus
+  const handleTouchStart = (_: TouchEvent) => {
+    if (disabled) return
+    if (preload.value) {
+      doPreload()
+    }
+  }
 
   const handleEnter = (e: MouseEvent) => {
-    if (local?.value.disabled) return
+    if (disabled) return
     const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
     if (preload.value) {
@@ -320,12 +317,12 @@ export function useLinkProps<
       eventTarget.preloadTimeout = setTimeout(() => {
         eventTarget.preloadTimeout = null
         doPreload()
-      }, preloadDelay())
+      }, preloadDelay.value)
     }
   }
 
   const handleLeave = (e: MouseEvent) => {
-    if (local?.value.disabled) return
+    if (disabled) return
     const eventTarget = (e.target || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
@@ -334,98 +331,125 @@ export function useLinkProps<
     }
   }
 
-  /** Call a JSX.EventHandlerUnion with the event. */
-  function callHandler<T, TEvent extends Event>(
-    event: TEvent & { currentTarget: T; target: Element },
-    handler: Vue.JSX.EventHandlerUnion<T, TEvent> | undefined,
-  ) {
-    if (handler) {
-      if (typeof handler === 'function') {
-        handler(event)
-      } else {
-        handler[0](handler[1], event)
-      }
-    }
-
-    return event.defaultPrevented
-  }
-
-  function composeEventHandlers<T>(
-    handlers: Array<Vue.JSX.EventHandlerUnion<T, any> | undefined>,
-  ) {
-    return (event: any) => {
+  // Helper to compose event handlers - with explicit return type and better type handling
+  function composeEventHandlers<T extends Event>(
+    handlers: Array<EventHandler<T> | undefined>,
+  ): (e: T) => void {
+    return (event: T) => {
       for (const handler of handlers) {
-        callHandler(event, handler)
+        if (handler) {
+          handler(event)
+        }
       }
     }
   }
 
-  // Get the active props
-  const resolvedActiveProps: () => Omit<Vue.ComponentProps<'a'>, 'style'> & {
-    style?: Vue.JSX.CSSProperties
-  } = () =>
-    isActive.value ? (functionalUpdate(local?.value.activeProps as any, {}) ?? {}) : {}
+  // Get the active and inactive props
+  const resolvedActiveProps = Vue.computed<StyledProps>(() => {
+    const props = isActive.value ? 
+      (typeof activeProps === 'function' ? activeProps() : activeProps) : 
+      {}
+    
+    return props || { class: undefined, style: undefined }
+  })
 
-  // Get the inactive props
-  const resolvedInactiveProps: () => Omit<Vue.ComponentProps<'a'>, 'style'> & {
-    style?: Vue.JSX.CSSProperties
-  } = () => (isActive.value ? {} : functionalUpdate(local?.value.inactiveProps, {}))
+  const resolvedInactiveProps = Vue.computed<StyledProps>(() => {
+    const props = isActive.value ? 
+      {} : 
+      (typeof inactiveProps === 'function' ? inactiveProps() : inactiveProps)
+    
+    return props || { class: undefined, style: undefined }
+  })
 
-  const resolvedClassName = () =>
-    [local?.value.class, resolvedActiveProps().class, resolvedInactiveProps().class]
-      .filter(Boolean)
-      .join(' ')
+  const resolvedClassName = Vue.computed(() => {
+    const classes = [
+      classOption, 
+      resolvedActiveProps.value?.class, 
+      resolvedInactiveProps.value?.class
+    ].filter(Boolean)
+    return classes.length ? classes.join(' ') : undefined
+  })
 
-  const resolvedStyle = () => ({
-    ...local?.value.style,
-    ...resolvedActiveProps().style,
-    ...resolvedInactiveProps().style,
+  const resolvedStyle = Vue.computed(() => {
+    const result: Record<string, string | number> = {}
+    
+    // Merge styles from all sources
+    if (styleOption) {
+      Object.assign(result, styleOption)
+    }
+    
+    if (resolvedActiveProps.value?.style) {
+      Object.assign(result, resolvedActiveProps.value.style)
+    }
+    
+    if (resolvedInactiveProps.value?.style) {
+      Object.assign(result, resolvedInactiveProps.value.style)
+    }
+    
+    return Object.keys(result).length > 0 ? result : undefined
   })
 
   const href = Vue.computed(() => {
     const nextLocation = next.value
     const maskedLocation = nextLocation?.maskedLocation
 
-    return _options().disabled
+    return disabled
       ? undefined
       : maskedLocation
         ? router.history.createHref(maskedLocation.href)
         : router.history.createHref(nextLocation?.href)
   })
 
-  return Vue.mergeProps(
-    propsSafeToSpread,
-    resolvedActiveProps,
-    resolvedInactiveProps,
-    () => {
-      return {
-        href: href.value,
-        ref: mergeRefs(setRef, _options().ref),
-        onClick: composeEventHandlers([local?.value.onClick, handleClick]),
-        onFocus: composeEventHandlers([local?.value.onFocus, handleFocus]),
-        onMouseEnter: composeEventHandlers([local?.value.onMouseEnter, handleEnter]),
-        onMouseOver: composeEventHandlers([local?.value.onMouseOver, handleEnter]),
-        onMouseLeave: composeEventHandlers([local?.value.onMouseLeave, handleLeave]),
-        onMouseOut: composeEventHandlers([local?.value.onMouseOut, handleLeave]),
-        onTouchStart: composeEventHandlers([
-          local?.value.onTouchStart,
-          handleTouchStart,
-        ]),
-        disabled: !!local?.value.disabled,
-        target: local?.value.target,
-        ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
-        ...(resolvedClassName() && { class: resolvedClassName() }),
-        ...(local?.value.disabled && {
-          role: 'link',
-          'aria-disabled': true,
-        }),
-        ...(isActive.value && { 'data-status': 'active', 'aria-current': 'page' }),
-        ...(isTransitioning.value && { 'data-transitioning': 'transitioning' }),
-      }
-    },
-  ) as any
+  // Combine all props
+  const result = Vue.computed(() => {
+    const props: HTMLAttributes = {
+      ...propsSafeToSpread,
+      ...(resolvedActiveProps.value || {}),
+      ...(resolvedInactiveProps.value || {}),
+      href: href.value,
+      ref,
+      // Explicitly cast handlers to any to work around type issues
+      onClick: composeEventHandlers<MouseEvent>([onClick, handleClick]) as any,
+      onFocus: composeEventHandlers<FocusEvent>([onFocus, handleFocus]) as any,
+      onMouseEnter: composeEventHandlers<MouseEvent>([onMouseEnter, handleEnter]) as any,
+      onMouseOver: composeEventHandlers<MouseEvent>([onMouseOver, handleEnter]) as any,
+      onMouseLeave: composeEventHandlers<MouseEvent>([onMouseLeave, handleLeave]) as any,
+      onMouseOut: composeEventHandlers<MouseEvent>([onMouseOut, handleLeave]) as any,
+      onTouchStart: composeEventHandlers<TouchEvent>([onTouchStart, handleTouchStart]) as any,
+      disabled: !!disabled,
+      target,
+    }
+    
+    // Add props only if they have values
+    if (resolvedStyle.value) {
+      props.style = resolvedStyle.value
+    }
+    
+    if (resolvedClassName.value) {
+      props.class = resolvedClassName.value
+    }
+    
+    if (disabled) {
+      props.role = 'link'
+      props['aria-disabled'] = true
+    }
+    
+    if (isActive.value) {
+      props['data-status'] = 'active'
+      props['aria-current'] = 'page'
+    }
+    
+    if (isTransitioning.value) {
+      props['data-transitioning'] = 'transitioning'
+    }
+    
+    return props
+  })
+
+  return result.value
 }
 
+// Type definitions
 export type UseLinkPropsOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -433,7 +457,7 @@ export type UseLinkPropsOptions<
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
 > = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
-  Omit<Vue.ComponentProps<'a'>, 'style'> & { style?: Vue.JSX.CSSProperties }
+  HTMLAttributes
 
 export type ActiveLinkOptions<
   TComp = 'a',
@@ -446,7 +470,7 @@ export type ActiveLinkOptions<
   ActiveLinkOptionProps<TComp>
 
 type ActiveLinkProps<TComp> = Partial<
-  LinkComponentSolidProps<TComp> & {
+  HTMLAttributes & {
     [key: `data-${string}`]: unknown
   }
 >
@@ -481,9 +505,11 @@ export interface LinkPropsChildren {
     | ((state: { isActive: boolean; isTransitioning: boolean }) => Vue.VNode)
 }
 
-type LinkComponentSolidProps<TComp> = TComp extends Vue.ValidComponent
-  ? Omit<Vue.ComponentProps<TComp>, keyof CreateLinkProps>
-  : never
+// Resolve duplicate type name by using different names
+interface LinkComponentPropsBase<TComp> {
+  // Props specific to different component types
+  [key: string]: any
+}
 
 export type LinkComponentProps<
   TComp = 'a',
@@ -492,7 +518,7 @@ export type LinkComponentProps<
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = LinkComponentSolidProps<TComp> &
+> = LinkComponentPropsBase<TComp> &
   LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type CreateLinkProps = LinkProps<
@@ -517,31 +543,65 @@ export type LinkComponent<TComp> = <
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Vue.VNode>,
 ): LinkComponent<TComp> {
-  return (props) => <Link {...(props as any)} _asChild={Comp} />
+  return ((props: any) => Vue.h(Link, { ...props, _asChild: Comp })) as any
 }
 
-export const Link: LinkComponent<'a'> = (props: any) => {
-  const [local, rest] = splitProps(props, ['_asChild'])
+const LinkImpl = Vue.defineComponent({
+  name: 'Link',
+  props: [
+    '_asChild', 
+    'to', 
+    'preload', 
+    'preloadDelay', 
+    'activeProps', 
+    'inactiveProps', 
+    'activeOptions',
+    'from',
+    'search',
+    'params',
+    'hash',
+    'state',
+    'mask',
+    'reloadDocument',
+    'disabled'
+  ],
+  setup(props, { attrs, slots }) {
+    const allProps = Vue.computed(() => ({ ...props, ...attrs }))
+    const linkProps = useLinkProps(allProps.value as any)
+    
+    const isActive = Vue.computed(() => linkProps['data-status'] === 'active')
+    const isTransitioning = Vue.computed(() => linkProps['data-transitioning'] === 'transitioning')
+    
+    return () => {
+      const Component = props._asChild || 'a'
+      
+      // Create the slot content or empty array if no default slot
+      const slotContent = slots.default ? 
+        slots.default({
+          isActive: isActive.value,
+          isTransitioning: isTransitioning.value
+        }) : 
+        []
+      
+      // Return the component with props and children
+      return Vue.h(Component, linkProps, slotContent)
+    }
+  }
+})
 
-  const [_, linkProps] = splitProps(useLinkProps(rest as unknown as any), [
-    'type',
-    'children',
-  ])
-
-  const children = () =>
-    typeof rest?.value.children === 'function'
-      ? rest?.value.children({
-          get isActive() {
-            return (linkProps as any)['data-status'] === 'active'
-          },
-        })
-      : rest?.value.children
-
-  return (
-    <Dynamic component={local?.value._asChild ? local.value._asChild : 'a'} {...linkProps}>
-      {children}
-    </Dynamic>
-  )
+/**
+ * Link component with proper TypeScript generics support
+ */
+export const Link = LinkImpl as unknown as {
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+    TTo extends string | undefined = '.',
+    TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+    TMaskTo extends string = '.',
+  >(
+    props: LinkComponentProps<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  ): Vue.VNode
 }
 
 function isCtrlEvent(e: MouseEvent) {

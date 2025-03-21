@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { MetaProvider } from '@solidjs/meta'
+
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -18,7 +18,7 @@ export const useTags = () => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
-    ;[...routeMeta()].reverse().forEach((metas) => {
+    ;[...routeMeta.value].reverse().forEach((metas) => {
       ;[...metas].reverse().forEach((m) => {
         if (!m) return
 
@@ -115,10 +115,10 @@ export const useTags = () => {
   return () =>
     uniqBy(
       [
-        ...meta(),
-        ...preloadMeta(),
-        ...links(),
-        ...headScripts(),
+        ...meta.value,
+        ...preloadMeta.value,
+        ...links.value,
+        ...headScripts.value,
       ] as Array<RouterManagedTag>,
       (d) => {
         return JSON.stringify(d)
@@ -130,16 +130,21 @@ export const useTags = () => {
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
  * It should be rendered in the `<head>` of your document.
  */
-export function HeadContent() {
-  const tags = useTags()
-  return (
-    <MetaProvider>
-      {tags().map((tag) => (
-        <Asset {...tag} />
-      ))}
-    </MetaProvider>
-  )
-}
+export const HeadContent = Vue.defineComponent({
+  name: 'HeadContent',
+  setup() {
+    const tags = useTags()
+    
+    return () => {
+      return tags().map((tag) => 
+        Vue.h(Asset, {
+          ...tag,
+          key: `tsr-meta-${JSON.stringify(tag)}`
+        })
+      )
+    }
+  }
+})
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
   const seen = new Set<string>()

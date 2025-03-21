@@ -1,26 +1,40 @@
-import warning from 'tiny-warning'
+import * as Vue from 'vue'
+import { useRouter } from './useRouter'
 import { DefaultGlobalNotFound } from './not-found'
-import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
+import type { AnyRoute } from '@tanstack/router-core'
+
+// Simplified type for NotFoundError
+interface NotFoundError {
+  routeId?: string
+  pathname?: string
+  search?: string
+  href?: string
+}
 
 export function renderRouteNotFound(
-  router: AnyRouter,
+  router: ReturnType<typeof useRouter>,
   route: AnyRoute,
-  data: any,
-) {
-  if (!route.options.notFoundComponent) {
-    if (router.options.defaultNotFoundComponent) {
-      return <router.options.defaultNotFoundComponent data={data} />
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      warning(
-        route.options.notFoundComponent,
-        `A notFoundError was encountered on the route with ID "${route.id}", but a notFoundComponent option was not configured, nor was a router level defaultNotFoundComponent configured. Consider configuring at least one of these to avoid TanStack Router's overly generic defaultNotFoundComponent (<div>Not Found<div>)`,
-      )
-    }
-
-    return <DefaultGlobalNotFound />
+  error?: NotFoundError,
+): Vue.VNode {
+  // Prepare the props
+  const data: NotFoundError = {
+    routeId: route.id,
+    pathname: error?.pathname || router.state.location.pathname,
+    search: error?.search || router.state.location.search,
+    href: error?.href || router.state.location.href,
   }
 
-  return <route.options.notFoundComponent data={data} />
+  if (route.isRoot && router.options.defaultNotFoundComponent) {
+    return Vue.h(router.options.defaultNotFoundComponent, { data })
+  }
+
+  if (router.options.defaultNotFoundComponent && !route.options.notFoundComponent) {
+    return Vue.h(router.options.defaultNotFoundComponent, { data })
+  }
+
+  if (route.options.notFoundComponent) {
+    return Vue.h(route.options.notFoundComponent, { data })
+  }
+
+  return Vue.h(DefaultGlobalNotFound)
 }

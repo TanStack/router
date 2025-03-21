@@ -40,13 +40,13 @@ function setupTest(opts: {
     path: '/',
     component: () => {
       return (
-        <>
+        <template>
           <h1>Index</h1>
           {/* N.B. this link does not have search params set, but the middleware will add `root` if it is currently present */}
           <Link data-testid="posts-link" to="/posts" search={opts.linkSearch}>
             Posts
           </Link>
-        </>
+        </template>
       )
     },
   })
@@ -54,10 +54,10 @@ function setupTest(opts: {
   const PostsComponent = () => {
     const search = postsRoute.useSearch()
     return (
-      <>
+      <template>
         <h1 data-testid="posts-heading">Posts</h1>
         <div data-testid="search">{search.value.value ?? '$undefined'}</div>
-      </>
+      </template>
     )
   }
 

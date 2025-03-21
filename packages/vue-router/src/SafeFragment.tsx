@@ -1,3 +1,3 @@
 export function SafeFragment(props: any) {
-  return <>{props.children}</>
+  return <template>{props.children}</template>
 }
