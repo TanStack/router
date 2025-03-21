@@ -11,7 +11,7 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
-import type { JSX } from 'solid-js'
+import type { VNode } from 'vue'
 
 declare module '@tanstack/router-core' {
   export interface RouterOptionsExtensions {
@@ -52,7 +52,7 @@ declare module '@tanstack/router-core' {
      *
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/solid/api/router/RouterOptionsType#wrap-property)
      */
-    Wrap?: (props: { children: any }) => JSX.Element
+    Wrap?: (props: { children: any }) => VNode
     /**
      * A component that will be used to wrap the inner contents of the router.
      *
@@ -60,7 +60,7 @@ declare module '@tanstack/router-core' {
      *
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/solid/api/router/RouterOptionsType#innerwrap-property)
      */
-    InnerWrap?: (props: { children: any }) => JSX.Element
+    InnerWrap?: (props: { children: any }) => VNode
 
     /**
      * The default `onCatch` handler for errors caught by the Router ErrorBoundary

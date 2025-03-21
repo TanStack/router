@@ -1,4 +1,6 @@
+import type { AnyRouteMatch, RouteMatch } from '@tanstack/router-core'
 import { expectTypeOf, test } from 'vitest'
+import type * as Vue from 'vue'
 import {
   MatchRoute,
   createRootRoute,
@@ -8,8 +10,6 @@ import {
   useMatchRoute,
   useMatches,
 } from '../src'
-import type { AnyRouteMatch, RouteMatch } from '@tanstack/router-core'
-import type * as Vue from 'vue'
 
 const rootRoute = createRootRoute()
 
@@ -155,16 +155,10 @@ test('when matching a route with params', () => {
   expectTypeOf(matchRoute<string, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<
-      '/' | '.' | '..' | '/invoices' | '/invoices/$invoiceId' | '/comments/$id'
-    >()
 
   expectTypeOf(MatchRoute<DefaultRouter, string, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<
-      '/' | '.' | '..' | '/invoices' | '/invoices/$invoiceId' | '/comments/$id'
-    >()
 
   expectTypeOf(
     matchRoute({

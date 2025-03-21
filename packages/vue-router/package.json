@@ -25,9 +25,10 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
+    "test": "pnpm run test:unit",
     "test:eslint": "eslint",
     "test:types": "tsc -p tsconfig.legacy.json",
-    "test:unit": "vitest --ui --watch",
+    "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:perf": "vitest bench",
     "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
@@ -70,10 +71,11 @@
   "devDependencies": {
     "@testing-library/vue": "^8.1.0",
     "@types/jsesc": "^3.0.3",
+    "@vitejs/plugin-vue": "^5.2.3",
+    "@vitejs/plugin-vue-jsx": "^4.1.2",
     "combinate": "^1.1.11",
     "vue": "^3.3.0",
-    "zod": "^3.23.8",
-    "@vitejs/plugin-vue": "^5.2.3"
+    "zod": "^3.23.8"
   },
   "peerDependencies": {
     "vue": "^3.3.0"

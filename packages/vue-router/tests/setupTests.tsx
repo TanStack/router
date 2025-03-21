@@ -1,2 +1,4 @@
 import '@testing-library/jest-dom/vitest'
-// Vue tests don't need React environment settings
+
+// For @testing-library to work properly with Vue tests
+// global.IS_REACT_ACT_ENVIRONMENT = true
