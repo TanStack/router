@@ -206,6 +206,7 @@ export type {
   ControllablePromise,
   InjectedHtmlEntry,
   RouterErrorSerializer,
+  CreateFileRoute,
 } from '@tanstack/router-core'
 
 export {
