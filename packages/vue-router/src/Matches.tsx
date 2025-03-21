@@ -180,6 +180,27 @@ export type MakeMatchRouteOptions<
     | Vue.VNode
 }
 
+// Create a type for the MatchRoute component that includes the generics
+export interface MatchRouteComponentType {
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    TFrom extends string = string,
+    TTo extends string | undefined = undefined
+  >(
+    props: MakeMatchRouteOptions<TRouter, TFrom, TTo>
+  ): Vue.VNode;
+  new (): {
+    $props: {
+      from?: string;
+      to?: string;
+      fuzzy?: boolean;
+      caseSensitive?: boolean;
+      includeSearch?: boolean;
+      pending?: boolean;
+    };
+  };
+}
+
 export const MatchRoute = Vue.defineComponent({
   name: 'MatchRoute',
   props: {
@@ -235,7 +256,7 @@ export const MatchRoute = Vue.defineComponent({
       return Vue.h(Vue.Fragment, null, slots.default)
     }
   }
-})
+}) as unknown as MatchRouteComponentType
 
 export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
   select?: (matches: Array<MakeRouteMatchUnion<TRouter>>) => TSelected
