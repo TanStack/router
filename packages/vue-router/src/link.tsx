@@ -472,7 +472,6 @@ export type ActiveLinkOptions<
 type ActiveLinkProps<TComp> = Partial<
   HTMLAttributes & {
     [key: `data-${string}`]: unknown
-    additionalProps?: number 
   }
 >
 
@@ -506,12 +505,12 @@ export interface LinkPropsChildren {
     | ((state: { isActive: boolean; isTransitioning: boolean }) => Vue.VNode)
 }
 
-// Resolve duplicate type name by using different names
-interface LinkComponentPropsBase<TComp> {
-  // Props specific to different component types
-  [key: string]: any
-  additionalProps: number
-}
+
+type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap
+  ? Omit<HTMLAttributes, keyof CreateLinkProps>
+  : TComp extends Vue.Component
+    ? Record<string, any>
+    : Record<string, any>
 
 export type LinkComponentProps<
   TComp = 'a',
@@ -520,8 +519,8 @@ export type LinkComponentProps<
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = LinkComponentPropsBase<TComp> &
-  LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+> = LinkComponentVueProps<TComp> &
+  LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo> 
 
 export type CreateLinkProps = LinkProps<
   any,
@@ -565,7 +564,8 @@ const LinkImpl = Vue.defineComponent({
     'state',
     'mask',
     'reloadDocument',
-    'disabled'
+    'disabled',
+    'additionalProps'
   ],
   setup(props, { attrs, slots }) {
     const allProps = Vue.computed(() => ({ ...props, ...attrs }))
