@@ -10,6 +10,7 @@
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/solid-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as UsersImport } from './routes/users'
 import { Route as RedirectImport } from './routes/redirect'
@@ -217,6 +218,231 @@ declare module '@tanstack/solid-router' {
       parentRoute: typeof rootRoute
     }
   }
+}
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/',
+    ServerFileRoutesByPath['/']['parentRoute'],
+    ServerFileRoutesByPath['/']['id'],
+    ServerFileRoutesByPath['/']['path'],
+    ServerFileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/_pathlessLayout' {
+  const createFileRoute: CreateFileRoute<
+    '/_pathlessLayout',
+    FileRoutesByPath['/_pathlessLayout']['parentRoute'],
+    FileRoutesByPath['/_pathlessLayout']['id'],
+    FileRoutesByPath['/_pathlessLayout']['path'],
+    FileRoutesByPath['/_pathlessLayout']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/_pathlessLayout',
+    ServerFileRoutesByPath['/_pathlessLayout']['parentRoute'],
+    ServerFileRoutesByPath['/_pathlessLayout']['id'],
+    ServerFileRoutesByPath['/_pathlessLayout']['path'],
+    ServerFileRoutesByPath['/_pathlessLayout']['fullPath']
+  >
+}
+declare module './routes/deferred' {
+  const createFileRoute: CreateFileRoute<
+    '/deferred',
+    FileRoutesByPath['/deferred']['parentRoute'],
+    FileRoutesByPath['/deferred']['id'],
+    FileRoutesByPath['/deferred']['path'],
+    FileRoutesByPath['/deferred']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/deferred',
+    ServerFileRoutesByPath['/deferred']['parentRoute'],
+    ServerFileRoutesByPath['/deferred']['id'],
+    ServerFileRoutesByPath['/deferred']['path'],
+    ServerFileRoutesByPath['/deferred']['fullPath']
+  >
+}
+declare module './routes/posts' {
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/posts',
+    ServerFileRoutesByPath['/posts']['parentRoute'],
+    ServerFileRoutesByPath['/posts']['id'],
+    ServerFileRoutesByPath['/posts']['path'],
+    ServerFileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/redirect' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect',
+    FileRoutesByPath['/redirect']['parentRoute'],
+    FileRoutesByPath['/redirect']['id'],
+    FileRoutesByPath['/redirect']['path'],
+    FileRoutesByPath['/redirect']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/redirect',
+    ServerFileRoutesByPath['/redirect']['parentRoute'],
+    ServerFileRoutesByPath['/redirect']['id'],
+    ServerFileRoutesByPath['/redirect']['path'],
+    ServerFileRoutesByPath['/redirect']['fullPath']
+  >
+}
+declare module './routes/users' {
+  const createFileRoute: CreateFileRoute<
+    '/users',
+    FileRoutesByPath['/users']['parentRoute'],
+    FileRoutesByPath['/users']['id'],
+    FileRoutesByPath['/users']['path'],
+    FileRoutesByPath['/users']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/users',
+    ServerFileRoutesByPath['/users']['parentRoute'],
+    ServerFileRoutesByPath['/users']['id'],
+    ServerFileRoutesByPath['/users']['path'],
+    ServerFileRoutesByPath['/users']['fullPath']
+  >
+}
+declare module './routes/_pathlessLayout/_nested-layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_pathlessLayout/_nested-layout',
+    FileRoutesByPath['/_pathlessLayout/_nested-layout']['parentRoute'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout']['id'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout']['path'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/_pathlessLayout/_nested-layout',
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout']['parentRoute'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout']['id'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout']['path'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout']['fullPath']
+  >
+}
+declare module './routes/posts.$postId' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId',
+    FileRoutesByPath['/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/posts/$postId',
+    ServerFileRoutesByPath['/posts/$postId']['parentRoute'],
+    ServerFileRoutesByPath['/posts/$postId']['id'],
+    ServerFileRoutesByPath['/posts/$postId']['path'],
+    ServerFileRoutesByPath['/posts/$postId']['fullPath']
+  >
+}
+declare module './routes/users.$userId' {
+  const createFileRoute: CreateFileRoute<
+    '/users/$userId',
+    FileRoutesByPath['/users/$userId']['parentRoute'],
+    FileRoutesByPath['/users/$userId']['id'],
+    FileRoutesByPath['/users/$userId']['path'],
+    FileRoutesByPath['/users/$userId']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/users/$userId',
+    ServerFileRoutesByPath['/users/$userId']['parentRoute'],
+    ServerFileRoutesByPath['/users/$userId']['id'],
+    ServerFileRoutesByPath['/users/$userId']['path'],
+    ServerFileRoutesByPath['/users/$userId']['fullPath']
+  >
+}
+declare module './routes/posts.index' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/posts/',
+    ServerFileRoutesByPath['/posts/']['parentRoute'],
+    ServerFileRoutesByPath['/posts/']['id'],
+    ServerFileRoutesByPath['/posts/']['path'],
+    ServerFileRoutesByPath['/posts/']['fullPath']
+  >
+}
+declare module './routes/users.index' {
+  const createFileRoute: CreateFileRoute<
+    '/users/',
+    FileRoutesByPath['/users/']['parentRoute'],
+    FileRoutesByPath['/users/']['id'],
+    FileRoutesByPath['/users/']['path'],
+    FileRoutesByPath['/users/']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/users/',
+    ServerFileRoutesByPath['/users/']['parentRoute'],
+    ServerFileRoutesByPath['/users/']['id'],
+    ServerFileRoutesByPath['/users/']['path'],
+    ServerFileRoutesByPath['/users/']['fullPath']
+  >
+}
+declare module './routes/_pathlessLayout/_nested-layout/route-a' {
+  const createFileRoute: CreateFileRoute<
+    '/_pathlessLayout/_nested-layout/route-a',
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['parentRoute'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['id'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['path'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/_pathlessLayout/_nested-layout/route-a',
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['parentRoute'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['id'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['path'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['fullPath']
+  >
+}
+declare module './routes/_pathlessLayout/_nested-layout/route-b' {
+  const createFileRoute: CreateFileRoute<
+    '/_pathlessLayout/_nested-layout/route-b',
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['parentRoute'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['id'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['path'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/_pathlessLayout/_nested-layout/route-b',
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['parentRoute'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['id'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['path'],
+    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['fullPath']
+  >
+}
+declare module './routes/posts_.$postId.deep' {
+  const createFileRoute: CreateFileRoute<
+    '/posts_/$postId/deep',
+    FileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
+    FileRoutesByPath['/posts_/$postId/deep']['id'],
+    FileRoutesByPath['/posts_/$postId/deep']['path'],
+    FileRoutesByPath['/posts_/$postId/deep']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/posts_/$postId/deep',
+    ServerFileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
+    ServerFileRoutesByPath['/posts_/$postId/deep']['id'],
+    ServerFileRoutesByPath['/posts_/$postId/deep']['path'],
+    ServerFileRoutesByPath['/posts_/$postId/deep']['fullPath']
+  >
 }
 
 // Create and export the route tree

@@ -3,7 +3,18 @@ import axios from 'redaxios'
 import { json } from '@tanstack/react-start'
 import type { User } from '../utils/users'
 
-const loggerMiddleware = null
+export const ServerRoute = createServerFileRoute().methods({
+  GET: async ({ request }) => {
+    console.info('Fetching users... @', request.url)
+    const res = await axios.get<Array<User>>(
+      'https://jsonplaceholder.typicode.com/users',
+    )
+
+    const list = res.data.slice(0, 10)
+
+    return json(list.map((u) => ({ id: u.id, name: u.name, email: u.email })))
+  },
+})
 
 export const Route = createFileRoute({
   loader: async () => {
@@ -16,19 +27,6 @@ export const Route = createFileRoute({
   },
   component: UsersComponent,
 })
-  .serverMiddleware([loggerMiddleware])
-  .server({
-    GET: async ({ request }) => {
-      console.info('Fetching users... @', request.url)
-      const res = await axios.get<Array<User>>(
-        'https://jsonplaceholder.typicode.com/users',
-      )
-
-      const list = res.data.slice(0, 10)
-
-      return json(list.map((u) => ({ id: u.id, name: u.name, email: u.email })))
-    },
-  })
 
 function UsersComponent() {
   const users = Route.useLoaderData()

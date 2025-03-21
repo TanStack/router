@@ -296,7 +296,7 @@ routes/
 
 ## Non-Nested Routes
 
-Non-nested routes can be created by suffixing a parent file route segment with a `_` and are used to **un-nest** a route from it's parents and render its own component tree.
+Non-nested routes can be created by suffixing a parent file route segment with a `_` and are used to **un-nest** a route from its parents and render its own component tree.
 
 Consider the following flat route tree:
 

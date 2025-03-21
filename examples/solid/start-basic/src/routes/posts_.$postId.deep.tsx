@@ -1,8 +1,8 @@
-import { Link, createFileRoute } from '@tanstack/solid-router'
+import { Link } from '@tanstack/solid-router'
 import { fetchPost } from '../utils/posts'
 import { PostErrorComponent } from '~/components/PostError'
 
-export const Route = createFileRoute('/posts_/$postId/deep')({
+export const Route = createFileRoute({
   loader: async ({ params: { postId } }) =>
     fetchPost({
       data: postId,
@@ -16,7 +16,10 @@ function PostDeepComponent() {
 
   return (
     <div class="p-2 space-y-2">
-      <Link to="/posts" class="block py-1 text-blue-800 hover:text-blue-600">
+      <Link
+        to="/posts"
+        class="block py-1 text-blue-800 hover:text-blue-600"
+      >
         ← All Posts
       </Link>
       <h4 class="text-xl font-bold underline">{post().title}</h4>
