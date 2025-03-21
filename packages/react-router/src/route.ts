@@ -193,6 +193,7 @@ export class Route<
     >,
   ) {
     super(options)
+    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
