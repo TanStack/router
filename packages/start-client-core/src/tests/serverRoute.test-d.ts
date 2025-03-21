@@ -20,7 +20,7 @@ test('createServerFileRoute with methods with no middleware', () => {
         }>()
 
         return json({
-          test: 'hi',
+          test: 'test',
         })
       },
     },
@@ -36,19 +36,19 @@ test('createServerFileRoute with methods with no middleware', () => {
       }>()
 
       return json({
-        test: 'hi',
+        test: 'test',
       })
     }),
   }))
 })
 
-test('createServerFileRoute with methods with with middleware', () => {
-  const serverMiddleware = createMiddleware().server(({ next }) =>
+test('createServerFileRoute with methods and route middleware context', () => {
+  const routeMiddleware = createMiddleware().server(({ next }) =>
     next({ context: { a: 'a' } }),
   )
 
   const serverFileRoute = createServerFileRoute<'$detailId'>()().middleware([
-    serverMiddleware,
+    routeMiddleware,
   ])
 
   serverFileRoute.methods({
@@ -62,7 +62,7 @@ test('createServerFileRoute with methods with with middleware', () => {
         }>()
 
         return json({
-          test: 'hi',
+          test: 'test',
         })
       },
     },
@@ -72,6 +72,35 @@ test('createServerFileRoute with methods with with middleware', () => {
     GET: r.handler(async (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: { a: string }
+        params: { detailId: string }
+        pathname: '$detailId'
+        request: Request
+      }>()
+
+      return json({
+        test: 'test',
+      })
+    }),
+  }))
+})
+
+test('createServerFileRoute with methods middleware and route middleware', () => {
+  const routeMiddleware = createMiddleware().server(({ next }) =>
+    next({ context: { a: 'a' } }),
+  )
+
+  const serverFileRoute = createServerFileRoute<'$detailId'>()().middleware([
+    routeMiddleware,
+  ])
+
+  const methodMiddleware = createMiddleware().server(({ next }) =>
+    next({ context: { b: 'b' } }),
+  )
+
+  serverFileRoute.methods((r) => ({
+    GET: r.middleware([methodMiddleware]).handler(async (ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<{
+        context: { a: string; b: string }
         params: { detailId: string }
         pathname: '$detailId'
         request: Request
