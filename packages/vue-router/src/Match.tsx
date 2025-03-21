@@ -98,7 +98,7 @@ export const Match = Vue.defineComponent({
             if (
               !routeNotFoundComponent.value ||
               (error.routeId && error.routeId !== routeId.value) ||
-              (!error.routeId && !route.value.isRoot)
+              (!error.routeId && route.value && !route.value.isRoot)
             )
               throw error
 
@@ -124,8 +124,8 @@ export const Match = Vue.defineComponent({
       }
 
       // Wrap in suspense if needed
-      const needsSuspense = (!route.value.isRoot || route.value.options.wrapInSuspense) &&
-        (route.value.options.wrapInSuspense ?? PendingComponent.value ?? false)
+      const needsSuspense = (route.value && (!route.value.isRoot || route.value.options.wrapInSuspense)) &&
+        (route.value?.options?.wrapInSuspense ?? PendingComponent.value ?? false)
       
       if (needsSuspense) {
         content = Vue.h(Vue.Suspense, {
