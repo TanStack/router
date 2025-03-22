@@ -104,4 +104,5 @@ export type {
   ServerRouteMethodsBuilder,
   ServerRouteMethodsBuilderAfterMiddleware,
   ServerRouteMethodsBuilderMiddleware,
+  CreateServerFileRoute,
 } from './serverRoute'

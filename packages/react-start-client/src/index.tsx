@@ -62,6 +62,7 @@ export {
   type MiddlewareServerFnOptions,
   type MiddlewareServerNextFn,
   type ServerResultWithContext,
+  type CreateServerFileRoute,
 } from '@tanstack/start-client-core'
 export { Meta } from './Meta'
 export { Scripts } from './Scripts'
