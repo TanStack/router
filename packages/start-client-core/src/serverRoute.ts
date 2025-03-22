@@ -4,10 +4,12 @@ import type {
   Middleware,
 } from './createMiddleware'
 import type {
+  AnyRoute,
   Assign,
   Constrain,
   Expand,
   ResolveParams,
+  RouteConstraints,
 } from '@tanstack/router-core'
 
 export const ServerRouteVerbs = [
@@ -38,6 +40,14 @@ export interface ServerRouteMethodsRecord<TPath extends string, TMiddlewares> {
   OPTIONS?: ServerRouteMethodRecordValue<TPath, 'OPTIONS', TMiddlewares>
   HEAD?: ServerRouteMethodRecordValue<TPath, 'HEAD', TMiddlewares>
 }
+
+export type CreateServerFileRoute<
+  TFilePath extends string,
+  TParentRoute extends AnyRoute,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+> = (options?: undefined) => ServerRoute<TPath>
 
 export function createServerFileRoute<TPath extends string>(): (
   opts?: undefined,
