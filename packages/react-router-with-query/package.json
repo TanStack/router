@@ -69,7 +69,7 @@
     "react-dom": ">=19",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-query": ">=5.66.0"
+    "@tanstack/react-query": ">=5.69.0"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

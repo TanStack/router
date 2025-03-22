@@ -67,13 +67,13 @@
     "@tanstack/start-client-core": "workspace:^",
     "tiny-warning": "^1.0.3",
     "h3": "1.13.0",
-    "isbot": "^5.1.22",
+    "isbot": "^5.1.25",
     "jsesc": "^3.1.0",
     "unctx": "^2.4.1"
   },
   "devDependencies": {
     "@types/jsesc": "^3.0.3",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.25.1",
     "typescript": "^5.7.2"
   }
 }

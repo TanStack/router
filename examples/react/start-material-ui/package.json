@@ -13,7 +13,7 @@
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.0",
     "@fontsource-variable/roboto": "5.2.5",
-    "@mui/material": "6.4.7",
+    "@mui/material": "6.4.8",
     "@tanstack/react-router": "^1.114.27",
     "@tanstack/react-start": "^1.114.27",
     "@tanstack/react-router-devtools": "^1.114.27",

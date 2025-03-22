@@ -16,15 +16,15 @@
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.51.1",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "@rsbuild/core": "^1.2.4",
-    "@rsbuild/plugin-babel": "^1.0.3",
-    "@rsbuild/plugin-solid": "^1.0.4",
+    "@rsbuild/core": "^1.2.19",
+    "@rsbuild/plugin-babel": "^1.0.4",
+    "@rsbuild/plugin-solid": "^1.0.5",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/virtual-file-routes": "workspace:^",
-    "postcss": "^8.5.1",
-    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "autoprefixer": "^10.4.21",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"
   }

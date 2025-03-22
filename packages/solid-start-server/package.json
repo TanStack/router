@@ -69,17 +69,17 @@
     "@tanstack/start-client-core": "workspace:^",
     "@tanstack/start-server-core": "workspace:^",
     "h3": "1.13.0",
-    "isbot": "^5.1.22",
+    "isbot": "^5.1.25",
     "jsesc": "^3.1.0",
     "tiny-warning": "^1.0.3",
     "unctx": "^2.4.1"
   },
   "devDependencies": {
     "@types/jsesc": "^3.0.3",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.25.1",
     "solid-js": "^1.9.5",
     "typescript": "^5.7.2",
-    "vite-plugin-solid": "^2.11.2"
+    "vite-plugin-solid": "^2.11.6"
   },
   "peerDependencies": {
     "solid-js": "^1.0.0"
