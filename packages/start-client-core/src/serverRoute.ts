@@ -5,11 +5,9 @@ import type {
   Middleware,
 } from './createMiddleware'
 import type {
-  AnyRoute,
   Assign,
   Constrain,
   Expand,
-  IntersectAssign,
   ResolveParams,
   RouteConstraints,
 } from '@tanstack/router-core'
@@ -27,11 +25,13 @@ export const ServerRouteVerbs = [
 export type ServerRouteVerb = (typeof ServerRouteVerbs)[number]
 
 export type ServerRouteMethodRecordValue<
+  TParentRoute extends AnyServerRouteWithTypes,
   TPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
 > =
   | ServerRouteMethodHandlerFn<
+      TParentRoute,
       TPath,
       TVerb,
       TMiddlewares,
@@ -41,90 +41,221 @@ export type ServerRouteMethodRecordValue<
     >
   | AnyRouteMethodsBuilder
 
-export interface ServerRouteMethodsRecord<TPath extends string, TMiddlewares> {
-  GET?: ServerRouteMethodRecordValue<TPath, 'GET', TMiddlewares>
-  POST?: ServerRouteMethodRecordValue<TPath, 'POST', TMiddlewares>
-  PUT?: ServerRouteMethodRecordValue<TPath, 'PUT', TMiddlewares>
-  PATCH?: ServerRouteMethodRecordValue<TPath, 'PATCH', TMiddlewares>
-  DELETE?: ServerRouteMethodRecordValue<TPath, 'DELETE', TMiddlewares>
-  OPTIONS?: ServerRouteMethodRecordValue<TPath, 'OPTIONS', TMiddlewares>
-  HEAD?: ServerRouteMethodRecordValue<TPath, 'HEAD', TMiddlewares>
+export interface ServerRouteMethodsRecord<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TPath extends string,
+  TMiddlewares,
+> {
+  GET?: ServerRouteMethodRecordValue<TParentRoute, TPath, 'GET', TMiddlewares>
+  POST?: ServerRouteMethodRecordValue<TParentRoute, TPath, 'POST', TMiddlewares>
+  PUT?: ServerRouteMethodRecordValue<TParentRoute, TPath, 'PUT', TMiddlewares>
+  PATCH?: ServerRouteMethodRecordValue<
+    TParentRoute,
+    TPath,
+    'PATCH',
+    TMiddlewares
+  >
+  DELETE?: ServerRouteMethodRecordValue<
+    TParentRoute,
+    TPath,
+    'DELETE',
+    TMiddlewares
+  >
+  OPTIONS?: ServerRouteMethodRecordValue<
+    TParentRoute,
+    TPath,
+    'OPTIONS',
+    TMiddlewares
+  >
+  HEAD?: ServerRouteMethodRecordValue<TParentRoute, TPath, 'HEAD', TMiddlewares>
 }
 
 export type CreateServerFileRoute<
   TFilePath extends string,
-  TParentRoute extends AnyRoute,
+  TParentRoute extends AnyServerRouteWithTypes,
   TId extends RouteConstraints['TId'],
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
-> = (options?: undefined) => ServerRoute<TPath>
+> = (options?: undefined) => ServerRoute<TParentRoute, TId, TPath, TFullPath>
 
-export function createServerFileRoute<TPath extends string>(): (
-  opts?: undefined,
-  _opts?: ServerRouteOptions<TPath, any>,
-) => ServerRoute<TPath> {
+export function createServerFileRoute<
+  TFilePath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+>(): CreateServerFileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath> {
   return undefined as any
 }
 
-export interface ServerRouteOptions<TPath extends string, TMiddlewares> {
+export interface ServerRouteOptions<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+  TMiddlewares,
+> {
   middleware: Constrain<TMiddlewares, Middleware<any>>
-  methods: ServerRouteMethods<TPath, ReadonlyArray<AnyMiddleware>>
+  methods: ServerRouteMethods<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    ReadonlyArray<AnyMiddleware>
+  >
 }
 
-export interface ServerRouteMiddleware<TPath extends string> {
+export interface ServerRouteMiddleware<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+> {
   middleware: <const TNewMiddleware>(
     middleware: Constrain<TNewMiddleware, ReadonlyArray<AnyMiddleware>>,
-  ) => ServerRouteAfterMiddleware<TPath, TNewMiddleware>
+  ) => ServerRouteAfterMiddleware<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    TNewMiddleware
+  >
 }
 
-export type ServerRouteMethodsOptions<TPath extends string, TMiddlewares> =
-  | ServerRouteMethodsRecord<TPath, TMiddlewares>
+export type ServerRouteMethodsOptions<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
+  TMiddlewares,
+> =
+  | ServerRouteMethodsRecord<TParentRoute, TFullPath, TMiddlewares>
   | ((
-      api: ServerRouteMethodBuilder<TPath, any, TMiddlewares>,
-    ) => ServerRouteMethodsRecord<TPath, TMiddlewares>)
+      api: ServerRouteMethodBuilder<TParentRoute, TFullPath, any, TMiddlewares>,
+    ) => ServerRouteMethodsRecord<TParentRoute, TFullPath, TMiddlewares>)
 
-export interface ServerRouteMethods<TPath extends string, TMiddlewares> {
+export interface ServerRouteMethods<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+  TMiddlewares,
+> {
   methods: <const TMethods>(
     methodsOrGetMethods: Constrain<
       TMethods,
-      ServerRouteMethodsOptions<TPath, TMiddlewares>
+      ServerRouteMethodsOptions<TParentRoute, TFullPath, TMiddlewares>
     >,
-  ) => ServerRouteAfterMethods<TPath, TMiddlewares, TMethods>
+  ) => ServerRouteAfterMethods<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    TMiddlewares,
+    TMethods
+  >
 }
 
 export interface ServerRouteTypes<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
   TMiddlewares,
   TMethods,
 > {
+  id: TId
   path: TPath
+  fullPath: TFullPath
   middlewares: TMiddlewares
   methods: TMethods
+  parentRoute: TParentRoute
+  allContext: ResolveAllServerContext<TParentRoute, TMiddlewares>
 }
 
+export type ResolveAllServerContext<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TMiddlewares,
+> = unknown extends TParentRoute
+  ? AssignAllServerContext<TMiddlewares>
+  : Assign<
+      TParentRoute['_types']['allContext'],
+      AssignAllServerContext<TMiddlewares>
+    >
+
 export interface ServerRouteWithTypes<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
   TMiddlewares,
   TMethods,
 > {
-  _types: ServerRouteTypes<TPath, TMiddlewares, TMethods>
+  _types: ServerRouteTypes<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    TMiddlewares,
+    TMethods
+  >
 }
 
-export interface ServerRoute<TPath extends string>
-  extends ServerRouteWithTypes<TPath, undefined, undefined>,
-    ServerRouteMiddleware<TPath>,
-    ServerRouteMethods<TPath, undefined> {}
+export type AnyServerRouteWithTypes = ServerRouteWithTypes<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>
 
-export interface ServerRouteAfterMiddleware<TPath extends string, TMiddlewares>
-  extends ServerRouteWithTypes<TPath, TMiddlewares, undefined>,
-    ServerRouteMethods<TPath, TMiddlewares> {}
+export interface ServerRoute<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+> extends ServerRouteWithTypes<
+      TParentRoute,
+      TId,
+      TPath,
+      TFullPath,
+      undefined,
+      undefined
+    >,
+    ServerRouteMiddleware<TParentRoute, TId, TPath, TFullPath>,
+    ServerRouteMethods<TParentRoute, TId, TPath, TFullPath, undefined> {}
+
+export interface ServerRouteAfterMiddleware<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+  TMiddlewares,
+> extends ServerRouteWithTypes<
+      TParentRoute,
+      TId,
+      TPath,
+      TFullPath,
+      TMiddlewares,
+      undefined
+    >,
+    ServerRouteMethods<TParentRoute, TId, TPath, TFullPath, TMiddlewares> {}
 
 export interface ServerRouteAfterMethods<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
   TMiddlewares,
   TMethods,
-> extends ServerRouteWithTypes<TPath, TMiddlewares, TMethods> {
-  options: ServerRouteOptions<TPath, TMiddlewares>
+> extends ServerRouteWithTypes<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    TMiddlewares,
+    TMethods
+  > {
+  options: ServerRouteOptions<TParentRoute, TId, TPath, TFullPath, TMiddlewares>
   methods: ServerRouteMethodsClient<TMethods>
 }
 
@@ -158,7 +289,7 @@ export type ServerRouteMethodClientResponse<TMethod> =
       : never
 
 export interface ServerRouteMethodBuilderTypes<
-  TPath extends string,
+  TFullPath extends string,
   TMiddlewares,
   TMethodMiddlewares,
   TValidator,
@@ -167,19 +298,19 @@ export interface ServerRouteMethodBuilderTypes<
   middlewares: TMiddlewares
   methodMiddleware: TMethodMiddlewares
   validator: TValidator
-  path: TPath
+  fullPath: TFullPath
   response: TResponse
 }
 
 export interface ServerRouteMethodBuilderWithTypes<
-  TPath extends string,
+  TFullPath extends string,
   TMiddlewares,
   TMethodMiddlewares,
   TValidator,
   TResponse,
 > {
   _types: ServerRouteMethodBuilderTypes<
-    TPath,
+    TFullPath,
     TMiddlewares,
     TMethodMiddlewares,
     TValidator,
@@ -196,20 +327,33 @@ export type AnyRouteMethodsBuilder = ServerRouteMethodBuilderWithTypes<
 >
 
 export interface ServerRouteMethodBuilder<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
 > extends ServerRouteMethodBuilderWithTypes<
-      TPath,
+      TFullPath,
       TMiddlewares,
       undefined,
       undefined,
       undefined
     >,
-    ServerRouteMethodBuilderMiddleware<TPath, TVerb, TMiddlewares>,
-    ServerRouteMethodBuilderValidator<TPath, TVerb, TMiddlewares, undefined>,
+    ServerRouteMethodBuilderMiddleware<
+      TParentRoute,
+      TFullPath,
+      TVerb,
+      TMiddlewares
+    >,
+    ServerRouteMethodBuilderValidator<
+      TParentRoute,
+      TFullPath,
+      TVerb,
+      TMiddlewares,
+      undefined
+    >,
     ServerRouteMethodBuilderHandler<
-      TPath,
+      TParentRoute,
+      TFullPath,
       TVerb,
       TMiddlewares,
       undefined,
@@ -217,14 +361,16 @@ export interface ServerRouteMethodBuilder<
     > {}
 
 export interface ServerRouteMethodBuilderMiddleware<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
 > {
   middleware: <const TNewMethodMiddlewares>(
     middleware: Constrain<TNewMethodMiddlewares, ReadonlyArray<AnyMiddleware>>,
   ) => ServerRouteMethodsBuilderAfterMiddleware<
-    TPath,
+    TParentRoute,
+    TFullPath,
     TVerb,
     TMiddlewares,
     TNewMethodMiddlewares
@@ -232,25 +378,28 @@ export interface ServerRouteMethodBuilderMiddleware<
 }
 
 export interface ServerRouteMethodsBuilderAfterMiddleware<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
 > extends ServerRouteMethodBuilderWithTypes<
-      TPath,
+      TFullPath,
       TMiddlewares,
       TMethodMiddlewares,
       undefined,
       undefined
     >,
     ServerRouteMethodBuilderValidator<
-      TPath,
+      TParentRoute,
+      TFullPath,
       TVerb,
       TMiddlewares,
       TMethodMiddlewares
     >,
     ServerRouteMethodBuilderHandler<
-      TPath,
+      TParentRoute,
+      TFullPath,
       TVerb,
       TMiddlewares,
       TMethodMiddlewares,
@@ -258,7 +407,8 @@ export interface ServerRouteMethodsBuilderAfterMiddleware<
     > {}
 
 export interface ServerRouteMethodBuilderValidator<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddleware,
   TMethodMiddlewares,
@@ -266,7 +416,8 @@ export interface ServerRouteMethodBuilderValidator<
   validator: <TValidator>(
     validator: ConstrainValidator<TValidator>,
   ) => ServerRouteMethodBuilderAfterValidator<
-    TPath,
+    TParentRoute,
+    TFullPath,
     TVerb,
     TMiddleware,
     TMethodMiddlewares,
@@ -275,20 +426,22 @@ export interface ServerRouteMethodBuilderValidator<
 }
 
 export interface ServerRouteMethodBuilderAfterValidator<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
   TValidator,
 > extends ServerRouteMethodBuilderWithTypes<
-      TPath,
+      TFullPath,
       TMiddlewares,
       TMethodMiddlewares,
       TValidator,
       undefined
     >,
     ServerRouteMethodBuilderHandler<
-      TPath,
+      TParentRoute,
+      TFullPath,
       TVerb,
       TMiddlewares,
       TMethodMiddlewares,
@@ -296,7 +449,8 @@ export interface ServerRouteMethodBuilderAfterValidator<
     > {}
 
 export interface ServerRouteMethodBuilderHandler<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
@@ -304,7 +458,8 @@ export interface ServerRouteMethodBuilderHandler<
 > {
   handler: <TResponse>(
     handler: ServerRouteMethodHandlerFn<
-      TPath,
+      TParentRoute,
+      TFullPath,
       TVerb,
       TMiddlewares,
       TMethodMiddlewares,
@@ -312,7 +467,8 @@ export interface ServerRouteMethodBuilderHandler<
       TResponse
     >,
   ) => ServerRouteMethodBuilderAfterHandler<
-    TPath,
+    TParentRoute,
+    TFullPath,
     TVerb,
     TMiddlewares,
     TMethodMiddlewares,
@@ -322,16 +478,18 @@ export interface ServerRouteMethodBuilderHandler<
 }
 
 export interface ServerRouteMethod<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
   TValidator,
 > {
   middleware?: Constrain<TMiddlewares, Middleware<any>>
-  validator?: ServerRouteMethodValidator<TPath, TVerb, TMiddlewares>
+  validator?: ServerRouteMethodValidator<TFullPath, TVerb, TMiddlewares>
   handler?: ServerRouteMethodHandlerFn<
-    TPath,
+    TParentRoute,
+    TFullPath,
     TVerb,
     TMiddlewares,
     TMethodMiddlewares,
@@ -347,7 +505,8 @@ type ServerRouteMethodValidator<
 > = 'TODO'
 
 export type ServerRouteMethodHandlerFn<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
@@ -355,7 +514,8 @@ export type ServerRouteMethodHandlerFn<
   TResponse,
 > = (
   ctx: ServerRouteMethodHandlerCtx<
-    TPath,
+    TParentRoute,
+    TFullPath,
     TVerb,
     TMiddlewares,
     TMethodMiddlewares,
@@ -363,42 +523,65 @@ export type ServerRouteMethodHandlerFn<
   >,
 ) => TResponse | Promise<TResponse>
 
-export type AssignAllMethodContext<TMiddlewares, TMethodMiddlewares> = Assign<
-  AssignAllServerContext<TMiddlewares>,
-  AssignAllServerContext<TMethodMiddlewares>
->
+export type MergeMethodMiddlewares<TMiddlewares, TMethodMiddlewares> =
+  TMiddlewares extends ReadonlyArray<any>
+    ? TMethodMiddlewares extends ReadonlyArray<any>
+      ? readonly [...TMiddlewares, ...TMethodMiddlewares]
+      : TMiddlewares
+    : TMethodMiddlewares
 
-export type IntersectAllMethodValidatorOutputs<
+export type AssignAllMethodContext<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TMiddlewares,
+  TMethodMiddlewares,
+> = unknown extends TParentRoute
+  ? AssignAllServerContext<
+      MergeMethodMiddlewares<TMiddlewares, TMethodMiddlewares>
+    >
+  : Assign<
+      TParentRoute['_types']['allContext'],
+      AssignAllServerContext<
+        MergeMethodMiddlewares<TMiddlewares, TMethodMiddlewares>
+      >
+    >
+
+export type ResolveAllMethodValidatorOutputs<
+  TParentRoute extends AnyServerRouteWithTypes,
   TMiddlewares,
   TMethodMiddlewares,
   TValidator,
-> = IntersectAssign<
-  IntersectAllValidatorOutputs<TMiddlewares, undefined>,
-  IntersectAllValidatorOutputs<TMethodMiddlewares, TValidator>
+> = IntersectAllValidatorOutputs<
+  MergeMethodMiddlewares<TMiddlewares, TMethodMiddlewares>,
+  TValidator
 >
 
 export interface ServerRouteMethodHandlerCtx<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
   TValidator,
 > {
   data: Expand<
-    IntersectAllMethodValidatorOutputs<
+    ResolveAllMethodValidatorOutputs<
+      TParentRoute,
       TMiddlewares,
       TMethodMiddlewares,
       TValidator
     >
   >
-  context: Expand<AssignAllMethodContext<TMiddlewares, TMethodMiddlewares>>
+  context: Expand<
+    AssignAllMethodContext<TParentRoute, TMiddlewares, TMethodMiddlewares>
+  >
   request: Request
-  params: ResolveParams<TPath>
-  pathname: TPath
+  params: ResolveParams<TFullPath>
+  pathname: TFullPath
 }
 
 export interface ServerRouteMethodBase<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
 > {
@@ -406,7 +589,8 @@ export interface ServerRouteMethodBase<
   validator: (
     validator: unknown,
   ) => ServerRouteMethodBuilderAfterValidator<
-    TPath,
+    TParentRoute,
+    TFullPath,
     TVerb,
     TMiddlewares,
     undefined,
@@ -414,7 +598,8 @@ export interface ServerRouteMethodBase<
   >
   handler: (
     handler: ServerRouteMethodHandlerFn<
-      TPath,
+      TParentRoute,
+      TFullPath,
       TVerb,
       TMiddlewares,
       undefined,
@@ -422,7 +607,8 @@ export interface ServerRouteMethodBase<
       undefined
     >,
   ) => ServerRouteMethodBuilderAfterHandler<
-    TPath,
+    TParentRoute,
+    TFullPath,
     TVerb,
     TMiddlewares,
     undefined,
@@ -432,21 +618,23 @@ export interface ServerRouteMethodBase<
 }
 
 export interface ServerRouteMethodBuilderAfterHandler<
-  TPath extends string,
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
   TValidator,
   TResponse,
 > extends ServerRouteMethodBuilderWithTypes<
-    TPath,
+    TFullPath,
     TMiddlewares,
     TMethodMiddlewares,
     TValidator,
     TResponse
   > {
   opts: ServerRouteMethod<
-    TPath,
+    TParentRoute,
+    TFullPath,
     TVerb,
     TMiddlewares,
     TMethodMiddlewares,
@@ -467,7 +655,7 @@ export const methods = {
 function createMethodFn<TVerb extends ServerRouteVerb>(verb: TVerb) {
   return function createMethod<TPath extends string>(
     opts: ServerRouteMethodOptions<TPath, TVerb>,
-  ): ServerRouteMethodBase<TPath, TVerb, any> {
+  ): ServerRouteMethodBase<any, TPath, TVerb, any> {
     return undefined as any
   }
 }

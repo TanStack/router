@@ -724,6 +724,11 @@ export async function generator(config: Config, root: string) {
                 ? `${routeNode.parent.variableName}RouteImport`
                 : 'rootRoute'
           }
+          ${
+            routeNode.hasServerRoute
+              ? `serverParentRoute: ${routeNode.parent?.hasServerRoute ? `typeof ${routeNode.parent.variableName}ServerRouteImport` : 'unknown'}`
+              : ''
+          }
           ${routeNode.hasServerRoute ? `serverRoute: typeof ${routeNode.variableName}ServerRouteImport` : ''}
         }`
       })
@@ -743,7 +748,7 @@ export async function generator(config: Config, root: string) {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '${routeNode.routePath}',
-    FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
+    FileRoutesByPath['${routeNode.routePath}']['serverParentRoute'],
     FileRoutesByPath['${routeNode.routePath}']['id'],
     FileRoutesByPath['${routeNode.routePath}']['path'],
     FileRoutesByPath['${routeNode.routePath}']['fullPath']

@@ -11,111 +11,111 @@
 // Import Routes
 
 import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
+import type { CreateServerFileRoute } from '@tanstack/react-start'
 import { Route as rootRoute } from './routes/__root'
 import {
-  Route as UsersImport,
-  ServerRoute as UsersServerRoute,
+  Route as UsersRouteImport,
+  ServerRoute as UsersServerRouteImport,
 } from './routes/users'
-import { Route as RedirectImport } from './routes/redirect'
-import { Route as PostsImport } from './routes/posts'
-import { Route as DeferredImport } from './routes/deferred'
-import { Route as PathlessLayoutImport } from './routes/_pathlessLayout'
-import { Route as IndexImport } from './routes/index'
-import { Route as UsersIndexImport } from './routes/users.index'
-import { Route as PostsIndexImport } from './routes/posts.index'
+import { Route as RedirectRouteImport } from './routes/redirect'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as PathlessLayoutRouteImport } from './routes/_pathlessLayout'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import {
-  Route as UsersUserIdImport,
-  ServerRoute as UsersUserIdServerRoute,
+  Route as UsersUserIdRouteImport,
+  ServerRoute as UsersUserIdServerRouteImport,
 } from './routes/users.$userId'
-import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as PathlessLayoutNestedLayoutImport } from './routes/_pathlessLayout/_nested-layout'
-import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
-import { Route as PathlessLayoutNestedLayoutRouteBImport } from './routes/_pathlessLayout/_nested-layout/route-b'
-import { Route as PathlessLayoutNestedLayoutRouteAImport } from './routes/_pathlessLayout/_nested-layout/route-a'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as PathlessLayoutNestedLayoutRouteImport } from './routes/_pathlessLayout/_nested-layout'
+import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
+import { Route as PathlessLayoutNestedLayoutRouteBRouteImport } from './routes/_pathlessLayout/_nested-layout/route-b'
+import { Route as PathlessLayoutNestedLayoutRouteARouteImport } from './routes/_pathlessLayout/_nested-layout/route-a'
 
 // Create/Update Routes
 
-const UsersRoute = UsersImport.update({
+const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => rootRoute,
 } as any)
 
-const RedirectRoute = RedirectImport.update({
+const RedirectRoute = RedirectRouteImport.update({
   id: '/redirect',
   path: '/redirect',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsRoute = PostsImport.update({
+const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const DeferredRoute = DeferredImport.update({
+const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PathlessLayoutRoute = PathlessLayoutImport.update({
+const PathlessLayoutRoute = PathlessLayoutRouteImport.update({
   id: '/_pathlessLayout',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const UsersIndexRoute = UsersIndexImport.update({
+const UsersIndexRoute = UsersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => UsersRoute,
 } as any)
 
-const PostsIndexRoute = PostsIndexImport.update({
+const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const UsersUserIdRoute = UsersUserIdImport.update({
+const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
   getParentRoute: () => UsersRoute,
 } as any)
 
-const PostsPostIdRoute = PostsPostIdImport.update({
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const PathlessLayoutNestedLayoutRoute = PathlessLayoutNestedLayoutImport.update(
-  {
+const PathlessLayoutNestedLayoutRoute =
+  PathlessLayoutNestedLayoutRouteImport.update({
     id: '/_nested-layout',
     getParentRoute: () => PathlessLayoutRoute,
-  } as any,
-)
+  } as any)
 
-const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PathlessLayoutNestedLayoutRouteBRoute =
-  PathlessLayoutNestedLayoutRouteBImport.update({
+  PathlessLayoutNestedLayoutRouteBRouteImport.update({
     id: '/route-b',
     path: '/route-b',
     getParentRoute: () => PathlessLayoutNestedLayoutRoute,
   } as any)
 
 const PathlessLayoutNestedLayoutRouteARoute =
-  PathlessLayoutNestedLayoutRouteAImport.update({
+  PathlessLayoutNestedLayoutRouteARouteImport.update({
     id: '/route-a',
     path: '/route-a',
     getParentRoute: () => PathlessLayoutNestedLayoutRoute,
@@ -129,98 +129,102 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/_pathlessLayout': {
       id: '/_pathlessLayout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof PathlessLayoutImport
+      preLoaderRoute: typeof PathlessLayoutRouteImport
       parentRoute: typeof rootRoute
     }
     '/deferred': {
       id: '/deferred'
       path: '/deferred'
       fullPath: '/deferred'
-      preLoaderRoute: typeof DeferredImport
+      preLoaderRoute: typeof DeferredRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
     '/redirect': {
       id: '/redirect'
       path: '/redirect'
       fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectImport
+      preLoaderRoute: typeof RedirectRouteImport
       parentRoute: typeof rootRoute
     }
     '/users': {
       id: '/users'
       path: '/users'
       fullPath: '/users'
-      preLoaderRoute: typeof UsersImport
+      preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRoute
+      serverParentRoute: unknown
+      serverRoute: typeof UsersServerRouteImport
     }
     '/_pathlessLayout/_nested-layout': {
       id: '/_pathlessLayout/_nested-layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof PathlessLayoutNestedLayoutImport
-      parentRoute: typeof PathlessLayoutImport
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteImport
+      parentRoute: typeof PathlessLayoutRouteImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/users/$userId': {
       id: '/users/$userId'
       path: '/$userId'
       fullPath: '/users/$userId'
-      preLoaderRoute: typeof UsersUserIdImport
-      parentRoute: typeof UsersImport
+      preLoaderRoute: typeof UsersUserIdRouteImport
+      parentRoute: typeof UsersRouteImport
+      serverParentRoute: typeof UsersServerRouteImport
+      serverRoute: typeof UsersUserIdServerRouteImport
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/users/': {
       id: '/users/'
       path: '/'
       fullPath: '/users/'
-      preLoaderRoute: typeof UsersIndexImport
-      parentRoute: typeof UsersImport
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof UsersRouteImport
     }
     '/_pathlessLayout/_nested-layout/route-a': {
       id: '/_pathlessLayout/_nested-layout/route-a'
       path: '/route-a'
       fullPath: '/route-a'
-      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteAImport
-      parentRoute: typeof PathlessLayoutNestedLayoutImport
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteARouteImport
+      parentRoute: typeof PathlessLayoutNestedLayoutRouteImport
     }
     '/_pathlessLayout/_nested-layout/route-b': {
       id: '/_pathlessLayout/_nested-layout/route-b'
       path: '/route-b'
       fullPath: '/route-b'
-      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteBImport
-      parentRoute: typeof PathlessLayoutNestedLayoutImport
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteBRouteImport
+      parentRoute: typeof PathlessLayoutNestedLayoutRouteImport
     }
     '/posts_/$postId/deep': {
       id: '/posts_/$postId/deep'
       path: '/posts/$postId/deep'
       fullPath: '/posts/$postId/deep'
-      preLoaderRoute: typeof PostsPostIdDeepImport
+      preLoaderRoute: typeof PostsPostIdDeepRouteImport
       parentRoute: typeof rootRoute
     }
   }
@@ -236,10 +240,10 @@ declare module './routes/index' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/',
-    ServerFileRoutesByPath['/']['parentRoute'],
-    ServerFileRoutesByPath['/']['id'],
-    ServerFileRoutesByPath['/']['path'],
-    ServerFileRoutesByPath['/']['fullPath']
+    FileRoutesByPath['/']['serverParentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
   >
 }
 declare module './routes/_pathlessLayout' {
@@ -252,10 +256,10 @@ declare module './routes/_pathlessLayout' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/_pathlessLayout',
-    ServerFileRoutesByPath['/_pathlessLayout']['parentRoute'],
-    ServerFileRoutesByPath['/_pathlessLayout']['id'],
-    ServerFileRoutesByPath['/_pathlessLayout']['path'],
-    ServerFileRoutesByPath['/_pathlessLayout']['fullPath']
+    FileRoutesByPath['/_pathlessLayout']['serverParentRoute'],
+    FileRoutesByPath['/_pathlessLayout']['id'],
+    FileRoutesByPath['/_pathlessLayout']['path'],
+    FileRoutesByPath['/_pathlessLayout']['fullPath']
   >
 }
 declare module './routes/deferred' {
@@ -268,10 +272,10 @@ declare module './routes/deferred' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/deferred',
-    ServerFileRoutesByPath['/deferred']['parentRoute'],
-    ServerFileRoutesByPath['/deferred']['id'],
-    ServerFileRoutesByPath['/deferred']['path'],
-    ServerFileRoutesByPath['/deferred']['fullPath']
+    FileRoutesByPath['/deferred']['serverParentRoute'],
+    FileRoutesByPath['/deferred']['id'],
+    FileRoutesByPath['/deferred']['path'],
+    FileRoutesByPath['/deferred']['fullPath']
   >
 }
 declare module './routes/posts' {
@@ -284,10 +288,10 @@ declare module './routes/posts' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/posts',
-    ServerFileRoutesByPath['/posts']['parentRoute'],
-    ServerFileRoutesByPath['/posts']['id'],
-    ServerFileRoutesByPath['/posts']['path'],
-    ServerFileRoutesByPath['/posts']['fullPath']
+    FileRoutesByPath['/posts']['serverParentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
   >
 }
 declare module './routes/redirect' {
@@ -300,10 +304,10 @@ declare module './routes/redirect' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/redirect',
-    ServerFileRoutesByPath['/redirect']['parentRoute'],
-    ServerFileRoutesByPath['/redirect']['id'],
-    ServerFileRoutesByPath['/redirect']['path'],
-    ServerFileRoutesByPath['/redirect']['fullPath']
+    FileRoutesByPath['/redirect']['serverParentRoute'],
+    FileRoutesByPath['/redirect']['id'],
+    FileRoutesByPath['/redirect']['path'],
+    FileRoutesByPath['/redirect']['fullPath']
   >
 }
 declare module './routes/users' {
@@ -316,10 +320,10 @@ declare module './routes/users' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/users',
-    ServerFileRoutesByPath['/users']['parentRoute'],
-    ServerFileRoutesByPath['/users']['id'],
-    ServerFileRoutesByPath['/users']['path'],
-    ServerFileRoutesByPath['/users']['fullPath']
+    FileRoutesByPath['/users']['serverParentRoute'],
+    FileRoutesByPath['/users']['id'],
+    FileRoutesByPath['/users']['path'],
+    FileRoutesByPath['/users']['fullPath']
   >
 }
 declare module './routes/_pathlessLayout/_nested-layout' {
@@ -332,10 +336,10 @@ declare module './routes/_pathlessLayout/_nested-layout' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/_pathlessLayout/_nested-layout',
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout']['parentRoute'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout']['id'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout']['path'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout']['fullPath']
+    FileRoutesByPath['/_pathlessLayout/_nested-layout']['serverParentRoute'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout']['id'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout']['path'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout']['fullPath']
   >
 }
 declare module './routes/posts.$postId' {
@@ -348,10 +352,10 @@ declare module './routes/posts.$postId' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/posts/$postId',
-    ServerFileRoutesByPath['/posts/$postId']['parentRoute'],
-    ServerFileRoutesByPath['/posts/$postId']['id'],
-    ServerFileRoutesByPath['/posts/$postId']['path'],
-    ServerFileRoutesByPath['/posts/$postId']['fullPath']
+    FileRoutesByPath['/posts/$postId']['serverParentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
   >
 }
 declare module './routes/users.$userId' {
@@ -364,10 +368,10 @@ declare module './routes/users.$userId' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/users/$userId',
-    ServerFileRoutesByPath['/users/$userId']['parentRoute'],
-    ServerFileRoutesByPath['/users/$userId']['id'],
-    ServerFileRoutesByPath['/users/$userId']['path'],
-    ServerFileRoutesByPath['/users/$userId']['fullPath']
+    FileRoutesByPath['/users/$userId']['serverParentRoute'],
+    FileRoutesByPath['/users/$userId']['id'],
+    FileRoutesByPath['/users/$userId']['path'],
+    FileRoutesByPath['/users/$userId']['fullPath']
   >
 }
 declare module './routes/posts.index' {
@@ -380,10 +384,10 @@ declare module './routes/posts.index' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/posts/',
-    ServerFileRoutesByPath['/posts/']['parentRoute'],
-    ServerFileRoutesByPath['/posts/']['id'],
-    ServerFileRoutesByPath['/posts/']['path'],
-    ServerFileRoutesByPath['/posts/']['fullPath']
+    FileRoutesByPath['/posts/']['serverParentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
   >
 }
 declare module './routes/users.index' {
@@ -396,10 +400,10 @@ declare module './routes/users.index' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/users/',
-    ServerFileRoutesByPath['/users/']['parentRoute'],
-    ServerFileRoutesByPath['/users/']['id'],
-    ServerFileRoutesByPath['/users/']['path'],
-    ServerFileRoutesByPath['/users/']['fullPath']
+    FileRoutesByPath['/users/']['serverParentRoute'],
+    FileRoutesByPath['/users/']['id'],
+    FileRoutesByPath['/users/']['path'],
+    FileRoutesByPath['/users/']['fullPath']
   >
 }
 declare module './routes/_pathlessLayout/_nested-layout/route-a' {
@@ -412,10 +416,10 @@ declare module './routes/_pathlessLayout/_nested-layout/route-a' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/_pathlessLayout/_nested-layout/route-a',
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['parentRoute'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['id'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['path'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['fullPath']
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['serverParentRoute'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['id'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['path'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['fullPath']
   >
 }
 declare module './routes/_pathlessLayout/_nested-layout/route-b' {
@@ -428,10 +432,10 @@ declare module './routes/_pathlessLayout/_nested-layout/route-b' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/_pathlessLayout/_nested-layout/route-b',
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['parentRoute'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['id'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['path'],
-    ServerFileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['fullPath']
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['serverParentRoute'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['id'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['path'],
+    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['fullPath']
   >
 }
 declare module './routes/posts_.$postId.deep' {
@@ -444,10 +448,10 @@ declare module './routes/posts_.$postId.deep' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/posts_/$postId/deep',
-    ServerFileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
-    ServerFileRoutesByPath['/posts_/$postId/deep']['id'],
-    ServerFileRoutesByPath['/posts_/$postId/deep']['path'],
-    ServerFileRoutesByPath['/posts_/$postId/deep']['fullPath']
+    FileRoutesByPath['/posts_/$postId/deep']['serverParentRoute'],
+    FileRoutesByPath['/posts_/$postId/deep']['id'],
+    FileRoutesByPath['/posts_/$postId/deep']['path'],
+    FileRoutesByPath['/posts_/$postId/deep']['fullPath']
   >
 }
 
@@ -523,6 +527,11 @@ export interface FileRoutesByFullPath {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
 }
 
+export interface ServerFileRoutesByFullPath {
+  '/users': typeof UsersServerRouteWithChildren
+  '/users/$userId': typeof UsersUserIdServerRoute
+}
+
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof PathlessLayoutNestedLayoutRouteWithChildren
@@ -535,6 +544,10 @@ export interface FileRoutesByTo {
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
   '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+}
+
+export interface ServerFileRoutesByTo {
+  '/users/$userId': typeof UsersUserIdServerRoute
 }
 
 export interface FileRoutesById {
@@ -553,6 +566,11 @@ export interface FileRoutesById {
   '/_pathlessLayout/_nested-layout/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
   '/_pathlessLayout/_nested-layout/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
+}
+
+export interface ServerFileRoutesById {
+  '/users': typeof UsersServerRouteWithChildren
+  '/users/$userId': typeof UsersUserIdServerRoute
 }
 
 export interface FileRouteTypes {
