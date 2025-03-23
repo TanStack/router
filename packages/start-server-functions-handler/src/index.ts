@@ -286,7 +286,7 @@ async function handleServerRequest({
   if (response.headers.get('Content-Type') === 'application/json') {
     const cloned = response.clone()
     const text = await cloned.text()
-    const payload = text ? JSON.stringify(JSON.parse(text)) : 'undefined'
+    const payload = text ? text : 'undefined'
 
     if (process.env.NODE_ENV === 'development')
       console.info(

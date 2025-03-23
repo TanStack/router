@@ -76,11 +76,11 @@ export async function serverFnFetcher(
     if (response.headers.get('content-type')?.includes('application/json')) {
       // Even though the response is JSON, we need to decode it
       // because the server may have transformed it
-      const json = startSerializer.decode(await response.json())
+      const json = startSerializer.decode(await response.text())
 
       // If the response is a redirect or not found, throw it
       // for the router to handle
-      if (isRedirect(json) || isNotFound(json) || json instanceof Error) {
+      if (isRedirect(json) || isNotFound(json)) {
         throw json
       }
 
@@ -108,7 +108,7 @@ export async function serverFnFetcher(
   // If the response is JSON, return it parsed
   const contentType = response.headers.get('content-type')
   if (contentType && contentType.includes('application/json')) {
-    return startSerializer.decode(await response.json())
+    return startSerializer.decode(await response.text())
   } else {
     // Otherwise, return the text as a fallback
     // If the user wants more than this, they can pass a
@@ -145,7 +145,7 @@ async function handleResponseErrors(response: Response) {
     const isJson = contentType && contentType.includes('application/json')
 
     if (isJson) {
-      throw startSerializer.decode(await response.json())
+      throw startSerializer.decode(await response.text())
     }
 
     throw new Error(await response.text())
