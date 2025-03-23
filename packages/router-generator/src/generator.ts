@@ -610,13 +610,13 @@ export async function generator(config: Config, root: string) {
     [
       `import type { FileRoutesByPath, CreateFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
       `import type { CreateServerFileRoute } from '${ROUTE_TEMPLATE.startPkg}'`,
-      `import { Route as rootRoute } from './${getImportPath(rootRouteNode)}'`,
+      `import { Route as rootRoute ${rootRouteNode.hasServerRoute ? `, ServerRoute as rootServerRoute` : ''} } from './${getImportPath(rootRouteNode)}'`,
       ...sortedRouteNodes
         .filter((d) => !d.isVirtual)
         .map((node) => {
           return `import { Route as ${
             node.variableName
-          }Import ${node.hasServerRoute ? `, ServerRoute as ${node.variableName}ServerRoute` : ''} } from './${getImportPath(node)}'`
+          }RouteImport ${node.hasServerRoute ? `, ServerRoute as ${node.variableName}ServerRouteImport` : ''} } from './${getImportPath(node)}'`
         }),
     ].join('\n'),
     virtualRouteNodes.length ? '// Create Virtual Routes' : '',
@@ -624,7 +624,7 @@ export async function generator(config: Config, root: string) {
       .map((node) => {
         return `const ${
           node.variableName
-        }Import = createFileRoute('${node.routePath}')()`
+        }RouteImport = createFileRoute('${node.routePath}')()`
       })
       .join('\n'),
     '// Create/Update Routes',
@@ -639,7 +639,7 @@ export async function generator(config: Config, root: string) {
         const lazyComponentNode = routePiecesByPath[node.routePath!]?.lazy
 
         return [
-          `const ${node.variableName}Route = ${node.variableName}Import.update({
+          `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
           ${[
             `id: '${node.path}'`,
             !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
@@ -716,14 +716,15 @@ export async function generator(config: Config, root: string) {
           id: '${filePathId}'
           path: '${inferPath(routeNode)}'
           fullPath: '${inferFullPath(routeNode)}'
-          preLoaderRoute: typeof ${routeNode.variableName}Import
+          preLoaderRoute: typeof ${routeNode.variableName}RouteImport
           parentRoute: typeof ${
             routeNode.isVirtualParentRequired
               ? `${routeNode.parent?.variableName}Route`
               : routeNode.parent?.variableName
-                ? `${routeNode.parent.variableName}Import`
+                ? `${routeNode.parent.variableName}RouteImport`
                 : 'rootRoute'
           }
+          ${routeNode.hasServerRoute ? `serverRoute: typeof ${routeNode.variableName}ServerRouteImport` : ''}
         }`
       })
       .join('\n')}
@@ -762,16 +763,38 @@ export async function generator(config: Config, root: string) {
     },
   )}
 }`,
+          `export interface ServerFileRoutesByFullPath {
+  ${[...createRouteNodesByFullPath(routeNodes).entries()]
+    .filter(([_, routeNode]) => routeNode.hasServerRoute)
+    .map(([fullPath, routeNode]) => {
+      return `'${fullPath}': typeof ${getResolvedServerRouteNodeVariableName(routeNode)}`
+    })}
+}`,
           `export interface FileRoutesByTo {
   ${[...createRouteNodesByTo(routeNodes).entries()].map(([to, routeNode]) => {
     return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
+}`,
+          `export interface ServerFileRoutesByTo {
+  ${[...createRouteNodesByTo(routeNodes).entries()]
+    .filter(([_, routeNode]) => routeNode.hasServerRoute)
+    .map(([to, routeNode]) => {
+      return `'${to}': typeof ${getResolvedServerRouteNodeVariableName(routeNode)}`
+    })}
 }`,
           `export interface FileRoutesById {
   '__root__': typeof rootRoute,
   ${[...createRouteNodesById(routeNodes).entries()].map(([id, routeNode]) => {
     return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
+}`,
+          `export interface ServerFileRoutesById {
+  ${rootRouteNode.hasServerRoute ? `'__root__': typeof rootServerRoute,` : ''}
+  ${[...createRouteNodesById(routeNodes).entries()]
+    .filter(([_, routeNode]) => routeNode.hasServerRoute)
+    .map(([id, routeNode]) => {
+      return `'${id}': typeof ${getResolvedServerRouteNodeVariableName(routeNode)}`
+    })}
 }`,
           `export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -973,6 +996,17 @@ export const getResolvedRouteNodeVariableName = (
   return routeNode.children?.length
     ? `${routeNode.variableName}RouteWithChildren`
     : `${routeNode.variableName}Route`
+}
+
+/**
+ * Gets the final variable name for a server route
+ */
+export const getResolvedServerRouteNodeVariableName = (
+  routeNode: RouteNode,
+): string => {
+  return routeNode.children?.length
+    ? `${routeNode.variableName}ServerRouteWithChildren`
+    : `${routeNode.variableName}ServerRoute`
 }
 
 /**
