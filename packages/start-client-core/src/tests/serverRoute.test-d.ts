@@ -9,7 +9,7 @@ test('createServerFileRoute with methods with no middleware', () => {
   expectTypeOf(serverFileRoute).toHaveProperty('methods')
   expectTypeOf(serverFileRoute).toHaveProperty('middleware')
 
-  serverFileRoute.methods({
+  const serverFileRouteWithMethods1 = serverFileRoute.methods({
     GET: async (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         data: undefined
@@ -20,12 +20,12 @@ test('createServerFileRoute with methods with no middleware', () => {
       }>()
 
       return json({
-        test: 'hi',
+        test: 'test',
       })
     },
   })
 
-  serverFileRoute.methods((r) => ({
+  const serverFileRouteWithMethods2 = serverFileRoute.methods((r) => ({
     GET: r.handler(async (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         data: undefined
@@ -40,6 +40,26 @@ test('createServerFileRoute with methods with no middleware', () => {
       })
     }),
   }))
+
+  expectTypeOf<
+    keyof typeof serverFileRouteWithMethods1.methods
+  >().toEqualTypeOf<'get'>()
+
+  expectTypeOf<
+    keyof typeof serverFileRouteWithMethods2.methods
+  >().toEqualTypeOf<'get'>()
+
+  expectTypeOf(serverFileRouteWithMethods1.methods.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+
+  expectTypeOf(serverFileRouteWithMethods2.methods.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
 })
 
 test('createServerFileRoute with methods and route middleware context', () => {
@@ -51,7 +71,7 @@ test('createServerFileRoute with methods and route middleware context', () => {
     routeMiddleware,
   ])
 
-  serverFileRoute.methods({
+  const serverFileRouteWithMethods1 = serverFileRoute.methods({
     GET: async (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         data: undefined
@@ -62,12 +82,12 @@ test('createServerFileRoute with methods and route middleware context', () => {
       }>()
 
       return json({
-        test: 'hi',
+        test: 'test',
       })
     },
   })
 
-  serverFileRoute.methods((r) => ({
+  const serverFileRouteWithMethods2 = serverFileRoute.methods((r) => ({
     GET: r.handler(async (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         data: undefined
@@ -82,6 +102,18 @@ test('createServerFileRoute with methods and route middleware context', () => {
       })
     }),
   }))
+
+  expectTypeOf(serverFileRouteWithMethods1.methods.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+
+  expectTypeOf(serverFileRouteWithMethods2.methods.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
 })
 
 test('createServerFileRoute with methods middleware and route middleware', () => {
@@ -157,7 +189,7 @@ test('createServerFileRoute with route middleware validator, methods middleware 
 
   const methodMiddleware = createMiddleware().validator(() => ({ b: 'b' }))
 
-  createServerFileRoute<'$detailId'>()()
+  const serverRoute = createServerFileRoute<'$detailId'>()()
     .middleware([routeMiddleware])
     .methods((r) => ({
       GET: r

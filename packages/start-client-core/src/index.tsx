@@ -101,8 +101,8 @@ export type {
   ServerRouteMethodHandlerFn,
   ServerRouteOptions,
   ServerRouteMethodOptions,
-  ServerRouteMethodsBuilder,
+  ServerRouteMethodBuilder,
   ServerRouteMethodsBuilderAfterMiddleware,
-  ServerRouteMethodsBuilderMiddleware,
+  ServerRouteMethodBuilderMiddleware,
   CreateServerFileRoute,
 } from './serverRoute'
