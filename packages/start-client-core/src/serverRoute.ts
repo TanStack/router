@@ -26,13 +26,13 @@ export type ServerRouteVerb = (typeof ServerRouteVerbs)[number]
 
 export type ServerRouteMethodRecordValue<
   TParentRoute extends AnyServerRouteWithTypes,
-  TPath extends string,
+  TFullPath extends string,
   TVerb extends ServerRouteVerb,
   TMiddlewares,
 > =
   | ServerRouteMethodHandlerFn<
       TParentRoute,
-      TPath,
+      TFullPath,
       TVerb,
       TMiddlewares,
       undefined,
@@ -43,31 +43,51 @@ export type ServerRouteMethodRecordValue<
 
 export interface ServerRouteMethodsRecord<
   TParentRoute extends AnyServerRouteWithTypes,
-  TPath extends string,
+  TFullPath extends string,
   TMiddlewares,
 > {
-  GET?: ServerRouteMethodRecordValue<TParentRoute, TPath, 'GET', TMiddlewares>
-  POST?: ServerRouteMethodRecordValue<TParentRoute, TPath, 'POST', TMiddlewares>
-  PUT?: ServerRouteMethodRecordValue<TParentRoute, TPath, 'PUT', TMiddlewares>
+  GET?: ServerRouteMethodRecordValue<
+    TParentRoute,
+    TFullPath,
+    'GET',
+    TMiddlewares
+  >
+  POST?: ServerRouteMethodRecordValue<
+    TParentRoute,
+    TFullPath,
+    'POST',
+    TMiddlewares
+  >
+  PUT?: ServerRouteMethodRecordValue<
+    TParentRoute,
+    TFullPath,
+    'PUT',
+    TMiddlewares
+  >
   PATCH?: ServerRouteMethodRecordValue<
     TParentRoute,
-    TPath,
+    TFullPath,
     'PATCH',
     TMiddlewares
   >
   DELETE?: ServerRouteMethodRecordValue<
     TParentRoute,
-    TPath,
+    TFullPath,
     'DELETE',
     TMiddlewares
   >
   OPTIONS?: ServerRouteMethodRecordValue<
     TParentRoute,
-    TPath,
+    TFullPath,
     'OPTIONS',
     TMiddlewares
   >
-  HEAD?: ServerRouteMethodRecordValue<TParentRoute, TPath, 'HEAD', TMiddlewares>
+  HEAD?: ServerRouteMethodRecordValue<
+    TParentRoute,
+    TFullPath,
+    'HEAD',
+    TMiddlewares
+  >
 }
 
 export type CreateServerFileRoute<
