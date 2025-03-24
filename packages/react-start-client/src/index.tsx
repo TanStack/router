@@ -9,7 +9,6 @@ export {
   serverOnly,
   clientOnly,
   createServerFileRoute,
-  methods,
   json,
 } from '@tanstack/start-client-core'
 export {

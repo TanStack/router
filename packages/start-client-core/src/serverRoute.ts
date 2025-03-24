@@ -72,7 +72,9 @@ export function createServerRoute<
         get(target, propKey) {
           return (...args: Array<any>) => {
             if (typeof propKey === 'string') {
-              const method = resolvedOpts.methods[propKey]
+              const method = resolvedOpts.methods[
+                propKey as keyof typeof resolvedOpts.methods
+              ] as ((...args: Array<any>) => any) | undefined
               if (method) {
                 return method(...args)
               }
@@ -82,14 +84,7 @@ export function createServerRoute<
         },
       },
     ),
-  } as ServerRouteAfterMethods<
-    TParentRoute,
-    TId,
-    TPath,
-    TFullPath,
-    ReadonlyArray<AnyMiddleware>,
-    any
-  >
+  } as ServerRoute<TParentRoute, TId, TPath, TFullPath>
 }
 
 const createMethodBuilder = <
@@ -706,7 +701,7 @@ export interface ServerRouteOptions<
   TFullPath extends RouteConstraints['TFullPath'],
   TMiddlewares,
 > {
-  middleware: Constrain<TMiddlewares, Middleware<any>>
+  middleware: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
   methods: ServerRouteMethods<
     TParentRoute,
     TId,

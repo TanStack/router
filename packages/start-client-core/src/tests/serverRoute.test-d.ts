@@ -51,32 +51,32 @@ test('createServerFileRoute with methods with no middleware', () => {
   }))
 
   expectTypeOf<
-    keyof typeof serverFileRouteWithMethods1.methods
+    keyof typeof serverFileRouteWithMethods1.client
   >().toEqualTypeOf<'get'>()
 
   expectTypeOf<
-    keyof typeof serverFileRouteWithMethods2.methods
+    keyof typeof serverFileRouteWithMethods2.client
   >().toEqualTypeOf<'get'>()
 
-  expectTypeOf(serverFileRouteWithMethods1.methods.get).returns.toEqualTypeOf<
+  expectTypeOf(serverFileRouteWithMethods1.client.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
 
-  expectTypeOf(
-    serverFileRouteWithMethods1.methods.get,
-  ).parameters.toEqualTypeOf<[options: { params: { detailId: string } }]>()
+  expectTypeOf(serverFileRouteWithMethods1.client.get).parameters.toEqualTypeOf<
+    [options: { params: { detailId: string } }]
+  >()
 
-  expectTypeOf(serverFileRouteWithMethods2.methods.get).returns.toEqualTypeOf<
+  expectTypeOf(serverFileRouteWithMethods2.client.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
 
-  expectTypeOf(
-    serverFileRouteWithMethods2.methods.get,
-  ).parameters.toEqualTypeOf<[options: { params: { detailId: string } }]>()
+  expectTypeOf(serverFileRouteWithMethods2.client.get).parameters.toEqualTypeOf<
+    [options: { params: { detailId: string } }]
+  >()
 })
 
 test('createServerFileRoute with methods and route middleware context', () => {
@@ -127,25 +127,25 @@ test('createServerFileRoute with methods and route middleware context', () => {
     }),
   }))
 
-  expectTypeOf(serverFileRouteWithMethods1.methods.get).returns.toEqualTypeOf<
+  expectTypeOf(serverFileRouteWithMethods1.client.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
 
-  expectTypeOf(
-    serverFileRouteWithMethods1.methods.get,
-  ).parameters.toEqualTypeOf<[options: { params: { detailId: string } }]>()
+  expectTypeOf(serverFileRouteWithMethods1.client.get).parameters.toEqualTypeOf<
+    [options: { params: { detailId: string } }]
+  >()
 
-  expectTypeOf(serverFileRouteWithMethods2.methods.get).returns.toEqualTypeOf<
+  expectTypeOf(serverFileRouteWithMethods2.client.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
 
-  expectTypeOf(
-    serverFileRouteWithMethods2.methods.get,
-  ).parameters.toEqualTypeOf<[options: { params: { detailId: string } }]>()
+  expectTypeOf(serverFileRouteWithMethods2.client.get).parameters.toEqualTypeOf<
+    [options: { params: { detailId: string } }]
+  >()
 })
 
 test('createServerFileRoute with methods middleware and route middleware', () => {
@@ -184,13 +184,13 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
     }),
   }))
 
-  expectTypeOf(serverRoute.methods.get).returns.toEqualTypeOf<
+  expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
 
-  expectTypeOf(serverRoute.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
     [options: { params: { detailId: string } }]
   >()
 })
@@ -221,13 +221,13 @@ test('createServerFileRoute with methods validator', () => {
       }),
   }))
 
-  expectTypeOf(serverRoute.methods.get).returns.toEqualTypeOf<
+  expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
 
-  expectTypeOf(serverRoute.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
     [options: { params: { detailId: string } }]
   >()
 })
@@ -303,13 +303,13 @@ test('createServerFileRoute with route middleware validator, methods middleware 
         }),
     }))
 
-  expectTypeOf(serverRoute.methods.get).returns.toEqualTypeOf<
+  expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
 
-  expectTypeOf(serverRoute.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
     [
       options: {
         params: { detailId: string }
@@ -386,7 +386,7 @@ test('createServerFileRoute with a parent middleware context', () => {
       }),
     }))
 
-  expectTypeOf(detailServerRoute1.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(detailServerRoute1.client.get).parameters.toEqualTypeOf<
     [
       options: {
         params: { detailId: string }
@@ -394,7 +394,7 @@ test('createServerFileRoute with a parent middleware context', () => {
     ]
   >()
 
-  expectTypeOf(detailServerRoute2.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(detailServerRoute2.client.get).parameters.toEqualTypeOf<
     [
       options: {
         params: { detailId: string }
@@ -450,7 +450,7 @@ test('createServerFileRoute with parent middleware params', () => {
     }),
   }))
 
-  expectTypeOf(detailServerRoute1.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(detailServerRoute1.client.get).parameters.toEqualTypeOf<
     [
       options: {
         params: { userId: string; detailId: string }
@@ -458,7 +458,7 @@ test('createServerFileRoute with parent middleware params', () => {
     ]
   >()
 
-  expectTypeOf(detailServerRoute2.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(detailServerRoute2.client.get).parameters.toEqualTypeOf<
     [
       options: {
         params: { userId: string; detailId: string }
@@ -504,7 +504,7 @@ test('createServerFileRoute with no params', () => {
     }),
   }))
 
-  expectTypeOf(detailServerRoute1.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(detailServerRoute1.client.get).parameters.toEqualTypeOf<
     [
       options?: {
         params?: {}
@@ -512,7 +512,7 @@ test('createServerFileRoute with no params', () => {
     ]
   >()
 
-  expectTypeOf(detailServerRoute2.methods.get).parameters.toEqualTypeOf<
+  expectTypeOf(detailServerRoute2.client.get).parameters.toEqualTypeOf<
     [
       options?: {
         params?: {}
