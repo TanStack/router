@@ -17,13 +17,10 @@ export const ServerRoute = createServerFileRoute().methods({
 })
 
 export const Route = createFileRoute({
-  loader: async () => {
-    return await axios
-      .get<Array<User>>('/api/users')
-      .then((r) => r.data)
-      .catch(() => {
-        throw new Error('Failed to fetch users')
-      })
+  loader: () => {
+    return ServerRoute.methods.get().catch(() => {
+      throw new Error('Failed to fetch users')
+    })
   },
   component: UsersComponent,
 })

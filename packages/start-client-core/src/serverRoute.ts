@@ -15,14 +15,110 @@ import type {
 } from '@tanstack/router-core'
 import type { JsonResponse } from './createServerFn'
 
+type TODO = any
+
 export function createServerFileRoute<
   TFilePath extends string,
   TParentRoute extends AnyServerRouteWithTypes,
   TId extends RouteConstraints['TId'],
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
->(): CreateServerFileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath> {
-  return undefined as any
+>(): ServerRoute<TParentRoute, TId, TPath, TFullPath> {
+  return createServerRoute<TParentRoute, TId, TPath, TFullPath>()
+}
+
+export function createServerRoute<
+  TParentRoute extends AnyServerRouteWithTypes,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+>(
+  __?: never,
+  __opts?: ServerRouteOptions<TParentRoute, TId, TPath, TFullPath, undefined>,
+): ServerRoute<TParentRoute, TId, TPath, TFullPath> {
+  const resolvedOpts = (__opts || {}) as ServerRouteOptions<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    undefined
+  >
+
+  return {
+    options: resolvedOpts,
+    _types: {} as TODO,
+    middleware: (middlewares) =>
+      createServerRoute(undefined, {
+        ...resolvedOpts,
+        middleware: middlewares,
+      }) as TODO,
+    methods: (methodsOrGetMethods) => {
+      const methods = (() => {
+        if (typeof methodsOrGetMethods === 'function') {
+          return methodsOrGetMethods(createMethodBuilder())
+        }
+
+        return methodsOrGetMethods
+      })()
+
+      return createServerRoute(undefined, {
+        ...__opts,
+        methods,
+      } as TODO) as TODO
+    },
+    client: new Proxy(
+      {},
+      {
+        get(target, propKey) {
+          return (...args: Array<any>) => {
+            if (typeof propKey === 'string') {
+              const method = resolvedOpts.methods[propKey]
+              if (method) {
+                return method(...args)
+              }
+            }
+            throw new Error(`Method ${String(propKey)} not found`)
+          }
+        },
+      },
+    ),
+  } as ServerRouteAfterMethods<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    ReadonlyArray<AnyMiddleware>,
+    any
+  >
+}
+
+const createMethodBuilder = <
+  TParentRoute extends AnyServerRouteWithTypes,
+  TFullPath extends string,
+  TVerb extends ServerRouteVerb,
+  TMiddlewares,
+>(
+  __opts?: TODO,
+): ServerRouteMethodBuilder<TParentRoute, TFullPath, TVerb, TMiddlewares> => {
+  return {
+    _options: __opts || {},
+    _types: {} as TODO,
+    middleware: (middlewares) =>
+      createMethodBuilder({
+        ...__opts,
+        middlewares,
+      }) as TODO,
+    validator: (validator) =>
+      createMethodBuilder({
+        ...__opts,
+        validator,
+      }) as TODO,
+    handler: (handler) =>
+      createMethodBuilder({
+        ...__opts,
+        handler,
+      }) as TODO,
+  }
 }
 
 export type CreateServerFileRoute<
@@ -370,6 +466,7 @@ export interface ServerRouteMethodBuilderWithTypes<
   TValidator,
   TResponse,
 > {
+  _options: TODO
   _types: ServerRouteMethodBuilderTypes<
     TFullPath,
     TMiddlewares,
@@ -599,7 +696,7 @@ export interface ServerRouteAfterMethods<
     TMethods
   > {
   options: ServerRouteOptions<TParentRoute, TId, TPath, TFullPath, TMiddlewares>
-  methods: ServerRouteMethodsClient<TFullPath, TMethods>
+  client: ServerRouteMethodsClient<TFullPath, TMethods>
 }
 
 export interface ServerRouteOptions<

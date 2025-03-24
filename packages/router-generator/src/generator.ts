@@ -18,18 +18,9 @@ import {
 import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
-import {
-  defaultAPIRouteTemplate,
-  fillTemplate,
-  getTargetTemplate,
-} from './template'
+import { fillTemplate, getTargetTemplate } from './template'
 import type { FsRouteType, GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
-
-export const CONSTANTS = {
-  // When changing this, you'll want to update the import in `start-api-routes/src/index.ts#defaultAPIFileRouteHandler`
-  APIRouteExportVariable: 'APIRoute',
-}
 
 let latestTask = 0
 const routeGroupPatternRegex = /\(.+\)/g
@@ -77,8 +68,7 @@ export async function generator(config: Config, root: string) {
   const TYPES_DISABLED = config.disableTypes
 
   // Controls whether API Routes are generated for TanStack Start
-  const ENABLED_API_ROUTES_GENERATION =
-    config.__enableAPIRoutesGeneration ?? false
+  const ENABLED_SERVER_ROUTES = config.__enableAPIRoutesGeneration ?? false
 
   let getRouteNodesResult: GetRouteNodesResult
 
@@ -116,30 +106,6 @@ export async function generator(config: Config, root: string) {
 
   const routeTree: Array<RouteNode> = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
-
-  // Filtered API Route nodes
-  const onlyAPIRouteNodes = preRouteNodes.filter((d) => {
-    if (!ENABLED_API_ROUTES_GENERATION) {
-      return false
-    }
-
-    if (d._fsRouteType !== 'api') {
-      return false
-    }
-
-    return true
-  })
-
-  // Filtered Generator Route nodes
-  const onlyGeneratorRouteNodes = preRouteNodes.filter((d) => {
-    if (ENABLED_API_ROUTES_GENERATION) {
-      if (d._fsRouteType === 'api') {
-        return false
-      }
-    }
-
-    return true
-  })
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
@@ -448,76 +414,16 @@ export async function generator(config: Config, root: string) {
     routeNodes.push(node)
   }
 
-  for (const node of onlyGeneratorRouteNodes) {
+  for (const node of preRouteNodes) {
     await handleNode(node)
   }
+
   checkRouteFullPathUniqueness(
     preRouteNodes.filter(
-      (d) =>
-        d.children === undefined &&
-        (['api', 'lazy'] satisfies Array<FsRouteType>).every(
-          (type) => type !== d._fsRouteType,
-        ),
+      (d) => d.children === undefined && 'lazy' !== d._fsRouteType,
     ),
     config,
   )
-
-  const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
-    onlyAPIRouteNodes,
-    config,
-  )
-
-  const handleAPINode = async (node: RouteNode) => {
-    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
-
-    const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
-
-    if (!routeCode) {
-      const replaced = await fillTemplate(
-        config,
-        config.customScaffolding?.apiTemplate ?? defaultAPIRouteTemplate,
-        {
-          tsrImports:
-            "import { createAPIFileRoute } from '@tanstack/react-start/api';",
-          tsrPath: escapedRoutePath,
-          tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
-          tsrExportEnd: ');',
-        },
-      )
-
-      await writeIfDifferent(
-        node.fullPath,
-        '', // Empty string because the file doesn't exist yet
-        replaced,
-        {
-          beforeWrite: () => {
-            logger.log(`🟡 Creating ${node.fullPath}`)
-          },
-        },
-      )
-    } else {
-      await writeIfDifferent(
-        node.fullPath,
-        routeCode,
-        routeCode.replace(
-          /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-          (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
-        ),
-        {
-          beforeWrite: () => {
-            logger.log(`🟡 Updating ${node.fullPath}`)
-          },
-        },
-      )
-    }
-  }
-
-  // Handle the API routes for TanStack Start
-  if (ENABLED_API_ROUTES_GENERATION) {
-    for (const node of startAPIRouteNodes) {
-      await handleAPINode(node)
-    }
-  }
 
   function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
@@ -609,7 +515,12 @@ export async function generator(config: Config, root: string) {
     '// Import Routes',
     [
       `import type { FileRoutesByPath, CreateFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
-      `import type { CreateServerFileRoute } from '${ROUTE_TEMPLATE.startPkg}'`,
+      ...(ENABLED_SERVER_ROUTES
+        ? [
+            `import { serverOnly } from '${ROUTE_TEMPLATE.startPkg}'`,
+            `import type { CreateServerFileRoute } from '${ROUTE_TEMPLATE.startPkg}'`,
+          ]
+        : ''),
       `import { Route as rootRoute ${rootRouteNode.hasServerRoute ? `, ServerRoute as rootServerRoute` : ''} } from './${getImportPath(rootRouteNode)}'`,
       ...sortedRouteNodes
         .filter((d) => !d.isVirtual)
@@ -644,6 +555,9 @@ export async function generator(config: Config, root: string) {
             `id: '${node.path}'`,
             !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
+            ENABLED_SERVER_ROUTES && node.hasServerRoute
+              ? `staticData: createIsomorphicFn().server(() => ({ ...${node.parent?.variableName ?? 'root'}Route.staticData, serverRoute: ${node.variableName}ServerRoute })).client(() => ${node.parent?.variableName ?? 'root'}Route.staticData)`
+              : undefined,
           ]
             .filter(Boolean)
             .join(',')}
@@ -729,7 +643,7 @@ export async function generator(config: Config, root: string) {
               ? `serverParentRoute: ${routeNode.parent?.hasServerRoute ? `typeof ${routeNode.parent.variableName}ServerRouteImport` : 'unknown'}`
               : ''
           }
-          ${routeNode.hasServerRoute ? `serverRoute: typeof ${routeNode.variableName}ServerRouteImport` : ''}
+          ${ENABLED_SERVER_ROUTES && routeNode.hasServerRoute ? `serverRoute: typeof ${routeNode.variableName}ServerRouteImport` : ''}
         }`
       })
       .join('\n')}
@@ -746,13 +660,17 @@ export async function generator(config: Config, root: string) {
     FileRoutesByPath['${routeNode.routePath}']['path'],
     FileRoutesByPath['${routeNode.routePath}']['fullPath']
   >
-  const createServerFileRoute: CreateServerFileRoute<
+  ${
+    ENABLED_SERVER_ROUTES
+      ? `const createServerFileRoute: CreateServerFileRoute<
     '${routeNode.routePath}',
     FileRoutesByPath['${routeNode.routePath}']['serverParentRoute'],
     FileRoutesByPath['${routeNode.routePath}']['id'],
     FileRoutesByPath['${routeNode.routePath}']['path'],
     FileRoutesByPath['${routeNode.routePath}']['fullPath']
-  >
+  >`
+      : ''
+  }
 }`
       })
       .join('\n'),
@@ -768,39 +686,45 @@ export async function generator(config: Config, root: string) {
     },
   )}
 }`,
-          `export interface ServerFileRoutesByFullPath {
+          ENABLED_SERVER_ROUTES
+            ? `export interface ServerFileRoutesByFullPath {
   ${[...createRouteNodesByFullPath(routeNodes).entries()]
     .filter(([_, routeNode]) => routeNode.hasServerRoute)
     .map(([fullPath, routeNode]) => {
       return `'${fullPath}': typeof ${getResolvedServerRouteNodeVariableName(routeNode)}`
     })}
-}`,
+}`
+            : '',
           `export interface FileRoutesByTo {
   ${[...createRouteNodesByTo(routeNodes).entries()].map(([to, routeNode]) => {
     return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
-          `export interface ServerFileRoutesByTo {
+          ENABLED_SERVER_ROUTES
+            ? `export interface ServerFileRoutesByTo {
   ${[...createRouteNodesByTo(routeNodes).entries()]
     .filter(([_, routeNode]) => routeNode.hasServerRoute)
     .map(([to, routeNode]) => {
       return `'${to}': typeof ${getResolvedServerRouteNodeVariableName(routeNode)}`
     })}
-}`,
+}`
+            : '',
           `export interface FileRoutesById {
   '__root__': typeof rootRoute,
   ${[...createRouteNodesById(routeNodes).entries()].map(([id, routeNode]) => {
     return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
-          `export interface ServerFileRoutesById {
+          ENABLED_SERVER_ROUTES
+            ? `export interface ServerFileRoutesById {
   ${rootRouteNode.hasServerRoute ? `'__root__': typeof rootServerRoute,` : ''}
   ${[...createRouteNodesById(routeNodes).entries()]
     .filter(([_, routeNode]) => routeNode.hasServerRoute)
     .map(([id, routeNode]) => {
       return `'${id}': typeof ${getResolvedServerRouteNodeVariableName(routeNode)}`
     })}
-}`,
+}`
+            : '',
           `export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: ${routeNodes.length > 0 ? [...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|') : 'never'}

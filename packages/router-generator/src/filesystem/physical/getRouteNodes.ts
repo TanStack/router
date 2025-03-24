@@ -4,8 +4,6 @@ import {
   determineInitialRoutePath,
   logging,
   removeExt,
-  removeLeadingSlash,
-  removeTrailingSlash,
   replaceBackslash,
   routePathToVariable,
 } from '../../utils'
@@ -215,15 +213,7 @@ export function getRouteMeta(
 } {
   let fsRouteType: FsRouteType = 'static'
 
-  if (
-    removeLeadingSlash(routePath).startsWith(
-      `${removeTrailingSlash(removeLeadingSlash(config.apiBase))}/`,
-    ) &&
-    config.__enableAPIRoutesGeneration
-  ) {
-    // api routes, i.e. `/api/foo.ts`
-    fsRouteType = 'api'
-  } else if (routePath.endsWith(`/${config.routeToken}`)) {
+  if (routePath.endsWith(`/${config.routeToken}`)) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
     fsRouteType = 'layout'
   } else if (routePath.endsWith('/lazy')) {

@@ -11,6 +11,7 @@
 // Import Routes
 
 import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
+import { serverOnly } from '@tanstack/react-start'
 import type { CreateServerFileRoute } from '@tanstack/react-start'
 import { Route as rootRoute } from './routes/__root'
 import {
@@ -40,6 +41,9 @@ const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => rootRoute,
+  staticData: createIsomorphicFn()
+    .server(() => ({ ...rootRoute.staticData, serverRoute: UsersServerRoute }))
+    .client(() => rootRoute.staticData),
 } as any)
 
 const RedirectRoute = RedirectRouteImport.update({
@@ -87,6 +91,12 @@ const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
   getParentRoute: () => UsersRoute,
+  staticData: createIsomorphicFn()
+    .server(() => ({
+      ...UsersRoute.staticData,
+      serverRoute: UsersUserIdServerRoute,
+    }))
+    .client(() => UsersRoute.staticData),
 } as any)
 
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
