@@ -111,6 +111,12 @@ test('createServerFileRoute with methods and route middleware context', () => {
     },
   })
 
+  expectTypeOf(serverFileRouteWithMethods1.client.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+
   const serverFileRouteWithMethods2 = serverFileRoute.methods((r) => ({
     GET: r.handler(async (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{

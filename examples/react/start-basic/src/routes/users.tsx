@@ -3,7 +3,7 @@ import axios from 'redaxios'
 import { json } from '@tanstack/react-start'
 import type { User } from '../utils/users'
 
-export const ServerRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute().methods((api) => ({
   GET: async ({ request }) => {
     console.info('Fetching users... @', request.url)
     const res = await axios.get<Array<User>>(
@@ -14,11 +14,23 @@ export const ServerRoute = createServerFileRoute().methods({
 
     return json(list.map((u) => ({ id: u.id, name: u.name, email: u.email })))
   },
-})
+  POST: api
+    .validator(
+      () =>
+        undefined as unknown as {
+          name: string
+          email: string
+        },
+    )
+    .handler(async ({ data }) => {
+      console.info('Creating user...', data)
+      return json({ id: '1', name: data.name, email: data.email })
+    }),
+}))
 
 export const Route = createFileRoute({
   loader: () => {
-    return ServerRoute.methods.get().catch(() => {
+    return ServerRoute.client.get().catch(() => {
       throw new Error('Failed to fetch users')
     })
   },
@@ -27,6 +39,21 @@ export const Route = createFileRoute({
 
 function UsersComponent() {
   const users = Route.useLoaderData()
+
+  const addUser = (
+    <button
+      onClick={() => {
+        ServerRoute.client.post({
+          data: {
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+          },
+        })
+      }}
+    >
+      Add User
+    </button>
+  )
 
   return (
     <div className="p-2 flex gap-2">

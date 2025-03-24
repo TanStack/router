@@ -10,6 +10,7 @@ import type {
   Constrain,
   Expand,
   ResolveParams,
+  ResolveValidatorInput,
   RouteConstraints,
   Validator,
 } from '@tanstack/router-core'
@@ -44,15 +45,15 @@ export function createServerRoute<
     undefined
   >
 
-  return {
+  const api = {
     options: resolvedOpts,
     _types: {} as TODO,
-    middleware: (middlewares) =>
+    middleware: (middlewares: TODO) =>
       createServerRoute(undefined, {
         ...resolvedOpts,
         middleware: middlewares,
       }) as TODO,
-    methods: (methodsOrGetMethods) => {
+    methods: (methodsOrGetMethods: TODO) => {
       const methods = (() => {
         if (typeof methodsOrGetMethods === 'function') {
           return methodsOrGetMethods(createMethodBuilder())
@@ -726,9 +727,18 @@ export type ResolveMethods<TMethods> = TMethods extends (
 export interface ServerRouteMethodClient<TFullPath extends string, TMethod> {
   returns: ServerRouteMethodClientReturns<TMethod>
   (
-    ...args: ServerRouteMethodClientOptions<TFullPath, TMethod>
+    methodPayload: ServerRouteMethodClientPayload<TMethod>,
   ): Promise<ServerRouteMethodClientReturns<TMethod>>
 }
+
+export interface ServerRouteMethodClientPayload<TMethod> {
+  data: ResolveValidatorInput<ServerRouteMethodClientValidator<TMethod>>
+}
+
+export type ServerRouteMethodClientValidator<TMethod> =
+  TMethod extends AnyRouteMethodsBuilder
+    ? TMethod['_types']['validator']
+    : never
 
 export type ServerRouteMethodClientReturns<TMethod> =
   ServerRouteMethodClientResponse<TMethod> extends JsonResponse<any>
