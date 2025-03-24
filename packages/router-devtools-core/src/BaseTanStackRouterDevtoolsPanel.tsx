@@ -81,6 +81,7 @@ function RouteComp({
         string,
         '__root__',
         undefined,
+        undefined,
         {},
         {},
         AnyContext,

@@ -35,6 +35,7 @@ export type LazyRouteOptions = Pick<
     string,
     AnyPathParams,
     AnyValidator,
+    AnyValidator,
     {},
     AnyContext,
     AnyContext,
