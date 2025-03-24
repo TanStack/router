@@ -43,17 +43,17 @@ export function createServerRoute<
   >
 
   return {
-    _options: resolvedOpts,
+    options: resolvedOpts,
     _types: {} as TODO,
     middleware: (middlewares) =>
       createServerRoute(undefined, {
         ...resolvedOpts,
-        middleware: middlewares as TODO,
+        middleware: middlewares,
       }) as TODO,
     methods: (methodsOrGetMethods) => {
       const methods = (() => {
         if (typeof methodsOrGetMethods === 'function') {
-          return methodsOrGetMethods(createMethodBuilder()) as TODO
+          return methodsOrGetMethods(createMethodBuilder())
         }
 
         return methodsOrGetMethods
@@ -64,7 +64,30 @@ export function createServerRoute<
         methods,
       } as TODO) as TODO
     },
-  }
+    client: new Proxy(
+      {},
+      {
+        get(target, propKey) {
+          return (...args: Array<any>) => {
+            if (typeof propKey === 'string') {
+              const method = resolvedOpts.methods[propKey]
+              if (method) {
+                return method(...args)
+              }
+            }
+            throw new Error(`Method ${String(propKey)} not found`)
+          }
+        },
+      },
+    ),
+  } as ServerRouteAfterMethods<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    ReadonlyArray<AnyMiddleware>,
+    any
+  >
 }
 
 const createMethodBuilder = <
@@ -121,13 +144,6 @@ export interface ServerRouteWithTypes<
   TMiddlewares,
   TMethods,
 > {
-  _options: ServerRouteOptions<
-    TParentRoute,
-    TId,
-    TPath,
-    TFullPath,
-    TMiddlewares
-  >
   _types: ServerRouteTypes<
     TParentRoute,
     TId,
@@ -657,7 +673,7 @@ export interface ServerRouteAfterMethods<
     TMethods
   > {
   options: ServerRouteOptions<TParentRoute, TId, TPath, TFullPath, TMiddlewares>
-  methods: ServerRouteMethodsClient<TMethods>
+  client: ServerRouteMethodsClient<TMethods>
 }
 
 export interface ServerRouteOptions<
