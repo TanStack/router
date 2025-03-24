@@ -1,6 +1,7 @@
 import type {
   AnyMiddleware,
   AssignAllServerContext,
+  IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
   Middleware,
 } from './createMiddleware'
@@ -10,8 +11,9 @@ import type {
   Expand,
   ResolveParams,
   RouteConstraints,
+  Validator,
 } from '@tanstack/router-core'
-import type { ConstrainValidator, JsonResponse } from './createServerFn'
+import type { JsonResponse } from './createServerFn'
 
 export function createServerFileRoute<
   TFilePath extends string,
@@ -389,7 +391,21 @@ export interface ServerRouteMethodBuilderTypes<
   validator: TValidator
   fullPath: TFullPath
   response: TResponse
+  allInput: ResolveAllMethodValidatorInput<
+    TMiddlewares,
+    TMethodMiddlewares,
+    TValidator
+  >
 }
+
+export type ResolveAllMethodValidatorInput<
+  TMiddlewares,
+  TMethodMiddlewares,
+  TValidator,
+> = IntersectAllValidatorInputs<
+  MergeMethodMiddlewares<TMiddlewares, TMethodMiddlewares>,
+  TValidator
+>
 
 export interface ServerRouteMethodBuilderMiddleware<
   TParentRoute extends AnyServerRouteWithTypes,
@@ -445,7 +461,7 @@ export interface ServerRouteMethodBuilderValidator<
   TMethodMiddlewares,
 > {
   validator: <TValidator>(
-    validator: ConstrainValidator<TValidator>,
+    validator: Constrain<TValidator, Validator<ValidatorInput<TFullPath>, any>>,
   ) => ServerRouteMethodBuilderAfterValidator<
     TParentRoute,
     TFullPath,
@@ -454,6 +470,13 @@ export interface ServerRouteMethodBuilderValidator<
     TMethodMiddlewares,
     TValidator
   >
+}
+
+export interface ValidatorInput<TFullPath extends string> {
+  body?: unknown
+  search?: Record<string, unknown>
+  params?: ResolveParams<TFullPath>
+  headers?: Record<string, unknown>
 }
 
 export interface ServerRouteMethodBuilderAfterValidator<
@@ -576,7 +599,7 @@ export interface ServerRouteAfterMethods<
     TMethods
   > {
   options: ServerRouteOptions<TParentRoute, TId, TPath, TFullPath, TMiddlewares>
-  methods: ServerRouteMethodsClient<TMethods>
+  methods: ServerRouteMethodsClient<TFullPath, TMethods>
 }
 
 export interface ServerRouteOptions<
@@ -596,10 +619,10 @@ export interface ServerRouteOptions<
   >
 }
 
-export type ServerRouteMethodsClient<TMethods> = {
+export type ServerRouteMethodsClient<TFullPath extends string, TMethods> = {
   [TKey in keyof ResolveMethods<TMethods> as Lowercase<
     TKey & string
-  >]: ServerRouteMethodClient<ResolveMethods<TMethods>[TKey]>
+  >]: ServerRouteMethodClient<TFullPath, ResolveMethods<TMethods>[TKey]>
 }
 
 export type ResolveMethods<TMethods> = TMethods extends (
@@ -608,9 +631,11 @@ export type ResolveMethods<TMethods> = TMethods extends (
   ? TMethods
   : TMethods
 
-export interface ServerRouteMethodClient<TMethod> {
+export interface ServerRouteMethodClient<TFullPath extends string, TMethod> {
   returns: ServerRouteMethodClientReturns<TMethod>
-  (): Promise<ServerRouteMethodClientReturns<TMethod>>
+  (
+    ...args: ServerRouteMethodClientOptions<TFullPath, TMethod>
+  ): Promise<ServerRouteMethodClientReturns<TMethod>>
 }
 
 export type ServerRouteMethodClientReturns<TMethod> =
@@ -624,6 +649,28 @@ export type ServerRouteMethodClientResponse<TMethod> =
     : TMethod extends (...args: Array<any>) => infer TReturn
       ? Awaited<TReturn>
       : never
+
+export type ServerRouteMethodClientOptions<TFullPath extends string, TMethod> =
+  {} extends ServerRouteMethodClientInput<TFullPath, TMethod>
+    ? [options?: Expand<ServerRouteMethodClientInput<TFullPath, TMethod>>]
+    : [options: Expand<ServerRouteMethodClientInput<TFullPath, TMethod>>]
+
+export type ServerRouteMethodClientInput<
+  TFullPath extends string,
+  TMethod,
+> = TMethod extends AnyRouteMethodsBuilder
+  ? undefined extends TMethod['_types']['allInput']
+    ? DefaultServerRouteMethodClientInput<TFullPath>
+    : TMethod['_types']['allInput'] extends { params: any }
+      ? TMethod['_types']['allInput']
+      : TMethod['_types']['allInput'] &
+          DefaultServerRouteMethodClientInput<TFullPath>
+  : DefaultServerRouteMethodClientInput<TFullPath>
+
+export type DefaultServerRouteMethodClientInput<TFullPath extends string> =
+  {} extends ResolveParams<TFullPath>
+    ? { params?: ResolveParams<TFullPath> }
+    : { params: ResolveParams<TFullPath> }
 
 function createMethodFn<TVerb extends ServerRouteVerb>(verb: TVerb) {
   return function createMethod<TPath extends string>(

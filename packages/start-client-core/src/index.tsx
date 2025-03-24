@@ -102,7 +102,7 @@ export type {
   ServerRouteOptions,
   ServerRouteMethodOptions,
   ServerRouteMethodBuilder,
-  ServerRouteMethodsBuilderAfterMiddleware,
+  ServerRouteMethodBuilderAfterMiddleware,
   ServerRouteMethodBuilderMiddleware,
   CreateServerFileRoute,
 } from './serverRoute'

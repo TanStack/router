@@ -64,11 +64,19 @@ test('createServerFileRoute with methods with no middleware', () => {
     }>
   >()
 
+  expectTypeOf(
+    serverFileRouteWithMethods1.methods.get,
+  ).parameters.toEqualTypeOf<[options: { params: { detailId: string } }]>()
+
   expectTypeOf(serverFileRouteWithMethods2.methods.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
+
+  expectTypeOf(
+    serverFileRouteWithMethods2.methods.get,
+  ).parameters.toEqualTypeOf<[options: { params: { detailId: string } }]>()
 })
 
 test('createServerFileRoute with methods and route middleware context', () => {
@@ -125,11 +133,19 @@ test('createServerFileRoute with methods and route middleware context', () => {
     }>
   >()
 
+  expectTypeOf(
+    serverFileRouteWithMethods1.methods.get,
+  ).parameters.toEqualTypeOf<[options: { params: { detailId: string } }]>()
+
   expectTypeOf(serverFileRouteWithMethods2.methods.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
   >()
+
+  expectTypeOf(
+    serverFileRouteWithMethods2.methods.get,
+  ).parameters.toEqualTypeOf<[options: { params: { detailId: string } }]>()
 })
 
 test('createServerFileRoute with methods middleware and route middleware', () => {
@@ -152,7 +168,7 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
     next({ context: { b: 'b' } }),
   )
 
-  serverFileRoute.methods((r) => ({
+  const serverRoute = serverFileRoute.methods((r) => ({
     GET: r.middleware([methodMiddleware]).handler(async (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         data: undefined
@@ -167,6 +183,16 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
       })
     }),
   }))
+
+  expectTypeOf(serverRoute.methods.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+
+  expectTypeOf(serverRoute.methods.get).parameters.toEqualTypeOf<
+    [options: { params: { detailId: string } }]
+  >()
 })
 
 test('createServerFileRoute with methods validator', () => {
@@ -179,7 +205,7 @@ test('createServerFileRoute with methods validator', () => {
     Path
   > = undefined as any
 
-  createServerFileRoute().methods((r) => ({
+  const serverRoute = createServerFileRoute().methods((r) => ({
     GET: r
       .validator(() => ({ a: 'a' }))
       .handler(async (ctx) => {
@@ -194,6 +220,16 @@ test('createServerFileRoute with methods validator', () => {
         return json({ test: 'test' })
       }),
   }))
+
+  expectTypeOf(serverRoute.methods.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+
+  expectTypeOf(serverRoute.methods.get).parameters.toEqualTypeOf<
+    [options: { params: { detailId: string } }]
+  >()
 })
 
 test('createServerFileRoute with route middleware validator', () => {
@@ -239,12 +275,21 @@ test('createServerFileRoute with route middleware validator, methods middleware 
 
   const methodMiddleware = createMiddleware().validator(() => ({ b: 'b' }))
 
-  createServerFileRoute()
+  const serverRoute = createServerFileRoute()
     .middleware([routeMiddleware])
     .methods((r) => ({
       GET: r
         .middleware([methodMiddleware])
-        .validator(() => ({ c: 'c' }))
+        .validator((input) => {
+          expectTypeOf(input).toEqualTypeOf<{
+            search?: Record<string, unknown>
+            params?: { detailId: string }
+            headers?: Record<string, unknown>
+            body?: unknown
+          }>()
+
+          return { c: 'c' }
+        })
         .handler(async (ctx) => {
           expectTypeOf(ctx).toEqualTypeOf<{
             data: { a: string; b: string; c: string }
@@ -257,6 +302,23 @@ test('createServerFileRoute with route middleware validator, methods middleware 
           return json({ test: 'test' })
         }),
     }))
+
+  expectTypeOf(serverRoute.methods.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+
+  expectTypeOf(serverRoute.methods.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown>
+        headers?: Record<string, unknown>
+        body?: unknown
+      },
+    ]
+  >()
 })
 
 test('createServerFileRoute with a parent middleware context', () => {
@@ -288,7 +350,7 @@ test('createServerFileRoute with a parent middleware context', () => {
     return next({ context: { b: 'b' } })
   })
 
-  createDetailServerFileRoute()
+  const detailServerRoute1 = createDetailServerFileRoute()
     .middleware([routeMiddleware2])
     .methods({
       GET: (ctx) => {
@@ -308,7 +370,7 @@ test('createServerFileRoute with a parent middleware context', () => {
     return next({ context: { c: 'c' } })
   })
 
-  createDetailServerFileRoute()
+  const detailServerRoute2 = createDetailServerFileRoute()
     .middleware([routeMiddleware2])
     .methods((r) => ({
       GET: r.middleware([methodMiddleware]).handler((ctx) => {
@@ -323,4 +385,138 @@ test('createServerFileRoute with a parent middleware context', () => {
         return json({ test: 'test' })
       }),
     }))
+
+  expectTypeOf(detailServerRoute1.methods.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+      },
+    ]
+  >()
+
+  expectTypeOf(detailServerRoute2.methods.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+      },
+    ]
+  >()
+})
+
+test('createServerFileRoute with parent middleware params', () => {
+  const createDetailsServerFileRoute: CreateServerFileRoute<
+    '$userId',
+    any,
+    '$userId',
+    '$userId',
+    '$userId'
+  > = undefined as any
+
+  const detailsServerRoute = createDetailsServerFileRoute()
+
+  const createDetailServerFileRoute: CreateServerFileRoute<
+    '$userId/$detailId',
+    typeof detailsServerRoute,
+    '$userId/$detailId',
+    '$detailId',
+    '$userId/$detailId'
+  > = undefined as any
+
+  const detailServerRoute1 = createDetailServerFileRoute().methods({
+    GET: (ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<{
+        data: undefined
+        context: undefined
+        params: { userId: string; detailId: string }
+        pathname: '$userId/$detailId'
+        request: Request
+      }>()
+
+      return json({ test: 'test' })
+    },
+  })
+
+  const detailServerRoute2 = createDetailServerFileRoute().methods((r) => ({
+    GET: r.handler((ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<{
+        data: undefined
+        context: undefined
+        params: { userId: string; detailId: string }
+        pathname: '$userId/$detailId'
+        request: Request
+      }>()
+
+      return json({ test: 'test' })
+    }),
+  }))
+
+  expectTypeOf(detailServerRoute1.methods.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { userId: string; detailId: string }
+      },
+    ]
+  >()
+
+  expectTypeOf(detailServerRoute2.methods.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { userId: string; detailId: string }
+      },
+    ]
+  >()
+})
+
+test('createServerFileRoute with no params', () => {
+  const createDetailsServerFileRoute: CreateServerFileRoute<
+    'details',
+    any,
+    'details',
+    'details',
+    'details'
+  > = undefined as any
+
+  const detailServerRoute1 = createDetailsServerFileRoute().methods({
+    GET: (ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<{
+        data: undefined
+        context: undefined
+        params: {}
+        pathname: 'details'
+        request: Request
+      }>()
+
+      return json({ test: 'test' })
+    },
+  })
+
+  const detailServerRoute2 = createDetailsServerFileRoute().methods((r) => ({
+    GET: r.handler((ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<{
+        data: undefined
+        context: undefined
+        params: {}
+        pathname: 'details'
+        request: Request
+      }>()
+
+      return json({ test: 'test' })
+    }),
+  }))
+
+  expectTypeOf(detailServerRoute1.methods.get).parameters.toEqualTypeOf<
+    [
+      options?: {
+        params?: {}
+      },
+    ]
+  >()
+
+  expectTypeOf(detailServerRoute2.methods.get).parameters.toEqualTypeOf<
+    [
+      options?: {
+        params?: {}
+      },
+    ]
+  >()
 })
