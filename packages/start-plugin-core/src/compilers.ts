@@ -22,8 +22,6 @@ type CompileOptions = ParseAstOptions & {
 
 type IdentifierConfig = {
   name: string
-  type: 'ImportSpecifier' | 'ImportNamespaceSpecifier'
-  namespaceId: string
   handleCallExpression: (
     path: babel.NodePath<t.CallExpression>,
     opts: CompileOptions,
@@ -42,44 +40,40 @@ export function compileStartOutput(opts: CompileOptions): GeneratorResult {
     Program: {
       enter(programPath) {
         const identifiers: {
+          createServerFileRoute: IdentifierConfig
           createServerFn: IdentifierConfig
           createMiddleware: IdentifierConfig
           serverOnly: IdentifierConfig
           clientOnly: IdentifierConfig
           createIsomorphicFn: IdentifierConfig
         } = {
+          createServerFileRoute: {
+            name: 'createServerFileRoute',
+            handleCallExpression: handleCreateServerFileRouteCallExpression,
+            paths: [],
+          },
           createServerFn: {
             name: 'createServerFn',
-            type: 'ImportSpecifier',
-            namespaceId: '',
             handleCallExpression: handleCreateServerFnCallExpression,
             paths: [],
           },
           createMiddleware: {
             name: 'createMiddleware',
-            type: 'ImportSpecifier',
-            namespaceId: '',
             handleCallExpression: handleCreateMiddlewareCallExpression,
             paths: [],
           },
           serverOnly: {
             name: 'serverOnly',
-            type: 'ImportSpecifier',
-            namespaceId: '',
             handleCallExpression: handleServerOnlyCallExpression,
             paths: [],
           },
           clientOnly: {
             name: 'clientOnly',
-            type: 'ImportSpecifier',
-            namespaceId: '',
             handleCallExpression: handleClientOnlyCallExpression,
             paths: [],
           },
           createIsomorphicFn: {
             name: 'createIsomorphicFn',
-            type: 'ImportSpecifier',
-            namespaceId: '',
             handleCallExpression: handleCreateIsomorphicFnCallExpression,
             paths: [],
           },
@@ -109,15 +103,12 @@ export function compileStartOutput(opts: CompileOptions): GeneratorResult {
                 ) {
                   if (specifier.imported.name === identifierKey) {
                     identifier.name = specifier.local.name
-                    identifier.type = 'ImportSpecifier'
                   }
                 }
 
                 // handle namespace imports like "import * as TanStackStart from '@tanstack/react-start';"
                 if (specifier.type === 'ImportNamespaceSpecifier') {
-                  identifier.type = 'ImportNamespaceSpecifier'
-                  identifier.namespaceId = specifier.local.name
-                  identifier.name = `${identifier.namespaceId}.${identifierKey}`
+                  identifier.name = `${specifier.local.name}.${identifierKey}`
                 }
               })
             })
@@ -187,6 +178,86 @@ export function compileStartOutput(opts: CompileOptions): GeneratorResult {
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
+}
+
+function handleCreateServerFileRouteCallExpression(
+  path: babel.NodePath<t.CallExpression>,
+  opts: CompileOptions,
+) {
+  let highestParent: babel.NodePath<any> = path
+
+  while (highestParent.parentPath && !highestParent.parentPath.isProgram()) {
+    highestParent = highestParent.parentPath
+  }
+
+  const programPath = highestParent.parentPath as babel.NodePath<t.Program>
+
+  // Find the root call expression and all of the methods that are called on it
+  const rootCallExpression = getRootCallExpression(path)
+
+  const callExpressionPaths = {
+    validator: null as babel.NodePath<t.CallExpression> | null,
+    middleware: null as babel.NodePath<t.CallExpression> | null,
+    methods: null as babel.NodePath<t.CallExpression> | null,
+  }
+
+  const validMethods = Object.keys(callExpressionPaths)
+
+  rootCallExpression.traverse({
+    MemberExpression(memberExpressionPath) {
+      if (t.isIdentifier(memberExpressionPath.node.property)) {
+        const name = memberExpressionPath.node.property
+          .name as keyof typeof callExpressionPaths
+
+        if (
+          validMethods.includes(name) &&
+          memberExpressionPath.parentPath.isCallExpression()
+        ) {
+          callExpressionPaths[name] = memberExpressionPath.parentPath
+        }
+      }
+    },
+  })
+
+  // On the client, remove validator, middleware and methods calls by replacing them with their object
+  if (opts.env === 'client') {
+    Object.values(callExpressionPaths).forEach((callPath) => {
+      if (callPath && t.isMemberExpression(callPath.node.callee)) {
+        callPath.replaceWith(callPath.node.callee.object)
+      }
+    })
+  }
+
+  let isCreateServerFileRouteImported = false as boolean
+
+  programPath.traverse({
+    ImportDeclaration(importPath) {
+      const importSource = importPath.node.source.value
+      if (importSource === '@tanstack/react-start') {
+        const specifiers = importPath.node.specifiers
+        isCreateServerFileRouteImported = specifiers.some((specifier) => {
+          return (
+            t.isImportSpecifier(specifier) &&
+            t.isIdentifier(specifier.imported) &&
+            specifier.imported.name === 'createServerFileRoute'
+          )
+        })
+      }
+    },
+  })
+
+  if (!isCreateServerFileRouteImported) {
+    const importDeclaration = t.importDeclaration(
+      [
+        t.importSpecifier(
+          t.identifier('createServerFileRoute'),
+          t.identifier('createServerFileRoute'),
+        ),
+      ],
+      t.stringLiteral('@tanstack/react-start'),
+    )
+    programPath.node.body.unshift(importDeclaration)
+  }
 }
 
 function handleCreateServerFnCallExpression(

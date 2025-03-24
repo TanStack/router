@@ -26,7 +26,6 @@ export type FsRouteType =
   | 'layout'
   | 'pathless_layout'
   | 'lazy'
-  | 'api'
   | 'loader' // @deprecated
   | 'component' // @deprecated
   | 'pendingComponent' // @deprecated

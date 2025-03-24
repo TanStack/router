@@ -18,38 +18,10 @@ const transformFuncs = [
   'serverOnly',
   'clientOnly',
   'createIsomorphicFn',
+  'createServerFileRoute',
 ]
+
 const tokenRegex = new RegExp(transformFuncs.join('|'))
-// const eitherFuncRegex = new RegExp(
-//   `(function ${transformFuncs.join('|function ')})`,
-// )
-
-// TODO: Bring these back
-// (() => {
-//   let entry: string | null = null
-//   let ROOT: string = process.cwd()
-//   return {
-//     name: 'vite-plugin-tanstack-start-server-entry-client',
-//     enforce: 'pre',
-//     configResolved: (config) => {
-//       ROOT = config.root
-//       entry = path.resolve(ROOT, (config as any).router.handler)
-
-//       if (!entry) {
-//         throw new Error('@tanstack/start-plugin: No server entry found!')
-//       }
-//     },
-//     transform(code, id) {
-//       if (entry && id.includes(entry)) {
-//         return {
-//           code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
-//           map: null,
-//         }
-//       }
-//       return null
-//     },
-//   }
-// })(),
 
 export function TanStackStartCompilerPlugin(opts?: {
   client?: {
@@ -110,13 +82,8 @@ function transformCode(opts: {
   id = fileURLToPath(url).replace(/\\/g, '/')
 
   const includesToken = tokenRegex.test(code)
-  // const includesEitherFunc = eitherFuncRegex.test(code)
 
-  if (
-    !includesToken
-    // includesEitherFunc
-    // /node_modules/.test(id)
-  ) {
+  if (!includesToken) {
     return null
   }
 
