@@ -227,14 +227,14 @@ test('createServerFileRoute with methods validator', () => {
       }),
   }))
 
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
+    [options: { params: { detailId: string } }]
+  >()
+
   expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
     Promise<{
       test: string
     }>
-  >()
-
-  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
-    [options: { params: { detailId: string } }]
   >()
 })
 

@@ -15,13 +15,7 @@ export const ServerRoute = createServerFileRoute().methods((api) => ({
     return json(list.map((u) => ({ id: u.id, name: u.name, email: u.email })))
   },
   POST: api
-    .validator(
-      () =>
-        undefined as unknown as {
-          name: string
-          email: string
-        },
-    )
+    .validator((input: { name: string; email: string }) => input)
     .handler(async ({ data }) => {
       console.info('Creating user...', data)
       return json({ id: '1', name: data.name, email: data.email })
@@ -44,6 +38,9 @@ function UsersComponent() {
     <button
       onClick={() => {
         ServerRoute.client.post({
+          params: {
+            userId: '1',
+          },
           data: {
             name: 'John Doe',
             email: 'john.doe@example.com',

@@ -10,7 +10,6 @@ import type {
   Constrain,
   Expand,
   ResolveParams,
-  ResolveValidatorInput,
   RouteConstraints,
   Validator,
 } from '@tanstack/router-core'
@@ -45,7 +44,7 @@ export function createServerRoute<
     undefined
   >
 
-  const api = {
+  return {
     options: resolvedOpts,
     _types: {} as TODO,
     middleware: (middlewares: TODO) =>
@@ -727,12 +726,8 @@ export type ResolveMethods<TMethods> = TMethods extends (
 export interface ServerRouteMethodClient<TFullPath extends string, TMethod> {
   returns: ServerRouteMethodClientReturns<TMethod>
   (
-    methodPayload: ServerRouteMethodClientPayload<TMethod>,
+    ...args: ServerRouteMethodClientOptions<TFullPath, TMethod>
   ): Promise<ServerRouteMethodClientReturns<TMethod>>
-}
-
-export interface ServerRouteMethodClientPayload<TMethod> {
-  data: ResolveValidatorInput<ServerRouteMethodClientValidator<TMethod>>
 }
 
 export type ServerRouteMethodClientValidator<TMethod> =
@@ -773,66 +768,3 @@ export type DefaultServerRouteMethodClientInput<TFullPath extends string> =
   {} extends ResolveParams<TFullPath>
     ? { params?: ResolveParams<TFullPath> }
     : { params: ResolveParams<TFullPath> }
-
-function createMethodFn<TVerb extends ServerRouteVerb>(verb: TVerb) {
-  return function createMethod<TPath extends string>(
-    opts: ServerRouteMethodOptions<TPath, TVerb>,
-  ): ServerRouteMethodBase<any, TPath, TVerb, any> {
-    return undefined as any
-  }
-}
-
-export interface ServerRouteMethodOptions<
-  TPath extends string,
-  TVerb extends ServerRouteVerb,
-> {
-  middleware: Array<Middleware<any>>
-}
-
-export interface ServerRouteMethodBase<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TFullPath extends string,
-  TVerb extends ServerRouteVerb,
-  TMiddlewares,
-> {
-  middleware: Array<Middleware<any>>
-  validator: (
-    validator: unknown,
-  ) => ServerRouteMethodBuilderAfterValidator<
-    TParentRoute,
-    TFullPath,
-    TVerb,
-    TMiddlewares,
-    undefined,
-    undefined
-  >
-  handler: (
-    handler: ServerRouteMethodHandlerFn<
-      TParentRoute,
-      TFullPath,
-      TVerb,
-      TMiddlewares,
-      undefined,
-      undefined,
-      undefined
-    >,
-  ) => ServerRouteMethodBuilderAfterHandler<
-    TParentRoute,
-    TFullPath,
-    TVerb,
-    TMiddlewares,
-    undefined,
-    undefined,
-    undefined
-  >
-}
-
-export const methods = {
-  createGet: createMethodFn('GET'),
-  createPost: createMethodFn('POST'),
-  createPut: createMethodFn('PUT'),
-  createPatch: createMethodFn('PATCH'),
-  createDelete: createMethodFn('DELETE'),
-  createOptions: createMethodFn('OPTIONS'),
-  createHead: createMethodFn('HEAD'),
-}
