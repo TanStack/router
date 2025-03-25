@@ -6486,9 +6486,6 @@ importers:
       tiny-warning:
         specifier: ^1.0.3
         version: 1.0.3
-      vinxi:
-        specifier: ^0.5.3
-        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10

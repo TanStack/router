@@ -1,4 +1,3 @@
-/// <reference types="vinxi/types/client" />
 export {
   mergeHeaders,
   startSerializer,
@@ -21,14 +20,10 @@ export {
   type ClientExtractedPromise,
   type ClientExtractedStream,
   type ResolvePromiseState,
-} from '@tanstack/start-client-core'
-export {
   type IsomorphicFn,
   type ServerOnlyFn,
   type ClientOnlyFn,
   type IsomorphicFnBase,
-} from '@tanstack/start-client-core'
-export {
   type ServerFn as FetchFn,
   type ServerFnCtx as FetchFnCtx,
   type CompiledFetcherFnOptions,
@@ -40,9 +35,7 @@ export {
   type ServerFn,
   type ServerFnCtx,
   type ServerFnResponseType,
-} from '@tanstack/start-client-core'
-export { type JsonResponse } from '@tanstack/start-client-core'
-export {
+  type JsonResponse,
   type IntersectAllValidatorInputs,
   type IntersectAllValidatorOutputs,
   type MiddlewareServerFn,
