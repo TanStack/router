@@ -27,6 +27,7 @@ export const configSchema = z.object({
       '/* eslint-disable */',
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols',
+      '// biome-ignore-all'
     ]),
   routeTreeFileFooter: z.array(z.string()).optional().default([]),
   autoCodeSplitting: z.boolean().optional(),
