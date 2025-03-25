@@ -26,10 +26,13 @@ export const ServerRoute = createServerFileRoute().methods({
 
 export const Route = createFileRoute({
   loader: async ({ params: { userId } }) => {
-    return (await axios.get)<typeof ServerRoute.get.return>(
+    return (await axios.get)<typeof ServerRoute.methods.get.returns>(
       '/api/users/' + userId,
     )
-      .then((r) => r.data)
+      .then((r) => {
+        if ('error' in r.data) throw new Error()
+        return r.data
+      })
       .catch(() => {
         throw new Error('Failed to fetch user')
       })
@@ -46,8 +49,8 @@ function UserComponent() {
 
   return (
     <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{user().name}</h4>
-      <div class="text-sm">{user().email}</div>
+      <h4 class="text-xl font-bold underline">{user.name}</h4>
+      <div class="text-sm">{user.email}</div>
     </div>
   )
 }
