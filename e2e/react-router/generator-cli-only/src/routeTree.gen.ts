@@ -11,7 +11,6 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as AnchorImport } from './routes/anchor'
 import { Route as PathlessLayoutImport } from './routes/_pathlessLayout'
 import { Route as PostsRouteImport } from './routes/posts.route'
 import { Route as IndexImport } from './routes/index'
@@ -22,12 +21,6 @@ import { Route as PathlessLayoutNestedLayoutRouteBImport } from './routes/_pathl
 import { Route as PathlessLayoutNestedLayoutRouteAImport } from './routes/_pathlessLayout/_nested-layout/route-a'
 
 // Create/Update Routes
-
-const AnchorRoute = AnchorImport.update({
-  id: '/anchor',
-  path: '/anchor',
-  getParentRoute: () => rootRoute,
-} as any)
 
 const PathlessLayoutRoute = PathlessLayoutImport.update({
   id: '/_pathlessLayout',
@@ -102,13 +95,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof PathlessLayoutImport
-      parentRoute: typeof rootRoute
-    }
-    '/anchor': {
-      id: '/anchor'
-      path: '/anchor'
-      fullPath: '/anchor'
-      preLoaderRoute: typeof AnchorImport
       parentRoute: typeof rootRoute
     }
     '/_pathlessLayout/_nested-layout': {
@@ -199,7 +185,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteRouteWithChildren
   '': typeof PathlessLayoutNestedLayoutRouteWithChildren
-  '/anchor': typeof AnchorRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
@@ -209,7 +194,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof PathlessLayoutNestedLayoutRouteWithChildren
-  '/anchor': typeof AnchorRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
@@ -221,7 +205,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteRouteWithChildren
   '/_pathlessLayout': typeof PathlessLayoutRouteWithChildren
-  '/anchor': typeof AnchorRoute
   '/_pathlessLayout/_nested-layout': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
@@ -235,26 +218,17 @@ export interface FileRouteTypes {
     | '/'
     | '/posts'
     | ''
-    | '/anchor'
     | '/posts/$postId'
     | '/posts/'
     | '/route-a'
     | '/route-b'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | ''
-    | '/anchor'
-    | '/posts/$postId'
-    | '/posts'
-    | '/route-a'
-    | '/route-b'
+  to: '/' | '' | '/posts/$postId' | '/posts' | '/route-a' | '/route-b'
   id:
     | '__root__'
     | '/'
     | '/posts'
     | '/_pathlessLayout'
-    | '/anchor'
     | '/_pathlessLayout/_nested-layout'
     | '/posts/$postId'
     | '/posts/'
@@ -267,14 +241,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PostsRouteRoute: typeof PostsRouteRouteWithChildren
   PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
-  AnchorRoute: typeof AnchorRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PostsRouteRoute: PostsRouteRouteWithChildren,
   PathlessLayoutRoute: PathlessLayoutRouteWithChildren,
-  AnchorRoute: AnchorRoute,
 }
 
 export const routeTree = rootRoute
@@ -289,8 +261,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/posts",
-        "/_pathlessLayout",
-        "/anchor"
+        "/_pathlessLayout"
       ]
     },
     "/": {
@@ -308,9 +279,6 @@ export const routeTree = rootRoute
       "children": [
         "/_pathlessLayout/_nested-layout"
       ]
-    },
-    "/anchor": {
-      "filePath": "anchor.tsx"
     },
     "/_pathlessLayout/_nested-layout": {
       "filePath": "_pathlessLayout/_nested-layout.tsx",
