@@ -514,11 +514,19 @@ export async function generator(config: Config, root: string) {
       : '',
     '// Import Routes',
     [
-      `import type { FileRoutesByPath, CreateFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
+      ...(TYPES_DISABLED
+        ? []
+        : [
+            `import type { FileRoutesByPath, CreateFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
+          ]),
       ...(ENABLED_SERVER_ROUTES
         ? [
             `import { serverOnly } from '${ROUTE_TEMPLATE.startPkg}'`,
-            `import type { CreateServerFileRoute } from '${ROUTE_TEMPLATE.startPkg}'`,
+            ...(TYPES_DISABLED
+              ? []
+              : [
+                  `import type { CreateServerFileRoute } from '${ROUTE_TEMPLATE.startPkg}'`,
+                ]),
           ]
         : ''),
       `import { Route as rootRoute ${rootRouteNode.hasServerRoute ? `, ServerRoute as rootServerRoute` : ''} } from './${getImportPath(rootRouteNode)}'`,
@@ -650,30 +658,35 @@ export async function generator(config: Config, root: string) {
   }
 }`,
         ]),
-    routeNodes
-      .map((routeNode) => {
-        return `declare module './${getImportPath(routeNode)}' {
-  const createFileRoute: CreateFileRoute<
-    '${routeNode.routePath}',
-    FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
-    FileRoutesByPath['${routeNode.routePath}']['id'],
-    FileRoutesByPath['${routeNode.routePath}']['path'],
-    FileRoutesByPath['${routeNode.routePath}']['fullPath']
-  >
-  ${
-    ENABLED_SERVER_ROUTES
-      ? `const createServerFileRoute: CreateServerFileRoute<
-    '${routeNode.routePath}',
-    FileRoutesByPath['${routeNode.routePath}']['serverParentRoute'],
-    FileRoutesByPath['${routeNode.routePath}']['id'],
-    FileRoutesByPath['${routeNode.routePath}']['path'],
-    FileRoutesByPath['${routeNode.routePath}']['fullPath']
-  >`
-      : ''
-  }
+    ...(TYPES_DISABLED
+      ? []
+      : [
+          `// Add type-safety to the createFileRoute ${ENABLED_SERVER_ROUTES ? '& createServerFileRoute' : ''} function across the route tree`,
+          routeNodes
+            .map((routeNode) => {
+              return `declare module './${getImportPath(routeNode)}' {
+const createFileRoute: CreateFileRoute<
+'${routeNode.routePath}',
+FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
+FileRoutesByPath['${routeNode.routePath}']['id'],
+FileRoutesByPath['${routeNode.routePath}']['path'],
+FileRoutesByPath['${routeNode.routePath}']['fullPath']
+>
+${
+  ENABLED_SERVER_ROUTES
+    ? `const createServerFileRoute: CreateServerFileRoute<
+'${routeNode.routePath}',
+FileRoutesByPath['${routeNode.routePath}']['serverParentRoute'],
+FileRoutesByPath['${routeNode.routePath}']['id'],
+FileRoutesByPath['${routeNode.routePath}']['path'],
+FileRoutesByPath['${routeNode.routePath}']['fullPath']
+>`
+    : ''
+}
 }`
-      })
-      .join('\n'),
+            })
+            .join('\n'),
+        ]),
     '// Create and export the route tree',
     routeConfigChildrenText,
     ...(TYPES_DISABLED
