@@ -5,7 +5,11 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({ target: 'react', disableTypes: true }),
+    TanStackRouterVite({
+      target: 'react',
+      disableTypes: true,
+      disableManifestGeneration: true,
+    }),
     react(),
   ],
 })
