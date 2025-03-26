@@ -8,7 +8,7 @@ title: Quick Start
 If you're impatient, you can clone and run the [Basic](../examples/start-basic) example right away with the following commands:
 
 ```bash
-npx degit https://github.com/tanstack/router/examples/react/start-basic start-basic
+npx gitpick TanStack/router/tree/main/examples/react/start-basic start-basic
 cd start-basic
 npm install
 npm run dev
@@ -45,7 +45,7 @@ To quickly deploy an example, click the **Deploy to Netlify** button on an examp
 To manually clone and deploy the example to anywhere else you'd like, use the following commands replacing `EXAMPLE_SLUG` with the slug of the example you'd like to use from above:
 
 ```bash
-npx degit https://github.com/tanstack/router/examples/react/EXAMPLE_SLUG my-new-project
+npx gitpick TanStack/router/tree/main/examples/react/EXAMPLE_SLUG my-new-project
 cd my-new-project
 npm install
 npm run dev
