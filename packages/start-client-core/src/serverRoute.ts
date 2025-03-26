@@ -13,7 +13,7 @@ import type {
   RouteConstraints,
   Validator,
 } from '@tanstack/router-core'
-import type { JsonResponse } from './createServerFn'
+import type { ConstrainValidator, JsonResponse } from './createServerFn'
 
 type TODO = any
 
@@ -553,7 +553,7 @@ export interface ServerRouteMethodBuilderValidator<
   TMethodMiddlewares,
 > {
   validator: <TValidator>(
-    validator: Constrain<TValidator, Validator<ValidatorInput<TFullPath>, any>>,
+    validator: ConstrainValidator<TValidator>,
   ) => ServerRouteMethodBuilderAfterValidator<
     TParentRoute,
     TFullPath,
@@ -567,8 +567,15 @@ export interface ServerRouteMethodBuilderValidator<
 export interface ValidatorInput<TFullPath extends string> {
   body?: unknown
   search?: Record<string, unknown>
-  params?: ResolveParams<TFullPath>
   headers?: Record<string, unknown>
+  params?: ResolveParams<TFullPath>
+}
+
+export interface ValidatorFnInput<TFullPath extends string> {
+  body: unknown
+  search: Record<string, unknown>
+  headers: Record<string, unknown>
+  params: ResolveParams<TFullPath>
 }
 
 export interface ServerRouteMethodBuilderAfterValidator<
@@ -730,11 +737,6 @@ export interface ServerRouteMethodClient<TFullPath extends string, TMethod> {
   ): Promise<ServerRouteMethodClientReturns<TMethod>>
 }
 
-export type ServerRouteMethodClientValidator<TMethod> =
-  TMethod extends AnyRouteMethodsBuilder
-    ? TMethod['_types']['validator']
-    : never
-
 export type ServerRouteMethodClientReturns<TMethod> =
   ServerRouteMethodClientResponse<TMethod> extends JsonResponse<any>
     ? Awaited<ReturnType<ServerRouteMethodClientResponse<TMethod>['json']>>
@@ -757,14 +759,13 @@ export type ServerRouteMethodClientInput<
   TMethod,
 > = TMethod extends AnyRouteMethodsBuilder
   ? undefined extends TMethod['_types']['allInput']
-    ? DefaultServerRouteMethodClientInput<TFullPath>
+    ? ValidatorInputParams<TFullPath>
     : TMethod['_types']['allInput'] extends { params: any }
       ? TMethod['_types']['allInput']
-      : TMethod['_types']['allInput'] &
-          DefaultServerRouteMethodClientInput<TFullPath>
-  : DefaultServerRouteMethodClientInput<TFullPath>
+      : TMethod['_types']['allInput'] & ValidatorInputParams<TFullPath>
+  : ValidatorInputParams<TFullPath>
 
-export type DefaultServerRouteMethodClientInput<TFullPath extends string> =
+export type ValidatorInputParams<TFullPath extends string> =
   {} extends ResolveParams<TFullPath>
     ? { params?: ResolveParams<TFullPath> }
     : { params: ResolveParams<TFullPath> }
