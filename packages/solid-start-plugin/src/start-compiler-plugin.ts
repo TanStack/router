@@ -1,6 +1,6 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
-import { compileStartOutput } from '@tanstack/start-plugin-core'
+import { compileStartOutput } from './compilers'
 
 import type { Plugin } from 'vite'
 

@@ -179,3 +179,5 @@ function injectDefineEnv<TKey extends string, TValue extends string>(
 //   }
 //   return !options.server.prerender?.routes
 // }
+
+export { compileStartOutput } from './compilers'
