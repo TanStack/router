@@ -1,8 +1,6 @@
 import { platform } from 'node:os'
-
 import path from 'node:path'
 import { createNitro } from 'nitropack'
-
 import { normalizePath } from 'vite'
 
 import { getRollupConfig } from 'nitropack/rollup'

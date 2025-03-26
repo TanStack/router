@@ -240,6 +240,8 @@ declare module '@tanstack/solid-router' {
   }
 }
 
+// Add type-safety to the createFileRoute & createServerFileRoute function across the route tree
+
 declare module './routes/index' {
   const createFileRoute: CreateFileRoute<
     '/',

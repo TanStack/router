@@ -3,8 +3,15 @@
 
 import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
+import { __internal_devHtmlUtils } from '@tanstack/router-core'
+import type { ExtractedHtmlTagInfo } from '@tanstack/router-core'
 import type { Connect, Environment, Plugin, ViteDevServer } from 'vite'
 import type { TanStackStartOutputConfig } from '../schema.js'
+
+declare global {
+  // eslint-disable-next-line no-var
+  var TSS_INJECTED_HEAD_SCRIPTS_INFO: Array<ExtractedHtmlTagInfo> | undefined
+}
 
 export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
   // let config: UserConfig
@@ -42,6 +49,18 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
             if (!isRunnableDevEnvironment(serverEnv)) {
               throw new Error('Server environment not found')
             }
+
+            const templateHtml = `<html><head></head><body></body></html>`
+            const transformedHtml = await viteDevServer.transformIndexHtml(
+              req.url || '/',
+              templateHtml,
+            )
+
+            const headScripts = __internal_devHtmlUtils.extractHtmlTagInfo(
+              'script',
+              __internal_devHtmlUtils.extractHeadContent(transformedHtml),
+            )
+            globalThis.TSS_INJECTED_HEAD_SCRIPTS_INFO = headScripts
 
             const serverEntry =
               await serverEnv.runner.import('/~start/ssr-entry')
