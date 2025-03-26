@@ -31,16 +31,22 @@ overrides:
   '@tanstack/arktype-adapter': workspace:*
   '@tanstack/react-start': workspace:*
   '@tanstack/react-start-client': workspace:*
+  '@tanstack/react-start-config': workspace:*
+  '@tanstack/react-start-plugin': workspace:*
+  '@tanstack/react-start-router-manifest': workspace:*
   '@tanstack/react-start-server': workspace:*
+  '@tanstack/solid-start': workspace:*
+  '@tanstack/solid-start-client': workspace:*
+  '@tanstack/solid-start-config': workspace:*
+  '@tanstack/solid-start-plugin': workspace:*
+  '@tanstack/solid-start-router-manifest': workspace:*
+  '@tanstack/solid-start-server': workspace:*
   '@tanstack/start-api-routes': workspace:*
   '@tanstack/start-server-functions-fetcher': workspace:*
   '@tanstack/start-server-functions-handler': workspace:*
   '@tanstack/start-server-functions-client': workspace:*
   '@tanstack/start-server-functions-ssr': workspace:*
   '@tanstack/start-server-functions-server': workspace:*
-  '@tanstack/react-start-router-manifest': workspace:*
-  '@tanstack/react-start-config': workspace:*
-  '@tanstack/react-start-plugin': workspace:*
   '@tanstack/start-client-core': workspace:*
   '@tanstack/start-server-core': workspace:*
   '@tanstack/eslint-plugin-router': workspace:*
@@ -2026,7 +2032,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
         specifier: ^0.5.1
@@ -2084,7 +2090,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
         specifier: ^1.9.5
@@ -2112,7 +2118,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../packages/solid-start
       '@tanstack/zod-adapter':
         specifier: workspace:*
@@ -2173,7 +2179,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../packages/solid-start
       js-cookie:
         specifier: ^3.0.5
@@ -2237,7 +2243,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
         specifier: ^0.5.1
@@ -5517,7 +5523,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-start':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
         specifier: ^0.5.1
@@ -6532,16 +6538,16 @@ importers:
   packages/solid-start:
     dependencies:
       '@tanstack/solid-start-client':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../solid-start-client
       '@tanstack/solid-start-config':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../solid-start-config
       '@tanstack/solid-start-router-manifest':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../solid-start-router-manifest
       '@tanstack/solid-start-server':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../solid-start-server
       '@tanstack/start-api-routes':
         specifier: workspace:*
@@ -6627,7 +6633,7 @@ importers:
         specifier: workspace:*
         version: link:../server-functions-plugin
       '@tanstack/solid-start-plugin':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../solid-start-plugin
       '@tanstack/start-server-functions-handler':
         specifier: workspace:*

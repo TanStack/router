@@ -1,7 +1,7 @@
 {
   "name": "@tanstack/solid-start-config",
-  "version": "1.109.2",
-  "description": "Modern and scalable routing for React applications",
+  "version": "1.114.28",
+  "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -15,7 +15,7 @@
     "url": "https://github.com/sponsors/tannerlinsley"
   },
   "keywords": [
-    "react",
+    "solid",
     "location",
     "router",
     "routing",

@@ -839,8 +839,8 @@ with [the HTML attribute `action`](https://developer.mozilla.org/en-US/docs/Web/
 > Notice that we mentioned the **HTML** attribute `action`. This attribute only accepts a string in HTML, just like all
 > other attributes.
 >
-> While React
-> 19 [added support for passing a function to `action`](https://react.dev/reference/react-dom/components/form#form),
+> While React 19
+> [added support for passing a function to `action`](https://react.dev/reference/react-dom/components/form#form),
 > it's
 > a React-specific feature and not part of the HTML standard.
 
