@@ -11,9 +11,8 @@ import type {
   Expand,
   ResolveParams,
   RouteConstraints,
-  ValidatorFn,
 } from '@tanstack/router-core'
-import type { JsonResponse } from './createServerFn'
+import type { ConstrainValidator, JsonResponse } from './createServerFn'
 
 type TODO = any
 
@@ -553,7 +552,7 @@ export interface ServerRouteMethodBuilderValidator<
   TMethodMiddlewares,
 > {
   validator: <TValidator>(
-    validator: ConstrainServerRouteValidator<TValidator, TFullPath>,
+    validator: ConstrainValidator<TValidator>,
   ) => ServerRouteMethodBuilderAfterValidator<
     TParentRoute,
     TFullPath,
@@ -562,18 +561,6 @@ export interface ServerRouteMethodBuilderValidator<
     TMethodMiddlewares,
     TValidator
   >
-}
-
-export type ConstrainServerRouteValidator<
-  TValidator,
-  TFullPath extends string,
-> = TValidator | ValidatorFn<ValidatorFnInput<TFullPath>, any>
-
-export interface ValidatorFnInput<TFullPath extends string> {
-  body: unknown
-  search: Record<string, unknown>
-  headers: Record<string, unknown>
-  params: ResolveParams<TFullPath>
 }
 
 export interface ServerRouteMethodBuilderAfterValidator<
@@ -662,7 +649,7 @@ export interface ServerRouteMethod<
   TValidator,
 > {
   middleware?: Constrain<TMiddlewares, Middleware<any>>
-  validator?: ConstrainServerRouteValidator<TValidator, TFullPath>
+  validator?: ConstrainValidator<TValidator>
   handler?: ServerRouteMethodHandlerFn<
     TParentRoute,
     TFullPath,
@@ -745,7 +732,6 @@ export type ServerRouteMethodClientOptions<TFullPath extends string, TMethod> =
   {} extends ServerRouteMethodClientInput<TFullPath, TMethod>
     ? [options?: Expand<ServerRouteMethodClientInput<TFullPath, TMethod>>]
     : [options: Expand<ServerRouteMethodClientInput<TFullPath, TMethod>>]
-
 
 export type ServerRouteMethodClientInput<
   TFullPath extends string,
