@@ -79,12 +79,9 @@ async function handleServerRequest({
   const serverFnInfo = serverFnManifest[serverFnId]
 
   if (!serverFnInfo) {
-    console.log('serverFnManifest', serverFnManifest)
+    console.info('serverFnManifest', serverFnManifest)
     throw new Error('Server function info not found for ' + serverFnId)
   }
-
-  if (process.env.NODE_ENV === 'development')
-    console.info(`\nServerFn Request: ${serverFnId}`)
 
   let fnModule: undefined | { [key: string]: any }
 
@@ -99,15 +96,15 @@ async function handleServerRequest({
   }
 
   if (!fnModule) {
-    console.log('serverFnInfo', serverFnInfo)
+    console.info('serverFnInfo', serverFnInfo)
     throw new Error('Server function module not resolved for ' + serverFnId)
   }
 
   const action = fnModule[serverFnInfo.functionName]
 
   if (!action) {
-    console.log('serverFnInfo', serverFnInfo)
-    console.log('fnModule', fnModule)
+    console.info('serverFnInfo', serverFnInfo)
+    console.info('fnModule', fnModule)
     throw new Error(
       `Server function module export not resolved for serverFn ID: ${serverFnId}`,
     )
@@ -277,20 +274,6 @@ async function handleServerRequest({
   if (isRaw) {
     return response
   }
-  if (process.env.NODE_ENV === 'development')
-    console.info(`ServerFn Response: ${response.status}`)
-
-  if (response.headers.get('Content-Type') === 'application/json') {
-    const cloned = response.clone()
-    const text = await cloned.text()
-    const payload = text ? JSON.stringify(JSON.parse(text)) : 'undefined'
-
-    if (process.env.NODE_ENV === 'development')
-      console.info(
-        ` - Payload: ${payload.length > 100 ? payload.substring(0, 100) + '...' : payload}`,
-      )
-  }
-  if (process.env.NODE_ENV === 'development') console.info()
 
   return response
 }
