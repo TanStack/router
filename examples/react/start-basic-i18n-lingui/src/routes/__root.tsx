@@ -1,3 +1,4 @@
+import { i18n } from '@lingui/core'
 import {
   HeadContent,
   Link,
@@ -72,7 +73,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html>
+    <html lang={i18n.locale}>
       <head>
         <HeadContent />
       </head>

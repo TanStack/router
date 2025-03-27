@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
+    "lingui:extract": "lingui extract --clean",
     "start": "vinxi start"
   },
   "dependencies": {
+    "@lingui/core": "5.3.0",
+    "@lingui/react": "5.3.0",
     "@tanstack/react-router": "^1.114.29",
     "@tanstack/react-router-devtools": "^1.114.29",
     "@tanstack/react-start": "^1.114.29",
+    "cookie-es": "^1.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
@@ -19,11 +23,14 @@
     "vinxi": "0.5.3"
   },
   "devDependencies": {
+    "@lingui/babel-plugin-lingui-macro": "5.3.0",
+    "@lingui/cli": "5.3.0",
+    "@lingui/vite-plugin": "5.3.0",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
