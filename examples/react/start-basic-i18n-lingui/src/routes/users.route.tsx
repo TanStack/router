@@ -2,6 +2,8 @@ import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
 import { DEPLOY_URL } from '../utils/users'
 import type { User } from '../utils/users'
+import { t } from '@lingui/core/macro'
+import { useLingui } from '@lingui/react/macro'
 
 export const Route = createFileRoute('/users')({
   loader: async () => {
@@ -9,13 +11,14 @@ export const Route = createFileRoute('/users')({
       .get<Array<User>>(DEPLOY_URL + '/api/users')
       .then((r) => r.data)
       .catch(() => {
-        throw new Error('Failed to fetch users')
+        throw new Error(t`Failed to fetch users`)
       })
   },
   component: UsersLayoutComponent,
 })
 
 function UsersLayoutComponent() {
+  const { t } = useLingui()
   const users = Route.useLoaderData()
 
   return (
@@ -23,7 +26,7 @@ function UsersLayoutComponent() {
       <ul className="list-disc pl-4">
         {[
           ...users,
-          { id: 'i-do-not-exist', name: 'Non-existent User', email: '' },
+          { id: 'i-do-not-exist', name: t`Non-existent User`, email: '' },
         ].map((user) => {
           return (
             <li key={user.id} className="whitespace-nowrap">

@@ -1,3 +1,4 @@
+import { Trans } from '@lingui/react/macro'
 import {
   ErrorComponent,
   Link,
@@ -26,14 +27,14 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
           }}
           className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded text-white uppercase font-extrabold`}
         >
-          Try Again
+          <Trans>Try Again</Trans>
         </button>
         {isRoot ? (
           <Link
             to="/"
             className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded text-white uppercase font-extrabold`}
           >
-            Home
+            <Trans>Home</Trans>
           </Link>
         ) : (
           <Link
@@ -44,7 +45,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
               window.history.back()
             }}
           >
-            Go Back
+            <Trans>Go Back</Trans>
           </Link>
         )}
       </div>

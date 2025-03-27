@@ -1,3 +1,4 @@
+import { Trans } from '@lingui/react/macro'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_pathlessLayout/_nested-layout/route-a')(
@@ -7,5 +8,5 @@ export const Route = createFileRoute('/_pathlessLayout/_nested-layout/route-a')(
 )
 
 function LayoutAComponent() {
-  return <div>I'm A!</div>
+  return <div><Trans>I'm A!</Trans></div>
 }

@@ -4,6 +4,8 @@ import type { User } from '~/utils/users'
 import { DEPLOY_URL } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
 import { UserErrorComponent } from '~/components/UserError'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
@@ -11,13 +13,13 @@ export const Route = createFileRoute('/users/$userId')({
       .get<User>(DEPLOY_URL + '/api/users/' + userId)
       .then((r) => r.data)
       .catch(() => {
-        throw new Error('Failed to fetch user')
+        throw new Error(t`Failed to fetch user`)
       })
   },
   errorComponent: UserErrorComponent,
   component: UserComponent,
   notFoundComponent: () => {
-    return <NotFound>User not found</NotFound>
+    return <NotFound><Trans>User not found</Trans></NotFound>
   },
 })
 

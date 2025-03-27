@@ -1,3 +1,4 @@
+import { Trans } from '@lingui/react/macro'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts/')({
@@ -5,5 +6,5 @@ export const Route = createFileRoute('/posts/')({
 })
 
 function PostsIndexComponent() {
-  return <div>Select a post.</div>
+  return <div><Trans>Select a post.</Trans></div>
 }

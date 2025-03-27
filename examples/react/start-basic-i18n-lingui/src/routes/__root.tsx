@@ -1,4 +1,5 @@
 import { i18n } from '@lingui/core'
+import { Trans } from '@lingui/react/macro'
 import {
   HeadContent,
   Link,
@@ -86,7 +87,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             }}
             activeOptions={{ exact: true }}
           >
-            Home
+            <Trans>Home</Trans>
           </Link>{' '}
           <Link
             to="/posts"
@@ -94,7 +95,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               className: 'font-bold',
             }}
           >
-            Posts
+            <Trans>Posts</Trans>
           </Link>{' '}
           <Link
             to="/users"
@@ -102,7 +103,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               className: 'font-bold',
             }}
           >
-            Users
+            <Trans>Users</Trans>
           </Link>{' '}
           <Link
             to="/route-a"
@@ -110,7 +111,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               className: 'font-bold',
             }}
           >
-            Pathless Layout
+            <Trans>Pathless Layout</Trans>
           </Link>{' '}
           <Link
             to="/deferred"
@@ -118,7 +119,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               className: 'font-bold',
             }}
           >
-            Deferred
+            <Trans>Deferred</Trans>
           </Link>{' '}
           <Link
             // @ts-expect-error
@@ -127,7 +128,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               className: 'font-bold',
             }}
           >
-            This Route Does Not Exist
+            <Trans>This Route Does Not Exist</Trans>
           </Link>
         </div>
         <hr />

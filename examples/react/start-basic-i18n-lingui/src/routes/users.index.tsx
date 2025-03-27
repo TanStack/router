@@ -1,3 +1,4 @@
+import { Trans } from '@lingui/react/macro'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/users/')({
@@ -5,5 +6,5 @@ export const Route = createFileRoute('/users/')({
 })
 
 function UsersIndexComponent() {
-  return <div>Select a user.</div>
+  return <div><Trans>Select a user.</Trans></div>
 }

@@ -1,3 +1,4 @@
+import { Trans } from '@lingui/react/macro'
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_pathlessLayout/_nested-layout')({
@@ -7,7 +8,7 @@ export const Route = createFileRoute('/_pathlessLayout/_nested-layout')({
 function LayoutComponent() {
   return (
     <div>
-      <div>I'm a nested layout</div>
+      <div><Trans>I'm a nested layout</Trans></div>
       <div className="flex gap-2 border-b">
         <Link
           to="/route-a"
@@ -15,7 +16,7 @@ function LayoutComponent() {
             className: 'font-bold',
           }}
         >
-          Go to route A
+          <Trans>Go to route A</Trans>
         </Link>
         <Link
           to="/route-b"
@@ -23,7 +24,7 @@ function LayoutComponent() {
             className: 'font-bold',
           }}
         >
-          Go to route B
+          <Trans>Go to route B</Trans>
         </Link>
       </div>
       <div>

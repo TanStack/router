@@ -2,6 +2,7 @@ import { json } from '@tanstack/react-start'
 import { createAPIFileRoute } from '@tanstack/react-start/api'
 import axios from 'redaxios'
 import type { User } from '../../utils/users'
+import { t } from '@lingui/core/macro'
 
 export const APIRoute = createAPIFileRoute('/api/users/$id')({
   GET: async ({ request, params }) => {
@@ -18,7 +19,7 @@ export const APIRoute = createAPIFileRoute('/api/users/$id')({
       })
     } catch (e) {
       console.error(e)
-      return json({ error: 'User not found' }, { status: 404 })
+      return json({ error: t`User not found` }, { status: 404 })
     }
   },
 })
