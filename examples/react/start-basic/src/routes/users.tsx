@@ -41,7 +41,7 @@ function UsersComponent() {
           params: {
             userId: '1',
           },
-          data: {
+          body: {
             name: 'John Doe',
             email: 'john.doe@example.com',
           },
