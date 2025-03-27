@@ -10,6 +10,7 @@
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 
 // Create/Update Routes
@@ -19,6 +20,8 @@ import { Route as rootRoute } from './routes/__root'
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {}
 }
+
+// Add type-safety to the createFileRoute  function across the route tree
 
 // Create and export the route tree
 

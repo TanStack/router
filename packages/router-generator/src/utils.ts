@@ -86,7 +86,14 @@ export function removeTrailingSlash(s: string) {
 }
 
 export function determineInitialRoutePath(routePath: string) {
-  return cleanPath(`/${routePath.split('.').join('/')}`) || ''
+  return (
+    cleanPath(
+      `/${routePath.split(/(?<!\[)\.(?!\])/g).join('/')}`.replace(
+        /\[(.)\]/g,
+        '$1',
+      ),
+    ) || ''
+  )
 }
 
 export function replaceBackslash(s: string) {

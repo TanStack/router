@@ -12,28 +12,29 @@ import { createFileRoute } from '@tanstack/react-router'
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as FooLayoutRouteImport } from './routes/foo/_layout/route'
-import { Route as FooLayoutIndexImport } from './routes/foo/_layout/index'
+import { Route as FooLayoutRouteRouteImport } from './routes/foo/_layout/route'
+import { Route as FooLayoutIndexRouteImport } from './routes/foo/_layout/index'
 
 // Create Virtual Routes
 
-const FooImport = createFileRoute('/foo')()
+const FooRouteImport = createFileRoute('/foo')()
 
 // Create/Update Routes
 
-const FooRoute = FooImport.update({
+const FooRoute = FooRouteImport.update({
   id: '/foo',
   path: '/foo',
   getParentRoute: () => rootRoute,
 } as any)
 
-const FooLayoutRouteRoute = FooLayoutRouteImport.update({
+const FooLayoutRouteRoute = FooLayoutRouteRouteImport.update({
   id: '/_layout',
   getParentRoute: () => FooRoute,
 } as any)
 
-const FooLayoutIndexRoute = FooLayoutIndexImport.update({
+const FooLayoutIndexRoute = FooLayoutIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FooLayoutRouteRoute,
@@ -47,24 +48,54 @@ declare module '@tanstack/react-router' {
       id: '/foo'
       path: '/foo'
       fullPath: '/foo'
-      preLoaderRoute: typeof FooImport
+      preLoaderRoute: typeof FooRouteImport
       parentRoute: typeof rootRoute
     }
     '/foo/_layout': {
       id: '/foo/_layout'
       path: '/foo'
       fullPath: '/foo'
-      preLoaderRoute: typeof FooLayoutRouteImport
+      preLoaderRoute: typeof FooLayoutRouteRouteImport
       parentRoute: typeof FooRoute
     }
     '/foo/_layout/': {
       id: '/foo/_layout/'
       path: '/'
       fullPath: '/foo/'
-      preLoaderRoute: typeof FooLayoutIndexImport
-      parentRoute: typeof FooLayoutRouteImport
+      preLoaderRoute: typeof FooLayoutIndexRouteImport
+      parentRoute: typeof FooLayoutRouteRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute  function across the route tree
+
+declare module './routes/foo/_layout' {
+  const createFileRoute: CreateFileRoute<
+    '/foo',
+    FileRoutesByPath['/foo']['parentRoute'],
+    FileRoutesByPath['/foo']['id'],
+    FileRoutesByPath['/foo']['path'],
+    FileRoutesByPath['/foo']['fullPath']
+  >
+}
+declare module './routes/foo/_layout/route' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/_layout',
+    FileRoutesByPath['/foo/_layout']['parentRoute'],
+    FileRoutesByPath['/foo/_layout']['id'],
+    FileRoutesByPath['/foo/_layout']['path'],
+    FileRoutesByPath['/foo/_layout']['fullPath']
+  >
+}
+declare module './routes/foo/_layout/index' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/_layout/',
+    FileRoutesByPath['/foo/_layout/']['parentRoute'],
+    FileRoutesByPath['/foo/_layout/']['id'],
+    FileRoutesByPath['/foo/_layout/']['path'],
+    FileRoutesByPath['/foo/_layout/']['fullPath']
+  >
 }
 
 // Create and export the route tree
