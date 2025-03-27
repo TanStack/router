@@ -65,7 +65,14 @@ test('createServerFileRoute with methods with no middleware', () => {
   >()
 
   expectTypeOf(serverFileRouteWithMethods1.client.get).parameters.toEqualTypeOf<
-    [options: { params: { detailId: string } }]
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
   >()
 
   expectTypeOf(serverFileRouteWithMethods2.client.get).returns.toEqualTypeOf<
@@ -75,7 +82,14 @@ test('createServerFileRoute with methods with no middleware', () => {
   >()
 
   expectTypeOf(serverFileRouteWithMethods2.client.get).parameters.toEqualTypeOf<
-    [options: { params: { detailId: string } }]
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
   >()
 })
 
@@ -140,7 +154,14 @@ test('createServerFileRoute with methods and route middleware context', () => {
   >()
 
   expectTypeOf(serverFileRouteWithMethods1.client.get).parameters.toEqualTypeOf<
-    [options: { params: { detailId: string } }]
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
   >()
 
   expectTypeOf(serverFileRouteWithMethods2.client.get).returns.toEqualTypeOf<
@@ -150,7 +171,14 @@ test('createServerFileRoute with methods and route middleware context', () => {
   >()
 
   expectTypeOf(serverFileRouteWithMethods2.client.get).parameters.toEqualTypeOf<
-    [options: { params: { detailId: string } }]
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
   >()
 })
 
@@ -197,7 +225,14 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
   >()
 
   expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
-    [options: { params: { detailId: string } }]
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
   >()
 })
 
@@ -228,7 +263,14 @@ test('createServerFileRoute with methods validator', () => {
   }))
 
   expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
-    [options: { params: { detailId: string } }]
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
   >()
 
   expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
@@ -396,6 +438,9 @@ test('createServerFileRoute with a parent middleware context', () => {
     [
       options: {
         params: { detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
       },
     ]
   >()
@@ -404,6 +449,9 @@ test('createServerFileRoute with a parent middleware context', () => {
     [
       options: {
         params: { detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
       },
     ]
   >()
@@ -460,6 +508,9 @@ test('createServerFileRoute with parent middleware params', () => {
     [
       options: {
         params: { userId: string; detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
       },
     ]
   >()
@@ -468,6 +519,9 @@ test('createServerFileRoute with parent middleware params', () => {
     [
       options: {
         params: { userId: string; detailId: string }
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
       },
     ]
   >()
@@ -514,6 +568,9 @@ test('createServerFileRoute with no params', () => {
     [
       options?: {
         params?: {}
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
       },
     ]
   >()
@@ -522,6 +579,9 @@ test('createServerFileRoute with no params', () => {
     [
       options?: {
         params?: {}
+        search?: Record<string, unknown> | undefined
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
       },
     ]
   >()

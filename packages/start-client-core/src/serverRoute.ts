@@ -11,9 +11,9 @@ import type {
   Expand,
   ResolveParams,
   RouteConstraints,
-  Validator,
+  ValidatorFn,
 } from '@tanstack/router-core'
-import type { ConstrainValidator, JsonResponse } from './createServerFn'
+import type { JsonResponse } from './createServerFn'
 
 type TODO = any
 
@@ -553,7 +553,7 @@ export interface ServerRouteMethodBuilderValidator<
   TMethodMiddlewares,
 > {
   validator: <TValidator>(
-    validator: ConstrainValidator<TValidator>,
+    validator: ConstrainServerRouteValidator<TValidator, TFullPath>,
   ) => ServerRouteMethodBuilderAfterValidator<
     TParentRoute,
     TFullPath,
@@ -564,12 +564,10 @@ export interface ServerRouteMethodBuilderValidator<
   >
 }
 
-export interface ValidatorInput<TFullPath extends string> {
-  body?: unknown
-  search?: Record<string, unknown>
-  headers?: Record<string, unknown>
-  params?: ResolveParams<TFullPath>
-}
+export type ConstrainServerRouteValidator<
+  TValidator,
+  TFullPath extends string,
+> = TValidator | ValidatorFn<ValidatorFnInput<TFullPath>, any>
 
 export interface ValidatorFnInput<TFullPath extends string> {
   body: unknown
@@ -664,7 +662,7 @@ export interface ServerRouteMethod<
   TValidator,
 > {
   middleware?: Constrain<TMiddlewares, Middleware<any>>
-  validator?: ServerRouteMethodValidator<TFullPath, TVerb, TMiddlewares>
+  validator?: ConstrainServerRouteValidator<TValidator, TFullPath>
   handler?: ServerRouteMethodHandlerFn<
     TParentRoute,
     TFullPath,
@@ -675,12 +673,6 @@ export interface ServerRouteMethod<
     undefined
   >
 }
-
-type ServerRouteMethodValidator<
-  TPath extends string,
-  TVerb extends ServerRouteVerb,
-  TMiddleware,
-> = 'TODO'
 
 export interface ServerRouteAfterMethods<
   TParentRoute extends AnyServerRouteWithTypes,
@@ -754,18 +746,72 @@ export type ServerRouteMethodClientOptions<TFullPath extends string, TMethod> =
     ? [options?: Expand<ServerRouteMethodClientInput<TFullPath, TMethod>>]
     : [options: Expand<ServerRouteMethodClientInput<TFullPath, TMethod>>]
 
+
 export type ServerRouteMethodClientInput<
   TFullPath extends string,
   TMethod,
 > = TMethod extends AnyRouteMethodsBuilder
-  ? undefined extends TMethod['_types']['allInput']
-    ? ValidatorInputParams<TFullPath>
-    : TMethod['_types']['allInput'] extends { params: any }
-      ? TMethod['_types']['allInput']
-      : TMethod['_types']['allInput'] & ValidatorInputParams<TFullPath>
-  : ValidatorInputParams<TFullPath>
+  ? ServerRouteMethodClientInputBuilder<
+      TFullPath,
+      TMethod['_types']['allInput']
+    >
+  : DefaultServerRouteMethodClientParamsInput<TFullPath> &
+      DefaultServerRouteMethodClientBodyInput &
+      DefaultServerRouteMethodClientHeadersInput &
+      DefaultServerRouteMethodClientSearchInput
 
-export type ValidatorInputParams<TFullPath extends string> =
-  {} extends ResolveParams<TFullPath>
-    ? { params?: ResolveParams<TFullPath> }
-    : { params: ResolveParams<TFullPath> }
+export type ServerRouteMethodClientInputBuilder<
+  TFullPath extends string,
+  TInput,
+> = TInput extends any
+  ? ServerRouteMethodClientParamsInput<TFullPath, TInput> &
+      ServerRouteMethodClientSearchInput<TInput> &
+      ServerRouteMethodClientBodyInput<TInput> &
+      ServerRouteMethodClientHeadersInput<TInput>
+  : never
+
+export type ServerRouteMethodClientParamsInput<
+  TFullPath extends string,
+  TInput,
+> = TInput extends { params: infer TParams }
+  ? RequiredOrOptionalRecord<'params', TParams>
+  : DefaultServerRouteMethodClientParamsInput<TFullPath>
+
+export type RequiredOrOptionalRecord<
+  TKey extends string,
+  TValue,
+> = {} extends TValue ? { [K in TKey]?: TValue } : { [K in TKey]: TValue }
+
+export type DefaultServerRouteMethodClientParamsInput<
+  TFullPath extends string,
+> = RequiredOrOptionalRecord<'params', ResolveParams<TFullPath>>
+
+export type ServerRouteMethodClientSearchInput<TInput> = TInput extends {
+  search: infer TSearch
+}
+  ? RequiredOrOptionalRecord<'search', TSearch>
+  : DefaultServerRouteMethodClientSearchInput
+
+export interface DefaultServerRouteMethodClientSearchInput {
+  search?: Record<string, unknown>
+}
+
+export type ServerRouteMethodClientBodyInput<TInput> = TInput extends {
+  body: infer TBody
+}
+  ? RequiredOrOptionalRecord<'body', TBody>
+  : DefaultServerRouteMethodClientBodyInput
+
+export interface DefaultServerRouteMethodClientBodyInput {
+  body?: unknown
+}
+
+export type ServerRouteMethodClientHeadersInput<TInput> = TInput extends {
+  headers: infer THeaders
+}
+  ? RequiredOrOptionalRecord<'headers', THeaders>
+  : DefaultServerRouteMethodClientHeadersInput
+
+export interface DefaultServerRouteMethodClientHeadersInput {
+  headers?: Record<string, unknown>
+}
