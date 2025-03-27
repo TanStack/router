@@ -23,10 +23,6 @@ function getLocaleFromRequest() {
 	const headers = getHeaders();
 	const cookie = parse(headers.cookie ?? "");
 
-	if (cookie.locale && isLocaleValid(cookie.locale)) {
-		return cookie.locale;
-	}
-
 	if (request) {
 		const url = new URL(request.url);
 		const queryLocale = url.searchParams.get("locale") ?? "";
@@ -42,6 +38,10 @@ function getLocaleFromRequest() {
 
 			return queryLocale;
 		}
+	}
+
+	if (cookie.locale && isLocaleValid(cookie.locale)) {
+		return cookie.locale;
 	}
 
 	setHeader(
