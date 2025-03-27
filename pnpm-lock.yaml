@@ -4397,6 +4397,58 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.1.2(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  examples/react/start-basic-i18n-lingui:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vinxi:
+        specifier: 0.5.3
+        version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.5.4
+        version: 22.13.4
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.3)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.3
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.8.2)(vite@6.1.2(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   examples/react/start-basic-react-query:
     dependencies:
       '@tanstack/react-query':
