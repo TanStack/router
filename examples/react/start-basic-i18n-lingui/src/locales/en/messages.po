@@ -13,136 +13,23 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: src/routes/posts_.$postId.deep.tsx:24
-msgid "← All Posts"
-msgstr "← All Posts"
+#: src/routes/about.tsx:20
+#: src/routes/__root.tsx:54
+msgid "About"
+msgstr "About"
 
-#: src/routes/deferred.tsx:58
-msgid "Count: {count}"
-msgstr "Count: {count}"
+#: src/routes/index.tsx:12
+msgid "Hello world!"
+msgstr "Hello world!"
 
-#: src/routes/posts.$postId.tsx:31
-msgid "Deep View"
-msgstr "Deep View"
+#: src/routes/__root.tsx:53
+msgid "Index"
+msgstr "Index"
 
-#: src/routes/__root.tsx:122
-msgid "Deferred"
-msgstr "Deferred"
+#: src/router.tsx:15
+msgid "not found"
+msgstr "not found"
 
-#: src/routes/users.$userId.tsx:16
-msgid "Failed to fetch user"
-msgstr "Failed to fetch user"
-
-#: src/routes/users.route.tsx:14
-msgid "Failed to fetch users"
-msgstr "Failed to fetch users"
-
-#: src/components/NotFound.tsx:15
-msgid "Go back"
-msgstr "Go back"
-
-#: src/components/DefaultCatchBoundary.tsx:48
-msgid "Go Back"
-msgstr "Go Back"
-
-#: src/routes/_pathlessLayout/_nested-layout.tsx:19
-msgid "Go to route A"
-msgstr "Go to route A"
-
-#: src/routes/_pathlessLayout/_nested-layout.tsx:27
-msgid "Go to route B"
-msgstr "Go to route B"
-
-#: src/routes/deferred.tsx:24
-msgid "Hello deferred!"
-msgstr "Hello deferred!"
-
-#: src/routes/__root.tsx:90
-#: src/components/DefaultCatchBoundary.tsx:37
-msgid "Home"
-msgstr "Home"
-
-#: src/routes/_pathlessLayout.tsx:11
-msgid "I'm a layout"
-msgstr "I'm a layout"
-
-#: src/routes/_pathlessLayout/_nested-layout.tsx:11
-msgid "I'm a nested layout"
-msgstr "I'm a nested layout"
-
-#: src/routes/_pathlessLayout/_nested-layout/route-a.tsx:11
-msgid "I'm A!"
-msgstr "I'm A!"
-
-#: src/routes/_pathlessLayout/_nested-layout/route-b.tsx:11
-msgid "I'm B!"
-msgstr "I'm B!"
-
-#: src/routes/deferred.tsx:60
-msgid "Increment"
-msgstr "Increment"
-
-#: src/routes/deferred.tsx:42
-msgid "Loading person..."
-msgstr "Loading person..."
-
-#: src/routes/deferred.tsx:52
-msgid "Loading stuff..."
-msgstr "Loading stuff..."
-
-#: src/routes/posts.route.tsx:17
-msgid "Non-existent Post"
-msgstr "Non-existent Post"
-
-#: src/routes/users.route.tsx:29
-msgid "Non-existent User"
-msgstr "Non-existent User"
-
-#: src/routes/__root.tsx:114
-msgid "Pathless Layout"
-msgstr "Pathless Layout"
-
-#: src/routes/posts.$postId.tsx:12
-msgid "Post not found"
-msgstr "Post not found"
-
-#: src/routes/__root.tsx:98
-msgid "Posts"
-msgstr "Posts"
-
-#: src/routes/posts.index.tsx:9
-msgid "Select a post."
-msgstr "Select a post."
-
-#: src/routes/users.index.tsx:9
-msgid "Select a user."
-msgstr "Select a user."
-
-#: src/components/NotFound.tsx:21
-msgid "Start Over"
-msgstr "Start Over"
-
-#: src/components/NotFound.tsx:8
-msgid "The page you are looking for does not exist."
-msgstr "The page you are looking for does not exist."
-
-#: src/routes/__root.tsx:131
-msgid "This Route Does Not Exist"
-msgstr "This Route Does Not Exist"
-
-#: src/components/DefaultCatchBoundary.tsx:30
-msgid "Try Again"
-msgstr "Try Again"
-
-#: src/routes/users.$userId.tsx:22
-#: src/routes/api/users.$id.ts:22
-msgid "User not found"
-msgstr "User not found"
-
-#: src/routes/__root.tsx:106
-msgid "Users"
-msgstr "Users"
-
-#: src/routes/index.tsx:11
-msgid "Welcome Home!!!"
-msgstr "Welcome Home!!!"
+#: src/routes/about.tsx:9
+msgid "This is from the loader."
+msgstr "This is from the loader."

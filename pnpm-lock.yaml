@@ -4423,12 +4423,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      redaxios:
-        specifier: ^0.5.1
-        version: 0.5.1
-      tailwind-merge:
-        specifier: ^2.6.0
-        version: 2.6.0
       vinxi:
         specifier: 0.5.3
         version: 0.5.3(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
@@ -4442,6 +4436,9 @@ importers:
       '@lingui/vite-plugin':
         specifier: 5.3.0
         version: 5.3.0(typescript@5.8.2)(vite@6.1.2(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      '@tailwindcss/vite':
+        specifier: ^4.0.8
+        version: 4.0.8(vite@6.1.2(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.5.4
         version: 22.13.4
@@ -4451,15 +4448,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
-      autoprefixer:
-        specifier: ^10.4.20
-        version: 10.4.20(postcss@8.5.3)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17
+        specifier: ^4.0.8
+        version: 4.0.8
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
