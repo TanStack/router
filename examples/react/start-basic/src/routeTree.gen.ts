@@ -42,9 +42,16 @@ const UsersRoute = UsersRouteImport.update({
   path: '/users',
   getParentRoute: () => rootRoute,
   staticData: createIsomorphicFn()
-    .server(() => ({ ...rootRoute.staticData, serverRoute: UsersServerRoute }))
-    .client(() => rootRoute.staticData),
+    .server(() => ({
+      ...rootRoute.staticData,
+      serverRoute: UsersServerRouteImport,
+    }))
+    .client(() => rootRoute.staticData)(),
 } as any)
+
+Object.assign(UsersServerRouteImport.options, {
+  pathname: '/users',
+})
 
 const RedirectRoute = RedirectRouteImport.update({
   id: '/redirect',
@@ -94,10 +101,14 @@ const UsersUserIdRoute = UsersUserIdRouteImport.update({
   staticData: createIsomorphicFn()
     .server(() => ({
       ...UsersRoute.staticData,
-      serverRoute: UsersUserIdServerRoute,
+      serverRoute: UsersUserIdServerRouteImport,
     }))
-    .client(() => UsersRoute.staticData),
+    .client(() => UsersRoute.staticData)(),
 } as any)
+
+Object.assign(UsersUserIdServerRouteImport.options, {
+  pathname: '/users/$userId',
+})
 
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
@@ -541,7 +552,7 @@ export interface FileRoutesByFullPath {
 
 export interface ServerFileRoutesByFullPath {
   '/users': typeof UsersServerRouteWithChildren
-  '/users/$userId': typeof UsersUserIdServerRoute
+  '/users/$userId': typeof UsersUserIdServerRouteImport
 }
 
 export interface FileRoutesByTo {
@@ -559,7 +570,7 @@ export interface FileRoutesByTo {
 }
 
 export interface ServerFileRoutesByTo {
-  '/users/$userId': typeof UsersUserIdServerRoute
+  '/users/$userId': typeof UsersUserIdServerRouteImport
 }
 
 export interface FileRoutesById {
@@ -582,7 +593,7 @@ export interface FileRoutesById {
 
 export interface ServerFileRoutesById {
   '/users': typeof UsersServerRouteWithChildren
-  '/users/$userId': typeof UsersUserIdServerRoute
+  '/users/$userId': typeof UsersUserIdServerRouteImport
 }
 
 export interface FileRouteTypes {

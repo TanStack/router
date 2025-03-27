@@ -90,6 +90,18 @@ export function createStartHandler<
         history,
       })
 
+      router.beforeLoad()
+
+      console.log(
+        href,
+        router.state.pendingMatches?.map((d) => {
+          const staticData = router.looseRoutesById[d.routeId]?.options
+            .staticData as undefined | { serverRoute: any }
+
+          return [d.routeId, staticData?.serverRoute]
+        }),
+      )
+
       await router.load()
 
       dehydrateRouter(router)

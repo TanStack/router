@@ -5,15 +5,19 @@ import {
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
-import type { GeneratorResult } from '@tanstack/router-utils'
-import { CompileOptions, getRootCallExpression, IdentifierConfig } from '@tanstack/start-plugin-core'
 import {
-  handleServerOnlyCallExpression,
+  getRootCallExpression,
   handleClientOnlyCallExpression,
-  handleCreateServerFnCallExpression,
+  handleCreateIsomorphicFnCallExpression,
   handleCreateMiddlewareCallExpression,
-  handleCreateIsomorphicFnCallExpression
+  handleCreateServerFnCallExpression,
+  handleServerOnlyCallExpression,
 } from '@tanstack/start-plugin-core'
+import type {
+  CompileOptions,
+  IdentifierConfig,
+} from '@tanstack/start-plugin-core'
+import type { GeneratorResult } from '@tanstack/router-utils'
 
 export function compileStartOutput(opts: CompileOptions): GeneratorResult {
   const ast = parseAst(opts)
@@ -205,14 +209,101 @@ function handleCreateServerFileRouteCallExpression(
     },
   })
 
-  // On the client, remove validator, middleware and methods calls by replacing them with their object
-  if (opts.env === 'client') {
-    Object.values(callExpressionPaths).forEach((callPath) => {
-      if (callPath && t.isMemberExpression(callPath.node.callee)) {
+  const manifest = { middleware: false, methods: {} as any }
+
+  Object.entries(callExpressionPaths).forEach(([key, callPath]) => {
+    if (callPath && t.isMemberExpression(callPath.node.callee)) {
+      if (key === 'middleware') {
+        manifest.middleware = true
+      } else if (key === 'methods') {
+        // Get the methods object from the methods call
+        const methodsArg = callPath.node.arguments[0]
+
+        // Handle the case where methods is a function that returns an object
+        if (
+          t.isArrowFunctionExpression(methodsArg) &&
+          t.isObjectExpression(methodsArg.body)
+        ) {
+          methodsArg.body.properties.forEach((prop) => {
+            if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
+              const methodName = prop.key.name
+              manifest.methods[methodName] = {
+                validator: false,
+                middleware: false,
+              }
+
+              // Check if this method has a validator or middleware
+              if (t.isCallExpression(prop.value)) {
+                const method = prop.value
+                method.arguments.forEach((arg) => {
+                  if (t.isObjectExpression(arg)) {
+                    arg.properties.forEach((methodProp) => {
+                      if (
+                        t.isObjectProperty(methodProp) &&
+                        t.isIdentifier(methodProp.key)
+                      ) {
+                        if (methodProp.key.name === 'validator') {
+                          manifest.methods[methodName].validator = true
+                        }
+                        if (methodProp.key.name === 'middleware') {
+                          manifest.methods[methodName].middleware = true
+                        }
+                      }
+                    })
+                  }
+                })
+              }
+            }
+          })
+        }
+        // Handle the case where methods is a direct object
+        else if (t.isObjectExpression(methodsArg)) {
+          methodsArg.properties.forEach((prop) => {
+            if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
+              const methodName = prop.key.name
+              manifest.methods[methodName] = {
+                validator: false,
+                middleware: false,
+              }
+            }
+          })
+        }
+      }
+
+      if (opts.env === 'client') {
         callPath.replaceWith(callPath.node.callee.object)
       }
-    })
-  }
+    }
+  })
+
+  console.log(manifest)
+
+  path.replaceWith(
+    t.callExpression(t.identifier('createServerFileRoute'), [
+      t.identifier('undefined'),
+      t.callExpression(
+        t.memberExpression(t.identifier('Object'), t.identifier('assign')),
+        [
+          t.objectExpression(
+            path.node.arguments
+              .map((arg) => {
+                if (t.isIdentifier(arg)) {
+                  return t.objectProperty(t.identifier(arg.name), arg)
+                }
+                // Handle other cases or return a default value if necessary
+                return null // or throw an error, or handle accordingly
+              })
+              .filter(
+                (property): property is t.ObjectProperty => property !== null,
+              ),
+          ),
+          t.objectExpression([
+            t.objectProperty(t.identifier('manifest'), t.valueToNode(manifest)),
+          ]),
+        ],
+      ),
+    ]),
+  )
 
   let isCreateServerFileRouteImported = false as boolean
 
