@@ -6,5 +6,9 @@ export const Route = createFileRoute('/posts/')({
 })
 
 function PostsIndexComponent() {
-  return <div><Trans>Select a post.</Trans></div>
+  return (
+    <div>
+      <Trans>Select a post.</Trans>
+    </div>
+  )
 }

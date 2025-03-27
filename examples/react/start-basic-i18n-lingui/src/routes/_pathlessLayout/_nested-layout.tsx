@@ -8,7 +8,9 @@ export const Route = createFileRoute('/_pathlessLayout/_nested-layout')({
 function LayoutComponent() {
   return (
     <div>
-      <div><Trans>I'm a nested layout</Trans></div>
+      <div>
+        <Trans>I'm a nested layout</Trans>
+      </div>
       <div className="flex gap-2 border-b">
         <Link
           to="/route-a"

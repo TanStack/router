@@ -39,7 +39,13 @@ function Deferred() {
       <div data-testid="regular-person">
         {person.name} - {person.randomNumber}
       </div>
-      <Suspense fallback={<div><Trans>Loading person...</Trans></div>}>
+      <Suspense
+        fallback={
+          <div>
+            <Trans>Loading person...</Trans>
+          </div>
+        }
+      >
         <Await
           promise={deferredPerson}
           children={(data) => (
@@ -49,15 +55,25 @@ function Deferred() {
           )}
         />
       </Suspense>
-      <Suspense fallback={<div><Trans>Loading stuff...</Trans></div>}>
+      <Suspense
+        fallback={
+          <div>
+            <Trans>Loading stuff...</Trans>
+          </div>
+        }
+      >
         <Await
           promise={deferredStuff}
           children={(data) => <h3 data-testid="deferred-stuff">{data}</h3>}
         />
       </Suspense>
-      <div><Trans>Count: {count}</Trans></div>
       <div>
-        <button onClick={() => setCount(count + 1)}><Trans>Increment</Trans></button>
+        <Trans>Count: {count}</Trans>
+      </div>
+      <div>
+        <button onClick={() => setCount(count + 1)}>
+          <Trans>Increment</Trans>
+        </button>
       </div>
     </div>
   )

@@ -8,5 +8,9 @@ export const Route = createFileRoute('/_pathlessLayout/_nested-layout/route-a')(
 )
 
 function LayoutAComponent() {
-  return <div><Trans>I'm A!</Trans></div>
+  return (
+    <div>
+      <Trans>I'm A!</Trans>
+    </div>
+  )
 }

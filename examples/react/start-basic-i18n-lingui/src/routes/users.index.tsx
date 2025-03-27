@@ -6,5 +6,9 @@ export const Route = createFileRoute('/users/')({
 })
 
 function UsersIndexComponent() {
-  return <div><Trans>Select a user.</Trans></div>
+  return (
+    <div>
+      <Trans>Select a user.</Trans>
+    </div>
+  )
 }

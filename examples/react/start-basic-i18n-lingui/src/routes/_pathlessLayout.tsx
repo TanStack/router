@@ -8,7 +8,9 @@ export const Route = createFileRoute('/_pathlessLayout')({
 function LayoutComponent() {
   return (
     <div className="p-2">
-      <div className="border-b"><Trans>I'm a layout</Trans></div>
+      <div className="border-b">
+        <Trans>I'm a layout</Trans>
+      </div>
       <div>
         <Outlet />
       </div>

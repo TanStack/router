@@ -18,17 +18,17 @@ import { locales } from '~/modules/lingui/i18n'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 
-const updateLanguage = createServerFn({ method: "POST" })
-	.validator((locale: string) => locale)
-	.handler(async ({ data }) => {
-		setHeader(
-			"Set-Cookie",
-			serialize("locale", data, {
-				maxAge: 30 * 24 * 60 * 60,
-				path: "/",
-			}),
-		);
-	});
+const updateLanguage = createServerFn({ method: 'POST' })
+  .validator((locale: string) => locale)
+  .handler(async ({ data }) => {
+    setHeader(
+      'Set-Cookie',
+      serialize('locale', data, {
+        maxAge: 30 * 24 * 60 * 60,
+        path: '/',
+      }),
+    )
+  })
 
 export const Route = createRootRoute({
   head: () => ({
@@ -145,18 +145,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             }}
           >
             <Trans>This Route Does Not Exist</Trans>
-          </Link>|
-          {Object.entries(locales).map(([locale, label]) => <button
-            key={locale}
-            className={locale === i18n.locale ? 'font-bold' : ''}
-            onClick={() => {
-              updateLanguage({ data: locale }).then(() => {
-                location.reload();
-              });
-            }}
-          >
-            {label}
-          </button>)}
+          </Link>
+          |
+          {Object.entries(locales).map(([locale, label]) => (
+            <button
+              key={locale}
+              className={locale === i18n.locale ? 'font-bold' : ''}
+              onClick={() => {
+                updateLanguage({ data: locale }).then(() => {
+                  location.reload()
+                })
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <hr />
         {children}

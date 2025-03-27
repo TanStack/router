@@ -19,7 +19,11 @@ export const Route = createFileRoute('/users/$userId')({
   errorComponent: UserErrorComponent,
   component: UserComponent,
   notFoundComponent: () => {
-    return <NotFound><Trans>User not found</Trans></NotFound>
+    return (
+      <NotFound>
+        <Trans>User not found</Trans>
+      </NotFound>
+    )
   },
 })
 

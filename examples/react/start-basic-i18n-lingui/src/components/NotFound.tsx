@@ -5,7 +5,11 @@ export function NotFound({ children }: { children?: any }) {
   return (
     <div className="space-y-2 p-2">
       <div className="text-gray-600 dark:text-gray-400">
-        {children || <p><Trans>The page you are looking for does not exist.</Trans></p>}
+        {children || (
+          <p>
+            <Trans>The page you are looking for does not exist.</Trans>
+          </p>
+        )}
       </div>
       <p className="flex items-center gap-2 flex-wrap">
         <button
