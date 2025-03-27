@@ -116,7 +116,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     queryClient.getMutationCache().config = {
       ...ogMutationCacheConfig,
       onError: (error, _variables, _context, _mutation) => {
-        if (isRedirect(error)) {
+        if (isRedirect(error) && !router.isServer) {
           return router.navigate(
             router.resolveRedirect({
               ...error,
@@ -138,7 +138,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     queryClient.getQueryCache().config = {
       ...ogQueryCacheConfig,
       onError: (error, _query) => {
-        if (isRedirect(error)) {
+        if (isRedirect(error) && !router.isServer) {
           return router.navigate(
             router.resolveRedirect({
               ...error,
