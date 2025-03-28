@@ -5,9 +5,10 @@ import { getRollupConfig } from 'nitropack/rollup'
 import { createNitro } from 'nitropack'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { Queue, buildNitroEnvironment } from '@tanstack/start-plugin-core'
+import type { Page} from '@tanstack/start-plugin-core';
 import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
-import type { Page, TanStackStartOutputConfig } from './schema.js'
+import type { TanStackStartOutputConfig } from './schema.js'
 
 export async function prerender({
   options,
