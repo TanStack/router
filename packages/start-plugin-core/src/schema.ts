@@ -4,31 +4,18 @@ import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-generator'
 import type { NitroConfig } from 'nitropack'
 
-/**
- * Creates a plugin schema entry for the TanStackStartOptionsSchema
- * @param key The key to attach the plugin options to
- * @returns A schema object with the plugin key
- */
-export function createPluginSchema<T>() {
-  return <TKey extends string>(key: TKey) => {
-    return {
-      [key]: z.custom<T>().optional()
-    } as const
-  }
-}
-
 const tsrConfig = configSchema.partial().extend({
   srcDirectory: z.string().optional().default('src'),
 })
 
 export function createTanStackConfig<TFrameworkPlugin extends Record<string, unknown>>(frameworkPlugin: TFrameworkPlugin) {
   const schema = createTanStackStartOptionsSchema(frameworkPlugin)
-  
+
   return {
     schema,
     parse: (opts?: z.input<typeof schema>) => {
       const options = schema.parse(opts)
-      
+
       const srcDirectory = options.tsr.srcDirectory
 
       const routesDirectory =

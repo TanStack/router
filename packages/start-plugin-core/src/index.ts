@@ -10,7 +10,6 @@ export { buildSitemap } from './nitro/build-sitemap'
 export { 
   createTanStackConfig, 
   createTanStackStartOptionsSchema, 
-  pageSchema,
-  createPluginSchema 
+  pageSchema
 } from './schema'
 export type { Page } from './schema'
