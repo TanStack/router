@@ -6735,6 +6735,9 @@ importers:
       import-meta-resolve:
         specifier: ^4.1.0
         version: 4.1.0
+      nitropack:
+        specifier: ^2.10.4
+        version: 2.10.4(typescript@5.8.2)
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
