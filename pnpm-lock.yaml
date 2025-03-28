@@ -6045,9 +6045,6 @@ importers:
       vite:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-      xmlbuilder2:
-        specifier: ^3.1.1
-        version: 3.1.1
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -6583,9 +6580,6 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.6
         version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-      xmlbuilder2:
-        specifier: ^3.1.1
-        version: 3.1.1
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -6744,6 +6738,9 @@ importers:
       vite:
         specifier: 6.1.0
         version: 6.1.0(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      xmlbuilder2:
+        specifier: ^3.1.1
+        version: 3.1.1
       zod:
         specifier: ^3.24.2
         version: 3.24.2
