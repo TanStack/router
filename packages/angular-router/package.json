@@ -1,0 +1,69 @@
+{
+  "name": "@tanstack/angular-router",
+  "version": "1.115.2",
+  "description": "Modern and scalable routing for Angular applications",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/angular-router"
+  },
+  "homepage": "https://tanstack.com/router",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "angular",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint",
+    "build": "vite build",
+    "test:unit": "vitest"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=19.0.0",
+    "@angular/core": ">=19.0.0",
+    "@angular/platform-browser-dynamic": ">=19.0.0",
+    "@tanstack/history": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/router-devtools-core": "workspace:*",
+    "jsesc": "^3.0.2",
+    "rxjs": "^7.8.0",
+    "solid-js": "^1.9.5",
+    "tiny-invariant": "^1.3.3",
+    "tiny-warning": "^1.0.3"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "type": "module",
+  "types": "dist/fesm2022/index.d.ts",
+  "module": "dist/fesm2022/index.js",  
+  "files": [
+    "src",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/fesm2022/index.d.ts",
+        "default": "./dist/fesm2022/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },  
+  "devDependencies": {
+    "ng-packagr": "^19.2.0",
+    "@analogjs/vite-plugin-angular": "1.15.1-beta.3",
+    "@analogjs/vitest-angular": "1.15.1-beta.3"
+  },
+  "sideEffects": false
+}
