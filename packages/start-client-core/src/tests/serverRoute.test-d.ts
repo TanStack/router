@@ -236,7 +236,7 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
   >()
 })
 
-test('createServerFileRoute with methods validator', () => {
+test('createServerFileRoute methods validator with no input', () => {
   type Path = '$detailId'
   const createServerFileRoute: CreateServerFileRoute<
     Path,
@@ -270,6 +270,219 @@ test('createServerFileRoute with methods validator', () => {
         body?: unknown
         headers?: Record<string, unknown> | undefined
       },
+    ]
+  >()
+
+  expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+})
+
+test('createServerFileRoute methods validator with search input', () => {
+  type Path = '$detailId'
+  const createServerFileRoute: CreateServerFileRoute<
+    Path,
+    any,
+    Path,
+    Path,
+    Path
+  > = undefined as any
+
+  const serverRoute = createServerFileRoute().methods((r) => ({
+    GET: r
+      .validator((input: { search: { query: string } }) => ({
+        a: input.search.query,
+      }))
+      .handler(async (ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: { a: string }
+          context: undefined
+          params: { detailId: string }
+          pathname: '$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      }),
+  }))
+
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search: { query: string }
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
+  >()
+
+  expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+})
+
+test('createServerFileRoute methods validator with body input', () => {
+  type Path = '$detailId'
+  const createServerFileRoute: CreateServerFileRoute<
+    Path,
+    any,
+    Path,
+    Path,
+    Path
+  > = undefined as any
+
+  const serverRoute = createServerFileRoute().methods((r) => ({
+    GET: r
+      .validator((input: { body: { query: string } }) => ({
+        a: input.body.query,
+      }))
+      .handler(async (ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: { a: string }
+          context: undefined
+          params: { detailId: string }
+          pathname: '$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      }),
+  }))
+
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown>
+        body: { query: string }
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
+  >()
+
+  expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+})
+
+test('createServerFileRoute methods validator with headers input', () => {
+  type Path = '$detailId'
+  const createServerFileRoute: CreateServerFileRoute<
+    Path,
+    any,
+    Path,
+    Path,
+    Path
+  > = undefined as any
+
+  const serverRoute = createServerFileRoute().methods((r) => ({
+    GET: r
+      .validator((input: { headers: { query: string } }) => ({
+        a: input.headers.query,
+      }))
+      .handler(async (ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: { a: string }
+          context: undefined
+          params: { detailId: string }
+          pathname: '$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      }),
+  }))
+
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown>
+        body?: unknown
+        headers: { query: string }
+      },
+    ]
+  >()
+
+  expectTypeOf(serverRoute.client.get).returns.toEqualTypeOf<
+    Promise<{
+      test: string
+    }>
+  >()
+})
+
+test('createServerFileRoute methods validator with a complex union', () => {
+  type Path = '$detailId'
+  const createServerFileRoute: CreateServerFileRoute<
+    Path,
+    any,
+    Path,
+    Path,
+    Path
+  > = undefined as any
+
+  const serverRoute = createServerFileRoute().methods((r) => ({
+    GET: r
+      .validator(
+        (
+          input:
+            | {
+                search: { type: 'a' }
+                body: { bodyA: 'a' }
+                headers: { headerA: 'a' }
+              }
+            | {
+                search: { type: 'b' }
+                body: { bodyB: 'b' }
+                headers: { bodyB: 'b' }
+              },
+        ) => input,
+      )
+      .handler(async (ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data:
+            | {
+                search: { type: 'a' }
+                body: { bodyA: 'a' }
+                headers: { headerA: 'a' }
+              }
+            | {
+                search: { type: 'b' }
+                body: { bodyB: 'b' }
+                headers: { bodyB: 'b' }
+              }
+          context: undefined
+          params: { detailId: string }
+          pathname: '$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      }),
+  }))
+
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
+    [
+      options:
+        | {
+            params: { detailId: string }
+            search: { type: 'a' }
+            body: { bodyA: 'a' }
+            headers: { headerA: 'a' }
+          }
+        | {
+            params: { detailId: string }
+            search: { type: 'b' }
+            body: { bodyB: 'b' }
+            headers: { bodyB: 'b' }
+          },
     ]
   >()
 
@@ -328,14 +541,7 @@ test('createServerFileRoute with route middleware validator, methods middleware 
     .methods((r) => ({
       GET: r
         .middleware([methodMiddleware])
-        .validator((input: unknown) => {
-          /*expectTypeOf(input).toEqualTypeOf<{
-            search: Record<string, unknown>
-            params: { detailId: string }
-            headers: Record<string, unknown>
-            body: unknown
-          }>()*/
-
+        .validator(() => {
           return { c: 'c' }
         })
         .handler(async (ctx) => {
@@ -357,16 +563,16 @@ test('createServerFileRoute with route middleware validator, methods middleware 
     }>
   >()
 
-  /*expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
+  expectTypeOf(serverRoute.client.get).parameters.toEqualTypeOf<
     [
       options: {
         params: { detailId: string }
-        search: Record<string, unknown>
-        headers: Record<string, unknown>
-        body: unknown
+        search?: Record<string, unknown>
+        headers?: Record<string, unknown>
+        body?: unknown
       },
     ]
-  >()*/
+  >()
 })
 
 test('createServerFileRoute with a parent middleware context', () => {
