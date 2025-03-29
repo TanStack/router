@@ -5833,8 +5833,8 @@ importers:
         specifier: workspace:*
         version: link:../router-utils
       babel-dead-code-elimination:
-        specifier: ^1.0.9
-        version: 1.0.9
+        specifier: ^1.0.10
+        version: 1.0.10
       dedent:
         specifier: ^1.5.3
         version: 1.5.3(babel-plugin-macros@3.1.0)
@@ -6126,8 +6126,8 @@ importers:
         specifier: workspace:*
         version: link:../router-utils
       babel-dead-code-elimination:
-        specifier: ^1.0.9
-        version: 1.0.9
+        specifier: ^1.0.10
+        version: 1.0.10
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -6363,8 +6363,8 @@ importers:
         specifier: ^7.20.6
         version: 7.20.6
       babel-dead-code-elimination:
-        specifier: ^1.0.9
-        version: 1.0.9
+        specifier: ^1.0.10
+        version: 1.0.10
       chokidar:
         specifier: ^3.6.0
         version: 3.6.0
@@ -6443,7 +6443,7 @@ importers:
         version: link:../directive-functions-plugin
       babel-dead-code-elimination:
         specifier: ^1.0.9
-        version: 1.0.9
+        version: 1.0.10
       dedent:
         specifier: ^1.5.3
         version: 1.5.3(babel-plugin-macros@3.1.0)
@@ -6691,7 +6691,7 @@ importers:
         version: link:../router-utils
       babel-dead-code-elimination:
         specifier: ^1.0.9
-        version: 1.0.9
+        version: 1.0.10
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -10716,8 +10716,8 @@ packages:
   b4a@1.6.7:
     resolution: {integrity: sha512-OnAYlL5b7LEkALw87fUVafQw5rVR9RjwGd4KUwNQ6DrrNmaVaUCgLipfVlzrPQ4tWOR9P0IXGNOx50jYCCdSJg==}
 
-  babel-dead-code-elimination@1.0.9:
-    resolution: {integrity: sha512-JLIhax/xullfInZjtu13UJjaLHDeTzt3vOeomaSUdO/nAMEL/pWC/laKrSvWylXMnVWyL5bpmG9njqBZlUQOdg==}
+  babel-dead-code-elimination@1.0.10:
+    resolution: {integrity: sha512-DV5bdJZTzZ0zn0DC24v3jD7Mnidh6xhKa4GfKCbq3sfW8kaWhDdZjP3i81geA8T33tdYqWKw4D3fVv0CwEgKVA==}
 
   babel-plugin-jsx-dom-expressions@0.39.5:
     resolution: {integrity: sha512-dwyVkszHRsZCXfFusu3xq1DJS7twhgLrjEpMC1gtTfJG1xSrMMKWWhdl1SFFFNXrvYDsoHiRxSbku/TzLxHNxg==}
@@ -19063,7 +19063,7 @@ snapshots:
 
   b4a@1.6.7: {}
 
-  babel-dead-code-elimination@1.0.9:
+  babel-dead-code-elimination@1.0.10:
     dependencies:
       '@babel/core': 7.26.8
       '@babel/parser': 7.26.8
