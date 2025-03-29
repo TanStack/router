@@ -63,13 +63,13 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@babel/parser": "^7.26.8",
-    "@babel/generator": "^7.26.8",
-    "ansis": "^3.11.0",
+    "@babel/parser": "^7.27.0",
+    "@babel/generator": "^7.27.0",
+    "ansis": "^3.17.0",
     "diff": "^7.0.0"
   },
   "devDependencies": {
-    "@babel/types": "^7.26.8",
+    "@babel/types": "^7.27.0",
     "@types/babel__generator": "^7.6.8",
     "@types/diff": "^6.0.0"
   }

@@ -76,7 +76,7 @@
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/jsesc": "^3.0.3",
-    "vite-plugin-solid": "^2.11.2"
+    "vite-plugin-solid": "^2.11.6"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0"
