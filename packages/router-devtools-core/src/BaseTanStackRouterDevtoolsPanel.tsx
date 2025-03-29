@@ -227,6 +227,10 @@ export const BaseTanStackRouterDevtoolsPanel =
       () => Object.keys(routerState().location.search).length,
     )
 
+    const hasState = createMemo(
+      () => Object.keys(routerState().location.state).length,
+    )
+
     const explorerState = createMemo(() => {
       return {
         ...router(),
@@ -272,6 +276,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const activeMatchLoaderData = createMemo(() => activeMatch()?.loaderData)
     const activeMatchValue = createMemo(() => activeMatch())
     const locationSearchValue = createMemo(() => routerState().location.search)
+    const locationStateValue = createMemo(() => routerState().location.state)
 
     return (
       <div
@@ -547,6 +552,22 @@ export const BaseTanStackRouterDevtoolsPanel =
                 value={locationSearchValue}
                 defaultExpanded={Object.keys(
                   routerState().location.search,
+                ).reduce((obj: any, next) => {
+                  obj[next] = {}
+                  return obj
+                }, {})}
+              />
+            </div>
+          </div>
+        ) : null}
+        {hasState() ? (
+          <div class={styles().fourthContainer}>
+            <div class={styles().detailsHeader}>State Params</div>
+            <div class={styles().detailsContent}>
+              <Explorer
+                value={locationStateValue}
+                defaultExpanded={Object.keys(
+                  routerState().location.state,
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
