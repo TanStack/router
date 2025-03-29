@@ -5988,9 +5988,6 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/router-generator':
-        specifier: workspace:*
-        version: link:../router-generator
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../router-plugin
@@ -6523,9 +6520,6 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/router-generator':
-        specifier: workspace:*
-        version: link:../router-generator
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../router-plugin
@@ -6708,6 +6702,9 @@ importers:
       '@babel/types':
         specifier: ^7.26.8
         version: 7.26.8
+      '@tanstack/router-generator':
+        specifier: workspace:*
+        version: link:../router-generator
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
