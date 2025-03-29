@@ -6,6 +6,7 @@ import type {
   FullSearchSchema,
   FullSearchSchemaInput,
   ParentPath,
+  RouteById,
   RouteByPath,
   RouteByToPath,
   RoutePaths,
@@ -344,7 +345,18 @@ export type ToSubOptionsProps<
   TTo extends string | undefined = '.',
 > = MakeToRequired<TRouter, TFrom, TTo> & {
   hash?: true | Updater<string>
-  state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
+  state?: TTo extends undefined
+    ? true | NonNullableUpdater<ParsedHistoryState, HistoryState>
+    : true | ResolveRelativePath<TFrom, TTo> extends infer TPath
+      ? TPath extends string
+        ? TPath extends RoutePaths<TRouter['routeTree']>
+          ? NonNullableUpdater<
+              ParsedHistoryState,
+              RouteById<TRouter['routeTree'], TPath>['types']['stateSchema']
+            >
+          : NonNullableUpdater<ParsedHistoryState, HistoryState>
+        : NonNullableUpdater<ParsedHistoryState, HistoryState>
+      : NonNullableUpdater<ParsedHistoryState, HistoryState>
   from?: FromPathOption<TRouter, TFrom> & {}
 }
 

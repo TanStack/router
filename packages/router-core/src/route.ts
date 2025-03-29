@@ -30,6 +30,7 @@ import type {
   AnyValidatorObj,
   DefaultValidator,
   ResolveSearchValidatorInput,
+  ResolveStateValidatorInput,
   ResolveValidatorOutput,
   StandardSchemaValidator,
   ValidatorAdapter,
@@ -99,6 +100,13 @@ export type InferFullSearchSchemaInput<TRoute> = TRoute extends {
   ? TFullSearchSchemaInput
   : {}
 
+export type InferFullStateSchemaInput<TRoute> = TRoute extends {
+  types: {
+    fullStateSchemaInput: infer TFullStateSchemaInput
+  }
+}
+  ? TFullStateSchemaInput
+  : {}
 export type InferAllParams<TRoute> = TRoute extends {
   types: {
     allParams: infer TAllParams
@@ -156,6 +164,29 @@ export type ParseSplatParams<TPath extends string> = TPath &
     ? never
     : '_splat'
   : '_splat'
+export type ResolveStateSchemaFn<TStateValidator> = TStateValidator extends (
+  ...args: any
+) => infer TStateSchema
+  ? TStateSchema
+  : AnySchema
+
+export type ResolveFullStateSchema<
+  TParentRoute extends AnyRoute,
+  TStateValidator,
+> = unknown extends TParentRoute
+  ? ResolveStateSchema<TStateValidator>
+  : IntersectAssign<
+      InferFullStateSchema<TParentRoute>,
+      ResolveStateSchema<TStateValidator>
+    >
+
+export type InferFullStateSchema<TRoute> = TRoute extends {
+  types: {
+    fullStateSchema: infer TFullStateSchema
+  }
+}
+  ? TFullStateSchema
+  : {}
 
 export interface SplatParams {
   _splat?: string
@@ -182,12 +213,12 @@ export type ParamsOptions<in out TPath extends string, in out TParams> = {
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 
-  /** 
+  /**
   @deprecated Use params.parse instead
   */
   parseParams?: ParseParamsFn<TPath, TParams>
 
-  /** 
+  /**
   @deprecated Use params.stringify instead
   */
   stringifyParams?: StringifyParamsFn<TPath, TParams>
@@ -324,6 +355,24 @@ export type ResolveFullSearchSchemaInput<
   InferFullSearchSchemaInput<TParentRoute>,
   ResolveSearchValidatorInput<TSearchValidator>
 >
+export type ResolveStateSchema<TStateValidator> =
+  unknown extends TStateValidator
+    ? TStateValidator
+    : TStateValidator extends AnyStandardSchemaValidator
+      ? NonNullable<TStateValidator['~standard']['types']>['output']
+      : TStateValidator extends AnyValidatorAdapter
+        ? TStateValidator['types']['output']
+        : TStateValidator extends AnyValidatorObj
+          ? ResolveStateSchemaFn<TStateValidator['parse']>
+          : ResolveStateSchemaFn<TStateValidator>
+
+export type ResolveFullStateSchemaInput<
+  TParentRoute extends AnyRoute,
+  TStateValidator,
+> = IntersectAssign<
+  InferFullStateSchemaInput<TParentRoute>,
+  ResolveStateValidatorInput<TStateValidator>
+>
 
 export type ResolveAllParamsFromParent<
   TParentRoute extends AnyRoute,
@@ -414,10 +463,17 @@ export interface RouteTypes<
   searchSchema: ResolveValidatorOutput<TSearchValidator>
   searchSchemaInput: ResolveSearchValidatorInput<TSearchValidator>
   searchValidator: TSearchValidator
+  stateSchema: ResolveStateSchema<TStateValidator>
+  stateValidator: TStateValidator
   fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
   fullSearchSchemaInput: ResolveFullSearchSchemaInput<
     TParentRoute,
     TSearchValidator
+  >
+  fullStateSchema: ResolveFullStateSchema<TParentRoute, TStateValidator>
+  fullStateSchemaInput: ResolveFullStateSchemaInput<
+    TParentRoute,
+    TStateValidator
   >
   params: TParams
   allParams: ResolveAllParamsFromParent<TParentRoute, TParams>
@@ -476,6 +532,7 @@ export type RouteAddChildrenFn<
   TCustomId,
   TId,
   TSearchValidator,
+  TStateValidator,
   TParams,
   TRouterContext,
   TRouteContextFn,
@@ -1027,13 +1084,13 @@ export interface UpdatableRouteOptions<
       >
     >
   }
-  /** 
+  /**
   @deprecated Use search.middlewares instead
   */
   preSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  /** 
+  /**
   @deprecated Use search.middlewares instead
   */
   postSearchFilters?: Array<
@@ -1233,6 +1290,8 @@ export type RouteConstraints = {
   TId: string
   TSearchSchema: AnySchema
   TFullSearchSchema: AnySchema
+  TStateSchema: AnySchema
+  TFullStateSchema: AnySchema
   TParams: Record<string, any>
   TAllParams: Record<string, any>
   TParentContext: AnyContext
