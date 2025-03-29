@@ -90,6 +90,21 @@ export function createStartHandler<
         history,
       })
 
+      // Normally, you could call router.load() directly, but because we're going to
+      // handle server routes, we need to prime the router with the matches
+      // so we can find any matching server routes
+      router.beforeLoad()
+
+      console.log(
+        href,
+        router.state.pendingMatches?.map((d) => {
+          const staticData = router.looseRoutesById[d.routeId]?.options
+            .staticData as undefined | { serverRoute: any }
+
+          return [d.routeId, staticData?.serverRoute]
+        }),
+      )
+
       await router.load()
 
       dehydrateRouter(router)

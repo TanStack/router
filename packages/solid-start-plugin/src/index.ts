@@ -8,19 +8,21 @@ import { nitroPlugin } from './nitro/nitro-plugin.js'
 import { startManifestPlugin } from './routesManifestPlugin.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
 import type { PluginOption } from 'vite'
-import type { TanStackStartInputConfig } from './schema.js'
+import type { TanStackStartInputConfig, WithSolidPlugin } from './schema.js'
 
 export type {
   TanStackStartInputConfig,
   TanStackStartOutputConfig,
+  WithSolidPlugin,
 } from './schema.js'
 
 export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
 
 export function TanStackStartVitePlugin(
-  opts?: TanStackStartInputConfig,
+  opts?: TanStackStartInputConfig & WithSolidPlugin,
 ): Array<PluginOption> {
-  const options = getTanStackStartOptions(opts)
+  type OptionsWithSolid = ReturnType<typeof getTanStackStartOptions> & WithSolidPlugin;
+  const options: OptionsWithSolid = getTanStackStartOptions(opts);
 
   return [
     {

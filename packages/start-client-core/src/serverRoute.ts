@@ -24,8 +24,25 @@ export function createServerFileRoute<
   TId extends RouteConstraints['TId'],
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
->(): ServerRoute<TParentRoute, TId, TPath, TFullPath> {
-  return createServerRoute<TParentRoute, TId, TPath, TFullPath>()
+>(
+  __?: never,
+  __compiledOpts?: { manifest: ServerRouteManifest },
+): ServerRoute<TParentRoute, TId, TPath, TFullPath> {
+  return createServerRoute<TParentRoute, TId, TPath, TFullPath>(
+    undefined,
+    __compiledOpts as ServerRouteOptions<
+      TParentRoute,
+      TId,
+      TPath,
+      TFullPath,
+      undefined
+    >,
+  )
+}
+
+export type ServerRouteManifest = {
+  middleware: boolean
+  methods: Record<string, { validator: boolean; middleware: boolean }>
 }
 
 export function createServerRoute<
@@ -73,11 +90,15 @@ export function createServerRoute<
         get(target, propKey) {
           return (...args: Array<any>) => {
             if (typeof propKey === 'string') {
-              const method = resolvedOpts.methods[
-                propKey as keyof typeof resolvedOpts.methods
+              const upperPropKey = propKey.toUpperCase()
+              const method = resolvedOpts.manifest?.methods[
+                upperPropKey as keyof typeof resolvedOpts.methods
               ] as ((...args: Array<any>) => any) | undefined
               if (method) {
-                return method(...args)
+                return fetch(`${resolvedOpts.pathname}/${propKey}`, {
+                  method: upperPropKey,
+                  ...args[0],
+                })
               }
             }
             throw new Error(`Method ${String(propKey)} not found`)
@@ -703,6 +724,7 @@ export interface ServerRouteOptions<
   TFullPath extends RouteConstraints['TFullPath'],
   TMiddlewares,
 > {
+  pathname: TFullPath
   middleware: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
   methods: ServerRouteMethods<
     TParentRoute,
@@ -711,6 +733,7 @@ export interface ServerRouteOptions<
     TFullPath,
     ReadonlyArray<AnyMiddleware>
   >
+  manifest?: ServerRouteManifest
 }
 
 export type ServerRouteMethodsClient<TFullPath extends string, TMethods> = {

@@ -558,31 +558,32 @@ export async function generator(config: Config, root: string) {
         const lazyComponentNode = routePiecesByPath[node.routePath!]?.lazy
 
         return [
-          `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
+          [
+            `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
           ${[
             `id: '${node.path}'`,
             !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
             `getParentRoute: () => ${node.parent?.variableName ?? 'root'}Route`,
             ENABLED_SERVER_ROUTES && node.hasServerRoute
-              ? `staticData: createIsomorphicFn().server(() => ({ ...${node.parent?.variableName ?? 'root'}Route.staticData, serverRoute: ${node.variableName}ServerRoute })).client(() => ${node.parent?.variableName ?? 'root'}Route.staticData)`
+              ? `staticData: createIsomorphicFn().server(() => ({ ...${node.parent?.variableName ?? 'root'}Route.staticData, serverRoute: ${node.variableName}ServerRouteImport })).client(() => ${node.parent?.variableName ?? 'root'}Route.staticData)()`
               : undefined,
           ]
             .filter(Boolean)
             .join(',')}
         }${TYPES_DISABLED ? '' : 'as any'})`,
-          loaderNode
-            ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
-                removeExt(
-                  path.relative(
-                    path.dirname(config.generatedRouteTree),
-                    path.resolve(config.routesDirectory, loaderNode.filePath),
+            loaderNode
+              ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
+                  removeExt(
+                    path.relative(
+                      path.dirname(config.generatedRouteTree),
+                      path.resolve(config.routesDirectory, loaderNode.filePath),
+                    ),
+                    config.addExtensions,
                   ),
-                  config.addExtensions,
-                ),
-              )}'), 'loader') })`
-            : '',
-          componentNode || errorComponentNode || pendingComponentNode
-            ? `.update({
+                )}'), 'loader') })`
+              : '',
+            componentNode || errorComponentNode || pendingComponentNode
+              ? `.update({
               ${(
                 [
                   ['component', componentNode],
@@ -606,22 +607,30 @@ export async function generator(config: Config, root: string) {
                 })
                 .join('\n,')}
             })`
-            : '',
-          lazyComponentNode
-            ? `.lazy(() => import('./${replaceBackslash(
-                removeExt(
-                  path.relative(
-                    path.dirname(config.generatedRouteTree),
-                    path.resolve(
-                      config.routesDirectory,
-                      lazyComponentNode.filePath,
+              : '',
+            lazyComponentNode
+              ? `.lazy(() => import('./${replaceBackslash(
+                  removeExt(
+                    path.relative(
+                      path.dirname(config.generatedRouteTree),
+                      path.resolve(
+                        config.routesDirectory,
+                        lazyComponentNode.filePath,
+                      ),
                     ),
+                    config.addExtensions,
                   ),
-                  config.addExtensions,
-                ),
-              )}').then((d) => d.Route))`
+                )}').then((d) => d.Route))`
+              : '',
+          ].join(''),
+          ENABLED_SERVER_ROUTES && node.hasServerRoute
+            ? [
+                `Object.assign(${node.variableName}ServerRouteImport.options, {
+                  pathname: '${node.routePath}',
+                })`,
+              ]
             : '',
-        ].join('')
+        ].join('\n\n')
       })
       .join('\n\n'),
     ...(TYPES_DISABLED
@@ -948,7 +957,7 @@ export const getResolvedServerRouteNodeVariableName = (
 ): string => {
   return routeNode.children?.length
     ? `${routeNode.variableName}ServerRouteWithChildren`
-    : `${routeNode.variableName}ServerRoute`
+    : `${routeNode.variableName}ServerRouteImport`
 }
 
 /**
