@@ -52,12 +52,12 @@
     "src"
   ],
   "dependencies": {
-    "@typescript-eslint/utils": "^8.23.0"
+    "@typescript-eslint/utils": "^8.28.0"
   },
   "devDependencies": {
-    "@typescript-eslint/rule-tester": "^8.23.0",
+    "@typescript-eslint/rule-tester": "^8.28.0",
     "combinate": "^1.1.11",
-    "eslint": "^9.22.0"
+    "eslint": "^9.23.0"
   },
   "peerDependencies": {
     "eslint": "^8.57.0 || ^9.0.0"

@@ -19,9 +19,9 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.51.1",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.25.1",
     "esbuild-plugin-solid": "^0.6.0"
   }
 }
