@@ -201,7 +201,7 @@ test('createMiddleware merges client context and sends to the server', () => {
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
         context: { a: boolean; b: string; c: number }
-        sendContext: { a: boolean; b: string; c: number; d: number }
+        sendContext: { a: boolean; b: string; c: number; d: 5 }
         headers: HeadersInit
       }>()
 
@@ -215,7 +215,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         a: boolean
         b: string
         c: number
-        d: number
+        d: 5
       }>()
 
       const result = await options.next({
@@ -232,7 +232,7 @@ test('createMiddleware merges client context and sends to the server', () => {
           }
           sendContext: undefined
         }
-        context: { a: boolean; b: string; c: number; d: number; e: string }
+        context: { a: boolean; b: string; c: number; d: 5; e: string }
         sendContext: undefined
       }>()
 
