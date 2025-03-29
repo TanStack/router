@@ -9,7 +9,11 @@ import {
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
-export function compileStartOutputFactory(framework: string) {
+type CompileStartFrameworkOptions = 'react' | 'solid'
+
+export function compileStartOutputFactory(
+  framework: CompileStartFrameworkOptions,
+) {
   return function compileStartOutput(opts: CompileOptions): GeneratorResult {
     const ast = parseAst(opts)
 
@@ -163,11 +167,15 @@ export function compileStartOutputFactory(framework: string) {
   }
 }
 
-function handleCreateServerFileRouteCallExpressionFactory(factory: string) {
+function handleCreateServerFileRouteCallExpressionFactory(
+  factory: CompileStartFrameworkOptions,
+) {
   return function handleCreateServerFileRouteCallExpression(
     path: babel.NodePath<t.CallExpression>,
     opts: CompileOptions,
   ) {
+    const PACKAGES = { start: `@tanstack/${factory}-start` }
+
     let highestParent: babel.NodePath<any> = path
 
     while (highestParent.parentPath && !highestParent.parentPath.isProgram()) {
@@ -270,7 +278,7 @@ function handleCreateServerFileRouteCallExpressionFactory(factory: string) {
       }
     })
 
-    console.log(manifest)
+    console.debug('createServerFileRoute -> manifest:\n', manifest)
 
     path.replaceWith(
       t.callExpression(t.identifier('createServerFileRoute'), [
@@ -307,7 +315,7 @@ function handleCreateServerFileRouteCallExpressionFactory(factory: string) {
     programPath.traverse({
       ImportDeclaration(importPath) {
         const importSource = importPath.node.source.value
-        if (importSource === `@tanstack/${factory}-start`) {
+        if (importSource === PACKAGES.start) {
           const specifiers = importPath.node.specifiers
           isCreateServerFileRouteImported = specifiers.some((specifier) => {
             return (
@@ -328,7 +336,7 @@ function handleCreateServerFileRouteCallExpressionFactory(factory: string) {
             t.identifier('createServerFileRoute'),
           ),
         ],
-        t.stringLiteral(`@tanstack/${factory}-start`),
+        t.stringLiteral(PACKAGES.start),
       )
       programPath.node.body.unshift(importDeclaration)
     }
