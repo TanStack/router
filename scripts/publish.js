@@ -29,6 +29,10 @@ await publish({
       packageDir: 'packages/react-router-with-query',
     },
     {
+      name: '@tanstack/solid-router-with-query',
+      packageDir: 'packages/solid-router-with-query',
+    },
+    {
       name: '@tanstack/zod-adapter',
       packageDir: 'packages/zod-adapter',
     },
