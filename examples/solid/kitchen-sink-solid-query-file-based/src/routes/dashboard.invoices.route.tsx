@@ -1,6 +1,4 @@
-import { Link,
-  MatchRoute,
-  Outlet } from '@tanstack/solid-router'
+import { Link, MatchRoute, Outlet } from '@tanstack/solid-router'
 import { createQuery } from '@tanstack/solid-query'
 import { Spinner } from '../components/Spinner'
 import { invoicesQueryOptions } from '../utils/queryOptions'
@@ -12,7 +10,7 @@ export const Route = createFileRoute({
 })
 
 function InvoicesComponent() {
-  const invoicesQuery = createQuery(()=>invoicesQueryOptions())
+  const invoicesQuery = createQuery(() => invoicesQueryOptions())
   const invoices = invoicesQuery.data
 
   return (

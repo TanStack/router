@@ -9,7 +9,6 @@ import {
   postInvoice,
 } from './mockTodos'
 
-
 export const invoicesQueryOptions = () =>
   queryOptions({
     queryKey: ['invoices'],

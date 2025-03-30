@@ -20,7 +20,6 @@ function DashboardComponent() {
         ).map(([to, label, exact]) => {
           return (
             <Link
-             
               to={to}
               activeOptions={{ exact }}
               activeProps={{ class: `font-bold` }}
