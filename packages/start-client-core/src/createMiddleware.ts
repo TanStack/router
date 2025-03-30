@@ -108,24 +108,24 @@ export type IntersectAllMiddleware<
 export type IntersectAllValidatorInputs<TMiddlewares, TValidator> =
   unknown extends TValidator
     ? TValidator
-    : IntersectAssign<
-        IntersectAllMiddleware<TMiddlewares, 'allInput'>,
-        TValidator extends undefined
-          ? undefined
-          : ResolveValidatorInput<TValidator>
-      >
+    : TValidator extends undefined
+      ? IntersectAllMiddleware<TMiddlewares, 'allInput'>
+      : IntersectAssign<
+          IntersectAllMiddleware<TMiddlewares, 'allInput'>,
+          ResolveValidatorInput<TValidator>
+        >
 /**
  * Recursively merge the output type produced by a sequence of middleware
  */
 export type IntersectAllValidatorOutputs<TMiddlewares, TValidator> =
   unknown extends TValidator
     ? TValidator
-    : IntersectAssign<
-        IntersectAllMiddleware<TMiddlewares, 'allOutput'>,
-        TValidator extends undefined
-          ? undefined
-          : ResolveValidatorOutput<TValidator>
-      >
+    : TValidator extends undefined
+      ? IntersectAllMiddleware<TMiddlewares, 'allOutput'>
+      : IntersectAssign<
+          IntersectAllMiddleware<TMiddlewares, 'allOutput'>,
+          ResolveValidatorOutput<TValidator>
+        >
 
 export interface MiddlewareOptions<
   in out TMiddlewares,

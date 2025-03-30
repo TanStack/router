@@ -792,3 +792,279 @@ test('createServerFileRoute with no params', () => {
     ]
   >()
 })
+
+test('createServerFileRoute with parent middleware search', () => {
+  const middleware1 = createMiddleware().validator(
+    (input: { search: { query: string } }) => {
+      return input.search.query
+    },
+  )
+
+  const createDetailsServerFileRoute: CreateServerFileRoute<
+    'details',
+    any,
+    'details',
+    'details',
+    'details'
+  > = undefined as any
+
+  const detailsServerRoute = createDetailsServerFileRoute().middleware([
+    middleware1,
+  ])
+
+  const createDetailServerFileRoute: CreateServerFileRoute<
+    'details/$detailId',
+    typeof detailsServerRoute,
+    'details/$detailId',
+    '$detailId',
+    'details/$detailId'
+  > = undefined as any
+
+  const middleware2 = createMiddleware().validator(
+    (input: { search: { type: string } }) => {
+      return Number(input.search.type)
+    },
+  )
+
+  const detailServerRoute1 = createDetailServerFileRoute()
+    .middleware([middleware2])
+    .methods({
+      GET: (ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: number
+          context: undefined
+          params: { detailId: string }
+          pathname: 'details/$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      },
+    })
+
+  const middleware3 = createMiddleware().validator(
+    (input: { search: { slug: string } }) => input.search.slug,
+  )
+
+  const detailServerRoute2 = createDetailServerFileRoute()
+    .middleware([middleware2])
+    .methods((r) => ({
+      GET: r.middleware([middleware3]).handler((ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: string
+          context: undefined
+          params: { detailId: string }
+          pathname: 'details/$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      }),
+    }))
+
+  expectTypeOf(detailServerRoute1.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search: { query: string; type: string }
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
+  >()
+
+  expectTypeOf(detailServerRoute2.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search: { query: string; slug: string; type: string }
+        body?: unknown
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
+  >()
+})
+
+test('createServerFileRoute with parent middleware body', () => {
+  const middleware1 = createMiddleware().validator(
+    (input: { body: { query: string } }) => {
+      return input.body.query
+    },
+  )
+
+  const createDetailsServerFileRoute: CreateServerFileRoute<
+    'details',
+    any,
+    'details',
+    'details',
+    'details'
+  > = undefined as any
+
+  const detailsServerRoute = createDetailsServerFileRoute().middleware([
+    middleware1,
+  ])
+
+  const createDetailServerFileRoute: CreateServerFileRoute<
+    'details/$detailId',
+    typeof detailsServerRoute,
+    'details/$detailId',
+    '$detailId',
+    'details/$detailId'
+  > = undefined as any
+
+  const middleware2 = createMiddleware().validator(
+    (input: { body: { type: string } }) => {
+      return Number(input.body.type)
+    },
+  )
+
+  const detailServerRoute1 = createDetailServerFileRoute()
+    .middleware([middleware2])
+    .methods({
+      GET: (ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: number
+          context: undefined
+          params: { detailId: string }
+          pathname: 'details/$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      },
+    })
+
+  const middleware3 = createMiddleware().validator(
+    (input: { body: { slug: string } }) => input.body.slug,
+  )
+
+  const detailServerRoute2 = createDetailServerFileRoute()
+    .middleware([middleware2])
+    .methods((r) => ({
+      GET: r.middleware([middleware3]).handler((ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: string
+          context: undefined
+          params: { detailId: string }
+          pathname: 'details/$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      }),
+    }))
+
+  expectTypeOf(detailServerRoute1.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown>
+        body: { query: string; type: string }
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
+  >()
+
+  expectTypeOf(detailServerRoute2.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown>
+        body: { query: string; type: string; slug: string }
+        headers?: Record<string, unknown> | undefined
+      },
+    ]
+  >()
+})
+
+test('createServerFileRoute with parent middleware headers', () => {
+  const middleware1 = createMiddleware().validator(
+    (input: { headers: { query: string } }) => {
+      return input.headers.query
+    },
+  )
+
+  const createDetailsServerFileRoute: CreateServerFileRoute<
+    'details',
+    any,
+    'details',
+    'details',
+    'details'
+  > = undefined as any
+
+  const detailsServerRoute = createDetailsServerFileRoute().middleware([
+    middleware1,
+  ])
+
+  const createDetailServerFileRoute: CreateServerFileRoute<
+    'details/$detailId',
+    typeof detailsServerRoute,
+    'details/$detailId',
+    '$detailId',
+    'details/$detailId'
+  > = undefined as any
+
+  const middleware2 = createMiddleware().validator(
+    (input: { headers: { type: string } }) => {
+      return Number(input.headers.type)
+    },
+  )
+
+  const detailServerRoute1 = createDetailServerFileRoute()
+    .middleware([middleware2])
+    .methods({
+      GET: (ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: number
+          context: undefined
+          params: { detailId: string }
+          pathname: 'details/$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      },
+    })
+
+  const middleware3 = createMiddleware().validator(
+    (input: { headers: { slug: string } }) => input.headers.slug,
+  )
+
+  const detailServerRoute2 = createDetailServerFileRoute()
+    .middleware([middleware2])
+    .methods((r) => ({
+      GET: r.middleware([middleware3]).handler((ctx) => {
+        expectTypeOf(ctx).toEqualTypeOf<{
+          data: string
+          context: undefined
+          params: { detailId: string }
+          pathname: 'details/$detailId'
+          request: Request
+        }>()
+
+        return json({ test: 'test' })
+      }),
+    }))
+
+  expectTypeOf(detailServerRoute1.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown>
+        body?: unknown
+        headers: { query: string; type: string }
+      },
+    ]
+  >()
+
+  expectTypeOf(detailServerRoute2.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search?: Record<string, unknown>
+        body?: unknown
+        headers: { query: string; type: string; slug: string }
+      },
+    ]
+  >()
+})
