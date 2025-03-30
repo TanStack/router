@@ -1,4 +1,3 @@
-
 import { createQuery } from '@tanstack/solid-query'
 import { z } from 'zod'
 import { userQueryOptions } from '../utils/queryOptions'
@@ -17,7 +16,7 @@ export const Route = createFileRoute({
 
 function UserComponent() {
   const search = Route.useSearch()
-  const userQuery = createQuery(()=>userQueryOptions(search().userId))
+  const userQuery = createQuery(() => userQueryOptions(search().userId))
   const user = userQuery.data
 
   return (

@@ -1,4 +1,4 @@
-import {render} from 'solid-js/web'
+import { render } from 'solid-js/web'
 import {
   ErrorComponent,
   RouterProvider,
@@ -26,7 +26,7 @@ const router = createRouter({
   context: {
     auth: undefined!, // We'll inject this when we render
     queryClient: queryClient, // Type assertion to fix the type mismatch
-  }, 
+  },
   defaultPreload: 'intent',
   // Since we're using Solid Query, we don't want loader calls to ever be stale
   // This will ensure that the loader is always called when the route is preloaded or visited
@@ -142,10 +142,12 @@ function App() {
 
 const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
-  render(()=>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>,
-    rootElement
+  render(
+    () => (
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    ),
+    rootElement,
   )
 }

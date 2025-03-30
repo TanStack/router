@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import {  useRouter } from '@tanstack/solid-router'
+import { useRouter } from '@tanstack/solid-router'
 import { z } from 'zod'
 
 export const Route = createFileRoute({
@@ -11,9 +11,10 @@ export const Route = createFileRoute({
 
 function LoginComponent() {
   const router = useRouter()
-  const routeContext: Solid.Accessor<{ auth: any; status: any }> = Route.useRouteContext({
-    select: ({ auth }:{auth:any}) => ({ auth, status: auth.status }),
-  })
+  const routeContext: Solid.Accessor<{ auth: any; status: any }> =
+    Route.useRouteContext({
+      select: ({ auth }: { auth: any }) => ({ auth, status: auth.status }),
+    })
   const search = Route.useSearch()
   const [username, setUsername] = Solid.createSignal('')
 

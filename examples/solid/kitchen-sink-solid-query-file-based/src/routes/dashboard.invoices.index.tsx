@@ -1,4 +1,3 @@
-
 import { InvoiceFields } from '../components/InvoiceFields'
 import { Spinner } from '../components/Spinner'
 import { useCreateInvoiceMutation } from '../utils/queryOptions'

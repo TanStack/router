@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import * as Solid from 'solid-js'
-import { Link,
+import {
+  Link,
   MatchRoute,
   Outlet,
   retainSearchParams,
-  useNavigate, } from '@tanstack/solid-router'
+  useNavigate,
+} from '@tanstack/solid-router'
 import { createQuery } from '@tanstack/solid-query'
 import { z } from 'zod'
 import { Spinner } from '../components/Spinner'
@@ -34,7 +36,7 @@ export const Route = createFileRoute({
 function UsersComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
   const search = Route.useSearch()
-  const usersQuery = createQuery(()=>usersQueryOptions(Route.useLoaderDeps()))
+  const usersQuery = createQuery(() => usersQueryOptions(Route.useLoaderDeps()))
   const users = usersQuery.data
   const sortBy = search().usersView?.sortBy ?? 'name'
   const filterBy = search().usersView?.filterBy

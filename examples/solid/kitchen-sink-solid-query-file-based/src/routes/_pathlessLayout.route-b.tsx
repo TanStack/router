@@ -1,5 +1,3 @@
-
-
 export const Route = createFileRoute({
   component: LayoutBComponent,
 })
