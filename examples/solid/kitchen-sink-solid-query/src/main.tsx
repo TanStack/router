@@ -79,13 +79,13 @@ const userQueryOptions = (userId: number) =>
       if (!user) {
         throw new Error('User not found.')
       }
-
       return user
     },
   })
 
 const useCreateInvoiceMutation = () => {
   return createMutation(() => ({
+    mutationKey: ['invoices', 'create'],
     mutationFn: postInvoice,
     onSuccess: () => queryClient.invalidateQueries(),
   }))
@@ -93,6 +93,7 @@ const useCreateInvoiceMutation = () => {
 
 const useUpdateInvoiceMutation = (invoiceId: number) => {
   return createMutation(() => ({
+    mutationKey: ['invoices', 'update', invoiceId],
     mutationFn: patchInvoice,
     onSuccess: () => queryClient.invalidateQueries(),
     gcTime: 1000 * 10,
@@ -231,7 +232,6 @@ function DashboardLayoutComponent() {
         ).map(([to, label, exact]) => {
           return (
             <Link
-             
               to={to}
               activeOptions={{ exact }}
               activeProps={{ class: `font-bold` }}
@@ -264,7 +264,7 @@ function DashboardIndexComponent() {
     <div class="p-2">
       <div class="p-2">
         Welcome to the dashboard! You have{' '}
-        <strong>{invoices?.length || 0} total invoices</strong>.
+        <strong>{invoices?.length} total invoices</strong>.
       </div>
     </div>
   )
@@ -280,7 +280,7 @@ const invoicesLayoutRoute = createRoute({
 
 function InvoicesLayoutComponent() {
   const invoicesQuery = createQuery(() => invoicesQueryOptions())
-  const invoices = invoicesQuery.data || []
+  const invoices = invoicesQuery.data
   // const updateInvoiceMutation = useUpdateInvoiceMutation()
   // const createInvoiceMutation = useCreateInvoiceMutation()
 
@@ -288,7 +288,7 @@ function InvoicesLayoutComponent() {
     <div class="flex-1 flex">
       {/* {routerTransitionIsPending ? 'pending' : 'null'} */}
       <div class="divide-y w-48">
-        {invoices.map((invoice: Invoice) => {
+        {invoices?.map((invoice) => {
           // const updateSubmission = updateInvoiceMutation.submissions.find(
           //   (d) => d.variables?.id === invoice.id,
           // )
@@ -364,12 +364,11 @@ function InvoicesIndexComponent() {
           onSubmit={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            const form = event.target as HTMLFormElement
-            const formData = new FormData(form)
+            const formData = new FormData(event.target as HTMLFormElement)
             createInvoiceMutation.mutate({
               title: formData.get('title') as string,
               body: formData.get('body') as string,
-            } as any)
+            })
           }}
           class="space-y-2"
         >
@@ -378,9 +377,9 @@ function InvoicesIndexComponent() {
           <div>
             <button
               class="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-              disabled={createInvoiceMutation.isPending}
+              disabled={createInvoiceMutation.status === 'pending'}
             >
-              {createInvoiceMutation.isPending ? (
+              {createInvoiceMutation.status === 'pending' ? (
                 <>
                   Creating <Spinner />
                 </>
@@ -389,11 +388,11 @@ function InvoicesIndexComponent() {
               )}
             </button>
           </div>
-          {createInvoiceMutation.isSuccess ? (
+          {createInvoiceMutation.status === 'success' ? (
             <div class="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Created!
             </div>
-          ) : createInvoiceMutation.isError ? (
+          ) : createInvoiceMutation.status === 'error' ? (
             <div class="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to create.
             </div>
@@ -431,14 +430,16 @@ function InvoiceComponent() {
   const params = invoiceRoute.useParams()
   const search = invoiceRoute.useSearch()
   const navigate = useNavigate({ from: invoiceRoute.fullPath })
-  const invoiceQuery = createQuery(() => invoiceQueryOptions(params().invoiceId))
-  const invoice = invoiceQuery.data || {} as Invoice
+  const invoiceQuery = createQuery(() =>
+    invoiceQueryOptions(params().invoiceId),
+  )
+  const invoice = invoiceQuery.data
   const updateInvoiceMutation = useUpdateInvoiceMutation(params().invoiceId)
   const [notes, setNotes] = Solid.createSignal(search().notes ?? '')
 
   Solid.createEffect(() => {
     navigate({
-      search: (old) => ({
+      search: (old: any) => ({
         ...old,
         notes: notes() ? notes() : undefined,
       }),
@@ -452,23 +453,22 @@ function InvoiceComponent() {
       onSubmit={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        const form = event.target as HTMLFormElement
-        const formData = new FormData(form)
+        const formData = new FormData(event.target as HTMLFormElement)
         updateInvoiceMutation.mutate({
-          id: invoice.id,
+          id: invoice!.id,
           title: formData.get('title') as string,
           body: formData.get('body') as string,
-        } as any)
+        })
       }}
       class="p-2 space-y-2"
     >
       <InvoiceFields
-        invoice={invoice}
-        disabled={updateInvoiceMutation.isPending}
+        invoice={invoice!}
+        disabled={updateInvoiceMutation.status === 'pending'}
       />
       <div>
         <Link
-          search={(old) => ({
+          search={(old: any) => ({
             ...old,
             showNotes: old.showNotes ? undefined : true,
           })}
@@ -484,7 +484,7 @@ function InvoiceComponent() {
               <div class="h-2" />
               <textarea
                 value={notes()}
-                onInput={(e) => {
+                onChange={(e) => {
                   setNotes(e.target.value)
                 }}
                 rows={5}
@@ -501,18 +501,18 @@ function InvoiceComponent() {
       <div>
         <button
           class="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
-          disabled={updateInvoiceMutation.isPending}
+          disabled={updateInvoiceMutation.status === 'pending'}
         >
           Save
         </button>
       </div>
-      {updateInvoiceMutation.data?.id === invoice.id ? (
+      {updateInvoiceMutation.variables?.id === invoice?.id ? (
         <div>
-          {updateInvoiceMutation.isSuccess ? (
+          {updateInvoiceMutation.status === 'success' ? (
             <div class="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Saved!
             </div>
-          ) : updateInvoiceMutation.isError ? (
+          ) : updateInvoiceMutation.status === 'error' ? (
             <div class="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to save.
             </div>
@@ -551,15 +551,17 @@ const usersLayoutRoute = createRoute({
 function UsersComponent() {
   const navigate = useNavigate({ from: usersLayoutRoute.fullPath })
   const search = usersLayoutRoute.useSearch()
-  const usersQuery = createQuery(() => usersQueryOptions(usersLayoutRoute.useLoaderDeps()))
-  const users = usersQuery.data || []
-  const sortBy = search().usersView?.sortBy ?? 'name'
-  const filterBy = search().usersView?.filterBy
+  const usersQuery = createQuery(() =>
+    usersQueryOptions(usersLayoutRoute.useLoaderDeps()),
+  )
+  const users = usersQuery.data
+  const sortBy = Solid.createMemo(() => search().usersView?.sortBy ?? 'name')
+  const filterBy = Solid.createMemo(() => search().usersView?.filterBy)
 
-  const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy ?? '')
+  const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy() ?? '')
 
   Solid.createEffect(() => {
-    setFilterDraft(filterBy ?? '')
+    setFilterDraft(filterBy() ?? '')
   })
 
   const sortedUsers = Solid.createMemo(() => {
@@ -567,22 +569,22 @@ function UsersComponent() {
 
     return !sortBy
       ? users
-      : [...users].sort((a, b) => {
-          return a[sortBy] > b[sortBy] ? 1 : -1
+      : [...users].sort((a: any, b: any) => {
+          return a[sortBy()] > b[sortBy()] ? 1 : -1
         })
   })
 
   const filteredUsers = Solid.createMemo(() => {
-    if (!filterBy) return sortedUsers()
+    if (!filterBy()) return sortedUsers()
 
-    return sortedUsers().filter((user: any) =>
-      user.name.toLowerCase().includes(filterBy.toLowerCase()),
+    return sortedUsers().filter((user) =>
+      user.name.toLowerCase().includes(filterBy()?.toLowerCase() ?? ''),
     )
   })
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
-      search: (old) => {
+      search: (old: any) => {
         return {
           ...old,
           usersView: {
@@ -596,7 +598,7 @@ function UsersComponent() {
 
   Solid.createEffect(() => {
     navigate({
-      search: (old) => {
+      search: (old: any) => {
         return {
           ...old,
           usersView: {
@@ -607,7 +609,7 @@ function UsersComponent() {
       },
       replace: true,
     })
-  })
+  }, [filterDraft])
 
   return (
     <div class="flex-1 flex">
@@ -615,7 +617,7 @@ function UsersComponent() {
         <div class="py-2 px-3 flex gap-2 items-center bg-gray-100 dark:bg-gray-800">
           <div>Sort By:</div>
           <select
-            value={sortBy}
+            value={sortBy()}
             onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
             class="flex-1 border p-1 px-2 rounded"
           >
@@ -628,12 +630,12 @@ function UsersComponent() {
           <div>Filter By:</div>
           <input
             value={filterDraft()}
-            onInput={(e) => setFilterDraft(e.target.value)}
+            onChange={(e) => setFilterDraft(e.target.value)}
             placeholder="Search Names..."
             class="min-w-0 flex-1 border p-1 px-2 rounded"
           />
         </div>
-        {filteredUsers().map((user: any) => {
+        {filteredUsers().map((user) => {
           return (
             <div>
               <Link
@@ -797,27 +799,26 @@ function LoginComponent() {
   })
   const search = useSearch({ from: loginRoute.fullPath })
   const [username, setUsername] = Solid.createSignal('')
-  const status = Solid.createMemo(() => routeContext()?.status)
 
-  const onSubmit = (e: Event) => {
+  const onSubmit = (e: any) => {
     e.preventDefault()
     routeContext()?.auth.login(username())
     router.invalidate()
   }
 
   // Ah, the subtle nuances of client side auth. 🙄
-  Solid.createEffect(() => {
-    if (status() === 'loggedIn' && search().redirect) {
+  Solid.createRenderEffect(() => {
+    if (routeContext().status === 'loggedIn' && search().redirect) {
       router.history.push(search().redirect!)
     }
-  })
+  }, [routeContext().status, search().redirect])
 
-  return status() === 'loggedIn' ? (
+  return status === 'loggedIn' ? (
     <div>
-      Logged in as <strong>{auth.username}</strong>
+      Logged in as <strong>{routeContext().auth.username}</strong>
       <div class="h-2" />
       <button
-        onClick={() => auth.logout()}
+        onClick={() => routeContext().auth.logout()}
         class="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
       >
         Log out
@@ -831,11 +832,12 @@ function LoginComponent() {
       <form onSubmit={onSubmit} class="flex gap-2">
         <input
           value={username()}
-          onInput={(e) => setUsername(e.currentTarget.value)}
+          onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
           class="border p-1 px-2 rounded"
         />
         <button
+          onClick={() => routeContext().auth.logout()}
           class="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
         >
           Login
@@ -986,7 +988,7 @@ function App() {
               max="5000"
               step="100"
               value={loaderDelay()}
-              onInput={(e) => setLoaderDelay(e.target.valueAsNumber)}
+              onChange={(e) => setLoaderDelay(e.target.valueAsNumber)}
               class="w-full"
             />
           </div>
@@ -1011,7 +1013,7 @@ function App() {
               max="5000"
               step="100"
               value={pendingMs()}
-              onInput={(e) => setPendingMs(e.target.valueAsNumber)}
+              onChange={(e) => setPendingMs(e.target.valueAsNumber)}
               class="w-full"
             />
           </div>
@@ -1023,7 +1025,7 @@ function App() {
               max="5000"
               step="100"
               value={pendingMinMs()}
-              onInput={(e) => setPendingMinMs(e.target.valueAsNumber)}
+              onChange={(e) => setPendingMinMs(e.target.valueAsNumber)}
               class="w-full"
             />
           </div>
@@ -1056,7 +1058,7 @@ function InvoiceFields({
       <h2 class="font-bold text-lg">
         <input
           name="title"
-          value={invoice.title || ''}
+          value={invoice.title}
           placeholder="Invoice Title"
           class="border border-opacity-50 rounded p-2 w-full"
           disabled={disabled}
@@ -1065,7 +1067,7 @@ function InvoiceFields({
       <div>
         <textarea
           name="body"
-          value={invoice.body || ''}
+          value={invoice.body}
           rows={6}
           placeholder="Invoice Body..."
           class="border border-opacity-50 p-2 rounded w-full"
@@ -1098,18 +1100,16 @@ function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
 }
 
 function useSessionStorage<T>(key: string, initialValue: T) {
+  const stored = sessionStorage.getItem(key)
   const [state, setState] = Solid.createSignal<T>(
-    typeof sessionStorage !== 'undefined' &&
-      sessionStorage.getItem(key) !== null
-      ? JSON.parse(sessionStorage.getItem(key)!)
-      : initialValue
+    stored ? JSON.parse(stored) : initialValue,
   )
 
   Solid.createEffect(() => {
     sessionStorage.setItem(key, JSON.stringify(state()))
   })
 
-  return [state, setState] as const
+  return [state, setState]
 }
 
 const rootElement = document.getElementById('app')!
