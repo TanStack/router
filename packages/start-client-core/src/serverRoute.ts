@@ -619,12 +619,14 @@ export interface ServerRouteMethodBuilderValidator<
   >
 }
 
-export type ValidateServerRouteValidator<TValidator, TFullPath extends string> =
-  unknown extends ResolveValidatorInput<TValidator>
+export type ValidateServerRouteValidator<
+  TValidator,
+  TFullPath extends string,
+> = unknown extends TValidator
+  ? TValidator
+  : ResolveValidatorInput<TValidator> extends ValidatorInput<TFullPath>
     ? ConstrainValidator<TValidator>
-    : ResolveValidatorInput<TValidator> extends ValidatorInput<TFullPath>
-      ? ConstrainValidator<TValidator>
-      : Validator<ValidatorInput<TFullPath>, any>
+    : Validator<ValidatorInput<TFullPath>, any>
 
 export interface ValidatorInput<TFullPath extends string> {
   params?: ResolveParams<TFullPath>
