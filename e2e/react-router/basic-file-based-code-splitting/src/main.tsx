@@ -10,6 +10,7 @@ const router = createRouter({
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
   scrollRestoration: true,
+  defaultErrorComponent: () => <div>This is the error component</div>,
 })
 
 // Register things for typesafety
