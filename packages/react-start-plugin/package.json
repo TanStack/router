@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start-plugin",
-  "version": "1.114.12",
+  "version": "1.114.30",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -87,7 +87,7 @@
     "get-port": "^7.1.0",
     "h3": "1.13.0",
     "import-meta-resolve": "^4.1.0",
-    "nitropack": "^2.10.4",
+    "nitropack": "^2.11.8",
     "tiny-invariant": "^1.3.3",
     "ufo": "^1.5.4",
     "vite": "6.1.0",

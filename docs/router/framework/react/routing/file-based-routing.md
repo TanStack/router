@@ -41,7 +41,7 @@ See the example below:
 | 📂 `settings`           |                           | `<Root><Settings>`                |
 | ┄ ʦ `profile.tsx`       | `/settings/profile`       | `<Root><Settings><Profile>`       |
 | ┄ ʦ `notifications.tsx` | `/settings/notifications` | `<Root><Settings><Notifications>` |
-| ʦ `_pathless.tsx`       |                           | `<Root><Pathless>`                |
+| ʦ `_pathlessLayout.tsx` |                           | `<Root><PathlessLayout>`          |
 | 📂 `_pathlessLayout`    |                           |                                   |
 | ┄ ʦ `route-a.tsx`       | `/route-a`                | `<Root><PathlessLayout><RouteA>`  |
 | ┄ ʦ `route-b.tsx`       | `/route-b`                | `<Root><PathlessLayout><RouteB>`  |
