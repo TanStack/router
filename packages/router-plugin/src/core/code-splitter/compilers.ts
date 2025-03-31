@@ -900,9 +900,19 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
       }
     },
     ExportDefaultDeclaration(path) {
+      // declared as `export default loaderFn`
       if (t.isIdentifier(path.node.declaration)) {
         if (path.node.declaration.name === node.name) {
           found = true
+        }
+      }
+
+      // declared as `export default function loaderFn() {}`
+      if (t.isFunctionDeclaration(path.node.declaration)) {
+        if (t.isIdentifier(path.node.declaration.id)) {
+          if (path.node.declaration.id.name === node.name) {
+            found = true
+          }
         }
       }
     },
@@ -929,7 +939,10 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
               }
             }
           })
-        } else if (t.isFunctionDeclaration(path.node.declaration)) {
+        }
+
+        // declared as `export const loaderFn = () => {}`
+        if (t.isFunctionDeclaration(path.node.declaration)) {
           if (t.isIdentifier(path.node.declaration.id)) {
             if (path.node.declaration.id.name === node.name) {
               path.remove()
@@ -940,10 +953,21 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
       }
     },
     ExportDefaultDeclaration(path) {
+      // declared as `export default loaderFn`
       if (t.isIdentifier(path.node.declaration)) {
         if (path.node.declaration.name === node.name) {
           path.remove()
           removed = true
+        }
+      }
+
+      // declared as `export default function loaderFn() {}`
+      if (t.isFunctionDeclaration(path.node.declaration)) {
+        if (t.isIdentifier(path.node.declaration.id)) {
+          if (path.node.declaration.id.name === node.name) {
+            path.remove()
+            removed = true
+          }
         }
       }
     },
