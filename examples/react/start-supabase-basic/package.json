@@ -16,8 +16,8 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
     "@tanstack/react-router": "^1.114.29",
-    "@tanstack/react-router-devtools": "^1.114.29",
-    "@tanstack/react-start": "^1.114.30",
+    "@tanstack/react-router-devtools": "^1.114.31",
+    "@tanstack/react-start": "^1.114.31",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

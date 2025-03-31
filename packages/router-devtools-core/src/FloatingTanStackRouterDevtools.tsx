@@ -161,6 +161,16 @@ export function FloatingTanStackRouterDevtools({
           }
         }
       }
+    } else {
+      // Reset padding when devtools are closed
+      if (rootEl()?.parentElement) {
+        setRootEl((prev) => {
+          if (prev?.parentElement) {
+            prev.parentElement.removeAttribute('style')
+          }
+          return prev
+        })
+      }
     }
     return
   })
