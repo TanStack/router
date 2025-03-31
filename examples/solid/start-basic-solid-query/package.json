@@ -1,0 +1,31 @@
+{
+  "name": "tanstack-solid-start-example-basic-solid-query",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start"
+  },
+  "dependencies": {
+    "@tanstack/solid-query": "^5.66.0",
+    "@tanstack/solid-query-devtools": "^5.66.0",
+    "@tanstack/solid-router": "^1.114.29",
+    "@tanstack/solid-router-with-query": "^1.114.29",
+    "@tanstack/solid-router-devtools": "^1.114.29",
+    "@tanstack/solid-start": "^1.114.30",
+    "solid-js": "^1.9.5",
+    "redaxios": "^0.5.1",
+    "tailwind-merge": "^2.6.0",
+    "vinxi": "0.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "postcss": "^8.5.1",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
