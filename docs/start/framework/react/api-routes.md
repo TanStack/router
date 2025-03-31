@@ -63,7 +63,7 @@ API Routes export an APIRoute instance by calling the `createAPIFileRoute` funct
 > If you've already got the dev server running, when you create a new API route, it'll automatically have the initial handler set up for you. From there on, you can customize the handler as needed.
 
 > [!NOTE]
-> The export variable must be  named `APIRoute` or the resulting response will be a `404 not found`.
+> The export variable must be named `APIRoute` or the resulting response will be a `404 not found`.
 
 ```ts
 // routes/api/hello.ts
