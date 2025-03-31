@@ -166,7 +166,7 @@ export function FloatingTanStackRouterDevtools({
       if (rootEl()?.parentElement) {
         setRootEl((prev) => {
           if (prev?.parentElement) {
-            prev.parentElement.style.paddingBottom = '0px'
+            prev.parentElement.style.removeProperty('padding-bottom')
           }
           return prev
         })
