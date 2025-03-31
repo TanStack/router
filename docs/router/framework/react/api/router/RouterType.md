@@ -189,7 +189,7 @@ Loads the JS chunk of the route.
 
 Matches a pathname and search params against the router's route tree and returns a route match's params or false if no match was found.
 
-- Type: `(dest: ToOptions, matchOpts?: MatchRouteOptions) => RouteMatch | false`
+- Type: `(dest: ToOptions, matchOpts?: MatchRouteOptions) => RouteMatch['params'] | false`
 - Properties
   - `dest`
     - Type: `ToOptions`
@@ -200,7 +200,7 @@ Matches a pathname and search params against the router's route tree and returns
     - Optional
     - Options that will be used to match the destination.
 - Returns
-  - A route match object if a match was found.
+  - A route match's params if a match was found.
   - `false` if no match was found.
 
 ### `.dehydrate` method
