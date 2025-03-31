@@ -921,13 +921,6 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
   return found
 }
 
-/**
- * This function uses if/else if statements because it directly
- * mutates the AST and as such doing normal checks using only
- * if statements could lead to a situation where `path.node` is
- * null since it has been already removed from the AST
- * but typescript doesn't know that.
- */
 function removeExports(ast: t.File, node: t.Identifier): boolean {
   let removed = false
 
