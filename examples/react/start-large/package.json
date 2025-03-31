@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "start": "vite start",
-    "gen": "node ./app/createRoutes.mjs",
+    "gen": "node ./src/createRoutes.mjs",
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {

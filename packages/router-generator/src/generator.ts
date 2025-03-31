@@ -655,11 +655,6 @@ export async function generator(config: Config, root: string) {
                 ? `${routeNode.parent.variableName}RouteImport`
                 : 'rootRoute'
           }
-          ${
-            routeNode.hasServerRoute
-              ? `serverParentRoute: ${routeNode.parent?.hasServerRoute ? `typeof ${routeNode.parent.variableName}ServerRouteImport` : 'unknown'}`
-              : ''
-          }
           ${ENABLED_SERVER_ROUTES && routeNode.hasServerRoute ? `serverRoute: typeof ${routeNode.variableName}ServerRouteImport` : ''}
         }`
       })
@@ -685,7 +680,7 @@ ${
   ENABLED_SERVER_ROUTES
     ? `const createServerFileRoute: CreateServerFileRoute<
 '${routeNode.routePath}',
-FileRoutesByPath['${routeNode.routePath}']['serverParentRoute'],
+${`${routeNode.parent?.hasServerRoute ? `typeof ${routeNode.parent.variableName}ServerRouteImport` : 'unknown'}`},
 FileRoutesByPath['${routeNode.routePath}']['id'],
 FileRoutesByPath['${routeNode.routePath}']['path'],
 FileRoutesByPath['${routeNode.routePath}']['fullPath']

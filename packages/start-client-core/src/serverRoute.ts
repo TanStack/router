@@ -408,12 +408,12 @@ export type ServerRouteMethodHandlerFn<
 ) => TResponse | Promise<TResponse>
 
 export interface ServerRouteMethodHandlerCtx<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TFullPath extends string,
-  TVerb extends ServerRouteVerb,
-  TMiddlewares,
-  TMethodMiddlewares,
-  TValidator,
+  in out TParentRoute extends AnyServerRouteWithTypes,
+  in out TFullPath extends string,
+  in out TVerb extends ServerRouteVerb,
+  in out TMiddlewares,
+  in out TMethodMiddlewares,
+  in out TValidator,
 > {
   data: Expand<
     ResolveAllMethodValidatorOutputs<
@@ -522,12 +522,12 @@ export interface ServerRouteMethodBuilderWithTypes<
 }
 
 export interface ServerRouteMethodBuilderTypes<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TFullPath extends string,
-  TMiddlewares,
-  TMethodMiddlewares,
-  TValidator,
-  TResponse,
+  in out TParentRoute extends AnyServerRouteWithTypes,
+  in out TFullPath extends string,
+  in out TMiddlewares,
+  in out TMethodMiddlewares,
+  in out TValidator,
+  in out TResponse,
 > {
   middlewares: TMiddlewares
   methodMiddleware: TMethodMiddlewares
